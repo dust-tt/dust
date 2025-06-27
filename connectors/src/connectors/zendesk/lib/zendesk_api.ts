@@ -470,10 +470,17 @@ export async function listZendeskTicketComments({
   let hasMore = true;
 
   while (hasMore) {
-    const response = await fetchFromZendeskWithRetries({ url, accessToken });
-    comments.push(...response.comments);
-    hasMore = response.hasMore || false;
-    url = response.nextLink;
+    try {
+      const response = await fetchFromZendeskWithRetries({ url, accessToken });
+      comments.push(...response.comments);
+      hasMore = response.hasMore || false;
+      url = response.nextLink;
+    } catch (e) {
+      if (isZendeskNotFoundError(e)) {
+        return [];
+      }
+      throw e;
+    }
   }
   return comments;
 }
