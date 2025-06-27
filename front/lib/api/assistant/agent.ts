@@ -427,6 +427,25 @@ async function* runMultiActionsAgent(
     jitServers
   );
 
+  if (mcpToolsListingError) {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        error: mcpToolsListingError,
+      },
+      "Error listing MCP tools."
+    );
+  } else {
+    logger.info(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+      },
+      "MCP tools listed successfully."
+    );
+  }
+
   if (!isLastGenerationIteration) {
     availableActions.push(...mcpActions.flatMap((s) => s.tools));
   }
