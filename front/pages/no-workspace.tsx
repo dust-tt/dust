@@ -58,7 +58,10 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     status = "auto-join-disabled";
     const workspaceHasDomain = await fetchWorkspaceDetails(user);
     workspace = workspaceHasDomain?.workspace
-      ? await WorkspaceResource.makeNew(workspaceHasDomain.workspace.get())
+      ? new WorkspaceResource(
+          WorkspaceResource.model,
+          workspaceHasDomain.workspace.get()
+        )
       : null;
     workspaceVerifiedDomain = workspaceHasDomain?.domain ?? null;
 
