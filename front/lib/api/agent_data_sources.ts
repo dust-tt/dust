@@ -134,11 +134,8 @@ export async function getDataSourceViewsUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_retrieval_configuration->agent_configuration.name"
+              '"agent_retrieval_configuration->agent_configuration"."name" ORDER BY "agent_retrieval_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -146,11 +143,8 @@ export async function getDataSourceViewsUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_retrieval_configuration->agent_configuration.name"
+              '"agent_retrieval_configuration->agent_configuration"."sId" ORDER BY "agent_retrieval_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -194,11 +188,8 @@ export async function getDataSourceViewsUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_process_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_process_configuration->agent_configuration.name"
+              '"agent_process_configuration->agent_configuration"."name" ORDER BY "agent_process_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -206,11 +197,8 @@ export async function getDataSourceViewsUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_process_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_process_configuration->agent_configuration.name"
+              '"agent_process_configuration->agent_configuration"."sId" ORDER BY "agent_process_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -254,11 +242,8 @@ export async function getDataSourceViewsUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_mcp_server_configuration->agent_configuration.name"
+              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -266,11 +251,8 @@ export async function getDataSourceViewsUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_mcp_server_configuration->agent_configuration.name"
+              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -314,11 +296,8 @@ export async function getDataSourceViewsUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_tables_query_configuration->agent_configuration.name"
+              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -326,11 +305,8 @@ export async function getDataSourceViewsUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_tables_query_configuration->agent_configuration.name"
+              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -462,11 +438,8 @@ export async function getDataSourcesUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_retrieval_configuration->agent_configuration.name"
+              '"agent_retrieval_configuration->agent_configuration"."name" ORDER BY "agent_retrieval_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -474,11 +447,8 @@ export async function getDataSourcesUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_retrieval_configuration->agent_configuration.name"
+              '"agent_retrieval_configuration->agent_configuration"."sId" ORDER BY "agent_retrieval_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -525,11 +495,8 @@ export async function getDataSourcesUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_process_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_process_configuration->agent_configuration.name"
+              '"agent_process_configuration->agent_configuration"."name" ORDER BY "agent_process_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -537,11 +504,8 @@ export async function getDataSourcesUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_process_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_process_configuration->agent_configuration.name"
+              '"agent_process_configuration->agent_configuration"."sId" ORDER BY "agent_process_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -588,11 +552,8 @@ export async function getDataSourcesUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_mcp_server_configuration->agent_configuration.name"
+              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -600,11 +561,8 @@ export async function getDataSourcesUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_mcp_server_configuration->agent_configuration.name"
+              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -651,11 +609,8 @@ export async function getDataSourcesUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_tables_query_configuration->agent_configuration.name"
+              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -663,11 +618,8 @@ export async function getDataSourcesUsageByCategory({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_tables_query_configuration->agent_configuration.name"
+              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -774,11 +726,8 @@ export async function getDataSourceUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_retrieval_configuration->agent_configuration.name"
+              '"agent_retrieval_configuration->agent_configuration"."name" ORDER BY "agent_retrieval_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -786,11 +735,8 @@ export async function getDataSourceUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_retrieval_configuration->agent_configuration.name"
+              '"agent_retrieval_configuration->agent_configuration"."sId" ORDER BY "agent_retrieval_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -827,11 +773,8 @@ export async function getDataSourceUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_process_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_process_configuration->agent_configuration.name"
+              '"agent_process_configuration->agent_configuration"."name" ORDER BY "agent_process_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -839,11 +782,8 @@ export async function getDataSourceUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_process_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_process_configuration->agent_configuration.name"
+              '"agent_process_configuration->agent_configuration"."sId" ORDER BY "agent_process_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -880,11 +820,8 @@ export async function getDataSourceUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_mcp_server_configuration->agent_configuration.name"
+              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -892,11 +829,8 @@ export async function getDataSourceUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_mcp_server_configuration->agent_configuration.name"
+              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -933,11 +867,8 @@ export async function getDataSourceUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_tables_query_configuration->agent_configuration.name"
+              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -945,11 +876,8 @@ export async function getDataSourceUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_tables_query_configuration->agent_configuration.name"
+              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -1036,11 +964,8 @@ export async function getDataSourceViewUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_retrieval_configuration->agent_configuration.name"
+              '"agent_retrieval_configuration->agent_configuration"."name" ORDER BY "agent_retrieval_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -1048,11 +973,8 @@ export async function getDataSourceViewUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_retrieval_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_retrieval_configuration->agent_configuration.name"
+              '"agent_retrieval_configuration->agent_configuration"."sId" ORDER BY "agent_retrieval_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -1089,11 +1011,8 @@ export async function getDataSourceViewUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_process_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_process_configuration->agent_configuration.name"
+              '"agent_process_configuration->agent_configuration"."name" ORDER BY "agent_process_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -1101,11 +1020,8 @@ export async function getDataSourceViewUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_process_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_process_configuration->agent_configuration.name"
+              '"agent_process_configuration->agent_configuration"."sId" ORDER BY "agent_process_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -1142,11 +1058,8 @@ export async function getDataSourceViewUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_mcp_server_configuration->agent_configuration.name"
+              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -1154,11 +1067,8 @@ export async function getDataSourceViewUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_mcp_server_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_mcp_server_configuration->agent_configuration.name"
+              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -1195,11 +1105,8 @@ export async function getDataSourceViewUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.name"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_tables_query_configuration->agent_configuration.name"
+              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -1207,11 +1114,8 @@ export async function getDataSourceViewUsage({
         [
           Sequelize.fn(
             "array_agg",
-            Sequelize.col(
-              "agent_tables_query_configuration->agent_configuration.sId"
-            ),
             Sequelize.literal(
-              "ORDER BY agent_tables_query_configuration->agent_configuration.name"
+              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
