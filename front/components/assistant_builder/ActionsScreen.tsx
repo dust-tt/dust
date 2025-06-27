@@ -40,6 +40,7 @@ import {
 } from "@app/components/assistant_builder/actions/MCPAction";
 import { AddToolsDropdown } from "@app/components/assistant_builder/AddToolsDropdown";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionAndDataVisualizationConfiguration,
@@ -76,7 +77,6 @@ import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
-import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 
 function ActionModeSection({
   children,
