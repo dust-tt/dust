@@ -1,42 +1,17 @@
 import assert from "assert";
 import { tracer } from "dd-trace";
 
-import type {
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderMCPConfiguration,
-} from "@app/components/assistant_builder/types";
-import {
-  getDefaultDustAppRunActionConfiguration,
-  getDefaultMCPServerActionConfiguration,
-  getDefaultProcessActionConfiguration,
-  getDefaultReasoningActionConfiguration,
-  getDefaultRetrievalExhaustiveActionConfiguration,
-  getDefaultRetrievalSearchActionConfiguration,
-  getDefaultTablesQueryActionConfiguration,
-  getDefaultWebsearchActionConfiguration,
-} from "@app/components/assistant_builder/types";
+import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
+import { getDefaultMCPServerActionConfiguration } from "@app/components/assistant_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
-import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type {
   TableDataSourceConfiguration,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import {
-  isBrowseConfiguration,
-  isDustAppRunConfiguration,
-  isMCPServerConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isServerSideMCPServerConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -52,7 +27,6 @@ import type {
   DataSourceViewSelectionConfigurations,
   TemplateAgentConfigurationType,
 } from "@app/types";
-import { assertNever, slugify } from "@app/types";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   return tracer.trace("getAccessibleSourcesAndApps", async () => {
@@ -60,18 +34,39 @@ export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
       await SpaceResource.listWorkspaceSpaces(auth)
     ).filter((space) => !space.isSystem() && space.canRead(auth));
 
-    const [dsViews, allDustApps, allMCPServerViews] = await Promise.all([
-      DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
-        includeEditedBy: true,
-      }),
+    const [allDustApps, allMCPServerViews] = await Promise.all([
       AppResource.listByWorkspace(auth),
       MCPServerViewResource.listBySpaces(auth, accessibleSpaces),
     ]);
 
     return {
       spaces: accessibleSpaces,
-      dataSourceViews: dsViews,
       dustApps: allDustApps,
+      mcpServerViews: allMCPServerViews,
+    };
+  });
+};
+
+// We are moving resource fetch to the client side. Until we finish,
+// we will keep this duplicated version for fetching actions.
+export const getAccessibleSourcesAndAppsForActions = async (
+  auth: Authenticator
+) => {
+  return tracer.trace("getAccessibleSourcesAndAppsForActions", async () => {
+    const accessibleSpaces = (
+      await SpaceResource.listWorkspaceSpaces(auth)
+    ).filter((space) => !space.isSystem() && space.canRead(auth));
+
+    const [dsViews, allMCPServerViews] = await Promise.all([
+      DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
+        includeEditedBy: true,
+      }),
+      MCPServerViewResource.listBySpaces(auth, accessibleSpaces),
+    ]);
+
+    return {
+      spaces: accessibleSpaces,
+      dataSourceViews: dsViews,
       mcpServerViews: allMCPServerViews,
     };
   });
@@ -79,25 +74,27 @@ export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
 
 export async function buildInitialActions({
   dataSourceViews,
-  dustApps,
   configuration,
   mcpServerViews = [],
 }: {
   dataSourceViews: DataSourceViewResource[];
-  dustApps: AppResource[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
   mcpServerViews?: MCPServerViewType[];
 }): Promise<AssistantBuilderMCPConfiguration[]> {
   const builderActions: AssistantBuilderMCPConfiguration[] = [];
 
   for (const action of configuration.actions) {
+    assert(
+      action.type === "mcp_server_configuration",
+      "Legacy action type, non-MCP, are no longer supported."
+    );
     const mcpServerView = mcpServerViews.find(
       (mcpServerView) => mcpServerView.server.name === action.name
     );
-    const builderAction = await initializeBuilderAction(
+
+    const builderAction = await getMCPServerActionConfiguration(
       action,
       dataSourceViews,
-      dustApps,
       mcpServerView
     );
 
@@ -124,142 +121,11 @@ export async function buildInitialActions({
   return builderActions;
 }
 
-async function initializeBuilderAction(
-  action: AgentActionConfigurationType,
-  dataSourceViews: DataSourceViewResource[],
-  dustApps: AppResource[],
-  mcpServerView?: MCPServerViewType
-): Promise<AssistantBuilderActionConfiguration | null> {
-  if (isRetrievalConfiguration(action)) {
-    return getRetrievalActionConfiguration(action, dataSourceViews);
-  } else if (isDustAppRunConfiguration(action)) {
-    return getDustAppRunActionConfiguration(action, dustApps);
-  } else if (isTablesQueryConfiguration(action)) {
-    return getTablesQueryActionConfiguration(action, dataSourceViews);
-  } else if (isProcessConfiguration(action)) {
-    return getProcessActionConfiguration(action, dataSourceViews);
-  } else if (isWebsearchConfiguration(action)) {
-    return getDefaultWebsearchActionConfiguration();
-  } else if (isBrowseConfiguration(action)) {
-    return null; // Ignore browse actions
-  } else if (isReasoningConfiguration(action)) {
-    return getReasoningActionConfiguration(action);
-  } else if (isMCPServerConfiguration(action)) {
-    return getMCPServerActionConfiguration(
-      action,
-      dataSourceViews,
-      mcpServerView
-    );
-  } else {
-    assertNever(action);
-  }
-}
-
-async function getRetrievalActionConfiguration(
-  action: RetrievalConfigurationType,
-  dataSourceViews: DataSourceViewResource[]
-): Promise<AssistantBuilderActionConfiguration> {
-  const retrievalConfiguration =
-    action.query !== "none"
-      ? getDefaultRetrievalSearchActionConfiguration()
-      : getDefaultRetrievalExhaustiveActionConfiguration();
-  if (
-    "timeFrame" in retrievalConfiguration.configuration &&
-    action.relativeTimeFrame !== "auto" &&
-    action.relativeTimeFrame !== "none"
-  ) {
-    retrievalConfiguration.configuration.timeFrame = {
-      value: action.relativeTimeFrame.duration,
-      unit: action.relativeTimeFrame.unit,
-    };
-  }
-
-  retrievalConfiguration.configuration.dataSourceConfigurations =
-    await renderDataSourcesConfigurations(action, dataSourceViews);
-
-  return retrievalConfiguration;
-}
-
-async function getDustAppRunActionConfiguration(
-  action: DustAppRunConfigurationType,
-  dustApps: AppResource[]
-): Promise<AssistantBuilderActionConfiguration> {
-  const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
-  const app = dustApps.find((app) => app.sId === action.appId);
-
-  if (app) {
-    dustAppConfiguration.configuration.app = app.toJSON();
-    dustAppConfiguration.name = slugify(app.name);
-    dustAppConfiguration.description = app.description ?? "";
-  }
-
-  return dustAppConfiguration;
-}
-
-async function getTablesQueryActionConfiguration(
-  action: TablesQueryConfigurationType,
-  dataSourceViews: DataSourceViewResource[]
-): Promise<AssistantBuilderActionConfiguration> {
-  const tablesQueryConfiguration = getDefaultTablesQueryActionConfiguration();
-  tablesQueryConfiguration.configuration =
-    await renderTableDataSourcesConfigurations(action, dataSourceViews);
-
-  return tablesQueryConfiguration;
-}
-
-async function getProcessActionConfiguration(
-  action: ProcessConfigurationType,
-  dataSourceViews: DataSourceViewResource[]
-): Promise<AssistantBuilderActionConfiguration> {
-  const processConfiguration = getDefaultProcessActionConfiguration();
-
-  if (
-    action.relativeTimeFrame !== "auto" &&
-    action.relativeTimeFrame !== "none"
-  ) {
-    processConfiguration.configuration.timeFrame = {
-      value: action.relativeTimeFrame.duration,
-      unit: action.relativeTimeFrame.unit,
-    };
-  }
-
-  processConfiguration.configuration.dataSourceConfigurations =
-    await renderDataSourcesConfigurations(action, dataSourceViews);
-  processConfiguration.configuration.jsonSchema = action.jsonSchema;
-
-  return processConfiguration;
-}
-
-function getReasoningActionConfiguration(
-  action: ReasoningConfigurationType
-): AssistantBuilderActionConfiguration {
-  const builderAction = getDefaultReasoningActionConfiguration();
-  if (builderAction.type !== "REASONING") {
-    throw new Error("Reasoning action configuration is not valid");
-  }
-
-  const supportedReasoningModel = REASONING_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === action.modelId &&
-      m.providerId === action.providerId &&
-      (m.reasoningEffort ?? null) === (action.reasoningEffort ?? null)
-  );
-
-  if (supportedReasoningModel) {
-    builderAction.configuration.modelId = supportedReasoningModel.modelId;
-    builderAction.configuration.providerId = supportedReasoningModel.providerId;
-    builderAction.configuration.reasoningEffort =
-      supportedReasoningModel.reasoningEffort ?? null;
-  }
-
-  return builderAction;
-}
-
 async function getMCPServerActionConfiguration(
   action: MCPServerConfigurationType,
   dataSourceViews: DataSourceViewResource[],
   mcpServerView?: MCPServerViewType
-): Promise<AssistantBuilderActionConfiguration> {
+): Promise<AssistantBuilderMCPConfiguration> {
   assert(isServerSideMCPServerConfiguration(action));
 
   const builderAction = getDefaultMCPServerActionConfiguration(mcpServerView);

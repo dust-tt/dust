@@ -1,30 +1,13 @@
-import { useCallback, useContext, useMemo } from "react";
+import { useContext, useMemo } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import type {
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderActionState,
+  AssistantBuilderMCPOrVizState,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { assertNever } from "@app/types";
-
-// Actions in this list are not configurable via the "add tool" menu.
-// Instead, they should be handled in the `Capabilities` component.
-// Note: not all capabilities are actions (eg: visualization)
-const CAPABILITIES_ACTION_CATEGORIES = [
-  "WEB_NAVIGATION",
-  "REASONING",
-] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
-
-// We reserve the name we use for capability actions, as these aren't
-// configurable via the "add tool" menu.
-export const isReservedName = (name: string) =>
-  CAPABILITIES_ACTION_CATEGORIES.some(
-    (c) => getDefaultActionConfiguration(c)?.name === name
-  );
 
 export const isUsableAsCapability = (
   id: string,
@@ -57,27 +40,11 @@ export const isUsableInKnowledge = (
 export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
   const { spaces, mcpServerViews } = useContext(AssistantBuilderContext);
 
-  const isCapabilityAction = useCallback(
-    (action: AssistantBuilderActionState) => {
-      if (action.type === "MCP") {
-        return isUsableAsCapability(
-          action.configuration.mcpServerViewId,
-          mcpServerViews
-        );
-      }
-
-      return (CAPABILITIES_ACTION_CATEGORIES as string[]).includes(action.type);
-    },
-    [mcpServerViews]
-  );
-
-  const configurableActions = builderState.actions.filter(
-    (a) => !isCapabilityAction(a)
-  );
+  const configurableActions = builderState.actions;
 
   const spaceIdToActions = useMemo(() => {
     return configurableActions.reduce<
-      Record<string, AssistantBuilderActionState[]>
+      Record<string, AssistantBuilderMCPOrVizState[]>
     >((acc, action) => {
       const addActionToSpace = (spaceId?: string) => {
         if (spaceId) {

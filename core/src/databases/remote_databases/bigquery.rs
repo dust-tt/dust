@@ -378,6 +378,11 @@ impl BigQueryRemoteDatabase {
         let mut remaining_forbidden_tables = Vec::<String>::new();
 
         for (dataset_key, dataset) in dataset_details.iter() {
+            // Skip if there are no forbidden tables in the dataset.
+            if dataset.forbidden_tables.is_empty() {
+                continue;
+            }
+
             // This query will return the view definitions for all specified tables in the dataset, if they are views.
             let query = format!(
                 r#"SELECT table_name as view_name, view_definition
@@ -418,6 +423,7 @@ impl BigQueryRemoteDatabase {
                 parameter_mode: Some("NAMED".to_string()),
                 query_parameters: Some(query_parameters),
                 use_legacy_sql: false,
+                location: Some(self.location.clone()),
                 ..Default::default()
             };
 
@@ -428,11 +434,16 @@ impl BigQueryRemoteDatabase {
                 .await
                 .map_err(|e| {
                     QueryDatabaseError::GenericError(anyhow!(
-                        "Error executing views check query {} dataset_key {}, view_names: {:?}, error: {}",
+                        "Error executing views check query {} dataset_key {}, allowed_tables: {:?}, forbidden_tables: {:?}, error: {}",
                         query,
                         dataset_key,
                         dataset
                             .allowed_table_names
+                            .iter()
+                            .map(|name| name.clone())
+                            .collect::<Vec<_>>(),
+                        dataset
+                            .forbidden_tables
                             .iter()
                             .map(|name| name.clone())
                             .collect::<Vec<_>>(),

@@ -1,5 +1,6 @@
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type {
   LightWorkspaceType,
   ModelId,
@@ -12,7 +13,11 @@ export function renderLightWorkspaceType({
   workspace,
   role = "none",
 }: {
-  workspace: WorkspaceModel | WorkspaceType | LightWorkspaceType;
+  workspace:
+    | WorkspaceResource
+    | WorkspaceModel
+    | WorkspaceType
+    | LightWorkspaceType;
   role?: RoleType;
 }): LightWorkspaceType {
   return {

@@ -63,7 +63,8 @@ export function WorkspaceInfoTable({
             <PokeTableRow>
               <PokeTableCell>Auto Join</PokeTableCell>
               <PokeTableCell>
-                {workspaceVerifiedDomains.every((d) => d.domainAutoJoinEnabled)
+                {workspaceVerifiedDomains.length > 0 &&
+                workspaceVerifiedDomains.every((d) => d.domainAutoJoinEnabled)
                   ? "✅"
                   : workspaceVerifiedDomains.some(
                         (d) => d.domainAutoJoinEnabled
