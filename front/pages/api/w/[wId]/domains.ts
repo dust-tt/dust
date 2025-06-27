@@ -7,7 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import {
   generateWorkOSAdminPortalUrl,
-  getOrCreateWorkOSOrganization,
+  getWorkOSOrganization,
   removeWorkOSOrganizationDomain,
 } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
@@ -43,10 +43,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      // If the workspace doesn't have a WorkOS organization (which can happen for workspaces
-      // created via admin tools), we create one before fetching domains. This ensures the
-      // endpoint works for all workspaces, regardless of how they were created.
-      const organizationRes = await getOrCreateWorkOSOrganization(
+      const organizationRes = await getWorkOSOrganization(
         auth.getNonNullableWorkspace()
       );
 
