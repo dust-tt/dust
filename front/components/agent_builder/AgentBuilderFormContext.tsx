@@ -42,6 +42,7 @@ const actionSchema = z.object({
 const agentSettingsSchema = z.object({
   name: z.string().min(1, "Agent name is required"),
   description: z.string().min(1, "Agent description is required"),
+  pictureUrl: z.string().optional(),
 });
 
 export const agentBuilderFormSchema = z.object({

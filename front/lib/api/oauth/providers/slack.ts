@@ -1,3 +1,4 @@
+import assert from "assert";
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
@@ -10,36 +11,71 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { Err, OAuthAPI, Ok } from "@app/types";
+import { assertNever, Err, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
     connection,
+    useCase,
     extraConfig,
   }: {
     connection: OAuthConnectionType;
     useCase: OAuthUseCase;
     extraConfig?: ExtraConfigType;
   }) {
-    const default_scopes = [
-      "app_mentions:read",
-      "channels:history",
-      "channels:join",
-      "channels:read",
-      "chat:write",
-      "groups:history",
-      "groups:read",
-      "im:history",
-      "metadata.message:read",
-      "mpim:read",
-      "team:read",
-      "users:read",
-      "users:read.email",
-      "im:read",
-      "mpim:history",
-      "files:read",
-    ];
+    const default_scopes = (() => {
+      switch (useCase) {
+        case "personal_actions":
+        case "platform_actions":
+        case "connection": {
+          return [
+            "app_mentions:read",
+            "channels:history",
+            "channels:join",
+            "channels:read",
+            "chat:write",
+            "groups:history",
+            "groups:read",
+            "im:history",
+            "metadata.message:read",
+            "mpim:read",
+            "team:read",
+            "users:read",
+            "users:read.email",
+            "im:read",
+            "mpim:history",
+            "files:read",
+          ];
+        }
+        case "bot": {
+          return [
+            "app_mentions:read",
+            "channels:history",
+            "channels:join",
+            "channels:read",
+            "chat:write",
+            "files:read",
+            "groups:history",
+            "groups:read",
+            "im:history",
+            "mpim:history",
+            "mpim:read",
+            "team:read",
+            "im:read",
+            "users:read",
+            "users:read.email",
+          ];
+        }
+        case "labs_transcripts":
+          assert(
+            "Unreachable provider `labs_transcripts` in SlackOAuthProvider"
+          );
+          return [];
+        default:
+          assertNever(useCase);
+      }
+    })();
 
     let user_scopes: string[] = [];
     let bot_scopes: string[] = [...default_scopes];
@@ -62,9 +98,33 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       }
     }
 
+    if (["bot", "connection"].includes(useCase) && user_scopes.length > 0) {
+      assert("User scopes are not expected for bot or connection use cases.");
+    }
+
+    const clientId = (() => {
+      switch (useCase) {
+        case "personal_actions":
+        case "platform_actions":
+        case "connection": {
+          return config.getOAuthSlackClientId();
+        }
+        case "bot": {
+          return config.getOAuthSlackBotClientId();
+        }
+        case "labs_transcripts":
+          assert(
+            "Unreachable provider `labs_transcripts` in SlackOAuthProvider"
+          );
+          return "";
+        default:
+          assertNever(useCase);
+      }
+    })();
+
     return (
       `https://slack.com/oauth/v2/authorize?` +
-      `client_id=${config.getOAuthSlackClientId()}` +
+      `client_id=${clientId}` +
       (bot_scopes.length > 0
         ? `&scope=${encodeURIComponent(bot_scopes.join(" "))}`
         : "") +

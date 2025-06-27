@@ -43,6 +43,7 @@ export default function AgentBuilder() {
       agentSettings: {
         name: "",
         description: "",
+        pictureUrl: "",
       },
       instructions: "",
       generationSettings: {
