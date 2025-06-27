@@ -1,3 +1,4 @@
+export * from "./activate_auto_join";
 export * from "./add_user_to_workos_organization";
 export * from "./check_seat_count";
 export * from "./compute_statistics";
