@@ -18,6 +18,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  *   post:
  *     summary: Register a client-side MCP server
  *     description: |
+ *       [Documentation](https://docs.dust.tt/docs/client-side-mcp-server)
  *       Register a client-side MCP server to Dust.
  *       The registration is scoped to the current user and workspace.
  *       A serverId identifier is generated and returned in the response.

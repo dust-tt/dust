@@ -16,7 +16,8 @@ import type { WithAPIErrorResponse } from "@app/types";
  *   post:
  *     summary: Submit MCP tool execution results
  *     description: |
- *       Endpoint for local MCP servers to submit the results of tool executions.
+ *       [Documentation](https://docs.dust.tt/docs/client-side-mcp-server)
+ *       Endpoint for client-side MCP servers to submit the results of tool executions.
  *       This endpoint accepts the output from tools that were executed locally.
  *     tags:
  *       - MCP
