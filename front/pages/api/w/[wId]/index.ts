@@ -72,18 +72,6 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const workspace = await WorkspaceModel.findOne({
-        where: { id: owner.id },
-      });
-      if (!workspace) {
-        return apiError(req, res, {
-          status_code: 404,
-          api_error: {
-            type: "workspace_not_found",
-            message: "The workspace you're trying to access was not found.",
-          },
-        });
-      }
       res.status(200).json({ workspace: owner });
       return;
 
