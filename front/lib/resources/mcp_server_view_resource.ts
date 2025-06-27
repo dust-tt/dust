@@ -598,7 +598,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
         if (!systemSpace || !globalSpace) {
           throw new Error(
-            `System or global space not found. Should never happen. Workspace: ${auth.getNonNullableWorkspace().id}`
+            "System or global space not found. Should never happen."
           );
         }
 
