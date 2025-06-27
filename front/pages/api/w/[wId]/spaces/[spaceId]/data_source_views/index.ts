@@ -119,8 +119,7 @@ async function handler(
                   },
                   usage: usages[dataSourceView.id] || {
                     count: 0,
-                    agentNames: [],
-                    agentConfigurationIds: [],
+                    agents: [],
                   },
                 };
               }
@@ -132,8 +131,7 @@ async function handler(
                 dataSource: augmentedDataSource,
                 usage: usages[dataSourceView.id] || {
                   count: 0,
-                  agentNames: [],
-                  agentConfigurationIds: [],
+                  agents: [],
                 },
               };
             })

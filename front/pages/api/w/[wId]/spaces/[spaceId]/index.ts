@@ -68,8 +68,7 @@ async function handler(
           count: 0,
           usage: {
             count: 0,
-            agentNames: [],
-            agentConfigurationIds: [],
+            agents: [],
           },
         };
 
@@ -86,19 +85,20 @@ async function handler(
 
           for (const dsView of dataSourceViewsInCategory) {
             categories[category].count += 1;
-
             const usage = usages[dsView.id];
 
             if (usage) {
-              categories[category].usage.agentNames = categories[
+              categories[category].usage.agents = categories[
                 category
-              ].usage.agentNames.concat(usage.agentNames);
-              categories[category].usage.agentNames = uniq(
-                categories[category].usage.agentNames
+              ].usage.agents.concat(usage.agents);
+              categories[category].usage.agents = uniqBy(
+                categories[category].usage.agents,
+                "sId"
               );
-              categories[category].usage.count += usage.count;
             }
           }
+          categories[category].usage.count =
+            categories[category].usage.agents.length;
         }
       }
 
