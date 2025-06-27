@@ -145,6 +145,9 @@ const SolutionsMenuConfig: MenuConfig = {
       href: "/home/solutions/data-analytics",
     },
     {
+      title: "",
+    },
+    {
       title: "Knowledge",
       href: "/home/solutions/knowledge",
     },
@@ -163,9 +166,6 @@ const SolutionsMenuConfig: MenuConfig = {
     {
       title: "Productivity",
       href: "/home/solutions/productivity",
-    },
-    {
-      title: "",
     },
     {
       title: IndustriesMenuConfig.title,
