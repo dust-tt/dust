@@ -186,10 +186,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   salesforce: {
     id: 14,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      // When we are ready to release the feature, the condition will be:
-      // return !featureFlags.includes("salesforce_tool") && !plan.limits.connections.isSalesforceAllowed;
-      return !featureFlags.includes("salesforce_tool");
+    isRestricted: ({ featureFlags, plan }) => {
+      const isInPlan = plan.limits.connections.isSalesforceAllowed;
+      const hasFeatureFlag = featureFlags.includes("salesforce_tool");
+      const isAvailable = isInPlan || hasFeatureFlag;
+      return !isAvailable;
     },
     tools_stakes: {
       execute_read_query: "low",
