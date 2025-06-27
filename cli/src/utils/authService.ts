@@ -24,20 +24,23 @@ export const AuthService = {
       throw new Error("No refresh token available.");
     }
 
-    const auth0Domain = process.env.AUTH0_CLIENT_DOMAIN || "";
-    const clientId = process.env.AUTH0_CLIENT_ID || "";
+    const workOSDomain = process.env.WORKOS_CLIENT_DOMAIN || "";
+    const clientId = process.env.WORKOS_CLIENT_ID || "";
 
-    const response = await fetch(`https://${auth0Domain}/oauth/token`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        client_id: clientId,
-        refresh_token: refreshToken,
-      }),
-    });
+    const response = await fetch(
+      `https://${workOSDomain}/user_management/authenticate`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: clientId,
+          refresh_token: refreshToken,
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.text();
