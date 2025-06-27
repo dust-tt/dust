@@ -6,7 +6,6 @@ import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilder
 import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
-import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
@@ -69,8 +68,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const { dustApps } = await getAccessibleSourcesAndApps(auth);
-
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
   )
@@ -114,7 +111,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
-      dustApps: dustApps.map((a) => a.toJSON()),
       flow,
       owner,
       plan,
