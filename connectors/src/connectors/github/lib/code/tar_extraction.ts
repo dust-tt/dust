@@ -171,7 +171,8 @@ export async function extractGitHubTarballToGCS(
               metadata: {
                 contentType: "text/plain",
               },
-              resumable: (header.size ?? 0) >= GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
+              resumable:
+                (header.size ?? 0) >= GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
               validation: false,
             })
           ).catch((error) => {
