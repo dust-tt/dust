@@ -225,7 +225,7 @@ export async function handleEnterpriseSignUpFlow(
       workspace,
       user,
       role: pendingMembershipInvitation?.initialRole ?? "user",
-      origin: pendingMembershipInvitation ? "invited" : "provisioned",
+      origin: pendingMembershipInvitation ? "invited" : "auto-joined",
     });
   }
 
