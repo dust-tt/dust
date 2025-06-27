@@ -12,17 +12,25 @@ import type {
   WorkspaceEnterpriseConnection,
 } from "@app/types";
 
-export function useWorkspace({ owner }: { owner: LightWorkspaceType }) {
+export function useWorkspace({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
   const workspaceFetcher: Fetcher<GetWorkspaceResponseBody> = fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
     `/api/w/${owner.sId}`,
-    workspaceFetcher
+    workspaceFetcher,
+    { disabled }
   );
 
   return {
     workspace: data?.workspace,
     isWorkspaceLoading: !error && !data,
+    isWorkspaceValidating: isValidating,
     isWorkspaceError: error,
     mutateWorkspace: mutate,
   };
