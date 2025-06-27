@@ -4,7 +4,7 @@ import querystring from "querystring";
 import config from "@app/lib/api/config";
 import type {
   BaseOAuthStrategyProvider,
-  UpdatedExtraConfigAndRelatedCredential,
+  RelatedCredential,
 } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
@@ -68,8 +68,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       )
     );
   }
-
-  async updateConfigAndGetRelatedCredential(
+  async getRelatedCredential(
     auth: Authenticator,
     {
       extraConfig,
@@ -80,20 +79,31 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       workspaceId: string;
       userId: string;
     }
-  ): Promise<UpdatedExtraConfigAndRelatedCredential | null> {
-    const { client_id, client_secret, ...restConfig } = extraConfig;
+  ): Promise<RelatedCredential> {
+    const { client_id, client_secret } = extraConfig;
     if (!client_id || !client_secret) {
-      return null;
+      throw new Error("Client ID and client secret are required");
     }
     return {
-      credential: {
-        content: {
-          client_id,
-          client_secret,
-        },
-        metadata: { workspace_id: workspaceId, user_id: userId },
+      content: {
+        client_id,
+        client_secret,
       },
-      updatedConfig: restConfig,
+      metadata: { workspace_id: workspaceId, user_id: userId },
     };
+  }
+
+  async getUpdatedExtraConfig(
+    auth: Authenticator,
+    {
+      extraConfig,
+    }: {
+      extraConfig: ExtraConfigType;
+    }
+  ): Promise<ExtraConfigType> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_id and client_secret from the extraConfig.
+    const { client_secret, ...restConfig } = extraConfig;
+
+    return restConfig;
   }
 }

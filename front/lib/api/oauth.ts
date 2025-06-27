@@ -1,8 +1,10 @@
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
-import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
-import { isUpdatedExtraConfigAndRelatedCredential } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type {
+  BaseOAuthStrategyProvider,
+  RelatedCredential,
+} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
@@ -86,33 +88,36 @@ export async function createConnectionAndGetSetupUrl(
   }
 
   // Extract related credential and update config if the provider has a method for it
-  let relatedCredential:
-    | {
-        content: Record<string, string>;
-        metadata: { workspace_id: string; user_id: string };
-      }
-    | undefined = undefined;
+  let relatedCredential: RelatedCredential | undefined = undefined;
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const userId = auth.getNonNullableUser().sId;
 
-  if (providerStrategy.updateConfigAndGetRelatedCredential) {
-    const result = await providerStrategy.updateConfigAndGetRelatedCredential!(
-      auth,
-      {
+  if (providerStrategy.getRelatedCredential) {
+    const credentials = await providerStrategy.getRelatedCredential!(auth, {
+      extraConfig,
+      workspaceId,
+      userId,
+      useCase,
+    });
+    if (credentials) {
+      if (!providerStrategy.getUpdatedExtraConfig) {
+        // You probably need to clean up the extra config to remove any sensitive data (such as client_secret).
+        return new Err({
+          code: "connection_creation_failed",
+          message:
+            "If the providerStrategy has a getRelatedCredential method, it must also have a getUpdatedExtraConfig method.",
+        });
+      }
+
+      relatedCredential = credentials;
+
+      extraConfig = await providerStrategy.getUpdatedExtraConfig!(auth, {
         extraConfig,
-        workspaceId,
-        userId,
         useCase,
-      }
-    );
-    if (result) {
-      if (isUpdatedExtraConfigAndRelatedCredential(result)) {
-        relatedCredential = result.credential;
-      }
-      extraConfig = result.updatedConfig;
+      });
 
       if (
-        //TODO: add the same verification for other providers with a updateConfigAndGetRelatedCredential method.
+        //TODO: add the same verification for other providers with a getRelatedCredential method.
         providerStrategy.isExtraConfigValidPostRelatedCredential &&
         !providerStrategy.isExtraConfigValidPostRelatedCredential!(
           extraConfig,
@@ -130,6 +135,11 @@ export async function createConnectionAndGetSetupUrl(
         });
       }
     }
+  } else if (providerStrategy.getUpdatedExtraConfig) {
+    extraConfig = await providerStrategy.getUpdatedExtraConfig!(auth, {
+      extraConfig,
+      useCase,
+    });
   }
 
   const clientId: string | undefined = extraConfig.client_id as string;

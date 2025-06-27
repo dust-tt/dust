@@ -7,29 +7,9 @@ import type { OAuthConnectionType } from "@app/types/oauth/lib";
 import type { OAuthUseCase } from "@app/types/oauth/lib";
 
 // Use this if you need to associate credentials with the connection (eg: custom client_secret).
-// You need to return an updatedConfig (usually because you remove the secret that you added to credentials).
-export type UpdatedExtraConfigAndRelatedCredential = {
-  updatedConfig: ExtraConfigType;
-  credential: {
-    content: Record<string, string>;
-    metadata: { workspace_id: string; user_id: string };
-  };
-};
-
-export function isUpdatedExtraConfigAndRelatedCredential(
-  result: UpdatedExtraConfigAndRelatedCredential | UpdatedExtraConfig
-): result is UpdatedExtraConfigAndRelatedCredential {
-  return (
-    "credential" in result &&
-    result.credential !== undefined &&
-    "updatedConfig" in result &&
-    result.updatedConfig !== undefined
-  );
-}
-
-// Use this if you just want to enrich the config (eg: add PKCE, some metadata..)
-export type UpdatedExtraConfig = {
-  updatedConfig: ExtraConfigType;
+export type RelatedCredential = {
+  content: Record<string, string>;
+  metadata: { workspace_id: string; user_id: string };
 };
 
 export interface BaseOAuthStrategyProvider {
@@ -62,7 +42,7 @@ export interface BaseOAuthStrategyProvider {
   ) => boolean;
 
   // If the provider has a method for getting the related credential and/or if we need to update the config.
-  updateConfigAndGetRelatedCredential?: (
+  getRelatedCredential?: (
     auth: Authenticator,
     {
       extraConfig,
@@ -75,9 +55,18 @@ export interface BaseOAuthStrategyProvider {
       userId: string;
       useCase: OAuthUseCase;
     }
-  ) => Promise<
-    UpdatedExtraConfigAndRelatedCredential | UpdatedExtraConfig | null
-  >;
+  ) => Promise<RelatedCredential>;
+
+  getUpdatedExtraConfig?: (
+    auth: Authenticator,
+    {
+      extraConfig,
+      useCase,
+    }: {
+      extraConfig: ExtraConfigType;
+      useCase: OAuthUseCase;
+    }
+  ) => Promise<ExtraConfigType>;
 
   isExtraConfigValidPostRelatedCredential?: (
     extraConfig: ExtraConfigType,

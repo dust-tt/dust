@@ -1,10 +1,7 @@
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
-import type {
-  BaseOAuthStrategyProvider,
-  UpdatedExtraConfig,
-} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
@@ -93,18 +90,16 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     return getStringFromQuery(query, "state");
   }
 
-  async updateConfigAndGetRelatedCredential(
+  async getUpdatedExtraConfig(
     auth: Authenticator,
     {
       extraConfig,
       useCase,
     }: {
       extraConfig: ExtraConfigType;
-      workspaceId: string;
-      userId: string;
       useCase: OAuthUseCase;
     }
-  ): Promise<UpdatedExtraConfig | null> {
+  ): Promise<ExtraConfigType> {
     if (useCase === "personal_actions") {
       // For personal actions we fetch the team id of the admin-setup to enforce the team id to be the same as the admin-setup.
       // workspace connection (setup by admin) if we have it.
@@ -118,7 +113,10 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          return null;
+          throw new Error(
+            "Failed to find MCP server connection: " +
+              mcpServerConnectionRes.error.message
+          );
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -132,23 +130,23 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
               error: connectionRes.error,
             }
           );
-          return null;
+          throw new Error(
+            "Failed to get connection metadata: " + connectionRes.error.message
+          );
         }
 
         const teamId = connectionRes.value.connection.metadata.team_id;
         const teamName = connectionRes.value.connection.metadata.team_name;
 
         return {
-          updatedConfig: {
-            ...restConfig,
-            requested_team_id: teamId,
-            requested_team_name: teamName,
-          },
+          ...restConfig,
+          requested_team_id: teamId,
+          requested_team_name: teamName,
         };
       }
     }
 
-    return null;
+    return extraConfig;
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
