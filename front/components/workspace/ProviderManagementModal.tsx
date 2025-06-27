@@ -69,6 +69,7 @@ export function ProviderManagementModal({
 
   const { workspace, mutateWorkspace } = useWorkspace({ owner });
 
+  // These two represent the local state
   const [providerStates, setProviderStates] = useState<ProviderStates>(
     {} as ProviderStates
   );
@@ -77,6 +78,7 @@ export function ProviderManagementModal({
 
   const [open, setOpen] = useState(false);
 
+  // This is the initial state, and reflects what in the database
   const initialProviderStates = useMemo(() => {
     const enabledProviders: ModelProviderIdType[] =
       workspace?.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
