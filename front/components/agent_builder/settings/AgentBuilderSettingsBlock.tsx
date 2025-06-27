@@ -11,7 +11,7 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -20,11 +20,43 @@ import {
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
+import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
 import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
+import {
+  buildSelectedEmojiType,
+  makeUrlForEmojiAndBackground,
+} from "@app/components/assistant_builder/avatar_picker/utils";
 import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
+import type {
+  APIError,
+  BuilderEmojiSuggestionsType,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+
+const MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION = 30;
+
+async function getEmojiSuggestions({
+  owner,
+  instructions,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+}): Promise<Result<BuilderEmojiSuggestionsType, APIError>> {
+  return fetchWithErr(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "emoji",
+      inputs: { instructions },
+    }),
+  });
+}
 
 function AgentNameInput() {
   const { owner } = useAgentBuilderContext();
@@ -201,6 +233,9 @@ function AgentDescriptionInput() {
 function AgentPictureInput() {
   const { owner } = useAgentBuilderContext();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const instructions = useWatch<AgentBuilderFormData, "instructions">({
+    name: "instructions",
+  });
 
   const { field } = useController<
     AgentBuilderFormData,
@@ -208,6 +243,46 @@ function AgentPictureInput() {
   >({
     name: "agentSettings.pictureUrl",
   });
+
+  const updateEmojiFromSuggestions = useCallback(async () => {
+    let avatarUrl: string | null = null;
+    const emojiSuggestions = await getEmojiSuggestions({
+      owner,
+      instructions: instructions || "",
+    });
+    if (emojiSuggestions.isOk() && emojiSuggestions.value.suggestions.length) {
+      const suggestion = emojiSuggestions.value.suggestions[0];
+      const emoji = buildSelectedEmojiType(suggestion.emoji);
+      if (emoji) {
+        avatarUrl = makeUrlForEmojiAndBackground(
+          {
+            id: emoji.id,
+            unified: emoji.unified,
+            native: emoji.native,
+          },
+          suggestion.backgroundColor as `bg-${string}`
+        );
+      }
+    }
+    // Default on Ed's babies if no emoji is found
+    if (!avatarUrl) {
+      const availableUrls = [...DROID_AVATAR_URLS, ...SPIRIT_AVATAR_URLS];
+      avatarUrl =
+        availableUrls[Math.floor(Math.random() * availableUrls.length)];
+    }
+
+    field.onChange(avatarUrl);
+  }, [owner, instructions, field]);
+
+  useEffect(() => {
+    if (
+      !field.value &&
+      instructions &&
+      instructions.length >= MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION
+    ) {
+      void updateEmojiFromSuggestions();
+    }
+  }, [field.value, instructions, updateEmojiFromSuggestions]);
 
   return (
     <>

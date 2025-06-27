@@ -99,3 +99,33 @@ export async function getDescriptionSuggestion({
     });
   }
 }
+
+export async function fetchWithErr<T>(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<Result<T, APIError>> {
+  try {
+    const response = await fetch(input, init);
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorMessage;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error?.message || errorData.error || errorText;
+      } catch {
+        errorMessage = errorText;
+      }
+      return new Err({
+        type: "internal_server_error",
+        message: errorMessage,
+      });
+    }
+    const data = await response.json();
+    return new Ok(data);
+  } catch (err) {
+    return new Err({
+      type: "internal_server_error",
+      message: err instanceof Error ? err.message : "Unknown error",
+    });
+  }
+}
