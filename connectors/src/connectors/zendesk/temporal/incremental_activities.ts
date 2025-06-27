@@ -264,11 +264,18 @@ export async function syncZendeskTicketUpdateBatchActivity({
   await concurrentExecutor(
     tickets,
     async (ticket) => {
-      commentsPerTicket[ticket.id] = await listZendeskTicketComments({
+      const comments = await listZendeskTicketComments({
         accessToken,
         brandSubdomain,
         ticketId: ticket.id,
       });
+      if (comments.length > 0) {
+        logger.info(
+          { ...loggerArgs, ticketId: ticket.id },
+          "[Zendesk] No comment for ticket."
+        );
+      }
+      commentsPerTicket[ticket.id] = comments;
     },
     { concurrency: 10 }
   );
