@@ -21,6 +21,7 @@ function prepareMembersForDisplay(
       provider: m.provider,
       role: m.workspaces[0].role,
       sId: m.sId,
+      origin: m.origin,
     };
   });
 }
