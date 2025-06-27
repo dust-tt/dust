@@ -3,7 +3,6 @@ import type { ParsedUrlQuery } from "querystring";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
 import { AssistantBuilderProviders } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
-import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
@@ -17,9 +16,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
-  AppType,
   PlanType,
-  SpaceType,
   SubscriptionType,
   TemplateAgentConfigurationType,
   WorkspaceType,
@@ -65,8 +62,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-
-  const { spaces, dustApps } = await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
