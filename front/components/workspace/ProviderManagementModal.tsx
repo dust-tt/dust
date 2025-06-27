@@ -15,6 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
   SliderToggle,
+  Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { isEqual, uniqBy } from "lodash";
@@ -67,7 +68,9 @@ export function ProviderManagementModal({
   const { isDark } = useTheme();
   const sendNotifications = useSendNotification();
 
-  const { workspace, mutateWorkspace } = useWorkspace({ owner });
+  const { workspace, isWorkspaceLoading, mutateWorkspace } = useWorkspace({
+    owner,
+  });
 
   // These two represent the local state
   const [providerStates, setProviderStates] = useState<ProviderStates>(
@@ -173,7 +176,12 @@ export function ProviderManagementModal({
       }}
     >
       <SheetTrigger asChild>
-        <Button variant="outline" label="Manage Models" icon={Cog6ToothIcon} />
+        <Button
+          variant="outline"
+          label="Manage Models"
+          icon={Cog6ToothIcon}
+          disabled={isWorkspaceLoading}
+        />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader hideButton>
