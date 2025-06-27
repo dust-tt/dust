@@ -914,6 +914,7 @@ export async function getDataSourceUsage({
     return new Ok({ count: 0, agents: [] });
   } else {
     const agents = res
+      .filter((r) => r && Array.isArray(r.sIds) && Array.isArray(r.names))
       .flatMap((r) =>
         r.sIds.map((sId, index) => ({
           sId,
@@ -1152,6 +1153,7 @@ export async function getDataSourceViewUsage({
     return new Ok({ count: 0, agents: [] });
   } else {
     const agents = res
+      .filter((r) => r && Array.isArray(r.sIds) && Array.isArray(r.names))
       .flatMap((r) =>
         r.sIds.map((sId, index) => ({
           sId,
