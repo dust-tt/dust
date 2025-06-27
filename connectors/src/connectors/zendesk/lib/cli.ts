@@ -1,3 +1,4 @@
+import { updateRetentionPeriod } from "@connectors/connectors/zendesk/lib/edit_retention";
 import {
   extractMetadataFromDocumentUrl,
   shouldSyncTicket,
@@ -34,6 +35,8 @@ import type {
   ZendeskCountTicketsResponseType,
   ZendeskFetchBrandResponseType,
   ZendeskFetchTicketResponseType,
+  ZendeskGetRetentionPeriodResponseType,
+  ZendeskSetRetentionPeriodResponseType,
 } from "@connectors/types";
 
 export const zendesk = async ({
@@ -44,6 +47,8 @@ export const zendesk = async ({
   | ZendeskCountTicketsResponseType
   | ZendeskFetchTicketResponseType
   | ZendeskFetchBrandResponseType
+  | ZendeskGetRetentionPeriodResponseType
+  | ZendeskSetRetentionPeriodResponseType
   | AdminResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
@@ -364,6 +369,58 @@ export const zendesk = async ({
         "Successfully synced single ticket"
       );
       return { success: true };
+    }
+    case "get-retention-period": {
+      return {
+        retentionPeriodDays: configuration.retentionPeriodDays,
+      };
+    }
+    case "set-retention-period": {
+      const retentionPeriodDays = args.retentionPeriodDays;
+      if (retentionPeriodDays === undefined) {
+        throw new Error("Missing --retentionPeriodDays argument");
+      }
+
+      // Validate retention period
+      if (retentionPeriodDays < 0) {
+        throw new Error("Retention period must be non-negative");
+      }
+      if (retentionPeriodDays > 365) {
+        throw new Error("Retention period cannot exceed 365 days");
+      }
+
+      const currentRetentionPeriod = configuration.retentionPeriodDays;
+      const isIncreased = retentionPeriodDays > currentRetentionPeriod;
+
+      // Update the configuration
+      await configuration.update({
+        retentionPeriodDays: retentionPeriodDays,
+      });
+
+      logger.info(
+        {
+          connectorId,
+          retentionPeriodDays,
+          currentRetentionPeriod,
+          isIncreased,
+        },
+        "Successfully updated Zendesk retention period"
+      );
+
+      // If retention period is increased, trigger a debounced sync to include
+      // previously excluded tickets that are now within the retention window
+      if (isIncreased) {
+        await updateRetentionPeriod(
+          connector,
+          currentRetentionPeriod,
+          retentionPeriodDays
+        );
+      }
+
+      return {
+        success: true,
+        retentionPeriodDays: retentionPeriodDays,
+      };
     }
   }
 };
