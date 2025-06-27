@@ -127,7 +127,7 @@ async function handler(
             api_error: {
               type: "data_source_error",
               message: usageRes.isOk()
-                ? `The data source view is in use by ${usageRes.value.agentNames.join(", ")} and cannot be deleted.`
+                ? `The data source view is in use by ${usageRes.value.agents.map((a) => a.name).join(", ")} and cannot be deleted.`
                 : "The data source view is in use and cannot be deleted.",
             },
           });

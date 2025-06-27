@@ -80,7 +80,9 @@ async function handler(
       const viewsUsedByAgentsName = viewsUsageByAgentsRes.reduce(
         (acc, usageRes) => {
           if (usageRes.isOk() && usageRes.value.count > 0) {
-            usageRes.value.agentNames.forEach((name) => acc.add(name));
+            usageRes.value.agents
+              .map((a) => a.name)
+              .forEach((name) => acc.add(name));
           }
 
           return acc;

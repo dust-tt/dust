@@ -92,8 +92,12 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
             <span className="font-medium">{usage.count}</span>
             {usage.count > 0 && (
               <span className="ml-1 text-xs text-gray-500 dark:text-gray-500-night">
-                ({usage.agentNames.slice(0, 2).join(", ")}
-                {usage.agentNames.length > 2 && ", ..."})
+                (
+                {usage.agents
+                  .map((a) => a.name)
+                  .slice(0, 2)
+                  .join(", ")}
+                {usage.agents.length > 2 && ", ..."})
               </span>
             )}
           </div>
