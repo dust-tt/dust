@@ -9,7 +9,6 @@ import type {
   ConversationsHistoryResponse,
   MessageElement,
 } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import { Context } from "@temporalio/activity";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
@@ -55,7 +54,6 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
-import { isSlowLaneQueue } from "@connectors/lib/temporal_queue_routing";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
