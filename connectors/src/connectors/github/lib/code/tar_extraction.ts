@@ -2,6 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import assert from "assert";
 import gunzip from "gunzip-maybe";
+import PQueue from "p-queue";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import * as tar from "tar-stream";
@@ -21,6 +22,7 @@ import logger from "@connectors/logger/logger";
 
 const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1MB
 const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_CONCURRENT_GCS_UPLOADS = 200;
 
 interface TarExtractionOptions {
   repoId: number;
@@ -133,6 +135,9 @@ export async function extractGitHubTarballToGCS(
   let filesSkipped = 0;
   const seenDirs = new Set<string>();
 
+  // Create upload queue to limit concurrent GCS uploads.
+  const uploadQueue = new PQueue({ concurrency: MAX_CONCURRENT_GCS_UPLOADS });
+
   // Create tar stream extractor.
   const extract = tar.extract();
 
@@ -166,23 +171,28 @@ export async function extractGitHubTarballToGCS(
             }
           }
 
-          // Upload file to GCS with sequential processing.
+          // Upload file to GCS using stream directly with queue.
           filesUploaded++;
-          logger.info({ gcsPath, fileName, filePath }, "Uploading file to GCS");
+          logger.info(
+            { gcsPath, fileName, filePath, filesUploaded },
+            "Uploading file to GCS"
+          );
 
-          pipeline(
-            stream,
-            gcsFile.createWriteStream({
-              metadata: {
-                contentType: "text/plain",
-              },
-              resumable:
-                (header.size ?? 0) >= GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
-              validation: false,
+          // Queue the upload but use stream directly
+          uploadQueue
+            .add(async () => {
+              return pipeline(
+                stream,
+                gcsFile.createWriteStream({
+                  metadata: {
+                    contentType: "text/plain",
+                  },
+                  resumable:
+                    (header.size ?? 0) >= GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
+                  validation: false,
+                })
+              );
             })
-          )
-            // The tar archive is streamed sequentially, call next() when done with this entry.
-            .then(() => next())
             .catch((error) => {
               logger.error(
                 {
@@ -195,9 +205,11 @@ export async function extractGitHubTarballToGCS(
                 },
                 "Failed to upload file to GCS"
               );
-              // Re-throw to let Temporal handle the failure.
               throw error;
             });
+
+          // Continue tar extraction immediately.
+          next();
         } else {
           // Skip filtered file but must drain stream to prevent backpressure.
           filesSkipped++;
@@ -261,12 +273,17 @@ export async function extractGitHubTarballToGCS(
   // Stream: GitHub tarball -> gunzip -> tar extract -> GCS upload.
   await pipeline(tarballStream, gunzip(), extract);
 
+  logger.info({ repoId, connectorId }, "All files uploaded");
+
   // Create directory placeholder files to preserve GitHub hierarchy.
-  const directoryPromises = Array.from(seenDirs).map(async (dirPath) =>
-    gcsManager.createDirectoryPlaceholder(gcsBasePath, dirPath)
+  Array.from(seenDirs).forEach((dirPath) =>
+    uploadQueue.add(() =>
+      gcsManager.createDirectoryPlaceholder(gcsBasePath, dirPath)
+    )
   );
 
-  await Promise.all(directoryPromises);
+  // Wait for all queued uploads to complete.
+  await uploadQueue.onIdle();
 
   logger.info(
     {
