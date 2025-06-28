@@ -88,7 +88,6 @@ export async function _getRefreshedCookie(
         password: config.getWorkOSCookiePassword(),
       }
     );
-
     return sealedCookie;
   } else {
     logger.info(
@@ -107,7 +106,9 @@ const getRefreshedCookie = cacheWithRedis(
   (workOSSessionCookie) => {
     return `workos_session_refresh:${sha256(workOSSessionCookie)}`;
   },
-  60 * 10 * 1000
+  60 * 10 * 1000,
+  undefined,
+  true
 );
 
 export async function getWorkOSSessionFromCookie(
