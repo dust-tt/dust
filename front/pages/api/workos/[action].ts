@@ -162,7 +162,12 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     });
 
     logger.info(
-      { user, organizationId, authenticationMethod },
+      {
+        user,
+        organizationId,
+        authenticationMethod,
+        workOSSessionCookie: sealedCookie.substring(0, 15),
+      },
       "WorkOS callback"
     );
 
