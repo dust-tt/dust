@@ -147,10 +147,11 @@ export async function getWorkOSSessionFromCookie(
         region
       );
       if (refreshedCookie) {
-        const { session } = await getWorkOSSessionFromCookie(refreshedCookie);
+        const { session, cookie } =
+          await getWorkOSSessionFromCookie(refreshedCookie);
         // Send the new cookie
         return {
-          cookie: refreshedCookie,
+          cookie: cookie || refreshedCookie,
           session,
         };
       } else {
