@@ -60,7 +60,7 @@ export class GCSRepositoryManager {
   }> {
     const [files, details] = await this.bucket.getFiles({
       prefix: gcsBasePath,
-      maxResults: options?.maxResults,
+      maxResults: options?.maxResults || DEFAULT_MAX_RESULTS,
       pageToken: options?.pageToken,
       autoPaginate: false, // Don't auto-paginate, we'll handle it manually.
     });
