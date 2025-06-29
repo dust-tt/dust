@@ -21,10 +21,7 @@ async function main() {
   const argv = parseArgs(process.argv.slice(2));
 
   const where = _.pick(argv, ["name", "sId"]);
-  if (!where.name && !where.sId) {
-    throw new Error("Please provide name and/or sId for the workspace");
-  }
-  let w = await WorkspaceResource.fetchByNameAndId(where);
+  let w = await WorkspaceResource.fetchByNameAndOrId(where);
   if (!w) {
     console.log("Creating workspace");
     w = await WorkspaceResource.makeNew({
