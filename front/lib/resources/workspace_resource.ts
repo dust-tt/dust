@@ -9,6 +9,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
+type FetchByNameAndIdWhere =
+  | { sId: string; name?: string }
+  | { sId?: string; name: string };
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -46,16 +50,10 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspace ? new this(this.model, workspace.get()) : null;
   }
 
-  static async fetchByNameAndId({
-    name,
-    sId: wId,
-  }: {
-    name: string;
-    sId: string;
-  }): Promise<WorkspaceResource | null> {
-    const workspace = await this.model.findOne({
-      where: { name, sId: wId },
-    });
+  static async fetchByNameAndOrId(
+    where: FetchByNameAndIdWhere
+  ): Promise<WorkspaceResource | null> {
+    const workspace = await this.model.findOne({ where });
     return workspace ? new this(this.model, workspace.get()) : null;
   }
 
