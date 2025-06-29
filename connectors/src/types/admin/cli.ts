@@ -645,6 +645,8 @@ export const ZendeskCommandSchema = t.type({
     t.literal("resync-help-centers"),
     t.literal("resync-brand-metadata"),
     t.literal("sync-ticket"),
+    t.literal("get-retention-period"),
+    t.literal("set-retention-period"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),
@@ -655,6 +657,7 @@ export const ZendeskCommandSchema = t.type({
     forceResync: t.union([t.literal("true"), t.undefined]),
     ticketId: t.union([t.number, t.undefined]),
     ticketUrl: t.union([t.string, t.undefined]),
+    retentionPeriodDays: t.union([t.number, t.undefined]),
   }),
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
@@ -690,6 +693,21 @@ export const ZendeskFetchBrandResponseSchema = t.type({
 });
 export type ZendeskFetchBrandResponseType = t.TypeOf<
   typeof ZendeskFetchBrandResponseSchema
+>;
+
+export const ZendeskGetRetentionPeriodResponseSchema = t.type({
+  retentionPeriodDays: t.number,
+});
+export type ZendeskGetRetentionPeriodResponseType = t.TypeOf<
+  typeof ZendeskGetRetentionPeriodResponseSchema
+>;
+
+export const ZendeskSetRetentionPeriodResponseSchema = t.type({
+  success: t.boolean,
+  retentionPeriodDays: t.number,
+});
+export type ZendeskSetRetentionPeriodResponseType = t.TypeOf<
+  typeof ZendeskSetRetentionPeriodResponseSchema
 >;
 /**
  * </Zendesk>
@@ -757,6 +775,8 @@ export const AdminResponseSchema = t.union([
   ZendeskCountTicketsResponseSchema,
   ZendeskFetchBrandResponseSchema,
   ZendeskFetchTicketResponseSchema,
+  ZendeskGetRetentionPeriodResponseSchema,
+  ZendeskSetRetentionPeriodResponseSchema,
 ]);
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
 /**
