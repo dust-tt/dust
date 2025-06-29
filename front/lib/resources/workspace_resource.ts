@@ -9,7 +9,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-type WorkspaceWhere =
+type FetchByNameAndIdWhere =
   | { sId: string; name?: string }
   | { sId?: string; name: string };
 
@@ -51,7 +51,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async fetchByNameAndOrId(
-    where: WorkspaceWhere
+    where: FetchByNameAndIdWhere
   ): Promise<WorkspaceResource | null> {
     const workspace = await this.model.findOne({ where });
     return workspace ? new this(this.model, workspace.get()) : null;
