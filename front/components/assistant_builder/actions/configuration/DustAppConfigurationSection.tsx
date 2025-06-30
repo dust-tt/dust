@@ -49,11 +49,6 @@ export function DustAppConfigurationSection({
         injected in context for the model to generate an answer.
       </div>
 
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Dust apps without a description are not selectable. To make a Dust App
-        selectable, edit it and add a description.
-      </div>
-
       {isSpacesLoading ? (
         <Spinner />
       ) : (
@@ -114,72 +109,82 @@ export function SpaceAppsRadioGroup({
   }
 
   return (
-    <RadioGroup defaultValue={selectedConfig?.appId || undefined}>
-      {sortedApps.map((app, idx, arr) => (
-        <React.Fragment key={app.sId}>
-          <RadioGroupCustomItem
-            value={app.sId}
-            id={app.sId}
-            disabled={!app.description || app.description.length === 0}
-            iconPosition="start"
-            customItem={
-              <Label htmlFor={app.sId} className="w-full font-normal">
-                <Card
-                  variant="tertiary"
-                  size="sm"
-                  onClick={() => {
-                    if (app.description && app.description.length > 0) {
-                      onConfigSelect({
-                        id: app.id,
-                        sId: app.sId,
-                        appId: app.sId,
-                        appWorkspaceId: owner.sId,
-                        name: app.name,
-                        description: app.description,
-                        type: "dust_app_run_configuration",
-                      });
+    <>
+      {sortedApps.some(
+        (app) => !app.description || app.description.length === 0
+      ) && (
+        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Dust apps without a description are not selectable. To make a Dust App
+          selectable, edit it and add a description.
+        </div>
+      )}
+      <RadioGroup defaultValue={selectedConfig?.appId || undefined}>
+        {sortedApps.map((app, idx, arr) => (
+          <React.Fragment key={app.sId}>
+            <RadioGroupCustomItem
+              value={app.sId}
+              id={app.sId}
+              disabled={!app.description || app.description.length === 0}
+              iconPosition="start"
+              customItem={
+                <Label htmlFor={app.sId} className="w-full font-normal">
+                  <Card
+                    variant="tertiary"
+                    size="sm"
+                    onClick={() => {
+                      if (app.description && app.description.length > 0) {
+                        onConfigSelect({
+                          id: app.id,
+                          sId: app.sId,
+                          appId: app.sId,
+                          appWorkspaceId: owner.sId,
+                          name: app.name,
+                          description: app.description,
+                          type: "dust_app_run_configuration",
+                        });
+                      }
+                    }}
+                    disabled={!app.description || app.description.length === 0}
+                    className={
+                      !app.description || app.description.length === 0
+                        ? "opacity-50"
+                        : ""
                     }
-                  }}
-                  disabled={!app.description || app.description.length === 0}
-                  className={
-                    !app.description || app.description.length === 0
-                      ? "opacity-50"
-                      : ""
-                  }
-                >
-                  <div className="flex flex-row items-center gap-2">
-                    <Icon visual={CommandLineIcon} size="md" />
-                    <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
-                      <div className="flex flex-col gap-1">
-                        <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                          {app.name}
-                        </div>
-                        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                          {app.description || "No description"}
+                  >
+                    <div className="flex flex-row items-center gap-2">
+                      <Icon visual={CommandLineIcon} size="md" />
+                      <div className="flex flex-grow items-center justify-between overflow-hidden truncate">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                            {app.name}
+                          </div>
+                          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                            {app.description || "No description"}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
-              </Label>
-            }
-            onClick={() => {
-              if (app.description && app.description.length > 0) {
-                onConfigSelect({
-                  id: app.id,
-                  sId: app.sId,
-                  appId: app.sId,
-                  appWorkspaceId: owner.sId,
-                  name: app.name,
-                  description: app.description,
-                  type: "dust_app_run_configuration",
-                });
+                  </Card>
+                </Label>
               }
-            }}
-          />
-          {idx !== arr.length - 1 && <Separator />}
-        </React.Fragment>
-      ))}
-    </RadioGroup>
+              onClick={() => {
+                if (app.description && app.description.length > 0) {
+                  onConfigSelect({
+                    id: app.id,
+                    sId: app.sId,
+                    appId: app.sId,
+                    appWorkspaceId: owner.sId,
+                    name: app.name,
+                    description: app.description,
+                    type: "dust_app_run_configuration",
+                  });
+                }
+              }}
+            />
+            {idx !== arr.length - 1 && <Separator />}
+          </React.Fragment>
+        ))}
+      </RadioGroup>
+    </>
   );
 }
