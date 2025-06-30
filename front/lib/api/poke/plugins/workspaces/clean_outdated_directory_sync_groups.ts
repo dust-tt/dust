@@ -106,7 +106,7 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
         display: "json",
         value: {
           mode: "dry_run",
-          message: `Found ${groupsToDelete.length} groups that would be deleted`,
+          message: `Found ${groupsToDelete.length} group${groupsToDelete.length > 1 ? "s" : ""} that would be deleted`,
           groups: groupSummary,
           notFound: groupsNotFound,
           note: "No groups were actually deleted. Untick 'Dry Run' to perform the deletion.",
