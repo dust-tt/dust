@@ -2717,7 +2717,7 @@ impl Store for PostgresStore {
                    timestamp = EXCLUDED.timestamp, \
                      remote_database_table_id = EXCLUDED.remote_database_table_id, \
                      remote_database_secret_id = EXCLUDED.remote_database_secret_id \
-                   RETURNING id, created, schema, schema_stale_at",
+                   RETURNING id, created, schema, schema_stale_at, csv_bucket, csv_bucket_path",
             )
             .await?;
 
@@ -2741,6 +2741,8 @@ impl Store for PostgresStore {
         let table_created = table_row.get::<usize, i64>(1) as u64;
         let raw_schema = table_row.get::<usize, Option<String>>(2);
         let table_schema_stale_at = table_row.get::<usize, Option<i64>>(3);
+        let csv_bucket = table_row.get::<usize, Option<String>>(4);
+        let csv_bucket_path = table_row.get::<usize, Option<String>>(5);
 
         let parsed_schema: Option<TableSchema> = match raw_schema {
             None => None,
@@ -2773,6 +2775,8 @@ impl Store for PostgresStore {
             upsert_params.source_url,
             parsed_schema,
             table_schema_stale_at.map(|t| t as u64),
+            csv_bucket,
+            csv_bucket_path,
             upsert_params.remote_database_table_id,
             upsert_params.remote_database_secret_id,
         );
@@ -2887,6 +2891,91 @@ impl Store for PostgresStore {
         Ok(())
     }
 
+    async fn upsert_data_source_table_csv(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+        csv_bucket: &str,
+        csv_bucket_path: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let table_id = table_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Get the data source row id.
+        let stmt = c
+            .prepare(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+            )
+            .await?;
+        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        // Update the csv bucket and path.
+        let stmt = c
+            .prepare(
+                "UPDATE tables SET csv_bucket = $1, csv_bucket_path = $2 WHERE data_source = $3 AND table_id = $4",
+            )
+            .await?;
+        c.query(
+            &stmt,
+            &[
+                &csv_bucket,
+                &csv_bucket_path,
+                &data_source_row_id,
+                &table_id,
+            ],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    async fn clear_data_source_table_csv(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let table_id = table_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Get the data source row id.
+        let stmt = c
+            .prepare(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+            )
+            .await?;
+        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        // Clear the csv bucket and path.
+        let stmt = c
+            .prepare(
+                "UPDATE tables SET csv_bucket = NULL, csv_bucket_path = NULL WHERE data_source = $1 AND table_id = $2",
+            )
+            .await?;
+        c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
+
+        Ok(())
+    }
+
     async fn load_data_source_table(
         &self,
         project: &Project,
@@ -2918,6 +3007,7 @@ impl Store for PostgresStore {
                 "SELECT t.created, t.table_id, t.name, t.description, \
                         t.timestamp, dsn.tags_array, dsn.parents, dsn.source_url, \
                         t.schema, t.schema_stale_at, \
+                        t.csv_bucket, t.csv_bucket_path, \
                         t.remote_database_table_id, t.remote_database_secret_id, \
                         dsn.title, dsn.mime_type, dsn.provider_visibility \
                         FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
@@ -2937,6 +3027,8 @@ impl Store for PostgresStore {
             Option<String>,
             Option<String>,
             Option<i64>,
+            Option<String>,
+            Option<String>,
             Option<String>,
             Option<String>,
             String,
@@ -2960,6 +3052,8 @@ impl Store for PostgresStore {
                 r[0].get(12),
                 r[0].get(13),
                 r[0].get(14),
+                r[0].get(15),
+                r[0].get(16),
             )),
             _ => unreachable!(),
         };
@@ -2977,6 +3071,8 @@ impl Store for PostgresStore {
                 source_url,
                 schema,
                 schema_stale_at,
+                csv_bucket,
+                csv_bucket_path,
                 remote_database_table_id,
                 remote_database_secret_id,
                 title,
@@ -3012,6 +3108,8 @@ impl Store for PostgresStore {
                     source_url,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
+                    csv_bucket,
+                    csv_bucket_path,
                     remote_database_table_id,
                     remote_database_secret_id,
                 )))
@@ -3083,6 +3181,7 @@ impl Store for PostgresStore {
             "SELECT t.created, t.table_id, t.name, t.description, \
                     t.timestamp, dsn.tags_array, dsn.parents, \
                     t.schema, t.schema_stale_at, \
+                    t.csv_bucket, t.csv_bucket_path, \
                     t.remote_database_table_id, t.remote_database_secret_id, \
                     dsn.title, dsn.mime_type, dsn.source_url, dsn.provider_visibility \
                 FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
@@ -3122,12 +3221,14 @@ impl Store for PostgresStore {
                 let parents: Vec<String> = r.get(6);
                 let schema: Option<String> = r.get(7);
                 let schema_stale_at: Option<i64> = r.get(8);
-                let remote_database_table_id: Option<String> = r.get(9);
-                let remote_database_secret_id: Option<String> = r.get(10);
-                let title: String = r.get(11);
-                let mime_type: String = r.get(12);
-                let source_url: Option<String> = r.get(13);
-                let provider_visibility: Option<ProviderVisibility> = r.get(14);
+                let csv_bucket: Option<String> = r.get(9);
+                let csv_file_path: Option<String> = r.get(10);
+                let remote_database_table_id: Option<String> = r.get(11);
+                let remote_database_secret_id: Option<String> = r.get(12);
+                let title: String = r.get(13);
+                let mime_type: String = r.get(14);
+                let source_url: Option<String> = r.get(15);
+                let provider_visibility: Option<ProviderVisibility> = r.get(16);
 
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -3158,6 +3259,8 @@ impl Store for PostgresStore {
                     source_url,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
+                    csv_bucket,
+                    csv_file_path,
                     remote_database_table_id,
                     remote_database_secret_id,
                 ))

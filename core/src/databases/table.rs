@@ -96,6 +96,9 @@ pub struct Table {
     schema: Option<TableSchema>,
     schema_stale_at: Option<u64>,
 
+    csv_bucket: Option<String>,
+    csv_bucket_path: Option<String>,
+
     remote_database_table_id: Option<String>,
     remote_database_secret_id: Option<String>,
 }
@@ -119,6 +122,8 @@ impl Table {
         source_url: Option<String>,
         schema: Option<TableSchema>,
         schema_stale_at: Option<u64>,
+        csv_bucket: Option<String>,
+        csv_bucket_path: Option<String>,
         remote_database_table_id: Option<String>,
         remote_database_secret_id: Option<String>,
     ) -> Self {
@@ -140,6 +145,8 @@ impl Table {
             source_url,
             schema,
             schema_stale_at,
+            csv_bucket,
+            csv_bucket_path,
             remote_database_table_id,
             remote_database_secret_id,
         }
@@ -192,6 +199,12 @@ impl Table {
     }
     pub fn unique_id(&self) -> String {
         get_table_unique_id(&self.project, &self.data_source_id, &self.table_id)
+    }
+    pub fn csv_bucket(&self) -> Option<&str> {
+        self.csv_bucket.as_deref()
+    }
+    pub fn csv_bucket_path(&self) -> Option<&str> {
+        self.csv_bucket_path.as_deref()
     }
     pub fn remote_database_table_id(&self) -> Option<&str> {
         self.remote_database_table_id.as_deref()
@@ -506,6 +519,26 @@ impl LocalTable {
         bucket_csv_path: &str,
         truncate: bool,
     ) -> Result<()> {
+        if truncate {
+            store
+                .upsert_data_source_table_csv(
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
+                    bucket,
+                    bucket_csv_path,
+                )
+                .await?;
+        } else {
+            store
+                .clear_data_source_table_csv(
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
+                )
+                .await?;
+        }
+
         let now = utils::now();
         let rows = UpsertQueueCSVContent {
             bucket: bucket.to_string(),
@@ -850,6 +883,8 @@ mod tests {
             vec![],
             None,
             Some(schema),
+            None,
+            None,
             None,
             None,
             None,

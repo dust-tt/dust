@@ -295,6 +295,20 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
+    async fn upsert_data_source_table_csv(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+        bucket: &str,
+        bucket_csv_path: &str,
+    ) -> Result<()>;
+    async fn clear_data_source_table_csv(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+    ) -> Result<()>;
     async fn load_data_source_table(
         &self,
         project: &Project,
@@ -315,6 +329,7 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
+
     // Folders
     async fn upsert_data_source_folder(
         &self,
@@ -586,6 +601,8 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        schema                       TEXT, -- json, kept up-to-date automatically with the last insert
        schema_stale_at              BIGINT, -- timestamp when the schema was last invalidated
        data_source                  BIGINT NOT NULL,
+       csv_bucket                   TEXT,
+       csv_bucket_path              TEXT,
        remote_database_table_id     TEXT,
        remote_database_secret_id    TEXT,
        FOREIGN KEY(data_source)     REFERENCES data_sources(id)

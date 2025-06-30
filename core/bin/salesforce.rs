@@ -41,6 +41,8 @@ async fn main() -> Result<(), anyhow::Error> {
                 None,
                 None,
                 None,
+                None,
+                None,
             )],
             "SELECT Id, Name, AnnualRevenue, JigsawCompanyId, NumberOfEmployees FROM Account",
         )
