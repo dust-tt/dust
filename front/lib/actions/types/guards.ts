@@ -15,7 +15,6 @@ import type {
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
-import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type {
@@ -53,12 +52,6 @@ export function isDustAppRunConfiguration(
     "type" in arg &&
     arg.type === "dust_app_run_configuration"
   );
-}
-
-export function isRetrievalActionType(
-  arg: AgentActionType
-): arg is RetrievalActionType {
-  return arg.type === "retrieval_action";
 }
 
 export function isProcessConfiguration(

@@ -1,4 +1,4 @@
-import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
+import type { RetrievalTimeframe } from "@app/lib/actions/process";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type { DataSourceFilter } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";

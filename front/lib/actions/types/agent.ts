@@ -27,7 +27,6 @@ import type {
   ReasoningActionRunningEvents,
   ReasoningConfigurationType,
 } from "@app/lib/actions/reasoning";
-import type { RetrievalActionRunningEvents } from "@app/lib/actions/retrieval";
 import type {
   SearchLabelsActionRunningEvents,
   SearchLabelsConfigurationType,
@@ -190,7 +189,6 @@ export type AgentActionSpecificEvent =
   | DustAppRunActionRunningEvents
   | ProcessActionRunningEvents
   | ReasoningActionRunningEvents
-  | RetrievalActionRunningEvents
   | SearchLabelsActionRunningEvents
   | TablesQueryActionRunningEvents
   | WebsearchActionRunningEvents

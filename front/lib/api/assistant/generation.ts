@@ -8,7 +8,6 @@ import {
   isMCPConfigurationWithDataSource,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
-import { isRetrievalConfiguration } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
@@ -126,7 +125,6 @@ export async function constructPromptMultiActions(
   let guidelinesSection = "# GUIDELINES\n";
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
-      isRetrievalConfiguration(action) ||
       isWebsearchConfiguration(action) ||
       isMCPConfigurationWithDataSource(action) ||
       isMCPConfigurationForInternalWebsearch(action) ||

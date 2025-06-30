@@ -1,10 +1,8 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { TimeframeUnit } from "@app/types";
 
@@ -27,6 +25,7 @@ export class AgentRetrievalConfiguration extends WorkspaceAwareModel<AgentRetrie
   declare description: string | null;
 }
 
+// TODO(DURABLE_AGENT 2025-06-30): Remove once process has been migrated.
 AgentRetrievalConfiguration.init(
   {
     createdAt: {
@@ -131,143 +130,4 @@ AgentConfiguration.hasMany(AgentRetrievalConfiguration, {
 });
 AgentRetrievalConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
-});
-
-export class RetrievalDocumentModel extends WorkspaceAwareModel<RetrievalDocumentModel> {
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare sourceUrl: string | null;
-  declare documentId: string;
-  declare reference: string;
-  declare documentTimestamp: Date;
-  declare tags: string[];
-  declare score: number | null;
-
-  // This is nullable as it has to be set null when data sources are deleted.
-  declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
-
-  declare chunks: NonAttribute<RetrievalDocumentChunkModel[]>;
-  declare dataSourceView: NonAttribute<DataSourceViewModel>;
-}
-
-RetrievalDocumentModel.init(
-  {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    sourceUrl: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    documentId: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    reference: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    documentTimestamp: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    tags: {
-      type: DataTypes.ARRAY(DataTypes.TEXT),
-      allowNull: false,
-    },
-    score: {
-      type: DataTypes.REAL,
-      allowNull: true,
-    },
-  },
-  {
-    modelName: "retrieval_document",
-    sequelize: frontSequelize,
-    indexes: [
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove this index.
-      { fields: ["retrievalActionId"] },
-      { fields: ["dataSourceViewId"] },
-      { fields: ["workspaceId", "retrievalActionId"] },
-    ],
-  }
-);
-
-AgentRetrievalAction.hasMany(RetrievalDocumentModel, {
-  foreignKey: { name: "retrievalActionId", allowNull: true },
-  onDelete: "SET NULL",
-});
-RetrievalDocumentModel.belongsTo(AgentRetrievalAction, {
-  foreignKey: { name: "retrievalActionId", allowNull: true },
-});
-
-DataSourceViewModel.hasMany(RetrievalDocumentModel, {
-  foreignKey: { allowNull: true },
-  onDelete: "SET NULL",
-});
-RetrievalDocumentModel.belongsTo(DataSourceViewModel, {
-  as: "dataSourceView",
-  foreignKey: { allowNull: true },
-});
-
-export class RetrievalDocumentChunkModel extends WorkspaceAwareModel<RetrievalDocumentChunkModel> {
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-
-  declare text: string;
-  declare offset: number;
-  declare score: number | null;
-
-  declare retrievalDocumentId: ForeignKey<RetrievalDocumentModel["id"]>;
-}
-
-RetrievalDocumentChunkModel.init(
-  {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    text: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    offset: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    score: {
-      type: DataTypes.REAL,
-      allowNull: true,
-    },
-  },
-  {
-    modelName: "retrieval_document_chunk",
-    sequelize: frontSequelize,
-    indexes: [
-      { fields: ["retrievalDocumentId"] },
-      { fields: ["workspaceId", "id"] },
-    ],
-  }
-);
-
-RetrievalDocumentModel.hasMany(RetrievalDocumentChunkModel, {
-  foreignKey: { name: "retrievalDocumentId", allowNull: false },
-  onDelete: "CASCADE",
-  as: "chunks",
-});
-RetrievalDocumentChunkModel.belongsTo(RetrievalDocumentModel, {
-  foreignKey: { name: "retrievalDocumentId", allowNull: false },
 });
