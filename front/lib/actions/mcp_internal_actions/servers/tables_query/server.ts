@@ -292,7 +292,7 @@ function createServer(
         content.push({
           type: "resource",
           resource: {
-            text: `Your query results were generated successfully.`,
+            text: "Your query results were generated successfully.",
             uri: csvFile.getPublicUrl(auth),
             mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
             fileId: csvFile.sId,

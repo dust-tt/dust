@@ -150,6 +150,7 @@ function createOutputItem({
   };
 }
 
+// As much copy-pasted from the current MCP tool as possible.
 function getResourcesForTablesQueryAction(
   tablesQueryAction: AgentTablesQueryAction,
   {
@@ -200,7 +201,7 @@ function getResourcesForTablesQueryAction(
 
   if (resultsFile) {
     resources.push({
-      text: `Your query results were generated successfully.`,
+      text: "Your query results were generated successfully.",
       uri: resultsFile.getPublicUrl(auth),
       mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
       fileId: resultsFile.sId,
