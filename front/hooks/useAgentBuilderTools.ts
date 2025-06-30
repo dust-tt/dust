@@ -1,10 +1,11 @@
 import { groupBy } from "lodash";
 import { useMemo } from "react";
+
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 
 function getGroupedMCPServerViews({
   mcpServerViews,
