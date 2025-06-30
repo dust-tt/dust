@@ -96,7 +96,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
     ],
   },
   dustInAction: {
-    title: "Dust in Action",
+    title: "Dust in action",
     useCases: [
       {
         title: "GTM operations & sales enablement",

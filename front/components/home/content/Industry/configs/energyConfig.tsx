@@ -69,7 +69,7 @@ export const energyConfig: IndustryPageConfig = {
   },
 
   dustInAction: {
-    title: "Dust in Action",
+    title: "Dust in action",
     useCases: [
       {
         title: "Commercial operations",

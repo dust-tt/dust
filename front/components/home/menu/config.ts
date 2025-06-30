@@ -108,7 +108,7 @@ const IndustriesMenuConfig: MenuConfig = {
       href: "/home/industry/insurance",
     },
     {
-      title: "Marketplace",
+      title: "Marketplaces",
       href: "/home/industry/marketplace",
     },
     {

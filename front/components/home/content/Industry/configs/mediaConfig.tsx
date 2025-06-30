@@ -67,7 +67,7 @@ export const mediaConfig: IndustryPageConfig = {
     ],
   },
   dustInAction: {
-    title: "Dust in Action",
+    title: "Dust in action",
     useCases: [
       {
         title: "Editorial & newsroom operations",

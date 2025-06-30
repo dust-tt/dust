@@ -68,7 +68,7 @@ export const investmentConfig: IndustryPageConfig = {
     ],
   },
   dustInAction: {
-    title: "Dust in Action",
+    title: "Dust in action",
     useCases: [
       {
         title: "Target Identification & Research",
