@@ -108,7 +108,7 @@ function agentProcessActionToAgentMCPAction(
               fileId: processAction.jsonFileId.toString(),
               title: "Extracted Data",
               contentType: "application/json",
-              snippet: null,
+              snippet: processAction.jsonFileSnippet,
             },
           ]
         : [],
