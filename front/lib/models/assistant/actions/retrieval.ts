@@ -133,124 +133,6 @@ AgentRetrievalConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
-/**
- * Retrieval Action
- */
-export class AgentRetrievalAction extends WorkspaceAwareModel<AgentRetrievalAction> {
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-  declare runId: string | null;
-
-  declare retrievalConfigurationId: string;
-
-  declare query: string | null;
-  declare relativeTimeFrameDuration: number | null;
-  declare relativeTimeFrameUnit: TimeframeUnit | null;
-  declare topK: number;
-
-  declare tagsIn: string[] | null;
-  declare tagsNot: string[] | null;
-
-  declare functionCallId: string | null;
-  declare functionCallName: string | null;
-
-  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
-  declare step: number;
-}
-AgentRetrievalAction.init(
-  {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    runId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    retrievalConfigurationId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    query: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    relativeTimeFrameDuration: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    relativeTimeFrameUnit: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    tagsIn: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-    },
-    tagsNot: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: true,
-    },
-    topK: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    functionCallId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    functionCallName: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    step: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-  },
-  {
-    modelName: "agent_retrieval_action",
-    sequelize: frontSequelize,
-    indexes: [
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index.
-      {
-        fields: ["agentMessageId"],
-      },
-      {
-        fields: ["workspaceId", "agentMessageId"],
-        concurrently: true,
-      },
-    ],
-    hooks: {
-      beforeValidate: (retrieval: AgentRetrievalAction) => {
-        // Validation for Timeframe
-        if (
-          (retrieval.relativeTimeFrameDuration === null) !==
-          (retrieval.relativeTimeFrameUnit === null)
-        ) {
-          throw new Error(
-            "Relative time frame must have a duration and unit set or they should both be null"
-          );
-        }
-      },
-    },
-  }
-);
-
-AgentRetrievalAction.belongsTo(AgentMessage, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-AgentMessage.hasMany(AgentRetrievalAction, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
 export class RetrievalDocumentModel extends WorkspaceAwareModel<RetrievalDocumentModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -264,7 +146,6 @@ export class RetrievalDocumentModel extends WorkspaceAwareModel<RetrievalDocumen
 
   // This is nullable as it has to be set null when data sources are deleted.
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
-  declare retrievalActionId: ForeignKey<AgentRetrievalAction["id"]> | null;
 
   declare chunks: NonAttribute<RetrievalDocumentChunkModel[]>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;

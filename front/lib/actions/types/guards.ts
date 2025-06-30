@@ -15,10 +15,7 @@ import type {
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
-import type {
-  RetrievalActionType,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/retrieval";
+import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type {
@@ -55,17 +52,6 @@ export function isDustAppRunConfiguration(
     typeof arg === "object" &&
     "type" in arg &&
     arg.type === "dust_app_run_configuration"
-  );
-}
-
-export function isRetrievalConfiguration(
-  arg: unknown
-): arg is RetrievalConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "retrieval_configuration"
   );
 }
 

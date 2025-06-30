@@ -27,7 +27,6 @@ import {
 import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import {
-  AgentRetrievalAction,
   AgentRetrievalConfiguration,
   RetrievalDocumentChunkModel,
   RetrievalDocumentModel,
@@ -47,6 +46,7 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -58,7 +58,6 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import {
@@ -191,7 +190,6 @@ async function main() {
   await AgentStepContentModel.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
-  await AgentRetrievalAction.sync({ alter: true });
   await AgentSearchLabelsAction.sync({ alter: true });
   await AgentTablesQueryAction.sync({ alter: true });
   await AgentWebsearchAction.sync({ alter: true });

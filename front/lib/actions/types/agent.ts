@@ -27,10 +27,7 @@ import type {
   ReasoningActionRunningEvents,
   ReasoningConfigurationType,
 } from "@app/lib/actions/reasoning";
-import type {
-  RetrievalActionRunningEvents,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/retrieval";
+import type { RetrievalActionRunningEvents } from "@app/lib/actions/retrieval";
 import type {
   SearchLabelsActionRunningEvents,
   SearchLabelsConfigurationType,
@@ -52,7 +49,6 @@ export type AgentActionConfigurationType =
   | DustAppRunConfigurationType
   | ProcessConfigurationType
   | ReasoningConfigurationType
-  | RetrievalConfigurationType
   | TablesQueryConfigurationType
   | WebsearchConfigurationType
   | MCPServerConfigurationType;
@@ -77,7 +73,6 @@ export function isActionConfigurationType(
     case "dust_app_run_configuration":
     case "process_configuration":
     case "reasoning_configuration":
-    case "retrieval_configuration":
     case "tables_query_configuration":
     case "websearch_configuration":
     case "mcp_configuration":

@@ -24,7 +24,6 @@ import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPerm
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import {
-  isRetrievalConfiguration,
   isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
 } from "@app/lib/actions/types/guards";
@@ -76,9 +75,7 @@ export function AssistantKnowledgeSection({
     };
 
     return agentConfiguration.actions.reduce((acc, action) => {
-      if (isRetrievalConfiguration(action)) {
-        acc.retrieval.push(action);
-      } else if (isTablesQueryConfiguration(action)) {
+      if (isTablesQueryConfiguration(action)) {
         acc.queryTables.push(action);
       } else if (isServerSideMCPServerConfiguration(action)) {
         const { tables, dataSources } = action;

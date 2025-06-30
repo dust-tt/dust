@@ -129,7 +129,6 @@ export function isUserMessageType(
  * Agent messages
  */
 export type ConfigurableAgentActionType =
-  | RetrievalActionType
   | DustAppRunActionType
   | TablesQueryActionType
   | ProcessActionType
@@ -160,7 +159,6 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   dust_app_run_action: "Running App",
   process_action: "Extracting data",
   reasoning_action: "Reasoning",
-  retrieval_action: "Searching data",
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",

@@ -23,7 +23,6 @@ import {
   isMCPToolConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
-  isRetrievalConfiguration,
   isSearchLabelsConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -100,9 +99,8 @@ export async function* runAgent(
   | AgentMessageSuccessEvent,
   void
 > {
-  const [fullConfiguration, killSwitches] = await Promise.all([
+  const [fullConfiguration] = await Promise.all([
     getAgentConfiguration(auth, configuration.sId, "full"),
-    KillSwitchResource.listEnabledKillSwitches(),
   ]);
 
   if (!fullConfiguration) {
@@ -121,8 +119,7 @@ export async function* runAgent(
     fullConfiguration,
     conversation,
     userMessage,
-    agentMessage,
-    killSwitches
+    agentMessage
   );
 
   for await (const event of stream) {
@@ -135,8 +132,7 @@ async function* runMultiActionsAgentLoop(
   configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
-  agentMessage: AgentMessageType,
-  killSwitches: KillSwitchType[]
+  agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
   | AgentActionSpecificEvent
@@ -233,7 +229,6 @@ async function* runMultiActionsAgentLoop(
                 stepActionIndex: index,
                 stepActions: event.actions.map((a) => a.action),
                 citationsRefsOffset,
-                killSwitches,
               });
             }
           );
@@ -1123,7 +1118,6 @@ async function* runAction(
     stepActionIndex,
     stepActions,
     citationsRefsOffset,
-    killSwitches,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: ActionConfigurationType;
@@ -1137,7 +1131,6 @@ async function* runAction(
     stepActionIndex: number;
     stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
-    killSwitches: KillSwitchType[];
   }
 ): AsyncGenerator<
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
@@ -1145,78 +1138,7 @@ async function* runAction(
 > {
   const now = Date.now();
 
-  if (isRetrievalConfiguration(actionConfiguration)) {
-    if (killSwitches.includes("retrieval_action")) {
-      yield {
-        type: "agent_error",
-        created: now,
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "retrieval_action_disabled",
-          message: "Retrieval action is temporarily disabled",
-          metadata: null,
-        },
-      };
-      return;
-    }
-
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(
-      auth,
-      {
-        agentConfiguration: configuration,
-        conversation,
-        agentMessage,
-        rawInputs: inputs,
-        functionCallId,
-        step,
-      },
-      {
-        stepActionIndex,
-        stepActions,
-        citationsRefsOffset,
-      }
-    );
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "retrieval_params":
-          yield event;
-          break;
-        case "retrieval_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "retrieval_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isDustAppRunConfiguration(actionConfiguration)) {
+  if (isDustAppRunConfiguration(actionConfiguration)) {
     if (!specification) {
       logger.error(
         {
