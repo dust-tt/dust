@@ -5,7 +5,6 @@ import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import type { ProcessActionType } from "@app/lib/actions/process";
 import type { ReasoningActionType } from "@app/lib/actions/reasoning";
-import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
 import type { TablesQueryActionType } from "@app/lib/actions/tables_query";
 import type {
