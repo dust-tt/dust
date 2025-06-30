@@ -27,7 +27,7 @@ import {
   PatchSpaceRequestBodySchema,
 } from "@app/types";
 
-type SpaceCategoryInfo = {
+export type SpaceCategoryInfo = {
   usage: DataSourceWithAgentsUsageType;
   count: number;
 };

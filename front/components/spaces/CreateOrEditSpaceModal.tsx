@@ -119,21 +119,6 @@ export function CreateOrEditSpaceModal({
     spaceId: space?.sId ?? null,
   });
 
-  const agentUsage = spaceInfo?.categories;
-
-  const uniqueAgentNames = useMemo(() => {
-    if (!agentUsage) {
-      return [];
-    }
-
-    const allAgentNames = Object.values(agentUsage)
-      .flatMap((category) => category.usage.agents)
-      .map((agent) => agent.name)
-      .filter((name) => name && name.length > 0);
-
-    return [...new Set(allAgentNames)];
-  }, [agentUsage]);
-
   const { groups } = useGroups({
     owner,
     kinds: ["provisioned"],
@@ -405,7 +390,7 @@ export function CreateOrEditSpaceModal({
             {isAdmin && space && space.kind === "regular" && (
               <>
                 <ConfirmDeleteSpaceDialog
-                  dataSourceUsage={uniqueAgentNames.length}
+                  spaceInfoByCategory={spaceInfo?.categories}
                   space={space}
                   handleDelete={onDelete}
                   isOpen={showDeleteConfirmDialog}

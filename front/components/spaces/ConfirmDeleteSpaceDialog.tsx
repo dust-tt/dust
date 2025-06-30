@@ -11,11 +11,13 @@ import {
 
 import { getSpaceName } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
+import { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import { useMemo } from "react";
 
 interface ConfirmDeleteSpaceDialogProps {
   space: SpaceType;
   handleDelete: () => void;
-  dataSourceUsage: number;
+  spaceInfoByCategory: { [key: string]: SpaceCategoryInfo } | undefined;
   isOpen: boolean;
   isDeleting: boolean;
   onClose: () => void;
@@ -24,13 +26,26 @@ interface ConfirmDeleteSpaceDialogProps {
 export function ConfirmDeleteSpaceDialog({
   space,
   handleDelete,
-  dataSourceUsage,
+  spaceInfoByCategory,
   isOpen,
   isDeleting,
   onClose,
 }: ConfirmDeleteSpaceDialogProps) {
+  const uniqueAgentNames = useMemo(() => {
+    if (!spaceInfoByCategory) {
+      return [];
+    }
+
+    const allAgentNames = Object.values(spaceInfoByCategory)
+      .flatMap((category) => category.usage.agents)
+      .map((agent) => agent.name)
+      .filter((name) => name && name.length > 0);
+
+    return [...new Set(allAgentNames)];
+  }, [spaceInfoByCategory]);
+
   const spaceName = `${getSpaceName(space)}`;
-  const hasAgents = dataSourceUsage > 0;
+  const hasAgents = uniqueAgentNames.length > 0;
 
   return (
     <Dialog
@@ -56,7 +71,7 @@ export function ConfirmDeleteSpaceDialog({
                 <ContentMessage
                   variant="warning"
                   // TODO: change to show names of public agents and then number of unpublished agents
-                  title={`This will break ${dataSourceUsage} existing agent(s)`}
+                  title={`This will break ${uniqueAgentNames.length} existing agent(s)`}
                 />
               )}
               <div>
