@@ -350,7 +350,7 @@ async function retryWithBackoff<T>(
   {
     maxTries = 5,
     backoffFactor = 2,
-    baseWaitTime = 500,
+    baseWaitTime = 10000,
     logger,
     operationName,
   }: {
