@@ -530,10 +530,7 @@ async function handler(
               status_code: 403,
               api_error: {
                 type: "data_source_quota_error",
-                message:
-                  `Data sources are limited to ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} ` +
-                  `of text on your current plan. You are attempting to upload ` +
-                  `${datasourceStats.data_source.text_size} bytes.`,
+                message: `You are currently using ${fileSizeToHumanReadable(datasourceStats.data_source.text_size)}/${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} on your current plan.`,
               },
             });
           }
