@@ -18,11 +18,11 @@ export const AssistantBuilderProviders = memo(
     return (
       <PreviewPanelProvider>
         <SpacesProvider owner={owner}>
-          <DataSourceViewsProvider owner={owner}>
-            <MCPServerViewsProvider owner={owner}>
+          <MCPServerViewsProvider owner={owner}>
+            <DataSourceViewsProvider owner={owner}>
               {children}
-            </MCPServerViewsProvider>
-          </DataSourceViewsProvider>
+            </DataSourceViewsProvider>
+          </MCPServerViewsProvider>
         </SpacesProvider>
       </PreviewPanelProvider>
     );
