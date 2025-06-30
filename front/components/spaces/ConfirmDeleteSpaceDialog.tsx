@@ -76,7 +76,7 @@ export function ConfirmDeleteSpaceDialog({
               <div>
                 <p className="text-sm text-muted-foreground">
                   Are you sure you want to permanently delete space {spaceName}?
-                  This action cannot be undone."
+                  This action cannot be undone.
                 </p>
               </div>
             </DialogContainer>
