@@ -45,7 +45,6 @@ import type {
   PlanType,
   Result,
   SubscriptionPerSeatPricing,
-  SubscriptionStatusType,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -642,20 +641,6 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       billingPeriod: recurring.interval === "year" ? "yearly" : "monthly",
       quantity: item.quantity,
     };
-  }
-
-  async updateStatus(
-    status: SubscriptionStatusType,
-    date: Date,
-    transaction?: Transaction
-  ) {
-    return this.update(
-      {
-        status,
-        endDate: date,
-      },
-      transaction
-    );
   }
 
   async setActive(trialing: boolean) {

@@ -226,7 +226,7 @@ async function handler(
               }
 
               if (activeSubscription) {
-                await activeSubscription.updateStatus("ended", now, t);
+                await activeSubscription.setEnded(now, t);
               }
               const stripeSubscription =
                 await stripe.subscriptions.retrieve(stripeSubscriptionId);
