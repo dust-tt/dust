@@ -163,6 +163,17 @@ export function MCPAction({
     ]
   );
 
+  const updateDescription = useCallback(
+    (description: string) => {
+      updateAction({
+        actionName: action.name,
+        actionDescription: description,
+        getNewActionConfig: (old) => old,
+      });
+    },
+    [action.name, updateAction]
+  );
+
   if (action.type !== "MCP") {
     return null;
   }
@@ -264,13 +275,7 @@ export function MCPAction({
       )}
       {requirements.requiresChildAgentConfiguration && (
         <ChildAgentDescription
-          updateDescription={(description) =>
-            updateAction({
-              actionName: action.name,
-              actionDescription: description,
-              getNewActionConfig: (old) => old,
-            })
-          }
+          updateDescription={updateDescription}
           action={action}
           setShowInvalidActionDescError={setShowInvalidActionDescError}
           showInvalidActionDescError={showInvalidActionDescError}
