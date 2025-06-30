@@ -27,6 +27,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
+  fileSizeToHumanReadable,
   safeSubstring,
   sectionFullText,
   validateUrl,
@@ -521,7 +522,7 @@ async function handler(
               api_error: {
                 type: "data_source_quota_error",
                 message:
-                  `Data sources are limited to ${activeSeats * LIMIT_PER_SEAT} bytes ` +
+                  `Data sources are limited to ${fileSizeToHumanReadable(activeSeats * LIMIT_PER_SEAT)} ` +
                   `of text on your current plan. You are attempting to upload ` +
                   `${datasourceStats.data_source.text_size} bytes.`,
               },
