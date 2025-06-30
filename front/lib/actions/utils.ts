@@ -1,4 +1,4 @@
-import { BarChartIcon, BoltIcon } from "@dust-tt/sparkle";
+import { BarChartIcon, BoltIcon, MagnifyingGlassIcon } from "@dust-tt/sparkle";
 
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -38,6 +38,30 @@ export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
   dropDownIcon: BarChartIcon,
   flag: null,
 };
+
+export const SEARCH_SPECIFICATION: ActionSpecification = {
+  label: "Search",
+  description: "Search across selected data sources",
+  cardIcon: MagnifyingGlassIcon,
+  dropDownIcon: MagnifyingGlassIcon,
+  flag: null,
+};
+
+// Mapping for action types to their specifications
+export const ACTION_SPECIFICATIONS_MAP = {
+  DATA_VISUALIZATION: DATA_VISUALIZATION_SPECIFICATION,
+  SEARCH: SEARCH_SPECIFICATION,
+} as const;
+
+export function getActionSpecification(
+  actionType: string
+): ActionSpecification | null {
+  return (
+    ACTION_SPECIFICATIONS_MAP[
+      actionType as keyof typeof ACTION_SPECIFICATIONS_MAP
+    ] || null
+  );
+}
 
 /**
  * This function computes the topK for retrieval actions. This is used by both the action (to
