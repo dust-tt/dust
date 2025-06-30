@@ -455,6 +455,7 @@ export const WithConditionalNavigation: Story = {
           disableNext={
             currentPageId === "data-selection" && selectedItems.length === 0
           }
+          disableSave={!description.trim()}
         />
       </MultiPageSheet>
     );
