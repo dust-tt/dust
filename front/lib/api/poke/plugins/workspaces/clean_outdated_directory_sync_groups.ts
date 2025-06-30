@@ -12,7 +12,7 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
     resourceTypes: ["workspaces"],
     warning:
       "This action will permanently delete groups and remove all their memberships and space associations. " +
-      "Make sure the groups are truly outdated before proceeding.",
+      "Make sure the groups are truly outdated before proceeding and use the dry run mode to verify.",
     args: {
       groupNames: {
         type: "text",
@@ -109,7 +109,7 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
           message: `Found ${groupsToDelete.length} groups that would be deleted`,
           groups: groupSummary,
           notFound: groupsNotFound,
-          note: "No groups were actually deleted. Set 'Dry Run' to false to perform the deletion.",
+          note: "No groups were actually deleted. Untick 'Dry Run' to perform the deletion.",
         },
       });
     }
