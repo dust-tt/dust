@@ -68,7 +68,7 @@ export function ConfirmDeleteSpaceDialog({
                 <ContentMessage
                   variant="warning"
                   // TODO: change to show names of public agents and then number of unpublished agents
-                  title={`This will break ${uniqueAgentNames.length} existing agent(s)`}
+                  title={`${uniqueAgentNames.length} agent(s) have tools that depend on this space and will be impacted by its deletion`}
                 />
               )}
               <div>
