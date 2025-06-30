@@ -4,7 +4,10 @@ import type { Logger } from "pino";
 import type { CreationAttributes } from "sequelize";
 import { Op } from "sequelize";
 
-import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
+import {
+  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+  DEFAULT_TABLES_QUERY_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import type {
   ExecuteTablesQueryErrorResourceType,
@@ -71,9 +74,9 @@ function agentTablesQueryActionToAgentMCPAction(
       (config) => config.mcpServerViewId === mcpServerViewForTablesQueryId
     );
 
-  const isJITServerAction = [DEFAULT_TABLES_QUERY_ACTION_NAME].includes(
-    tablesQueryAction.functionCallName ?? ""
-  );
+  const isJITServerAction =
+    tablesQueryAction.functionCallName ===
+    DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME;
 
   // Determine the MCP server configuration ID to use.
   let mcpServerConfigurationId: string;
