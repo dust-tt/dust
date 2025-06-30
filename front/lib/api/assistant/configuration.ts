@@ -1649,7 +1649,7 @@ export async function updateAgentRequestedGroupIds(
   const owner = auth.getNonNullableWorkspace();
 
   const updated = await AgentConfiguration.update(
-    { requestedGroupIds: newGroupIds },
+    { requestedGroupIds: normalizeArrays(newGroupIds) },
     {
       where: {
         workspaceId: owner.id,
