@@ -1,4 +1,3 @@
-import _ from "lodash";
 import parseArgs from "minimist";
 
 import { Authenticator } from "@app/lib/auth";
@@ -20,11 +19,15 @@ const DEFAULT_SPACE_NAME = "Public Dust Apps";
 async function main() {
   const argv = parseArgs(process.argv.slice(2));
 
-  const where = _.pick(argv, ["name", "sId"]);
-  if (!where.name && !where.sId) {
-    throw new Error("Please provide name and/or sId for the workspace");
+  let w: WorkspaceResource | null;
+  if (argv.sId) {
+    w = await WorkspaceResource.fetchByModelId(argv.sId);
+  } else if (argv.name) {
+    w = await WorkspaceResource.fetchByName(argv.name);
+  } else {
+    throw new Error("Please provide the name or sId for the workspace");
   }
-  let w = await WorkspaceResource.fetchByNameAndOrId(where);
+
   if (!w) {
     console.log("Creating workspace");
     w = await WorkspaceResource.makeNew({
