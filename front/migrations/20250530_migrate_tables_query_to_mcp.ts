@@ -140,6 +140,7 @@ async function migrateWorkspaceTablesQueryActions(
           `'${format(tablesQueryConfig.createdAt, "yyyy-MM-dd")}', ` +
           `'${format(tablesQueryConfig.updatedAt, "yyyy-MM-dd")}');\n`;
 
+        // Reverse: link to the tables query configuration instead of the MCP server configuration.
         revertSql +=
           `UPDATE "agent_tables_query_actions" ` +
           `SET "tablesQueryConfigurationId" = '${tablesQueryConfig.sId}' ` +
