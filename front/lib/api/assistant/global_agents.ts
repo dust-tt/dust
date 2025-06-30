@@ -3,14 +3,16 @@ import path from "path";
 import { promisify } from "util";
 
 import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type {
+  MCPServerConfigurationType,
+  ServerSideMCPServerConfigurationType,
+} from "@app/lib/actions/mcp";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   LIST_ALL_AGENTS_TOOL_NAME,
   SUGGEST_AGENTS_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -252,7 +254,7 @@ function _getHelperGlobalAgent({
     : dummyModelConfiguration;
   const status = modelConfiguration ? "active" : "disabled_by_admin";
 
-  const actions: AgentActionConfigurationType[] = [];
+  const actions: MCPServerConfigurationType[] = [];
 
   if (searchMCPServerView) {
     actions.push({
@@ -1226,7 +1228,7 @@ function _getManagedDataSourceAgent(
     };
   }
 
-  const actions: AgentActionConfigurationType[] = [];
+  const actions: MCPServerConfigurationType[] = [];
   if (searchMCPServerView) {
     actions.push({
       id: -1,
@@ -1491,6 +1493,7 @@ The agent should not provide additional information or content that the user did
     };
   }
 
+  // This only happens when we fetch the list version of the agent.
   if (!preFetchedDataSources) {
     return {
       ...dustAgent,
@@ -1500,21 +1503,14 @@ The agent should not provide additional information or content that the user did
     };
   }
 
+  const actions: MCPServerConfigurationType[] = [];
+
   const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
     (dsView) => dsView.dataSource.assistantDefaultSelected === true
   );
 
-  if (dataSourceViews.length === 0) {
-    return {
-      ...dustAgent,
-      status: "disabled_missing_datasource",
-      actions: [],
-      maxStepsPerRun: 0,
-    };
-  }
-  const actions: AgentActionConfigurationType[] = [];
-
-  if (searchMCPServerView) {
+  // Only add the action if there are data sources and the search MCPServer is available.
+  if (dataSourceViews.length > 0 && searchMCPServerView) {
     // We push one action with all data sources
     actions.push({
       id: -1,

@@ -17,6 +17,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import logger, { auditLog } from "@app/logger/logger";
 import type {
   LightWorkspaceType,
+  MembershipOriginType,
   MembershipRoleType,
   ModelId,
   RequireAtLeastOne,
@@ -465,12 +466,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     user,
     workspace,
     role,
+    origin = "invited",
     startAt = new Date(),
     transaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
+    origin?: MembershipOriginType;
     startAt?: Date;
     transaction?: Transaction;
   }): Promise<MembershipResource> {
@@ -499,6 +502,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         userId: user.id,
         workspaceId: workspace.id,
         role,
+        origin,
       },
       { transaction }
     );
@@ -650,10 +654,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       );
     } else {
       // If the last membership was terminated, we create a new membership with the new role.
+      // Preserve the origin from the previous membership.
       await this.createMembership({
         user,
         workspace,
         role: newRole,
+        origin: membership.origin,
         startAt: new Date(),
         transaction,
       });
@@ -669,6 +675,40 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       "Membership role updated"
     );
     return new Ok({ previousRole, newRole });
+  }
+
+  /**
+   * Update the origin of an active membership.
+   */
+  async updateOrigin({
+    user,
+    workspace,
+    newOrigin,
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    newOrigin: MembershipOriginType;
+    transaction?: Transaction;
+  }): Promise<{
+    previousOrigin: MembershipOriginType;
+    newOrigin: MembershipOriginType;
+  }> {
+    const previousOrigin = this.origin;
+
+    await this.update({ origin: newOrigin }, transaction);
+
+    auditLog(
+      {
+        userId: user.id,
+        workspaceId: workspace.id,
+        previousOrigin,
+        newOrigin,
+      },
+      "Membership origin updated"
+    );
+
+    return { previousOrigin, newOrigin };
   }
 
   async delete(

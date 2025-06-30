@@ -14,7 +14,7 @@ export function CallToActionSection() {
     >
       <H3 className="mb-8 text-center text-gray-900">Just use Dust.</H3>
       <div className="flex flex-col items-center gap-4 sm:flex-row">
-        <Link href="home/pricing" shallow={true}>
+        <Link href="/home/pricing" shallow={true}>
           <Button
             variant="highlight"
             size="md"
@@ -22,7 +22,7 @@ export function CallToActionSection() {
             icon={RocketIcon}
           />
         </Link>
-        <Link href="home/contact" shallow={true}>
+        <Link href="/home/contact" shallow={true}>
           <Button variant="outline" size="md" label="Request demo now" />
         </Link>
       </div>

@@ -4,6 +4,7 @@ import {
   shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
+import type { ZendeskFetchedTicketComment } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskCategory,
@@ -259,6 +260,42 @@ export async function syncZendeskTicketUpdateBatchActivity({
     url ? { url } : { brandSubdomain, startTime }
   );
 
+  const commentsPerTicket: Record<number, ZendeskFetchedTicketComment[]> = {};
+  await concurrentExecutor(
+    tickets,
+    async (ticket) => {
+      const comments = await listZendeskTicketComments({
+        accessToken,
+        brandSubdomain,
+        ticketId: ticket.id,
+      });
+      if (comments.length > 0) {
+        logger.info(
+          { ...loggerArgs, ticketId: ticket.id },
+          "[Zendesk] No comment for ticket."
+        );
+      }
+      commentsPerTicket[ticket.id] = comments;
+    },
+    { concurrency: 3 }
+  );
+
+  // If we hide customer details, we don't need to fetch the users at all.
+  // Also guarantees that user information is not included in the ticket content.
+  const users = configuration.hideCustomerDetails
+    ? []
+    : await listZendeskUsers({
+        accessToken,
+        brandSubdomain,
+        userIds: [
+          ...new Set(
+            Object.values(commentsPerTicket).flatMap((comments) =>
+              comments.map((c) => c.author_id)
+            )
+          ),
+        ],
+      });
+
   await concurrentExecutor(
     tickets,
     async (ticket) => {
@@ -271,20 +308,12 @@ export async function syncZendeskTicketUpdateBatchActivity({
           loggerArgs,
         });
       } else if (shouldSyncTicket(ticket, configuration)) {
-        const comments = await listZendeskTicketComments({
-          accessToken,
-          brandSubdomain,
-          ticketId: ticket.id,
-        });
-        // If we hide customer details, we don't need to fetch the users at all.
-        // Also guarantees that user information is not included in the ticket content.
-        const users = configuration.hideCustomerDetails
-          ? []
-          : await listZendeskUsers({
-              accessToken,
-              brandSubdomain,
-              userIds: comments.map((c) => c.author_id),
-            });
+        const comments = commentsPerTicket[ticket.id];
+        if (!comments) {
+          throw new Error(
+            `[Zendesk] Comments not found for ticket ${ticket.id}`
+          );
+        }
         return syncTicket({
           ticket,
           connector,

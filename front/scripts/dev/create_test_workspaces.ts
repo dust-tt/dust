@@ -67,6 +67,7 @@ async function createTestWorkspaces(
       user,
       workspace,
       role: "admin",
+      origin: "invited",
     });
   }
 }

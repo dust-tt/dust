@@ -7,22 +7,28 @@ import { z } from "zod";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
-  DataSourceNodeListType,
   FilesystemPathType,
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
+  makeQueryResource,
+  renderMimeType,
+  renderNode,
+  renderSearchResults,
+} from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
   findTagsSchema,
   makeFindTagsDescription,
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
-import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/servers/search/utils";
+import {
+  getAgentDataSourceConfigurations,
+  makeDataSourceViewFilter,
+} from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
   checkConflictingTags,
-  fetchAgentDataSourceConfiguration,
   getCoreSearchArgs,
-  parseDataSourceConfigurationURI,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
@@ -33,17 +39,14 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
-  ConnectorProvider,
   ContentNodeType,
   CoreAPIContentNode,
   CoreAPIError,
@@ -51,12 +54,9 @@ import type {
   Result,
 } from "@app/types";
 import {
-  assertNever,
   CoreAPI,
   DATA_SOURCE_NODE_ID,
   dustManagedCredentials,
-  Err,
-  Ok,
   parseTimeFrame,
   removeNulls,
   stripNullBytes,
@@ -1012,143 +1012,6 @@ const createServer = (
   return server;
 };
 
-// Type to represent data source configuration with resolved data source model
-type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
-  dataSource: {
-    dustAPIProjectId: string;
-    dustAPIDataSourceId: string;
-    connectorProvider: ConnectorProvider | null;
-    name: string;
-  };
-};
-
-async function getAgentDataSourceConfigurations(
-  auth: Authenticator,
-  dataSources: DataSourcesToolConfigurationType
-): Promise<Result<ResolvedDataSourceConfiguration[], Error>> {
-  const configResults = await concurrentExecutor(
-    dataSources,
-    async (dataSourceConfiguration) => {
-      const configInfoRes = parseDataSourceConfigurationURI(
-        dataSourceConfiguration.uri
-      );
-
-      if (configInfoRes.isErr()) {
-        return configInfoRes;
-      }
-
-      const configInfo = configInfoRes.value;
-
-      switch (configInfo.type) {
-        case "database": {
-          // Database configuration
-          const r = await fetchAgentDataSourceConfiguration(configInfo.sId);
-          if (r.isErr()) {
-            return r;
-          }
-          const agentConfig = r.value;
-          const dataSourceViewSId = DataSourceViewResource.modelIdToSId({
-            id: agentConfig.dataSourceView.id,
-            workspaceId: agentConfig.dataSourceView.workspaceId,
-          });
-          const resolved: ResolvedDataSourceConfiguration = {
-            workspaceId: agentConfig.dataSourceView.workspace.sId,
-            dataSourceViewId: dataSourceViewSId,
-            filter: {
-              parents:
-                agentConfig.parentsIn || agentConfig.parentsNotIn
-                  ? {
-                      in: agentConfig.parentsIn || [],
-                      not: agentConfig.parentsNotIn || [],
-                    }
-                  : null,
-              tags:
-                agentConfig.tagsIn || agentConfig.tagsNotIn
-                  ? {
-                      in: agentConfig.tagsIn || [],
-                      not: agentConfig.tagsNotIn || [],
-                      mode: agentConfig.tagsMode || "custom",
-                    }
-                  : undefined,
-            },
-            dataSource: {
-              dustAPIProjectId: agentConfig.dataSource.dustAPIProjectId,
-              dustAPIDataSourceId: agentConfig.dataSource.dustAPIDataSourceId,
-              connectorProvider: agentConfig.dataSource.connectorProvider,
-              name: agentConfig.dataSource.name,
-            },
-          };
-          return new Ok(resolved);
-        }
-
-        case "dynamic": {
-          // Dynamic configuration
-          // Verify the workspace ID matches the auth
-          if (
-            configInfo.configuration.workspaceId !==
-            auth.getNonNullableWorkspace().sId
-          ) {
-            return new Err(
-              new Error(
-                "Workspace mismatch: configuration workspace " +
-                  `${configInfo.configuration.workspaceId} does not match authenticated workspace.`
-              )
-            );
-          }
-
-          // Fetch the specific data source view by ID
-          const dataSourceView = await DataSourceViewResource.fetchById(
-            auth,
-            configInfo.configuration.dataSourceViewId
-          );
-
-          if (!dataSourceView) {
-            return new Err(
-              new Error(
-                `Data source view not found: ${configInfo.configuration.dataSourceViewId}`
-              )
-            );
-          }
-
-          const dataSource = dataSourceView.dataSource;
-
-          const resolved: ResolvedDataSourceConfiguration = {
-            ...configInfo.configuration,
-            dataSource: {
-              dustAPIProjectId: dataSource.dustAPIProjectId,
-              dustAPIDataSourceId: dataSource.dustAPIDataSourceId,
-              connectorProvider: dataSource.connectorProvider,
-              name: dataSource.name,
-            },
-          };
-          return new Ok(resolved);
-        }
-
-        default:
-          assertNever(configInfo);
-      }
-    },
-    { concurrency: 10 }
-  );
-
-  if (configResults.some((res) => res.isErr())) {
-    return new Err(new Error("Failed to fetch data source configurations."));
-  }
-
-  return new Ok(
-    removeNulls(configResults.map((res) => (res.isOk() ? res.value : null)))
-  );
-}
-
-function makeDataSourceViewFilter(
-  agentDataSourceConfigurations: ResolvedDataSourceConfiguration[]
-) {
-  return agentDataSourceConfigurations.map(({ dataSource, filter }) => ({
-    data_source_id: dataSource.dustAPIDataSourceId,
-    view_filter: filter.parents?.in ?? [],
-  }));
-}
-
 function getSortDirection(field: "title" | "timestamp"): "asc" | "desc" {
   switch (field) {
     case "title":
@@ -1177,98 +1040,7 @@ function extractDataSourceIdFromNodeId(nodeId: string): string | null {
   return nodeId.substring(`${DATA_SOURCE_NODE_ID}-`.length);
 }
 
-function formatTimestamp(timestamp: number): string {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  const formattedDate = date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  if (diffDays === 0) {
-    return `${formattedDate} (today)`;
-  } else if (diffDays === 1) {
-    return `${formattedDate} (yesterday)`;
-  } else if (diffDays < 7) {
-    return `${formattedDate} (${diffDays} days ago)`;
-  } else if (diffDays < 30) {
-    const weeks = Math.floor(diffDays / 7);
-    return `${formattedDate} (${weeks} week${weeks > 1 ? "s" : ""} ago)`;
-  } else {
-    return formattedDate;
-  }
-}
-
-/**
- * Translation from a content node to the format expected to the agent.
- * Removes references to the term 'content node' and simplifies the format.
- */
-function renderNode(
-  node: CoreAPIContentNode,
-  dataSourceIdToConnectorMap: Map<string, ConnectorProvider | null>
-) {
-  // Transform data source node IDs to include the data source ID
-  const nodeId =
-    node.node_id === DATA_SOURCE_NODE_ID
-      ? `${DATA_SOURCE_NODE_ID}-${node.data_source_id}`
-      : node.node_id;
-
-  return {
-    nodeId,
-    title: node.title,
-    path: node.parents.join("/"),
-    parentTitle: node.parent_title,
-    lastUpdatedAt: formatTimestamp(node.timestamp),
-    sourceUrl: node.source_url,
-    mimeType: node.mime_type,
-    hasChildren: node.children_count > 0,
-    connectorProvider:
-      dataSourceIdToConnectorMap.get(node.data_source_id) ?? null,
-  };
-}
-
-/**
- * Translation from core's response to the format expected to the agent.
- * Removes references to the term 'content node' and simplifies the format.
- */
-function renderSearchResults(
-  response: CoreAPISearchNodesResponse,
-  agentDataSourceConfigurations: ResolvedDataSourceConfiguration[]
-): DataSourceNodeListType {
-  const dataSourceIdToConnectorMap = new Map<
-    string,
-    ConnectorProvider | null
-  >();
-  for (const {
-    dataSource: { dustAPIDataSourceId, connectorProvider },
-  } of agentDataSourceConfigurations) {
-    dataSourceIdToConnectorMap.set(dustAPIDataSourceId, connectorProvider);
-  }
-
-  return {
-    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_LIST,
-    text: "Content successfully retrieved.",
-    uri: "",
-    data: response.nodes.map((node) =>
-      renderNode(node, dataSourceIdToConnectorMap)
-    ),
-    nextPageCursor: response.next_page_cursor,
-    resultCount: response.hit_count,
-  };
-}
-
-function renderMimeType(mimeType: string) {
-  return mimeType
-    .replace("application/vnd.dust.", "")
-    .replace("-", " ")
-    .replace(".", " ");
-}
-
-function makeQueryResourceForFind(
+export function makeQueryResourceForFind(
   query?: string,
   rootNodeId?: string,
   mimeTypes?: string[],
@@ -1290,7 +1062,7 @@ function makeQueryResourceForFind(
   };
 }
 
-function makeQueryResourceForList(
+export function makeQueryResourceForList(
   nodeId: string | null,
   mimeTypes?: string[],
   nextPageCursor?: string

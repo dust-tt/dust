@@ -129,7 +129,15 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
 
     if (webConfig.crawlId !== null) {
       // If not, there is not really workflows to stop
-      await getFirecrawl().cancelCrawl(webConfig.crawlId);
+      try {
+        await getFirecrawl().cancelCrawl(webConfig.crawlId);
+      } catch (error) {
+        return new Err(
+          new Error(
+            `Error cancelling crawl on Firecrawl: ${error instanceof Error ? error.message : String(error)}`
+          )
+        );
+      }
     } else {
       const res = await stopCrawlWebsiteWorkflow(this.connectorId);
       if (res.isErr()) {

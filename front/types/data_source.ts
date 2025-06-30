@@ -64,7 +64,7 @@ export type DataSourceWithConnectorDetailsType = DataSourceType &
 
 export type DataSourceWithAgentsUsageType = {
   count: number;
-  agentNames: string[];
+  agents: Array<{ sId: string; name: string }>;
 };
 
 export function isDataSourceNameValid(name: string): Result<void, string> {

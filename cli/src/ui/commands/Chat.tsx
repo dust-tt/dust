@@ -25,6 +25,7 @@ import Conversation from "../components/Conversation.js";
 import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
+import { sendNonInteractiveMessage, validateNonInteractiveFlags } from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -33,6 +34,8 @@ type AgentConfiguration =
 interface CliChatProps {
   sId?: string;
   agentSearch?: string;
+  message?: string;
+  conversationId?: string;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -48,13 +51,19 @@ function getLastConversationItem<T extends ConversationItem>(
   return null;
 }
 
-const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
+
+const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message, conversationId }) => {
   const [error, setError] = useState<string | null>(null);
+  
+  // Validate flags usage
+  useEffect(() => {
+    validateNonInteractiveFlags(message, agentSearch, conversationId);
+  }, [message, agentSearch, conversationId]);
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
   );
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [conversationItems, setConversationItems] = useState<
     ConversationItem[]
   >([]);
@@ -136,7 +145,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
         return null;
       }
 
-      setConversationId(convRes.value.conversation.sId);
+      setCurrentConversationId(convRes.value.conversation.sId);
       return convRes.value.conversation.sId;
     },
     [selectedAgent, me, meError, isMeLoading]
@@ -156,7 +165,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
           fileInfos.push(await validateAndGetFileInfo(p));
         }
 
-        let convId = conversationId;
+        let convId = conversationId || currentConversationId;
         if (!convId) {
           convId = await createConversationForFiles(
             `File Upload: ${fileInfos.map((f) => f.name).join(", ")}`.slice(
@@ -220,6 +229,31 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
       },
     ]);
   }, [agentSearch, allAgents, selectedAgent]);
+
+  // Handle non-interactive mode when message is provided
+  useEffect(() => {
+    if (!message || !selectedAgent) {
+      return;
+    }
+    
+    // Wait for authentication to load
+    if (isMeLoading) {
+      return;
+    }
+    
+    // Check for authentication errors
+    if (!me || meError) {
+      console.error(JSON.stringify({ 
+        error: "Authentication error",
+        details: meError || "Not authenticated"
+      }));
+      process.exit(1);
+    }
+
+    // Call the standalone function
+    setIsProcessingQuestion(true);
+    void sendNonInteractiveMessage(message, selectedAgent, me, conversationId);
+  }, [message, selectedAgent, me, meError, isMeLoading, conversationId]);
 
   const canSubmit =
     me &&
@@ -303,10 +337,10 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
       try {
         let createdContentFragments = [];
         // If there are files to attach, create content fragments for each
-        if (attachedFiles.length > 0 && conversationId) {
+        if (attachedFiles.length > 0 && currentConversationId) {
           for (const file of attachedFiles) {
             const fragmentRes = await dustClient.postContentFragment({
-              conversationId,
+              conversationId: currentConversationId,
               contentFragment: {
                 title: file.fileName,
                 fileId: file.fileId,
@@ -327,7 +361,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
           }
         }
 
-        if (!conversationId) {
+        if (!currentConversationId) {
           // For new conversation, pass contentFragments (from uploaded files)
           const contentFragments = attachedFiles.map((file) => ({
             type: "file_attachment" as const,
@@ -361,7 +395,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
           }
 
           conversation = convRes.value.conversation;
-          setConversationId(conversation.sId);
+          setCurrentConversationId(conversation.sId);
 
           if (!convRes.value.message) {
             throw new Error("No message created");
@@ -374,7 +408,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
           }
 
           const messageRes = await dustClient.postUserMessage({
-            conversationId: conversationId,
+            conversationId: currentConversationId,
             message: {
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
@@ -397,7 +431,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
           userMessageId = messageRes.value.sId;
 
           // Get the conversation for streaming
-          const convRes = await dustClient.getConversation({ conversationId });
+          const convRes = await dustClient.getConversation({ conversationId: currentConversationId });
           if (convRes.isErr()) {
             throw new Error(
               `Error retrieving conversation: ${convRes.error.message}`
@@ -671,11 +705,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
     }
 
     if (key.ctrl && input === "g") {
-      if (conversationId) {
+      if (currentConversationId) {
         void (async () => {
           const workspaceId = await AuthService.getSelectedWorkspaceId();
           if (workspaceId) {
-            const url = `https://dust.tt/w/${workspaceId}/assistant/${conversationId}`;
+            const url = `https://dust.tt/w/${workspaceId}/assistant/${currentConversationId}`;
             await open(url);
           } else {
             console.error("\nCould not determine workspace ID");
@@ -967,6 +1001,13 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
     }
   });
 
+  // In non-interactive mode, show minimal UI
+  if (message) {
+    // Don't show any UI in non-interactive mode
+    // All output is handled via console.log/console.error in the useEffect
+    return null;
+  }
+
   // Show loading state while searching for agent
   if (agentSearch && agentsIsLoading) {
     return (
@@ -1052,12 +1093,12 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
   return (
     <Box flexDirection="column">
       {/* File upload component */}
-      {pendingFiles.length > 0 && conversationId && (
+      {pendingFiles.length > 0 && currentConversationId && (
         <FileUpload
           files={pendingFiles}
           onUploadComplete={handleFileUploadComplete}
           onUploadError={handleFileUploadError}
-          conversationId={conversationId}
+          conversationId={currentConversationId}
         />
       )}
 
@@ -1099,7 +1140,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch }) => {
         userInput={userInput}
         cursorPosition={cursorPosition}
         mentionPrefix={mentionPrefix}
-        conversationId={conversationId}
+        conversationId={currentConversationId}
         stdout={stdout}
         showCommandSelector={showCommandSelector}
         commandQuery={commandQuery}

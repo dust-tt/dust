@@ -29,15 +29,8 @@ import {
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
-import { uniqueId } from "lodash";
 import type { ReactNode } from "react";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
 import { DataVisualization } from "@app/components/assistant_builder/actions/DataVisualization";
@@ -46,34 +39,31 @@ import {
   MCPAction,
 } from "@app/components/assistant_builder/actions/MCPAction";
 import { AddToolsDropdown } from "@app/components/assistant_builder/AddToolsDropdown";
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionAndDataVisualizationConfiguration,
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderActionConfigurationWithId,
-  AssistantBuilderActionState,
+  AssistantBuilderMCPConfiguration,
+  AssistantBuilderMCPConfigurationWithId,
+  AssistantBuilderMCPOrVizState,
   AssistantBuilderPendingAction,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
-  getDefaultMCPServerActionConfiguration,
+  getDefaultMCPServerConfigurationWithId,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
-import {
-  isReservedName,
-  useBuilderActionInfo,
-} from "@app/components/assistant_builder/useBuilderActionInfo";
+import { useBuilderActionInfo } from "@app/components/assistant_builder/useBuilderActionInfo";
 import { useTools } from "@app/components/assistant_builder/useTools";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
-  ACTION_SPECIFICATIONS,
   DATA_VISUALIZATION_SPECIFICATION,
+  MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ModelConfigurationType,
@@ -125,10 +115,6 @@ function actionIcon(
       <Avatar icon={DATA_VISUALIZATION_SPECIFICATION.cardIcon} size="xs" />
     );
   }
-
-  return (
-    <Avatar icon={ACTION_SPECIFICATIONS[action.type].cardIcon} size="xs" />
-  );
 }
 
 function actionDisplayName(
@@ -143,12 +129,12 @@ function actionDisplayName(
     return asDisplayName(action.name);
   }
 
-  return `${ACTION_SPECIFICATIONS[action.type].label}${
+  return `${MCP_SPECIFICATION.label}${
     !isDefaultActionName(action) ? " - " + action.name : ""
   }`;
 }
 
-type SpaceIdToActions = Record<string, AssistantBuilderActionState[]>;
+type SpaceIdToActions = Record<string, AssistantBuilderMCPOrVizState[]>;
 
 interface ActionScreenProps {
   owner: WorkspaceType;
@@ -173,6 +159,8 @@ export default function ActionsScreen({
   pendingAction,
   isFetchingActions = false,
 }: ActionScreenProps) {
+  const { isMCPServerViewsLoading } = useMCPServerViewsContext();
+
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -203,33 +191,34 @@ export default function ActionsScreen({
       newActionName?: string;
       newActionDescription?: string;
       getNewActionConfig: (
-        old: AssistantBuilderActionConfiguration["configuration"]
-      ) => AssistantBuilderActionConfiguration["configuration"];
+        old: AssistantBuilderMCPOrVizState["configuration"]
+      ) => AssistantBuilderMCPOrVizState["configuration"];
     }) {
       setEdited(true);
       setBuilderState((state) => ({
         ...state,
-        actions: state.actions.map((action) =>
-          action.name === actionName
-            ? {
-                ...action,
-                name: newActionName ?? action.name,
-                description: newActionDescription ?? action.description,
-                // This is quite unsatisfying, but using `as any` here and repeating every
-                // other key in the object instead of spreading is actually the safest we can do.
-                // There is no way (that I could find) to make typescript understand that
-                // type and configuration are compatible.
-                configuration: getNewActionConfig(action.configuration) as any,
-              }
-            : action
-        ),
+        actions: state.actions.map((action) => {
+          if (action.name === actionName) {
+            return {
+              ...action,
+              name: newActionName ?? action.name,
+              description: newActionDescription ?? action.description,
+              // This is quite unsatisfying, but using `as any` here and repeating every
+              // other key in the object instead of spreading is actually the safest we can do.
+              // There is no way (that I could find) to make typescript understand that
+              // type and configuration are compatible.
+              configuration: getNewActionConfig(action.configuration) as any,
+            };
+          }
+          return action;
+        }),
       }));
     },
     [setBuilderState, setEdited]
   );
 
   const removeAction = useCallback(
-    (selectedAction: AssistantBuilderActionState) => {
+    (selectedAction: AssistantBuilderMCPOrVizState) => {
       setEdited(true);
       setBuilderState((state) => {
         return {
@@ -248,6 +237,8 @@ export default function ActionsScreen({
     },
     [setBuilderState, setEdited]
   );
+
+  const showSpinner = isFetchingActions || isMCPServerViewsLoading;
 
   return (
     <>
@@ -328,7 +319,7 @@ export default function ActionsScreen({
                 Need help? Check out our{" "}
                 <Hoverable
                   variant="highlight"
-                  href="https://docs.dust.tt/docs/data"
+                  href="https://docs.dust.tt/docs/tools"
                   target="_blank"
                 >
                   guide
@@ -358,6 +349,7 @@ export default function ActionsScreen({
               <AddKnowledgeDropdown
                 setAction={setAction}
                 mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
+                isLoading={isMCPServerViewsLoading}
               />
               <AddToolsDropdown
                 setBuilderState={setBuilderState}
@@ -367,6 +359,7 @@ export default function ActionsScreen({
                 defaultMCPServerViews={selectableDefaultMCPServerViews}
                 nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
                 reasoningModels={reasoningModels}
+                isLoading={isMCPServerViewsLoading}
               />
 
               <div className="flex-grow" />
@@ -394,12 +387,12 @@ export default function ActionsScreen({
           </div>
         )}
         <div className="flex h-full min-h-40 flex-col gap-4">
-          {isFetchingActions && (
+          {showSpinner && (
             <div className="flex h-36 w-full items-center justify-center rounded-xl">
               <Spinner />
             </div>
           )}
-          {!isFetchingActions &&
+          {!showSpinner &&
             (!isLegacyConfig && builderState.actions.length === 0 ? (
               <div className="flex h-36 w-full items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night">
                 <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -435,16 +428,16 @@ export default function ActionsScreen({
 type NewActionModalProps = {
   isOpen: boolean;
   builderState: AssistantBuilderState;
-  initialAction: AssistantBuilderActionState | null;
+  initialAction: AssistantBuilderMCPOrVizState | null;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
-  onSave: (newAction: AssistantBuilderActionState) => void;
+  onSave: (newAction: AssistantBuilderMCPOrVizState) => void;
   onClose: () => void;
   updateAction: (args: {
     actionName: string;
     getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
+      old: AssistantBuilderMCPOrVizState["configuration"]
+    ) => AssistantBuilderMCPOrVizState["configuration"];
   }) => void;
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
@@ -464,7 +457,7 @@ function NewActionModal({
   hasFeature,
 }: NewActionModalProps) {
   const [newActionConfig, setNewActionConfig] =
-    useState<AssistantBuilderActionState | null>(null);
+    useState<AssistantBuilderMCPOrVizState | null>(null);
 
   const [showInvalidActionError, setShowInvalidActionError] = useState<
     string | null
@@ -476,7 +469,7 @@ function NewActionModal({
     string | null
   >(null);
 
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   useEffect(() => {
     if (initialAction && !newActionConfig) {
@@ -501,10 +494,6 @@ function NewActionModal({
     }
     if (!/^[a-z0-9_]+$/.test(name)) {
       return "The name can only contain lowercase letters, numbers, and underscores (no spaces).";
-    }
-
-    if (isReservedName(name)) {
-      return "This name is reserved for a system tool. Please use a different name.";
     }
 
     return null;
@@ -569,13 +558,17 @@ function NewActionModal({
       actionName: string;
       actionDescription: string;
       getNewActionConfig: (
-        old: AssistantBuilderActionConfiguration["configuration"]
-      ) => AssistantBuilderActionConfiguration["configuration"];
+        old: AssistantBuilderMCPConfiguration["configuration"]
+      ) => AssistantBuilderMCPConfiguration["configuration"];
     }) => {
       setNewActionConfig((prev) => {
         if (!prev) {
           return null;
         }
+        assert(
+          prev.type === "MCP",
+          "Only MCP actions can be edited. This should not happen."
+        );
         return {
           ...prev,
           configuration: getNewActionConfig(prev.configuration) as any,
@@ -652,11 +645,13 @@ function ActionCard({
   removeAction: () => void;
   isLegacyConfig: boolean;
 }) {
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews, isMCPServerViewsLoading } =
+    useMCPServerViewsContext();
+
   const spec =
     action.type === "DATA_VISUALIZATION"
       ? DATA_VISUALIZATION_SPECIFICATION
-      : ACTION_SPECIFICATIONS[action.type];
+      : MCP_SPECIFICATION;
 
   if (!spec) {
     // Unreachable
@@ -664,14 +659,17 @@ function ActionCard({
   }
 
   const mcpServerView =
-    action.type === "MCP"
+    action.type === "MCP" && !isMCPServerViewsLoading
       ? mcpServerViews.find(
           (mcpServerView) =>
             mcpServerView.sId === action.configuration.mcpServerViewId
         ) ?? null
       : null;
 
-  const actionError = hasActionError(action, mcpServerViews);
+  const actionError = !isMCPServerViewsLoading
+    ? hasActionError(action, mcpServerViews)
+    : false;
+
   return (
     <Card
       variant="primary"
@@ -720,15 +718,15 @@ function ActionCard({
 
 interface ActionConfigEditorProps {
   owner: WorkspaceType;
-  action: AssistantBuilderActionState;
+  action: AssistantBuilderMCPOrVizState;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
     getNewActionConfig: (
-      old: AssistantBuilderActionConfigurationWithId["configuration"]
-    ) => AssistantBuilderActionConfigurationWithId["configuration"];
+      old: AssistantBuilderMCPConfigurationWithId["configuration"]
+    ) => AssistantBuilderMCPConfigurationWithId["configuration"];
   }) => void;
   setEdited: (edited: boolean) => void;
   setShowInvalidActionDescError: (
@@ -749,7 +747,7 @@ function ActionConfigEditor({
   showInvalidActionDescError,
   hasFeature,
 }: ActionConfigEditorProps) {
-  const { spaces } = useContext(AssistantBuilderContext);
+  const { spaces } = useSpacesContext();
 
   // Only allow one space across all actions.
   const allowedSpaces = useMemo(() => {
@@ -797,7 +795,7 @@ function ActionConfigEditor({
 }
 
 interface ActionEditorProps {
-  action: AssistantBuilderActionState;
+  action: AssistantBuilderMCPOrVizState;
   isEditing: boolean;
   spacesUsedInActions: SpaceIdToActions;
   showInvalidActionNameError: string | null;
@@ -809,8 +807,8 @@ interface ActionEditorProps {
     actionName: string;
     actionDescription: string;
     getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
+      old: AssistantBuilderMCPConfiguration["configuration"]
+    ) => AssistantBuilderMCPConfiguration["configuration"];
   }) => void;
   owner: WorkspaceType;
   setEdited: (edited: boolean) => void;
@@ -832,7 +830,7 @@ function ActionEditor({
   setEdited,
   hasFeature,
 }: ActionEditorProps) {
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const selectedMCPServerView =
     action.type === "MCP"
@@ -841,18 +839,6 @@ function ActionEditor({
             mcpServerView.sId === action.configuration.mcpServerViewId
         )
       : undefined;
-
-  const { connections, isConnectionsLoading } = useMCPServerConnections({
-    owner,
-    connectionType: "workspace",
-    disabled: !selectedMCPServerView?.server.authorization,
-  });
-
-  const connection = connections.find(
-    (c) =>
-      c.internalMCPServerId === selectedMCPServerView?.server.sId ||
-      c.remoteMCPServerId === selectedMCPServerView?.server.sId
-  );
 
   const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
 
@@ -863,9 +849,6 @@ function ActionEditor({
           {action.type === "MCP" && selectedMCPServerView ? (
             <MCPActionHeader
               mcpServer={selectedMCPServerView.server}
-              oAuthUseCase={selectedMCPServerView.oAuthUseCase}
-              isConnected={Boolean(connection)}
-              isConnectionsLoading={isConnectionsLoading}
               action={action}
             />
           ) : (
@@ -874,7 +857,7 @@ function ActionEditor({
                 icon={
                   action.type === "DATA_VISUALIZATION"
                     ? DATA_VISUALIZATION_SPECIFICATION.cardIcon
-                    : ACTION_SPECIFICATIONS[action.type].cardIcon
+                    : MCP_SPECIFICATION.cardIcon
                 }
               />
               <h2 className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">
@@ -992,11 +975,13 @@ function AdvancedSettings({
 interface AddKnowledgeDropdownProps {
   mcpServerViewsWithKnowledge: (MCPServerViewType & { label: string })[];
   setAction: (action: AssistantBuilderSetActionType) => void;
+  isLoading: boolean;
 }
 
 function AddKnowledgeDropdown({
   setAction,
   mcpServerViewsWithKnowledge,
+  isLoading,
 }: AddKnowledgeDropdownProps) {
   return (
     <DropdownMenu modal={false}>
@@ -1008,26 +993,32 @@ function AddKnowledgeDropdown({
         className="w-[20rem] md:w-[22rem]"
         collisionPadding={10}
       >
-        {mcpServerViewsWithKnowledge.map((view) => {
-          const action = getDefaultMCPServerActionConfiguration(view);
-          assert(action);
+        {isLoading ? (
+          <div className="flex h-56 w-full items-center justify-center rounded-xl">
+            <Spinner />
+          </div>
+        ) : (
+          mcpServerViewsWithKnowledge.map((view) => {
+            const action = getDefaultMCPServerConfigurationWithId(view);
+            assert(action);
 
-          return (
-            <DropdownMenuItem
-              truncateText
-              key={view.id}
-              onClick={() => {
-                setAction({
-                  type: "pending",
-                  action: { id: uniqueId(), ...action },
-                });
-              }}
-              icon={getAvatar(view.server)}
-              label={view.label}
-              description={view.server.description}
-            />
-          );
-        })}
+            return (
+              <DropdownMenuItem
+                truncateText
+                key={view.id}
+                onClick={() => {
+                  setAction({
+                    type: "pending",
+                    action,
+                  });
+                }}
+                icon={getAvatar(view.server)}
+                label={view.label}
+                description={view.server.description}
+              />
+            );
+          })
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

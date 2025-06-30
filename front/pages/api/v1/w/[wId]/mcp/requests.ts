@@ -15,8 +15,9 @@ import type { WithAPIErrorResponse } from "@app/types";
  *   get:
  *     summary: Stream MCP tool requests for a workspace
  *     description: |
+ *       [Documentation](https://docs.dust.tt/docs/client-side-mcp-server)
  *       Server-Sent Events (SSE) endpoint that streams MCP tool requests for a workspace.
- *       This endpoint is used by local MCP servers to listen for tool requests in real-time.
+ *       This endpoint is used by client-side MCP servers to listen for tool requests in real-time.
  *       The connection will remain open and events will be sent as new tool requests are made.
  *     tags:
  *       - MCP

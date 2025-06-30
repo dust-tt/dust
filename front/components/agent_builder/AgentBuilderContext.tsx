@@ -1,30 +1,17 @@
 import { createContext, useContext, useState } from "react";
 import { useEffect } from "react";
 
-import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type {
-  AppType,
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
+import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
+import type { WorkspaceType } from "@app/types";
 
 type AgentBuilderContextType = {
-  dustApps: AppType[];
-  dataSourceViews: DataSourceViewType[];
-  spaces: SpaceType[];
-  mcpServerViews: MCPServerViewType[];
   owner: WorkspaceType;
   isPreviewPanelOpen: boolean;
   setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export const AgentBuilderContext = createContext<AgentBuilderContextType>({
-  dustApps: [],
-  dataSourceViews: [],
-  spaces: [],
-  mcpServerViews: [],
   owner: {} as WorkspaceType,
   isPreviewPanelOpen: true,
   setIsPreviewPanelOpen: () => {},
@@ -39,10 +26,6 @@ interface AgentBuilderContextProps
 }
 
 export function AgentBuilderProvider({
-  dustApps,
-  dataSourceViews,
-  spaces,
-  mcpServerViews,
   owner,
   children,
 }: AgentBuilderContextProps) {
@@ -65,16 +48,16 @@ export function AgentBuilderProvider({
   return (
     <AgentBuilderContext.Provider
       value={{
-        dustApps,
-        dataSourceViews,
-        spaces,
-        mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
         owner,
         isPreviewPanelOpen,
         setIsPreviewPanelOpen,
       }}
     >
-      {children}
+      <SpacesProvider owner={owner}>
+        <MCPServerViewsProvider owner={owner}>
+          {children}
+        </MCPServerViewsProvider>
+      </SpacesProvider>
     </AgentBuilderContext.Provider>
   );
 }

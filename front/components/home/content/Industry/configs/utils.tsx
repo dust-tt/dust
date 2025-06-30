@@ -47,7 +47,11 @@ export interface HeroSectionConfig {
   title: ReactNode;
   description: string;
   ctaButtons: CTAButtonsConfig;
-  testimonialCard: TestimonialCardConfig;
+  testimonialCard?: TestimonialCardConfig;
+  heroImage?: {
+    src: string;
+    alt: string;
+  };
   decorativeShapes?: {
     topRight?: string;
     bottomLeft?: string;
@@ -161,17 +165,76 @@ export interface JustUseDustSectionConfig {
   decorativeShapes?: boolean;
 }
 
-// Main Industry Config
+// Section Types and Layout Configuration
+export type SectionType =
+  | "hero"
+  | "aiAgents"
+  | "trustedBy"
+  | "painPoints"
+  | "dustInAction"
+  | "impactMetrics"
+  | "demoVideo"
+  | "trustedBySecond"
+  | "testimonial"
+  | "customerStories"
+  | "justUseDust";
+
+export interface SectionConfig {
+  type: SectionType;
+  enabled?: boolean; // Allows sections to be disabled
+}
+
+export interface LayoutConfig {
+  sections: SectionConfig[];
+}
+
+// Main Industry Config (Updated)
 export interface IndustryPageConfig {
-  hero: HeroSectionConfig;
-  aiAgents: AIAgentsSectionConfig;
-  trustedBy: TrustedBySectionConfig;
-  painPoints: PainPointsSectionConfig;
-  dustInAction: DustInActionSectionConfig;
-  impactMetrics: ImpactMetricsSectionConfig;
-  demoVideo: DemoVideoSectionConfig;
+  // Layout configuration - NEW
+  layout: LayoutConfig;
+
+  // Section configurations (now all optional)
+  hero?: HeroSectionConfig;
+  aiAgents?: AIAgentsSectionConfig;
+  trustedBy?: TrustedBySectionConfig;
+  painPoints?: PainPointsSectionConfig;
+  dustInAction?: DustInActionSectionConfig;
+  impactMetrics?: ImpactMetricsSectionConfig;
+  demoVideo?: DemoVideoSectionConfig;
   trustedBySecond?: TrustedBySectionConfig;
-  testimonial: TestimonialSectionConfig;
-  customerStories: CustomerStoriesSectionConfig;
-  justUseDust: JustUseDustSectionConfig;
+  testimonial?: TestimonialSectionConfig;
+  customerStories?: CustomerStoriesSectionConfig;
+  justUseDust?: JustUseDustSectionConfig;
+}
+
+// Utility functions for section management
+export const defaultSectionOrder: SectionType[] = [
+  "hero",
+  "aiAgents",
+  "trustedBy",
+  "painPoints",
+  "dustInAction",
+  "impactMetrics",
+  "demoVideo",
+  "trustedBySecond",
+  "testimonial",
+  "customerStories",
+  "justUseDust",
+];
+
+export function createLayoutConfig(
+  sections: (SectionType | SectionConfig)[]
+): LayoutConfig {
+  return {
+    sections: sections.map((section) =>
+      typeof section === "string" ? { type: section, enabled: true } : section
+    ),
+  };
+}
+
+// Helper function to get enabled sections in order
+export function getEnabledSections(layout: LayoutConfig): SectionType[] {
+  return layout.sections
+    .filter((section) => section.enabled !== false)
+    .map((section) => section.type);
 }

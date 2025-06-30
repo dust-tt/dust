@@ -1,5 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import type { WebAPIPlatformError } from "@slack/web-api";
 
 import type { RetrievePermissionsErrorCode } from "@connectors/connectors/interface";
 import { ConnectorManagerError } from "@connectors/connectors/interface";
@@ -101,6 +102,23 @@ export async function retrievePermissions({
         new ConnectorManagerError(
           "RATE_LIMIT_ERROR",
           `Slack rate limit error when retrieving content nodes.`
+        )
+      );
+    }
+
+    const maybeSlackPlatformError = e as WebAPIPlatformError;
+    if (
+      maybeSlackPlatformError.code === "slack_webapi_platform_error" &&
+      maybeSlackPlatformError.data?.error === "account_inactive"
+    ) {
+      logger.error(
+        { connectorId, error: e },
+        "Slack account inactive when retrieving permissions."
+      );
+      return new Err(
+        new ConnectorManagerError(
+          "EXTERNAL_OAUTH_TOKEN_ERROR",
+          `Slack account inactive when retrieving permissions.`
         )
       );
     }

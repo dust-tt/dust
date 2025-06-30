@@ -1,5 +1,6 @@
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import type {
   ConnectorProvider,
   CoreAPIDocument,
@@ -9,11 +10,16 @@ import type {
   WithConnector,
 } from "@app/types";
 
-export function getDisplayNameForDocument(document: CoreAPIDocument): string {
+// TODO(DURABLE AGENTS 2025-06-25): Remove RetrievalDocumentResource support.
+export function getDisplayNameForDocument(
+  document: CoreAPIDocument | RetrievalDocumentResource
+): string {
   const titleTagPrefix = "title:";
   const titleTag = document.tags.find((tag) => tag.startsWith(titleTagPrefix));
   if (!titleTag) {
-    return document.document_id;
+    return "document_id" in document
+      ? document.document_id
+      : document.documentId;
   }
   return titleTag.substring(titleTagPrefix.length);
 }
