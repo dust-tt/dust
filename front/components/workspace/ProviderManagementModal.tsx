@@ -89,7 +89,7 @@ export function ProviderManagementModal({
   // This is the initial state, and reflects what in the database
   const initialProviderStates = useMemo(() => {
     const enabledProviders: ModelProviderIdType[] =
-      workspace?.whiteListedProviders ?? [];
+      workspace?.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
     const states = MODEL_PROVIDER_IDS.reduce((acc, provider) => {
       acc[provider] = enabledProviders.includes(provider);
       return acc;
