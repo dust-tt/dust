@@ -6,6 +6,8 @@ import type {
   AssistantBuilderMCPOrVizState,
 } from "@app/components/assistant_builder/types";
 
+const MAX_DESCRIPTION_LENGTH = 800;
+
 interface DataDescriptionProps {
   updateAction: (args: {
     actionName: string;
@@ -30,13 +32,16 @@ export const DataDescription = ({
   return (
     <ConfigurationSectionContainer
       title="What’s the data?"
-      description="Provide a brief description (maximum 800 characters) of the data content and context to help the agent determine when to utilize it effectively."
+      description={
+        `Provide a brief description (maximum ${MAX_DESCRIPTION_LENGTH} characters) of the data ` +
+        "content and context to help the agent determine when to utilize it effectively."
+      }
     >
       <TextArea
         placeholder={"This data contains…"}
         value={action.description}
         onChange={(e) => {
-          if (e.target.value.length < 800) {
+          if (e.target.value.length < MAX_DESCRIPTION_LENGTH) {
             updateAction({
               actionName: action.name,
               actionDescription: e.target.value,
@@ -45,7 +50,7 @@ export const DataDescription = ({
             setShowInvalidActionDescError(null);
           } else {
             setShowInvalidActionDescError(
-              "The description must be less than 800 characters."
+              `The description must be less than ${MAX_DESCRIPTION_LENGTH} characters.`
             );
           }
         }}
