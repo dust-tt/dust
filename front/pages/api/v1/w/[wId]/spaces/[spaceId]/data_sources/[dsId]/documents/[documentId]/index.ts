@@ -517,6 +517,16 @@ async function handler(
             datasourceStats.data_source.text_size >
             (activeSeats + 1) * LIMIT_PER_SEAT // +1 because we allow the current upload to go over the limit
           ) {
+            logger.info(
+              {
+                workspace: owner.sId,
+                datasource_project_id: dataSource.dustAPIProjectId,
+                datasource_id: dataSource.dustAPIDataSourceId,
+                quota_used: datasourceStats.data_source.text_size,
+                quota_limit: activeSeats * LIMIT_PER_SEAT,
+              },
+              "Datasource quota exceeded for upsert document (overrun expected)"
+            );
             return apiError(req, res, {
               status_code: 403,
               api_error: {
@@ -528,6 +538,17 @@ async function handler(
               },
             });
           }
+        } else {
+          logger.warn(
+            {
+              activeSeats,
+              datasourceStats,
+              workspace: owner.sId,
+              datasource_project_id: dataSource.dustAPIProjectId,
+              datasource_id: dataSource.dustAPIDataSourceId,
+            },
+            "Unable to enforce datasource quota"
+          );
         }
       }
 
