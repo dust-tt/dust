@@ -1044,14 +1044,14 @@ export async function microsoftDeletionActivity({
 export async function microsoftGarbageCollectionActivity({
   connectorId,
   idCursor,
-  rootNodeIds,
   startGarbageCollectionTs,
 }: {
   connectorId: ModelId;
   idCursor: ModelId;
-  rootNodeIds: string[];
   startGarbageCollectionTs: number;
 }) {
+  const rootNodeIds = await getRootNodesToSync(connectorId);
+
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -1067,7 +1067,7 @@ export async function microsoftGarbageCollectionActivity({
 
   const nodes = await MicrosoftNodeResource.fetchByPaginatedIds({
     connectorId,
-    pageSize: 500,
+    pageSize: 1000,
     idCursor,
   });
 
