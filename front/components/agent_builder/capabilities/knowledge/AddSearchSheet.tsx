@@ -1,5 +1,10 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import { MagnifyingGlassIcon, MultiPageSheet, MultiPageSheetContent, TextArea } from "@dust-tt/sparkle";
+import {
+  MagnifyingGlassIcon,
+  MultiPageSheet,
+  MultiPageSheetContent,
+  TextArea,
+} from "@dust-tt/sparkle";
 import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
