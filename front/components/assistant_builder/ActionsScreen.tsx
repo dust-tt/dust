@@ -840,8 +840,6 @@ function ActionEditor({
         )
       : undefined;
 
-  const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
-
   return (
     <div className="flex flex-col gap-4 px-1">
       <ActionModeSection show={true}>
@@ -866,7 +864,7 @@ function ActionEditor({
             </div>
           )}
 
-          {shouldDisplayAdvancedSettings && !action.noConfigurationRequired && (
+          {!action.noConfigurationRequired && (
             <Popover
               trigger={<Button icon={MoreIcon} size="sm" variant="ghost" />}
               popoverTriggerAsChild
