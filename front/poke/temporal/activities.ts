@@ -38,7 +38,6 @@ import {
 } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
-  AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
@@ -383,13 +382,6 @@ export async function deleteAgentsActivity({
           workspaceId: workspace.id,
         },
       });
-    await AgentTablesQueryAction.destroy({
-      where: {
-        tablesQueryConfigurationId: {
-          [Op.in]: tablesQueryConfigurations.map((r) => r.sId),
-        },
-      },
-    });
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
         tablesQueryConfigurationId: {
