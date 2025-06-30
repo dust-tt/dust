@@ -23,10 +23,11 @@ import type {
 } from "@app/types";
 import {
   DATA_SOURCE_VIEW_CATEGORIES,
+  isString,
   PatchSpaceRequestBodySchema,
 } from "@app/types";
 
-type SpaceCategoryInfo = {
+export type SpaceCategoryInfo = {
   usage: DataSourceWithAgentsUsageType;
   count: number;
 };
@@ -225,10 +226,14 @@ async function handler(
         });
       }
 
+      const { force } = req.query;
+      const shouldForce = isString(force) && force === "true";
+
       try {
         const deleteRes = await softDeleteSpaceAndLaunchScrubWorkflow(
           auth,
-          space
+          space,
+          shouldForce
         );
         if (deleteRes.isErr()) {
           return apiError(req, res, {
@@ -257,7 +262,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or PATCH is expected.",
+            "The method passed is not supported, GET, PATCH or DELETE is expected.",
         },
       });
   }
