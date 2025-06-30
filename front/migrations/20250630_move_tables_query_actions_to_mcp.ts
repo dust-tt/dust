@@ -74,6 +74,12 @@ function agentTablesQueryActionToAgentMCPAction(
 
   // Find the MCP server configuration for Tables Query.
   const tablesQueryMcpServerConfiguration =
+    // See front/migrations/20250530_migrate_tables_query_to_mcp.ts: some legacy actions are already
+    // linked to the correct MCP server configuration, so we can use it directly.
+    agentConfiguration?.mcpServerConfigurations.find(
+      (config) => config.sId === tablesQueryAction.tablesQueryConfigurationId
+    ) ??
+    // Otherwise we use the first MCP server configuration for Tables Query (best-effort strategy).
     agentConfiguration?.mcpServerConfigurations.find(
       (config) => config.mcpServerViewId === mcpServerViewForTablesQueryId
     );
