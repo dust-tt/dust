@@ -10,16 +10,19 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import type { AgentStatus } from "@app/types";
 
 /**
  * Migrates reasoning actions from non-MCP to MCP version for a specific workspace
  */
 async function migrateWorkspaceReasoningActions({
   wId,
+  agentStatus,
   execute,
   parentLogger,
 }: {
   wId: string;
+  agentStatus: AgentStatus;
   execute: boolean;
   parentLogger: typeof Logger;
 }): Promise<string> {
@@ -41,14 +44,14 @@ async function migrateWorkspaceReasoningActions({
       agentConfigurationId: { [Op.not]: null },
       mcpServerConfigurationId: null,
     },
-    // Filter on active agents.
+    // Filter on agents with the given status.
     include: [
       {
         attributes: [],
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -158,10 +161,18 @@ makeScript(
       description: "Workspace ID to migrate",
       required: true,
     },
+    agentStatus: {
+      type: "string",
+      description: "Agent status to filter on",
+      required: false,
+      default: "active",
+      choices: ["active", "archived", "draft"],
+    },
   },
-  async ({ execute, wId }, parentLogger) => {
+  async ({ execute, wId, agentStatus }, parentLogger) => {
     const revertSql = await migrateWorkspaceReasoningActions({
       wId,
+      agentStatus: agentStatus as AgentStatus,
       execute,
       parentLogger,
     });
