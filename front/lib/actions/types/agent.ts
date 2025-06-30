@@ -28,10 +28,6 @@ import type {
   SearchLabelsConfigurationType,
 } from "@app/lib/actions/search_labels";
 import type {
-  TablesQueryActionRunningEvents,
-  TablesQueryConfigurationType,
-} from "@app/lib/actions/tables_query";
-import type {
   WebsearchActionRunningEvents,
   WebsearchConfigurationType,
 } from "@app/lib/actions/websearch";
@@ -43,7 +39,6 @@ export type AgentActionConfigurationType =
   | BrowseConfigurationType
   | DustAppRunConfigurationType
   | ProcessConfigurationType
-  | TablesQueryConfigurationType
   | WebsearchConfigurationType
   | MCPServerConfigurationType;
 
@@ -66,7 +61,6 @@ export function isActionConfigurationType(
     case "browse_configuration":
     case "dust_app_run_configuration":
     case "process_configuration":
-    case "tables_query_configuration":
     case "websearch_configuration":
     case "mcp_configuration":
     case "search_labels_configuration":
@@ -183,6 +177,5 @@ export type AgentActionSpecificEvent =
   | DustAppRunActionRunningEvents
   | ProcessActionRunningEvents
   | SearchLabelsActionRunningEvents
-  | TablesQueryActionRunningEvents
   | WebsearchActionRunningEvents
   | MCPActionRunningEvents;

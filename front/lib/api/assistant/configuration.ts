@@ -507,7 +507,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const [
     processActionsConfigurationsPerAgent,
     dustAppRunActionsConfigurationsPerAgent,
-    tableQueryActionsConfigurationsPerAgent,
     websearchActionsConfigurationsPerAgent,
     browseActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
@@ -516,7 +515,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
   ] = await Promise.all([
     fetchAgentProcessActionConfigurations(auth, { configurationIds, variant }),
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
-    fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
     fetchWebsearchActionConfigurations(auth, { configurationIds, variant }),
     fetchBrowseActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
@@ -547,11 +545,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       const browseActionsConfigurations =
         browseActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...browseActionsConfigurations);
-
-      // Table query configurations.
-      const tableQueryActionsConfigurations =
-        tableQueryActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...tableQueryActionsConfigurations);
 
       // Process configurations.
       const processActionsConfigurations =

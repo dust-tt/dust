@@ -3,7 +3,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { getDustProdAction } from "@app/lib/registry";
@@ -81,25 +80,6 @@ export async function getPokeConversation(
                       })
                     )?.runId;
                     const { app } = getDustProdAction("assistant-v2-process");
-                    a.appId = app.appId;
-                    a.appSpaceId = app.appSpaceId;
-                    a.appWorkspaceId = app.workspaceId;
-                    break;
-                  }
-                  case "tables_query_action": {
-                    a.runId = (
-                      await AgentTablesQueryAction.findOne({
-                        where: {
-                          id: a.id,
-                          workspaceId: owner.id,
-                        },
-                        attributes: ["runId"],
-                        raw: true,
-                      })
-                    )?.runId;
-                    const { app } = getDustProdAction(
-                      "assistant-v2-query-tables"
-                    );
                     a.appId = app.appId;
                     a.appSpaceId = app.appSpaceId;
                     a.appWorkspaceId = app.workspaceId;

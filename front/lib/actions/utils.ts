@@ -187,7 +187,6 @@ export function getCitationsCount({
       return getWebsearchNumResults({
         stepActions,
       });
-    case "tables_query_configuration":
     case "dust_app_run_configuration":
     case "process_configuration":
     case "browse_configuration":

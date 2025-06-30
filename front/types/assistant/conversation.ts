@@ -5,7 +5,6 @@ import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import type { ProcessActionType } from "@app/lib/actions/process";
 import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
-import type { TablesQueryActionType } from "@app/lib/actions/tables_query";
 import type {
   ActionGeneratedFileType,
   BaseAgentActionType,
@@ -128,7 +127,6 @@ export function isUserMessageType(
  */
 export type ConfigurableAgentActionType =
   | DustAppRunActionType
-  | TablesQueryActionType
   | ProcessActionType
   | WebsearchActionType
   | BrowseActionType
@@ -156,7 +154,6 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   dust_app_run_action: "Running App",
   process_action: "Extracting data",
   search_labels_action: "Searching labels",
-  tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
   tool_action: "Using a tool",
 };
