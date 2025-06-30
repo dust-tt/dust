@@ -105,7 +105,7 @@ async function migrateReasoningActionsForActionConfiguration({
 
   const reasoningActions = await AgentReasoningAction.findAll({
     where: {
-      reasoningConfigurationId: reasoningConfiguration.id,
+      reasoningConfigurationId: reasoningConfiguration.sId,
     },
   });
 
@@ -183,21 +183,21 @@ async function createMCPActionAndOutputItems({
     // Create the MCP action.
     const mcpAction = await AgentMCPAction.create(mcpActionParams);
     // Create both output items concurrently.
-    await Promise.all([
-      AgentMCPActionOutputItem.create({
+    await AgentMCPActionOutputItem.bulkCreate([
+      {
         agentMCPActionId: mcpAction.id,
         content: outputItemThinking,
         createdAt: reasoningAction.createdAt,
         updatedAt: reasoningAction.updatedAt,
         workspaceId: reasoningAction.workspaceId,
-      }),
-      AgentMCPActionOutputItem.create({
+      },
+      {
         agentMCPActionId: mcpAction.id,
         content: outputItemContent,
         createdAt: reasoningAction.createdAt,
         updatedAt: reasoningAction.updatedAt,
         workspaceId: reasoningAction.workspaceId,
-      }),
+      },
     ]);
     // Delete the legacy reasoning action.
     await reasoningAction.destroy();
