@@ -7,7 +7,7 @@ import type {
 } from "next";
 
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
-import { getAuth0Session } from "@app/lib/api/auth0";
+import { getAuth0Session, getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
@@ -321,7 +321,8 @@ export class Authenticator {
       }
     >
   > {
-    const user = await UserResource.fetchByAuth0Sub(token.sub);
+    const user = await getUserFromAuth0Token(token);
+
     if (!user) {
       return new Err({ code: "user_not_found" });
     }
