@@ -11,12 +11,15 @@ import React from "react";
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import type { LightWorkspaceType } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface ChildAgentSelectorProps {
   owner: LightWorkspaceType;
   selectedAgentId: string | null;
-  onAgentSelect: (agentId: string) => void;
+  onAgentSelect: (agent: LightAgentConfigurationType) => void;
 }
 
 export function ChildAgentConfigurationSection({
@@ -110,7 +113,7 @@ export function ChildAgentConfigurationSection({
                   (agent) => agent.sId !== selectedAgentId
                 )}
                 onItemClick={(agent) => {
-                  onAgentSelect(agent.sId);
+                  onAgentSelect(agent);
                 }}
                 pickerButton={
                   <Button
@@ -133,7 +136,7 @@ export function ChildAgentConfigurationSection({
                 (agent) => agent.sId !== selectedAgentId
               )}
               onItemClick={(agent) => {
-                onAgentSelect(agent.sId);
+                onAgentSelect(agent);
               }}
               pickerButton={
                 <Button

@@ -274,8 +274,16 @@ export function MCPAction({
       )}
       {requirements.requiresChildAgentConfiguration && (
         <ChildAgentConfigurationSection
-          onAgentSelect={(childAgentId) => {
-            handleConfigUpdate((old) => ({ ...old, childAgentId }));
+          onAgentSelect={(childAgent) => {
+            // When an agent is selected, we update the config and the description unless overridden.
+            handleConfigUpdate((old) => ({
+              ...old,
+              childAgentId: childAgent.sId,
+            }));
+            // TODO(2025-06-30: aubin): fix this for subsequent changes + see if we need to improve.
+            if (action.description === "") {
+              updateDescription(childAgent.description);
+            }
           }}
           selectedAgentId={actionConfiguration.childAgentId}
           owner={owner}
