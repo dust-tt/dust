@@ -29,6 +29,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType, ModelId } from "@app/types";
+import { removeNulls } from "@app/types";
 import { isGlobalAgentId } from "@app/types";
 
 const WORKSPACE_CONCURRENCY = 50;
@@ -55,7 +56,13 @@ function isRecordOfStrings(params: unknown): params is Record<string, unknown> {
 function agentTablesQueryActionToAgentMCPAction(
   tablesQueryAction: AgentTablesQueryAction,
   agentConfiguration: AgentConfiguration | null,
-  mcpServerViewForTablesQueryId: ModelId,
+  {
+    mcpServerViewForTablesQueryId,
+    generatedFiles,
+  }: {
+    mcpServerViewForTablesQueryId: ModelId;
+    generatedFiles: FileResource[];
+  },
   logger: Logger
 ): {
   action: ActionBaseParams & CreationAttributes<AgentMCPAction>;
@@ -103,7 +110,13 @@ function agentTablesQueryActionToAgentMCPAction(
       functionCallName: tablesQueryAction.functionCallName,
       createdAt: tablesQueryAction.createdAt,
       updatedAt: tablesQueryAction.updatedAt,
-      generatedFiles: [],
+      // Same code as in MCPConfigurationServerRunner.run
+      generatedFiles: generatedFiles.map((f) => ({
+        fileId: f.sId,
+        contentType: f.contentType,
+        title: f.fileName,
+        snippet: f.snippet,
+      })),
       mcpServerConfigurationId,
       params: isRecordOfStrings(tablesQueryAction.params)
         ? tablesQueryAction.params
@@ -150,11 +163,28 @@ async function migrateSingleTablesQueryAction(
     mcpServerViewForTablesQueryId: ModelId;
   }
 ) {
+  const resultsFile = tablesQueryAction.resultsFileId
+    ? await FileResource.fetchByModelIdWithAuth(
+        auth,
+        tablesQueryAction.resultsFileId
+      )
+    : null;
+
+  const sectionFile = tablesQueryAction.sectionFileId
+    ? await FileResource.fetchByModelIdWithAuth(
+        auth,
+        tablesQueryAction.sectionFileId
+      )
+    : null;
+
   // Step 1: Convert the legacy Tables Query action to an MCP action
   const mcpAction = agentTablesQueryActionToAgentMCPAction(
     tablesQueryAction,
     agentConfiguration ?? null,
-    mcpServerViewForTablesQueryId,
+    {
+      mcpServerViewForTablesQueryId,
+      generatedFiles: removeNulls([resultsFile, sectionFile]),
+    },
     logger
   );
 
@@ -200,40 +230,28 @@ async function migrateSingleTablesQueryAction(
       });
     }
 
-    if (tablesQueryAction.resultsFileId) {
-      const resultsFile = await FileResource.fetchByModelIdWithAuth(
-        auth,
-        tablesQueryAction.resultsFileId
-      );
-      if (resultsFile) {
-        resources.push({
-          text: `Your query results were generated successfully.`,
-          uri: resultsFile.getPublicUrl(auth),
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-          fileId: resultsFile.sId,
-          title: resultsFile.fileName,
-          contentType: resultsFile.contentType,
-          snippet: tablesQueryAction.resultsFileSnippet,
-        });
-      }
+    if (resultsFile) {
+      resources.push({
+        text: `Your query results were generated successfully.`,
+        uri: resultsFile.getPublicUrl(auth),
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+        fileId: resultsFile.sId,
+        title: resultsFile.fileName,
+        contentType: resultsFile.contentType,
+        snippet: tablesQueryAction.resultsFileSnippet,
+      });
     }
 
-    if (tablesQueryAction.sectionFileId) {
-      const sectionFile = await FileResource.fetchByModelIdWithAuth(
-        auth,
-        tablesQueryAction.sectionFileId
-      );
-      if (sectionFile) {
-        resources.push({
-          text: "Your query results were generated successfully.",
-          uri: sectionFile.getPublicUrl(auth),
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-          fileId: sectionFile.sId,
-          title: sectionFile.fileName,
-          contentType: sectionFile.contentType,
-          snippet: null,
-        });
-      }
+    if (sectionFile) {
+      resources.push({
+        text: "Your query results were generated successfully.",
+        uri: sectionFile.getPublicUrl(auth),
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+        fileId: sectionFile.sId,
+        title: sectionFile.fileName,
+        contentType: sectionFile.contentType,
+        snippet: null,
+      });
     }
 
     // Step 5: Create all output items
