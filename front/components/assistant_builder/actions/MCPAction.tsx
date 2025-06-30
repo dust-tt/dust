@@ -1,4 +1,5 @@
 import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
+import assert from "assert";
 import { useCallback, useMemo, useState } from "react";
 
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
@@ -182,6 +183,13 @@ export function MCPAction({
   const withDataSource =
     requirements.requiresDataSourceConfiguration ||
     requirements.requiresTableConfiguration;
+
+  // We cannot have a data source and a child agent at the same time since both of these rely on a
+  // description and we only have one field to pass the description down.
+  assert(
+    !withDataSource || !requirements.requiresChildAgentConfiguration,
+    "Cannot require both a data source and a child agent."
+  );
 
   // We don't show the "Available Tools" section if there is only one tool.
   // Because it's redundant with the tool description.
