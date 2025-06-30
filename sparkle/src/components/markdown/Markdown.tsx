@@ -13,6 +13,7 @@ import { visit } from "unist-util-visit";
 import { Checkbox } from "@sparkle/components";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
+import { Img } from "@sparkle/components/markdown/Image";
 import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
@@ -26,7 +27,6 @@ import {
 } from "@sparkle/components/markdown/TableBlock";
 import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
-import { Img } from "@sparkle/components/markdown/Image";
 
 const sizes = {
   p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",

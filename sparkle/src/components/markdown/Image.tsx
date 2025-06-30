@@ -20,7 +20,7 @@ function isAllowedImageSrc(src: string): boolean {
     return false;
   }
   // allow internal paths
-  if (src.startsWith(internalPrefix)) return true;
+  if (src.startsWith(internalPrefix)) {return true;}
 
   // TODO: allow for internal links, but first have to figure out how to use internal links
   // block everything else
