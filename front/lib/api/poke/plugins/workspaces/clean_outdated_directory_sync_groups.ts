@@ -12,7 +12,7 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
     resourceTypes: ["workspaces"],
     warning:
       "This action will permanently delete groups and remove all their memberships and space associations. " +
-      "Make sure the groups are truly outdated before proceeding and use the dry run mode to verify.",
+      "Make sure the groups are truly outdated before proceeding and run without 'execute' to verify.",
     args: {
       groupNames: {
         type: "text",
@@ -20,11 +20,11 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
         description:
           "Comma-separated list of group names to delete. Only provisioned groups will be deleted.",
       },
-      dryRun: {
+      execute: {
         type: "boolean",
-        label: "Dry Run",
+        label: "Execute",
         description:
-          "If enabled, will only show what groups would be deleted without actually deleting them",
+          "If disabled, will only show what groups would be deleted without actually deleting them",
       },
     },
   },
@@ -33,7 +33,7 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
       return new Err(new Error("No workspace specified"));
     }
 
-    const { groupNames, dryRun } = args;
+    const { groupNames, execute } = args;
 
     if (!groupNames || groupNames.trim() === "") {
       return new Err(
@@ -101,7 +101,7 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
       { concurrency: 5 }
     );
 
-    if (dryRun) {
+    if (!execute) {
       return new Ok({
         display: "json",
         value: {
@@ -109,7 +109,7 @@ export const cleanOutdatedDirectorySyncGroupsPlugin = createPlugin({
           message: `Found ${groupsToDelete.length} group${groupsToDelete.length > 1 ? "s" : ""} that would be deleted`,
           groups: groupSummary,
           notFound: groupsNotFound,
-          note: "No groups were actually deleted. Untick 'Dry Run' to perform the deletion.",
+          note: "No groups were actually deleted. Tick 'execute' to perform the deletion.",
         },
       });
     }
