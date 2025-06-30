@@ -22,7 +22,7 @@ import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 
-import { getWorkspaceAdministrationVersionLock } from "./workspace";
+import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -65,7 +65,9 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   }
 
   if (!force && usages.length > 0) {
-    const agentNames = uniq(usages.map((u) => u.agentNames).flat());
+    const agentNames = uniq(
+      usages.flatMap((u) => u.agents).map((agent) => agent.name)
+    );
     return new Err(
       new Error(
         `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}. If you'd like to continue set the force query parameter to true.`
@@ -133,7 +135,9 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     );
 
     if (force) {
-      const agentNames = uniq(usages.map((u) => u.agentNames).flat());
+      const agentNames = uniq(
+        usages.flatMap((u) => u.agents).map((agent) => agent.name)
+      );
       await concurrentExecutor(
         agentNames,
         async (agentName) => {

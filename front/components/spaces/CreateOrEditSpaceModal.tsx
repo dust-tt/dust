@@ -127,7 +127,8 @@ export function CreateOrEditSpaceModal({
     }
 
     const allAgentNames = Object.values(agentUsage)
-      .flatMap((category) => category.usage.agentNames)
+      .flatMap((category) => category.usage.agents)
+      .map((agent) => agent.name)
       .filter((name) => name && name.length > 0);
 
     return [...new Set(allAgentNames)];

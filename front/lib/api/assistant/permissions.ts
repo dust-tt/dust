@@ -1,5 +1,3 @@
-import { Op } from "sequelize";
-
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedAgentActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -24,6 +22,7 @@ import type {
   ModelId,
 } from "@app/types";
 import { removeNulls } from "@app/types";
+import { Op } from "sequelize";
 
 export async function listAgentConfigurationsForGroups(
   auth: Authenticator,
