@@ -114,9 +114,10 @@ const getRefreshedCookie = cacheWithRedis(
   (workOSSessionCookie) => {
     return `workos_session_refresh:${sha256(workOSSessionCookie)}`;
   },
-  60 * 10 * 1000,
-  undefined,
-  true
+  {
+    ttlMs: 60 * 10 * 1000,
+    useDistributedLock: true,
+  }
 );
 
 export async function getWorkOSSessionFromCookie(
