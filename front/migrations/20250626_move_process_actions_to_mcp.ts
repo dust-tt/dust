@@ -82,7 +82,7 @@ function agentProcessActionToAgentMCPAction(
   } else {
     // For custom agent configurations, use the extract configuration.
     mcpServerConfigurationId =
-      extractMcpServerConfiguration?.sId ??
+      extractMcpServerConfiguration?.id.toString() ??
       NOT_FOUND_MCP_SERVER_CONFIGURATION_ID;
   }
 
@@ -136,12 +136,14 @@ function createQueryOutputItem(
   mcpActionId: ModelId
 ): CreationAttributes<AgentMCPActionOutputItem> {
   const timeFrame = getTimeFrameUnit(processAction);
+  const timeFrameAsString = timeFrame
+    ? "the last " +
+      (timeFrame.duration > 1
+        ? `${timeFrame.duration} ${timeFrame.unit}s`
+        : `${timeFrame.unit}`)
+    : "all time";
 
-  const queryText = `Extract structured information from documents.
-Schema: ${JSON.stringify(processAction.jsonSchema || {})}
-Time frame: ${timeFrame ? `${timeFrame.duration}${timeFrame.unit}` : "all"}
-Tags included: ${(processAction.tagsIn || []).join(", ") || "none"}
-Tags excluded: ${(processAction.tagsNot || []).join(", ") || "none"}`;
+  const queryText = `Extracted from ${processAction.outputs?.total_documents} documents over ${timeFrameAsString}.\nObjective: Extract structured information from documents`;
 
   const queryResource: ExtractQueryResourceType = {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY,
@@ -250,9 +252,7 @@ async function migrateSingleProcessAction(
       outputItems.push(resultItem);
     }
 
-    if (outputItems.length > 0) {
-      await AgentMCPActionOutputItem.bulkCreate(outputItems);
-    }
+    await AgentMCPActionOutputItem.bulkCreate(outputItems);
   }
 }
 
