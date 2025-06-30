@@ -703,7 +703,15 @@ export async function renderLightContentFragmentForModel(
         },
         {
           type: "text",
-          text: `url="${getFileProcessedUrl(auth.getNonNullableWorkspace(), fileStringId)}" type="${contentType}" title=${title}"`,
+          text: renderContentFragmentXml({
+            contentFragmentId: contentFragment.sId,
+            contentType,
+            title,
+            version: contentFragmentVersion,
+            content:
+              "[Image content interpreted by a vision-enabled model. " +
+              "Description not available in this context.]",
+          }),
         },
       ],
     };
