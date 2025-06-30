@@ -151,7 +151,7 @@ async function handler(
 
             const workspace = await WorkspaceResource.fetchById(workspaceId);
             if (!workspace) {
-              logger.warn(
+              logger.error(
                 {
                   event,
                   workspaceId,
@@ -161,7 +161,12 @@ async function handler(
               );
               // We return a 200 here to handle multiple regions, DD will watch
               // the warnings and create an alert if this log appears in all regions
-              return res.status(200).json({ success: true });
+              return _returnStripeApiError(
+                req,
+                res,
+                event.type,
+                "Associated workspace not found"
+              );
             }
             const plan = await Plan.findOne({
               where: { code: planCode },
@@ -367,31 +372,12 @@ async function handler(
             await subscription.updatePaymentFailingSince(now);
           }
 
-          const workspace = await WorkspaceResource.fetchByModelId(
-            subscription.workspaceId
-          );
-          if (!workspace) {
-            logger.warn(
-              { event, stripeSubscriptionId: invoice.subscription },
-              "[Stripe Webhook] Associated workspace not found"
-            );
-            return res.status(200).json({ success: true });
-          }
-
           // Send email to admins + customer email who subscribed in Stripe
-          const auth = await Authenticator.internalAdminForWorkspace(
-            workspace.sId
-          );
-          const owner = auth.workspace();
-          const subscriptionType = auth.subscription();
-          if (!owner || !subscriptionType) {
-            return _returnStripeApiError(
-              req,
-              res,
-              "invoice.payment_failed",
-              "Couldn't get owner or subscription from `auth`."
+          const auth =
+            await Authenticator.internalAdminForWorkspaceWithSubscription(
+              subscription
             );
-          }
+          const owner = auth.getNonNullableWorkspace();
           const { members } = await getMembers(auth, {
             roles: ["admin"],
             activeOnly: true,
@@ -403,7 +389,7 @@ async function handler(
           }
           const portalUrl = await createCustomerPortalSession({
             owner,
-            subscription: subscriptionType,
+            subscription: subscription.toJSON(),
           });
           for (const adminEmail of adminEmails) {
             await sendAdminSubscriptionPaymentFailedEmail(
@@ -524,11 +510,16 @@ async function handler(
               subscription.workspaceId
             );
             if (!workspace) {
-              logger.warn(
+              logger.error(
                 { event, stripeSubscriptionId: stripeSubscription.id },
                 "[Stripe Webhook] Associated workspace not found"
               );
-              return res.status(200).json({ success: true });
+              return _returnStripeApiError(
+                req,
+                res,
+                event.type,
+                "Associated workspace not found"
+              );
             }
 
             const auth = await Authenticator.internalAdminForWorkspace(
@@ -697,11 +688,16 @@ async function handler(
                 matchingSubscription.workspaceId
               );
               if (!workspace) {
-                logger.warn(
+                logger.error(
                   { event, stripeSubscriptionId: stripeSubscription.id },
                   "[Stripe Webhook] Associated workspace not found"
                 );
-                return res.status(200).json({ success: true });
+                return _returnStripeApiError(
+                  req,
+                  res,
+                  event.type,
+                  "Associated workspace not found"
+                );
               }
 
               await matchingSubscription.setEnded(new Date());
@@ -757,11 +753,16 @@ async function handler(
             trialingSubscription.workspaceId
           );
           if (!workspace) {
-            logger.warn(
+            logger.error(
               { event, stripeSubscriptionId: stripeSubscription.id },
               "[Stripe Webhook] Associated workspace not found"
             );
-            return res.status(200).json({ success: true });
+            return _returnStripeApiError(
+              req,
+              res,
+              event.type,
+              "Associated workspace not found"
+            );
           }
 
           await SubscriptionResource.maybeCancelInactiveTrials(
