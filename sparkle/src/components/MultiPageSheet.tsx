@@ -33,6 +33,8 @@ interface MultiPageSheetProps {
   footerContent?: React.ReactNode;
   onSave?: () => void;
   className?: string;
+  disableNext?: boolean;
+  disableSave?: boolean;
 }
 
 const MultiPageSheetRoot = Sheet;
@@ -59,6 +61,8 @@ const MultiPageSheetContent = React.forwardRef<
       footerContent,
       onSave,
       className,
+      disableNext = false,
+      disableSave = false,
       ...props
     },
     ref
@@ -87,6 +91,7 @@ const MultiPageSheetContent = React.forwardRef<
 
     const hasPrevious = currentPageIndex > 0;
     const hasNext = currentPageIndex < pages.length - 1;
+    const nextButtonDisabled = disableNext || !hasNext;
 
     return (
       <SheetContent
@@ -114,9 +119,9 @@ const MultiPageSheetContent = React.forwardRef<
                     icon={ChevronRightIcon}
                     variant="ghost"
                     size="sm"
-                    disabled={!hasNext}
+                    disabled={nextButtonDisabled}
                     onClick={handleNext}
-                    tooltip={hasNext ? "Next page" : undefined}
+                    tooltip={hasNext && !disableNext ? "Next page" : undefined}
                   />
                 </div>
               )}
@@ -171,6 +176,7 @@ const MultiPageSheetContent = React.forwardRef<
                 icon={ChevronRightIcon}
                 variant="outline"
                 size="sm"
+                disabled={disableNext}
                 onClick={handleNext}
               />
             )}
@@ -179,6 +185,7 @@ const MultiPageSheetContent = React.forwardRef<
                 label="Save changes"
                 variant="primary"
                 size="sm"
+                disabled={disableSave}
                 onClick={onSave}
               />
             )}

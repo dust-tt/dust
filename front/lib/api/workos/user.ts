@@ -88,23 +88,7 @@ export async function _getRefreshedCookie(
         password: config.getWorkOSCookiePassword(),
       }
     );
-    logger.info(
-      {
-        workOSSessionCookie: workOSSessionCookie.substring(0, 15),
-        newWorkOSSessionCookie: sealedCookie.substring(0, 15),
-      },
-      "Refreshed session"
-    );
-
     return sealedCookie;
-  } else {
-    logger.info(
-      {
-        refreshResponse: r.reason,
-        workOSSessionCookie: workOSSessionCookie.substring(0, 15),
-      },
-      "Can't refresh session"
-    );
   }
   return null;
 }

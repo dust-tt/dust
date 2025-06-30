@@ -1,8 +1,21 @@
 import { ActionShoppingBasketIcon } from "@dust-tt/sparkle";
 
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
+import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
 export const marketplaceConfig: IndustryPageConfig = {
+  layout: createLayoutConfig([
+    "hero",
+    "aiAgents",
+    "trustedBy",
+    "painPoints",
+    "dustInAction",
+    "impactMetrics",
+    "demoVideo",
+    "testimonial",
+    "customerStories",
+    "justUseDust",
+  ]),
   hero: {
     chip: {
       label: "Marketplace",
@@ -83,11 +96,11 @@ export const marketplaceConfig: IndustryPageConfig = {
     ],
   },
   dustInAction: {
-    title: "Dust in Action",
+    title: "Dust in action",
     useCases: [
       {
         title: "Supply growth & provider acquisition",
-        image: "/static/landing/industry/features/Sales_agent.svg",
+        image: "/static/landing/industry/features/Sales_agent.webp",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -118,7 +131,7 @@ export const marketplaceConfig: IndustryPageConfig = {
       },
       {
         title: "Support & success automation",
-        image: "/static/landing/industry/features/UxWriter_2.svg",
+        image: "/static/landing/industry/features/UxWriter_2.webp",
         bgColor: "bg-green-100",
         features: [
           {
@@ -155,7 +168,7 @@ export const marketplaceConfig: IndustryPageConfig = {
       },
       {
         title: "Community operations",
-        image: "/static/landing/industry/features/Compliance_verification.svg",
+        image: "/static/landing/industry/features/Compliance_verification.webp",
         bgColor: "bg-rose-100",
         features: [
           {
@@ -180,7 +193,7 @@ export const marketplaceConfig: IndustryPageConfig = {
       },
       {
         title: "Marketing & marketplace intelligence",
-        image: "/static/landing/industry/features/Content_localization.svg",
+        image: "/static/landing/industry/features/Content_localization.webp",
         bgColor: "bg-yellow-100",
         features: [
           {
