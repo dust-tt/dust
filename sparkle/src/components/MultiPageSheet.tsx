@@ -34,6 +34,7 @@ interface MultiPageSheetProps {
   onSave?: () => void;
   className?: string;
   disableNext?: boolean;
+  disableSave?: boolean;
 }
 
 const MultiPageSheetRoot = Sheet;
@@ -61,6 +62,7 @@ const MultiPageSheetContent = React.forwardRef<
       onSave,
       className,
       disableNext = false,
+      disableSave = false,
       ...props
     },
     ref
@@ -183,6 +185,7 @@ const MultiPageSheetContent = React.forwardRef<
                 label="Save changes"
                 variant="primary"
                 size="sm"
+                disabled={disableSave}
                 onClick={onSave}
               />
             )}
