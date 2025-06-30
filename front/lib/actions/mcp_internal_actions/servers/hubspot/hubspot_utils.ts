@@ -48,6 +48,22 @@ export const HUBSPOT_ID_TO_OBJECT_TYPE = Object.entries(
   {}
 );
 
+export const getObjectTypeId = (objectType: string): string | null => {
+  return (
+    HUBSPOT_OBJECT_TYPE_TO_ID[
+      objectType as keyof typeof HUBSPOT_OBJECT_TYPE_TO_ID
+    ] || null
+  );
+};
+
+export const convertObjectTypeToId = (objectTypeId: string): string => {
+  if (objectTypeId.startsWith("0-") || objectTypeId.startsWith("2-")) {
+    return objectTypeId;
+  }
+  const convertedId = getObjectTypeId(objectTypeId);
+  return convertedId || objectTypeId; // Return original if conversion fails
+};
+
 export const withAuth = async ({
   action,
   params,
@@ -120,6 +136,48 @@ export const GetHubspotLinkSchema = z.object({
     .array(PageRequestSchema)
     .describe("Array of page link requests to generate"),
 });
+
+const isValidObjectTypeId = (objectTypeId: string): boolean => {
+  if (Object.keys(HUBSPOT_ID_TO_OBJECT_TYPE).includes(objectTypeId)) {
+    return true;
+  }
+  // Custom objects
+  if (objectTypeId.startsWith("2-")) {
+    return true;
+  }
+  return false;
+};
+
+export const validateRequests = (pageRequests: PageRequest[]) => {
+  const errors: string[] = [];
+  const invalidObjectTypeIds: string[] = [];
+
+  for (const request of pageRequests) {
+    const { pagetype, objectTypeId, objectId } = request;
+
+    // Convert object type name to ID if it's a valid name
+    const convertedObjectTypeId = convertObjectTypeToId(objectTypeId);
+
+    // Update the request with the converted ID
+    request.objectTypeId = convertedObjectTypeId;
+
+    // Validate the converted objectTypeId exists
+    if (!isValidObjectTypeId(convertedObjectTypeId)) {
+      invalidObjectTypeIds.push(objectTypeId);
+      errors.push(`Invalid objectTypeId: ${objectTypeId}`);
+      continue;
+    }
+
+    // For record pages, objectId is required
+    if (pagetype === "record" && !objectId) {
+      errors.push(
+        `objectId is required for record page with objectTypeId: ${convertedObjectTypeId}`
+      );
+    }
+  }
+
+  return { errors, invalidObjectTypeIds };
+};
 
 export type PageRequest = z.infer<typeof PageRequestSchema>;
 

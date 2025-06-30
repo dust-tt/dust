@@ -32,9 +32,11 @@ import {
   updateContact,
   updateDeal,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
+import { HUBSPOT_ID_TO_OBJECT_TYPE } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
   ERROR_MESSAGES,
   generateUrls,
+  validateRequests,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
@@ -846,6 +848,29 @@ const createServer = (): McpServer => {
       ),
     },
     async ({ portalId, uiDomain, pageRequests }) => {
+      const validationResult = validateRequests(pageRequests);
+      if (validationResult.errors.length > 0) {
+        const errorResponse = {
+          errors: validationResult.errors,
+        };
+
+        // Add valid object type IDs only if there were invalid IDs that couldn't be converted
+        if (validationResult.invalidObjectTypeIds.length > 0) {
+          const validObjectTypes = Object.keys(HUBSPOT_ID_TO_OBJECT_TYPE)
+            .map((id) => {
+              const objectType = (
+                HUBSPOT_ID_TO_OBJECT_TYPE as Record<string, string>
+              )[id];
+              return `${objectType} (${id})`;
+            })
+            .join(", ");
+          errorResponse.errors.push(
+            `Valid object types and IDs: ${validObjectTypes}`
+          );
+        }
+
+        return makeMCPToolTextError(JSON.stringify(errorResponse, null, 2));
+      }
       const urlResults = generateUrls(portalId, uiDomain, pageRequests);
 
       return makeMCPToolJSONSuccess({
@@ -857,7 +882,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "hubspot-get-portal-id",
-    "Gets the current user's portal ID",
+    "Gets the current user's portal ID. To use before calling hubspot-get-link",
     {},
     async (_, { authInfo }) => {
       return withAuth({
