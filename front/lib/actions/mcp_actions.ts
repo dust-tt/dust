@@ -624,6 +624,14 @@ export async function tryListMCPTools(
               )
             ).length > 0;
 
+          const hasChildAgentConfiguration =
+            Object.keys(
+              findMatchingSubSchemas(
+                toolConfig.inputSchema,
+                INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT
+              )
+            ).length > 0;
+
           if (hasDataSourceConfiguration && hasTableConfiguration) {
             // Might be confusing for the model if we end up in this situation,
             // which is not a use case we have now.
@@ -632,6 +640,9 @@ export async function tryListMCPTools(
             extraDescription += `\nDescription of the data sources:\n${action.description}`;
           } else if (hasTableConfiguration) {
             extraDescription += `\nDescription of the tables:\n${action.description}`;
+          }
+          if (hasChildAgentConfiguration) {
+            extraDescription += `\nDescription of the sub-agent:\n${action.description}`;
           }
         }
 
