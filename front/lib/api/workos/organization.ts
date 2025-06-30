@@ -133,7 +133,7 @@ export async function addWorkOSOrganizationDomain(
   await getWorkOS().organizations.updateOrganization({
     organization: organization.id,
     metadata: {
-      _keyTrigger: uniqueId(),
+      _webhookTrigger: uniqueId(),
     },
   });
 
@@ -175,7 +175,7 @@ export async function removeWorkOSOrganizationDomain(
   await getWorkOS().organizations.updateOrganization({
     organization: organization.id,
     metadata: {
-      _keyTrigger: uniqueId(),
+      _webhookTrigger: uniqueId(),
     },
   });
 
