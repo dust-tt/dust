@@ -8,6 +8,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { assertNever, isString } from "@app/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { uniqBy } from "lodash";
 
 /**
  * @ignoreswagger
@@ -51,6 +53,32 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET":
+      const currentMembers = uniqBy(
+        (
+          await concurrentExecutor(
+            space.groups.filter((g) => {
+              if (space.managementMode === "group") {
+                return g.kind === "provisioned";
+              }
+              return g.kind === "regular" || g.kind === "global";
+            }),
+            (group) => group.getActiveMembers(auth),
+            { concurrency: 10 }
+          )
+        ).flat(),
+        "sId"
+      );
+
+      return res.status(200).json({
+        space: space.toJSON(),
+        users: currentMembers.map((member) => ({
+          sId: member.sId,
+          id: member.id,
+          email: member.email,
+        })),
+      });
+
     case "POST": {
       const bodyValidation = PostSpaceMembersRequestBodySchema.safeParse(
         req.body
