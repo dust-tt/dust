@@ -4,10 +4,7 @@ import type { Logger } from "pino";
 import type { CreationAttributes } from "sequelize";
 import { Op } from "sequelize";
 
-import {
-  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-  DEFAULT_TABLES_QUERY_ACTION_NAME,
-} from "@app/lib/actions/constants";
+import { DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ActionBaseParams } from "@app/lib/actions/mcp";
 import type {
   ExecuteTablesQueryErrorResourceType,
