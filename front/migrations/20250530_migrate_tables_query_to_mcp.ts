@@ -18,6 +18,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import type { AgentStatus, ModelId } from "@app/types";
 
+const CONFIGURATION_CONCURRENCY = 10;
+
 async function findWorkspacesWithTablesConfigurations({
   agentStatus,
 }: {
@@ -161,7 +163,7 @@ async function migrateWorkspaceTablesQueryActions(
         );
       }
     },
-    { concurrency: 10 }
+    { concurrency: CONFIGURATION_CONCURRENCY }
   );
 
   if (execute) {
