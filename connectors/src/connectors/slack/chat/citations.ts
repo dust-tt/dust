@@ -1,6 +1,5 @@
 import type { AgentActionPublicType } from "@dust-tt/client";
 import {
-  getTitleFromRetrievedDocument,
   isMCPActionType,
   isSearchResultResourceType,
   isWebsearchActionType,
