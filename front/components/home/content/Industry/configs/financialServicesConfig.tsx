@@ -1,8 +1,21 @@
 import { ActionBankIcon } from "@dust-tt/sparkle";
 
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
+import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
 export const financialServicesConfig: IndustryPageConfig = {
+  layout: createLayoutConfig([
+    "hero",
+    "aiAgents",
+    "trustedBy",
+    "painPoints",
+    "dustInAction",
+    "impactMetrics",
+    "demoVideo",
+    "testimonial",
+    "customerStories",
+    "justUseDust",
+  ]),
   hero: {
     chip: {
       label: "Financial Services",
@@ -83,11 +96,11 @@ export const financialServicesConfig: IndustryPageConfig = {
     ],
   },
   dustInAction: {
-    title: "Dust in Action",
+    title: "Dust in action",
     useCases: [
       {
         title: "Compliance operations",
-        image: "/static/landing/industry/features/Compliance_verification.svg",
+        image: "/static/landing/industry/features/Compliance_verification.webp",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -117,8 +130,8 @@ export const financialServicesConfig: IndustryPageConfig = {
         ],
       },
       {
-        title: "Prospect account insights",
-        image: "/static/landing/industry/features/Sales_agent_2.svg",
+        title: "Commercial operations",
+        image: "/static/landing/industry/features/Sales_agent_2.webp",
         bgColor: "bg-purple-100",
         features: [
           {
@@ -149,7 +162,7 @@ export const financialServicesConfig: IndustryPageConfig = {
       },
       {
         title: "Support operations",
-        image: "/static/landing/industry/features/Incident_copilot_slack.svg",
+        image: "/static/landing/industry/features/Incident_copilot_slack.webp",
         bgColor: "bg-green-100",
         features: [
           {
@@ -180,7 +193,7 @@ export const financialServicesConfig: IndustryPageConfig = {
       },
       {
         title: "Marketing & content generation",
-        image: "/static/landing/industry/features/Content_localization.svg",
+        image: "/static/landing/industry/features/Content_localization.webp",
         bgColor: "bg-golden-100",
         features: [
           {
