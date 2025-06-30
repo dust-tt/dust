@@ -2,8 +2,12 @@ import assert from "assert";
 import { uniq } from "lodash";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
-import { updateAgentRequestedGroupIds } from "@app/lib/api/assistant/configuration";
-import { getAgentConfigurationGroupIdsFromName } from "@app/lib/api/assistant/permissions";
+import {
+  getAgentConfigurations,
+  updateAgentRequestedGroupIds,
+} from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
+import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -21,8 +25,6 @@ import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
-
-import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -135,20 +137,29 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     );
 
     if (force) {
-      const agentNames = uniq(
-        usages.flatMap((u) => u.agents).map((agent) => agent.name)
+      const agentSIds = uniq(
+        usages.flatMap((u) => u.agents).map((agent) => agent.sId)
       );
       await concurrentExecutor(
-        agentNames,
-        async (agentName) => {
-          const requestedGroupIds = await getAgentConfigurationGroupIdsFromName(
+        agentSIds,
+        async (agentSId) => {
+          const [agentConfig] = await getAgentConfigurations({
             auth,
-            { agentName, ignoreSpaces: [space] }
-          );
+            agentsGetView: { agentIds: [agentSId] },
+            variant: "full",
+            dangerouslySkipPermissionFiltering: true,
+          });
+
+          // Get the required group IDs from the agent's actions
+          const requestedGroupIds =
+            await getAgentConfigurationGroupIdsFromActions(auth, {
+              actions: agentConfig.actions,
+              ignoreSpaces: [space],
+            });
 
           const res = await updateAgentRequestedGroupIds(
             auth,
-            { agentName: agentName, newGroupIds: requestedGroupIds },
+            { agentSId: agentSId, newGroupIds: requestedGroupIds },
             { transaction: t }
           );
 

@@ -1,3 +1,5 @@
+import { Op } from "sequelize";
+
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedAgentActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -5,10 +7,6 @@ import {
   isDustAppRunConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
-import {
-  getAgentConfigurations,
-  getAgentSIdFromName,
-} from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -22,7 +20,6 @@ import type {
   ModelId,
 } from "@app/types";
 import { removeNulls } from "@app/types";
-import { Op } from "sequelize";
 
 export async function listAgentConfigurationsForGroups(
   auth: Authenticator,
@@ -98,47 +95,6 @@ export function groupsFromRequestedPermissions(
       // Sort to ensure consistent ordering.
       .sort((a, b) => a - b)
   );
-}
-
-/**
- * This is a wrapper function of getAgentConfigurationGroupIdsFromActions for simplicity of use.
- * Note: if you have the actions, use getAgentConfigurationGroupIdsFromActions as this is a less efficient function.
- *
- * @param auth - The authenticator instance for workspace access and permissions
- * @param agentName - The sId/name of the agent configuration to fetch group IDs for
- * @param ignoreSpaces - Optional list of spaces to exclude from group requirements calculation
- * @returns Promise resolving to array of arrays, where each inner array contains ModelIds of groups required for one space
- * @throws Error if the agent configuration is not found
- */
-export async function getAgentConfigurationGroupIdsFromName(
-  auth: Authenticator,
-  params: { agentName: string; ignoreSpaces?: SpaceResource[] }
-): Promise<ModelId[][]> {
-  const { agentName, ignoreSpaces } = params;
-  // Get the agent sId via name and auth
-  const agentId = await getAgentSIdFromName(auth, agentName);
-
-  if (!agentId) {
-    throw new Error(`Agent Id not found: ${agentName}`);
-  }
-
-  // Get the agent configuration with full details including actions
-  const [agentConfig] = await getAgentConfigurations({
-    auth,
-    agentsGetView: { agentIds: [agentId] },
-    variant: "full",
-    dangerouslySkipPermissionFiltering: true,
-  });
-
-  if (!agentConfig) {
-    throw new Error(`Agent configuration not found: ${agentName}`);
-  }
-
-  // Get the required group IDs from the agent's actions
-  return getAgentConfigurationGroupIdsFromActions(auth, {
-    actions: agentConfig.actions,
-    ignoreSpaces: ignoreSpaces,
-  });
 }
 
 export async function getAgentConfigurationGroupIdsFromActions(

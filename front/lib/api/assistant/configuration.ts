@@ -1641,10 +1641,10 @@ export async function updateAgentConfigurationScope(
 
 export async function updateAgentRequestedGroupIds(
   auth: Authenticator,
-  params: { agentName: string; newGroupIds: number[][] },
+  params: { agentSId: string; newGroupIds: number[][] },
   options?: { transaction?: Transaction }
 ): Promise<Result<boolean, Error>> {
-  const { agentName, newGroupIds } = params;
+  const { agentSId, newGroupIds } = params;
 
   const owner = auth.getNonNullableWorkspace();
 
@@ -1653,7 +1653,7 @@ export async function updateAgentRequestedGroupIds(
     {
       where: {
         workspaceId: owner.id,
-        name: agentName,
+        sId: agentSId,
       },
       transaction: options?.transaction,
     }
