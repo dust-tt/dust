@@ -23,6 +23,11 @@ lazy_static! {
         env::var("OAUTH_SLACK_BOT_CLIENT_ID").expect("OAUTH_SLACK_BOT_CLIENT_ID must be set");
     static ref OAUTH_SLACK_BOT_CLIENT_SECRET: String = env::var("OAUTH_SLACK_BOT_CLIENT_SECRET")
         .expect("OAUTH_SLACK_BOT_CLIENT_SECRET must be set");
+    static ref OAUTH_SLACK_TOOLS_CLIENT_ID: String =
+        env::var("OAUTH_SLACK_TOOLS_CLIENT_ID").expect("OAUTH_SLACK_TOOLS_CLIENT_ID must be set");
+    static ref OAUTH_SLACK_TOOLS_CLIENT_SECRET: String =
+        env::var("OAUTH_SLACK_TOOLS_CLIENT_SECRET")
+            .expect("OAUTH_SLACK_TOOLS_CLIENT_SECRET must be set");
 }
 
 /// We support three Slack apps. Our default `connection` app (for data source connections) a
@@ -53,12 +58,10 @@ impl SlackConnectionProvider {
                 "{}:{}",
                 *OAUTH_SLACK_BOT_CLIENT_ID, *OAUTH_SLACK_BOT_CLIENT_SECRET
             )),
-            // TODO(spolu): the tools related use-cases are currently supported by the main app as
-            // connections but this will be migrated soon to a new app.
             SlackUseCase::PlatformActions | SlackUseCase::PersonalActions => {
                 general_purpose::STANDARD.encode(&format!(
                     "{}:{}",
-                    *OAUTH_SLACK_CLIENT_ID, *OAUTH_SLACK_CLIENT_SECRET
+                    *OAUTH_SLACK_TOOLS_CLIENT_ID, *OAUTH_SLACK_TOOLS_CLIENT_SECRET
                 ))
             }
         }

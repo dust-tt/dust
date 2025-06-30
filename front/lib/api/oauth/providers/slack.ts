@@ -106,6 +106,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       switch (useCase) {
         case "personal_actions":
         case "platform_actions":
+          return config.getOAuthSlackToolsClientId();
         case "connection": {
           return config.getOAuthSlackClientId();
         }
