@@ -13,10 +13,11 @@ import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasonin
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType, ModelId } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 
 const WORKSPACE_CONCURRENCY = 50;
 const BATCH_SIZE = 200;
@@ -66,7 +67,7 @@ async function migrateWorkspaceReasoningActions(
       async (reasoningConfiguration) => {
         await migrateReasoningActionsForActionConfiguration({
           reasoningConfiguration,
-          mcpServerViewForReasoning: mcpServerViewForReasoning.id,
+          mcpServerViewForReasoning: mcpServerViewForReasoning,
           logger,
           execute,
         });
@@ -88,7 +89,7 @@ async function migrateReasoningActionsForActionConfiguration({
   execute,
 }: {
   reasoningConfiguration: AgentReasoningConfiguration;
-  mcpServerViewForReasoning: ModelId;
+  mcpServerViewForReasoning: MCPServerViewResource;
   logger: Logger;
   execute: boolean;
 }) {
@@ -108,11 +109,17 @@ async function migrateReasoningActionsForActionConfiguration({
     // Create the MCP server configuration.
     const reasoningMcpServerConfiguration =
       await AgentMCPServerConfiguration.create({
-        sId: reasoningConfiguration.sId,
+        sId: generateRandomModelSId(),
         additionalConfiguration: {},
         agentConfigurationId: agentConfiguration.id,
-        mcpServerViewId: mcpServerViewForReasoning,
+        mcpServerViewId: mcpServerViewForReasoning.id,
         workspaceId: reasoningConfiguration.workspaceId,
+        internalMCPServerId: mcpServerViewForReasoning.mcpServerId,
+        name: reasoningConfiguration.name,
+        singleToolDescriptionOverride: reasoningConfiguration.description,
+        appId: null,
+        jsonSchema: null,
+        timeFrame: null,
       });
 
     const reasonningActions = await AgentReasoningAction.findAll({
