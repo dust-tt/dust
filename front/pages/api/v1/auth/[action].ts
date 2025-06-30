@@ -61,6 +61,8 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
     ...query,
     client_id: getProvider().clientId,
     scope: getProvider().scopes,
+    // TODO(provisioning) AUTH0 temporary code, remove when we switch ext to WorkOS
+    ...(query.organizationid ? { connection: `${query.organization_id}` } : {}),
   }).toString();
   const authorizeUrl = `https://${getProvider().authorizeUri}?${params}`;
   res.redirect(authorizeUrl);
