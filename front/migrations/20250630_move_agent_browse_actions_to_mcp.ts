@@ -60,7 +60,7 @@ function agentBrowseActionToAgentMCPAction(
 
   // Determine the MCP server configuration ID to use.
   const mcpServerConfigurationId =
-    browseAndWebsearchMcpServerConfiguration?.sId ??
+    browseAndWebsearchMcpServerConfiguration?.id ??
     NOT_FOUND_MCP_SERVER_CONFIGURATION_ID;
 
   logger.info(
@@ -79,7 +79,7 @@ function agentBrowseActionToAgentMCPAction(
       createdAt: browseAction.createdAt,
       updatedAt: browseAction.updatedAt,
       generatedFiles: [],
-      mcpServerConfigurationId,
+      mcpServerConfigurationId: mcpServerConfigurationId.toString(),
       params: {
         urls: browseAction.urls,
       },
