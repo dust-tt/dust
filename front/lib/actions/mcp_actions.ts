@@ -641,6 +641,8 @@ export async function tryListMCPTools(
           } else if (hasTableConfiguration) {
             extraDescription += `\nDescription of the tables:\n${action.description}`;
           }
+          // We cannot have a tool with both a data source a sub-agent description since we only
+          // have one field to hold the description. This is prohibited in the Agent Builder.
           if (hasChildAgentConfiguration) {
             extraDescription += `\nDescription of the sub-agent:\n${action.description}`;
           }
