@@ -152,7 +152,7 @@ async function createMCPActionAndOutputItems({
   const mcpActionParams: CreationAttributes<AgentMCPAction> = {
     workspaceId: reasoningAction.workspaceId,
     agentMessageId: reasoningAction.agentMessageId,
-    mcpServerConfigurationId: mcpServerConfiguration.sId,
+    mcpServerConfigurationId: mcpServerConfiguration.id.toString(),
     params: {},
     functionCallId: reasoningAction.functionCallId,
     functionCallName: reasoningAction.functionCallName,
