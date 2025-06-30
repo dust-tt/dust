@@ -80,6 +80,13 @@ export class ChromeAuthService extends AuthService {
       const dustDomain = getDustDomain(claims);
       const connectionDetails = getConnectionDetails(claims);
 
+      if (
+        response.authentication_method === "SSO" &&
+        !connectionDetails.connectionStrategy
+      ) {
+        connectionDetails.connectionStrategy = response.authentication_method;
+      }
+
       const res = await this.fetchMe({
         accessToken: tokens.accessToken,
         dustDomain,
