@@ -81,7 +81,7 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   };
 
   if (provider.name === "workos") {
-    options.provider = `${query.provider}`;
+    options.provider = "authkit";
 
     if (workspace) {
       const w = await WorkspaceModel.findOne({
@@ -112,13 +112,14 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
         organizationId,
       });
 
+      options.organizationId = organizationId;
       options.connectionId =
         connections.data.length > 0 ? connections.data[0]?.id : undefined;
     }
   } else {
-    query.organization_id
-      ? (options.connection = `${query.organization_id}`)
-      : undefined;
+    if (query.organization_id) {
+      options.connection = `${query.organization_id}`;
+    }
     options.prompt = `${query.prompt}`;
     options.audience = `${query.audience}`;
   }
