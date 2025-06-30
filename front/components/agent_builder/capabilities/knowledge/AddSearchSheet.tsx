@@ -1,10 +1,5 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import {
-  MagnifyingGlassIcon,
-  MultiPageSheet,
-  MultiPageSheetContent,
-  TextArea,
-} from "@dust-tt/sparkle";
+import { MagnifyingGlassIcon, MultiPageSheet, MultiPageSheetContent, TextArea } from "@dust-tt/sparkle";
 import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -45,14 +40,12 @@ export function AddSearchSheet({
   const [dataSourceConfigurations, setDataSourceConfigurations] =
     useState<DataSourceViewSelectionConfigurations>({});
 
-  // Fetch data source views for this workspace
   const { dataSourceViews } = useDataSourceViews(owner);
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
-  // Reset state when sheet opens/closes
   useEffect(() => {
     if (isOpen) {
       setCurrentPageId("data-source-selection");
@@ -171,6 +164,7 @@ export function AddSearchSheet({
           currentPageId === PAGE_IDS.DATA_SOURCE_SELECTION &&
           !hasDataSourceSelections
         }
+        disableSave={!hasDataSourceSelections || !description.trim()}
       />
     </MultiPageSheet>
   );
