@@ -213,7 +213,7 @@ async function migrateSingleTablesQueryAction(
           fileId: resultsFile.sId,
           title: resultsFile.fileName,
           contentType: resultsFile.contentType,
-          snippet: resultsFile.snippet,
+          snippet: tablesQueryAction.resultsFileSnippet,
         });
       }
     }
