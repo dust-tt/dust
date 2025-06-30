@@ -23,6 +23,7 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
+import { useAgentBuilderTools } from "@app/hooks/useAgentBuilderTools";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
@@ -136,6 +137,8 @@ export function AgentBuilderCapabilitiesBlock() {
     name: "actions",
   });
 
+  const { mcpServerViewsWithKnowledge } = useAgentBuilderTools();
+
   function removeAction(index: number) {
     remove(index);
   }
@@ -153,7 +156,10 @@ export function AgentBuilderCapabilitiesBlock() {
           <div className="flex items-center gap-2">
             {fields.length > 0 && (
               <>
-                <AddKnowledgeDropdown />
+                <AddKnowledgeDropdown
+                  onKnowledgeAdd={() => {}}
+                  mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
+                />
                 <AddToolsDropdown tools={fields} addTools={append} />
               </>
             )}
@@ -167,7 +173,10 @@ export function AgentBuilderCapabilitiesBlock() {
             message="No tools added yet. Add knowledge and tools to enhance your agent's capabilities."
             action={
               <div className="flex items-center gap-2">
-                <AddKnowledgeDropdown />
+                <AddKnowledgeDropdown
+                  onKnowledgeAdd={() => {}}
+                  mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
+                />
                 <AddToolsDropdown tools={fields} addTools={append} />
               </div>
             }
