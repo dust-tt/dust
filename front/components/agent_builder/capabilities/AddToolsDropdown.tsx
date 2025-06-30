@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { FieldArray, FieldArrayWithId } from "react-hook-form";
 
-import type { AgentBuilderAction } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getDataVisualizationActionConfiguration } from "@app/components/assistant_builder/types";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
@@ -31,10 +31,16 @@ export function AddToolsDropdown({ tools, addTools }: AddToolsDropdownProps) {
       return;
     }
 
-    // The configuration already has an id, but we ensure it matches our expected type
+    // Convert to the agent builder action format
     const newAction: AgentBuilderAction = {
-      ...dataVisualizationConfig,
       id: dataVisualizationConfig.id,
+      type: "DATA_VISUALIZATION",
+      name: dataVisualizationConfig.name,
+      description: dataVisualizationConfig.description,
+      noConfigurationRequired: dataVisualizationConfig.noConfigurationRequired,
+      configuration: {
+        type: "DATA_VISUALIZATION",
+      },
     };
     addTools(newAction);
   }
