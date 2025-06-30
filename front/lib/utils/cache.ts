@@ -161,7 +161,7 @@ function unlock(key: string) {
 // Distributed lock implementation using Redis
 // Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.
 async function distributedLock(
-  redisCli: Awaited<RedisClientType>,
+  redisCli: RedisClientType,
   key: string
 ): Promise<string | undefined> {
   const lockKey = `lock:${key}`;
@@ -184,7 +184,7 @@ async function distributedLock(
 }
 
 async function distributedUnlock(
-  redisCli: Awaited<RedisClientType>,
+  redisCli: RedisClientType,
   key: string,
   lockValue: string
 ): Promise<void> {
