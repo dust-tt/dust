@@ -92,6 +92,7 @@ async function migrateWorkspace(
         internalMCPServerId: mcpServerView.internalMCPServerId,
         additionalConfiguration: {},
         timeFrame: null,
+        jsonSchema: null,
       });
 
       revertSql += `DELETE FROM agent_mcp_server_configurations WHERE id = ${mcpServerConfig.id};`;
