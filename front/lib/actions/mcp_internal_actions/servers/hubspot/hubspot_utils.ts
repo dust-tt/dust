@@ -121,45 +121,12 @@ export const GetHubspotLinkSchema = z.object({
     .describe("Array of page link requests to generate"),
 });
 
-const isValidObjectTypeId = (objectTypeId: string): boolean => {
-  if (Object.keys(HUBSPOT_ID_TO_OBJECT_TYPE).includes(objectTypeId)) {
-    return true;
-  }
-  if (objectTypeId.startsWith("2-")) {
-    return true;
-  }
-  return false;
-};
-
-export const validateRequests = (pageRequests: any[]) => {
-  const errors: string[] = [];
-  const invalidObjectTypeIds: string[] = [];
-
-  for (const request of pageRequests) {
-    const { pagetype, objectTypeId, objectId } = request;
-
-    // Validate objectTypeId exists
-    if (!isValidObjectTypeId(objectTypeId)) {
-      invalidObjectTypeIds.push(objectTypeId);
-      errors.push(`Invalid objectTypeId: ${objectTypeId}`);
-      continue;
-    }
-
-    // For record pages, objectId is required
-    if (pagetype === "record" && !objectId) {
-      errors.push(
-        `objectId is required for record page with objectTypeId: ${objectTypeId}`
-      );
-    }
-  }
-
-  return { errors, invalidObjectTypeIds };
-};
+export type PageRequest = z.infer<typeof PageRequestSchema>;
 
 export const generateUrls = (
   portalId: string,
   uiDomain: string,
-  pageRequests: any[]
+  pageRequests: PageRequest[]
 ) => {
   return pageRequests.map((request) => {
     const { pagetype, objectTypeId, objectId } = request;

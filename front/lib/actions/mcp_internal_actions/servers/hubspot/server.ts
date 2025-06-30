@@ -32,11 +32,9 @@ import {
   updateContact,
   updateDeal,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
-import { HUBSPOT_ID_TO_OBJECT_TYPE } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
   ERROR_MESSAGES,
   generateUrls,
-  validateRequests,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
@@ -848,25 +846,6 @@ const createServer = (): McpServer => {
       ),
     },
     async ({ portalId, uiDomain, pageRequests }) => {
-      const validationResult = validateRequests(pageRequests);
-
-      if (validationResult.errors.length > 0) {
-        const errorResponse = {
-          errors: validationResult.errors,
-        };
-
-        // Add valid object type IDs only once if there were invalid IDs
-        if (validationResult.invalidObjectTypeIds.length > 0) {
-          errorResponse.errors.push(
-            `Valid object type IDs: ${Object.keys(
-              HUBSPOT_ID_TO_OBJECT_TYPE
-            ).join(", ")}`
-          );
-        }
-
-        return makeMCPToolTextError(JSON.stringify(errorResponse, null, 2));
-      }
-
       const urlResults = generateUrls(portalId, uiDomain, pageRequests);
 
       return makeMCPToolJSONSuccess({
