@@ -267,7 +267,6 @@ export async function createOrUpgradeAgentConfiguration({
   auth: Authenticator;
   assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
   agentConfigurationId?: string;
-  ignoreSpaceIds?: Set<string>;
 }): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
 
