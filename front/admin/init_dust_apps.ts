@@ -21,7 +21,7 @@ async function main() {
 
   let w: WorkspaceResource | null;
   if (argv.sId) {
-    w = await WorkspaceResource.fetchByModelId(argv.sId);
+    w = await WorkspaceResource.fetchById(argv.sId);
   } else if (argv.name) {
     w = await WorkspaceResource.fetchByName(argv.name);
   } else {
