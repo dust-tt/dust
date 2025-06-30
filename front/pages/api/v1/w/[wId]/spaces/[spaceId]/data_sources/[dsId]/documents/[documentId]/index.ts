@@ -15,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
+import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -32,8 +33,6 @@ import {
   sectionFullText,
   validateUrl,
 } from "@app/types";
-
-const LIMIT_PER_SEAT = 1024 * 1024 * 1024; // 1GB
 
 export const config = {
   api: {
@@ -515,7 +514,7 @@ async function handler(
         if (activeSeats && datasourceStats) {
           if (
             datasourceStats.data_source.text_size >
-            (activeSeats + 1) * LIMIT_PER_SEAT // +1 because we allow the current upload to go over the limit
+            (activeSeats + 1) * DATASOURCE_QUOTA_PER_SEAT // +1 because we allow the current upload to go over the limit
           ) {
             logger.info(
               {
@@ -523,7 +522,7 @@ async function handler(
                 datasource_project_id: dataSource.dustAPIProjectId,
                 datasource_id: dataSource.dustAPIDataSourceId,
                 quota_used: datasourceStats.data_source.text_size,
-                quota_limit: activeSeats * LIMIT_PER_SEAT,
+                quota_limit: activeSeats * DATASOURCE_QUOTA_PER_SEAT,
               },
               "Datasource quota exceeded for upsert document (overrun expected)"
             );
@@ -532,7 +531,7 @@ async function handler(
               api_error: {
                 type: "data_source_quota_error",
                 message:
-                  `Data sources are limited to ${fileSizeToHumanReadable(activeSeats * LIMIT_PER_SEAT)} ` +
+                  `Data sources are limited to ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} ` +
                   `of text on your current plan. You are attempting to upload ` +
                   `${datasourceStats.data_source.text_size} bytes.`,
               },
