@@ -23,10 +23,7 @@ import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentM
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
-import {
-  isServerSideMCPServerConfiguration,
-  isTablesQueryConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -75,9 +72,7 @@ export function AssistantKnowledgeSection({
     };
 
     return agentConfiguration.actions.reduce((acc, action) => {
-      if (isTablesQueryConfiguration(action)) {
-        acc.queryTables.push(action);
-      } else if (isServerSideMCPServerConfiguration(action)) {
+      if (isServerSideMCPServerConfiguration(action)) {
         const { tables, dataSources } = action;
         if (dataSources) {
           acc.retrieval.push({ dataSources });

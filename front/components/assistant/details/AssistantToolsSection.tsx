@@ -172,8 +172,6 @@ function renderOtherAction(
     };
   } else if (isBrowseConfiguration(action)) {
     return null;
-  } else if (isTablesQueryConfiguration(action)) {
-    return null;
   } else {
     return assertNever(action);
   }

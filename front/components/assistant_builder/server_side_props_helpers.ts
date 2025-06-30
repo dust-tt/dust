@@ -253,9 +253,9 @@ async function renderDataSourcesConfigurations(
 }
 
 async function renderTableDataSourcesConfigurations(
-  action:
-    | TablesQueryConfigurationType
-    | (MCPServerConfigurationType & { tables: TableDataSourceConfiguration[] }),
+  action: MCPServerConfigurationType & {
+    tables: TableDataSourceConfiguration[];
+  },
   dataSourceViews: DataSourceViewResource[]
 ): Promise<DataSourceViewSelectionConfigurations> {
   const selectedResources = action.tables.map((table) => ({

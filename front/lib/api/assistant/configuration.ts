@@ -12,7 +12,6 @@ import { fetchBrowseActionConfigurations } from "@app/lib/actions/configuration/
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
-import { fetchTableQueryActionConfigurations } from "@app/lib/actions/configuration/table_query";
 import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configuration/websearch";
 import {
   DEFAULT_REASONING_ACTION_DESCRIPTION,
@@ -20,7 +19,6 @@ import {
 } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
@@ -97,6 +95,13 @@ export type DataSourceConfiguration = {
   workspaceId: string;
   dataSourceViewId: string;
   filter: DataSourceFilter;
+};
+
+export type TableDataSourceConfiguration = {
+  sId?: string; // The sId is not always available, for instance it is not in an unsaved state of the builder.
+  workspaceId: string;
+  dataSourceViewId: string;
+  tableId: string;
 };
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
