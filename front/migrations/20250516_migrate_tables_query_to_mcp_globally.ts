@@ -19,6 +19,8 @@ import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
 
+type AgentStatus = "active" | "archived" | "draft";
+
 async function findWorkspacesWithTablesConfigurations(): Promise<ModelId[]> {
   const tableConfigurations = await AgentTablesQueryConfigurationTable.findAll({
     attributes: ["workspaceId"],
@@ -54,9 +56,11 @@ async function migrateWorkspaceTablesQueryActions(
   {
     execute,
     parentLogger,
+    agentStatus,
   }: {
     execute: boolean;
     parentLogger: typeof Logger;
+    agentStatus: AgentStatus;
   }
 ): Promise<string> {
   const owner = auth.getNonNullableWorkspace();
@@ -83,7 +87,7 @@ async function migrateWorkspaceTablesQueryActions(
             model: AgentConfiguration,
             required: true,
             where: {
-              status: "active",
+              status: agentStatus,
             },
           },
         ],
@@ -224,8 +228,15 @@ makeScript(
       description: "Workspace ID to start from",
       required: false,
     },
+    agentStatus: {
+      type: "string",
+      description: "Agent status to filter on",
+      required: false,
+      default: "active",
+      choices: ["active", "archived", "draft"],
+    },
   },
-  async ({ execute, startFromWorkspaceId }, parentLogger) => {
+  async ({ execute, startFromWorkspaceId, agentStatus }, parentLogger) => {
     const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     let revertSql = "";
 
@@ -248,6 +259,7 @@ makeScript(
         {
           execute,
           parentLogger,
+          agentStatus: agentStatus as AgentStatus,
         }
       );
 
