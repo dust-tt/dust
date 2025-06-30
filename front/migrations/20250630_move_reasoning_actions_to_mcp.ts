@@ -1,3 +1,4 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { Logger } from "pino";
 import type { CreationAttributes } from "sequelize";
@@ -165,7 +166,7 @@ async function createMCPActionAndOutputItems({
     resource: {
       text: reasoningAction.thinking ?? "",
       uri: "",
-      mimeType: "application/vnd.dust.tool-output.thinking",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.THINKING,
     },
   };
 
@@ -174,7 +175,7 @@ async function createMCPActionAndOutputItems({
     resource: {
       text: reasoningAction.output ?? "",
       uri: "",
-      mimeType: "application/vnd.dust.tool-output.reasoning-success",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.REASONING_SUCCESS,
     },
   };
 
