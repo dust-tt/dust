@@ -161,16 +161,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       password: config.getWorkOSCookiePassword(),
     });
 
-    logger.info(
-      {
-        user,
-        organizationId,
-        authenticationMethod,
-        workOSSessionCookie: sealedCookie.substring(0, 15),
-      },
-      "WorkOS callback"
-    );
-
     const currentRegion = multiRegionsConfig.getCurrentRegion();
     let targetRegion: RegionType | null = "us-central1";
 
