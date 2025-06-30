@@ -12,6 +12,7 @@ import apiConfig from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { computeDataSourceStatisticsCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -485,7 +486,6 @@ async function handler(
         }
       }
 
-      // Enforce plan limits: DataSource document size.
       if (
         plan.limits.dataSources.documents.sizeMb != -1 &&
         fullText.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
@@ -503,25 +503,30 @@ async function handler(
         });
       }
 
-      const activeSeats = await countActiveSeatsInWorkspace(owner.sId);
-      const datasourceStats =
-        await computeDataSourceStatisticsCached(dataSource);
+      const flags = await getFeatureFlags(owner);
+      if (flags.includes("enforce_datasource_quota")) {
+        // Enforce plan limits: Datasource quota
+        const [activeSeats, datasourceStats] = await Promise.all([
+          countActiveSeatsInWorkspace(owner.sId),
+          computeDataSourceStatisticsCached(dataSource),
+        ]);
 
-      if (datasourceStats) {
-        if (
-          datasourceStats.data_source.text_size >
-          (activeSeats + 1) * LIMIT_PER_SEAT // +1 because we allow the current upload to go over the limit
-        ) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "data_source_quota_error",
-              message:
-                `Data sources are limited to ${activeSeats * LIMIT_PER_SEAT} bytes ` +
-                `of text on your current plan. You are attempting to upload ` +
-                `${datasourceStats.data_source.text_size} bytes.`,
-            },
-          });
+        if (activeSeats && datasourceStats) {
+          if (
+            datasourceStats.data_source.text_size >
+            (activeSeats + 1) * LIMIT_PER_SEAT // +1 because we allow the current upload to go over the limit
+          ) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "data_source_quota_error",
+                message:
+                  `Data sources are limited to ${activeSeats * LIMIT_PER_SEAT} bytes ` +
+                  `of text on your current plan. You are attempting to upload ` +
+                  `${datasourceStats.data_source.text_size} bytes.`,
+              },
+            });
+          }
         }
       }
 

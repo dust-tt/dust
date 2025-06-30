@@ -785,6 +785,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
+  | "enforce_datasource_quota"
   | "exploded_tables_query"
   | "extended_max_steps_per_run"
   | "google_ai_studio_experimental_models_feature"
