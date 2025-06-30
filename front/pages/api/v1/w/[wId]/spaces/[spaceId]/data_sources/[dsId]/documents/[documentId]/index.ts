@@ -10,9 +10,11 @@ import { fromError } from "zod-validation-error";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
+import { computeDataSourceStatisticsCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
@@ -28,6 +30,8 @@ import {
   sectionFullText,
   validateUrl,
 } from "@app/types";
+
+const LIMIT_PER_SEAT = 1024 * 1024 * 1024; // 1GB
 
 export const config = {
   api: {
@@ -497,6 +501,28 @@ async function handler(
               `Contact support@dust.tt if you want to increase it.`,
           },
         });
+      }
+
+      const activeSeats = await countActiveSeatsInWorkspace(owner.sId);
+      const datasourceStats =
+        await computeDataSourceStatisticsCached(dataSource);
+
+      if (datasourceStats) {
+        if (
+          datasourceStats.data_source.text_size >
+          (activeSeats + 1) * LIMIT_PER_SEAT // +1 because we allow the current upload to go over the limit
+        ) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "data_source_quota_error",
+              message:
+                `Data sources are limited to ${activeSeats * LIMIT_PER_SEAT} bytes ` +
+                `of text on your current plan. You are attempting to upload ` +
+                `${datasourceStats.data_source.text_size} bytes.`,
+            },
+          });
+        }
       }
 
       // Prohibit passing parents when not coming from connectors.

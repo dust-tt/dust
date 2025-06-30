@@ -29,6 +29,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
@@ -1291,3 +1292,21 @@ export async function computeDataSourceStatistics(
     }))
   );
 }
+
+export const computeDataSourceStatisticsCached = cacheWithRedis(
+  async (dataSource: DataSourceResource) => {
+    const result = await computeDataSourceStatistics([dataSource]);
+
+    if (result.isErr()) {
+      throw new Error(
+        `Failed to get data source stats: ${result.error.message}`
+      );
+    }
+
+    return result.value;
+  },
+  (datasource) => {
+    return `compute-datasource-stats:${datasource.dustAPIProjectId}:${datasource.dustAPIDataSourceId}`;
+  },
+  60 * 10 * 1000 // 10 minutes
+);
