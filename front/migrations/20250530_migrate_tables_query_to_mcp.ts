@@ -7,6 +7,7 @@ import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import {
+  AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
@@ -138,6 +139,23 @@ async function migrateWorkspaceTablesQueryActions(
           `'${tablesQueryConfig.workspaceId}', '${tablesQueryConfig.name}', '${tablesQueryConfig.description}', ` +
           `'${format(tablesQueryConfig.createdAt, "yyyy-MM-dd")}', ` +
           `'${format(tablesQueryConfig.updatedAt, "yyyy-MM-dd")}');\n`;
+
+        revertSql +=
+          `UPDATE "agent_tables_query_actions" ` +
+          `SET "tablesQueryConfigurationId" = '${tablesQueryConfig.sId}' ` +
+          `WHERE "tablesQueryConfigurationId" = '${mcpConfig.sId}';\n`;
+
+        // Update the actions to link to the new MCP server configuration.
+        await AgentTablesQueryAction.update(
+          {
+            tablesQueryConfigurationId: mcpConfig.sId,
+          },
+          {
+            where: {
+              tablesQueryConfigurationId: tablesQueryConfig.sId,
+            },
+          }
+        );
 
         // Delete the tables query configuration.
         await tablesQueryConfig.destroy();
