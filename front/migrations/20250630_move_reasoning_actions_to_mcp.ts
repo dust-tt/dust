@@ -1,7 +1,6 @@
 import assert from "assert";
 import type { Logger } from "pino";
 import type { CreationAttributes } from "sequelize";
-import { Op } from "sequelize";
 
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
@@ -10,12 +9,9 @@ import {
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
-import {
-  AgentReasoningAction,
-  AgentReasoningConfiguration,
-} from "@app/lib/models/assistant/actions/reasoning";
+import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
@@ -47,59 +43,29 @@ async function migrateWorkspaceReasoningActions(
 
   const hasMore = false;
   do {
-    // Step 1: Retrieve the legacy reasoning actions.
-    const reasoningActions = await AgentReasoningAction.findAll({
+    // Step 1: Retrieve the legacy reasoning configurations.
+    const reasoningConfigurations = await AgentReasoningConfiguration.findAll({
       where: {
         workspaceId: workspace.id,
+        mcpServerConfigurationId: null, // The one not migrated to MCP.
       },
       limit: BATCH_SIZE,
     });
 
-    if (reasoningActions.length === 0) {
+    logger.info(
+      `Found ${reasoningConfigurations.length} legacy reasoning configurations.`
+    );
+
+    if (reasoningConfigurations.length === 0) {
       return;
     }
 
-    logger.info(`Found ${reasoningActions.length} reasoning actions`);
-
-    // Step 2: Find the corresponding AgentMessages.
-    const agentMessages = await AgentMessage.findAll({
-      where: {
-        id: {
-          [Op.in]: reasoningActions.map((action) => action.agentMessageId),
-        },
-      },
-    });
-
-    // Step 3: Find the corresponding AgentConfigurations.
-    const agentConfigurationSIds = [
-      ...new Set(agentMessages.map((message) => message.agentConfigurationId)),
-    ];
-
-    const agentConfigurations = await AgentConfiguration.findAll({
-      where: {
-        sId: {
-          [Op.in]: agentConfigurationSIds,
-        },
-      },
-    });
-
-    // Step 4: Create the MCP actions with their output items.
+    // Step 2: Create the MCP actions with their output items.
     await concurrentExecutor(
-      reasoningActions,
-      async (reasoningAction) => {
-        const agentMessage = agentMessages.find(
-          (message) => message.id === reasoningAction.agentMessageId
-        );
-        assert(agentMessage, "Agent message must exist");
-
-        const agentConfiguration = agentConfigurations.find(
-          (config) => config.sId === agentMessage.agentConfigurationId
-        );
-        assert(agentConfiguration, "Agent configuration must exist");
-
-        await migrateSingleReasoningAction({
-          agentConfiguration,
-          reasoningAction,
+      reasoningConfigurations,
+      async (reasoningConfiguration) => {
+        await migrateReasoningActionsForActionConfiguration({
+          reasoningConfiguration,
           mcpServerViewForReasoning: mcpServerViewForReasoning.id,
           logger,
           execute,
@@ -113,62 +79,102 @@ async function migrateWorkspaceReasoningActions(
 }
 
 /**
- * Migrate a single reasoning action to MCP.
+ * Migrate the actions for a single reasoning configuration.
  */
-async function migrateSingleReasoningAction({
-  reasoningAction,
-  agentConfiguration,
+async function migrateReasoningActionsForActionConfiguration({
+  reasoningConfiguration,
   mcpServerViewForReasoning,
   logger,
   execute,
 }: {
-  reasoningAction: AgentReasoningAction;
-  agentConfiguration: AgentConfiguration;
+  reasoningConfiguration: AgentReasoningConfiguration;
   mcpServerViewForReasoning: ModelId;
   logger: Logger;
   execute: boolean;
 }) {
-  if (!execute) {
-    logger.info(
-      { reasoningActionId: reasoningAction.id },
-      "Would migrate reasoning action, but execute is false."
-    );
-    return;
-  }
+  // The reasoning configuration must have an agent configuration when it was not migrated to MCP.
+  assert(
+    reasoningConfiguration.agentConfigurationId,
+    "Reasoning configuration must have an agent configuration."
+  );
 
-  // Find the action's reasoning configuration.
-  const reasoningConfiguration = await AgentReasoningConfiguration.findOne({
-    where: {
-      sId: reasoningAction.reasoningConfigurationId,
-    },
-  });
-  assert(reasoningConfiguration, "Reasoning configuration must exist");
+  // Find the agent configuration.
+  const agentConfiguration = await AgentConfiguration.findByPk(
+    reasoningConfiguration.agentConfigurationId
+  );
+  assert(agentConfiguration, "Agent configuration must exist");
 
-  // Create the MCP server configuration if it does not exist and save it in the reasoning configuration.
-  let reasoningMcpServerConfiguration: AgentMCPServerConfiguration | null =
-    null;
-  if (reasoningConfiguration.mcpServerConfigurationId) {
-    reasoningMcpServerConfiguration =
-      await AgentMCPServerConfiguration.findByPk(
-        reasoningConfiguration.mcpServerConfigurationId
-      );
-    assert(
-      reasoningMcpServerConfiguration,
-      "Reasoning MCP server configuration must exist"
-    );
-  } else {
-    reasoningMcpServerConfiguration = await AgentMCPServerConfiguration.create({
-      sId: reasoningConfiguration.sId,
-      additionalConfiguration: {},
-      agentConfigurationId: agentConfiguration.id,
-      mcpServerViewId: mcpServerViewForReasoning,
-      workspaceId: reasoningAction.workspaceId,
+  if (execute) {
+    // Create the MCP server configuration.
+    const reasoningMcpServerConfiguration =
+      await AgentMCPServerConfiguration.create({
+        sId: reasoningConfiguration.sId,
+        additionalConfiguration: {},
+        agentConfigurationId: agentConfiguration.id,
+        mcpServerViewId: mcpServerViewForReasoning,
+        workspaceId: reasoningConfiguration.workspaceId,
+      });
+
+    const reasonningActions = await AgentReasoningAction.findAll({
+      where: {
+        reasoningConfigurationId: reasoningConfiguration.id,
+      },
     });
+
+    if (reasonningActions.length === 0) {
+      logger.info(
+        { reasoningConfigurationId: reasoningConfiguration.id },
+        "No reasoning actions found for this configuration."
+      );
+      return;
+    }
+
+    // Create the MCP actions.
+    await concurrentExecutor(
+      reasonningActions,
+      async (reasoningAction) => {
+        await createMCPActionAndOutputItems({
+          reasoningMcpServerConfiguration,
+          reasoningAction,
+          logger,
+          execute,
+        });
+      },
+      {
+        concurrency: CREATION_CONCURRENCY,
+      }
+    );
+
+    // Update the reasoning configuration to point to the MCP server configuration.
     await reasoningConfiguration.update({
       mcpServerConfigurationId: reasoningMcpServerConfiguration.id,
+      agentConfigurationId: null,
+    });
+
+    // Delete the legacy reasoning actions.
+    await AgentReasoningAction.destroy({
+      where: {
+        reasoningConfigurationId: reasoningConfiguration.id,
+        workspaceId: reasoningConfiguration.workspaceId,
+      },
     });
   }
+}
 
+/**
+ * Create the MCP action and the output items for a single reasoning action.
+ */
+async function createMCPActionAndOutputItems({
+  reasoningMcpServerConfiguration,
+  reasoningAction,
+  logger,
+  execute,
+}: {
+  reasoningMcpServerConfiguration: AgentMCPServerConfiguration;
+  reasoningAction: AgentReasoningAction;
+  logger: Logger;
+  execute: boolean;
+}) {
   // Convert the legacy reasoning action to an MCP action.
   const mcpActionParams: CreationAttributes<AgentMCPAction> = {
     workspaceId: reasoningAction.workspaceId,
@@ -182,40 +188,55 @@ async function migrateSingleReasoningAction({
     isError: false,
   };
 
-  const mcpAction = await AgentMCPAction.create(mcpActionParams);
-
-  // Create the output items.
-  await AgentMCPActionOutputItem.create({
-    agentMCPActionId: mcpAction.id,
-    content: {
-      type: "resource",
-      resource: {
-        text: reasoningAction.thinking ?? "",
-        uri: "",
-        mimeType: "application/vnd.dust.tool-output.thinking",
-      },
+  const outputItemThinking: AgentMCPActionOutputItem["content"] = {
+    type: "resource",
+    resource: {
+      text: reasoningAction.thinking ?? "",
+      uri: "",
+      mimeType: "application/vnd.dust.tool-output.thinking",
     },
-    createdAt: reasoningAction.createdAt,
-    updatedAt: reasoningAction.updatedAt,
-    workspaceId: reasoningAction.workspaceId,
-  });
-  await AgentMCPActionOutputItem.create({
-    agentMCPActionId: mcpAction.id,
-    content: {
-      type: "resource",
-      resource: {
-        text: reasoningAction.output ?? "",
-        uri: "",
-        mimeType: "application/vnd.dust.tool-output.reasoning-success",
-      },
-    },
-    createdAt: reasoningAction.createdAt,
-    updatedAt: reasoningAction.updatedAt,
-    workspaceId: reasoningAction.workspaceId,
-  });
+  };
 
-  // Delete the legacy reasoning action.
-  await reasoningAction.destroy();
+  const outputItemContent: AgentMCPActionOutputItem["content"] = {
+    type: "resource",
+    resource: {
+      text: reasoningAction.output ?? "",
+      uri: "",
+      mimeType: "application/vnd.dust.tool-output.reasoning-success",
+    },
+  };
+
+  if (execute) {
+    // Create the MCP action.
+    const mcpAction = await AgentMCPAction.create(mcpActionParams);
+    // Create both output items concurrently.
+    await Promise.all([
+      AgentMCPActionOutputItem.create({
+        agentMCPActionId: mcpAction.id,
+        content: outputItemThinking,
+        createdAt: reasoningAction.createdAt,
+        updatedAt: reasoningAction.updatedAt,
+        workspaceId: reasoningAction.workspaceId,
+      }),
+      AgentMCPActionOutputItem.create({
+        agentMCPActionId: mcpAction.id,
+        content: outputItemContent,
+        createdAt: reasoningAction.createdAt,
+        updatedAt: reasoningAction.updatedAt,
+        workspaceId: reasoningAction.workspaceId,
+      }),
+    ]);
+  } else {
+    logger.info(
+      {
+        reasoningActionId: reasoningAction.id,
+        mcpActionParams,
+        outputItemThinking,
+        outputItemContent,
+      },
+      "Would migrate reasoning action, but execute is false."
+    );
+  }
 }
 
 /**
