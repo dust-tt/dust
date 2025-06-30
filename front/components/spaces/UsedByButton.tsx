@@ -37,13 +37,13 @@ export const UsedByButton = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-w-48">
-        {usage.agentNames.map((name) => (
+        {usage.agents.map((agent) => (
           <DropdownMenuItem
-            key={`assistant-picker-${name}`}
-            label={name}
+            key={`assistant-picker-${agent.sId}`}
+            label={agent.name}
             onClick={(e) => {
               e.stopPropagation();
-              onItemClick(name);
+              onItemClick(agent.sId);
             }}
           />
         ))}

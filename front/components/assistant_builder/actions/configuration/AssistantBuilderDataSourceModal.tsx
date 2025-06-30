@@ -7,9 +7,9 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import type { SetStateAction } from "react";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { useDataSourceViewsContext } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import {
@@ -44,7 +44,7 @@ export default function AssistantBuilderDataSourceModal({
   setOpen,
   viewType,
 }: AssistantBuilderDataSourceModalProps) {
-  const { dataSourceViews } = useContext(AssistantBuilderContext);
+  const { dataSourceViews } = useDataSourceViewsContext();
   const [hasChanged, setHasChanged] = useState(false);
 
   const [selectionConfigurations, setSelectionConfigurations] =

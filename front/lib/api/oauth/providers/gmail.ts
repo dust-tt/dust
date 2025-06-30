@@ -2,7 +2,10 @@ import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
 import config from "@app/lib/api/config";
-import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type {
+  BaseOAuthStrategyProvider,
+  RelatedCredential,
+} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
@@ -64,17 +67,81 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
 
   async getRelatedCredential(
     auth: Authenticator,
-    extraConfig: ExtraConfigType,
-    workspaceId: string,
-    userId: string,
-    useCase: OAuthUseCase
-  ): Promise<{
-    credential: {
-      content: Record<string, string>;
-      metadata: { workspace_id: string; user_id: string };
+    {
+      extraConfig,
+      workspaceId,
+      userId,
+      useCase,
+    }: {
+      extraConfig: ExtraConfigType;
+      workspaceId: string;
+      userId: string;
+      useCase: OAuthUseCase;
+    }
+  ): Promise<RelatedCredential> {
+    if (useCase === "personal_actions") {
+      // For personal actions we reuse the existing connection credential id from the existing
+      // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
+      // we have client_secret (initial admin setup).
+      const { mcp_server_id } = extraConfig;
+
+      if (mcp_server_id) {
+        const mcpServerConnectionRes =
+          await MCPServerConnectionResource.findByMCPServer(auth, {
+            mcpServerId: mcp_server_id,
+            connectionType: "workspace",
+          });
+
+        if (mcpServerConnectionRes.isErr()) {
+          throw new Error(
+            "Failed to find MCP server connection: " +
+              mcpServerConnectionRes.error.message
+          );
+        }
+
+        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+        const connectionRes = await oauthApi.getAccessToken({
+          connectionId: mcpServerConnectionRes.value.connectionId,
+        });
+        if (connectionRes.isErr()) {
+          throw new Error(
+            "Failed to get connection metadata: " + connectionRes.error.message
+          );
+        }
+        const connection = connectionRes.value.connection;
+        const connectionId = connection.connection_id;
+
+        return {
+          content: {
+            from_connection_id: connectionId,
+          },
+          metadata: { workspace_id: workspaceId, user_id: userId },
+        };
+      }
+    }
+
+    const { client_secret } = extraConfig;
+
+    return {
+      content: {
+        client_secret: client_secret,
+        client_id: extraConfig.client_id,
+      },
+      metadata: { workspace_id: workspaceId, user_id: userId },
     };
-    cleanedConfig: ExtraConfigType;
-  } | null> {
+  }
+
+  async getUpdatedExtraConfig(
+    auth: Authenticator,
+    {
+      extraConfig,
+
+      useCase,
+    }: {
+      extraConfig: ExtraConfigType;
+      useCase: OAuthUseCase;
+    }
+  ): Promise<ExtraConfigType> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
@@ -89,7 +156,10 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          return null;
+          throw new Error(
+            "Failed to find MCP server connection: " +
+              mcpServerConnectionRes.error.message
+          );
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -97,37 +167,22 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
           connectionId: mcpServerConnectionRes.value.connectionId,
         });
         if (connectionRes.isErr()) {
-          return null;
+          throw new Error(
+            "Failed to get connection metadata: " + connectionRes.error.message
+          );
         }
         const connection = connectionRes.value.connection;
-        const connectionId = connection.connection_id;
 
         return {
-          credential: {
-            content: {
-              from_connection_id: connectionId,
-            },
-            metadata: { workspace_id: workspaceId, user_id: userId },
-          },
-          cleanedConfig: {
-            client_id: connection.metadata.client_id,
-            ...restConfig,
-          },
+          client_id: connection.metadata.client_id,
+          ...restConfig,
         };
       }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
-    // Keep client_id in metadata in clear text.
-    return {
-      credential: {
-        content: {
-          client_secret: client_secret,
-          client_id: extraConfig.client_id,
-        },
-        metadata: { workspace_id: workspaceId, user_id: userId },
-      },
-      cleanedConfig: restConfig,
-    };
+
+    return restConfig;
   }
 }

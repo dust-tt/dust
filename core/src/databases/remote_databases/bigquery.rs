@@ -42,17 +42,13 @@ pub struct BigQueryRemoteDatabase {
 }
 
 pub struct DatasetCheckDetails {
-    allowed_table_names: HashSet<String>,   // table_id
-    forbidden_tables: HashSet<String>,      // project_id.dataset_id.table_id
-    forbidden_table_names: HashSet<String>, // table_id
+    allowed_table_names: HashSet<String>, // table_id
 }
 
 impl Default for DatasetCheckDetails {
     fn default() -> Self {
         Self {
             allowed_table_names: HashSet::new(),
-            forbidden_tables: HashSet::new(),
-            forbidden_table_names: HashSet::new(),
         }
     }
 }
@@ -357,27 +353,21 @@ impl BigQueryRemoteDatabase {
                 .insert(table_name);
         }
 
-        // Also include forbidden tables in the dataset grouping
-        for table in forbidden_tables {
-            let parts: Vec<&str> = table.split('.').collect();
-            if parts.len() < 3 {
-                Err(anyhow!("Invalid table name: {}", table))?
-            }
-            let table_name = parts[parts.len() - 1].to_string();
-            let dataset_key = parts[..parts.len() - 1].join(".");
-            let entry = dataset_details
-                .entry(dataset_key)
-                .or_insert_with(|| DatasetCheckDetails {
-                    ..Default::default()
-                });
-
-            entry.forbidden_table_names.insert(table_name);
-            entry.forbidden_tables.insert(table.clone());
-        }
-
-        let mut remaining_forbidden_tables = Vec::<String>::new();
+        let mut remaining_forbidden_tables = forbidden_tables
+            .iter()
+            .map(|t| t.clone())
+            .collect::<HashSet<_>>();
+        let forbidden_table_names = forbidden_tables
+            .iter()
+            .map(|t| t.split('.').last().unwrap_or("invalid table name"))
+            .collect::<HashSet<_>>();
 
         for (dataset_key, dataset) in dataset_details.iter() {
+            // Skip if there are no longer any forbidden tables remaining.
+            if remaining_forbidden_tables.is_empty() {
+                break;
+            }
+
             // This query will return the view definitions for all specified tables in the dataset, if they are views.
             let query = format!(
                 r#"SELECT table_name as view_name, view_definition
@@ -418,6 +408,7 @@ impl BigQueryRemoteDatabase {
                 parameter_mode: Some("NAMED".to_string()),
                 query_parameters: Some(query_parameters),
                 use_legacy_sql: false,
+                location: Some(self.location.clone()),
                 ..Default::default()
             };
 
@@ -428,11 +419,19 @@ impl BigQueryRemoteDatabase {
                 .await
                 .map_err(|e| {
                     QueryDatabaseError::GenericError(anyhow!(
-                        "Error executing views check query {} dataset_key {}, view_names: {:?}, error: {}",
+                        "Error executing views check query {} dataset_key {}, allowed_tables: {:?}, forbidden_tables: {:?}, remaining_forbidden_tables: {:?}, error: {}",
                         query,
                         dataset_key,
                         dataset
                             .allowed_table_names
+                            .iter()
+                            .map(|name| name.clone())
+                            .collect::<Vec<_>>(),
+                        forbidden_tables
+                            .iter()
+                            .map(|name| name.clone())
+                            .collect::<Vec<_>>(),
+                        remaining_forbidden_tables
                             .iter()
                             .map(|name| name.clone())
                             .collect::<Vec<_>>(),
@@ -480,8 +479,7 @@ impl BigQueryRemoteDatabase {
 
                     if let (Some(name), Some(definition)) = (view_name, view_definition) {
                         // Only include views that are using forbidden table names.
-                        if dataset
-                            .forbidden_table_names
+                        if forbidden_table_names
                             .iter()
                             .any(|table_name| definition.contains(table_name))
                         {
@@ -490,7 +488,6 @@ impl BigQueryRemoteDatabase {
                     }
                 }
 
-                let mut remaining_forbidden_tables_of_dataset = dataset.forbidden_tables.clone();
                 for (view_name, view_definition) in view_definitions {
                     // We still leverage the query plan to check if the view is a select query and the affected tables.
                     let plan = self.get_query_plan(view_definition.as_str()).await?;
@@ -502,29 +499,29 @@ impl BigQueryRemoteDatabase {
                     }
 
                     // Remove all affected tables from the remaining forbidden tables.
-                    remaining_forbidden_tables_of_dataset.retain(|table| {
+                    remaining_forbidden_tables.retain(|table| {
                         !plan
                             .affected_tables
                             .iter()
                             .any(|affected_table| affected_table == table)
                     });
 
-                    if remaining_forbidden_tables_of_dataset.is_empty() {
+                    if remaining_forbidden_tables.is_empty() {
                         // Skip the rest of the view definitions as there are no remaining forbidden tables.
                         break;
                     }
                 }
-
-                // We could Err immediately if there are remaining forbidden tables in a specific dataset,
-                // but we'll keep track of them and list them in the error message at the end.
-                remaining_forbidden_tables.extend(remaining_forbidden_tables_of_dataset);
             }
         }
 
         if !remaining_forbidden_tables.is_empty() {
             info!(
                 remote_database = "bigquery",
-                used_forbidden_tables = remaining_forbidden_tables.join(", "),
+                used_forbidden_tables = remaining_forbidden_tables
+                    .iter()
+                    .map(|t| t.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", "),
                 used_forbidden_tables_count = remaining_forbidden_tables.len(),
                 allowed_tables_count = allowed_tables.len(),
                 allowed_tables = allowed_tables

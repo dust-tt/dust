@@ -718,6 +718,10 @@ export async function syncDeltaForRootNodesInDrive({
           blob
         );
 
+        if (isAlreadySeenItem({ driveItemResource: resource, startSyncTs })) {
+          continue;
+        }
+
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
         // todo check filter
@@ -729,7 +733,6 @@ export async function syncDeltaForRootNodesInDrive({
 
         await resource.update({
           parentInternalId,
-          lastSeenTs: new Date(),
         });
 
         const parents = await getParents({
@@ -760,6 +763,10 @@ export async function syncDeltaForRootNodesInDrive({
             startSyncTs,
           });
         }
+
+        await resource.update({
+          lastSeenTs: new Date(),
+        });
       }
     } else {
       throw new Error(`Unexpected: driveItem is neither file nor folder`);

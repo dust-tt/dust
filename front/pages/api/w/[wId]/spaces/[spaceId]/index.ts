@@ -1,6 +1,6 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-import { uniq, uniqBy } from "lodash";
+import { uniqBy } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
@@ -68,7 +68,7 @@ async function handler(
           count: 0,
           usage: {
             count: 0,
-            agentNames: [],
+            agents: [],
           },
         };
 
@@ -85,19 +85,20 @@ async function handler(
 
           for (const dsView of dataSourceViewsInCategory) {
             categories[category].count += 1;
-
             const usage = usages[dsView.id];
 
             if (usage) {
-              categories[category].usage.agentNames = categories[
+              categories[category].usage.agents = categories[
                 category
-              ].usage.agentNames.concat(usage.agentNames);
-              categories[category].usage.agentNames = uniq(
-                categories[category].usage.agentNames
+              ].usage.agents.concat(usage.agents);
+              categories[category].usage.agents = uniqBy(
+                categories[category].usage.agents,
+                "sId"
               );
-              categories[category].usage.count += usage.count;
             }
           }
+          categories[category].usage.count =
+            categories[category].usage.agents.length;
         }
       }
 
@@ -115,7 +116,7 @@ async function handler(
               if (space.managementMode === "group") {
                 return g.kind === "provisioned";
               }
-              return g.kind === "regular";
+              return g.kind === "regular" || g.kind === "global";
             }),
             (group) => group.getActiveMembers(auth),
             { concurrency: 10 }

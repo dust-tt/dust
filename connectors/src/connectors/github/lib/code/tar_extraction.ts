@@ -2,6 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import assert from "assert";
 import gunzip from "gunzip-maybe";
+import PQueue from "p-queue";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import * as tar from "tar-stream";
@@ -20,6 +21,8 @@ import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 
 const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1MB
+const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_CONCURRENT_GCS_UPLOADS = 200;
 
 interface TarExtractionOptions {
   repoId: number;
@@ -131,7 +134,9 @@ export async function extractGitHubTarballToGCS(
   let filesUploaded = 0;
   let filesSkipped = 0;
   const seenDirs = new Set<string>();
-  const uploadPromises: Promise<void>[] = [];
+
+  // Create upload queue to limit concurrent GCS uploads.
+  const uploadQueue = new PQueue({ concurrency: MAX_CONCURRENT_GCS_UPLOADS });
 
   // Create tar stream extractor.
   const extract = tar.extract();
@@ -142,6 +147,13 @@ export async function extractGitHubTarballToGCS(
   );
 
   extract.on("entry", (header, stream, next) => {
+    // The tar archive is streamed sequentially, meaning you must drain each entry's stream
+    // as you get them or else the main extract stream will receive backpressure and stop reading.
+    const drainAndNext = () => {
+      stream.on("end", () => next());
+      stream.resume();
+    };
+
     try {
       if (header.type === "file") {
         const { cleanPath, filePath, fileName } = parseGitHubPath(header.name);
@@ -159,43 +171,53 @@ export async function extractGitHubTarballToGCS(
             }
           }
 
-          // Count file immediately (before upload).
+          // Upload file to GCS using stream directly with queue.
           filesUploaded++;
+          logger.info(
+            { gcsPath, fileName, filePath, filesUploaded },
+            "Uploading file to GCS"
+          );
 
-          logger.info({ gcsPath, fileName, filePath }, "Uploading file to GCS");
-
-          const uploadPromise = pipeline(
-            stream,
-            gcsFile.createWriteStream({
-              metadata: {
-                contentType: "text/plain",
-              },
+          // Queue the upload but use stream directly
+          uploadQueue
+            .add(async () => {
+              return pipeline(
+                stream,
+                gcsFile.createWriteStream({
+                  metadata: {
+                    contentType: "text/plain",
+                  },
+                  resumable:
+                    (header.size ?? 0) >= GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
+                  validation: false,
+                })
+              );
             })
-          ).catch((error) => {
-            logger.error(
-              {
-                error,
-                gcsPath,
-                fileName,
-                filePath,
-                repoId,
-                connectorId,
-              },
-              "Failed to upload file to GCS"
-            );
-            // Re-throw to ensure the upload failure is visible.
-            throw error;
-          });
+            .catch((error) => {
+              logger.error(
+                {
+                  error,
+                  gcsPath,
+                  fileName,
+                  filePath,
+                  repoId,
+                  connectorId,
+                },
+                "Failed to upload file to GCS"
+              );
+              throw error;
+            });
 
-          uploadPromises.push(uploadPromise);
+          // Continue tar extraction immediately.
+          next();
         } else {
-          // Skip this file - resume stream.
+          // Skip filtered file but must drain stream to prevent backpressure.
           filesSkipped++;
           logger.info(
             { fileName: header.name },
             "Skipping file (filtered out)"
           );
-          stream.resume();
+          drainAndNext();
         }
       } else if (header.type === "directory") {
         // Track directory entries from tarball (including empty ones).
@@ -221,15 +243,15 @@ export async function extractGitHubTarballToGCS(
           logger.info({ dirPath: cleanPath }, "Found directory in tarball");
         }
 
-        // Resume stream (no content to process for directories).
-        stream.resume();
+        // Drain directory stream to prevent backpressure.
+        drainAndNext();
       } else {
-        // Skip other types (symlinks, etc.) - resume stream.
+        // Skip non-file/directory entries but drain to prevent backpressure.
         logger.info(
           { fileName: header.name, type: header.type },
           "Skipping non-file/directory entry"
         );
-        stream.resume();
+        drainAndNext();
       }
     } catch (error) {
       if (isGithubRequestErrorNotFound(error)) {
@@ -243,37 +265,25 @@ export async function extractGitHubTarballToGCS(
         { error, header },
         "Error processing tarball entry, resuming stream."
       );
-      stream.resume();
+      // Drain stream to prevent backpressure despite error.
+      drainAndNext();
     }
-
-    next();
   });
 
   // Stream: GitHub tarball -> gunzip -> tar extract -> GCS upload.
   await pipeline(tarballStream, gunzip(), extract);
 
-  // Wait for all file uploads to complete.
-  const uploadResults = await Promise.allSettled(uploadPromises);
-  const failedUploads = uploadResults.filter((r) => r.status === "rejected");
-
-  if (failedUploads.length > 0) {
-    logger.error(
-      {
-        repoId,
-        connectorId,
-        failedCount: failedUploads.length,
-        totalAttempted: uploadPromises.length,
-      },
-      "Some file uploads failed during GitHub extraction"
-    );
-  }
+  logger.info({ repoId, connectorId }, "All files uploaded");
 
   // Create directory placeholder files to preserve GitHub hierarchy.
-  const directoryPromises = Array.from(seenDirs).map(async (dirPath) =>
-    gcsManager.createDirectoryPlaceholder(gcsBasePath, dirPath)
+  Array.from(seenDirs).forEach((dirPath) =>
+    uploadQueue.add(() =>
+      gcsManager.createDirectoryPlaceholder(gcsBasePath, dirPath)
+    )
   );
 
-  await Promise.all(directoryPromises);
+  // Wait for all queued uploads to complete.
+  await uploadQueue.onIdle();
 
   logger.info(
     {
@@ -283,7 +293,6 @@ export async function extractGitHubTarballToGCS(
       filesUploaded,
       filesSkipped,
       directoriesCreated: seenDirs.size,
-      uploadFailures: failedUploads.length,
     },
     "Completed GitHub tarball extraction to GCS"
   );

@@ -280,3 +280,28 @@ export async function deleteWorkOSOrganizationDSyncConnection(
     return new Err(normalizeError(error));
   }
 }
+
+export async function deleteWorksOSOrganizationWithWorkspace(
+  workspaceId: string
+): Promise<Result<undefined, Error>> {
+  const localLogger = logger.child({
+    workspaceId,
+  });
+
+  let organization: Organization;
+  try {
+    organization =
+      await getWorkOS().organizations.getOrganizationByExternalId(workspaceId);
+  } catch (err) {
+    localLogger.warn({ workspaceId }, "Can't get workOSOrganization");
+    return new Ok(undefined);
+  }
+
+  try {
+    await getWorkOS().organizations.deleteOrganization(organization.id);
+
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}

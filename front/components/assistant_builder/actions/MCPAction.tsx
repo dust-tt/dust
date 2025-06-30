@@ -1,5 +1,5 @@
 import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
@@ -13,14 +13,12 @@ import { JsonSchemaConfigurationSection } from "@app/components/assistant_builde
 import { ReasoningModelConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ReasoningModelConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { DataDescription } from "@app/components/assistant_builder/actions/DataDescription";
-import { generateSchema } from "@app/components/assistant_builder/actions/ProcessAction";
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import type {
-  AssistantBuilderActionConfiguration,
-  AssistantBuilderActionState,
+  AssistantBuilderMCPConfiguration,
+  AssistantBuilderMCPOrVizState,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -29,11 +27,13 @@ import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   LightWorkspaceType,
+  Result,
   SpaceType,
   TimeFrame,
   WhitelistableFeature,
+  WorkspaceType,
 } from "@app/types";
-import { asDisplayName, assertNever } from "@app/types";
+import { asDisplayName, assertNever, Err, Ok } from "@app/types";
 
 interface NoActionAvailableProps {
   owner: LightWorkspaceType;
@@ -80,14 +80,14 @@ interface MCPActionProps {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
   hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
-  action: AssistantBuilderActionState;
+  action: AssistantBuilderMCPOrVizState;
   isEditing: boolean;
   updateAction: (args: {
     actionName: string;
     actionDescription: string;
     getNewActionConfig: (
-      old: AssistantBuilderActionConfiguration["configuration"]
-    ) => AssistantBuilderActionConfiguration["configuration"];
+      old: AssistantBuilderMCPConfiguration["configuration"]
+    ) => AssistantBuilderMCPConfiguration["configuration"];
   }) => void;
   setEdited: (edited: boolean) => void;
   setShowInvalidActionDescError: (
@@ -111,7 +111,7 @@ export function MCPAction({
   const actionConfiguration =
     action.configuration as AssistantBuilderMCPServerConfiguration;
 
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const noMCPServerView = mcpServerViews.length === 0;
 
@@ -343,13 +343,8 @@ export function MCPAction({
         <ConfigurationSectionContainer title="Available Tools">
           <ToolsList
             owner={owner}
-            tools={selectedMCPServerView.server.tools}
-            serverType={
-              getServerTypeAndIdFromSId(selectedMCPServerView.server.sId)
-                .serverType
-            }
-            serverId={selectedMCPServerView.server.sId}
-            canUpdate={false}
+            mcpServerView={selectedMCPServerView}
+            forcedCanUpdate={false}
           />
         </ConfigurationSectionContainer>
       )}
@@ -371,7 +366,7 @@ export function MCPAction({
 }
 
 export function hasErrorActionMCP(
-  action: AssistantBuilderActionConfiguration,
+  action: AssistantBuilderMCPConfiguration,
   mcpServerViews: MCPServerViewType[]
 ): string | null {
   if (action.type === "MCP") {
@@ -449,4 +444,29 @@ export function hasErrorActionMCP(
     return null;
   }
   return "Please select a tool.";
+}
+
+export async function generateSchema({
+  owner,
+  instructions,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+}): Promise<Result<Record<string, unknown>, Error>> {
+  const res = await fetch(
+    `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        instructions,
+      }),
+    }
+  );
+  if (!res.ok) {
+    return new Err(new Error("Failed to generate schema"));
+  }
+  return new Ok((await res.json()).schema || null);
 }
