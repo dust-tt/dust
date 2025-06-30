@@ -1028,17 +1028,14 @@ const ContentFragmentNodeData = z.object({
   spaceName: z.string(),
 });
 
-const ContentFragmentSchema = z.object({
+const BaseContentFragmentSchema = z.object({
+  type: z.literal("content_fragment"),
   id: ModelIdSchema,
   sId: z.string(),
-  fileId: z.string().nullable(),
   created: z.number(),
-  type: z.literal("content_fragment"),
   visibility: VisibilitySchema,
   version: z.number(),
   sourceUrl: z.string().nullable(),
-  textUrl: z.string(),
-  textBytes: z.number().nullable(),
   title: z.string(),
   contentType: SupportedContentFragmentTypeSchema,
   context: ContentFragmentContextSchema,
@@ -1047,8 +1044,30 @@ const ContentFragmentSchema = z.object({
     z.literal("latest"),
     z.literal("superseded"),
   ]),
-  contentNodeData: ContentFragmentNodeData.nullable(),
 });
+
+const FileContentFragmentSchema = BaseContentFragmentSchema.extend({
+  contentFragmentType: z.literal("file"),
+  fileId: z.string().nullable(),
+  snippet: z.string().nullable(),
+  generatedTables: z.array(z.string()),
+  textUrl: z.string(),
+  textBytes: z.number().nullable(),
+});
+
+const ContentNodeContentFragmentSchema = BaseContentFragmentSchema.extend({
+  contentFragmentType: z.literal("content_node"),
+  nodeId: z.string(),
+  nodeDataSourceViewId: z.string(),
+  nodeType: ContentNodeTypeSchema,
+  contentNodeData: ContentFragmentNodeData,
+});
+
+const ContentFragmentSchema = z.union([
+  FileContentFragmentSchema,
+  ContentNodeContentFragmentSchema,
+]);
+
 export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 
 export type UploadedContentFragmentType = {
