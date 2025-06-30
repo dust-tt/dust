@@ -296,6 +296,12 @@ export async function verifyAuth0Token(
 export async function getUserFromAuth0Token(
   accessToken: Auth0JwtPayload
 ): Promise<UserResource | null> {
+  const workOSID = accessToken["https://dust.tt/workos_user_id"];
+
+  if (workOSID) {
+    return UserResource.fetchByWorkOSUserId(workOSID);
+  }
+
   return UserResource.fetchByAuth0Sub(accessToken.sub);
 }
 
