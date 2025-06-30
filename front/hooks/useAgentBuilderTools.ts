@@ -53,8 +53,6 @@ function getGroupedMCPServerViews({
     };
   });
 
-  // We show the MCP actions with data sources in Knowledge dropdown,
-  // and the ones without data sources in Tools dropdown.
   const { mcpServerViewsWithKnowledge, mcpServerViewsWithoutKnowledge } =
     groupBy(mcpServerViewsWithLabel, (view) => {
       const requirements = getMCPServerRequirements(view);
