@@ -209,6 +209,7 @@ function createResultOutputItem(
 
 async function migrateSingleProcessAction(
   auth: Authenticator,
+  agentMessage: AgentMessage,
   processAction: AgentProcessAction,
   agentConfiguration: AgentConfiguration | null,
   logger: Logger,
@@ -226,6 +227,14 @@ async function migrateSingleProcessAction(
     agentConfiguration ?? null,
     mcpServerViewForExtractId,
     logger
+  );
+
+  logger.info(
+    {
+      processActionId: processAction.id,
+      outputs: processAction.outputs ? "has outputs" : "no outputs",
+    },
+    "Found process action outputs"
   );
 
   if (execute) {
@@ -248,7 +257,9 @@ async function migrateSingleProcessAction(
       outputItems.push(resultItem);
     }
 
-    await AgentMCPActionOutputItem.bulkCreate(outputItems);
+    if (outputItems.length > 0) {
+      await AgentMCPActionOutputItem.bulkCreate(outputItems);
+    }
   }
 }
 
@@ -338,12 +349,15 @@ async function migrateWorkspaceProcessActions(
         );
         assert(
           agentConfiguration ||
-            isGlobalAgentId(agentMessage.agentConfigurationId),
-          "Agent configuration must exist"
+            isGlobalAgentId(agentMessage.agentConfigurationId) ||
+            // Dust Next is a global agent that was removed from everywhere.
+            agentMessage.agentConfigurationId === "dust-next",
+          `Agent configuration must exist for agent ${agentMessage.agentConfigurationId}`
         );
 
         await migrateSingleProcessAction(
           auth,
+          agentMessage,
           processAction,
           agentConfiguration ?? null,
           logger,
