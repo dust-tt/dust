@@ -249,7 +249,6 @@ const CliChat: FC<CliChatProps> = ({
   const handleApprovalRequest = useCallback(
     async (event: AgentActionSpecificEvent): Promise<boolean> => {
       if (event.type !== "tool_approve_execution") {
-        assert(event, "Unexpected event type for approval request");
         return false;
       }
       // Auto-approve if stake is never_ask
