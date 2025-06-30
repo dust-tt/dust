@@ -137,15 +137,15 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     );
 
     if (force) {
-      const agentSIds = uniq(
+      const agentIds = uniq(
         usages.flatMap((u) => u.agents).map((agent) => agent.sId)
       );
       await concurrentExecutor(
-        agentSIds,
-        async (agentSId) => {
+        agentIds,
+        async (agentId) => {
           const [agentConfig] = await getAgentConfigurations({
             auth,
-            agentsGetView: { agentIds: [agentSId] },
+            agentsGetView: { agentIds: [agentId] },
             variant: "full",
             dangerouslySkipPermissionFiltering: true,
           });
@@ -159,7 +159,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
 
           const res = await updateAgentRequestedGroupIds(
             auth,
-            { agentSId: agentSId, newGroupIds: requestedGroupIds },
+            { agentId, newGroupIds: requestedGroupIds },
             { transaction: t }
           );
 
