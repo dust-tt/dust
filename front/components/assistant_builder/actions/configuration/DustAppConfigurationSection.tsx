@@ -1,9 +1,7 @@
 import {
   Card,
   CommandLineIcon,
-  ContentMessage,
   Icon,
-  InformationCircleIcon,
   Label,
   RadioGroup,
   RadioGroupCustomItem,
