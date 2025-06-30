@@ -1,21 +1,12 @@
 import { TextArea } from "@dust-tt/sparkle";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
-import type {
-  AssistantBuilderMCPConfiguration,
-  AssistantBuilderMCPOrVizState,
-} from "@app/components/assistant_builder/types";
+import type { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 
 const MAX_DESCRIPTION_LENGTH = 800;
 
 interface DataDescriptionProps {
-  updateAction: (args: {
-    actionName: string;
-    actionDescription: string;
-    getNewActionConfig: (
-      old: AssistantBuilderMCPConfiguration["configuration"]
-    ) => AssistantBuilderMCPConfiguration["configuration"];
-  }) => void;
+  updateDescription: (actionDescription: string) => void;
   action: AssistantBuilderMCPOrVizState;
   setShowInvalidActionDescError: (
     showInvalidActionDescError: string | null
@@ -24,7 +15,7 @@ interface DataDescriptionProps {
 }
 
 export const DataDescription = ({
-  updateAction,
+  updateDescription,
   action,
   setShowInvalidActionDescError,
   showInvalidActionDescError,
@@ -42,11 +33,7 @@ export const DataDescription = ({
         value={action.description}
         onChange={(e) => {
           if (e.target.value.length < MAX_DESCRIPTION_LENGTH) {
-            updateAction({
-              actionName: action.name,
-              actionDescription: e.target.value,
-              getNewActionConfig: (old) => old,
-            });
+            updateDescription(e.target.value);
             setShowInvalidActionDescError(null);
           } else {
             setShowInvalidActionDescError(

@@ -352,7 +352,7 @@ export function MCPAction({
       />
       {withDataSource && (
         <DataDescription
-          updateAction={updateAction}
+          updateDescription={updateDescription}
           action={action}
           setShowInvalidActionDescError={setShowInvalidActionDescError}
           showInvalidActionDescError={showInvalidActionDescError}
