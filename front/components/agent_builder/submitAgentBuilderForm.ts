@@ -1,3 +1,4 @@
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -9,15 +10,77 @@ import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import type { AgentBuilderFormData } from "./AgentBuilderFormContext";
+import type { SearchAgentBuilderAction } from "./types";
+import { isSearchAction } from "./types";
+
+function convertSearchActionToMCPConfiguration(
+  searchAction: SearchAgentBuilderAction,
+  searchMCPServerView: MCPServerViewType,
+  owner: WorkspaceType
+): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
+  const dataSources = Object.values(
+    searchAction.configuration.dataSourceConfigurations
+  ).map((config) => ({
+    dataSourceViewId: config.dataSourceView.sId,
+    workspaceId: owner.sId,
+    filter: {
+      parents: config.isSelectAll
+        ? null
+        : {
+            in: config.selectedResources.map((resource) => resource.internalId),
+            not: [],
+          },
+      tags: config.tagsFilter
+        ? {
+            in: config.tagsFilter.in,
+            not: config.tagsFilter.not,
+            mode: config.tagsFilter.mode,
+          }
+        : null,
+    },
+  }));
+
+  return {
+    type: "mcp_server_configuration",
+    mcpServerViewId: searchMCPServerView.sId,
+    name: searchAction.name,
+    description: searchAction.description,
+    dataSources,
+    tables: null,
+    childAgentId: null,
+    reasoningModel: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    dustAppConfiguration: null,
+  };
+}
+
+function getSearchMCPServerView(
+  mcpServerViews: MCPServerViewType[]
+): MCPServerViewType {
+  const searchMCPServerView = mcpServerViews.find(
+    (view) =>
+      view.server.name === "search" && view.server.availability === "auto"
+  );
+
+  if (!searchMCPServerView) {
+    throw new Error("Search MCP server view not found");
+  }
+
+  return searchMCPServerView;
+}
 
 export async function submitAgentBuilderForm({
   formData,
   owner,
+  mcpServerViews,
   agentConfigurationId = null,
   isDraft = false,
 }: {
   formData: AgentBuilderFormData;
   owner: WorkspaceType;
+  mcpServerViews: MCPServerViewType[];
   agentConfigurationId?: string | null;
   isDraft?: boolean;
 }): Promise<
@@ -43,11 +106,21 @@ export async function submitAgentBuilderForm({
         responseFormat: formData.generationSettings.responseFormat,
       },
       actions: formData.actions.flatMap((action) => {
-        // Handle DATA_VISUALIZATION actions by filtering them out
-        // (they're handled via visualizationEnabled flag)
         if (action.type === "DATA_VISUALIZATION") {
           return [];
         }
+
+        if (isSearchAction(action)) {
+          const searchMCPServerView = getSearchMCPServerView(mcpServerViews);
+          return [
+            convertSearchActionToMCPConfiguration(
+              action,
+              searchMCPServerView,
+              owner
+            ),
+          ];
+        }
+
         return [];
       }),
       maxStepsPerRun: formData.maxStepsPerRun,
