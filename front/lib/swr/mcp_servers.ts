@@ -1054,7 +1054,7 @@ function useMCPServerViewsFromSpacesBase(
 
   return {
     serverViews: data?.serverViews ?? emptyArray(),
-    isLoading: !error && !data,
+    isLoading:  !error && !data && spaces.length !== 0,
     isError: error,
     mutateServerViews: mutate,
   };

@@ -65,30 +65,7 @@ export function DustAppConfigurationSection({
           defaultSpace={allowedSpaces[0]?.sId}
           renderChildren={(space) => {
             if (!space) {
-              return (
-                <ContentMessage
-                  title="You don't have any Dust Application available"
-                  icon={InformationCircleIcon}
-                  variant="warning"
-                >
-                  <div className="flex flex-col gap-y-3">
-                    {owner.role === "admin" || owner.role === "builder" ? (
-                      <div>
-                        <strong>
-                          Visit the "Developer Tools" section in the Build panel
-                          to build your first Dust Application.
-                        </strong>
-                      </div>
-                    ) : owner.role === "user" ? (
-                      <div>
-                        <strong>
-                          Only Admins and Builders can build Dust Applications.
-                        </strong>
-                      </div>
-                    ) : null}
-                  </div>
-                </ContentMessage>
-              );
+              return <>No Dust Apps available.</>;
             }
 
             return (
