@@ -319,7 +319,7 @@ export default function ActionsScreen({
                 Need help? Check out our{" "}
                 <Hoverable
                   variant="highlight"
-                  href="https://docs.dust.tt/docs/data"
+                  href="https://docs.dust.tt/docs/tools"
                   target="_blank"
                 >
                   guide
