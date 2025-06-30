@@ -27,6 +27,7 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType, ModelId, TimeFrame } from "@app/types";
 import { isGlobalAgentId } from "@app/types";
+import config from "@app/lib/api/config";
 
 const WORKSPACE_CONCURRENCY = 50;
 const BATCH_SIZE = 200;
@@ -180,14 +181,11 @@ function createResultOutputItem(
   const resultResource: ExtractResultResourceType = {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
     text: extractResult,
-    uri: `https://dust.tt/api/v1/w/${auth.getNonNullableWorkspace().sId}/files/${processAction.jsonFileId}`,
+    uri: `${config.getClientFacingUrl()}/api/w/${auth.getNonNullableWorkspace().sId}/files/${processAction.jsonFileId}`,
     fileId: processAction.jsonFileId.toString(),
     title: "Extracted Data",
     contentType: "application/json",
-    snippet:
-      outputs.data && outputs.data.length > 0
-        ? JSON.stringify(outputs.data[0], null, 2).substring(0, 200) + "..."
-        : null,
+    snippet: processAction.jsonFileSnippet,
   };
 
   return {
