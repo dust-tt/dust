@@ -7,8 +7,8 @@ import type {
   UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
-import axios from "axios";
+import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosError } from "axios";
 import tracer from "dd-trace";
 import http from "http";
 import https from "https";
@@ -22,10 +22,8 @@ import { apiConfig } from "@connectors/lib/api/config";
 import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
-import type { ProviderVisibility } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
-import { isValidDate, safeSubstring } from "@connectors/types";
-import { withRetries } from "@connectors/types";
+import type { DataSourceConfig, ProviderVisibility } from "@connectors/types";
+import { isValidDate, safeSubstring, withRetries } from "@connectors/types";
 
 const MAX_CSV_SIZE = 50 * 1024 * 1024;
 
@@ -87,6 +85,16 @@ export const upsertDataSourceDocument = withRetries(
   _upsertDataSourceDocument,
   {
     retries: 3,
+    shouldRetryIf: (error: Error) => {
+      if (
+        error instanceof AxiosError &&
+        error.code === "ERR_BAD_REQUEST" &&
+        error.status === 403
+      ) {
+        return false;
+      }
+      return true;
+    },
   }
 );
 

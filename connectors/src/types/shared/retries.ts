@@ -25,12 +25,17 @@ export class WithRetriesError extends Error {
 type RetryOptions = {
   retries?: number;
   delayBetweenRetriesMs?: number;
+  shouldRetryIf?: (error: Error) => boolean;
 };
 
 export function withRetries<T, U>(
   logger: LoggerInterface,
   fn: (arg: T) => Promise<U>,
-  { retries = 10, delayBetweenRetriesMs = 1000 }: RetryOptions = {}
+  {
+    retries = 10,
+    delayBetweenRetriesMs = 1000,
+    shouldRetryIf = () => true,
+  }: RetryOptions = {}
 ): (arg: T & RetryOptions) => Promise<U> {
   if (retries < 1) {
     throw new Error("retries must be >= 1");
@@ -43,20 +48,24 @@ export function withRetries<T, U>(
       try {
         return await fn(arg);
       } catch (e) {
+        errors.push({ attempt: i + 1, error: e });
+        const shouldRetry = shouldRetryIf(normalizeError(e));
         const sleepTime = delayBetweenRetriesMs * (i + 1) ** 2;
         logger.warn(
           {
             error: e,
             attempt: i + 1,
-            retries: retries,
-            sleepTime: sleepTime,
+            retries,
+            shouldRetry,
+            sleepTime,
           },
           "Error while executing retriable function. Retrying..."
         );
+        if (!shouldRetry) {
+          break;
+        }
 
         await setTimeoutAsync(sleepTime);
-
-        errors.push({ attempt: i + 1, error: e });
       }
     }
 
