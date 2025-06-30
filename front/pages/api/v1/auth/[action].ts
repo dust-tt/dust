@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import logger from "@app/logger/logger";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import logger from "@app/logger/logger";
 
 type Provider = {
   name: "workos" | "auth0";
@@ -131,8 +131,6 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
     code_challenge: `${query.code_challenge}`,
   });
 
-  console.log(params);
-
   const authorizeUrl = `https://${provider.authorizeUri}?${params}`;
   res.redirect(authorizeUrl);
 }
@@ -140,7 +138,6 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
 async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   try {
     const provider = getProvider(req.query);
-    console.log(`Authenticating with provider: ${provider.name}`);
     const response = await fetch(`https://${provider.authenticateUri}`, {
       method: "POST",
       headers: {
