@@ -28,6 +28,7 @@ import Conversation from "../components/Conversation.js";
 import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
+import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -59,10 +60,12 @@ async function sendNonInteractiveMessage(
 ): Promise<void> {
   const dustClient = await getDustClient();
   if (!dustClient) {
-    console.error(JSON.stringify({ 
-      error: "Authentication required",
-      details: "Run `dust login` first"
-    }));
+    console.error(
+      JSON.stringify({
+        error: "Authentication required",
+        details: "Run `dust login` first",
+      })
+    );
     process.exit(1);
   }
 
@@ -86,20 +89,24 @@ async function sendNonInteractiveMessage(
     });
 
     if (convRes.isErr()) {
-      console.error(JSON.stringify({ 
-        error: "Failed to create conversation",
-        details: convRes.error.message
-      }));
+      console.error(
+        JSON.stringify({
+          error: "Failed to create conversation",
+          details: convRes.error.message,
+        })
+      );
       process.exit(1);
     }
 
     const conversation = convRes.value.conversation;
     const userMessageId = convRes.value.message?.sId;
-    
+
     if (!userMessageId) {
-      console.error(JSON.stringify({ 
-        error: "No message created"
-      }));
+      console.error(
+        JSON.stringify({
+          error: "No message created",
+        })
+      );
       process.exit(1);
     }
 
@@ -110,61 +117,77 @@ async function sendNonInteractiveMessage(
     });
 
     if (streamRes.isErr()) {
-      console.error(JSON.stringify({ 
-        error: "Failed to stream agent answer",
-        details: streamRes.error.message
-      }));
+      console.error(
+        JSON.stringify({
+          error: "Failed to stream agent answer",
+          details: streamRes.error.message,
+        })
+      );
       process.exit(1);
     }
 
     let fullResponse = "";
-    
+
     for await (const event of streamRes.value.eventStream) {
       if (event.type === "generation_tokens") {
         if (event.classification === "tokens") {
           fullResponse += event.text;
         }
       } else if (event.type === "agent_error") {
-        console.error(JSON.stringify({ 
-          error: "Agent error",
-          details: event.error.message
-        }));
+        console.error(
+          JSON.stringify({
+            error: "Agent error",
+            details: event.error.message,
+          })
+        );
         process.exit(1);
       } else if (event.type === "user_message_error") {
-        console.error(JSON.stringify({ 
-          error: "User message error",
-          details: event.error.message
-        }));
+        console.error(
+          JSON.stringify({
+            error: "User message error",
+            details: event.error.message,
+          })
+        );
         process.exit(1);
       } else if (event.type === "agent_message_success") {
         // Success - output the result
-        console.log(JSON.stringify({
-          agentId: selectedAgent.sId,
-          agentAnswer: fullResponse.trim(),
-          conversationId: conversation.sId
-        }));
+        console.log(
+          JSON.stringify({
+            agentId: selectedAgent.sId,
+            agentAnswer: fullResponse.trim(),
+            conversationId: conversation.sId,
+          })
+        );
         process.exit(0);
       }
     }
   } catch (error) {
-    console.error(JSON.stringify({ 
-      error: "Unexpected error",
-      details: normalizeError(error).message
-    }));
+    console.error(
+      JSON.stringify({
+        error: "Unexpected error",
+        details: normalizeError(error).message,
+      })
+    );
     process.exit(1);
   }
 }
 
-const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) => {
+const CliChat: FC<CliChatProps> = ({
+  sId: requestedSId,
+  agentSearch,
+  message,
+}) => {
   const [error, setError] = useState<string | null>(null);
-  
+
   // Validate that --message requires --agent
   useEffect(() => {
     if (message && !agentSearch) {
-      console.error(JSON.stringify({ 
-        error: "Invalid usage",
-        details: "--message requires --agent to be specified"
-      }));
+      console.error(
+        JSON.stringify({
+          error: "Invalid usage",
+          details: "--message requires --agent to be specified",
+        })
+      );
       process.exit(1);
     }
   }, [message, agentSearch]);
@@ -246,13 +269,13 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
 
   const handleApproval = useCallback(
     (approved: boolean) => {
-      if (approvalResolver) {
+      if (approvalResolver && pendingApproval) {
         approvalResolver(approved);
         setPendingApproval(null);
         setApprovalResolver(null);
       }
     },
-    [approvalResolver]
+    [approvalResolver, pendingApproval]
   );
 
   const clearFiles = useCallback(() => {
@@ -381,18 +404,20 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
     if (!message || !selectedAgent) {
       return;
     }
-    
+
     // Wait for authentication to load
     if (isMeLoading) {
       return;
     }
-    
+
     // Check for authentication errors
     if (!me || meError) {
-      console.error(JSON.stringify({ 
-        error: "Authentication error",
-        details: meError || "Not authenticated"
-      }));
+      console.error(
+        JSON.stringify({
+          error: "Authentication error",
+          details: meError || "Not authenticated",
+        })
+      );
       process.exit(1);
     }
 
@@ -797,17 +822,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
 
   // Handle keyboard events.
   useInput((input, key) => {
+    // Skip input handling when there's a pending approval
     if (pendingApproval) {
-      if (input === "y" || input === "Y") {
-        handleApproval(true);
-      } else if (input === "n" || input === "N") {
-        handleApproval(false);
-      }
-      void clearTerminal();
       return;
     }
 
-    // Skip all input handling when selecting a new agent or showing file selector
     if (!selectedAgent || isSelectingNewAgent || showFileSelector) {
       return;
     }
@@ -1259,68 +1278,15 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message }) 
       setError(`Unexpected pending approval type: ${pendingApproval.type}`);
       return null; // Exit early if we encounter an unexpected type
     }
-    const formatInputs = (inputs: any) => {
-      if (!inputs || Object.keys(inputs).length === 0) {
-        return "No inputs";
-      }
-
-      const entries = Object.entries(inputs);
-      if (entries.length === 1) {
-        const [key, value] = entries[0];
-        if (typeof value === "string" && value.length < 100) {
-          return `${key}: ${value}`;
-        }
-      }
-
-      return JSON.stringify(inputs, null, 2);
-    };
 
     return (
-      <Box flexDirection="column">
-        <Box
-          flexDirection="column"
-          borderStyle="round"
-          borderColor="blue"
-          paddingX={1}
-        >
-          <Text color="blue" bold>
-            Tool Execution Approval Required
-          </Text>
-
-          <Box marginBottom={1}>
-            <Text>
-              Agent {pendingApproval.metadata.agentName} wants to use tool{" "}
-              {pendingApproval.metadata.toolName} from server{" "}
-              {pendingApproval.metadata.mcpServerName}
-            </Text>
-          </Box>
-
-          <Box>
-            <Text>
-              <Text bold color="blue">
-                Inputs:
-              </Text>
-            </Text>
-            <Box marginLeft={2} marginTop={1}>
-              <Text color="grey">{formatInputs(pendingApproval.inputs)}</Text>
-            </Box>
-          </Box>
-        </Box>
-        <Box
-          borderStyle="single"
-          borderColor="gray"
-          flexDirection="column"
-          paddingX={1}
-        >
-          <Text bold>Do you want to approve this tool execution?</Text>
-          <Text color="green" bold>
-            [Y]es
-          </Text>
-          <Text color="red" bold>
-            [N]o
-          </Text>
-        </Box>
-      </Box>
+      <ToolApprovalSelector
+        event={pendingApproval}
+        onApproval={(approved) => {
+          handleApproval(approved);
+          void clearTerminal();
+        }}
+      />
     );
   }
 
