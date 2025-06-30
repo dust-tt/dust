@@ -29,11 +29,11 @@ import type {
 } from "@app/types";
 import {
   Err,
+  fileSizeToHumanReadable,
   getSupportedFileExtensions,
   isBigFileSize,
   isSlugified,
   MAX_FILE_SIZES,
-  maxFileSizeToHumanReadable,
 } from "@app/types";
 
 interface Table {
@@ -400,7 +400,7 @@ export const TableUploadOrEditModal = ({
                   <div>
                     <Page.SectionHeader
                       title="CSV File"
-                      description={`Select the CSV file for data extraction. The maximum file size allowed is ${maxFileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`}
+                      description={`Select the CSV file for data extraction. The maximum file size allowed is ${fileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`}
                       action={{
                         label: fileUploaderService.isProcessingFiles
                           ? "Uploading..."

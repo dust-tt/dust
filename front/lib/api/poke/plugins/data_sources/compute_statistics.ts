@@ -1,6 +1,6 @@
 import { computeDataSourceStatistics } from "@app/lib/api/data_sources";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { Err, maxFileSizeToHumanReadable, Ok } from "@app/types";
+import { Err, fileSizeToHumanReadable, Ok } from "@app/types";
 
 export const computeStatsPlugin = createPlugin({
   manifest: {
@@ -26,7 +26,7 @@ export const computeStatsPlugin = createPlugin({
       display: "json",
       value: {
         name,
-        text_size: maxFileSizeToHumanReadable(text_size, 2),
+        text_size: fileSizeToHumanReadable(text_size, 2),
         document_count,
       },
     });
