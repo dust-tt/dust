@@ -17,6 +17,8 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { logger } from "@google-cloud/bigquery/build/src/logger";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: LightAgentConfigurationType;
@@ -43,11 +45,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    const configuration = await getAgentConfiguration(
-      auth,
-      context.params?.aId as string,
-      "light"
-    );
+    const [configuration] = await Promise.all([
+      getAgentConfiguration(auth, context.params?.aId as string, "light"),
+      MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
+    ]);
 
     if (!configuration) {
       return {
