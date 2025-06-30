@@ -1,5 +1,5 @@
 import type { BrowseResultResourceType } from "@dust-tt/client";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES, removeNulls } from "@dust-tt/client";
 import assert from "assert";
 import type { Logger } from "pino";
 import type { CreationAttributes } from "sequelize";
@@ -162,9 +162,11 @@ async function migrateSingleBrowseAction(
   );
 
   // Step 2: Create one resource for each URL/item.
-  const browseResultResources = browseAction.urls
-    .flatMap((url) => urlToBrowseResultResourceTypes(browseAction, { url }))
-    .filter((resource) => resource !== null);
+  const browseResultResources = removeNulls(
+    browseAction.urls.flatMap((url) =>
+      urlToBrowseResultResourceTypes(browseAction, { url })
+    )
+  );
 
   logger.info(
     {
