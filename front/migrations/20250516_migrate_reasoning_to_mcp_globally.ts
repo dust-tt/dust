@@ -45,9 +45,11 @@ async function findWorkspacesWithReasoningConfigurations(
 async function migrateWorkspaceReasoningActions(
   auth: Authenticator,
   {
+    agentStatus,
     execute,
     parentLogger,
   }: {
+    agentStatus: AgentStatus;
     execute: boolean;
     parentLogger: typeof Logger;
   }
@@ -74,7 +76,7 @@ async function migrateWorkspaceReasoningActions(
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -213,6 +215,7 @@ makeScript(
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
       const workspaceRevertSql = await migrateWorkspaceReasoningActions(auth, {
+        agentStatus: agentStatus as AgentStatus,
         execute,
         parentLogger,
       });
