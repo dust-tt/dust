@@ -162,7 +162,7 @@ export const financialServicesConfig: IndustryPageConfig = {
       },
       {
         title: "Support operations",
-        image: "/static/landing/industry/features/Incident_copilot_slack.svg",
+        image: "/static/landing/industry/features/Incident_copilot_slack.webp",
         bgColor: "bg-green-100",
         features: [
           {
@@ -193,7 +193,7 @@ export const financialServicesConfig: IndustryPageConfig = {
       },
       {
         title: "Marketing & content generation",
-        image: "/static/landing/industry/features/Content_localization.svg",
+        image: "/static/landing/industry/features/Content_localization.webp",
         bgColor: "bg-golden-100",
         features: [
           {
