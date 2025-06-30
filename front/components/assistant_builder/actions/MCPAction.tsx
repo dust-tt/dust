@@ -2,6 +2,7 @@ import { ContentMessage, InformationCircleIcon } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
+import { ChildAgentDescription } from "@app/components/assistant_builder/actions/ChildAgentDescription";
 import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
@@ -259,6 +260,20 @@ export function MCPAction({
           }}
           selectedAgentId={actionConfiguration.childAgentId}
           owner={owner}
+        />
+      )}
+      {requirements.requiresChildAgentConfiguration && (
+        <ChildAgentDescription
+          updateDescription={(description) =>
+            updateAction({
+              actionName: action.name,
+              actionDescription: description,
+              getNewActionConfig: (old) => old,
+            })
+          }
+          action={action}
+          setShowInvalidActionDescError={setShowInvalidActionDescError}
+          showInvalidActionDescError={showInvalidActionDescError}
         />
       )}
       {requirements.requiresReasoningConfiguration && (
