@@ -63,10 +63,6 @@ function agentProcessActionToAgentMCPAction(
     "Found MCP server view ID for extract_data"
   );
 
-  // The `mcpServerConfigurationId` was not properly backfilled when AgentProcessConfiguration
-  // was migrated to MCP, preventing any possibility to convert the legacy process actions
-  // to MCP "working/replayable" actions. This is best effort, we take the first mcp server
-  // configuration for extract_data if available.
   const extractMcpServerConfiguration =
     agentConfiguration?.mcpServerConfigurations.find(
       (config) => config.mcpServerViewId === mcpServerViewForExtractId
@@ -128,7 +124,6 @@ function agentProcessActionToAgentMCPAction(
       },
       step: processAction.step,
       workspaceId: processAction.workspaceId,
-      // We did not save the error in the legacy process action.
       isError: false,
       executionState: "allowed_implicitly",
     },
