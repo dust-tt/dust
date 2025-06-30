@@ -13,7 +13,6 @@ import { visit } from "unist-util-visit";
 import { Checkbox } from "@sparkle/components";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
-import { Img } from "@sparkle/components/markdown/Image";
 import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
@@ -202,7 +201,6 @@ export function Markdown({
       hr: () => (
         <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
       ),
-      img: Img,
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
