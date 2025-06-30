@@ -114,15 +114,15 @@ const createServer = (): McpServer => {
       // Create the email message with proper headers and content.
       const message = [
         `To: ${to.join(", ")}`,
-        cc?.length ? `Cc: ${cc.join(", ")}` : "",
-        bcc?.length ? `Bcc: ${bcc.join(", ")}` : "",
+        cc?.length ? `Cc: ${cc.join(", ")}` : null,
+        bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
         `Subject: ${encodedSubject}`,
         "Content-Type: " + contentType,
         "MIME-Version: 1.0",
         "",
         body,
       ]
-        .filter(Boolean)
+        .filter((line) => line !== null)
         .join("\n");
 
       // Encode the message in base64 as required by the Gmail API.
