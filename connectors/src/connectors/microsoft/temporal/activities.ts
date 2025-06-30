@@ -1044,14 +1044,14 @@ export async function microsoftDeletionActivity({
 export async function microsoftGarbageCollectionActivity({
   connectorId,
   idCursor,
-  rootNodeIds,
   startGarbageCollectionTs,
 }: {
   connectorId: ModelId;
   idCursor: ModelId;
-  rootNodeIds: string[];
   startGarbageCollectionTs: number;
 }) {
+  const rootNodeIds = await getRootNodesToSync(connectorId);
+
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
