@@ -6,7 +6,6 @@ import { getDefaultMCPServerActionConfiguration } from "@app/components/assistan
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
-import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type {
   TableDataSourceConfiguration,
   TablesQueryConfigurationType,
@@ -169,7 +168,6 @@ async function getMCPServerActionConfiguration(
 
 async function renderDataSourcesConfigurations(
   action:
-    | RetrievalConfigurationType
     | ProcessConfigurationType
     | (MCPServerConfigurationType & { dataSources: DataSourceConfiguration[] }),
   dataSourceViews: DataSourceViewResource[]

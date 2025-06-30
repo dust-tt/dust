@@ -26,12 +26,7 @@ import {
 } from "@app/lib/models/assistant/actions/reasoning";
 import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
-import {
-  AgentRetrievalAction,
-  AgentRetrievalConfiguration,
-  RetrievalDocumentChunkModel,
-  RetrievalDocumentModel,
-} from "@app/lib/models/assistant/actions/retrieval";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import {
   AgentTablesQueryAction,
@@ -47,6 +42,7 @@ import {
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
+import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -58,7 +54,6 @@ import {
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
 import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import {
@@ -191,15 +186,12 @@ async function main() {
   await AgentStepContentModel.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
-  await AgentRetrievalAction.sync({ alter: true });
   await AgentSearchLabelsAction.sync({ alter: true });
   await AgentTablesQueryAction.sync({ alter: true });
   await AgentWebsearchAction.sync({ alter: true });
   await AgentMCPAction.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });
   await AgentChildAgentConfiguration.sync({ alter: true });
-  await RetrievalDocumentModel.sync({ alter: true });
-  await RetrievalDocumentChunkModel.sync({ alter: true });
 
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });

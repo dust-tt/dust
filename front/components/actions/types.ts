@@ -4,7 +4,6 @@ import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/Du
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { ReasoningActionDetails } from "@app/components/actions/reasoning/ReasoningActionDetails";
-import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
 import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
@@ -40,10 +39,6 @@ const actionsSpecification: ActionSpecifications = {
   process_action: {
     detailsComponent: ProcessActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.process_action,
-  },
-  retrieval_action: {
-    detailsComponent: RetrievalActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.retrieval_action,
   },
   tables_query_action: {
     detailsComponent: TablesQueryActionDetails,

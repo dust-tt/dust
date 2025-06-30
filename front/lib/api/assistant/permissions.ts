@@ -49,7 +49,6 @@ export function getDataSourceViewIdsFromActions(
 ): string[] {
   const relevantActions = actions.filter(
     (action) =>
-      action.type === "retrieval_configuration" ||
       action.type === "process_configuration" ||
       action.type === "tables_query_configuration" ||
       (action.type === "mcp_server_configuration" &&
@@ -58,10 +57,7 @@ export function getDataSourceViewIdsFromActions(
 
   return removeNulls(
     relevantActions.flatMap((action) => {
-      if (
-        action.type === "retrieval_configuration" ||
-        action.type === "process_configuration"
-      ) {
+      if (action.type === "process_configuration") {
         return action.dataSources.map(
           (dataSource) => dataSource.dataSourceViewId
         );

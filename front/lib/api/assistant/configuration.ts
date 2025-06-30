@@ -13,7 +13,6 @@ import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configurat
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
 import { fetchReasoningActionConfigurations } from "@app/lib/actions/configuration/reasoning";
-import { fetchAgentRetrievalActionConfigurations } from "@app/lib/actions/configuration/retrieval";
 import { fetchTableQueryActionConfigurations } from "@app/lib/actions/configuration/table_query";
 import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configuration/websearch";
 import {
@@ -507,7 +506,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const configurationSIds = agentConfigurations.map((a) => a.sId);
 
   const [
-    retrievalActionsConfigurationsPerAgent,
     processActionsConfigurationsPerAgent,
     dustAppRunActionsConfigurationsPerAgent,
     tableQueryActionsConfigurationsPerAgent,
@@ -518,10 +516,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     favoriteStatePerAgent,
     tagsPerAgent,
   ] = await Promise.all([
-    fetchAgentRetrievalActionConfigurations(auth, {
-      configurationIds,
-      variant,
-    }),
     fetchAgentProcessActionConfigurations(auth, { configurationIds, variant }),
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
@@ -542,11 +536,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     const actions: AgentActionConfigurationType[] = [];
 
     if (variant === "full") {
-      // Retrieval configurations.
-      const retrievalActionsConfigurations =
-        retrievalActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...retrievalActionsConfigurations);
-
       // Dust app run configurations.
       const dustAppRunActionsConfigurations =
         dustAppRunActionsConfigurationsPerAgent.get(agent.id) ?? [];
