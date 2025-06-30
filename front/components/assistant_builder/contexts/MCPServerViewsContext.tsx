@@ -1,12 +1,11 @@
 import type { ReactNode } from "react";
 import React, { createContext, memo, useContext } from "react";
 
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
-
-import { useSpacesContext } from "./SpacesContext";
 
 interface MCPServerViewsContextType {
   mcpServerViews: MCPServerViewType[];
