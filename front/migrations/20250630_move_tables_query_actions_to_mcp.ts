@@ -150,6 +150,80 @@ function createOutputItem({
   };
 }
 
+function getResourcesForTablesQueryAction(
+  tablesQueryAction: AgentTablesQueryAction,
+  {
+    auth,
+    resultsFile,
+    sectionFile,
+  }: {
+    auth: Authenticator;
+    resultsFile: FileResource | null;
+    sectionFile: FileResource | null;
+  }
+): TablesQueryOutputResource[] {
+  const { output } = tablesQueryAction;
+
+  if (
+    !output ||
+    typeof output !== "object" ||
+    Object.keys(output).length === 0
+  ) {
+    return [];
+  }
+
+  const resources: TablesQueryOutputResource[] = [];
+
+  if ("thinking" in output && typeof output?.thinking === "string") {
+    resources.push({
+      text: output.thinking,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.THINKING,
+      uri: "",
+    });
+  }
+
+  if ("query" in output && typeof output?.query === "string") {
+    resources.push({
+      text: output.query,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.SQL_QUERY,
+      uri: "",
+    });
+  }
+
+  if ("error" in output && typeof output?.error === "string") {
+    resources.push({
+      text: output.error as string,
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR,
+      uri: "",
+    });
+  }
+
+  if (resultsFile) {
+    resources.push({
+      text: `Your query results were generated successfully.`,
+      uri: resultsFile.getPublicUrl(auth),
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+      fileId: resultsFile.sId,
+      title: resultsFile.fileName,
+      contentType: resultsFile.contentType,
+      snippet: tablesQueryAction.resultsFileSnippet,
+    });
+  }
+
+  if (sectionFile) {
+    resources.push({
+      text: "Your query results were generated successfully.",
+      uri: sectionFile.getPublicUrl(auth),
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+      fileId: sectionFile.sId,
+      title: sectionFile.fileName,
+      contentType: sectionFile.contentType,
+      snippet: null,
+    });
+  }
+  return resources;
+}
+
 async function migrateSingleTablesQueryAction(
   auth: Authenticator,
   tablesQueryAction: AgentTablesQueryAction,
@@ -194,65 +268,11 @@ async function migrateSingleTablesQueryAction(
     const mcpActionCreated = await AgentMCPAction.create(mcpAction.action);
 
     // Step 4: Create output items for the action results
-    const { output } = tablesQueryAction;
-
-    const resources: TablesQueryOutputResource[] = [];
-
-    if (
-      !output ||
-      typeof output !== "object" ||
-      Object.keys(output).length === 0
-    ) {
-      return;
-    }
-
-    if ("thinking" in output && typeof output?.thinking === "string") {
-      resources.push({
-        text: output.thinking,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.THINKING,
-        uri: "",
-      });
-    }
-
-    if ("query" in output && typeof output?.query === "string") {
-      resources.push({
-        text: output.query,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.SQL_QUERY,
-        uri: "",
-      });
-    }
-
-    if ("error" in output && typeof output?.error === "string") {
-      resources.push({
-        text: output.error as string,
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR,
-        uri: "",
-      });
-    }
-
-    if (resultsFile) {
-      resources.push({
-        text: `Your query results were generated successfully.`,
-        uri: resultsFile.getPublicUrl(auth),
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-        fileId: resultsFile.sId,
-        title: resultsFile.fileName,
-        contentType: resultsFile.contentType,
-        snippet: tablesQueryAction.resultsFileSnippet,
-      });
-    }
-
-    if (sectionFile) {
-      resources.push({
-        text: "Your query results were generated successfully.",
-        uri: sectionFile.getPublicUrl(auth),
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-        fileId: sectionFile.sId,
-        title: sectionFile.fileName,
-        contentType: sectionFile.contentType,
-        snippet: null,
-      });
-    }
+    const resources = getResourcesForTablesQueryAction(tablesQueryAction, {
+      auth,
+      resultsFile,
+      sectionFile,
+    });
 
     // Step 5: Create all output items
     await AgentMCPActionOutputItem.bulkCreate(
