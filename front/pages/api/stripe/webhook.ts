@@ -10,10 +10,7 @@ import {
   sendCancelSubscriptionEmail,
   sendReactivateSubscriptionEmail,
 } from "@app/lib/api/email";
-import {
-  getMembers,
-  unsafeGetWorkspaceByModelId,
-} from "@app/lib/api/workspace";
+import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { Plan } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
@@ -24,9 +21,9 @@ import {
 } from "@app/lib/plans/stripe";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -152,9 +149,7 @@ async function handler(
               throw new Error("Missing required data in event.");
             }
 
-            const workspace = await WorkspaceModel.findOne({
-              where: { sId: workspaceId },
-            });
+            const workspace = await WorkspaceResource.fetchById(workspaceId);
             if (!workspace) {
               logger.warn(
                 {
@@ -372,7 +367,7 @@ async function handler(
             await subscription.updatePaymentFailingSince(now);
           }
 
-          const workspace = await unsafeGetWorkspaceByModelId(
+          const workspace = await WorkspaceResource.fetchByModelId(
             subscription.workspaceId
           );
           if (!workspace) {
@@ -525,7 +520,7 @@ async function handler(
               requestCancelAt: endDate ? now : null,
             });
 
-            const workspace = await unsafeGetWorkspaceByModelId(
+            const workspace = await WorkspaceResource.fetchByModelId(
               subscription.workspaceId
             );
             if (!workspace) {
@@ -698,7 +693,7 @@ async function handler(
                 "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = active. Ending the subscription and deleting some workspace data"
               );
 
-              const workspace = await unsafeGetWorkspaceByModelId(
+              const workspace = await WorkspaceResource.fetchByModelId(
                 matchingSubscription.workspaceId
               );
               if (!workspace) {
@@ -758,7 +753,7 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          const workspace = await unsafeGetWorkspaceByModelId(
+          const workspace = await WorkspaceResource.fetchByModelId(
             trialingSubscription.workspaceId
           );
           if (!workspace) {
