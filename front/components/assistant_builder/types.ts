@@ -259,7 +259,8 @@ export function getDefaultMCPServerActionConfiguration(
     name: mcpServerView?.server.name ?? "",
     description:
       requirements.requiresDataSourceConfiguration ||
-      requirements.requiresTableConfiguration
+      requirements.requiresTableConfiguration ||
+      requirements.requiresChildAgentConfiguration
         ? ""
         : mcpServerView?.server.description ?? "",
     noConfigurationRequired: requirements.noRequirement,
