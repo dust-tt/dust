@@ -7,8 +7,7 @@ use crate::oauth::{
         intercom::IntercomConnectionProvider, mcp::MCPConnectionProvider,
         microsoft::MicrosoftConnectionProvider, mock::MockConnectionProvider,
         notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
-        slack::SlackConnectionProvider, slack_bot::SlackBotConnectionProvider,
-        zendesk::ZendeskConnectionProvider,
+        slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
