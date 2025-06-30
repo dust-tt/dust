@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import type { Logger } from "pino";
 
 import { Authenticator } from "@app/lib/auth";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
@@ -8,22 +9,14 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import type { LoggerInterface } from "@app/types";
+import type { AgentStatus } from "@app/types";
 
 import { makeScript } from "../scripts/helpers";
 
-const argumentSpecs = {
-  workspaceSid: {
-    type: "string" as const,
-    describe:
-      "Optional workspace SID to migrate. If not provided, will migrate all workspaces.",
-  },
-};
-
 async function migrateWorkspace(
   workspace: WorkspaceModel,
-  logger: LoggerInterface,
-  execute: boolean
+  logger: Logger,
+  { agentStatus, execute }: { agentStatus: AgentStatus; execute: boolean }
 ): Promise<string> {
   // Create internal authenticator
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -54,7 +47,7 @@ async function migrateWorkspace(
   const agentConfigs = await AgentConfiguration.findAll({
     where: {
       workspaceId: workspace.id,
-      status: "active",
+      status: agentStatus,
     },
     include: [
       {
@@ -134,40 +127,57 @@ async function migrateWorkspace(
   return revertSql;
 }
 
-async function main(
-  args: { workspaceId?: string; execute: boolean },
-  logger: LoggerInterface
-) {
-  let revertSql = "";
-  if (args.workspaceId) {
-    const workspace = await WorkspaceModel.findOne({
-      where: {
-        sId: args.workspaceId,
-      },
-    });
+makeScript(
+  {
+    agentStatus: {
+      type: "string",
+      description: "Agent status to filter on",
+      required: false,
+      default: "active",
+      choices: ["active", "archived", "draft"],
+    },
+    workspaceId: {
+      type: "string",
+      describe:
+        "Optional workspace Id to migrate. If not provided, will migrate all workspaces.",
+    },
+  },
+  async ({ agentStatus, workspaceId, execute }, logger: Logger) => {
+    let revertSql = "";
+    if (workspaceId) {
+      const workspace = await WorkspaceModel.findOne({
+        where: {
+          sId: workspaceId,
+        },
+      });
 
-    if (!workspace) {
-      throw new Error(`Workspace ${args.workspaceId} not found`);
+      if (!workspace) {
+        throw new Error(`Workspace ${workspaceId} not found`);
+      }
+
+      revertSql += await migrateWorkspace(workspace, logger, {
+        agentStatus: agentStatus as AgentStatus,
+        execute,
+      });
+    } else {
+      const workspaces = await WorkspaceModel.findAll();
+      logger.info(
+        {
+          workspaceCount: workspaces.length,
+        },
+        "Migrating all workspaces"
+      );
+
+      for (const workspace of workspaces) {
+        revertSql += await migrateWorkspace(workspace, logger, {
+          agentStatus: agentStatus as AgentStatus,
+          execute,
+        });
+      }
     }
-
-    revertSql += await migrateWorkspace(workspace, logger, args.execute);
-  } else {
-    const workspaces = await WorkspaceModel.findAll();
-    logger.info(
-      {
-        workspaceCount: workspaces.length,
-      },
-      "Migrating all workspaces"
-    );
-
-    for (const workspace of workspaces) {
-      revertSql += await migrateWorkspace(workspace, logger, args.execute);
+    if (execute) {
+      const now = new Date().toISOString();
+      fs.writeFileSync(`websearch_to_mcp_revert_${now}.sql`, revertSql);
     }
   }
-  if (args.execute) {
-    const now = new Date().toISOString();
-    fs.writeFileSync(`websearch_to_mcp_revert_${now}.sql`, revertSql);
-  }
-}
-
-makeScript(argumentSpecs, main);
+);
