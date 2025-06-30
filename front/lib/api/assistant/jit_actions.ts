@@ -11,7 +11,7 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type {
   ContentNodeAttachmentType,

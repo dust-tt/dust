@@ -21,7 +21,6 @@ import {
   isMCPServerConfiguration,
   isProcessConfiguration,
   isServerSideMCPServerConfiguration,
-  isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";

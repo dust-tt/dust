@@ -23,7 +23,6 @@ import {
   isMCPToolConfiguration,
   isProcessConfiguration,
   isSearchLabelsConfiguration,
-  isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
