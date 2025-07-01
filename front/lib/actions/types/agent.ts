@@ -56,7 +56,6 @@ export function isActionConfigurationType(
     case "conversation_include_file_configuration":
     case "dust_app_run_configuration":
     case "mcp_configuration":
-    case "mcp_configuration":
     case "process_configuration":
     case "search_labels_configuration":
     case "tables_query_configuration":
