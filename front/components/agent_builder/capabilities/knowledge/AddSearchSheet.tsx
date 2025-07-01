@@ -6,13 +6,11 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import type { SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
-import { supportsDocumentsData } from "@app/lib/data_sources";
-import { useDataSourceViews } from "@app/lib/swr/data_source_views";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import logger from "@app/logger/logger";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
 const PAGE_IDS = {
@@ -37,7 +35,7 @@ export function AddSearchSheet({
   isOpen,
   onClose,
 }: AddSearchSheetProps) {
-  const { owner, spaces } = useAgentBuilderContext();
+  const { owner, spaces, supportedDataSourceViews } = useAgentBuilderContext();
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     PAGE_IDS.DATA_SOURCE_SELECTION
   );
@@ -45,15 +43,9 @@ export function AddSearchSheet({
   const [dataSourceConfigurations, setDataSourceConfigurations] =
     useState<DataSourceViewSelectionConfigurations>({});
 
-  const { dataSourceViews } = useDataSourceViews(owner);
-
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
   useEffect(() => {
     if (isOpen) {
-      setCurrentPageId("data-source-selection");
+      setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
       setDescription("");
       setDataSourceConfigurations({});
     }
@@ -66,16 +58,8 @@ export function AddSearchSheet({
     [setDataSourceConfigurations]
   );
 
-  // Filter data sources for document search (excluding table-only sources)
-  const supportedDataSourceViews = useMemo(() => {
-    return dataSourceViews.filter((dsv) =>
-      supportsDocumentsData(dsv.dataSource, featureFlags)
-    );
-  }, [dataSourceViews, featureFlags]);
-
-  const hasDataSourceSelections = useMemo(() => {
-    return Object.keys(dataSourceConfigurations).length > 0;
-  }, [dataSourceConfigurations]);
+  const hasDataSourceSelections =
+    Object.keys(dataSourceConfigurations).length > 0;
 
   const handleSave = () => {
     if (hasDataSourceSelections && description.trim()) {
@@ -93,7 +77,7 @@ export function AddSearchSheet({
     if (isValidPageId(pageId)) {
       setCurrentPageId(pageId);
     } else {
-      console.warn(`Invalid page ID received: ${pageId}`);
+      logger.warn({ pageId }, "Invalid page ID received");
     }
   };
 
