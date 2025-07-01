@@ -10,8 +10,8 @@ import {
 } from "@dust-tt/sparkle";
 import type { FieldArray, FieldArrayWithId } from "react-hook-form";
 
-import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { getDataVisualizationActionConfiguration } from "@app/components/assistant_builder/types";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 
