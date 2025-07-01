@@ -22,6 +22,23 @@
       "args": []
     },
     {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug migration",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=backfill_tables_gcs_path",
+          "--manifest-path=${workspaceFolder}/core/Cargo.toml"
+        ],
+        "filter": {
+          "name": "backfill_tables_gcs_path",
+          "kind": "bin"
+        }
+      },
+      "args": ["--start-cursor", "10", "--batch-size", "3"]
+    },
+    {
       "type": "node-terminal",
       "name": "Debug Current TS File (npx tsx)",
       "request": "launch",
