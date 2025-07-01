@@ -172,6 +172,7 @@ export abstract class CorePlatformService {
 
     const tabContentContentFragments = createdContentFragments.filter(
       (cf) =>
+        cf.contentFragmentType === "file" &&
         cf.fileId &&
         tabContentFileIds.has(cf.fileId) &&
         cf.contentFragmentVersion === "latest"

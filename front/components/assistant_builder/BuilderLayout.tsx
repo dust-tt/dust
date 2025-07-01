@@ -3,10 +3,10 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@dust-tt/sparkle";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
-import { AssistantBuilderContext } from "./AssistantBuilderContext";
+import { usePreviewPanelContext } from "@app/components/assistant_builder/contexts/PreviewPanelContext";
 
 interface BuilderLayoutProps {
   leftPanel: React.ReactNode;
@@ -14,7 +14,7 @@ interface BuilderLayoutProps {
 }
 
 export function BuilderLayout({ leftPanel, rightPanel }: BuilderLayoutProps) {
-  const { isPreviewPanelOpen } = useContext(AssistantBuilderContext);
+  const { isPreviewPanelOpen } = usePreviewPanelContext();
   const previewPanelRef = useRef<ImperativePanelHandle>(null);
   const [isResizing, setIsResizing] = useState(false);
 

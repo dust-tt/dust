@@ -16,10 +16,14 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { ModelId } from "@app/types";
+import type { AgentStatus, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
 
-async function findWorkspacesWithTablesConfigurations(): Promise<ModelId[]> {
+async function findWorkspacesWithTablesConfigurations({
+  agentStatus,
+}: {
+  agentStatus: AgentStatus;
+}): Promise<ModelId[]> {
   const tableConfigurations = await AgentTablesQueryConfigurationTable.findAll({
     attributes: ["workspaceId"],
     where: {
@@ -35,7 +39,7 @@ async function findWorkspacesWithTablesConfigurations(): Promise<ModelId[]> {
             model: AgentConfiguration,
             required: true,
             where: {
-              status: "active",
+              status: agentStatus,
             },
           },
         ],
@@ -54,9 +58,11 @@ async function migrateWorkspaceTablesQueryActions(
   {
     execute,
     parentLogger,
+    agentStatus,
   }: {
     execute: boolean;
     parentLogger: typeof Logger;
+    agentStatus: AgentStatus;
   }
 ): Promise<string> {
   const owner = auth.getNonNullableWorkspace();
@@ -83,7 +89,7 @@ async function migrateWorkspaceTablesQueryActions(
             model: AgentConfiguration,
             required: true,
             where: {
-              status: "active",
+              status: agentStatus,
             },
           },
         ],
@@ -224,12 +230,21 @@ makeScript(
       description: "Workspace ID to start from",
       required: false,
     },
+    agentStatus: {
+      type: "string",
+      description: "Agent status to filter on",
+      required: false,
+      default: "active",
+      choices: ["active", "archived", "draft"],
+    },
   },
-  async ({ execute, startFromWorkspaceId }, parentLogger) => {
+  async ({ execute, startFromWorkspaceId, agentStatus }, parentLogger) => {
     const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     let revertSql = "";
 
-    const workspaceIds = await findWorkspacesWithTablesConfigurations();
+    const workspaceIds = await findWorkspacesWithTablesConfigurations({
+      agentStatus: agentStatus as AgentStatus,
+    });
     const workspaces = await WorkspaceModel.findAll({
       where: {
         id: { [Op.in]: workspaceIds },
@@ -248,6 +263,7 @@ makeScript(
         {
           execute,
           parentLogger,
+          agentStatus: agentStatus as AgentStatus,
         }
       );
 

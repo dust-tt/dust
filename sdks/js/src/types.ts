@@ -546,7 +546,6 @@ export type GenerationTokensEvent = z.infer<typeof GenerationTokensEventSchema>;
 const BaseActionTypeSchema = FlexibleEnumSchema<
   | "dust_app_run_action"
   | "tables_query_action"
-  | "retrieval_action"
   | "process_action"
   | "websearch_action"
   | "browse_action"
@@ -743,24 +742,6 @@ export const RetrievalDocumentTypeSchema = z.object({
 
 export type RetrievalDocumentPublicType = z.infer<
   typeof RetrievalDocumentTypeSchema
->;
-
-const RetrievalActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  params: z.object({
-    relativeTimeFrame: TimeFrameSchema.nullable(),
-    query: z.string().nullable(),
-    topK: z.number(),
-  }),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  documents: z.array(RetrievalDocumentTypeSchema).nullable(),
-  step: z.number(),
-  type: z.literal("retrieval_action"),
-});
-
-export type RetrievalActionPublicType = z.infer<
-  typeof RetrievalActionTypeSchema
 >;
 
 const ProcessSchemaPropertySchema = z.union([
@@ -1028,17 +1009,14 @@ const ContentFragmentNodeData = z.object({
   spaceName: z.string(),
 });
 
-const ContentFragmentSchema = z.object({
+const BaseContentFragmentSchema = z.object({
+  type: z.literal("content_fragment"),
   id: ModelIdSchema,
   sId: z.string(),
-  fileId: z.string().nullable(),
   created: z.number(),
-  type: z.literal("content_fragment"),
   visibility: VisibilitySchema,
   version: z.number(),
   sourceUrl: z.string().nullable(),
-  textUrl: z.string(),
-  textBytes: z.number().nullable(),
   title: z.string(),
   contentType: SupportedContentFragmentTypeSchema,
   context: ContentFragmentContextSchema,
@@ -1047,8 +1025,30 @@ const ContentFragmentSchema = z.object({
     z.literal("latest"),
     z.literal("superseded"),
   ]),
-  contentNodeData: ContentFragmentNodeData.nullable(),
 });
+
+const FileContentFragmentSchema = BaseContentFragmentSchema.extend({
+  contentFragmentType: z.literal("file"),
+  fileId: z.string().nullable(),
+  snippet: z.string().nullable(),
+  generatedTables: z.array(z.string()),
+  textUrl: z.string(),
+  textBytes: z.number().nullable(),
+});
+
+const ContentNodeContentFragmentSchema = BaseContentFragmentSchema.extend({
+  contentFragmentType: z.literal("content_node"),
+  nodeId: z.string(),
+  nodeDataSourceViewId: z.string(),
+  nodeType: ContentNodeTypeSchema,
+  contentNodeData: ContentFragmentNodeData,
+});
+
+const ContentFragmentSchema = z.union([
+  FileContentFragmentSchema,
+  ContentNodeContentFragmentSchema,
+]);
+
 export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 
 export type UploadedContentFragmentType = {
@@ -1094,7 +1094,6 @@ export type UserMessageWithRankType = z.infer<
 >;
 
 const AgentActionTypeSchema = z.union([
-  RetrievalActionTypeSchema,
   DustAppRunActionTypeSchema,
   TablesQueryActionTypeSchema,
   ProcessActionTypeSchema,
@@ -1249,15 +1248,6 @@ const ProcessParamsEventSchema = z.object({
   messageId: z.string(),
   dataSources: z.array(DataSourceConfigurationSchema),
   action: ProcessActionTypeSchema,
-});
-
-const RetrievalParamsEventSchema = z.object({
-  type: z.literal("retrieval_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  dataSources: z.array(DataSourceConfigurationSchema),
-  action: RetrievalActionTypeSchema,
 });
 
 const TablesQueryStartedEventSchema = z.object({
@@ -1442,7 +1432,6 @@ const AgentActionSpecificEventSchema = z.union([
   ReasoningStartedEventSchema,
   ReasoningThinkingEventSchema,
   ReasoningTokensEventSchema,
-  RetrievalParamsEventSchema,
   SearchLabelsParamsEventSchema,
   TablesQueryModelOutputEventSchema,
   TablesQueryOutputEventSchema,
@@ -2685,12 +2674,6 @@ export type CancelMessageGenerationRequestType = z.infer<
 
 // Typeguards.
 
-export function isRetrievalActionType(
-  action: AgentActionPublicType
-): action is RetrievalActionPublicType {
-  return action.type === "retrieval_action";
-}
-
 export function isWebsearchActionType(
   action: AgentActionPublicType
 ): action is WebsearchActionPublicType {
@@ -2925,7 +2908,6 @@ export const ACTION_RUNNING_LABELS: Record<
   dust_app_run_action: "Running App",
   process_action: "Extracting data",
   reasoning_action: "Reasoning",
-  retrieval_action: "Searching data",
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",

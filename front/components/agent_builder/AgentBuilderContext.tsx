@@ -1,19 +1,23 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { useEffect } from "react";
 
 import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
-import type { SpaceType, WorkspaceType } from "@app/types";
+import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
+import { supportsDocumentsData } from "@app/lib/data_sources";
+import { useDataSourceViews } from "@app/lib/swr/data_source_views";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { DataSourceViewType, WorkspaceType } from "@app/types";
 
 type AgentBuilderContextType = {
-  spaces: SpaceType[];
   owner: WorkspaceType;
+  supportedDataSourceViews: DataSourceViewType[];
   isPreviewPanelOpen: boolean;
   setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export const AgentBuilderContext = createContext<AgentBuilderContextType>({
-  spaces: [],
   owner: {} as WorkspaceType,
+  supportedDataSourceViews: [],
   isPreviewPanelOpen: true,
   setIsPreviewPanelOpen: () => {},
 });
@@ -21,17 +25,28 @@ export const AgentBuilderContext = createContext<AgentBuilderContextType>({
 interface AgentBuilderContextProps
   extends Omit<
     AgentBuilderContextType,
-    "isPreviewPanelOpen" | "setIsPreviewPanelOpen"
+    "supportedDataSourceViews" | "isPreviewPanelOpen" | "setIsPreviewPanelOpen"
   > {
   children: React.ReactNode;
 }
 
 export function AgentBuilderProvider({
-  spaces,
   owner,
   children,
 }: AgentBuilderContextProps) {
   const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(false);
+
+  const { dataSourceViews } = useDataSourceViews(owner);
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  // Filter data sources for document search (excluding table-only sources)
+  const supportedDataSourceViews = useMemo(() => {
+    return dataSourceViews.filter((dsv) =>
+      supportsDocumentsData(dsv.dataSource, featureFlags)
+    );
+  }, [dataSourceViews, featureFlags]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");
@@ -50,15 +65,17 @@ export function AgentBuilderProvider({
   return (
     <AgentBuilderContext.Provider
       value={{
-        spaces,
         owner,
+        supportedDataSourceViews,
         isPreviewPanelOpen,
         setIsPreviewPanelOpen,
       }}
     >
-      <MCPServerViewsProvider owner={owner} spaces={spaces}>
-        {children}
-      </MCPServerViewsProvider>
+      <SpacesProvider owner={owner}>
+        <MCPServerViewsProvider owner={owner}>
+          {children}
+        </MCPServerViewsProvider>
+      </SpacesProvider>
     </AgentBuilderContext.Provider>
   );
 }

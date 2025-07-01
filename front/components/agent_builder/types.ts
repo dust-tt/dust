@@ -1,5 +1,55 @@
+import type { z } from "zod";
+
+import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { SupportedModel } from "@app/types";
 import { ioTsEnum } from "@app/types";
+
+type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
+
+export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
+
+export type SearchAgentBuilderAction = Extract<
+  AgentBuilderAction,
+  { type: "SEARCH" }
+>;
+
+export type DataVisualizationAgentBuilderAction = Extract<
+  AgentBuilderAction,
+  { type: "DATA_VISUALIZATION" }
+>;
+
+export type SearchActionConfiguration =
+  SearchAgentBuilderAction["configuration"];
+
+export type DataVisualizationActionConfiguration =
+  DataVisualizationAgentBuilderAction["configuration"];
+
+export type AgentBuilderActionConfiguration =
+  | SearchActionConfiguration
+  | DataVisualizationActionConfiguration;
+
+// Type guards
+export function isSearchAction(
+  action: AgentBuilderAction
+): action is SearchAgentBuilderAction {
+  return action.type === "SEARCH";
+}
+
+export function isDataVisualizationAction(
+  action: AgentBuilderAction
+): action is DataVisualizationAgentBuilderAction {
+  return action.type === "DATA_VISUALIZATION";
+}
+
+// Knowledge server names that require configuration sheets
+export const KNOWLEDGE_SERVER_NAMES = ["search"] as const;
+export type KnowledgeServerName = (typeof KNOWLEDGE_SERVER_NAMES)[number];
+
+export function isKnowledgeServerName(
+  serverName: string
+): serverName is KnowledgeServerName {
+  return KNOWLEDGE_SERVER_NAMES.includes(serverName as KnowledgeServerName);
+}
 
 export const AGENT_CREATIVITY_LEVELS = [
   "deterministic",

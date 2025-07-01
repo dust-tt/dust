@@ -83,9 +83,9 @@ const SALESFORCE_SYNC_QUERY_PAGE_LIMIT = 256;
 export function makeSalesforceSyncQueryWorkflowId(
   connectorId: ModelId,
   queryId: ModelId,
-  upToLastModifiedDate: Date | null
+  upToLastModifiedDateTs: number | null
 ): string {
-  if (upToLastModifiedDate) {
+  if (upToLastModifiedDateTs) {
     return `salesforce-sync-${connectorId}-query-${queryId}`;
   } else {
     return `salesforce-sync-${connectorId}-query-${queryId}-full`;
@@ -95,19 +95,16 @@ export function makeSalesforceSyncQueryWorkflowId(
 export async function salesforceSyncQueryWorkflow({
   connectorId,
   queryId,
-  upToLastModifiedDate,
+  upToLastModifiedDateTs,
 }: {
   connectorId: ModelId;
   queryId: ModelId;
-  upToLastModifiedDate: Date | null;
+  upToLastModifiedDateTs: number | null;
 }) {
   await upsertSyncedQueryRootNode(connectorId, { queryId });
 
   let lastSeenModifiedDateTs: number | null = null;
   let lastModifiedDateCursorTs: number | null = null;
-  const upToLastModifiedDateTs: number | null = upToLastModifiedDate
-    ? upToLastModifiedDate.getTime()
-    : null;
   let hasMore = true;
 
   while (hasMore) {

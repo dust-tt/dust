@@ -3,10 +3,12 @@ import express from "express";
 import { WebhookForwarder } from "./forwarder.js";
 import type { SecretManager } from "./secrets.js";
 import type { GracefulServer } from "./server.js";
+import type { RequestHandler } from "express";
 
 export function createRoutes(
   secretManager: SecretManager,
-  gracefulServer: GracefulServer
+  gracefulServer: GracefulServer,
+  slackVerification: RequestHandler
 ) {
   const router = express.Router();
 
@@ -35,22 +37,24 @@ export function createRoutes(
     }
   });
 
-  // Webhook endpoints.
-  router.post("/:webhookSecret/events", async (req, res) => {
+  // Webhook endpoints with combined webhook + Slack verification.
+  router.post("/:webhookSecret/events", slackVerification, async (req, res) => {
     await handleWebhook(req, res, "slack_bot", secretManager, gracefulServer);
   });
 
-  router.post("/:webhookSecret/interactions", async (req, res) => {
-    // Slack interactions are sent as application/x-www-form-urlencoded
-    // with JSON payload in a 'payload' field - forwarded as-is to connectors
-    await handleWebhook(
-      req,
-      res,
-      "slack_bot_interaction",
-      secretManager,
-      gracefulServer
-    );
-  });
+  router.post(
+    "/:webhookSecret/interactions",
+    slackVerification,
+    async (req, res) => {
+      await handleWebhook(
+        req,
+        res,
+        "slack_bot_interaction",
+        secretManager,
+        gracefulServer
+      );
+    }
+  );
 
   return router;
 }
@@ -58,6 +62,7 @@ export function createRoutes(
 function isUrlVerification(req: express.Request): boolean {
   return (
     req.body &&
+    typeof req.body === "object" &&
     "type" in req.body &&
     req.body.type === "url_verification" &&
     "challenge" in req.body
@@ -71,23 +76,10 @@ async function handleWebhook(
   secretManager: SecretManager,
   gracefulServer: GracefulServer
 ): Promise<void> {
-  const { webhookSecret } = req.params;
-
   try {
     // Check if service is available.
     if (!gracefulServer.isHealthy()) {
       res.status(503).send("Service unavailable");
-      return;
-    }
-
-    // Load secrets and validate.
-    const secrets = await secretManager.getSecrets();
-    if (webhookSecret !== secrets.webhookSecret) {
-      console.error("Invalid webhook secret provided", {
-        component: "routes",
-        endpoint,
-      });
-      res.status(404).send("Not found");
       return;
     }
 
@@ -104,11 +96,15 @@ async function handleWebhook(
     // Respond immediately to Slack.
     res.status(200).send();
 
+    // Get secrets for forwarding (already validated by middleware).
+    const secrets = await secretManager.getSecrets();
+
     // Forward to regions asynchronously.
     await new WebhookForwarder(secrets).forwardToRegions({
       body: req.body,
       endpoint,
       method: req.method,
+      headers: req.headers,
     });
   } catch (error) {
     console.error("Webhook router error", {

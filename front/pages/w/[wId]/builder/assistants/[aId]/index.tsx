@@ -2,8 +2,7 @@ import tracer from "dd-trace";
 import type { InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
-import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
+import { AssistantBuilderProviders } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
@@ -13,10 +12,8 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
-  AppType,
   LightAgentConfigurationType,
   PlanType,
-  SpaceType,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -26,11 +23,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: LightAgentConfigurationType;
   agentEditors: UserType[];
   baseUrl: string;
-  dustApps: AppType[];
   flow: BuilderFlow;
   owner: WorkspaceType;
   plan: PlanType;
-  spaces: SpaceType[];
   subscription: SubscriptionType;
 }>(async (context, auth) => {
   return tracer.trace("getServerSideProps", async () => {
@@ -49,8 +44,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    const [{ spaces, dustApps }, configuration] = await Promise.all([
-      getAccessibleSourcesAndApps(auth),
+    const [configuration] = await Promise.all([
       getAgentConfiguration(auth, context.params?.aId as string, "light"),
       MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
     ]);
@@ -90,12 +84,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         agentConfiguration: configuration,
         agentEditors,
         baseUrl: config.getClientFacingUrl(),
-        dustApps: dustApps.map((a) => a.toJSON()),
         flow,
         owner,
         plan,
         subscription,
-        spaces: spaces.map((s) => s.toJSON()),
       },
     };
   });
@@ -105,8 +97,6 @@ export default function EditAssistant({
   agentConfiguration,
   agentEditors,
   baseUrl,
-  spaces,
-  dustApps,
   flow,
   owner,
   plan,
@@ -121,7 +111,7 @@ export default function EditAssistant({
   }
 
   return (
-    <AssistantBuilderProvider owner={owner} spaces={spaces} dustApps={dustApps}>
+    <AssistantBuilderProviders owner={owner}>
       <AssistantBuilder
         owner={owner}
         subscription={subscription}
@@ -153,7 +143,7 @@ export default function EditAssistant({
         baseUrl={baseUrl}
         defaultTemplate={null}
       />
-    </AssistantBuilderProvider>
+    </AssistantBuilderProviders>
   );
 }
 

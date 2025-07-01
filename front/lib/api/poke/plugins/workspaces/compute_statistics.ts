@@ -1,6 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistics";
-import { Err, Ok } from "@app/types";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { Err, fileSizeToHumanReadable, Ok } from "@app/types";
 
 export const computeWorkspaceStatsPlugin = createPlugin({
   manifest: {
@@ -22,9 +23,20 @@ export const computeWorkspaceStatsPlugin = createPlugin({
 
     const stats = statsRes.value;
 
+    const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+
     return new Ok({
-      display: "json",
-      value: stats,
+      display: "markdown",
+      value: `
+Limit is ${fileSizeToHumanReadable(activeSeats * 1024 * 1024 * 1024)} GB per datasource (${activeSeats} active seats x 1 Gb per seat)
+
+| Datasource | Document count | Total size |
+|------------|----------------|------------|
+| **Total** | **${stats.document_count}** | **${stats.text_size}** |
+${stats.dataSources
+  .map((ds) => `| ${ds.name} | ${ds.document_count} | ${ds.text_size} |`)
+  .join("\n")}
+      `,
     });
   },
 });

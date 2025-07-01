@@ -6,7 +6,6 @@ import { getDefaultMCPServerActionConfiguration } from "@app/components/assistan
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
-import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type {
   TableDataSourceConfiguration,
   TablesQueryConfigurationType,
@@ -16,7 +15,6 @@ import type { DataSourceConfiguration } from "@app/lib/api/assistant/configurati
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -27,23 +25,6 @@ import type {
   DataSourceViewSelectionConfigurations,
   TemplateAgentConfigurationType,
 } from "@app/types";
-
-export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
-  return tracer.trace("getAccessibleSourcesAndApps", async () => {
-    const accessibleSpaces = (
-      await SpaceResource.listWorkspaceSpaces(auth)
-    ).filter((space) => !space.isSystem() && space.canRead(auth));
-
-    const [allDustApps] = await Promise.all([
-      AppResource.listByWorkspace(auth),
-    ]);
-
-    return {
-      spaces: accessibleSpaces,
-      dustApps: allDustApps,
-    };
-  });
-};
 
 // We are moving resource fetch to the client side. Until we finish,
 // we will keep this duplicated version for fetching actions.
@@ -187,7 +168,6 @@ async function getMCPServerActionConfiguration(
 
 async function renderDataSourcesConfigurations(
   action:
-    | RetrievalConfigurationType
     | ProcessConfigurationType
     | (MCPServerConfigurationType & { dataSources: DataSourceConfiguration[] }),
   dataSourceViews: DataSourceViewResource[]

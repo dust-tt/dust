@@ -2,7 +2,6 @@ import type {
   AgentActionSpecificEvent,
   CreateConversationResponseType,
   GetAgentConfigurationsResponseType,
-  MeResponseType,
 } from "@dust-tt/client";
 import { Box, Text, useInput, useStdout } from "ink";
 import open from "open";
@@ -28,6 +27,10 @@ import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
 import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
+import {
+  sendNonInteractiveMessage,
+  validateNonInteractiveFlags,
+} from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -37,6 +40,7 @@ interface CliChatProps {
   sId?: string;
   agentSearch?: string;
   message?: string;
+  conversationId?: string;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -52,149 +56,26 @@ function getLastConversationItem<T extends ConversationItem>(
   return null;
 }
 
-async function sendNonInteractiveMessage(
-  message: string,
-  selectedAgent: AgentConfiguration,
-  me: MeResponseType["user"]
-): Promise<void> {
-  const dustClient = await getDustClient();
-  if (!dustClient) {
-    console.error(
-      JSON.stringify({
-        error: "Authentication required",
-        details: "Run `dust login` first",
-      })
-    );
-    process.exit(1);
-  }
-
-  try {
-    // Create a new conversation with the agent
-    const convRes = await dustClient.createConversation({
-      title: message.substring(0, 50) + (message.length > 50 ? "..." : ""),
-      visibility: "unlisted",
-      message: {
-        content: message,
-        mentions: [{ configurationId: selectedAgent.sId }],
-        context: {
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          username: me.username,
-          fullName: me.fullName,
-          email: me.email,
-          origin: "api",
-        },
-      },
-      contentFragment: undefined,
-    });
-
-    if (convRes.isErr()) {
-      console.error(
-        JSON.stringify({
-          error: "Failed to create conversation",
-          details: convRes.error.message,
-        })
-      );
-      process.exit(1);
-    }
-
-    const conversation = convRes.value.conversation;
-    const userMessageId = convRes.value.message?.sId;
-
-    if (!userMessageId) {
-      console.error(
-        JSON.stringify({
-          error: "No message created",
-        })
-      );
-      process.exit(1);
-    }
-
-    // Stream the agent's response
-    const streamRes = await dustClient.streamAgentAnswerEvents({
-      conversation: conversation,
-      userMessageId: userMessageId,
-    });
-
-    if (streamRes.isErr()) {
-      console.error(
-        JSON.stringify({
-          error: "Failed to stream agent answer",
-          details: streamRes.error.message,
-        })
-      );
-      process.exit(1);
-    }
-
-    let fullResponse = "";
-
-    for await (const event of streamRes.value.eventStream) {
-      if (event.type === "generation_tokens") {
-        if (event.classification === "tokens") {
-          fullResponse += event.text;
-        }
-      } else if (event.type === "agent_error") {
-        console.error(
-          JSON.stringify({
-            error: "Agent error",
-            details: event.error.message,
-          })
-        );
-        process.exit(1);
-      } else if (event.type === "user_message_error") {
-        console.error(
-          JSON.stringify({
-            error: "User message error",
-            details: event.error.message,
-          })
-        );
-        process.exit(1);
-      } else if (event.type === "agent_message_success") {
-        // Success - output the result
-        console.log(
-          JSON.stringify({
-            agentId: selectedAgent.sId,
-            agentAnswer: fullResponse.trim(),
-            conversationId: conversation.sId,
-          })
-        );
-        process.exit(0);
-      }
-    }
-  } catch (error) {
-    console.error(
-      JSON.stringify({
-        error: "Unexpected error",
-        details: normalizeError(error).message,
-      })
-    );
-    process.exit(1);
-  }
-}
-
 const CliChat: FC<CliChatProps> = ({
   sId: requestedSId,
   agentSearch,
   message,
+  conversationId,
 }) => {
   const [error, setError] = useState<string | null>(null);
 
-  // Validate that --message requires --agent
+  // Validate flags usage
   useEffect(() => {
-    if (message && !agentSearch) {
-      console.error(
-        JSON.stringify({
-          error: "Invalid usage",
-          details: "--message requires --agent to be specified",
-        })
-      );
-      process.exit(1);
-    }
-  }, [message, agentSearch]);
+    validateNonInteractiveFlags(message, agentSearch, conversationId);
+  }, [message, agentSearch, conversationId]);
+
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
   );
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
   const [conversationItems, setConversationItems] = useState<
     ConversationItem[]
   >([]);
@@ -312,7 +193,7 @@ const CliChat: FC<CliChatProps> = ({
         return null;
       }
 
-      setConversationId(convRes.value.conversation.sId);
+      setCurrentConversationId(convRes.value.conversation.sId);
       return convRes.value.conversation.sId;
     },
     [selectedAgent, me, meError, isMeLoading]
@@ -332,7 +213,7 @@ const CliChat: FC<CliChatProps> = ({
           fileInfos.push(await validateAndGetFileInfo(p));
         }
 
-        let convId = conversationId;
+        let convId = conversationId || currentConversationId;
         if (!convId) {
           convId = await createConversationForFiles(
             `File Upload: ${fileInfos.map((f) => f.name).join(", ")}`.slice(
@@ -421,8 +302,8 @@ const CliChat: FC<CliChatProps> = ({
 
     // Call the standalone function
     setIsProcessingQuestion(true);
-    void sendNonInteractiveMessage(message, selectedAgent, me);
-  }, [message, selectedAgent, me, meError, isMeLoading]);
+    void sendNonInteractiveMessage(message, selectedAgent, me, conversationId);
+  }, [message, selectedAgent, me, meError, isMeLoading, conversationId]);
 
   const canSubmit =
     me &&
@@ -506,10 +387,10 @@ const CliChat: FC<CliChatProps> = ({
       try {
         let createdContentFragments = [];
         // If there are files to attach, create content fragments for each
-        if (attachedFiles.length > 0 && conversationId) {
+        if (attachedFiles.length > 0 && currentConversationId) {
           for (const file of attachedFiles) {
             const fragmentRes = await dustClient.postContentFragment({
-              conversationId,
+              conversationId: currentConversationId,
               contentFragment: {
                 title: file.fileName,
                 fileId: file.fileId,
@@ -530,7 +411,7 @@ const CliChat: FC<CliChatProps> = ({
           }
         }
 
-        if (!conversationId) {
+        if (!currentConversationId) {
           // For new conversation, pass contentFragments (from uploaded files)
           const contentFragments = attachedFiles.map((file) => ({
             type: "file_attachment" as const,
@@ -564,7 +445,7 @@ const CliChat: FC<CliChatProps> = ({
           }
 
           conversation = convRes.value.conversation;
-          setConversationId(conversation.sId);
+          setCurrentConversationId(conversation.sId);
 
           if (!convRes.value.message) {
             throw new Error("No message created");
@@ -577,7 +458,7 @@ const CliChat: FC<CliChatProps> = ({
           }
 
           const messageRes = await dustClient.postUserMessage({
-            conversationId: conversationId,
+            conversationId: currentConversationId,
             message: {
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
@@ -600,7 +481,9 @@ const CliChat: FC<CliChatProps> = ({
           userMessageId = messageRes.value.sId;
 
           // Get the conversation for streaming
-          const convRes = await dustClient.getConversation({ conversationId });
+          const convRes = await dustClient.getConversation({
+            conversationId: currentConversationId,
+          });
           if (convRes.isErr()) {
             throw new Error(
               `Error retrieving conversation: ${convRes.error.message}`
@@ -886,11 +769,11 @@ const CliChat: FC<CliChatProps> = ({
     }
 
     if (key.ctrl && input === "g") {
-      if (conversationId) {
+      if (currentConversationId) {
         void (async () => {
           const workspaceId = await AuthService.getSelectedWorkspaceId();
           if (workspaceId) {
-            const url = `https://dust.tt/w/${workspaceId}/assistant/${conversationId}`;
+            const url = `https://dust.tt/w/${workspaceId}/assistant/${currentConversationId}`;
             await open(url);
           } else {
             console.error("\nCould not determine workspace ID");
@@ -1292,12 +1175,12 @@ const CliChat: FC<CliChatProps> = ({
   return (
     <Box flexDirection="column">
       {/* File upload component */}
-      {pendingFiles.length > 0 && conversationId && (
+      {pendingFiles.length > 0 && currentConversationId && (
         <FileUpload
           files={pendingFiles}
           onUploadComplete={handleFileUploadComplete}
           onUploadError={handleFileUploadError}
-          conversationId={conversationId}
+          conversationId={currentConversationId}
         />
       )}
 
@@ -1339,7 +1222,7 @@ const CliChat: FC<CliChatProps> = ({
         userInput={userInput}
         cursorPosition={cursorPosition}
         mentionPrefix={mentionPrefix}
-        conversationId={conversationId}
+        conversationId={currentConversationId}
         stdout={stdout}
         showCommandSelector={showCommandSelector}
         commandQuery={commandQuery}

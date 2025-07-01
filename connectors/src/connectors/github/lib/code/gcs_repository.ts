@@ -9,6 +9,8 @@ import { isDevelopment } from "@connectors/types";
 export const DIRECTORY_PLACEHOLDER_FILE = ".gitkeep";
 export const DIRECTORY_PLACEHOLDER_METADATA = "isDirectoryPlaceholder";
 
+const DEFAULT_MAX_RESULTS = 1000;
+
 /**
  * A wrapper around GCS operations for GitHub repository code sync.
  * Handles the temporary storage of repository files during sync process.
@@ -45,10 +47,29 @@ export class GCSRepositoryManager {
   /**
    * List all files in a repository's GCS path.
    */
-  async listFiles(gcsBasePath: string): Promise<Array<File>> {
-    const [files] = await this.bucket.getFiles({ prefix: gcsBasePath });
+  async listFiles(
+    gcsBasePath: string,
+    options?: {
+      maxResults?: number;
+      pageToken?: string;
+    }
+  ): Promise<{
+    files: Array<File>;
+    nextPageToken?: string;
+    hasMore: boolean;
+  }> {
+    const [files, details] = await this.bucket.getFiles({
+      prefix: gcsBasePath,
+      maxResults: options?.maxResults || DEFAULT_MAX_RESULTS,
+      pageToken: options?.pageToken,
+      autoPaginate: false, // Don't auto-paginate, we'll handle it manually.
+    });
 
-    return files;
+    return {
+      files,
+      nextPageToken: details?.pageToken,
+      hasMore: details?.pageToken !== undefined,
+    };
   }
 
   /**

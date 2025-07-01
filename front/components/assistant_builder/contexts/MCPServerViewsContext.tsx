@@ -1,10 +1,12 @@
 import type { ReactNode } from "react";
 import React, { createContext, memo, useContext } from "react";
 
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
+
 interface MCPServerViewsContextType {
   mcpServerViews: MCPServerViewType[];
   isMCPServerViewsLoading: boolean;
@@ -29,21 +31,22 @@ export const useMCPServerViewsContext = () => {
 
 interface MCPServerViewsProviderProps {
   owner: LightWorkspaceType;
-  spaces: SpaceType[];
   children: ReactNode;
 }
 
 export const MCPServerViewsProvider = memo(
-  ({ owner, spaces, children }: MCPServerViewsProviderProps) => {
+  ({ owner, children }: MCPServerViewsProviderProps) => {
+    const { spaces, isSpacesLoading } = useSpacesContext();
+
     const {
       serverViews: mcpServerViews,
-      isLoading: isMCPServerViewsLoading,
+      isLoading,
       isError: isMCPServerViewsError,
     } = useMCPServerViewsFromSpaces(owner, spaces);
 
     const value: MCPServerViewsContextType = {
       mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
-      isMCPServerViewsLoading,
+      isMCPServerViewsLoading: isLoading || isSpacesLoading, // Spaces is required to fetch server views so we check isSpacesLoading too.
       isMCPServerViewsError,
     };
 

@@ -78,7 +78,7 @@ const {
 const { githubExtractToGcsActivity } = proxyActivities<
   typeof activitiesSyncCode
 >({
-  startToCloseTimeout: "30 minute",
+  startToCloseTimeout: "60 minute",
 });
 
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
@@ -87,7 +87,7 @@ const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 const FILE_CHUNK_SIZE = 200;
 const DIRECTORY_CHUNK_SIZE = 100;
 
-const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [15, 8714];
+const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [15, 8714, 8986, 24601];
 
 /**
  * This workflow is used to fetch and sync all the repositories of a GitHub connector.

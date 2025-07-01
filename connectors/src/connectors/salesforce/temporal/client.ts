@@ -17,13 +17,13 @@ import { normalizeError } from "@connectors/types";
 export async function launchSalesforceSyncQueryWorkflow(
   connectorId: ModelId,
   queryId: ModelId,
-  upToLastModifiedDate: Date | null
+  upToLastModifiedDateTs: number | null
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
   const workflowId = makeSalesforceSyncQueryWorkflowId(
     connectorId,
     queryId,
-    upToLastModifiedDate
+    upToLastModifiedDateTs
   );
 
   try {
@@ -32,7 +32,7 @@ export async function launchSalesforceSyncQueryWorkflow(
         {
           connectorId,
           queryId,
-          upToLastModifiedDate,
+          upToLastModifiedDateTs,
         },
       ],
       taskQueue: QUEUE_NAME,

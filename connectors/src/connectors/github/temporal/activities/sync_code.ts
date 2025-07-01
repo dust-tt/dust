@@ -189,12 +189,14 @@ export async function githubGetGcsFilesActivity({
   hasMore: boolean;
 }> {
   const gcsManager = new GCSRepositoryManager();
-  const allFiles = await gcsManager.listFiles(gcsBasePath);
-
-  // Simple offset-based pagination with validation.
-  const startIndex = pageToken ? Math.max(0, parseInt(pageToken) || 0) : 0;
-  const endIndex = Math.min(startIndex + batchSize, allFiles.length);
-  const paginatedFiles = allFiles.slice(startIndex, endIndex);
+  const {
+    files: paginatedFiles,
+    nextPageToken,
+    hasMore,
+  } = await gcsManager.listFiles(gcsBasePath, {
+    maxResults: batchSize,
+    pageToken,
+  });
 
   const directories: DirectoryListing[] = [];
   const files: FileListing[] = [];
@@ -231,8 +233,8 @@ export async function githubGetGcsFilesActivity({
   return {
     directories,
     files,
-    nextPageToken: endIndex < allFiles.length ? endIndex.toString() : undefined,
-    hasMore: endIndex < allFiles.length,
+    nextPageToken,
+    hasMore,
   };
 }
 

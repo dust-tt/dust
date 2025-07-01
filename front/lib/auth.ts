@@ -7,7 +7,7 @@ import type {
 } from "next";
 
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
-import { getAuth0Session } from "@app/lib/api/auth0";
+import { getAuth0Session, getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
@@ -163,11 +163,13 @@ export class Authenticator {
             sId: wId,
           },
         }),
-        session?.type === "auth0" && session.user.auth0Sub
-          ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
-          : session?.type === "workos" && session.user.workOSUserId
-            ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
-            : null,
+        session?.type === "auth0" && session.user.workOSUserId
+          ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
+          : session?.type === "auth0" && session.user.auth0Sub
+            ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
+            : session?.type === "workos" && session.user.workOSUserId
+              ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
+              : null,
       ]);
 
       let role = "none" as RoleType;
@@ -219,11 +221,13 @@ export class Authenticator {
             where: { sId: wId },
           })
         : null,
-      session?.type === "auth0" && session.user.auth0Sub
-        ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
-        : session?.type === "workos" && session.user.workOSUserId
-          ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
-          : null,
+      session?.type === "auth0" && session.user.workOSUserId
+        ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
+        : session?.type === "auth0" && session.user.auth0Sub
+          ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
+          : session?.type === "workos" && session.user.workOSUserId
+            ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
+            : null,
     ]);
 
     let groups: GroupResource[] = [];
@@ -321,7 +325,8 @@ export class Authenticator {
       }
     >
   > {
-    const user = await UserResource.fetchByAuth0Sub(token.sub);
+    const user = await getUserFromAuth0Token(token);
+
     if (!user) {
       return new Err({ code: "user_not_found" });
     }

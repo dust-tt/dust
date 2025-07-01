@@ -9,12 +9,14 @@ import type {
   WithConnector,
 } from "@app/types";
 
+// TODO(DURABLE AGENTS 2025-06-25): Remove RetrievalDocumentResource support.
 export function getDisplayNameForDocument(document: CoreAPIDocument): string {
   const titleTagPrefix = "title:";
   const titleTag = document.tags.find((tag) => tag.startsWith(titleTagPrefix));
   if (!titleTag) {
     return document.document_id;
   }
+
   return titleTag.substring(titleTagPrefix.length);
 }
 

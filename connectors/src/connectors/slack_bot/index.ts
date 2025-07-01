@@ -124,11 +124,13 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
           if (
             slackBotChannelsCount === 0 // Ensure slack_bot connector has no channels
           ) {
-            // Migrate channels from legacy slack connector to keep default bot per Slack channel functionality
+            // Migrate channels from legacy slack connector to keep default bot per Slack channel
+            // functionality
             const slackChannels = await SlackChannel.findAll({
               where: {
                 connectorId: legacyConnector.id,
-                agentConfigurationId: { [Op.ne]: null }, // Only migrate channels with agent configuration
+                // Only migrate channels with agent configuration
+                agentConfigurationId: { [Op.ne]: null },
               },
             });
             const creationRecords = slackChannels.map(
@@ -564,7 +566,8 @@ async function getFilteredChannels(
     SlackChannel.findAll({
       where: {
         connectorId,
-        // Here we do not filter out channels with skipReason because we need to know the ones that are skipped.
+        // Here we do not filter out channels with skipReason because we need to know the ones that
+        // are skipped.
       },
     }),
   ]);
@@ -582,11 +585,6 @@ async function getFilteredChannels(
       continue;
     }
 
-    if (remoteChannel.is_private) {
-      // Skip private channels backend-side (displayed frontend-side if FF index_private_slack_channel is toggled)
-      continue;
-    }
-
     const localChannel = localChannelsById[remoteChannel.id];
 
     // Skip channels with skipReason
@@ -594,10 +592,18 @@ async function getFilteredChannels(
       continue;
     }
 
+    // Skip private channels as the Slack ToS prevents showing private channels from Admin A to
+    // admin B.
+    if (remoteChannel.is_private) {
+      continue;
+    }
+
     slackChannels.push({
       slackChannelId: remoteChannel.id,
       slackChannelName: remoteChannel.name,
       permission: "write",
+      // Private channels are returned by the API and generally filtered client-side unless gated in
+      // `index_private_slack_channels`.
       private: !!remoteChannel.is_private,
     });
   }

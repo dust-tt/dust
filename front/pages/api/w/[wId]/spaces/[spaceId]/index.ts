@@ -1,6 +1,6 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-import { uniq, uniqBy } from "lodash";
+import { uniqBy } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
@@ -23,10 +23,11 @@ import type {
 } from "@app/types";
 import {
   DATA_SOURCE_VIEW_CATEGORIES,
+  isString,
   PatchSpaceRequestBodySchema,
 } from "@app/types";
 
-type SpaceCategoryInfo = {
+export type SpaceCategoryInfo = {
   usage: DataSourceWithAgentsUsageType;
   count: number;
 };
@@ -68,7 +69,7 @@ async function handler(
           count: 0,
           usage: {
             count: 0,
-            agentNames: [],
+            agents: [],
           },
         };
 
@@ -85,19 +86,20 @@ async function handler(
 
           for (const dsView of dataSourceViewsInCategory) {
             categories[category].count += 1;
-
             const usage = usages[dsView.id];
 
             if (usage) {
-              categories[category].usage.agentNames = categories[
+              categories[category].usage.agents = categories[
                 category
-              ].usage.agentNames.concat(usage.agentNames);
-              categories[category].usage.agentNames = uniq(
-                categories[category].usage.agentNames
+              ].usage.agents.concat(usage.agents);
+              categories[category].usage.agents = uniqBy(
+                categories[category].usage.agents,
+                "sId"
               );
-              categories[category].usage.count += usage.count;
             }
           }
+          categories[category].usage.count =
+            categories[category].usage.agents.length;
         }
       }
 
@@ -224,10 +226,14 @@ async function handler(
         });
       }
 
+      const { force } = req.query;
+      const shouldForce = isString(force) && force === "true";
+
       try {
         const deleteRes = await softDeleteSpaceAndLaunchScrubWorkflow(
           auth,
-          space
+          space,
+          shouldForce
         );
         if (deleteRes.isErr()) {
           return apiError(req, res, {
@@ -256,7 +262,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or PATCH is expected.",
+            "The method passed is not supported, GET, PATCH or DELETE is expected.",
         },
       });
   }

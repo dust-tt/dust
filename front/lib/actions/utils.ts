@@ -1,4 +1,4 @@
-import { BarChartIcon, BoltIcon } from "@dust-tt/sparkle";
+import { BarChartIcon, BoltIcon, MagnifyingGlassIcon } from "@dust-tt/sparkle";
 
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -11,7 +11,6 @@ import {
   isMCPInternalSearch,
   isMCPInternalSlack,
   isMCPInternalWebsearch,
-  isRetrievalConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
@@ -40,6 +39,30 @@ export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
   flag: null,
 };
 
+export const SEARCH_SPECIFICATION: ActionSpecification = {
+  label: "Search",
+  description: "Search across selected data sources",
+  cardIcon: MagnifyingGlassIcon,
+  dropDownIcon: MagnifyingGlassIcon,
+  flag: null,
+};
+
+// Mapping for action types to their specifications
+export const ACTION_SPECIFICATIONS_MAP = {
+  DATA_VISUALIZATION: DATA_VISUALIZATION_SPECIFICATION,
+  SEARCH: SEARCH_SPECIFICATION,
+} as const;
+
+export function getActionSpecification(
+  actionType: string
+): ActionSpecification | null {
+  return (
+    ACTION_SPECIFICATIONS_MAP[
+      actionType as keyof typeof ACTION_SPECIFICATIONS_MAP
+    ] || null
+  );
+}
+
 /**
  * This function computes the topK for retrieval actions. This is used by both the action (to
  * compute the topK) and computing the citation counts for retrieval actions (mcp included)
@@ -57,38 +80,21 @@ export function getRetrievalTopK({
 }): number {
   const model = getSupportedModelConfig(agentConfiguration.model);
 
-  const retrievalActions = stepActions.filter(isRetrievalConfiguration);
   const searchActions = stepActions.filter(isMCPInternalSearch);
   const includeActions = stepActions.filter(isMCPInternalInclude);
   const dsFsActions = stepActions.filter(isMCPInternalDataSourceFileSystem);
 
   const actionsCount =
-    retrievalActions.length +
-    searchActions.length +
-    includeActions.length +
-    dsFsActions.length;
+    searchActions.length + includeActions.length + dsFsActions.length;
 
   if (actionsCount === 0) {
     return 0;
   }
 
-  const topKs = retrievalActions
-    .map((action) => {
-      if (action.topK === "auto") {
-        if (action.query === "none") {
-          return model.recommendedExhaustiveTopK;
-        } else {
-          return model.recommendedTopK;
-        }
-      } else {
-        return action.topK;
-      }
+  const topKs = searchActions
+    .map(() => {
+      return model.recommendedTopK;
     })
-    .concat(
-      searchActions.map(() => {
-        return model.recommendedTopK;
-      })
-    )
     .concat(
       includeActions.map(() => {
         return model.recommendedExhaustiveTopK;
@@ -163,11 +169,6 @@ export function getCitationsCount({
   const action = stepActions[stepActionIndex];
 
   switch (action.type) {
-    case "retrieval_configuration":
-      return getRetrievalTopK({
-        agentConfiguration,
-        stepActions,
-      });
     case "websearch_configuration":
       return getWebsearchNumResults({
         stepActions,

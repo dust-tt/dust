@@ -9,7 +9,6 @@ import type {
   ConversationsHistoryResponse,
   MessageElement,
 } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import { Context } from "@temporalio/activity";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
@@ -55,7 +54,6 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
-import { isSlowLaneQueue } from "@connectors/lib/temporal_queue_routing";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -91,7 +89,8 @@ export async function syncChannel(
 
   const slackClient = await getSlackClient(connectorId, {
     // Let the Slack client handle rate limited calls in the slow lane.
-    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
   });
 
   const remoteChannel = await withSlackErrorHandling(() =>
@@ -300,7 +299,8 @@ export async function getMessagesForChannel(
 ): Promise<ConversationsHistoryResponse> {
   const slackClient = await getSlackClient(connectorId, {
     // Let the Slack client handle rate limited calls in the slow lane.
-    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
   });
 
   reportSlackUsage({
@@ -389,7 +389,8 @@ export async function syncNonThreadedChunk({
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const slackClient = await getSlackClient(connectorId, {
     // Let the Slack client handle rate limited calls in the slow lane.
-    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
   });
   const messages: MessageElement[] = [];
 
@@ -800,7 +801,8 @@ export async function syncThread(
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const slackClient = await getSlackClient(connectorId, {
     // Let the Slack client handle rate limited calls in the slow lane.
-    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
   });
 
   let allMessages: MessageElement[] = [];
@@ -996,7 +998,8 @@ export async function fetchUsers(connectorId: ModelId) {
   let cursor: string | undefined;
   const slackClient = await getSlackClient(connectorId, {
     // Let the Slack client handle rate limited calls in the slow lane.
-    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
   });
   do {
     reportSlackUsage({
@@ -1048,7 +1051,8 @@ export async function getChannel(
 ): Promise<Channel> {
   const slackClient = await getSlackClient(connectorId, {
     // Let the Slack client handle rate limited calls in the slow lane.
-    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
   });
 
   return getChannelById(slackClient, connectorId, channelId);
@@ -1116,7 +1120,8 @@ export async function getChannelsToGarbageCollect(
 
   const slackClient = await getSlackClient(connectorId, {
     // Let the Slack client handle rate limited calls in the slow lane.
-    rejectRateLimitedCalls: !isSlowLaneQueue(Context.current().info.taskQueue),
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
   });
 
   const remoteChannels = new Set(

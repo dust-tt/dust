@@ -1,9 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { makeEnterpriseConnectionName } from "@app/lib/api/enterprise_connection";
+import { getWorkOS } from "@app/lib/api/workos/client";
+import { getFeatureFlags } from "@app/lib/auth";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 type Provider = {
+  name: "workos" | "auth0";
   authorizeUri: string;
   authenticateUri: string;
   logoutUri: string;
@@ -13,6 +19,7 @@ type Provider = {
 
 const providers: Record<string, Provider> = {
   workos: {
+    name: "workos",
     authorizeUri: "api.workos.com/user_management/authorize",
     authenticateUri: "api.workos.com/user_management/authenticate",
     logoutUri: "api.workos.com/user_management/sessions/logout",
@@ -20,6 +27,7 @@ const providers: Record<string, Provider> = {
     scopes: "openid profile email",
   },
   auth0: {
+    name: "auth0",
     authorizeUri: config.getAuth0TenantUrl() + "/authorize",
     authenticateUri: config.getAuth0TenantUrl() + "/oauth/token",
     logoutUri: config.getAuth0TenantUrl() + "/v2/logout",
@@ -29,8 +37,26 @@ const providers: Record<string, Provider> = {
   },
 };
 
-function getProvider(): Provider {
-  const provider = config.getOAuthProvider();
+async function getProvider(
+  query: Partial<{
+    [key: string]: string | string[];
+  }>,
+  workspace: WorkspaceModel | null
+): Promise<Provider> {
+  if (workspace) {
+    const lightWorkspace = renderLightWorkspaceType({ workspace });
+    const featureFlags = await getFeatureFlags(lightWorkspace);
+    if (
+      featureFlags.includes("okta_enterprise_connection") &&
+      !featureFlags.includes("workos")
+    ) {
+      return providers["auth0"];
+    }
+  }
+
+  const forcedProvider =
+    typeof query.forcedProvider === "string" ? query.forcedProvider : undefined;
+  const provider = forcedProvider || config.getOAuthProvider();
   return providers[provider];
 }
 
@@ -57,18 +83,83 @@ export default async function handler(
 
 async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
+  let workspaceId = undefined;
+  if (
+    typeof query.organization_id === "string" &&
+    query.organization_id.startsWith("workspace-")
+  ) {
+    workspaceId = query.organization_id.split("workspace-")[1];
+  }
+
+  if (typeof query.workspaceId === "string") {
+    workspaceId = query.workspaceId;
+  }
+
+  const workspace = workspaceId
+    ? await WorkspaceModel.findOne({
+        where: {
+          sId: workspaceId,
+        },
+      })
+    : null;
+
+  const provider = await getProvider(query, workspace);
+
+  const options: Record<string, string | undefined> = {
+    client_id: provider.clientId,
+    scope: provider.scopes,
+  };
+
+  if (provider.name === "workos") {
+    options.provider = "authkit";
+
+    if (workspace) {
+      const organizationId = workspace.workOSOrganizationId;
+      if (!organizationId) {
+        logger.error(
+          `Workspace with sId ${workspaceId} does not have a WorkOS organization ID.`
+        );
+        res.status(400).json({
+          error: "Workspace does not have a WorkOS organization ID",
+        });
+        return;
+      }
+
+      const connections = await getWorkOS().sso.listConnections({
+        organizationId,
+      });
+
+      options.organizationId = organizationId;
+      options.connectionId =
+        connections.data.length > 0 ? connections.data[0]?.id : undefined;
+    }
+  } else {
+    if (workspace) {
+      options.connection = makeEnterpriseConnectionName(workspace.sId);
+    }
+    options.prompt = `${query.prompt}`;
+    options.audience = `${query.audience}`;
+  }
+
   const params = new URLSearchParams({
-    ...query,
-    client_id: getProvider().clientId,
-    scope: getProvider().scopes,
-  }).toString();
-  const authorizeUrl = `https://${getProvider().authorizeUri}?${params}`;
+    ...options,
+    response_type: `${query.response_type}`,
+    redirect_uri: `${query.redirect_uri}`,
+    code_challenge_method: `${query.code_challenge_method}`,
+    code_challenge: `${query.code_challenge}`,
+    state: JSON.stringify({
+      provider: provider.name,
+    }),
+  });
+
+  const authorizeUrl = `https://${provider.authorizeUri}?${params}`;
   res.redirect(authorizeUrl);
 }
 
 async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const response = await fetch(`https://${getProvider().authenticateUri}`, {
+    const provider = await getProvider(req.query, null);
+    const response = await fetch(`https://${provider.authenticateUri}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -77,7 +168,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
       credentials: "include",
       body: new URLSearchParams({
         ...req.body,
-        client_id: getProvider().clientId,
+        client_id: provider.clientId,
       }).toString(),
     });
     const data = await response.json();
@@ -90,10 +181,11 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
 
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
+  const provider = await getProvider(query, null);
   const params = new URLSearchParams({
     ...query,
-    client_id: getProvider().clientId,
+    client_id: provider.clientId,
   }).toString();
-  const authorizeUrl = `https://${getProvider().logoutUri}?${params}`;
+  const authorizeUrl = `https://${provider.logoutUri}?${params}`;
   res.redirect(authorizeUrl);
 }

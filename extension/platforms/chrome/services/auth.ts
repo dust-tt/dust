@@ -80,6 +80,13 @@ export class ChromeAuthService extends AuthService {
       const dustDomain = getDustDomain(claims);
       const connectionDetails = getConnectionDetails(claims);
 
+      if (
+        response.authentication_method === "SSO" &&
+        !connectionDetails.connectionStrategy
+      ) {
+        connectionDetails.connectionStrategy = response.authentication_method;
+      }
+
       const res = await this.fetchMe({
         accessToken: tokens.accessToken,
         dustDomain,
@@ -91,6 +98,7 @@ export class ChromeAuthService extends AuthService {
       const user = await this.saveUser({
         ...res.value.user,
         ...connectionDetails,
+        authProvider: response.provider,
         dustDomain,
         selectedWorkspace: workspaces.length === 1 ? workspaces[0].sId : null,
       });

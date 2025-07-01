@@ -7,7 +7,6 @@ import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_ru
 import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
 import { processActionTypesFromAgentMessageIds } from "@app/lib/actions/process";
 import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/actions/reasoning";
-import { retrievalActionTypesFromAgentMessageIds } from "@app/lib/actions/retrieval";
 import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/actions/tables_query";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/actions/websearch";
@@ -135,7 +134,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   );
   const [
     agentConfigurations,
-    agentRetrievalActions,
     agentDustAppRunActions,
     agentTablesQueryActions,
     agentProcessActions,
@@ -167,8 +165,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       return agents as LightAgentConfigurationType[];
     })(),
-    (async () =>
-      retrievalActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () =>
       tableQueryTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
@@ -213,7 +209,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentDustAppRunActions,
         agentProcessActions,
         agentReasoningActions,
-        agentRetrievalActions,
         agentSearchLabelsActions,
         agentTablesQueryActions,
         agentWebsearchActions,
