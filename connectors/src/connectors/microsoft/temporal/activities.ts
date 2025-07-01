@@ -625,6 +625,7 @@ export async function syncDeltaForRootNodesInDrive({
     logger,
     client,
     node,
+    heartbeat,
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
 
@@ -881,10 +882,12 @@ async function getDeltaData({
   logger,
   client,
   node,
+  heartbeat,
 }: {
   logger: LoggerInterface;
   client: Client;
   node: MicrosoftNodeResource;
+  heartbeat: () => void;
 }) {
   if (!node.deltaLink) {
     throw new Error(`No delta link for root node ${node.internalId}`);
@@ -896,17 +899,23 @@ async function getDeltaData({
   );
 
   try {
-    return await getFullDeltaResults(
+    return await getFullDeltaResults({
       logger,
       client,
-      node.internalId,
-      node.deltaLink
-    );
+      parentInternalId: node.internalId,
+      initialDeltaLink: node.deltaLink,
+      heartbeatFunction: heartbeat,
+    });
   } catch (e) {
     if (e instanceof GraphError && e.statusCode === 410) {
       // API is answering 'resync required'
       // we repopulate the delta from scratch
-      return await getFullDeltaResults(logger, client, node.internalId);
+      return await getFullDeltaResults({
+        logger,
+        client,
+        parentInternalId: node.internalId,
+        heartbeatFunction: heartbeat,
+      });
     }
     throw e;
   }
