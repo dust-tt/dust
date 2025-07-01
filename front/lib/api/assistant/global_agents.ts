@@ -338,9 +338,12 @@ function _getGPT35TurboGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "active";
+
+  const sId = GLOBAL_AGENTS_SID.GPT35_TURBO;
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.GPT35_TURBO,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -358,7 +361,7 @@ function _getGPT35TurboGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentId: GLOBAL_AGENTS_SID.GPT35_TURBO,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -389,9 +392,11 @@ function _getGPT4GlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.GPT4;
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.GPT4,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -409,7 +414,7 @@ function _getGPT4GlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentId: GLOBAL_AGENTS_SID.GPT4,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1002,9 +1007,11 @@ function _getMistralLargeGlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.MISTRAL_LARGE;
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -1022,7 +1029,7 @@ function _getMistralLargeGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentId: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1050,9 +1057,11 @@ function _getMistralMediumGlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.MISTRAL_MEDIUM;
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -1070,7 +1079,7 @@ function _getMistralMediumGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentId: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1092,9 +1101,12 @@ function _getMistralSmallGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
+
+  const sId = GLOBAL_AGENTS_SID.MISTRAL_SMALL;
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -1112,7 +1124,7 @@ function _getMistralSmallGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentId: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1139,9 +1151,12 @@ function _getGeminiProGlobalAgent({
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
+
+  const sId = GLOBAL_AGENTS_SID.GEMINI_PRO;
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.GEMINI_PRO,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -1159,7 +1174,7 @@ function _getGeminiProGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentId: GLOBAL_AGENTS_SID.GEMINI_PRO,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
