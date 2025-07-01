@@ -9,6 +9,7 @@ import type { SetStateAction } from "react";
 import { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import logger from "@app/logger/logger";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
@@ -35,7 +36,8 @@ export function AddSearchSheet({
   isOpen,
   onClose,
 }: AddSearchSheetProps) {
-  const { owner, spaces, supportedDataSourceViews } = useAgentBuilderContext();
+  const { owner, supportedDataSourceViews } = useAgentBuilderContext();
+  const { spaces } = useSpacesContext();
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     PAGE_IDS.DATA_SOURCE_SELECTION
   );
