@@ -1280,12 +1280,14 @@ export async function unpauseAllManagedDataSources(
 }
 
 export async function computeDataSourceStatistics(
-  dataSource: DataSourceResource
+  dataSource: DataSourceResource[]
 ) {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   return coreAPI.getDataSourceStats({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
+    projectIds: dataSource.map(({ dustAPIProjectId }) => dustAPIProjectId),
+    dataSourceIds: dataSource.map(
+      ({ dustAPIDataSourceId }) => dustAPIDataSourceId
+    ),
   });
 }

@@ -15,12 +15,12 @@ export const computeStatsPlugin = createPlugin({
       return new Err(new Error("Data source not found."));
     }
 
-    const result = await computeDataSourceStatistics(dataSource);
+    const result = await computeDataSourceStatistics([dataSource]);
     if (result.isErr()) {
       return new Err(new Error(result.error.message));
     }
 
-    const { name, text_size, document_count } = result.value.data_source;
+    const [{ name, text_size, document_count }] = result.value.data_sources;
 
     return new Ok({
       display: "json",

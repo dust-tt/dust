@@ -296,14 +296,14 @@ export type CoreAPINodesSearchFilter = t.TypeOf<
 >;
 
 export interface CoreAPIDataSourceStatsResponse {
-  data_source: {
+  data_sources: {
     data_source_id: string;
     data_source_internal_id: string;
     timestamp: number;
     name: string;
     text_size: number;
     document_count: number;
-  };
+  }[];
 }
 
 export interface CoreAPIUpsertDataSourceDocumentPayload {
@@ -2089,16 +2089,14 @@ export class CoreAPI {
   }
 
   async getDataSourceStats({
-    projectId,
-    dataSourceId,
+    projectIds,
+    dataSourceIds,
   }: {
-    projectId: string;
-    dataSourceId: string;
+    projectIds: string[];
+    dataSourceIds: string[];
   }): Promise<CoreAPIResponse<CoreAPIDataSourceStatsResponse>> {
     const response = await this._fetchWithError(
-      `${this._url}/projects/${encodeURIComponent(
-        projectId
-      )}/data_sources/${encodeURIComponent(dataSourceId)}/stats`,
+      `${this._url}/stats?project_id=${projectIds.map(encodeURIComponent).join(",")}&data_source_id=${dataSourceIds.map(encodeURIComponent).join(",")}`,
       {
         method: "GET",
         headers: {
