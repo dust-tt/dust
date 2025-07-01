@@ -12,7 +12,7 @@ import {
   getDataSourceConfigurations,
   hasDataSourceSelections,
   isValidPage,
-} from "@app/components/agent_builder/capabilities/knowledge/shared";
+} from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import type {
   AgentBuilderAction,
   SearchAgentBuilderAction,

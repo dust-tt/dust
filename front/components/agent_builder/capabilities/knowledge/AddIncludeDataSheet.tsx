@@ -13,7 +13,7 @@ import {
   getTimeFrame,
   hasDataSourceSelections,
   isValidPage,
-} from "@app/components/agent_builder/capabilities/knowledge/shared";
+} from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
 import type {
   AgentBuilderAction,
