@@ -74,7 +74,7 @@ export class ChromeAuthService extends AuthService {
     try {
       const response = await sendAuthMessage(isForceLogin, forcedConnection);
       if (!response.success) {
-        console.log("response", response);
+        log(`Authentication error: ${response.error}`);
         throw new Error(response.error);
       }
       if (!response.accessToken) {
