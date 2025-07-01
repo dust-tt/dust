@@ -33,14 +33,14 @@ export class SecretManager {
 
   private async loadSecrets(): Promise<Secrets> {
     // Try local development environment variables first.
-    if (CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET && CONFIG.SLACK_SIGNING_SECRET) {
+    if (CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET) {
       console.log("Using secrets from environment variables", {
         component: "secrets",
         source: "environment",
       });
       return {
         euSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
-        slackSigningSecret: CONFIG.SLACK_SIGNING_SECRET,
+        slackSigningSecret: CONFIG.SLACK_SIGNING_SECRET ?? "",
         usSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
         webhookSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
       };
@@ -79,7 +79,7 @@ export class SecretManager {
           name: `projects/${GCP_EU_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
         }),
         this.client.accessSecretVersion({
-          name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/slack-signing-secret/versions/latest`,
+          name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.SLACK_SIGNING_SECRET_NAME}/versions/latest`,
         }),
       ]);
 

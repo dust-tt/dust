@@ -33,7 +33,7 @@ async function main(): Promise<void> {
       }
     });
 
-    // Create Slack verification middleware
+    // Create Slack verification middleware.
     const slackVerification = createSlackVerificationMiddleware(secretManager);
 
     // Setup graceful shutdown.

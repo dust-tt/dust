@@ -19,4 +19,5 @@ export const CONFIG = {
 
   // Secret names.
   SECRET_NAME: "connectors-DUST_CONNECTORS_WEBHOOKS_SECRET",
+  SLACK_SIGNING_SECRET_NAME: "SLACK_SIGNING_SECRET",
 } as const;

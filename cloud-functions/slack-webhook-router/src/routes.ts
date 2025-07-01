@@ -37,14 +37,24 @@ export function createRoutes(
     }
   });
 
-  // Webhook endpoints with combined webhook + Slack verification
+  // Webhook endpoints with combined webhook + Slack verification.
   router.post("/:webhookSecret/events", slackVerification, async (req, res) => {
     await handleWebhook(req, res, "slack_bot", secretManager, gracefulServer);
   });
 
-  router.post("/:webhookSecret/interactions", slackVerification, async (req, res) => {
-    await handleWebhook(req, res, "slack_bot_interaction", secretManager, gracefulServer);
-  });
+  router.post(
+    "/:webhookSecret/interactions",
+    slackVerification,
+    async (req, res) => {
+      await handleWebhook(
+        req,
+        res,
+        "slack_bot_interaction",
+        secretManager,
+        gracefulServer
+      );
+    }
+  );
 
   return router;
 }
@@ -86,7 +96,7 @@ async function handleWebhook(
     // Respond immediately to Slack.
     res.status(200).send();
 
-    // Get secrets for forwarding (already validated by middleware)
+    // Get secrets for forwarding (already validated by middleware).
     const secrets = await secretManager.getSecrets();
 
     // Forward to regions asynchronously.
