@@ -2940,9 +2940,9 @@ impl Store for PostgresStore {
         let now = utils::now();
 
         let csv = wtr.into_inner()?;
-        let file_name = format!("{}.csv", table_id);
+        let bucket_path = format!("{}.csv", table_id);
 
-        Object::create(bucket, csv, &file_name, "text/csv").await?;
+        Object::create(bucket, csv, &bucket_path, "text/csv").await?;
 
         // Update the csv bucket and path.
         let stmt = c
@@ -2950,8 +2950,11 @@ impl Store for PostgresStore {
                 "UPDATE tables SET csv_bucket = $1, csv_bucket_path = $2 WHERE data_source = $3 AND table_id = $4",
             )
             .await?;
-        c.query(&stmt, &[&bucket, &table_id, &data_source_row_id, &table_id])
-            .await?;
+        c.query(
+            &stmt,
+            &[&bucket, &bucket_path, &data_source_row_id, &table_id],
+        )
+        .await?;
 
         let upload_duration = utils::now() - now;
 
