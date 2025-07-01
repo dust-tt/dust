@@ -10,8 +10,10 @@ import {
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
-import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+import {
+  AgentReasoningAction,
+  AgentReasoningConfiguration,
+} from "@app/lib/models/assistant/actions/reasoning";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
@@ -41,23 +43,43 @@ async function migrateWorkspaceReasoningActions(
     );
   assert(mcpServerViewForReasoning, "Reasoning MCP server view must exist");
 
-  let hasMore = false;
-  do {
-    // Step 1: Retrieve the reasoning configurations.
-    const reasoningConfigurations = await AgentReasoningConfiguration.findAll({
+  let hasMore = true;
+
+  while (hasMore) {
+    // Get distinct reasoning configuration IDs that have actions.
+    const configsWithActions = await AgentReasoningAction.findAll({
       where: {
         workspaceId: workspace.id,
       },
+      attributes: ["reasoningConfigurationId"],
+      group: ["reasoningConfigurationId"],
       limit: BATCH_SIZE,
+      raw: true,
+    });
+
+    if (configsWithActions.length === 0) {
+      logger.info(
+        `No reasoning configurations with actions found in workspace ${workspace.sId}.`
+      );
+      hasMore = false;
+      break;
+    }
+
+    const configurationIds = configsWithActions.map(
+      (c) => c.reasoningConfigurationId
+    );
+
+    // Get the full reasoning configurations.
+    const reasoningConfigurations = await AgentReasoningConfiguration.findAll({
+      where: {
+        sId: configurationIds,
+        workspaceId: workspace.id,
+      },
     });
 
     logger.info(
-      `Found ${reasoningConfigurations.length} reasoning configurations.`
+      `Processing batch: ${reasoningConfigurations.length} configurations in workspace ${workspace.sId}.`
     );
-
-    if (reasoningConfigurations.length === 0) {
-      return;
-    }
 
     // Step 2: Create the MCP actions with their output items.
     await concurrentExecutor(
@@ -74,8 +96,7 @@ async function migrateWorkspaceReasoningActions(
         concurrency: CREATION_CONCURRENCY,
       }
     );
-    hasMore = reasoningConfigurations.length === BATCH_SIZE;
-  } while (hasMore);
+  }
 }
 
 /**
@@ -91,13 +112,13 @@ async function migrateReasoningActionsForActionConfiguration({
   logger: Logger;
   execute: boolean;
 }) {
-  // The reasoning configuration must have an agent configuration when it was not migrated to MCP.
+  // The reasoning configuration must have an MCP server configuration.
   assert(
     reasoningConfiguration.mcpServerConfigurationId,
     "Reasoning configuration must have an MCP server configuration."
   );
 
-  // Find the agent configuration.
+  // Find the MCP server configuration.
   const mcpServerConfiguration = await AgentMCPServerConfiguration.findByPk(
     reasoningConfiguration.mcpServerConfigurationId
   );
