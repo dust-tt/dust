@@ -6,7 +6,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import type { SetStateAction } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
@@ -43,13 +43,16 @@ export function AddSearchSheet({
   const [dataSourceConfigurations, setDataSourceConfigurations] =
     useState<DataSourceViewSelectionConfigurations>({});
 
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
-      setDescription("");
-      setDataSourceConfigurations({});
-    }
-  }, [isOpen]);
+  const resetForm = () => {
+    setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
+    setDescription("");
+    setDataSourceConfigurations({});
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
 
   const setSelectionConfigurationsCallback = (
     func: SetStateAction<DataSourceViewSelectionConfigurations>
@@ -62,6 +65,7 @@ export function AddSearchSheet({
 
   const handleSave = () => {
     if (hasDataSourceSelections && description.trim()) {
+      resetForm();
       onKnowledgeAdd();
     }
   };
@@ -140,7 +144,10 @@ export function AddSearchSheet({
   ];
 
   return (
-    <MultiPageSheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <MultiPageSheet
+      open={isOpen}
+      onOpenChange={(open) => !open && handleClose()}
+    >
       <MultiPageSheetContent
         pages={pages}
         currentPageId={currentPageId}
