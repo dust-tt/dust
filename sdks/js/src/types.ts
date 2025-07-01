@@ -547,7 +547,6 @@ const BaseActionTypeSchema = FlexibleEnumSchema<
   | "dust_app_run_action"
   | "tables_query_action"
   | "process_action"
-  | "reasoning_action"
   | "visualization_action"
 >();
 
@@ -589,17 +588,6 @@ const SearchLabelsActionTypeSchema = BaseActionSchema.extend({
 type SearchLabelsActionPublicType = z.infer<
   typeof SearchLabelsActionTypeSchema
 >;
-
-const ReasoningActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  output: z.string().nullable(),
-  thinking: z.string().nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("reasoning_action"),
-});
-type ReasoningActionPublicType = z.infer<typeof ReasoningActionTypeSchema>;
 
 const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
@@ -1072,7 +1060,6 @@ const AgentActionTypeSchema = z.union([
   ProcessActionTypeSchema,
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
-  ReasoningActionTypeSchema,
   SearchLabelsActionTypeSchema,
   MCPActionTypeSchema,
 ]);
@@ -1237,32 +1224,6 @@ const TablesQueryOutputEventSchema = z.object({
   action: TablesQueryActionTypeSchema,
 });
 
-const ReasoningStartedEventSchema = z.object({
-  type: z.literal("reasoning_started"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: ReasoningActionTypeSchema,
-});
-
-const ReasoningThinkingEventSchema = z.object({
-  type: z.literal("reasoning_thinking"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: ReasoningActionTypeSchema,
-});
-
-const ReasoningTokensEventSchema = z.object({
-  type: z.literal("reasoning_tokens"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: ReasoningActionTypeSchema,
-  content: z.string(),
-  classification: TokensClassificationSchema,
-});
-
 const SearchLabelsParamsEventSchema = z.object({
   type: z.literal("search_labels_params"),
   created: z.number(),
@@ -1383,9 +1344,6 @@ const AgentActionSpecificEventSchema = z.union([
   DustAppRunBlockEventSchema,
   DustAppRunParamsEventSchema,
   ProcessParamsEventSchema,
-  ReasoningStartedEventSchema,
-  ReasoningThinkingEventSchema,
-  ReasoningTokensEventSchema,
   SearchLabelsParamsEventSchema,
   TablesQueryModelOutputEventSchema,
   TablesQueryOutputEventSchema,
@@ -2651,12 +2609,6 @@ export function isProcessActionType(
   return action.type === "process_action";
 }
 
-export function isReasoningActionType(
-  action: AgentActionPublicType
-): action is ReasoningActionPublicType {
-  return action.type === "reasoning_action";
-}
-
 export function isSearchLabelsActionType(
   action: AgentActionPublicType
 ): action is SearchLabelsActionPublicType {
@@ -2847,7 +2799,6 @@ export const ACTION_RUNNING_LABELS: Record<
   conversation_list_files_action: "Listing files",
   dust_app_run_action: "Running App",
   process_action: "Extracting data",
-  reasoning_action: "Reasoning",
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   tool_action: "Using a tool",

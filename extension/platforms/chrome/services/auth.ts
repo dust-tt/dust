@@ -44,6 +44,9 @@ export class ChromeAuthService extends AuthService {
         return new Err(new AuthError("not_authenticated", "No tokens found."));
       }
       const response = await sendRefreshTokenMessage(this, tokens.refreshToken);
+      if (!response.success) {
+        return new Err(new AuthError("not_authenticated", response.error));
+      }
       if (!response?.accessToken) {
         return new Err(
           new AuthError("not_authenticated", "No access token received")
@@ -70,6 +73,10 @@ export class ChromeAuthService extends AuthService {
   }) {
     try {
       const response = await sendAuthMessage(isForceLogin, forcedConnection);
+      if (!response.success) {
+        log(`Authentication error: ${response.error}`);
+        throw new Error(response.error);
+      }
       if (!response.accessToken) {
         throw new Error("No access token received.");
       }
