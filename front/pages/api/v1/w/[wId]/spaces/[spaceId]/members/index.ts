@@ -68,6 +68,7 @@ async function handler(
               if (space.managementMode === "manual") {
                 return g.kind === "regular" || g.kind === "global";
               }
+              return false;
             }),
             (group) => group.getActiveMembers(auth),
             { concurrency: 10 }
