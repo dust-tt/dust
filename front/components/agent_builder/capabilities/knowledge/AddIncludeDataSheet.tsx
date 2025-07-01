@@ -6,7 +6,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { DataSourceSelectionPage } from "@app/components/agent_builder/capabilities/knowledge/shared/DataSourceSelectionPage";
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import {
   getDataSourceConfigurations,
@@ -19,6 +19,8 @@ import type {
   AgentBuilderAction,
   IncludeDataAgentBuilderAction,
 } from "@app/components/agent_builder/types";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
+import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import type {
   DataSourceViewSelectionConfigurations,
   TimeFrame,
@@ -44,6 +46,8 @@ export function AddIncludeDataSheet({
   onClose,
   action,
 }: AddIncludeDataSheetProps) {
+  const { owner, supportedDataSourceViews } = useAgentBuilderContext();
+  const { spaces } = useSpacesContext();
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     PAGE_IDS.DATA_SOURCE_SELECTION
   );
@@ -104,45 +108,57 @@ export function AddIncludeDataSheet({
     }
   }, []);
 
-  const dataSourcePage = DataSourceSelectionPage({
-    icon: ActionIncludeIcon,
-    dataSourceConfigurations,
-    setDataSourceConfigurations,
-  });
-
-  const pages: MultiPageSheetPage[] = useMemo(
-    () => [
-      {
-        ...dataSourcePage,
-        description: "Choose which data sources to include data from",
-      },
-      {
-        id: PAGE_IDS.CONFIGURATION,
-        title: "Configure Include Data",
-        description: "Set time range and describe what data to include",
-        icon: ActionIncludeIcon,
-        content: (
-          <div className="space-y-6">
-            <TimeFrameSection
-              timeFrame={timeFrame}
-              setTimeFrame={setTimeFrame}
-              actionType="include"
-            />
-            <DescriptionSection
-              title="Data Description"
-              description="Describe what type of data you want to include from your selected data sources to provide context to the agent."
-              label="Description"
-              placeholder="Describe what data you want to include from your selected data sources..."
-              value={description}
-              onChange={setDescription}
-              helpText="This description helps the agent understand what type of data to include as context."
+  const pages: MultiPageSheetPage[] = [
+    {
+      id: PAGE_IDS.DATA_SOURCE_SELECTION,
+      title: "Select Data Sources",
+      description: "Choose which data sources to include data from",
+      icon: ActionIncludeIcon,
+      content: (
+        <div className="space-y-4">
+          <div
+            id="dataSourceViewsSelector"
+            className="overflow-y-auto scrollbar-hide"
+          >
+            <DataSourceViewsSpaceSelector
+              useCase="assistantBuilder"
+              dataSourceViews={supportedDataSourceViews}
+              allowedSpaces={spaces}
+              owner={owner}
+              selectionConfigurations={dataSourceConfigurations}
+              setSelectionConfigurations={setDataSourceConfigurations}
+              viewType="document"
+              isRootSelectable={true}
             />
           </div>
-        ),
-      },
-    ],
-    [dataSourcePage, timeFrame, description]
-  );
+        </div>
+      ),
+    },
+    {
+      id: PAGE_IDS.CONFIGURATION,
+      title: "Configure Include Data",
+      description: "Set time range and describe what data to include",
+      icon: ActionIncludeIcon,
+      content: (
+        <div className="space-y-6">
+          <TimeFrameSection
+            timeFrame={timeFrame}
+            setTimeFrame={setTimeFrame}
+            actionType="include"
+          />
+          <DescriptionSection
+            title="Data Description"
+            description="Describe what type of data you want to include from your selected data sources to provide context to the agent."
+            label="Description"
+            placeholder="Describe what data you want to include from your selected data sources..."
+            value={description}
+            onChange={setDescription}
+            helpText="This description helps the agent understand what type of data to include as context."
+          />
+        </div>
+      ),
+    },
+  ];
 
   return (
     <MultiPageSheet

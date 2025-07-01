@@ -6,7 +6,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { DataSourceSelectionPage } from "@app/components/agent_builder/capabilities/knowledge/shared/DataSourceSelectionPage";
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import {
   getDataSourceConfigurations,
@@ -17,6 +17,8 @@ import type {
   AgentBuilderAction,
   SearchAgentBuilderAction,
 } from "@app/components/agent_builder/types";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
+import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
 const PAGE_IDS = {
@@ -39,6 +41,9 @@ export function AddSearchSheet({
   onClose,
   action,
 }: AddSearchSheetProps) {
+  const { owner, supportedDataSourceViews } = useAgentBuilderContext();
+  const { spaces } = useSpacesContext();
+
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     PAGE_IDS.DATA_SOURCE_SELECTION
   );
@@ -86,38 +91,50 @@ export function AddSearchSheet({
     }
   }, []);
 
-  const dataSourcePage = DataSourceSelectionPage({
-    icon: MagnifyingGlassIcon,
-    dataSourceConfigurations,
-    setDataSourceConfigurations,
-  });
-
-  const pages: MultiPageSheetPage[] = useMemo(
-    () => [
-      {
-        ...dataSourcePage,
-        description: "Choose which data sources to search across",
-      },
-      {
-        id: PAGE_IDS.DESCRIPTION,
-        title: "Add Description",
-        description: "Describe what you want to search for",
-        icon: MagnifyingGlassIcon,
-        content: (
-          <DescriptionSection
-            title="Search Configuration"
-            description="Describe what information you want to search for across your selected data sources."
-            label="Search Description"
-            placeholder="Describe what you want to search for across your selected data sources..."
-            value={description}
-            onChange={setDescription}
-            helpText="This description helps the agent understand what type of information to search for."
-          />
-        ),
-      },
-    ],
-    [dataSourcePage, description]
-  );
+  const pages: MultiPageSheetPage[] = [
+    {
+      id: PAGE_IDS.DATA_SOURCE_SELECTION,
+      title: "Select Data Sources",
+      description: "Choose which data sources to search across",
+      icon: MagnifyingGlassIcon,
+      content: (
+        <div className="space-y-4">
+          <div
+            id="dataSourceViewsSelector"
+            className="overflow-y-auto scrollbar-hide"
+          >
+            <DataSourceViewsSpaceSelector
+              useCase="assistantBuilder"
+              dataSourceViews={supportedDataSourceViews}
+              allowedSpaces={spaces}
+              owner={owner}
+              selectionConfigurations={dataSourceConfigurations}
+              setSelectionConfigurations={setDataSourceConfigurations}
+              viewType="document"
+              isRootSelectable={true}
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: PAGE_IDS.DESCRIPTION,
+      title: "Add Description",
+      description: "Describe what you want to search for",
+      icon: MagnifyingGlassIcon,
+      content: (
+        <DescriptionSection
+          title="Search Configuration"
+          description="Describe what information you want to search for across your selected data sources."
+          label="Search Description"
+          placeholder="Describe what you want to search for across your selected data sources..."
+          value={description}
+          onChange={setDescription}
+          helpText="This description helps the agent understand what type of information to search for."
+        />
+      ),
+    },
+  ];
 
   return (
     <MultiPageSheet

@@ -10,7 +10,6 @@ import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { DataSourceSelectionPage } from "@app/components/agent_builder/capabilities/knowledge/shared/DataSourceSelectionPage";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
 import {
@@ -25,6 +24,8 @@ import type {
   AgentBuilderAction,
   ExtractDataAgentBuilderAction,
 } from "@app/components/agent_builder/types";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
+import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import type {
   DataSourceViewSelectionConfigurations,
   TimeFrame,
@@ -50,7 +51,8 @@ export function AddExtractSheet({
   onClose,
   action,
 }: AddExtractSheetProps) {
-  const { owner } = useAgentBuilderContext();
+  const { owner, supportedDataSourceViews } = useAgentBuilderContext();
+  const { spaces } = useSpacesContext();
   const form = useFormContext<AgentBuilderFormData>();
   const formValues = form.watch();
   const [currentPageId, setCurrentPageId] = useState<PageId>(
@@ -120,17 +122,25 @@ export function AddExtractSheet({
     }
   }, []);
 
-  const dataSourcePage = DataSourceSelectionPage({
-    icon: ActionScanIcon,
-    dataSourceConfigurations,
-    setDataSourceConfigurations,
-  });
-
   const pages: MultiPageSheetPage[] = useMemo(
     () => [
       {
-        ...dataSourcePage,
+        id: PAGE_IDS.DATA_SOURCE_SELECTION,
+        title: "Data Sources",
         description: "Choose which data sources to extract data from",
+        icon: ActionScanIcon,
+        content: (
+          <DataSourceViewsSpaceSelector
+            useCase="assistantBuilder"
+            dataSourceViews={supportedDataSourceViews}
+            allowedSpaces={spaces}
+            owner={owner}
+            selectionConfigurations={dataSourceConfigurations}
+            setSelectionConfigurations={setDataSourceConfigurations}
+            viewType="document"
+            isRootSelectable={true}
+          />
+        ),
       },
       {
         id: PAGE_IDS.CONFIGURATION,
@@ -172,7 +182,10 @@ export function AddExtractSheet({
       },
     ],
     [
-      dataSourcePage,
+      supportedDataSourceViews,
+      spaces,
+      owner,
+      dataSourceConfigurations,
       timeFrame,
       jsonSchema,
       description,
