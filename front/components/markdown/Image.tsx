@@ -10,8 +10,8 @@ export function Img({
   title,
   owner,
 }: {
-  src?: string | undefined;
-  alt?: string | undefined;
+  src: string | undefined;
+  alt: string | undefined;
   title?: string | undefined;
   owner: LightWorkspaceType;
 }) {
@@ -32,7 +32,7 @@ export function Img({
   const url = getFileProcessedUrl(owner, matches[0]);
   const processedSrc = new URL(url, baseUrl);
 
-  return <img src={processedSrc.toString()} alt={alt} title={title}></img>;
+  return <img src={processedSrc.toString()} alt={alt} title={title} />;
 }
 
 export function imgDirective() {
