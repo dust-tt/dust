@@ -129,10 +129,10 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
 }
 
 function _getDefaultWebActionsForGlobalAgent({
-  agentSid,
+  agentId,
   webSearchBrowseMCPServerView,
 }: {
-  agentSid: GLOBAL_AGENTS_SID;
+  agentId: GLOBAL_AGENTS_SID;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): ServerSideMCPServerConfigurationType[] {
   if (!webSearchBrowseMCPServerView) {
@@ -142,7 +142,7 @@ function _getDefaultWebActionsForGlobalAgent({
   return [
     {
       id: -1,
-      sId: agentSid + "-websearch-browse-action",
+      sId: agentId + "-websearch-browse-action",
       type: "mcp_server_configuration",
       name: "web_search_&_browse" satisfies InternalMCPServerNameType,
       description: null,
@@ -284,7 +284,7 @@ function _getHelperGlobalAgent({
 
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
-      agentSid: GLOBAL_AGENTS_SID.HELPER,
+      agentId: GLOBAL_AGENTS_SID.HELPER,
       webSearchBrowseMCPServerView,
     })
   );
@@ -353,7 +353,7 @@ function _getGPT35TurboGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.GPT35_TURBO,
+        agentId: GLOBAL_AGENTS_SID.GPT35_TURBO,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -404,7 +404,7 @@ function _getGPT4GlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.GPT4,
+        agentId: GLOBAL_AGENTS_SID.GPT4,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -457,7 +457,7 @@ function _getO3MiniGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: sId,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -506,7 +506,7 @@ function _getO1GlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: sId,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -597,7 +597,7 @@ function _getO1HighReasoningGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: sId,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -647,7 +647,7 @@ function _getO3GlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: sId,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -769,7 +769,7 @@ function _getClaude3HaikuGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: sId,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -819,7 +819,7 @@ function _getClaude3OpusGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: sId,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -869,7 +869,7 @@ function _getClaude3GlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: sId,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -919,7 +919,7 @@ function _getClaude4SonnetGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: sId,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -969,7 +969,7 @@ function _getClaude3_7GlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: sId,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1017,7 +1017,7 @@ function _getMistralLargeGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+        agentId: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1065,7 +1065,7 @@ function _getMistralMediumGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+        agentId: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1107,7 +1107,7 @@ function _getMistralSmallGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+        agentId: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1154,7 +1154,7 @@ function _getGeminiProGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.GEMINI_PRO,
+        agentId: GLOBAL_AGENTS_SID.GEMINI_PRO,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1566,7 +1566,7 @@ The agent should not provide additional information or content that the user did
       status: "disabled_by_admin",
       actions: [
         ..._getDefaultWebActionsForGlobalAgent({
-          agentSid: GLOBAL_AGENTS_SID.DUST,
+          agentId: GLOBAL_AGENTS_SID.DUST,
           webSearchBrowseMCPServerView,
         }),
       ],
@@ -1659,7 +1659,7 @@ The agent should not provide additional information or content that the user did
 
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
-      agentSid: GLOBAL_AGENTS_SID.DUST,
+      agentId: GLOBAL_AGENTS_SID.DUST,
       webSearchBrowseMCPServerView,
     }),
     ..._getAgentRouterToolsConfiguration(
