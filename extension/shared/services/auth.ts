@@ -32,6 +32,7 @@ export type StoredUser = UserTypeWithExtensionWorkspaces & {
 };
 
 export type OAuthAuthorizeResponse = {
+  success: true;
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
