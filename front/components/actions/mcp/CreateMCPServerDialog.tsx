@@ -1,10 +1,12 @@
 import {
+  Button,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  ExternalLinkIcon,
   Input,
   Label,
   SliderToggle,
@@ -14,6 +16,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
@@ -40,6 +43,7 @@ type RemoteMCPServerDetailsProps = {
   setIsLoading: (isCreating: boolean) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  defaultServerConfig?: DefaultRemoteMCPServerConfig;
 };
 
 export function CreateMCPServerDialog({
@@ -49,6 +53,7 @@ export function CreateMCPServerDialog({
   setIsLoading: setExternalIsLoading,
   isOpen = false,
   setIsOpen,
+  defaultServerConfig,
 }: RemoteMCPServerDetailsProps) {
   const sendNotification = useSendNotification();
   const [
@@ -73,6 +78,18 @@ export function CreateMCPServerDialog({
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
+
+  useEffect(() => {
+    if (defaultServerConfig?.url && isOpen) {
+      setRemoteServerUrl(defaultServerConfig.url);
+    }
+    if (defaultServerConfig && isOpen) {
+      setRequiresBearerToken(
+        defaultServerConfig.authMethod === "bearer" &&
+          defaultServerConfig.requiresAuth
+      );
+    }
+  }, [defaultServerConfig, isOpen]);
 
   useEffect(() => {
     if (internalMCPServer && isOpen) {
@@ -260,6 +277,40 @@ export function CreateMCPServerDialog({
         <DialogContainer>
           {!internalMCPServer && !authorization && (
             <>
+              {defaultServerConfig && (
+                <div className="space-y-4 rounded-lg border bg-muted/50 p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold">
+                        {defaultServerConfig.name} Remote Server
+                      </h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {defaultServerConfig.description}
+                      </p>
+                    </div>
+                    {defaultServerConfig.documentationUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          window.open(
+                            defaultServerConfig.documentationUrl,
+                            "_blank"
+                          )
+                        }
+                        icon={ExternalLinkIcon}
+                        label="Documentation"
+                      />
+                    )}
+                  </div>
+                  {defaultServerConfig.connectionInstructions && (
+                    <div className="text-sm text-muted-foreground">
+                      {defaultServerConfig.connectionInstructions}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="url">URL</Label>
                 <div className="flex space-x-2">
@@ -272,34 +323,52 @@ export function CreateMCPServerDialog({
                       isError={!!error}
                       message={error}
                       autoFocus
+                      disabled={!!defaultServerConfig?.url}
                     />
                   </div>
                 </div>
+                {defaultServerConfig?.url && (
+                  <div className="text-sm text-muted-foreground">
+                    This is a trusted remote MCP server. The URL is
+                    pre-configured and cannot be changed.
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="requiresBearerToken">
-                  Requires Bearer Token
+                  {defaultServerConfig?.authMethod === "bearer"
+                    ? `${defaultServerConfig.authMethod === "bearer" ? "Bearer Token" : "Authentication"} (Required)`
+                    : "Requires Bearer Token"}
                 </Label>
                 <div className="flex items-center space-x-2">
-                  <div>
-                    <SliderToggle
-                      disabled={false}
-                      selected={requiresBearerToken}
-                      onClick={() =>
-                        setRequiresBearerToken(!requiresBearerToken)
-                      }
-                    />
-                  </div>
+                  {!defaultServerConfig && (
+                    <div>
+                      <SliderToggle
+                        disabled={false}
+                        selected={requiresBearerToken}
+                        onClick={() =>
+                          setRequiresBearerToken(!requiresBearerToken)
+                        }
+                      />
+                    </div>
+                  )}
 
                   <div className="flex-grow">
                     <Input
                       id="sharedSecret"
                       placeholder={
-                        requiresBearerToken ? "Paste the Bearer Token here" : ""
+                        defaultServerConfig?.authMethod === "bearer"
+                          ? `Paste your ${defaultServerConfig.name} API key here`
+                          : requiresBearerToken
+                            ? "Paste the Bearer Token here"
+                            : ""
                       }
                       disabled={!requiresBearerToken}
                       value={sharedSecret}
                       onChange={(e) => setSharedSecret(e.target.value)}
+                      isError={
+                        defaultServerConfig?.requiresAuth && !sharedSecret
+                      }
                     />
                   </div>
                 </div>
@@ -335,7 +404,10 @@ export function CreateMCPServerDialog({
               void handleSave(e);
             },
             disabled:
-              !isOAuthFormValid || (authorization && !useCase) || isLoading,
+              !isOAuthFormValid ||
+              (authorization && !useCase) ||
+              (defaultServerConfig?.requiresAuth && !sharedSecret) ||
+              isLoading,
           }}
         />
       </DialogContent>

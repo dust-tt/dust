@@ -11,8 +11,8 @@ import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run"
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import type {
+  CustomServerIconType,
   InternalAllowedIconType,
-  RemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -104,7 +104,7 @@ export type BaseMCPServerConfigurationType = {
 
   name: string;
   description: string | null;
-  icon?: RemoteAllowedIconType | InternalAllowedIconType;
+  icon?: CustomServerIconType | InternalAllowedIconType;
 };
 
 // Server-side MCP server = Remote MCP Server OR our own MCP server.
@@ -373,7 +373,7 @@ export class MCPActionType extends BaseAction {
     const totalTextLength =
       this.output?.reduce(
         (acc, curr) =>
-          acc + (curr.type === "text" ? curr.text?.length ?? 0 : 0),
+          acc + (curr.type === "text" ? (curr.text?.length ?? 0) : 0),
         0
       ) ?? 0;
 
@@ -1023,7 +1023,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
               const fileName = isResourceWithName(block.resource)
                 ? block.resource.name
-                : block.resource.uri.split("/").pop() ?? "generated-file";
+                : (block.resource.uri.split("/").pop() ?? "generated-file");
 
               const fileUpsertResult = await processAndStoreFromUrl(auth, {
                 url: block.resource.uri,

@@ -1,6 +1,6 @@
 import type {
+  CustomServerIconType,
   InternalAllowedIconType,
-  RemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 
 // Stored in a separate file to prevent a circular dependency issue.
@@ -79,5 +79,5 @@ export type MCPValidationMetadataType = {
   mcpServerName: string;
   agentName: string;
   pubsubMessageId?: string;
-  icon?: InternalAllowedIconType | RemoteAllowedIconType;
+  icon?: InternalAllowedIconType | CustomServerIconType;
 };

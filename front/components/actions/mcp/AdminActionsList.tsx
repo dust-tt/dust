@@ -18,6 +18,7 @@ import {
   mcpServersSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type {DefaultRemoteMCPServerConfig} from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import {
@@ -86,6 +87,9 @@ export const AdminActionsList = ({
   const [internalMCPServerToCreate, setInternalMCPServerToCreate] = useState<
     MCPServerType | undefined
   >();
+  const [defaultServerConfig, setDefaultServerConfig] = useState<
+    DefaultRemoteMCPServerConfig | undefined
+  >();
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
@@ -110,14 +114,18 @@ export const AdminActionsList = ({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
   });
 
-  const onCreateRemoteMCPServer = () => {
+  const onCreateRemoteMCPServer = (
+    defaultServerConfig?: DefaultRemoteMCPServerConfig
+  ) => {
     setInternalMCPServerToCreate(undefined);
+    setDefaultServerConfig(defaultServerConfig);
     setIsCreateOpen(true);
   };
 
   const onCreateInternalMCPServer = async (mcpServer: MCPServerType) => {
     if (mcpServer.authorization) {
       setInternalMCPServerToCreate(mcpServer);
+      setDefaultServerConfig(undefined);
       setIsCreateOpen(true);
     } else {
       setIsLoading(true);
@@ -261,6 +269,7 @@ export const AdminActionsList = ({
         setIsLoading={setIsLoading}
         owner={owner}
         setMCPServerToShow={setMcpServerToShow}
+        defaultServerConfig={defaultServerConfig}
       />
       {rows.length > 0 &&
         portalToHeader(

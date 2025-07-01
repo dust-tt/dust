@@ -12,7 +12,10 @@ import {
   DEFAULT_MCP_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import type { RemoteAllowedIconType } from "@app/lib/actions/mcp_icons";
+import type {
+  CustomServerIconType,
+  InternalAllowedIconType,
+} from "@app/lib/actions/mcp_icons";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -288,7 +291,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     }: {
       name?: string;
       description?: string;
-      icon?: RemoteAllowedIconType;
+      icon?: CustomServerIconType | InternalAllowedIconType;
       sharedSecret?: string;
       cachedName?: string;
       cachedDescription?: string;

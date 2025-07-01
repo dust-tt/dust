@@ -34,6 +34,7 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getDefaultRemoteMCPServerById } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type {
   MCPConnectionParams,
   ServerSideMCPConnectionParams,
@@ -792,6 +793,14 @@ async function listToolsForServerSideMCPServer(
         },
         {}
       );
+
+      // If no database overrides exist, fall back to default server configuration
+      if (Object.keys(toolsStakes).length === 0) {
+        const defaultServerConfig = getDefaultRemoteMCPServerById(id);
+        if (defaultServerConfig?.toolStakes) {
+          toolsStakes = defaultServerConfig.toolStakes;
+        }
+      }
       break;
     }
     default:
