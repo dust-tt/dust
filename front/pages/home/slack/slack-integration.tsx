@@ -243,17 +243,8 @@ function InstallationSection() {
             </div>
           ))}
         </div>
-      </div>
-    </div>
-  );
-}
 
-function ImportantNoticeSection() {
-  return (
-    <div className="py-16">
-      <div className={CONTAINER_CLASSES}>
         <div className="text-left">
-          <H2 className="mb-4 text-2xl font-semibold">Important notice</H2>
           <P className="text-left text-muted-foreground">
             This app uses AI and may generate inaccurate content. Verify
             important information before acting.
@@ -330,7 +321,6 @@ export default function SlackIntegration() {
         <PainPointsSection />
         <VideoSection />
         <InstallationSection />
-        <ImportantNoticeSection />
         <TrustedBy logoSet="landing" />
         <JustUseDustSection />
       </div>
