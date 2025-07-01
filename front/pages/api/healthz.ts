@@ -1,6 +1,8 @@
 import { StatsD } from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { runOnRedis } from "@app/lib/api/redis";
+
 export const statsDClient = new StatsD();
 
 export default async function handler(
@@ -8,6 +10,22 @@ export default async function handler(
   res: NextApiResponse
 ) {
   const start = performance.now();
+
+  // Check if prestop has been called
+  const isShuttingDown = await runOnRedis(
+    { origin: "lock" },
+    async (redis) => {
+      const prestopState = await redis.get("prestop:shutdown");
+      return prestopState === "true";
+    }
+  );
+
+  if (isShuttingDown) {
+    res.status(503).send("shutting down");
+    const elapsed = performance.now() - start;
+    statsDClient.distribution("requests.health.check", elapsed);
+    return;
+  }
 
   res.status(200).send("ok");
 

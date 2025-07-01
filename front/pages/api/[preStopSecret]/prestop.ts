@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { runOnRedis } from "@app/lib/api/redis";
 import { wakeLockIsFree } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import { withLogging } from "@app/logger/withlogging";
@@ -22,7 +23,17 @@ async function handler(
     return;
   }
 
-  logger.info("Received prestop request, waiting 10s");
+  logger.info("Received prestop request, setting shutdown state in Redis");
+  
+  // Set prestop state in Redis with 60 second TTL
+  await runOnRedis(
+    { origin: "lock" },
+    async (redis) => {
+      await redis.setEx("prestop:shutdown", 60, "true");
+    }
+  );
+
+  logger.info("Prestop state set, waiting 10s");
   await new Promise((resolve) => setTimeout(resolve, 10000));
 
   while (!wakeLockIsFree()) {
