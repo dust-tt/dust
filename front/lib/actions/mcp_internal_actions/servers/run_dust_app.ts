@@ -296,10 +296,6 @@ export default async function createServer(
       agentLoopContext.listToolsContext.agentActionConfiguration
     );
 
-    if (!app.description) {
-      throw new Error("Missing app description");
-    }
-
     server.tool(
       app.name,
       app.description,
@@ -310,7 +306,7 @@ export default async function createServer(
           content: [
             {
               type: "text",
-              text: "Successfully list Dust App configuration",
+              text: "Successfully listed Dust App configuration",
             },
           ],
         };
@@ -327,10 +323,6 @@ export default async function createServer(
       auth,
       agentLoopContext.runContext.actionConfiguration
     );
-
-    if (!app.description) {
-      throw new Error("Missing app description");
-    }
 
     server.tool(
       app.name,
