@@ -429,7 +429,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     if (res.isErr()) {
       logger.error(
         {
-          workspaceId: owner.id,
+          workspaceId: owner.sId,
           conversationId: conversation.id,
           error: res.error,
         },
@@ -455,7 +455,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       if (event.type === "error") {
         logger.error(
           {
-            workspaceId: owner.id,
+            workspaceId: owner.sId,
             conversationId: conversation.id,
             error: event.content.message,
           },
@@ -479,7 +479,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         if (e.error) {
           logger.error(
             {
-              workspaceId: owner.id,
+              workspaceId: owner.sId,
               conversationId: conversation.id,
               error: e.error,
             },

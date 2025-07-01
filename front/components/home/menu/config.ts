@@ -254,9 +254,9 @@ const ConnectMenuConfig: MenuConfig = {
     },
 
     {
-      title: "Contact Support",
-      href: "mailto:support@dust.tt",
-      isExternal: true,
+      title: "Support",
+      href: "/home/support",
+      isExternal: false,
     },
     {
       title: "Become a Partner",
@@ -428,6 +428,10 @@ export const menuConfig: DocsConfig = {
     {
       title: DevelopersMenuConfig.title,
       items: DevelopersMenuConfig.items,
+    },
+    {
+      title: ConnectMenuConfig.title,
+      items: ConnectMenuConfig.items,
     },
     {
       title: CareersMenuConfig.title,

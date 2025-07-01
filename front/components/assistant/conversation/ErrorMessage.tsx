@@ -32,6 +32,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
           size="xs"
         />
         <Popover
+          popoverTriggerAsChild
           trigger={
             <Button
               variant="outline"

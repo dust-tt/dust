@@ -23,7 +23,7 @@ jobs:
           -H "Content-Type: application/json" \
           -H "Authorization: Bearer ${{ secrets.RANGER_API_TOKEN }}" \
           -d '{
-            "targetUrl": "https://front-qa.dust.tt/",
+            "targetUrl": "https://front.dust.tt/",
             "ghOwner": "'$REPO_OWNER'",
             "ghRepo": "'$REPO_NAME'",
             "ghCommitSha": "${{ github.event.client_payload.sha }}"

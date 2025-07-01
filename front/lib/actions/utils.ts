@@ -1,4 +1,9 @@
-import { BarChartIcon, BoltIcon } from "@dust-tt/sparkle";
+import {
+  ActionIncludeIcon,
+  BarChartIcon,
+  BoltIcon,
+  MagnifyingGlassIcon,
+} from "@dust-tt/sparkle";
 
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -36,6 +41,39 @@ export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
   dropDownIcon: BarChartIcon,
   flag: null,
 };
+
+export const SEARCH_SPECIFICATION: ActionSpecification = {
+  label: "Search",
+  description: "Search across selected data sources",
+  cardIcon: MagnifyingGlassIcon,
+  dropDownIcon: MagnifyingGlassIcon,
+  flag: null,
+};
+
+export const INCLUDE_DATA_SPECIFICATION: ActionSpecification = {
+  label: "Include Data",
+  description: "Include recent documents from selected data sources",
+  cardIcon: ActionIncludeIcon,
+  dropDownIcon: ActionIncludeIcon,
+  flag: null,
+};
+
+// Mapping for action types to their specifications
+export const ACTION_SPECIFICATIONS_MAP = {
+  DATA_VISUALIZATION: DATA_VISUALIZATION_SPECIFICATION,
+  SEARCH: SEARCH_SPECIFICATION,
+  INCLUDE_DATA: INCLUDE_DATA_SPECIFICATION,
+} as const;
+
+export function getActionSpecification(
+  actionType: string
+): ActionSpecification | null {
+  return (
+    ACTION_SPECIFICATIONS_MAP[
+      actionType as keyof typeof ACTION_SPECIFICATIONS_MAP
+    ] || null
+  );
+}
 
 /**
  * This function computes the topK for retrieval actions. This is used by both the action (to
@@ -133,7 +171,6 @@ export function getCitationsCount({
     case "process_configuration":
     case "conversation_include_file_configuration":
     case "search_labels_configuration":
-    case "reasoning_configuration":
       return 0;
     case "mcp_configuration":
       if (isMCPInternalWebsearch(action)) {

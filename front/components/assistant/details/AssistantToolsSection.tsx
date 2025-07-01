@@ -1,7 +1,6 @@
 import {
   Avatar,
   BarChartIcon,
-  ChatBubbleThoughtIcon,
   CommandIcon,
   GlobeAltIcon,
   ScanIcon,
@@ -20,7 +19,6 @@ import {
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
   isProcessConfiguration,
-  isReasoningConfiguration,
   isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
 } from "@app/lib/actions/types/guards";
@@ -142,12 +140,6 @@ function renderOtherAction(
     return {
       title: "Extract from documents",
       avatar: <Avatar icon={ScanIcon} size="xs" />,
-      order: 0,
-    };
-  } else if (isReasoningConfiguration(action)) {
-    return {
-      title: "Reasoning",
-      avatar: <Avatar icon={ChatBubbleThoughtIcon} size="xs" />,
       order: 0,
     };
   } else if (isServerSideMCPServerConfiguration(action)) {

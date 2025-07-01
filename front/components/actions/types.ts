@@ -2,7 +2,6 @@ import { ConversationIncludeFileActionDetails } from "@app/components/actions/co
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
-import { ReasoningActionDetails } from "@app/components/actions/reasoning/ReasoningActionDetails";
 import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -49,10 +48,6 @@ const actionsSpecification: ActionSpecifications = {
   conversation_include_file_action: {
     detailsComponent: ConversationIncludeFileActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.conversation_include_file_action,
-  },
-  reasoning_action: {
-    detailsComponent: ReasoningActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.reasoning_action,
   },
   search_labels_action: {
     detailsComponent: SearchLabelsActionDetails,

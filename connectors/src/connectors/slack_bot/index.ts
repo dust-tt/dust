@@ -592,6 +592,12 @@ async function getFilteredChannels(
       continue;
     }
 
+    // Skip private channels as the Slack ToS prevents showing private channels from Admin A to
+    // admin B.
+    if (remoteChannel.is_private) {
+      continue;
+    }
+
     slackChannels.push({
       slackChannelId: remoteChannel.id,
       slackChannelName: remoteChannel.name,

@@ -13,7 +13,6 @@ import type {
 } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
-import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type {
@@ -68,17 +67,6 @@ export function isSearchLabelsConfiguration(
     typeof arg === "object" &&
     "type" in arg &&
     arg.type === "search_labels_configuration"
-  );
-}
-
-export function isReasoningConfiguration(
-  arg: unknown
-): arg is ReasoningConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "reasoning_configuration"
   );
 }
 

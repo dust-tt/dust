@@ -11,7 +11,6 @@ import {
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
-import { fetchReasoningActionConfigurations } from "@app/lib/actions/configuration/reasoning";
 import { fetchTableQueryActionConfigurations } from "@app/lib/actions/configuration/table_query";
 import {
   DEFAULT_REASONING_ACTION_DESCRIPTION,
@@ -507,7 +506,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     processActionsConfigurationsPerAgent,
     dustAppRunActionsConfigurationsPerAgent,
     tableQueryActionsConfigurationsPerAgent,
-    reasoningActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
     tagsPerAgent,
@@ -515,7 +513,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchAgentProcessActionConfigurations(auth, { configurationIds, variant }),
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
-    fetchReasoningActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
@@ -544,11 +541,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       const processActionsConfigurations =
         processActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...processActionsConfigurations);
-
-      // Reasoning configurations
-      const reasoningActionsConfigurations =
-        reasoningActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...reasoningActionsConfigurations);
 
       // MCP server configurations
       const mcpServerActionsConfigurations =
@@ -966,7 +958,7 @@ export async function createAgentConfiguration(
           if (result.isErr()) {
             logger.error(
               {
-                workspaceId: owner.id,
+                workspaceId: owner.sId,
                 agentConfigurationId: existingAgent.sId,
               },
               `Error adding group to agent ${existingAgent.sId}: ${result.error}`
