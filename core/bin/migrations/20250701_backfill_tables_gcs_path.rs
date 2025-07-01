@@ -3,6 +3,7 @@ use bb8_postgres::PostgresConnectionManager;
 use clap::Parser;
 use dust::{
     databases::table::get_table_unique_id,
+    databases_store::store::{DatabasesStore, PostgresDatabasesStore},
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
 };
@@ -42,6 +43,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let batch_size = args.batch_size;
 
     let db_uri = std::env::var("CORE_DATABASE_URI").expect("CORE_DATABASE_URI must be set");
+    let db_store_uri = std::env::var("DATABASES_STORE_DATABASE_URI")
+        .expect("DATABASES_STORE_DATABASE_URI must be set");
 
     if !args.skip_confirmation {
         println!("Are you sure you want to backfill the tables gcs bucket and columns? (y/N)",);
@@ -54,6 +57,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let store = PostgresStore::new(&db_uri).await?;
     let pool = store.raw_pool();
+
+    let db_store = PostgresDatabasesStore::new(&db_store_uri).await?;
 
     // Loop on all tables in batches
     let mut next_cursor = start_cursor;
@@ -71,7 +76,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             batch_size, next_cursor
         );
         let next_id_cursor =
-            process_tables_batch(&store, &pool, next_cursor, batch_size as i64).await?;
+            process_tables_batch(&store, &db_store, &pool, next_cursor, batch_size as i64).await?;
 
         next_cursor = match next_id_cursor {
             Some(cursor) => cursor,
@@ -90,6 +95,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn process_tables_batch(
     store: &PostgresStore,
+    db_store: &PostgresDatabasesStore,
     pool: &Pool<PostgresConnectionManager<NoTls>>,
     id_cursor: i64,
     batch_size: i64,
@@ -127,7 +133,7 @@ async fn process_tables_batch(
     for (id, table_id, project, data_source_id) in tables {
         println!("Processing table with id: {}, table_id: {}", id, table_id);
 
-        process_one_table(&store, id, &project, &data_source_id, &table_id).await?;
+        process_one_table(&store, &db_store, id, &project, &data_source_id, &table_id).await?;
 
         last_table_id = id;
     }
@@ -141,14 +147,20 @@ async fn process_tables_batch(
 
 async fn process_one_table(
     store: &PostgresStore,
+    db_store: &PostgresDatabasesStore,
     id: i64,
     project: &Project,
     data_source_id: &str,
     table_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let unique_id = get_table_unique_id(&project, &data_source_id, &table_id);
+    let unique_table_id = get_table_unique_id(&project, &data_source_id, &table_id);
 
-    println!("Unique table id: {}", unique_id);
+    println!("**** Unique table id: {}", unique_table_id);
+
+    let (rows, _count) = db_store.list_table_rows(&unique_table_id, None).await?;
+    rows.into_iter().for_each(|row| {
+        println!("Row: {:?}", row);
+    });
 
     Ok(())
 }
