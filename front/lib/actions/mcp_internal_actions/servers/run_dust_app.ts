@@ -119,10 +119,6 @@ async function prepareAppContext(
   const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
   const datasetName = inputConfig?.dataset;
 
-  if (!app.description) {
-    throw new Error("Missing app description");
-  }
-
   if (!datasetName) {
     return { app, schema: null, appConfig };
   }
