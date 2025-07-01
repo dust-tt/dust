@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import React, { memo } from "react";
+import React from "react";
 
 import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";

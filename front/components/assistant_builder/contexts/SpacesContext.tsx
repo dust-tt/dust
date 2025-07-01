@@ -1,11 +1,5 @@
 import type { ReactNode } from "react";
-import React, {
-  createContext,
-  memo,
-  useContext,
-  useEffect,
-  useMemo,
-} from "react";
+import React, { createContext, useContext, useEffect, useMemo } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpaces } from "@app/lib/swr/spaces";
