@@ -1,5 +1,5 @@
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
-import { CONFIG } from "./config.js";
+import { CONFIG, getProjectIds } from "./config.js";
 
 export interface Secrets {
   euSecret: string;
@@ -56,7 +56,7 @@ export class SecretManager {
 
   private async loadFromSecretManager(): Promise<Secrets> {
     const { GCP_GLOBAL_PROJECT_ID, GCP_US_PROJECT_ID, GCP_EU_PROJECT_ID } =
-      CONFIG;
+      getProjectIds();
 
     if (!GCP_GLOBAL_PROJECT_ID || !GCP_US_PROJECT_ID || !GCP_EU_PROJECT_ID) {
       throw new Error("Missing required project environment variables");

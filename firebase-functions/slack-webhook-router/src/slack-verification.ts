@@ -68,11 +68,10 @@ function verifyRequestSignature({
   }
 }
 
-// On some environments like GCP (Google Cloud Platform),
-// req.body can be pre-parsed and be passed as req.rawBody
+// On Firebase Functions and GCP, req.rawBody is provided for signature verification
 async function parseExpressRequestRawBody(req: Request): Promise<string> {
-  if (req !== null && "rawBody" in req && typeof req.rawBody === "string") {
-    return Promise.resolve(req.rawBody);
+  if (req !== null && "rawBody" in req && req.rawBody) {
+    return Promise.resolve(req.rawBody.toString());
   }
 
   return (await rawBody(req)).toString();
