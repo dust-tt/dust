@@ -83,6 +83,9 @@ export default async function handler(
 
 async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
+
+  console.log("*************** ", req.query);
+
   let workspaceId = undefined;
   if (
     typeof query.organization_id === "string" &&
@@ -102,6 +105,8 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
         },
       })
     : null;
+
+  console.log("*************** ", workspace);
 
   const provider = await getProvider(query, workspace);
 
@@ -140,7 +145,7 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
     options.prompt = `${query.prompt}`;
     options.audience = `${query.audience}`;
   }
-
+  console.log("*************** ", options);
   const params = new URLSearchParams({
     ...options,
     response_type: `${query.response_type}`,
@@ -186,6 +191,38 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     ...query,
     client_id: provider.clientId,
   }).toString();
-  const authorizeUrl = `https://${provider.logoutUri}?${params}`;
-  res.redirect(authorizeUrl);
+
+  console.log("*************** ", query);
+
+  const logoutUrl = `https://${provider.logoutUri}?${params}`;
+
+  try {
+    const response = await fetch(logoutUrl, {
+      method: "GET",
+      headers: {
+        Origin: req.headers.origin || "",
+      },
+      credentials: "include",
+    });
+
+    // Forward status
+    res.status(response.status);
+
+    // Forward headers (except some restricted ones)
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() === "set-cookie") {
+        // Next.js does not allow setting set-cookie via res.setHeader in API routes
+        // You may need to handle cookies differently if needed
+        return;
+      }
+      res.setHeader(key, value);
+    });
+
+    // Forward body
+    const body = await response.text();
+    res.send(body);
+  } catch (error) {
+    logger.error({ error }, "Error in logout proxy");
+    res.status(500).json({ error: "Internal server error" });
+  }
 }

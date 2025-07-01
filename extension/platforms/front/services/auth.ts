@@ -175,6 +175,7 @@ export class FrontAuthService extends AuthService {
 
       // Store tokens
       const tokens = await this.saveTokens({
+        success: true,
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
         expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,
@@ -293,6 +294,7 @@ export class FrontAuthService extends AuthService {
 
       const data = await response.json();
       const storedTokens = await this.saveTokens({
+        success: true,
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
         expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,

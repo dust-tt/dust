@@ -151,6 +151,7 @@ export const useAuthHook = () => {
   const handleLogin = useCallback(
     async (isForceLogin?: boolean) => {
       setIsLoading(true);
+      console.log("*************** login ", forcedConnection);
       const response = await platform.auth.login({
         isForceLogin,
         forcedConnection,
