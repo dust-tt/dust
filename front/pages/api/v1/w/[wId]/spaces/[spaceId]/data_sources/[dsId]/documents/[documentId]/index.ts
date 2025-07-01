@@ -17,6 +17,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -597,7 +598,7 @@ async function handler(
             tags,
             parentId: r.data.parent_id || null,
             parents: r.data.parents || [documentId],
-            timestamp: r.data.timestamp || null,
+            timestamp: cleanTimestamp(r.data.timestamp),
             sourceUrl,
             section,
             upsertContext: r.data.upsert_context || null,
@@ -638,7 +639,7 @@ async function handler(
           parentId: r.data.parent_id || null,
           parents: r.data.parents || [documentId],
           sourceUrl,
-          timestamp: r.data.timestamp || null,
+          timestamp: cleanTimestamp(r.data.timestamp),
           section,
           credentials,
           lightDocumentOutput: r.data.light_document_output === true,
