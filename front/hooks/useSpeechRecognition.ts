@@ -34,26 +34,31 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
 
     // Check for microphone permission first
     if (navigator.permissions) {
-      navigator.permissions.query({ name: 'microphone' as PermissionName }).then((result) => {
-        if (result.state === 'denied') {
-          setError("Microphone access denied. Please allow microphone access in your browser settings");
-          return;
-        }
-      }).catch(() => {
-        // Permission API not supported, continue with speech recognition
-      });
+      navigator.permissions
+        .query({ name: "microphone" as PermissionName })
+        .then((result) => {
+          if (result.state === "denied") {
+            setError(
+              "Microphone access denied. Please allow microphone access in your browser settings"
+            );
+            return;
+          }
+        })
+        .catch(() => {
+          // Permission API not supported, continue with speech recognition
+        });
     }
 
     setError(null);
     setTranscript("");
 
     const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
 
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = "en-US";
+    recognition.lang = navigator.language || "en-US";
 
     recognition.onstart = () => {
       setIsRecording(true);
@@ -82,27 +87,9 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      let errorMessage = "Speech recognition failed";
-      switch (event.error) {
-        case "network":
-          errorMessage = "Network error - please check your internet connection and try again";
-          break;
-        case "not-allowed":
-          errorMessage = "Microphone access denied. Please allow microphone access and try again";
-          break;
-        case "no-speech":
-          errorMessage = "No speech detected. Please try speaking again";
-          break;
-        case "audio-capture":
-          errorMessage = "Microphone not available. Please check your microphone and try again";
-          break;
-        case "service-not-allowed":
-          errorMessage = "Speech recognition service not available";
-          break;
-        default:
-          errorMessage = `Speech recognition error: ${event.error}`;
-      }
-      setError(errorMessage);
+      setError(
+        `Speech Recognition may not be supported in this browser or the microphone may not be accessible. ${event.error}`
+      );
       setIsRecording(false);
     };
 
@@ -143,70 +130,3 @@ export const useSpeechRecognition = (): SpeechRecognitionHook => {
     error,
   };
 };
-
-// Add type declarations for SpeechRecognition
-interface SpeechRecognitionEvent extends Event {
-  readonly resultIndex: number;
-  readonly results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  readonly error: string;
-  readonly message: string;
-}
-
-interface SpeechGrammarList {
-  readonly length: number;
-  addFromString(string: string, weight?: number): void;
-  addFromURI(src: string, weight?: number): void;
-  item(index: number): SpeechGrammar;
-  [index: number]: SpeechGrammar;
-}
-
-interface SpeechGrammar {
-  src: string;
-  weight: number;
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  grammars: SpeechGrammarList;
-  interimResults: boolean;
-  lang: string;
-  maxAlternatives: number;
-  serviceURI: string;
-
-  start(): void;
-  stop(): void;
-  abort(): void;
-
-  onaudioend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onaudiostart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onerror:
-    | ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any)
-    | null;
-  onnomatch:
-    | ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any)
-    | null;
-  onresult:
-    | ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any)
-    | null;
-  onsoundend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onsoundstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onspeechend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onspeechstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-}
-
-interface SpeechRecognitionStatic {
-  prototype: SpeechRecognition;
-  new (): SpeechRecognition;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: SpeechRecognitionStatic;
-    webkitSpeechRecognition: SpeechRecognitionStatic;
-  }
-}
