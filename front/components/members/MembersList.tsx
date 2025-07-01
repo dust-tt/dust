@@ -52,7 +52,7 @@ function getTableRows({
     name: user.fullName,
     userId: user.sId,
     email: user.email ?? "",
-    role: user.workspace.role,
+    role: `${user.workspace.role} (${user.origin})`,
     status: user.lastLoginAt === null ? "Unregistered" : "Active",
     groups: user.workspace.groups ?? [],
     isCurrentUser: user.sId === currentUserId,
