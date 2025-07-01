@@ -210,7 +210,7 @@ function _getAgentRouterToolsConfiguration(
  * GLOBAL AGENTS CONFIGURATION
  *
  * To add an agent:
- * - Add a unique SID in GLOBAL_AGENTS_SID (lib/assitsant.ts)
+ * - Add a unique SID in GLOBAL_AGENTS_SID (lib/assistant.ts)
  * - Add a case in getGlobalAgent with associated function.
  */
 function _getHelperGlobalAgent({
@@ -1690,7 +1690,7 @@ function getGlobalAgent({
   sId,
   preFetchedDataSources,
   helperPromptInstance,
-  globaAgentSettings,
+  globalAgentSettings,
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
   searchMCPServerView,
@@ -1699,13 +1699,13 @@ function getGlobalAgent({
   sId: string | number;
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   helperPromptInstance: HelperAssistantPrompt;
-  globaAgentSettings: GlobalAgentSettings[];
+  globalAgentSettings: GlobalAgentSettings[];
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
-    globaAgentSettings.find((settings) => settings.agentId === sId) ?? null;
+    globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
 
   let agentConfiguration: AgentConfigurationType | null = null;
   switch (sId) {
@@ -1889,7 +1889,7 @@ function getGlobalAgent({
 
 // This is the list of global agents that we want to support in past conversations but we don't want
 // to be accessible to users moving forward.
-const RETIRED_GLOABL_AGENTS_SID = [
+const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.CLAUDE_2,
   GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
   GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
@@ -1928,7 +1928,7 @@ export async function getGlobalAgents(
 
   const [
     preFetchedDataSources,
-    globaAgentSettings,
+    globalAgentSettings,
     helperPromptInstance,
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
@@ -1967,7 +1967,7 @@ export async function getGlobalAgents(
   let agentsIdsToFetch =
     agentIds ??
     Object.values(GLOBAL_AGENTS_SID).filter(
-      (sId) => !RETIRED_GLOABL_AGENTS_SID.includes(sId)
+      (sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId)
     );
 
   const flags = await getFeatureFlags(owner);
@@ -2004,7 +2004,7 @@ export async function getGlobalAgents(
       sId,
       preFetchedDataSources,
       helperPromptInstance,
-      globaAgentSettings,
+      globalAgentSettings,
       agentRouterMCPServerView,
       webSearchBrowseMCPServerView,
       searchMCPServerView,
