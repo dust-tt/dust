@@ -1548,7 +1548,9 @@ The agent should not provide additional information or content that the user did
    If no relevant information is found but the user's question seems to be internal to the company,
    the agent should use the ${SUGGEST_AGENTS_TOOL_NAME} tool to suggest an agent that might be able to handle the request.
 
-2. ${globalAgentWebSearchGuidelines}
+2. If the user's question requires information that is recent and likely to be found on the public 
+   internet, the agent should use the internet to answer the question.
+   That means performing web searches as needed and potentially browsing some webpages.
 
 3. If it is not obvious whether the information would be included in the internal company data sources
    or on the public internet, the agent should both search the internal company data sources
