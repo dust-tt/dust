@@ -35,7 +35,6 @@ export type BaseActionType =
   | "browse_action"
   | "dust_app_run_action"
   | "process_action"
-  | "reasoning_action"
   | "search_labels_action"
   | "tables_query_action"
   | "websearch_action"

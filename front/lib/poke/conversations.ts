@@ -152,7 +152,6 @@ export async function getPokeConversation(
 
                   case "conversation_include_file_action":
                   case "conversation_list_files_action":
-                  case "reasoning_action":
                   case "search_labels_action":
                     // TODO(REASONING TOOL): reasoning_action
                     // Theses actions do not call a dust app

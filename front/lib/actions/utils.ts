@@ -193,7 +193,6 @@ export function getCitationsCount({
     case "browse_configuration":
     case "conversation_include_file_configuration":
     case "search_labels_configuration":
-    case "reasoning_configuration":
       return 0;
     case "mcp_configuration":
       if (isMCPInternalWebsearch(action)) {
