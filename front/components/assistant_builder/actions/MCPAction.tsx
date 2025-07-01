@@ -129,6 +129,7 @@ export function MCPAction({
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showTablesModal, setShowTablesModal] = useState(false);
+  const [wasDescriptionEdited, setWasDescriptionEdited] = useState(false);
 
   const handleConfigUpdate = useCallback(
     (
@@ -280,8 +281,7 @@ export function MCPAction({
               ...old,
               childAgentId: childAgent.sId,
             }));
-            // TODO(2025-06-30: aubin): fix this for subsequent changes + see if we need to improve.
-            if (action.description === "") {
+            if (!wasDescriptionEdited || action.description === "") {
               updateDescription(childAgent.description);
             }
           }}
@@ -291,7 +291,10 @@ export function MCPAction({
       )}
       {requirements.requiresChildAgentConfiguration && (
         <ChildAgentDescription
-          updateDescription={updateDescription}
+          updateDescription={(description) => {
+            setWasDescriptionEdited(description === "");
+            updateDescription(description);
+          }}
           action={action}
           setShowInvalidActionDescError={setShowInvalidActionDescError}
           showInvalidActionDescError={showInvalidActionDescError}
