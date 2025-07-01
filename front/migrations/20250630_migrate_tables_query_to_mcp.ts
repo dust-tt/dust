@@ -9,7 +9,6 @@ import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/m
 import {
   AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -21,35 +20,25 @@ import type { AgentStatus, ModelId } from "@app/types";
 
 const CONFIGURATION_CONCURRENCY = 10;
 
-async function findWorkspacesWithTablesConfigurations({
+async function findWorkspacesWithTablesQueryConfigurations({
   agentStatus,
 }: {
   agentStatus: AgentStatus;
 }): Promise<ModelId[]> {
-  const tableConfigurations = await AgentTablesQueryConfigurationTable.findAll({
+  const tablesQueryConfigs = await AgentTablesQueryConfiguration.findAll({
     attributes: ["workspaceId"],
-    where: {
-      tablesQueryConfigurationId: { [Op.not]: null },
-      mcpServerConfigurationId: null,
-    },
     include: [
       {
-        model: AgentTablesQueryConfiguration,
+        model: AgentConfiguration,
         required: true,
-        include: [
-          {
-            model: AgentConfiguration,
-            required: true,
-            where: {
-              status: agentStatus,
-            },
-          },
-        ],
+        where: {
+          status: agentStatus,
+        },
       },
     ],
   });
 
-  return tableConfigurations.map((config) => config.workspaceId);
+  return tablesQueryConfigs.map((config) => config.workspaceId);
 }
 
 /**
@@ -217,7 +206,7 @@ makeScript(
     const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     let revertSql = "";
 
-    const workspaceIds = await findWorkspacesWithTablesConfigurations({
+    const workspaceIds = await findWorkspacesWithTablesQueryConfigurations({
       agentStatus: agentStatus as AgentStatus,
     });
     const workspaces = await WorkspaceModel.findAll({
