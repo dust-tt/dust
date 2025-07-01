@@ -236,7 +236,7 @@ async function processDustFileOutput(
 
 async function prepareParamsWithHistory(
   params: any,
-  schema: DatasetSchema,
+  schema: DatasetSchema | null,
   agentLoopRunContext: AgentLoopRunContextType,
   auth: Authenticator
 ) {
