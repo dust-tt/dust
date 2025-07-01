@@ -35,6 +35,7 @@ import type {
   ConnectorType,
   DataSourceType,
   LightWorkspaceType,
+  OAuthUseCase,
   PlanType,
   Result,
   SpaceType,
@@ -64,10 +65,12 @@ type AddConnectionMenuProps = {
 export async function setupConnection({
   owner,
   provider,
+  useCase = "connection",
   extraConfig,
 }: {
   owner: LightWorkspaceType;
   provider: ConnectorProvider;
+  useCase?: OAuthUseCase;
   extraConfig: Record<string, string>;
 }): Promise<Result<string, Error>> {
   let connectionId: string;
@@ -78,7 +81,7 @@ export async function setupConnection({
       dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider,
-      useCase: "connection",
+      useCase,
       extraConfig,
     });
     if (!cRes.isOk()) {

@@ -327,7 +327,8 @@ function SlackBotToggle({
                 onClick={async () => {
                   const connectionIdRes = await setupConnection({
                     owner,
-                    provider: "slack_bot",
+                    provider: "slack",
+                    useCase: "bot",
                     extraConfig: {},
                   });
                   if (connectionIdRes.isErr()) {
