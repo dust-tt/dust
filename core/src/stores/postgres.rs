@@ -2894,7 +2894,7 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn upsert_data_source_table_csv(
+    async fn store_data_source_table_csv(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -2967,11 +2967,13 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn clear_data_source_table_csv(
+    async fn delete_data_source_table_csv(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
+        bucket: &str,
+        bucket_path: &str,
     ) -> Result<()> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -2993,13 +2995,22 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
-        // Clear the csv bucket and path.
-        let stmt = c
-            .prepare(
-                "UPDATE tables SET csv_bucket = NULL, csv_bucket_path = NULL WHERE data_source = $1 AND table_id = $2",
-            )
-            .await?;
-        c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
+        // Remove from GCS.
+        match Object::delete(bucket, &bucket_path).await {
+            Ok(_) => {
+                // Clear the csv bucket and path.
+                let stmt = c.prepare(
+                    "UPDATE tables SET csv_bucket = NULL, csv_bucket_path = NULL WHERE data_source = $1 AND table_id = $2",
+                ).await?;
+                c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
+            }
+            Err(e) => {
+                info!(
+                    "Error deleting CSV file from GCS: {}. It's safe to continue.",
+                    e.to_string()
+                );
+            }
+        }
 
         Ok(())
     }

@@ -376,8 +376,8 @@ impl LocalTable {
 
     pub async fn upsert_rows(
         &self,
-        store: &Box<dyn Store + Sync + Send>,
-        databases_store: &Box<dyn DatabasesStore + Sync + Send>,
+        store: Box<dyn Store + Sync + Send>,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
         rows: Vec<Row>,
         truncate: bool,
     ) -> Result<TableSchema> {
@@ -539,14 +539,19 @@ impl LocalTable {
 
         let now = utils::now();
         let schema = self
-            .upsert_rows(&store, &databases_store, rows.clone(), truncate)
+            .upsert_rows(
+                store.clone(),
+                databases_store.clone(),
+                rows.clone(),
+                truncate,
+            )
             .await?;
         let upsert_duration = utils::now() - now;
 
         let now = utils::now();
         if truncate {
             store
-                .upsert_data_source_table_csv(
+                .store_data_source_table_csv(
                     &self.table.project,
                     &self.table.data_source_id,
                     &self.table.table_id,
@@ -556,13 +561,17 @@ impl LocalTable {
                 )
                 .await?;
         } else {
-            store
-                .clear_data_source_table_csv(
-                    &self.table.project,
-                    &self.table.data_source_id,
-                    &self.table.table_id,
-                )
-                .await?;
+            if self.table.csv_bucket().is_some() && self.table.csv_bucket_path().is_some() {
+                store
+                    .delete_data_source_table_csv(
+                        &self.table.project,
+                        &self.table.data_source_id,
+                        &self.table.table_id,
+                        &self.table.csv_bucket().unwrap(),
+                        &self.table.csv_bucket_path().unwrap(),
+                    )
+                    .await?;
+            }
         }
 
         let csv_upload_duration = utils::now() - now;

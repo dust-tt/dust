@@ -297,7 +297,7 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
-    async fn upsert_data_source_table_csv(
+    async fn store_data_source_table_csv(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -306,11 +306,13 @@ pub trait Store {
         schema: &TableSchema,
         rows: &Vec<Row>,
     ) -> Result<()>;
-    async fn clear_data_source_table_csv(
+    async fn delete_data_source_table_csv(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
+        bucket: &str,
+        bucket_path: &str,
     ) -> Result<()>;
     async fn load_data_source_table(
         &self,
