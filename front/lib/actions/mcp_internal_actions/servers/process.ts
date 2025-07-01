@@ -25,9 +25,10 @@ import {
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import { getExtractFileTitle } from "./process_utils";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+
+import { getExtractFileTitle } from "./process_utils";
 
 // Type definition for process action outputs
 type ProcessActionOutputsType = {

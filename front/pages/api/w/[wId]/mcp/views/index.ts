@@ -26,7 +26,7 @@ export type GetMCPServerViewsListResponseBody = {
 // We don't allow to fetch "auto_hidden_builder".
 const isAllowedAvailability = (
   availability: string
-): availability is MCPViewsRequestAvailabilityType => {
+): availability is ("manual" | "auto") => {
   return availability === "manual" || availability === "auto";
 };
 
