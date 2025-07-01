@@ -4103,170 +4103,170 @@ fn main() {
         let router = Router::new()
         // Projects
         .route("/projects", post(projects_create))
-        .route("/projects/:project_id", delete(projects_delete))
-        .route("/projects/:project_id/clone", post(projects_clone))
+        .route("/projects/{project_id}", delete(projects_delete))
+        .route("/projects/{project_id}/clone", post(projects_clone))
         // Specifications
         .route(
-            "/projects/:project_id/specifications/check",
+            "/projects/{project_id}/specifications/check",
             post(specifications_check),
         )
         .route(
-            "/projects/:project_id/specifications/:hash",
+            "/projects/{project_id}/specifications/{hash}",
             get(specifications_retrieve),
         )
         .route(
-            "/projects/:project_id/specifications",
+            "/projects/{project_id}/specifications",
             get(specifications_get),
         )
         .route(
-            "/projects/:project_id/specifications",
+            "/projects/{project_id}/specifications",
             post(specifications_post),
         )
 
         // Datasets
-        .route("/projects/:project_id/datasets", post(datasets_register))
-        .route("/projects/:project_id/datasets", get(datasets_list))
+        .route("/projects/{project_id}/datasets", post(datasets_register))
+        .route("/projects/{project_id}/datasets", get(datasets_list))
         .route(
-            "/projects/:project_id/datasets/:dataset_id/:hash",
+            "/projects/{project_id}/datasets/{dataset_id}/{hash}",
             get(datasets_retrieve),
         )
         // Runs
-        .route("/projects/:project_id/runs", post(runs_create))
+        .route("/projects/{project_id}/runs", post(runs_create))
         .route(
-            "/projects/:project_id/runs/stream",
+            "/projects/{project_id}/runs/stream",
             post(runs_create_stream),
         )
-        .route("/projects/:project_id/runs", get(runs_list))
+        .route("/projects/{project_id}/runs", get(runs_list))
         .route(
-            "/projects/:project_id/runs/batch",
+            "/projects/{project_id}/runs/batch",
             post(runs_retrieve_batch),
         )
-        .route("/projects/:project_id/runs/:run_id", get(runs_retrieve))
+        .route("/projects/{project_id}/runs/{run_id}", get(runs_retrieve))
         .route(
-            "/projects/:project_id/runs/:run_id",
+            "/projects/{project_id}/runs/{run_id}",
             delete(runs_delete),
         )
         .route(
-            "/projects/:project_id/runs/:run_id/blocks/:block_type/:block_name",
+            "/projects/{project_id}/runs/{run_id}/blocks/{block_type}/{block_name}",
             get(runs_retrieve_block),
         )
         .route(
-            "/projects/:project_id/runs/:run_id/status",
+            "/projects/{project_id}/runs/{run_id}/status",
             get(runs_retrieve_status),
         )
         // DataSources
         .route(
-            "/projects/:project_id/data_sources",
+            "/projects/{project_id}/data_sources",
             post(data_sources_register),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id",
+            "/projects/{project_id}/data_sources/{data_source_id}",
             patch(data_sources_update),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id",
+            "/projects/{project_id}/data_sources/{data_source_id}",
             get(data_sources_retrieve),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tokenize",
+            "/projects/{project_id}/data_sources/{data_source_id}/tokenize",
             post(data_sources_tokenize),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/versions",
+            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/versions",
             get(data_sources_documents_versions_list),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/documents",
+            "/projects/{project_id}/data_sources/{data_source_id}/documents",
             post(data_sources_documents_upsert),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/blob",
+            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/blob",
             get(data_sources_documents_retrieve_blob),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/tags",
+            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/tags",
             patch(data_sources_documents_update_tags),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/parents",
+            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/parents",
             patch(data_sources_documents_update_parents),
         )
         // Provided by the data_source block.
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/search",
+            "/projects/{project_id}/data_sources/{data_source_id}/search",
             post(data_sources_search),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/documents",
+            "/projects/{project_id}/data_sources/{data_source_id}/documents",
             get(data_sources_documents_list),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",
+            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}",
             get(data_sources_documents_retrieve),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/text",
+            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/text",
             get(data_sources_documents_retrieve_text),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id",
+            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}",
             delete(data_sources_documents_delete),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/scrub_deleted_versions",
+            "/projects/{project_id}/data_sources/{data_source_id}/documents/{document_id}/scrub_deleted_versions",
             post(data_sources_documents_scrub_deleted_versions),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id",
+            "/projects/{project_id}/data_sources/{data_source_id}",
             delete(data_sources_delete),
         )
         // Databases
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables/validate_csv_content",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables/validate_csv_content",
             post(tables_validate_csv_content),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables",
             post(tables_upsert),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/parents",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/parents",
             patch(tables_update_parents),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}",
             get(tables_retrieve),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables",
             get(tables_list),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}",
             delete(tables_delete),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/blob",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/blob",
             get(tables_retrieve_blob),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows",
             post(tables_rows_upsert),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/csv",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/csv",
             post(tables_csv_upsert),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows/:row_id",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows/{row_id}",
             get(tables_rows_retrieve),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows/:row_id",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows/{row_id}",
             delete(tables_rows_delete),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows",
+            "/projects/{project_id}/data_sources/{data_source_id}/tables/{table_id}/rows",
             get(tables_rows_list),
         )
         .route(
@@ -4281,25 +4281,25 @@ fn main() {
 
         // Folders
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/folders",
+            "/projects/{project_id}/data_sources/{data_source_id}/folders",
             post(folders_upsert),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/folders/:folder_id",
+            "/projects/{project_id}/data_sources/{data_source_id}/folders/{folder_id}",
             get(folders_retrieve),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/folders",
+            "/projects/{project_id}/data_sources/{data_source_id}/folders",
             get(folders_list),
         )
         .route(
-            "/projects/:project_id/data_sources/:data_source_id/folders/:folder_id",
+            "/projects/{project_id}/data_sources/{data_source_id}/folders/{folder_id}",
             delete(folders_delete),
         )
 
         //Search
         .route("/nodes/search", post(nodes_search))
-        .route("/projects/:project_id/data_sources/:data_source_id/stats", get(data_sources_stats))
+        .route("/projects/{project_id}/data_sources/{data_source_id}/stats", get(data_sources_stats))
         .route("/tags/search", post(tags_search))
 
         // Misc
