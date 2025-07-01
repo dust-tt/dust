@@ -86,6 +86,7 @@ async function migrateWorkspaceReasoningActions(
       reasoningConfigurations,
       async (reasoningConfiguration) => {
         await migrateReasoningActionsForActionConfiguration({
+          workspace,
           reasoningConfiguration,
           mcpServerViewForReasoning: mcpServerViewForReasoning,
           logger,
@@ -103,10 +104,12 @@ async function migrateWorkspaceReasoningActions(
  * Migrate the actions for a single reasoning configuration.
  */
 async function migrateReasoningActionsForActionConfiguration({
+  workspace,
   reasoningConfiguration,
   logger,
   execute,
 }: {
+  workspace: LightWorkspaceType;
   reasoningConfiguration: AgentReasoningConfiguration;
   mcpServerViewForReasoning: MCPServerViewResource;
   logger: Logger;
@@ -127,6 +130,7 @@ async function migrateReasoningActionsForActionConfiguration({
   const reasoningActions = await AgentReasoningAction.findAll({
     where: {
       reasoningConfigurationId: reasoningConfiguration.sId,
+      workspaceId: workspace.id,
     },
   });
 
