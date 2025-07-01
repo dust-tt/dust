@@ -27,6 +27,7 @@ import { isKnowledgeServerName } from "@app/components/agent_builder/types";
 import { useAgentBuilderTools } from "@app/hooks/useAgentBuilderTools";
 import { getActionSpecification } from "@app/lib/actions/utils";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import logger from "@app/logger/logger";
 import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
   MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -175,7 +176,7 @@ export function AgentBuilderCapabilitiesBlock() {
     if (isKnowledgeServerName(serverName)) {
       setOpenSheet(serverName);
     } else {
-      console.warn(`Unknown knowledge server: ${serverName}`);
+      logger.warn({ serverName }, "Unknown knowledge server");
     }
   };
 

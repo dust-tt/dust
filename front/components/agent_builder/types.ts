@@ -1,52 +1,32 @@
-import type {
-  SupportedModel,
-  DataSourceViewSelectionConfigurations,
-} from "@app/types";
+import type { z } from "zod";
+
+import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { SupportedModel } from "@app/types";
 import { ioTsEnum } from "@app/types";
 
-// ===== Agent Builder Action Types =====
+type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
-// Search Action Configuration
-export interface SearchActionConfiguration {
-  type: "SEARCH";
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-}
+export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
 
-// Data Visualization Action Configuration
-export interface DataVisualizationActionConfiguration {
-  type: "DATA_VISUALIZATION";
-}
+export type SearchAgentBuilderAction = Extract<
+  AgentBuilderAction,
+  { type: "SEARCH" }
+>;
 
-// Union of all action configurations
+export type DataVisualizationAgentBuilderAction = Extract<
+  AgentBuilderAction,
+  { type: "DATA_VISUALIZATION" }
+>;
+
+export type SearchActionConfiguration =
+  SearchAgentBuilderAction["configuration"];
+
+export type DataVisualizationActionConfiguration =
+  DataVisualizationAgentBuilderAction["configuration"];
+
 export type AgentBuilderActionConfiguration =
   | SearchActionConfiguration
   | DataVisualizationActionConfiguration;
-
-// Base Agent Builder Action
-export interface BaseAgentBuilderAction {
-  id: string;
-  name: string;
-  description: string;
-  noConfigurationRequired: boolean;
-}
-
-// Search Action
-export interface SearchAgentBuilderAction extends BaseAgentBuilderAction {
-  type: "SEARCH";
-  configuration: SearchActionConfiguration;
-}
-
-// Data Visualization Action
-export interface DataVisualizationAgentBuilderAction
-  extends BaseAgentBuilderAction {
-  type: "DATA_VISUALIZATION";
-  configuration: DataVisualizationActionConfiguration;
-}
-
-// Union of all agent builder actions
-export type AgentBuilderAction =
-  | SearchAgentBuilderAction
-  | DataVisualizationAgentBuilderAction;
 
 // Type guards
 export function isSearchAction(
