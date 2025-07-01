@@ -1293,9 +1293,14 @@ export async function computeDataSourceStatistics(
   );
 }
 
-export const computeDataSourceStatisticsCached = cacheWithRedis(
-  async (dataSource: DataSourceResource) => {
-    const result = await computeDataSourceStatistics([dataSource]);
+export const computeWorkspaceOverallSizeCached = cacheWithRedis(
+  async (auth: Authenticator) => {
+    const dataSources = await DataSourceResource.listByWorkspace(
+      auth,
+      // TODO(DATASOURCE_SID): Clean-up
+      { origin: "v1_data_sources_documents_document_get_or_upsert" }
+    );
+    const result = await computeDataSourceStatistics(dataSources);
 
     if (result.isErr()) {
       throw new Error(
@@ -1303,10 +1308,11 @@ export const computeDataSourceStatisticsCached = cacheWithRedis(
       );
     }
 
-    return result.value;
+    return result.value.overall_total_size;
   },
-  (datasource) => {
-    return `compute-datasource-stats:${datasource.dustAPIProjectId}:${datasource.dustAPIDataSourceId}`;
+  (auth: Authenticator) => {
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+    return `compute-datasource-stats:${workspaceId}`;
   },
   60 * 10 * 1000 // 10 minutes
 );

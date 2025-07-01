@@ -10,7 +10,7 @@ import { fromError } from "zod-validation-error";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
-import { computeDataSourceStatisticsCached } from "@app/lib/api/data_sources";
+import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
@@ -506,14 +506,14 @@ async function handler(
       const flags = await getFeatureFlags(owner);
       if (flags.includes("enforce_datasource_quota")) {
         // Enforce plan limits: Datasource quota
-        const [activeSeats, datasourceStats] = await Promise.all([
+        const [activeSeats, quotaUsed] = await Promise.all([
           countActiveSeatsInWorkspace(owner.sId),
-          computeDataSourceStatisticsCached(dataSource),
+          computeWorkspaceOverallSizeCached(auth),
         ]);
 
-        if (activeSeats && datasourceStats) {
+        if (activeSeats && quotaUsed) {
           if (
-            datasourceStats.data_source.text_size >
+            quotaUsed >
             (activeSeats + 1) * DATASOURCE_QUOTA_PER_SEAT // +1 because we allow the current upload to go over the limit
           ) {
             logger.info(
@@ -521,7 +521,7 @@ async function handler(
                 workspace: owner.sId,
                 datasource_project_id: dataSource.dustAPIProjectId,
                 datasource_id: dataSource.dustAPIDataSourceId,
-                quota_used: datasourceStats.data_source.text_size,
+                quota_used: quotaUsed,
                 quota_limit: activeSeats * DATASOURCE_QUOTA_PER_SEAT,
               },
               "Datasource quota exceeded for upsert document (overrun expected)"
@@ -530,15 +530,15 @@ async function handler(
               status_code: 403,
               api_error: {
                 type: "data_source_quota_error",
-                message: `You are currently using ${fileSizeToHumanReadable(datasourceStats.data_source.text_size)}/${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} on your current plan.`,
+                message: `You are currently using ${fileSizeToHumanReadable(quotaUsed)}/${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} on your current plan.`,
               },
             });
           }
         } else {
           logger.warn(
             {
-              activeSeats,
-              datasourceStats,
+              active_seats: activeSeats,
+              quota_used: quotaUsed,
               workspace: owner.sId,
               datasource_project_id: dataSource.dustAPIProjectId,
               datasource_id: dataSource.dustAPIDataSourceId,

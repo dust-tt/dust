@@ -304,6 +304,7 @@ export interface CoreAPIDataSourceStatsResponse {
     text_size: number;
     document_count: number;
   }[];
+  overall_total_size: number;
 }
 
 export interface CoreAPIUpsertDataSourceDocumentPayload {
