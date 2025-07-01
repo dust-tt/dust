@@ -20,6 +20,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
+import { AddExtractSheet } from "@app/components/agent_builder/capabilities/knowledge/AddExtractSheet";
 import { AddIncludeDataSheet } from "@app/components/agent_builder/capabilities/knowledge/AddIncludeDataSheet";
 import { AddSearchSheet } from "@app/components/agent_builder/capabilities/knowledge/AddSearchSheet";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
@@ -167,6 +168,9 @@ export function AgentBuilderCapabilitiesBlock() {
       case "INCLUDE_DATA":
         setOpenSheet("include_data");
         break;
+      case "EXTRACT_DATA":
+        setOpenSheet("extract_data");
+        break;
     }
   };
 
@@ -251,6 +255,17 @@ export function AgentBuilderCapabilitiesBlock() {
         onSave={handleEditSave}
         action={
           editingAction?.action.type === "INCLUDE_DATA"
+            ? editingAction.action
+            : undefined
+        }
+      />
+
+      <AddExtractSheet
+        isOpen={openSheet === "extract_data"}
+        onClose={handleCloseSheet}
+        onSave={handleEditSave}
+        action={
+          editingAction?.action.type === "EXTRACT_DATA"
             ? editingAction.action
             : undefined
         }
