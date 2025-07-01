@@ -39,10 +39,19 @@ const actionSchema = z.object({
   noConfigurationRequired: z.boolean().optional(),
 });
 
+const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
+
+const tagSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+  kind: TAG_KINDS,
+});
+
 const agentSettingsSchema = z.object({
   name: z.string().min(1, "Agent name is required"),
   description: z.string().min(1, "Agent description is required"),
   pictureUrl: z.string().optional(),
+  tags: z.array(tagSchema),
 });
 
 export const agentBuilderFormSchema = z.object({

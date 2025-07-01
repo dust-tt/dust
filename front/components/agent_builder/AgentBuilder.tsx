@@ -44,6 +44,7 @@ export default function AgentBuilder() {
         name: "",
         description: "",
         pictureUrl: "",
+        tags: [],
       },
       instructions: "",
       generationSettings: {
