@@ -84,8 +84,6 @@ export default async function handler(
 async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
 
-  console.log("*************** ", req.query);
-
   let workspaceId = undefined;
   if (
     typeof query.organization_id === "string" &&
@@ -105,8 +103,6 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
         },
       })
     : null;
-
-  console.log("*************** ", workspace);
 
   const provider = await getProvider(query, workspace);
 
@@ -145,7 +141,7 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
     options.prompt = `${query.prompt}`;
     options.audience = `${query.audience}`;
   }
-  console.log("*************** ", options);
+
   const params = new URLSearchParams({
     ...options,
     response_type: `${query.response_type}`,
@@ -191,8 +187,6 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     ...query,
     client_id: provider.clientId,
   }).toString();
-
-  console.log("*************** ", query);
 
   const logoutUrl = `https://${provider.logoutUri}?${params}`;
 
