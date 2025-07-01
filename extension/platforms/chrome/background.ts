@@ -16,7 +16,7 @@ import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";
 import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
-const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 3600; // 1 hour.
+const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
 
 // Initialize the platform service.
 const platform = new ChromeCorePlatformService();
