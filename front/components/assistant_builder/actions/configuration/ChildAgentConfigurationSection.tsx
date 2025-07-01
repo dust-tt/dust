@@ -11,7 +11,7 @@ import React from "react";
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import type { LightWorkspaceType } from "@app/types";
+import { isGlobalAgentId, LightWorkspaceType } from "@app/types";
 
 interface ChildAgentSelectorProps {
   owner: LightWorkspaceType;
@@ -107,7 +107,8 @@ export function ChildAgentConfigurationSection({
               <AssistantPicker
                 owner={owner}
                 assistants={agentConfigurations.filter(
-                  (agent) => agent.sId !== selectedAgentId
+                  (agent) =>
+                    agent.sId !== selectedAgentId && !isGlobalAgentId(agent.sId)
                 )}
                 onItemClick={(agent) => {
                   onAgentSelect(agent.sId);
@@ -130,7 +131,8 @@ export function ChildAgentConfigurationSection({
             <AssistantPicker
               owner={owner}
               assistants={agentConfigurations.filter(
-                (agent) => agent.sId !== selectedAgentId
+                (agent) =>
+                  agent.sId !== selectedAgentId && !isGlobalAgentId(agent.sId)
               )}
               onItemClick={(agent) => {
                 onAgentSelect(agent.sId);
