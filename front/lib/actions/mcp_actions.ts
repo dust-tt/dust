@@ -568,7 +568,7 @@ export async function tryListMCPTools(
       if (toolsAndInstructionsRes.isErr()) {
         logger.error(
           {
-            workspaceId: owner.id,
+            workspaceId: owner.sId,
             conversationId: agentLoopListToolsContext.conversation.sId,
             messageId: agentLoopListToolsContext.agentMessage.sId,
             error: toolsAndInstructionsRes.error,
@@ -864,7 +864,7 @@ async function listMCPServerToolsAndServerInstructions(
 
     logger.debug(
       {
-        workspaceId: owner.id,
+        workspaceId: owner.sId,
         conversationId: agentLoopListToolsContext.conversation.sId,
         messageId: agentLoopListToolsContext.agentMessage.sId,
         toolCount: toolsFromServer.length,
@@ -877,7 +877,7 @@ async function listMCPServerToolsAndServerInstructions(
   } catch (error) {
     logger.error(
       {
-        workspaceId: owner.id,
+        workspaceId: owner.sId,
         conversationId: agentLoopListToolsContext.conversation.sId,
         messageId: agentLoopListToolsContext.agentMessage.sId,
         error,
@@ -893,7 +893,7 @@ async function listMCPServerToolsAndServerInstructions(
       } catch (closeError) {
         logger.warn(
           {
-            workspaceId: owner.id,
+            workspaceId: owner.sId,
             conversationId: agentLoopListToolsContext.conversation.sId,
             messageId: agentLoopListToolsContext.agentMessage.sId,
             error: closeError,

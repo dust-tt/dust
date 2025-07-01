@@ -982,7 +982,7 @@ export async function createAgentConfiguration(
           if (result.isErr()) {
             logger.error(
               {
-                workspaceId: owner.id,
+                workspaceId: owner.sId,
                 agentConfigurationId: existingAgent.sId,
               },
               `Error adding group to agent ${existingAgent.sId}: ${result.error}`
