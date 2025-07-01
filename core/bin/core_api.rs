@@ -3673,89 +3673,50 @@ async fn data_source_stats(
     }
 }
 
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DataSourceAndProject {
+    #[serde(rename = "dsId")]
+    ds_id: String,
+    #[serde(rename = "pId")]
+    p_id: i64,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StatsPayload {
+    query: Vec<DataSourceAndProject>,
+}
+
 async fn data_sources_stats(
-    Query(params): Query<HashMap<String, String>>,
     State(state): State<Arc<APIState>>,
+    Json(payload): Json<StatsPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    // Parse data_source_id(s) from query parameters
-    let data_source_ids: Vec<String> = match params.get("data_source_id") {
-        Some(ids_str) => ids_str.split(',').map(|s| s.trim().to_string()).collect(),
-        None => {
-            return error_response(
-                StatusCode::BAD_REQUEST,
-                "missing_parameter",
-                "data_source_id parameter is required",
-                None,
-            );
-        }
-    };
-
-    if data_source_ids.is_empty() || data_source_ids.iter().any(|id| id.is_empty()) {
+    // Validate payload data sources
+    if payload.query.is_empty() {
         return error_response(
             StatusCode::BAD_REQUEST,
             "invalid_parameter",
-            "data_source_id parameter cannot be empty",
+            "query array cannot be empty",
             None,
         );
     }
 
-    // Parse project_id(s) from query parameters
-    let project_ids: Vec<i64> = match params.get("project_id") {
-        Some(ids_str) => {
-            let parsed: Result<Vec<i64>, _> = ids_str
-                .split(',')
-                .map(|s| s.trim().parse::<i64>())
-                .collect();
-            match parsed {
-                Ok(ids) => ids,
-                Err(_) => {
-                    return error_response(
-                        StatusCode::BAD_REQUEST,
-                        "invalid_parameter",
-                        "Invalid project_id format",
-                        None,
-                    );
-                }
-            }
-        }
-        None => {
-            return error_response(
-                StatusCode::BAD_REQUEST,
-                "missing_parameter",
-                "project_id parameter is required",
-                None,
-            );
-        }
-    };
-
-    if project_ids.is_empty() {
+    // Check for empty data source IDs
+    if payload.query.iter().any(|item| item.ds_id.is_empty()) {
         return error_response(
             StatusCode::BAD_REQUEST,
             "invalid_parameter",
-            "project_id parameter cannot be empty",
+            "ds_id cannot be empty",
             None,
         );
     }
 
-    // Check that data_source_ids and project_ids have the same length
-    if data_source_ids.len() != project_ids.len() {
-        return error_response(
-            StatusCode::BAD_REQUEST,
-            "invalid_parameter",
-            &format!(
-                "Number of data_source_ids ({}) must match number of project_ids ({})",
-                data_source_ids.len(),
-                project_ids.len()
-            ),
-            None,
-        );
-    }
-
-    // Zip data_source_ids and project_ids together
-    let project_data_sources: Vec<(i64, String)> = project_ids
+    // Convert payload data to project_data_sources format
+    let project_data_sources: Vec<(i64, String)> = payload
+        .query
         .into_iter()
-        .zip(data_source_ids.into_iter())
-        .map(|(project_id, data_source_id)| (project_id, data_source_id))
+        .map(|item| (item.p_id, item.ds_id))
         .collect();
 
     match state
@@ -4436,7 +4397,7 @@ fn main() {
 
         //Search
         .route("/nodes/search", post(nodes_search))
-        .route("/stats", get(data_sources_stats))
+        .route("/stats", post(data_sources_stats))
         .route("/projects/{project_id}/data_sources/{data_source_id}/stats", get(data_source_stats))
         .route("/tags/search", post(tags_search))
 
