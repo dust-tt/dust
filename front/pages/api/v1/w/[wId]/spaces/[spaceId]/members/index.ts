@@ -79,10 +79,8 @@ async function handler(
     case "GET":
       const currentMembers = uniqBy(
         (
-          await concurrentExecutor(
-            space.groups,
-            (group) => group.getActiveMembers(auth),
-            { concurrency: 10 }
+          await Promise.all(
+            space.groups.map((group) => group.getActiveMembers(auth))
           )
         ).flat(),
         "sId"
