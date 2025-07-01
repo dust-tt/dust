@@ -3676,10 +3676,10 @@ async fn data_source_stats(
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct DataSourceAndProject {
-    #[serde(rename = "dsId")]
-    ds_id: String,
-    #[serde(rename = "pId")]
-    p_id: i64,
+    #[serde(rename = "data_source_id")]
+    data_source_id: String,
+    #[serde(rename = "project_id")]
+    project_id: i64,
 }
 
 #[derive(serde::Deserialize)]
@@ -3703,7 +3703,11 @@ async fn data_sources_stats(
     }
 
     // Check for empty data source IDs
-    if payload.query.iter().any(|item| item.ds_id.is_empty()) {
+    if payload
+        .query
+        .iter()
+        .any(|item| item.data_source_id.is_empty())
+    {
         return error_response(
             StatusCode::BAD_REQUEST,
             "invalid_parameter",
@@ -3716,7 +3720,7 @@ async fn data_sources_stats(
     let project_data_sources: Vec<(i64, String)> = payload
         .query
         .into_iter()
-        .map(|item| (item.p_id, item.ds_id))
+        .map(|item| (item.project_id, item.data_source_id))
         .collect();
 
     match state
