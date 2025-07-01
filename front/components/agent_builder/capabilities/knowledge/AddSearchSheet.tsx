@@ -6,7 +6,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import type { SetStateAction } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
@@ -51,12 +51,11 @@ export function AddSearchSheet({
     }
   }, [isOpen]);
 
-  const setSelectionConfigurationsCallback = useCallback(
-    (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {
-      setDataSourceConfigurations(func);
-    },
-    [setDataSourceConfigurations]
-  );
+  const setSelectionConfigurationsCallback = (
+    func: SetStateAction<DataSourceViewSelectionConfigurations>
+  ) => {
+    setDataSourceConfigurations(func);
+  };
 
   const hasDataSourceSelections =
     Object.keys(dataSourceConfigurations).length > 0;
