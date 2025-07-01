@@ -24,14 +24,11 @@ async function handler(
   }
 
   logger.info("Received prestop request, setting shutdown state in Redis");
-  
+
   // Set prestop state in Redis with 60 second TTL
-  await runOnRedis(
-    { origin: "lock" },
-    async (redis) => {
-      await redis.setEx("prestop:shutdown", 60, "true");
-    }
-  );
+  await runOnRedis({ origin: "lock" }, async (redis) => {
+    await redis.setEx("prestop:shutdown", 60, "true");
+  });
 
   logger.info("Prestop state set, waiting 10s");
   await new Promise((resolve) => setTimeout(resolve, 10000));

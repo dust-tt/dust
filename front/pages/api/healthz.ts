@@ -12,13 +12,10 @@ export default async function handler(
   const start = performance.now();
 
   // Check if prestop has been called
-  const isShuttingDown = await runOnRedis(
-    { origin: "lock" },
-    async (redis) => {
-      const prestopState = await redis.get("prestop:shutdown");
-      return prestopState === "true";
-    }
-  );
+  const isShuttingDown = await runOnRedis({ origin: "lock" }, async (redis) => {
+    const prestopState = await redis.get("prestop:shutdown");
+    return prestopState === "true";
+  });
 
   if (isShuttingDown) {
     res.status(503).send("shutting down");
