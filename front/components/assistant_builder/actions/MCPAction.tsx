@@ -292,7 +292,7 @@ export function MCPAction({
       {requirements.requiresChildAgentConfiguration && (
         <ChildAgentDescription
           updateDescription={(description) => {
-            setWasDescriptionEdited(description === "");
+            setWasDescriptionEdited(description !== "");
             updateDescription(description);
           }}
           action={action}
