@@ -140,7 +140,9 @@ const memberColumns = [
       return (
         <DataTable.CellContent>
           {info.row.original.status +
-            (info.row.original.origin ? ` (${info.row.original.origin})` : "")}
+            (info.row.original.origin
+              ? ` (${_.capitalize(info.row.original.origin)})`
+              : "")}
         </DataTable.CellContent>
       );
     },
