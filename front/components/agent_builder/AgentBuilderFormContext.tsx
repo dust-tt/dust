@@ -1,12 +1,10 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import React from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { FormProvider } from "react-hook-form";
 import { z } from "zod";
 
-import type {
-  DataSourceViewContentNode,
-  DataSourceViewType,
-} from "@app/types";
+import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import { EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 import {
   MODEL_IDS,
@@ -77,6 +75,16 @@ const includeDataActionConfigurationSchema = z.object({
   timeFrame: timeFrameSchema,
 });
 
+const extractDataActionConfigurationSchema = z.object({
+  type: z.literal("EXTRACT_DATA"),
+  dataSourceConfigurations: z.record(
+    z.string(),
+    dataSourceViewSelectionConfigurationSchema
+  ),
+  timeFrame: timeFrameSchema,
+  jsonSchema: z.custom<JSONSchema>().nullable(),
+});
+
 const baseActionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -99,10 +107,16 @@ const includeDataActionSchema = baseActionSchema.extend({
   configuration: includeDataActionConfigurationSchema,
 });
 
+const extractDataActionSchema = baseActionSchema.extend({
+  type: z.literal("EXTRACT_DATA"),
+  configuration: extractDataActionConfigurationSchema,
+});
+
 const actionSchema = z.discriminatedUnion("type", [
   searchActionSchema,
   dataVisualizationActionSchema,
   includeDataActionSchema,
+  extractDataActionSchema,
 ]);
 
 const agentSettingsSchema = z.object({
