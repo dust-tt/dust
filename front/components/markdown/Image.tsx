@@ -24,15 +24,15 @@ export function Img({
     return null;
   }
 
-  const internalPrefix = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
-  if (!internalPrefix) {
+  const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
+  if (!baseUrl) {
     return null;
   }
 
-  const relativeSuffix = getFileProcessedUrl(owner, matches[0]);
-  const processedSrc = internalPrefix + relativeSuffix;
+  const url = getFileProcessedUrl(owner, matches[0]);
+  const processedSrc = new URL(url, baseUrl);
 
-  return <img src={processedSrc} alt={alt} title={title}></img>;
+  return <img src={processedSrc.toString()} alt={alt} title={title}></img>;
 }
 
 export function imgDirective() {
