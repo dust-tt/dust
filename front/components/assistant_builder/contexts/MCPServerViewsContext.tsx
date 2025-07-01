@@ -40,24 +40,20 @@ export const MCPServerViewsProvider = ({
 }: MCPServerViewsProviderProps) => {
   const { spaces, isSpacesLoading } = useSpacesContext();
 
+  // TODO: we should only fetch it on mount.
   const {
     serverViews: mcpServerViews,
     isLoading,
     isError: isMCPServerViewsError,
   } = useMCPServerViewsFromSpaces(owner, spaces);
 
-  const sortedMCPServerViews = useMemo(
-    () => mcpServerViews.sort(mcpServerViewSortingFn),
-    [mcpServerViews]
-  );
-
   const value: MCPServerViewsContextType = useMemo(() => {
     return {
-      mcpServerViews: sortedMCPServerViews,
+      mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
       isMCPServerViewsLoading: isLoading || isSpacesLoading, // Spaces is required to fetch server views so we check isSpacesLoading too.
       isMCPServerViewsError,
     };
-  }, [isLoading, isMCPServerViewsError, isSpacesLoading, sortedMCPServerViews]);
+  }, [isLoading, isMCPServerViewsError, isSpacesLoading, mcpServerViews]);
 
   return (
     <MCPServerViewsContext.Provider value={value}>
