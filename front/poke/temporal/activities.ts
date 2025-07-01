@@ -85,6 +85,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types";
+import { deleteUserFromWorkOS } from "@app/lib/api/workos/user";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -687,6 +688,12 @@ export async function deleteMembersActivity({
             );
             // Continue with user deletion in our database even if Auth0 deletion fails
           }
+        }
+
+        // Delete the user from WorkOS
+        if (deleteFromAuth0 && user.workOSUserId) {
+          // Ignore errors, as the user might not exist in WorkOS.
+          await deleteUserFromWorkOS(user.workOSUserId);
         }
 
         await user.delete(auth, {});
