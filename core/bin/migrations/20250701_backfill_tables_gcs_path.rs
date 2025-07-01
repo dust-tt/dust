@@ -88,6 +88,15 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let db_uri = std::env::var("CORE_DATABASE_URI").expect("CORE_DATABASE_URI must be set");
 
+    if !args.skip_confirmation {
+        println!("Are you sure you want to backfill the tables gcs bucket and columns? (y/N)",);
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+        if input.trim() != "y" {
+            return Err(anyhow::anyhow!("Aborted").into());
+        }
+    }
+
     let store = PostgresStore::new(&db_uri).await?;
     let pool = store.raw_pool();
 
