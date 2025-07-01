@@ -11,10 +11,6 @@ import {
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
-import {
-  DEFAULT_REASONING_ACTION_DESCRIPTION,
-  DEFAULT_RETRIEVAL_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type {
@@ -1365,10 +1361,7 @@ async function createReasoningConfiguration(
   return AgentReasoningConfiguration.create(
     {
       sId: generateRandomModelSId(),
-      agentConfigurationId: null,
       mcpServerConfigurationId: mcpConfig.id,
-      name: DEFAULT_RETRIEVAL_ACTION_NAME,
-      description: DEFAULT_REASONING_ACTION_DESCRIPTION,
       providerId: reasoningModel.providerId,
       modelId: reasoningModel.modelId,
       temperature: agentConfiguration.model.temperature,

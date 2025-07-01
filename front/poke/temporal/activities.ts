@@ -322,26 +322,6 @@ export async function deleteAgentsActivity({
       },
     });
 
-    const reasoningConfigurations = await AgentReasoningConfiguration.findAll({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-    await AgentReasoningAction.destroy({
-      where: {
-        reasoningConfigurationId: {
-          [Op.in]: reasoningConfigurations.map((r) => r.sId),
-        },
-      },
-    });
-    await AgentReasoningConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
     const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll(
       {
         where: {
