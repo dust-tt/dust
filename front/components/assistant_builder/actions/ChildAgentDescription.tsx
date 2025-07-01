@@ -22,14 +22,14 @@ export const ChildAgentDescription = ({
 }: DataDescriptionProps) => {
   return (
     <ConfigurationSectionContainer
-      title="What does the sub agent do?"
+      title="What does the agent do?"
       description={
         `Provide a brief description (maximum ${MAX_DESCRIPTION_LENGTH} characters) of the ` +
-        "subagent and context to help the agent determine when to utilize it effectively."
+        "subagent and context to help the main agent determine when to utilize it effectively."
       }
     >
       <TextArea
-        placeholder={"This sub-agent is specialized in…"}
+        placeholder={"This agent is specialized in…"}
         value={action.description}
         onChange={(e) => {
           if (e.target.value.length < MAX_DESCRIPTION_LENGTH) {
