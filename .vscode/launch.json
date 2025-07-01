@@ -36,7 +36,13 @@
           "kind": "bin"
         }
       },
-      "args": ["--start-cursor", "10", "--batch-size", "3"]
+      "args": [
+        "--start-cursor",
+        "25",
+        "--batch-size",
+        "3",
+        "--skip-confirmation"
+      ]
     },
     {
       "type": "node-terminal",

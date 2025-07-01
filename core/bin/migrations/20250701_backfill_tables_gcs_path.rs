@@ -39,7 +39,7 @@ async fn process_tables(
     pool: &Pool<PostgresConnectionManager<NoTls>>,
     id_cursor: i64,
     batch_size: i64,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<Option<i64>, Box<dyn std::error::Error>> {
     let c = pool.get().await?;
 
     let rows = c
@@ -69,15 +69,23 @@ async fn process_tables(
         })
         .collect::<Vec<_>>();
 
+    let mut last_table_id = -1;
     for (id, table_id, project, data_source_id) in tables {
         println!("Processing table with id: {}, table_id: {}", id, table_id);
 
         let unique_id = get_table_unique_id(&project, &data_source_id, &table_id);
 
-        println!("Unique table id: {}", unique_id);
+        // println!("Unique table id: {}", unique_id);
+
+        last_table_id = id;
     }
 
-    Ok(())
+    if last_table_id < 0 {
+        return Ok(None);
+    }
+    // println!("Last processed table id: {}", last_table_id);
+
+    Ok(Some(last_table_id))
 }
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -100,6 +108,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let store = PostgresStore::new(&db_uri).await?;
     let pool = store.raw_pool();
 
+    // Loop on all tables in batches
+    let mut next_cursor = start_cursor;
+
     // grab last id in data_sources_nodes
     let c = pool.get().await?;
     let last_id = c.query_one("SELECT MAX(id) FROM tables", &[]).await?;
@@ -107,7 +118,24 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let last_id: i64 = last_id.get(0);
     println!("Last id in tables: {}", last_id);
 
-    process_tables(&pool, start_cursor, batch_size as i64).await?;
+    while next_cursor <= last_id {
+        println!(
+            "Processing {} tables, starting at id {}. ",
+            batch_size, next_cursor
+        );
+        let next_id_cursor = process_tables(&pool, next_cursor, batch_size as i64).await?;
+
+        next_cursor = match next_id_cursor {
+            Some(cursor) => cursor,
+            None => {
+                println!(
+                    "No more nodes to process (last id: {}). \nBackfill complete.",
+                    last_id
+                );
+                break;
+            }
+        };
+    }
 
     Ok(())
 }
