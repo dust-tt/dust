@@ -22,7 +22,6 @@ import {
   isDustAppRunConfiguration,
   isMCPToolConfiguration,
   isProcessConfiguration,
-  isReasoningConfiguration,
   isSearchLabelsConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -1461,52 +1460,6 @@ async function* runAction(
           agentMessage.actions.push(event.action);
           break;
 
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isReasoningConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "reasoning_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "reasoning_started":
-        case "reasoning_thinking":
-        case "reasoning_tokens":
-          yield event;
-          break;
-        case "reasoning_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-          agentMessage.actions.push(event.action);
-          break;
         default:
           assertNever(event);
       }

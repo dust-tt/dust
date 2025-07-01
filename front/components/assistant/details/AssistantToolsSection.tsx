@@ -1,7 +1,6 @@
 import {
   Avatar,
   BarChartIcon,
-  ChatBubbleThoughtIcon,
   CommandIcon,
   GlobeAltIcon,
   ScanIcon,
@@ -21,7 +20,6 @@ import {
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
   isProcessConfiguration,
-  isReasoningConfiguration,
   isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -150,12 +148,6 @@ function renderOtherAction(
     return {
       title: "Web Search & Navigation",
       avatar: <Avatar icon={GlobeAltIcon} size="xs" />,
-      order: 0,
-    };
-  } else if (isReasoningConfiguration(action)) {
-    return {
-      title: "Reasoning",
-      avatar: <Avatar icon={ChatBubbleThoughtIcon} size="xs" />,
       order: 0,
     };
   } else if (isServerSideMCPServerConfiguration(action)) {

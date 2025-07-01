@@ -6,7 +6,6 @@ import { conversationIncludeFileTypesFromAgentMessageIds } from "@app/lib/action
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_run";
 import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
 import { processActionTypesFromAgentMessageIds } from "@app/lib/actions/process";
-import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/actions/reasoning";
 import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/actions/tables_query";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/actions/websearch";
@@ -140,7 +139,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     agentWebsearchActions,
     agentBrowseActions,
     agentConversationIncludeFileActions,
-    agentReasoningActions,
     agentSearchLabelsActions,
     agentMCPActions,
   ] = await Promise.all([
@@ -179,8 +177,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentMessageIds,
       }))(),
     (async () =>
-      reasoningActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
       searchLabelsActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       mcpActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
@@ -208,7 +204,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentConversationIncludeFileActions,
         agentDustAppRunActions,
         agentProcessActions,
-        agentReasoningActions,
         agentSearchLabelsActions,
         agentTablesQueryActions,
         agentWebsearchActions,
