@@ -5,28 +5,87 @@ import {
   ContentMessage,
   InformationCircleIcon,
   Spinner,
+  TextArea,
 } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
+import type { AssistantBuilderMCPOrVizState } from "@app/components/assistant_builder/types";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
 
+const MAX_DESCRIPTION_LENGTH = 800;
+
+interface ChildAgentDescriptionProps {
+  updateDescription: (actionDescription: string) => void;
+  action: AssistantBuilderMCPOrVizState;
+  setShowInvalidActionDescError: (
+    showInvalidActionDescError: string | null
+  ) => void;
+  showInvalidActionDescError: string | null;
+}
+
+function ChildAgentDescription({
+  updateDescription,
+  action,
+  setShowInvalidActionDescError,
+  showInvalidActionDescError,
+}: ChildAgentDescriptionProps) {
+  return (
+    <ConfigurationSectionContainer
+      title="What does the agent do?"
+      description={
+        `Provide a brief description (maximum ${MAX_DESCRIPTION_LENGTH} characters) of the ` +
+        "subagent and context to help the main agent determine when to utilize it effectively."
+      }
+    >
+      <TextArea
+        placeholder={"This agent is specialized in…"}
+        value={action.description}
+        onChange={(e) => {
+          if (e.target.value.length < MAX_DESCRIPTION_LENGTH) {
+            updateDescription(e.target.value);
+            setShowInvalidActionDescError(null);
+          } else {
+            setShowInvalidActionDescError(
+              `The description must be less than ${MAX_DESCRIPTION_LENGTH} characters.`
+            );
+          }
+        }}
+        error={showInvalidActionDescError}
+        showErrorLabel
+      />
+    </ConfigurationSectionContainer>
+  );
+}
+
 interface ChildAgentSelectorProps {
   owner: LightWorkspaceType;
   selectedAgentId: string | null;
-  onAgentSelect: (agent: LightAgentConfigurationType) => void;
+  onAgentSelect: (agentId: string) => void;
+  updateDescription: (description: string) => void;
+  action: AssistantBuilderMCPOrVizState;
+  setShowInvalidActionDescError: (
+    showInvalidActionDescError: string | null
+  ) => void;
+  showInvalidActionDescError: string | null;
 }
 
 export function ChildAgentConfigurationSection({
   owner,
   selectedAgentId,
   onAgentSelect,
+  updateDescription,
+  action,
+  setShowInvalidActionDescError,
+  showInvalidActionDescError,
 }: ChildAgentSelectorProps) {
+  const [wasDescriptionEdited, setWasDescriptionEdited] = React.useState(false);
+
   const {
     agentConfigurations,
     isAgentConfigurationsLoading,
@@ -35,6 +94,14 @@ export function ChildAgentConfigurationSection({
     workspaceId: owner.sId,
     agentsGetView: "list",
   });
+
+  // When an agent is selected, we update the config and the description unless overridden.
+  const handleAgentSelection = (agent: LightAgentConfigurationType) => {
+    onAgentSelect(agent.sId);
+    if (!wasDescriptionEdited || action.description === "") {
+      updateDescription(agent.description);
+    }
+  };
 
   if (isAgentConfigurationsError) {
     return (
@@ -112,9 +179,7 @@ export function ChildAgentConfigurationSection({
                 assistants={agentConfigurations.filter(
                   (agent) => agent.sId !== selectedAgentId
                 )}
-                onItemClick={(agent) => {
-                  onAgentSelect(agent);
-                }}
+                onItemClick={handleAgentSelection}
                 pickerButton={
                   <Button
                     size="sm"
@@ -135,9 +200,7 @@ export function ChildAgentConfigurationSection({
               assistants={agentConfigurations.filter(
                 (agent) => agent.sId !== selectedAgentId
               )}
-              onItemClick={(agent) => {
-                onAgentSelect(agent);
-              }}
+              onItemClick={handleAgentSelection}
               pickerButton={
                 <Button
                   size="sm"
@@ -150,6 +213,15 @@ export function ChildAgentConfigurationSection({
           </div>
         </Card>
       )}
+      <ChildAgentDescription
+        updateDescription={(description) => {
+          setWasDescriptionEdited(description !== "");
+          updateDescription(description);
+        }}
+        action={action}
+        setShowInvalidActionDescError={setShowInvalidActionDescError}
+        showInvalidActionDescError={showInvalidActionDescError}
+      />
     </ConfigurationSectionContainer>
   );
 }

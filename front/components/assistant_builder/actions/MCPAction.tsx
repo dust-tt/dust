@@ -3,7 +3,6 @@ import assert from "assert";
 import { useCallback, useMemo, useState } from "react";
 
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
-import { ChildAgentDescription } from "@app/components/assistant_builder/actions/ChildAgentDescription";
 import { AdditionalConfigurationSection } from "@app/components/assistant_builder/actions/configuration/AdditionalConfigurationSection";
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
 import { ChildAgentConfigurationSection } from "@app/components/assistant_builder/actions/configuration/ChildAgentConfigurationSection";
@@ -129,7 +128,6 @@ export function MCPAction({
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showTablesModal, setShowTablesModal] = useState(false);
-  const [wasDescriptionEdited, setWasDescriptionEdited] = useState(false);
 
   const handleConfigUpdate = useCallback(
     (
@@ -275,26 +273,12 @@ export function MCPAction({
       )}
       {requirements.requiresChildAgentConfiguration && (
         <ChildAgentConfigurationSection
-          onAgentSelect={(childAgent) => {
-            // When an agent is selected, we update the config and the description unless overridden.
-            handleConfigUpdate((old) => ({
-              ...old,
-              childAgentId: childAgent.sId,
-            }));
-            if (!wasDescriptionEdited || action.description === "") {
-              updateDescription(childAgent.description);
-            }
+          onAgentSelect={(childAgentId) => {
+            handleConfigUpdate((old) => ({ ...old, childAgentId }));
           }}
+          updateDescription={updateDescription}
           selectedAgentId={actionConfiguration.childAgentId}
           owner={owner}
-        />
-      )}
-      {requirements.requiresChildAgentConfiguration && (
-        <ChildAgentDescription
-          updateDescription={(description) => {
-            setWasDescriptionEdited(description !== "");
-            updateDescription(description);
-          }}
           action={action}
           setShowInvalidActionDescError={setShowInvalidActionDescError}
           showInvalidActionDescError={showInvalidActionDescError}
