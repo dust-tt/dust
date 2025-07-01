@@ -42,7 +42,6 @@ import {
   getTitleFromRetrievedDocument,
   isMCPActionType,
   isSearchResultResourceType,
-  isWebsearchActionType,
   isWebsearchResultResourceType,
   removeNulls,
 } from "@dust-tt/client";
@@ -126,17 +125,6 @@ export function makeDocumentCitation(
     href: document.sourceUrl ?? undefined,
     title: getTitleFromRetrievedDocument(document),
     icon: <IconComponent />,
-  };
-}
-
-export function makeWebsearchResultsCitation(
-  result: WebsearchResultPublicType
-): MarkdownCitation {
-  return {
-    description: result.snippet,
-    href: result.link,
-    title: result.title,
-    icon: <DocumentTextIcon />,
   };
 }
 
@@ -382,20 +370,6 @@ export function AgentMessage({
   ]);
 
   useEffect(() => {
-    // Websearch actions
-    const websearchActionsWithResults = agentMessageToRender.actions
-      .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
-      .sort((a, b) => a.id - b.id) as WebsearchActionPublicType[];
-    const allWebResults = removeNulls(
-      websearchActionsWithResults.map((a) => a.output?.results).flat()
-    );
-    const allWebReferences = allWebResults.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, l) => {
-      acc[l.reference] = makeWebsearchResultsCitation(l);
-      return acc;
-    }, {});
-
     // MCP search actions
     const allMCPSearchResources = agentMessageToRender.actions
       .filter((a) => isMCPActionType(a))

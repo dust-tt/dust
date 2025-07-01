@@ -1,14 +1,10 @@
-import { isWebsearchActionType, removeNulls } from "@dust-tt/client";
+import { removeNulls } from "@dust-tt/client";
 
 import {
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPActionType } from "@app/lib/actions/types/guards";
-import type {
-  WebsearchActionType,
-  WebsearchResultType,
-} from "@app/lib/actions/websearch";
 import { rand } from "@app/lib/utils/seeded_random";
 import type {
   AgentActionType,
@@ -52,38 +48,9 @@ export function citationMetaPrompt() {
   );
 }
 
-export function makeWebsearchResultsCitation(
-  result: WebsearchResultType
-): CitationType {
-  return {
-    description: result.snippet,
-    href: result.link,
-    title: result.title,
-    provider: "document",
-  };
-}
-
 export const getCitationsFromActions = (
   actions: AgentActionType[]
 ): Record<string, CitationType> => {
-  // Websearch actions.
-  const websearchActionsWithResults = actions
-    .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
-    .sort((a, b) => a.id - b.id) as WebsearchActionType[];
-
-  const allWebResults = removeNulls(
-    websearchActionsWithResults.map((a) => a.output?.results).flat()
-  );
-  const allWebReferences = allWebResults.reduce<{
-    [key: string]: CitationType;
-  }>(
-    (acc, l) => ({
-      ...acc,
-      [l.reference]: makeWebsearchResultsCitation(l),
-    }),
-    {}
-  );
-
   // MCP actions with search results.
   const searchResultsWithDocs = removeNulls(
     actions
@@ -128,7 +95,6 @@ export const getCitationsFromActions = (
 
   // Merge all references.
   return {
-    ...allWebReferences,
     ...allMCPSearchResultsReferences,
     ...allMCPWebsearchResultsReferences,
   };

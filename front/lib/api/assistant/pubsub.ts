@@ -213,7 +213,6 @@ async function handleUserMessageEvents(
             case "agent_error":
             case "agent_generation_cancelled":
             case "agent_message_success":
-            case "browse_params":
             case "conversation_include_file_params":
             case "dust_app_run_block":
             case "dust_app_run_params":
@@ -228,8 +227,7 @@ async function handleUserMessageEvents(
             case "tables_query_started":
             case "tool_approve_execution":
             case "tool_notification":
-            case "tool_params":
-            case "websearch_params": {
+            case "tool_params": {
               const pubsubChannel = getEventMessageChannelId(event);
 
               await publishEvent({
@@ -386,7 +384,6 @@ export async function retryAgentMessageWithPubSub(
               case "agent_error":
               case "agent_generation_cancelled":
               case "agent_message_success":
-              case "browse_params":
               case "conversation_include_file_params":
               case "dust_app_run_block":
               case "dust_app_run_params":
@@ -401,8 +398,7 @@ export async function retryAgentMessageWithPubSub(
               case "tables_query_started":
               case "tool_approve_execution":
               case "tool_notification":
-              case "tool_params":
-              case "websearch_params": {
+              case "tool_params": {
                 const pubsubChannel = getEventMessageChannelId(event);
                 await publishEvent({
                   origin: "retry_agent_message",

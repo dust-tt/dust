@@ -14,10 +14,6 @@ import {
   isWorkspaceRelocationOngoing,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import {
-  AgentBrowseAction,
-  AgentBrowseConfiguration,
-} from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
@@ -42,10 +38,6 @@ import {
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
-import {
-  AgentWebsearchAction,
-  AgentWebsearchConfiguration,
-} from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -397,47 +389,6 @@ export async function deleteAgentsActivity({
       },
     });
     await AgentTablesQueryConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const agentBrowseConfigurations = await AgentBrowseConfiguration.findAll({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-    await AgentBrowseAction.destroy({
-      where: {
-        browseConfigurationId: {
-          [Op.in]: agentBrowseConfigurations.map((r) => r.sId),
-        },
-      },
-    });
-    await AgentBrowseConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const agentWebsearchConfigurations =
-      await AgentWebsearchConfiguration.findAll({
-        where: {
-          agentConfigurationId: agent.id,
-          workspaceId: workspace.id,
-        },
-      });
-    await AgentWebsearchAction.destroy({
-      where: {
-        websearchConfigurationId: {
-          [Op.in]: agentWebsearchConfigurations.map((r) => r.sId),
-        },
-      },
-    });
-    await AgentWebsearchConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,

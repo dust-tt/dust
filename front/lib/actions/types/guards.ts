@@ -1,4 +1,3 @@
-import type { BrowseConfigurationType } from "@app/lib/actions/browse";
 import type {
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
@@ -22,10 +21,6 @@ import type {
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
-import type {
-  WebsearchActionType,
-  WebsearchConfigurationType,
-} from "@app/lib/actions/websearch";
 import type {
   AgentActionType,
   AgentConfigurationType,
@@ -62,17 +57,6 @@ export function isProcessConfiguration(
     typeof arg === "object" &&
     "type" in arg &&
     arg.type === "process_configuration"
-  );
-}
-
-export function isWebsearchConfiguration(
-  arg: unknown
-): arg is WebsearchConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "websearch_configuration"
   );
 }
 
@@ -253,23 +237,6 @@ export function isClientSideMCPToolConfiguration(
   arg: ActionConfigurationType
 ): arg is ClientSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "clientSideMcpServerId" in arg;
-}
-
-export function isWebsearchActionType(
-  arg: AgentActionType
-): arg is WebsearchActionType {
-  return arg.type === "websearch_action";
-}
-
-export function isBrowseConfiguration(
-  arg: unknown
-): arg is BrowseConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "browse_configuration"
-  );
 }
 
 export function isConversationIncludeFileConfiguration(

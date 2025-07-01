@@ -1,5 +1,3 @@
-import type { BrowseConfigurationType } from "@app/lib/actions/browse";
-import { BrowseConfigurationServerRunner } from "@app/lib/actions/browse";
 import type { ConversationIncludeFileConfigurationType } from "@app/lib/actions/conversation/include_file";
 import { ConversationIncludeFileConfigurationServerRunner } from "@app/lib/actions/conversation/include_file";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
@@ -20,30 +18,24 @@ import type {
   BaseActionConfigurationStaticMethods,
 } from "@app/lib/actions/types";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
-import { WebsearchConfigurationServerRunner } from "@app/lib/actions/websearch";
 
 interface ActionToConfigTypeMap {
-  browse_configuration: BrowseConfigurationType;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationType;
   dust_app_run_configuration: DustAppRunConfigurationType;
   process_configuration: ProcessConfigurationType;
   reasoning_configuration: ReasoningConfigurationType;
   search_labels_configuration: SearchLabelsConfigurationType;
   tables_query_configuration: TablesQueryConfigurationType;
-  websearch_configuration: WebsearchConfigurationType;
   mcp_configuration: MCPToolConfigurationType;
 }
 
 interface ActionTypeToClassMap {
-  browse_configuration: BrowseConfigurationServerRunner;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationServerRunner;
   dust_app_run_configuration: DustAppRunConfigurationServerRunner;
   process_configuration: ProcessConfigurationServerRunner;
   reasoning_configuration: ReasoningConfigurationServerRunner;
   search_labels_configuration: SearchLabelsConfigurationServerRunner;
   tables_query_configuration: TablesQueryConfigurationServerRunner;
-  websearch_configuration: WebsearchConfigurationServerRunner;
   mcp_configuration: MCPConfigurationServerRunner;
 }
 
@@ -83,7 +75,6 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
       CombinedMap[K]["configType"]
     >;
 } = {
-  browse_configuration: BrowseConfigurationServerRunner,
   conversation_include_file_configuration:
     ConversationIncludeFileConfigurationServerRunner,
   dust_app_run_configuration: DustAppRunConfigurationServerRunner,
@@ -91,7 +82,6 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   reasoning_configuration: ReasoningConfigurationServerRunner,
   search_labels_configuration: SearchLabelsConfigurationServerRunner,
   tables_query_configuration: TablesQueryConfigurationServerRunner,
-  websearch_configuration: WebsearchConfigurationServerRunner,
   mcp_configuration: MCPConfigurationServerRunner,
 } as const;
 

@@ -8,13 +8,11 @@ import {
   ValidationError,
 } from "sequelize";
 
-import { fetchBrowseActionConfigurations } from "@app/lib/actions/configuration/browse";
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
 import { fetchReasoningActionConfigurations } from "@app/lib/actions/configuration/reasoning";
 import { fetchTableQueryActionConfigurations } from "@app/lib/actions/configuration/table_query";
-import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configuration/websearch";
 import {
   DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_RETRIEVAL_ACTION_NAME,
@@ -509,8 +507,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     processActionsConfigurationsPerAgent,
     dustAppRunActionsConfigurationsPerAgent,
     tableQueryActionsConfigurationsPerAgent,
-    websearchActionsConfigurationsPerAgent,
-    browseActionsConfigurationsPerAgent,
     reasoningActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
@@ -519,8 +515,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchAgentProcessActionConfigurations(auth, { configurationIds, variant }),
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
-    fetchWebsearchActionConfigurations(auth, { configurationIds, variant }),
-    fetchBrowseActionConfigurations(auth, { configurationIds, variant }),
     fetchReasoningActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
@@ -540,16 +534,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       const dustAppRunActionsConfigurations =
         dustAppRunActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...dustAppRunActionsConfigurations);
-
-      // Websearch configurations.
-      const websearchActionsConfigurations =
-        websearchActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...websearchActionsConfigurations);
-
-      // Browse configurations.
-      const browseActionsConfigurations =
-        browseActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...browseActionsConfigurations);
 
       // Table query configurations.
       const tableQueryActionsConfigurations =

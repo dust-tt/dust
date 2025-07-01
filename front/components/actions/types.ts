@@ -1,4 +1,3 @@
-import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
 import { ConversationIncludeFileActionDetails } from "@app/components/actions/conversation/include_file/IncludeFileActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
@@ -6,7 +5,6 @@ import { ProcessActionDetails } from "@app/components/actions/process/ProcessAct
 import { ReasoningActionDetails } from "@app/components/actions/reasoning/ReasoningActionDetails";
 import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
-import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentActionType, LightWorkspaceType } from "@app/types";
 import { ACTION_RUNNING_LABELS } from "@app/types";
@@ -43,14 +41,6 @@ const actionsSpecification: ActionSpecifications = {
   tables_query_action: {
     detailsComponent: TablesQueryActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.tables_query_action,
-  },
-  websearch_action: {
-    detailsComponent: WebsearchActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.websearch_action,
-  },
-  browse_action: {
-    detailsComponent: BrowseActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.browse_action,
   },
   conversation_list_files_action: {
     detailsComponent: () => null,
