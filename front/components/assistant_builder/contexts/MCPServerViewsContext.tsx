@@ -47,13 +47,18 @@ export const MCPServerViewsProvider = ({
     isError: isMCPServerViewsError,
   } = useMCPServerViewsFromSpaces(owner, spaces);
 
+  const sortedMCPServerViews = useMemo(
+    () => mcpServerViews.sort(mcpServerViewSortingFn),
+    [mcpServerViews]
+  );
+
   const value: MCPServerViewsContextType = useMemo(() => {
     return {
-      mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
+      mcpServerViews: sortedMCPServerViews,
       isMCPServerViewsLoading: isLoading || isSpacesLoading, // Spaces is required to fetch server views so we check isSpacesLoading too.
       isMCPServerViewsError,
     };
-  }, [isLoading, isMCPServerViewsError, isSpacesLoading, mcpServerViews]);
+  }, [isLoading, isMCPServerViewsError, isSpacesLoading, sortedMCPServerViews]);
 
   return (
     <MCPServerViewsContext.Provider value={value}>
