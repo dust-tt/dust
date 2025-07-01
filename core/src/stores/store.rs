@@ -14,7 +14,9 @@ use crate::{
         folder::Folder,
         node::{Node, ProviderVisibility},
     },
-    databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
+    databases::{
+        table::Row, table::Table, table_schema::TableSchema, transient_database::TransientDatabase,
+    },
     dataset::Dataset,
     http::request::{HttpRequest, HttpResponse},
     project::Project,
@@ -301,7 +303,8 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
         bucket: &str,
-        bucket_csv_path: &str,
+        schema: &TableSchema,
+        rows: &Vec<Row>,
     ) -> Result<()>;
     async fn clear_data_source_table_csv(
         &self,

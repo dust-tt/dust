@@ -3046,8 +3046,8 @@ async fn tables_rows_upsert(
             Ok(table) => {
                 match table
                     .upsert_rows(
-                        state.store.clone(),
-                        state.databases_store.clone(),
+                        &state.store,
+                        &state.databases_store,
                         payload.rows,
                         payload.truncate.unwrap_or_else(|| false),
                     )

@@ -2,6 +2,8 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
+use cloud_storage::Object;
+use csv::Writer;
 use futures::future::try_join_all;
 use serde_json::Value;
 use std::collections::hash_map::DefaultHasher;
@@ -11,6 +13,7 @@ use std::hash::Hasher;
 use std::str::FromStr;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
+use tracing::info;
 
 use crate::data_sources::data_source::DocumentStatus;
 use crate::data_sources::node::{Node, NodeESDocument, NodeType, ProviderVisibility};
@@ -22,7 +25,7 @@ use crate::{
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
     data_sources::folder::Folder,
     databases::{
-        table::{get_table_unique_id, Table},
+        table::{get_table_unique_id, Row, Table},
         table_schema::TableSchema,
         transient_database::TransientDatabase,
     },
@@ -2896,8 +2899,9 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         table_id: &str,
-        csv_bucket: &str,
-        csv_bucket_path: &str,
+        bucket: &str,
+        schema: &TableSchema,
+        rows: &Vec<Row>,
     ) -> Result<()> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -2919,22 +2923,43 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
+        let now = utils::now();
+
+        let field_names = schema
+            .columns()
+            .iter()
+            .map(|c| c.name.clone())
+            .collect::<Vec<_>>();
+
+        // Read all rows and upload to GCS
+        let mut wtr = Writer::from_writer(vec![]);
+        for row in rows {
+            wtr.write_record(row.to_csv_record(&field_names)?.as_slice())?;
+        }
+        let content_duration = utils::now() - now;
+        let now = utils::now();
+
+        let csv = wtr.into_inner()?;
+        let file_name = format!("{}.csv", table_id);
+
+        Object::create(bucket, csv, &file_name, "text/csv").await?;
+
         // Update the csv bucket and path.
         let stmt = c
             .prepare(
                 "UPDATE tables SET csv_bucket = $1, csv_bucket_path = $2 WHERE data_source = $3 AND table_id = $4",
             )
             .await?;
-        c.query(
-            &stmt,
-            &[
-                &csv_bucket,
-                &csv_bucket_path,
-                &data_source_row_id,
-                &table_id,
-            ],
-        )
-        .await?;
+        c.query(&stmt, &[&bucket, &table_id, &data_source_row_id, &table_id])
+            .await?;
+
+        let upload_duration = utils::now() - now;
+
+        info!(
+            content_duration = content_duration,
+            upload_duration = upload_duration,
+            "CSV upload"
+        );
 
         Ok(())
     }

@@ -347,6 +347,13 @@ pub struct LocalTable {
 }
 
 impl LocalTable {
+    pub fn get_bucket() -> Result<String> {
+        match std::env::var("DUST_TABLES_BUCKET") {
+            Ok(bucket) => Ok(bucket),
+            Err(_) => Err(anyhow!("DUST_TABLES_BUCKET is not set")),
+        }
+    }
+
     pub fn from_table(table: Table) -> Result<LocalTable> {
         match table.table_type() {
             Ok(TableType::Local) => Ok(LocalTable { table }),
@@ -369,11 +376,11 @@ impl LocalTable {
 
     pub async fn upsert_rows(
         &self,
-        store: Box<dyn Store + Sync + Send>,
-        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        store: &Box<dyn Store + Sync + Send>,
+        databases_store: &Box<dyn DatabasesStore + Sync + Send>,
         rows: Vec<Row>,
         truncate: bool,
-    ) -> Result<()> {
+    ) -> Result<TableSchema> {
         let rows = Arc::new(rows);
 
         let mut now = utils::now();
@@ -508,7 +515,7 @@ impl LocalTable {
             "DSSTRUCTSTAT [upsert_rows] invalidate dbs"
         );
 
-        Ok(())
+        Ok(new_table_schema)
     }
 
     pub async fn upsert_csv_content(
@@ -519,14 +526,33 @@ impl LocalTable {
         bucket_csv_path: &str,
         truncate: bool,
     ) -> Result<()> {
+        let now = utils::now();
+
+        let rows = UpsertQueueCSVContent {
+            bucket: bucket.to_string(),
+            bucket_csv_path: bucket_csv_path.to_string(),
+        }
+        .parse()
+        .await?;
+
+        let csv_parse_duration = utils::now() - now;
+
+        let now = utils::now();
+        let schema = self
+            .upsert_rows(&store, &databases_store, rows.clone(), truncate)
+            .await?;
+        let upsert_duration = utils::now() - now;
+
+        let now = utils::now();
         if truncate {
             store
                 .upsert_data_source_table_csv(
                     &self.table.project,
                     &self.table.data_source_id,
                     &self.table.table_id,
-                    bucket,
-                    bucket_csv_path,
+                    &LocalTable::get_bucket()?,
+                    &schema,
+                    &rows,
                 )
                 .await?;
         } else {
@@ -539,22 +565,11 @@ impl LocalTable {
                 .await?;
         }
 
-        let now = utils::now();
-        let rows = UpsertQueueCSVContent {
-            bucket: bucket.to_string(),
-            bucket_csv_path: bucket_csv_path.to_string(),
-        }
-        .parse()
-        .await?;
-        let csv_parse_duration = utils::now() - now;
-
-        let now = utils::now();
-        self.upsert_rows(store, databases_store, rows, truncate)
-            .await?;
-        let upsert_duration = utils::now() - now;
+        let csv_upload_duration = utils::now() - now;
 
         info!(
             csv_parse_duration = csv_parse_duration,
+            csv_upload_duration = csv_upload_duration,
             upsert_duration = upsert_duration,
             "CSV upsert"
         );
@@ -819,6 +834,39 @@ impl Row {
         .unwrap_or_else(|| row_idx.to_string());
 
         Ok(Row::new(row_id, value_map))
+    }
+
+    pub fn to_csv_record(&self, headers: &Vec<String>) -> Result<Vec<String>> {
+        let mut record = Vec::new();
+        for header in headers {
+            match self.value().get(header) {
+                Some(Value::Bool(b)) => record.push(b.to_string()),
+                Some(Value::Number(x)) => {
+                    if x.is_i64() {
+                        record.push(x.as_i64().unwrap().to_string())
+                    } else if x.is_u64() {
+                        record.push((x.as_u64().unwrap() as i64).to_string())
+                    } else if x.is_f64() {
+                        record.push(x.as_f64().unwrap().to_string());
+                    } else {
+                        return Err(anyhow!("Number is not an i64 or f64: {}", x));
+                    }
+                }
+                Some(Value::String(s)) => record.push(s.clone()),
+                Some(Value::Object(obj)) => match TableSchema::try_parse_date_object(obj) {
+                    Some(date) => record.push(date),
+                    None => return Err(anyhow!("Unknown object type")),
+                },
+                None | Some(Value::Null) => record.push("".to_string()),
+                _ => {
+                    return Err(anyhow!(
+                        "Cannot convert value {:?} to SqlParam",
+                        self.value()
+                    ))
+                }
+            };
+        }
+        Ok(record)
     }
 
     pub fn row_id(&self) -> &str {
