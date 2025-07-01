@@ -268,7 +268,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       }
       const token = bearerTokenRes.value;
       const authMethod = getAuthType(token);
-      console.log("************ authMethod", authMethod);
+
       // Authentification with Auth0 token.
       // Straightforward since the token is attached to the user.
       if (authMethod === "access_token") {
