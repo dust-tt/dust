@@ -302,7 +302,7 @@ export async function syncOneFile({
 
     return true;
   } else {
-    if (mimeType === "text/plain") {
+    if (mimeType === "text/plain" || mimeType === "text/markdown") {
       result = handleTextFile(downloadRes.data, maxDocumentLen);
     } else {
       const data = Buffer.from(downloadRes.data);
