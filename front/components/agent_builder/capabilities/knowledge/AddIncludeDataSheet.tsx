@@ -1,5 +1,9 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import { ActionIncludeIcon, MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
+import {
+  ActionIncludeIcon,
+  MultiPageSheet,
+  MultiPageSheetContent,
+} from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -11,10 +15,16 @@ import {
   isValidPage,
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
-import type { AgentBuilderAction, IncludeDataAgentBuilderAction } from "@app/components/agent_builder/types";
+import type {
+  AgentBuilderAction,
+  IncludeDataAgentBuilderAction,
+} from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
-import type { DataSourceViewSelectionConfigurations, TimeFrame } from "@app/types";
+import type {
+  DataSourceViewSelectionConfigurations,
+  TimeFrame,
+} from "@app/types";
 
 const PAGE_IDS = {
   DATA_SOURCE_SELECTION: "data-source-selection",
