@@ -22,6 +22,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { subNavigationAdmin } from "@app/components/navigation/config";
+import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
@@ -39,7 +40,6 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { setupOAuthConnection } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -249,8 +249,7 @@ function SlackBotToggle({
   const createSlackBotConnectionAndDataSource = async () => {
     try {
       // OAuth flow
-      const cRes = await setupOAuthConnection({
-        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+      const cRes = await setupConnection({
         owner,
         provider: "slack",
         useCase: "bot",
@@ -269,7 +268,7 @@ function SlackBotToggle({
           },
           body: JSON.stringify({
             provider: "slack_bot",
-            connectionId: cRes.value.connection_id,
+            connectionId: cRes.value,
             name: undefined,
             configuration: null,
           } satisfies PostDataSourceRequestBody),
@@ -325,8 +324,7 @@ function SlackBotToggle({
                 size="xs"
                 icon={ArrowPathIcon}
                 onClick={async () => {
-                  const cRes = await setupOAuthConnection({
-                    dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+                  const cRes = await setupConnection({
                     owner,
                     provider: "slack",
                     useCase: "bot",
@@ -340,7 +338,7 @@ function SlackBotToggle({
                     });
                   } else {
                     const updateRes = await updateConnectorConnectionId(
-                      cRes.value.connection_id,
+                      cRes.value,
                       "slack_bot",
                       slackBotDataSource,
                       owner
