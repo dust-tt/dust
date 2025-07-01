@@ -11,10 +11,15 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import type { AgentBuilderFormData } from "./AgentBuilderFormContext";
 import type {
+  ExtractDataAgentBuilderAction,
   IncludeDataAgentBuilderAction,
   SearchAgentBuilderAction,
 } from "./types";
-import { isIncludeDataAction, isSearchAction } from "./types";
+import {
+  isExtractDataAction,
+  isIncludeDataAction,
+  isSearchAction,
+} from "./types";
 
 function convertSearchActionToMCPConfiguration(
   searchAction: SearchAgentBuilderAction,
@@ -132,6 +137,64 @@ function getIncludeDataMCPServerView(
   return includeDataMCPServerView;
 }
 
+function convertExtractDataActionToMCPConfiguration(
+  extractDataAction: ExtractDataAgentBuilderAction,
+  extractDataMCPServerView: MCPServerViewType,
+  owner: WorkspaceType
+): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
+  const dataSources = Object.values(
+    extractDataAction.configuration.dataSourceConfigurations
+  ).map((config) => ({
+    dataSourceViewId: config.dataSourceView.sId,
+    workspaceId: owner.sId,
+    filter: {
+      parents: config.isSelectAll
+        ? null
+        : {
+            in: config.selectedResources.map((resource) => resource.internalId),
+            not: [],
+          },
+      tags: config.tagsFilter
+        ? {
+            in: config.tagsFilter.in,
+            not: config.tagsFilter.not,
+            mode: config.tagsFilter.mode,
+          }
+        : null,
+    },
+  }));
+
+  return {
+    type: "mcp_server_configuration",
+    mcpServerViewId: extractDataMCPServerView.sId,
+    name: extractDataAction.name,
+    description: extractDataAction.description,
+    dataSources,
+    tables: null,
+    childAgentId: null,
+    reasoningModel: null,
+    timeFrame: extractDataAction.configuration.timeFrame,
+    jsonSchema: extractDataAction.configuration.jsonSchema,
+    additionalConfiguration: {},
+    dustAppConfiguration: null,
+  };
+}
+
+function getExtractDataMCPServerView(
+  mcpServerViews: MCPServerViewType[]
+): MCPServerViewType {
+  const extractDataMCPServerView = mcpServerViews.find(
+    (view) =>
+      view.server.name === "extract_data" && view.server.availability === "auto"
+  );
+
+  if (!extractDataMCPServerView) {
+    throw new Error("Extract data MCP server view not found");
+  }
+
+  return extractDataMCPServerView;
+}
+
 export async function submitAgentBuilderForm({
   formData,
   owner,
@@ -189,6 +252,18 @@ export async function submitAgentBuilderForm({
             convertIncludeDataActionToMCPConfiguration(
               action,
               includeDataMCPServerView,
+              owner
+            ),
+          ];
+        }
+
+        if (isExtractDataAction(action)) {
+          const extractDataMCPServerView =
+            getExtractDataMCPServerView(mcpServerViews);
+          return [
+            convertExtractDataActionToMCPConfiguration(
+              action,
+              extractDataMCPServerView,
               owner
             ),
           ];
