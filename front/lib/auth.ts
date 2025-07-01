@@ -163,11 +163,13 @@ export class Authenticator {
             sId: wId,
           },
         }),
-        session?.type === "auth0" && session.user.auth0Sub
-          ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
-          : session?.type === "workos" && session.user.workOSUserId
-            ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
-            : null,
+        session?.type === "auth0" && session.user.workOSUserId
+          ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
+          : session?.type === "auth0" && session.user.auth0Sub
+            ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
+            : session?.type === "workos" && session.user.workOSUserId
+              ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
+              : null,
       ]);
 
       let role = "none" as RoleType;
@@ -219,11 +221,13 @@ export class Authenticator {
             where: { sId: wId },
           })
         : null,
-      session?.type === "auth0" && session.user.auth0Sub
-        ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
-        : session?.type === "workos" && session.user.workOSUserId
-          ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
-          : null,
+      session?.type === "auth0" && session.user.workOSUserId
+        ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
+        : session?.type === "auth0" && session.user.auth0Sub
+          ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
+          : session?.type === "workos" && session.user.workOSUserId
+            ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
+            : null,
     ]);
 
     let groups: GroupResource[] = [];
