@@ -35,71 +35,6 @@ async fn main() {
     }
 }
 
-async fn process_one_table(
-    store: &PostgresStore,
-    project: &Project,
-    data_source_id: &str,
-    table_id: &str,
-    id: i64,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let unique_id = get_table_unique_id(&project, &data_source_id, &table_id);
-
-    println!("Unique table id: {}", unique_id);
-
-    Ok(())
-}
-
-async fn process_tables_batch(
-    store: &PostgresStore,
-    pool: &Pool<PostgresConnectionManager<NoTls>>,
-    id_cursor: i64,
-    batch_size: i64,
-) -> Result<Option<i64>, Box<dyn std::error::Error>> {
-    let c = pool.get().await?;
-
-    let rows = c
-        .query(
-            "
-            SELECT t.id, t.table_id, ds.project, ds.data_source_id
-                FROM tables t
-                INNER JOIN data_sources ds ON ds.id = t.data_source
-                WHERE csv_bucket IS NULL AND remote_database_table_id IS NULL
-                    AND t.id > $1
-                ORDER BY t.id ASC
-                LIMIT $2
-            ",
-            &[&id_cursor, &batch_size],
-        )
-        .await?;
-
-    let tables = rows
-        .iter()
-        .map(|table| {
-            let id: i64 = table.get(0);
-            let table_id: String = table.get(1);
-            let project: i64 = table.get(2);
-            let data_source_id: String = table.get(3);
-
-            (id, table_id, Project::new_from_id(project), data_source_id)
-        })
-        .collect::<Vec<_>>();
-
-    let mut last_table_id = -1;
-    for (id, table_id, project, data_source_id) in tables {
-        println!("Processing table with id: {}, table_id: {}", id, table_id);
-
-        process_one_table(&store, &project, &data_source_id, &table_id, id).await?;
-
-        last_table_id = id;
-    }
-
-    if last_table_id < 0 {
-        return Ok(None);
-    }
-
-    Ok(Some(last_table_id))
-}
-
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
     // parse args and env vars
     let args = Args::parse();
@@ -149,6 +84,71 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
     }
+
+    Ok(())
+}
+
+async fn process_tables_batch(
+    store: &PostgresStore,
+    pool: &Pool<PostgresConnectionManager<NoTls>>,
+    id_cursor: i64,
+    batch_size: i64,
+) -> Result<Option<i64>, Box<dyn std::error::Error>> {
+    let c = pool.get().await?;
+
+    let rows = c
+        .query(
+            "
+            SELECT t.id, t.table_id, ds.project, ds.data_source_id
+                FROM tables t
+                INNER JOIN data_sources ds ON ds.id = t.data_source
+                WHERE csv_bucket IS NULL AND remote_database_table_id IS NULL
+                    AND t.id > $1
+                ORDER BY t.id ASC
+                LIMIT $2
+            ",
+            &[&id_cursor, &batch_size],
+        )
+        .await?;
+
+    let tables = rows
+        .iter()
+        .map(|table| {
+            let id: i64 = table.get(0);
+            let table_id: String = table.get(1);
+            let project: i64 = table.get(2);
+            let data_source_id: String = table.get(3);
+
+            (id, table_id, Project::new_from_id(project), data_source_id)
+        })
+        .collect::<Vec<_>>();
+
+    let mut last_table_id = -1;
+    for (id, table_id, project, data_source_id) in tables {
+        println!("Processing table with id: {}, table_id: {}", id, table_id);
+
+        process_one_table(&store, id, &project, &data_source_id, &table_id).await?;
+
+        last_table_id = id;
+    }
+
+    if last_table_id < 0 {
+        return Ok(None);
+    }
+
+    Ok(Some(last_table_id))
+}
+
+async fn process_one_table(
+    store: &PostgresStore,
+    id: i64,
+    project: &Project,
+    data_source_id: &str,
+    table_id: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let unique_id = get_table_unique_id(&project, &data_source_id, &table_id);
+
+    println!("Unique table id: {}", unique_id);
 
     Ok(())
 }
