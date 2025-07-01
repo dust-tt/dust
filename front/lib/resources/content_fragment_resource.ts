@@ -708,10 +708,7 @@ export async function renderLightContentFragmentForModel(
             contentType,
             title,
             version: contentFragmentVersion,
-            content:
-              "[Image content interpreted by a vision-enabled model. " +
-              "Description not available in this context. " +
-              `To render image in your response, write out ![${title}](${contentFragment.sId})].`,
+            content: `To render image in your response, write out ![${title}](${contentFragment.sId})].`,
           }),
         },
       ],
