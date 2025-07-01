@@ -27,7 +27,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, isFileContentFragment } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   workspace: WorkspaceType;
@@ -246,10 +246,11 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           date : {new Date(message.created).toLocaleString()}
           version :{message.version} {" • "}
-          textBytes :{message.textBytes}
+          textBytes :
+          {isFileContentFragment(message) ? message.textBytes : "N/A"}
         </div>
         <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          textBytes={message.textBytes}
+          textBytes={isFileContentFragment(message) ? message.textBytes : "N/A"}
         </div>
         {message.sourceUrl && (
           <a
@@ -261,7 +262,7 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
           </a>
         )}{" "}
         <a
-          href={message.textUrl ?? ""}
+          href={isFileContentFragment(message) ? message.textUrl : ""}
           target="_blank"
           className="text-highlight-500"
         >

@@ -88,16 +88,7 @@ export async function _getRefreshedCookie(
         password: config.getWorkOSCookiePassword(),
       }
     );
-
     return sealedCookie;
-  } else {
-    logger.info(
-      {
-        refreshResponse: r.reason,
-        workOSSessionCookie: workOSSessionCookie.substring(0, 15),
-      },
-      "Can't refresh session"
-    );
   }
   return null;
 }
@@ -107,7 +98,9 @@ const getRefreshedCookie = cacheWithRedis(
   (workOSSessionCookie) => {
     return `workos_session_refresh:${sha256(workOSSessionCookie)}`;
   },
-  60 * 10 * 1000
+  60 * 10 * 1000,
+  undefined,
+  true
 );
 
 export async function getWorkOSSessionFromCookie(
@@ -146,10 +139,11 @@ export async function getWorkOSSessionFromCookie(
         region
       );
       if (refreshedCookie) {
-        const { session } = await getWorkOSSessionFromCookie(refreshedCookie);
+        const { session, cookie } =
+          await getWorkOSSessionFromCookie(refreshedCookie);
         // Send the new cookie
         return {
-          cookie: refreshedCookie,
+          cookie: cookie || refreshedCookie,
           session,
         };
       } else {

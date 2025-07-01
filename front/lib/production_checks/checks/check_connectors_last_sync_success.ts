@@ -66,7 +66,9 @@ export const checkConnectorsLastSyncSuccess: CheckFunction = async (
   const connectors = (await listAllConnectors()).filter(
     (connector) =>
       // Ignore webhook-based connectors and webcrawlers
-      !isWebhookBasedProvider(connector.type) && connector.type !== "webcrawler"
+      !isWebhookBasedProvider(connector.type) &&
+      connector.type !== "webcrawler" &&
+      connector.type !== "slack_bot"
   );
   heartbeat();
 

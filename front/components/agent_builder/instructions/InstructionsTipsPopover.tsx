@@ -9,7 +9,9 @@ import { LightbulbIcon } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { useState } from "react";
 import React from "react";
+import { useWatch } from "react-hook-form";
 
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type {
   APIError,
   BuilderSuggestionsType,
@@ -28,13 +30,12 @@ type TipStatus = "loading" | "loaded" | "error";
 
 interface InstructionTipsPopoverProps {
   owner: WorkspaceType;
-  instructions: string;
 }
 
-export function InstructionTipsPopover({
-  owner,
-  instructions,
-}: InstructionTipsPopoverProps) {
+export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
+  const instructions = useWatch<AgentBuilderFormData, "instructions">({
+    name: "instructions",
+  });
   const [tips, setTips] = useState<string[]>(STATIC_TIPS);
   const [status, setStatus] = useState<TipStatus>("loaded");
   const [error, setError] = useState<APIError | null>(null);

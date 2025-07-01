@@ -106,7 +106,9 @@ export function ChildAgentConfigurationSection({
             <div className="ml-4 flex-shrink-0 self-start">
               <AssistantPicker
                 owner={owner}
-                assistants={agentConfigurations}
+                assistants={agentConfigurations.filter(
+                  (agent) => agent.sId !== selectedAgentId
+                )}
                 onItemClick={(agent) => {
                   onAgentSelect(agent.sId);
                 }}
@@ -127,7 +129,9 @@ export function ChildAgentConfigurationSection({
           <div className="flex h-full w-full items-center justify-center">
             <AssistantPicker
               owner={owner}
-              assistants={agentConfigurations}
+              assistants={agentConfigurations.filter(
+                (agent) => agent.sId !== selectedAgentId
+              )}
               onItemClick={(agent) => {
                 onAgentSelect(agent.sId);
               }}

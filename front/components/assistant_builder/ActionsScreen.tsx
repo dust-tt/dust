@@ -30,13 +30,7 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
 import type { ReactNode } from "react";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MCPActionHeader } from "@app/components/actions/MCPActionHeader";
 import { DataVisualization } from "@app/components/assistant_builder/actions/DataVisualization";
@@ -45,7 +39,8 @@ import {
   MCPAction,
 } from "@app/components/assistant_builder/actions/MCPAction";
 import { AddToolsDropdown } from "@app/components/assistant_builder/AddToolsDropdown";
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import type {
   AssistantBuilderActionAndDataVisualizationConfiguration,
@@ -69,7 +64,6 @@ import {
   MCP_SPECIFICATION,
 } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ModelConfigurationType,
@@ -165,6 +159,8 @@ export default function ActionsScreen({
   pendingAction,
   isFetchingActions = false,
 }: ActionScreenProps) {
+  const { isMCPServerViewsLoading } = useMCPServerViewsContext();
+
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -241,6 +237,8 @@ export default function ActionsScreen({
     },
     [setBuilderState, setEdited]
   );
+
+  const showSpinner = isFetchingActions || isMCPServerViewsLoading;
 
   return (
     <>
@@ -321,7 +319,7 @@ export default function ActionsScreen({
                 Need help? Check out our{" "}
                 <Hoverable
                   variant="highlight"
-                  href="https://docs.dust.tt/docs/data"
+                  href="https://docs.dust.tt/docs/tools"
                   target="_blank"
                 >
                   guide
@@ -351,6 +349,7 @@ export default function ActionsScreen({
               <AddKnowledgeDropdown
                 setAction={setAction}
                 mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
+                isLoading={isMCPServerViewsLoading}
               />
               <AddToolsDropdown
                 setBuilderState={setBuilderState}
@@ -360,6 +359,7 @@ export default function ActionsScreen({
                 defaultMCPServerViews={selectableDefaultMCPServerViews}
                 nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
                 reasoningModels={reasoningModels}
+                isLoading={isMCPServerViewsLoading}
               />
 
               <div className="flex-grow" />
@@ -387,12 +387,12 @@ export default function ActionsScreen({
           </div>
         )}
         <div className="flex h-full min-h-40 flex-col gap-4">
-          {isFetchingActions && (
+          {showSpinner && (
             <div className="flex h-36 w-full items-center justify-center rounded-xl">
               <Spinner />
             </div>
           )}
-          {!isFetchingActions &&
+          {!showSpinner &&
             (!isLegacyConfig && builderState.actions.length === 0 ? (
               <div className="flex h-36 w-full items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night">
                 <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -469,7 +469,7 @@ function NewActionModal({
     string | null
   >(null);
 
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   useEffect(() => {
     if (initialAction && !newActionConfig) {
@@ -645,7 +645,9 @@ function ActionCard({
   removeAction: () => void;
   isLegacyConfig: boolean;
 }) {
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews, isMCPServerViewsLoading } =
+    useMCPServerViewsContext();
+
   const spec =
     action.type === "DATA_VISUALIZATION"
       ? DATA_VISUALIZATION_SPECIFICATION
@@ -657,14 +659,17 @@ function ActionCard({
   }
 
   const mcpServerView =
-    action.type === "MCP"
+    action.type === "MCP" && !isMCPServerViewsLoading
       ? mcpServerViews.find(
           (mcpServerView) =>
             mcpServerView.sId === action.configuration.mcpServerViewId
         ) ?? null
       : null;
 
-  const actionError = hasActionError(action, mcpServerViews);
+  const actionError = !isMCPServerViewsLoading
+    ? hasActionError(action, mcpServerViews)
+    : false;
+
   return (
     <Card
       variant="primary"
@@ -742,7 +747,7 @@ function ActionConfigEditor({
   showInvalidActionDescError,
   hasFeature,
 }: ActionConfigEditorProps) {
-  const { spaces } = useContext(AssistantBuilderContext);
+  const { spaces } = useSpacesContext();
 
   // Only allow one space across all actions.
   const allowedSpaces = useMemo(() => {
@@ -825,7 +830,7 @@ function ActionEditor({
   setEdited,
   hasFeature,
 }: ActionEditorProps) {
-  const { mcpServerViews } = useContext(AssistantBuilderContext);
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const selectedMCPServerView =
     action.type === "MCP"
@@ -834,18 +839,6 @@ function ActionEditor({
             mcpServerView.sId === action.configuration.mcpServerViewId
         )
       : undefined;
-
-  const { connections, isConnectionsLoading } = useMCPServerConnections({
-    owner,
-    connectionType: "workspace",
-    disabled: !selectedMCPServerView?.server.authorization,
-  });
-
-  const connection = connections.find(
-    (c) =>
-      c.internalMCPServerId === selectedMCPServerView?.server.sId ||
-      c.remoteMCPServerId === selectedMCPServerView?.server.sId
-  );
 
   const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
 
@@ -856,9 +849,6 @@ function ActionEditor({
           {action.type === "MCP" && selectedMCPServerView ? (
             <MCPActionHeader
               mcpServer={selectedMCPServerView.server}
-              oAuthUseCase={selectedMCPServerView.oAuthUseCase}
-              isConnected={Boolean(connection)}
-              isConnectionsLoading={isConnectionsLoading}
               action={action}
             />
           ) : (
@@ -985,11 +975,13 @@ function AdvancedSettings({
 interface AddKnowledgeDropdownProps {
   mcpServerViewsWithKnowledge: (MCPServerViewType & { label: string })[];
   setAction: (action: AssistantBuilderSetActionType) => void;
+  isLoading: boolean;
 }
 
 function AddKnowledgeDropdown({
   setAction,
   mcpServerViewsWithKnowledge,
+  isLoading,
 }: AddKnowledgeDropdownProps) {
   return (
     <DropdownMenu modal={false}>
@@ -1001,26 +993,32 @@ function AddKnowledgeDropdown({
         className="w-[20rem] md:w-[22rem]"
         collisionPadding={10}
       >
-        {mcpServerViewsWithKnowledge.map((view) => {
-          const action = getDefaultMCPServerConfigurationWithId(view);
-          assert(action);
+        {isLoading ? (
+          <div className="flex h-56 w-full items-center justify-center rounded-xl">
+            <Spinner />
+          </div>
+        ) : (
+          mcpServerViewsWithKnowledge.map((view) => {
+            const action = getDefaultMCPServerConfigurationWithId(view);
+            assert(action);
 
-          return (
-            <DropdownMenuItem
-              truncateText
-              key={view.id}
-              onClick={() => {
-                setAction({
-                  type: "pending",
-                  action,
-                });
-              }}
-              icon={getAvatar(view.server)}
-              label={view.label}
-              description={view.server.description}
-            />
-          );
-        })}
+            return (
+              <DropdownMenuItem
+                truncateText
+                key={view.id}
+                onClick={() => {
+                  setAction({
+                    type: "pending",
+                    action,
+                  });
+                }}
+                icon={getAvatar(view.server)}
+                label={view.label}
+                description={view.server.description}
+              />
+            );
+          })
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

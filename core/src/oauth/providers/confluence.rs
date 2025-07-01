@@ -94,6 +94,7 @@ impl Provider for ConfluenceConnectionProvider {
             ),
             refresh_token: Some(refresh_token.to_string()),
             raw_json,
+            extra_metadata: None,
         })
     }
 

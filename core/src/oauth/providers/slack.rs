@@ -23,6 +23,11 @@ lazy_static! {
         env::var("OAUTH_SLACK_BOT_CLIENT_ID").expect("OAUTH_SLACK_BOT_CLIENT_ID must be set");
     static ref OAUTH_SLACK_BOT_CLIENT_SECRET: String = env::var("OAUTH_SLACK_BOT_CLIENT_SECRET")
         .expect("OAUTH_SLACK_BOT_CLIENT_SECRET must be set");
+    static ref OAUTH_SLACK_TOOLS_CLIENT_ID: String =
+        env::var("OAUTH_SLACK_TOOLS_CLIENT_ID").expect("OAUTH_SLACK_TOOLS_CLIENT_ID must be set");
+    static ref OAUTH_SLACK_TOOLS_CLIENT_SECRET: String =
+        env::var("OAUTH_SLACK_TOOLS_CLIENT_SECRET")
+            .expect("OAUTH_SLACK_TOOLS_CLIENT_SECRET must be set");
 }
 
 /// We support three Slack apps. Our default `connection` app (for data source connections) a
@@ -53,12 +58,10 @@ impl SlackConnectionProvider {
                 "{}:{}",
                 *OAUTH_SLACK_BOT_CLIENT_ID, *OAUTH_SLACK_BOT_CLIENT_SECRET
             )),
-            // TODO(spolu): the tools related use-cases are currently supported by the main app as
-            // connections but this will be migrated soon to a new app.
             SlackUseCase::PlatformActions | SlackUseCase::PersonalActions => {
                 general_purpose::STANDARD.encode(&format!(
                     "{}:{}",
-                    *OAUTH_SLACK_CLIENT_ID, *OAUTH_SLACK_CLIENT_SECRET
+                    *OAUTH_SLACK_TOOLS_CLIENT_ID, *OAUTH_SLACK_TOOLS_CLIENT_SECRET
                 ))
             }
         }
@@ -111,6 +114,22 @@ impl Provider for SlackConnectionProvider {
             )));
         }
 
+        let (team_id, team_name) = match raw_json["team"].is_object() {
+            true => (
+                raw_json["team"]["id"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("Missing `team_id` in response from Slack"))?,
+                raw_json["team"]["name"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("Missing `team_name` in response from Slack"))?,
+            ),
+            false => {
+                return Err(ProviderError::UnknownError(format!(
+                    "Missing `team` in response from Slack"
+                )))
+            }
+        };
+
         // Depending on the scopes we can get a bot or user access token.
         // For simplicity, we only support one of them at a time, the user access token is preferred.
 
@@ -130,7 +149,16 @@ impl Provider for SlackConnectionProvider {
             access_token: access_token.to_string(),
             access_token_expiry: None,
             refresh_token: None,
-
+            extra_metadata: Some(serde_json::Map::from_iter([
+                (
+                    "team_id".to_string(),
+                    serde_json::Value::String(team_id.to_string()),
+                ),
+                (
+                    "team_name".to_string(),
+                    serde_json::Value::String(team_name.to_string()),
+                ),
+            ])),
             raw_json,
         })
     }

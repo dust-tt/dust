@@ -1,51 +1,62 @@
 import {
   Button,
+  Card,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   InformationCircleIcon,
-  Label,
 } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
   REMOTE_MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useMCPServerToolsPermissions,
   useUpdateMCPServerToolsPermissions,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName, isAdmin } from "@app/types";
 
 interface ToolsListProps {
   owner: LightWorkspaceType;
-  tools: { name: string; description: string }[];
-  serverType: "remote" | "internal";
-  serverId: string;
-  canUpdate: boolean;
+  mcpServerView: MCPServerViewType;
+  forcedCanUpdate?: boolean;
 }
 
 // We disable buttons for Assistant Builder view because it would feel like
 // you can configure per agent
 export function ToolsList({
   owner,
-  tools,
-  serverType,
-  serverId,
-  canUpdate,
+  mcpServerView,
+  forcedCanUpdate,
 }: ToolsListProps) {
+  const canUpdate = useMemo(
+    () => (forcedCanUpdate !== undefined ? forcedCanUpdate : isAdmin(owner)),
+    [owner, forcedCanUpdate]
+  );
+  const serverType = useMemo(
+    () => getServerTypeAndIdFromSId(mcpServerView.server.sId).serverType,
+    [mcpServerView.server.sId]
+  );
+  const tools = useMemo(
+    () => mcpServerView.server.tools,
+    [mcpServerView.server.tools]
+  );
   const { toolsPermissions } = useMCPServerToolsPermissions({
     owner,
-    serverId,
+    serverId: mcpServerView.server.sId,
   });
 
   const { updateToolPermission } = useUpdateMCPServerToolsPermissions({
     owner,
-    serverId,
+    serverId: mcpServerView.server.sId,
   });
 
   const handleClick = (
@@ -68,6 +79,7 @@ export function ToolsList({
       {serverType === "remote" && (
         <ContentMessage
           className="mb-4 w-fit"
+          variant="blue"
           icon={InformationCircleIcon}
           title="User Approval Settings"
         >
@@ -88,10 +100,7 @@ export function ToolsList({
                   ? toolsPermissions[tool.name]
                   : FALLBACK_MCP_TOOL_STAKE_LEVEL;
                 return (
-                  <div
-                    key={index}
-                    className="flex flex-col gap-1 border-b border-border pb-2 last:border-b-0 last:pb-0"
-                  >
+                  <div key={index} className="flex flex-col gap-1 pb-2">
                     <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
                       {asDisplayName(tool.name)}
                     </h4>
@@ -101,30 +110,39 @@ export function ToolsList({
                       </p>
                     )}
                     {serverType === "remote" && (
-                      <div className="flex w-full flex-row items-center justify-end gap-2 pt-2">
-                        <Label className="w-full text-muted-foreground dark:text-muted-foreground-night">
-                          Tool stake setting
-                        </Label>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild disabled={!canUpdate}>
-                            <Button
-                              variant="outline"
-                              label={toolPermissionLabel[toolPermission]}
-                            />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            {REMOTE_MCP_TOOL_STAKE_LEVELS.map((permission) => (
-                              <DropdownMenuItem
-                                key={permission}
-                                onClick={() => {
-                                  handleClick(tool.name, permission);
-                                }}
-                                label={toolPermissionLabel[permission]}
-                              />
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                      <>
+                        <Card variant="primary" className="flex-col">
+                          <div className="heading-sm text-muted-foreground dark:text-muted-foreground-night">
+                            Tool stake setting
+                          </div>
+                          <div className="flex justify-end">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                asChild
+                                disabled={!canUpdate}
+                              >
+                                <Button
+                                  variant="outline"
+                                  label={toolPermissionLabel[toolPermission]}
+                                />
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                {REMOTE_MCP_TOOL_STAKE_LEVELS.map(
+                                  (permission) => (
+                                    <DropdownMenuItem
+                                      key={permission}
+                                      onClick={() => {
+                                        handleClick(tool.name, permission);
+                                      }}
+                                      label={toolPermissionLabel[permission]}
+                                    />
+                                  )
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </Card>
+                      </>
                     )}
                   </div>
                 );

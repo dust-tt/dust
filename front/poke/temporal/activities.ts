@@ -881,7 +881,5 @@ export async function deleteWorkOSOrganization({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const owner = auth.getNonNullableWorkspace();
-  await deleteWorksOSOrganizationWithWorkspace(owner);
+  await deleteWorksOSOrganizationWithWorkspace(workspaceId);
 }

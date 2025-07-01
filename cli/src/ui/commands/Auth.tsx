@@ -4,7 +4,7 @@ import Spinner from "ink-spinner";
 import { jwtDecode } from "jwt-decode";
 import fetch from "node-fetch";
 import open from "open";
-import type { FC} from "react";
+import type { FC } from "react";
 import React, { useCallback, useEffect, useState } from "react";
 
 import { getDustClient, resetDustClient } from "../../utils/dustClient.js";
@@ -53,11 +53,9 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
   const [authComplete, setAuthComplete] = useState(false);
   const [userInfo, setUserInfo] = useState<MeResponseType["user"] | null>(null);
 
-  const auth0Domain = process.env.AUTH0_CLIENT_DOMAIN || "";
-  const clientId = process.env.AUTH0_CLIENT_ID || "";
-  const audience = process.env.DUST_API_AUDIENCE || "";
-  const scope =
-    "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
+  const workOSDomain = process.env.WORKOS_DOMAIN || "";
+  const clientId = process.env.WORKOS_CLIENT_ID || "";
+  const scope = "openid profile email";
 
   const startPolling = useCallback(
     (deviceCodeData: DeviceCodeResponse) => {
@@ -77,17 +75,20 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
         }
 
         try {
-          const response = await fetch(`https://${auth0Domain}/oauth/token`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: new URLSearchParams({
-              grant_type: "urn:ietf:params:oauth:grant-type:device_code",
-              device_code: deviceCodeData.device_code,
-              client_id: clientId,
-            }),
-          });
+          const response = await fetch(
+            `https://${workOSDomain}/user_management/authenticate`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: new URLSearchParams({
+                grant_type: "urn:ietf:params:oauth:grant-type:device_code",
+                device_code: deviceCodeData.device_code,
+                client_id: clientId,
+              }),
+            }
+          );
 
           const data = (await response.json()) as
             | TokenResponse
@@ -120,10 +121,10 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
                 data.access_token
               );
               // Construct the claim name dynamically
-              const claimNamespace = process.env.AUTH0_CLAIM_NAMESPACE || ""; // Use env var with fallback
+              const claimNamespace = process.env.WORKOS_CLAIM_NAMESPACE || ""; // Use env var with fallback
               const regionClaimName = `${claimNamespace}region`;
 
-              // Use the specific claim namespace from Auth0
+              // Use the specific claim namespace from Workos
               const region = decodedToken[regionClaimName];
               if (region) {
                 // Save the exact region value (e.g., 'us-central1', 'europe-west1')
@@ -159,7 +160,7 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
 
       setTimeout(pollForToken, pollInterval * 1000);
     },
-    [clientId, auth0Domain]
+    [clientId, workOSDomain]
   );
 
   const startDeviceFlow = useCallback(async () => {
@@ -188,17 +189,19 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
 
     const response = await (async () => {
       try {
-        return await fetch(`https://${auth0Domain}/oauth/device/code`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({
-            client_id: clientId,
-            audience,
-            scope,
-          }),
-        });
+        return await fetch(
+          `https://${workOSDomain}/user_management/authorize/device`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              client_id: clientId,
+              scope,
+            }),
+          }
+        );
       } catch (err) {
         setError(normalizeError(err).message);
         return null;
@@ -222,7 +225,7 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
 
     // Start polling for the token
     startPolling(data);
-  }, [force, clientId, auth0Domain, audience, scope, startPolling]);
+  }, [force, clientId, workOSDomain, scope, startPolling]);
 
   const handleWorkspaceSelectionComplete = useCallback(async () => {
     setShowWorkspaceSelector(false);

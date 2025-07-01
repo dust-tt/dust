@@ -9,6 +9,8 @@ import { isDevelopment } from "@connectors/types";
 export const DIRECTORY_PLACEHOLDER_FILE = ".gitkeep";
 export const DIRECTORY_PLACEHOLDER_METADATA = "isDirectoryPlaceholder";
 
+const DEFAULT_MAX_RESULTS = 1000;
+
 /**
  * A wrapper around GCS operations for GitHub repository code sync.
  * Handles the temporary storage of repository files during sync process.
@@ -45,10 +47,29 @@ export class GCSRepositoryManager {
   /**
    * List all files in a repository's GCS path.
    */
-  async listFiles(gcsBasePath: string): Promise<Array<File>> {
-    const [files] = await this.bucket.getFiles({ prefix: gcsBasePath });
+  async listFiles(
+    gcsBasePath: string,
+    options?: {
+      maxResults?: number;
+      pageToken?: string;
+    }
+  ): Promise<{
+    files: Array<File>;
+    nextPageToken?: string;
+    hasMore: boolean;
+  }> {
+    const [files, details] = await this.bucket.getFiles({
+      prefix: gcsBasePath,
+      maxResults: options?.maxResults || DEFAULT_MAX_RESULTS,
+      pageToken: options?.pageToken,
+      autoPaginate: false, // Don't auto-paginate, we'll handle it manually.
+    });
 
-    return files;
+    return {
+      files,
+      nextPageToken: details?.pageToken,
+      hasMore: details?.pageToken !== undefined,
+    };
   }
 
   /**
@@ -136,91 +157,5 @@ export class GCSRepositoryManager {
       );
       throw new Error(`Failed to delete repository: ${prefix}`);
     }
-  }
-
-  /**
-   * Organize files by directory depth for hierarchical processing.
-   */
-  async organizeFilesByDepth(
-    gcsBasePath: string,
-    batchSize: number = 50
-  ): Promise<{
-    directoryBatches: Array<{
-      depth: number;
-      directories: Array<{
-        gcsPath: string;
-        dirPath: string;
-      }>;
-    }>;
-    fileBatches: Array<{
-      depth: number;
-      files: Array<{
-        gcsPath: string;
-        relativePath: string;
-      }>;
-    }>;
-  }> {
-    const files = await this.listFiles(gcsBasePath);
-
-    const dirsByDepth = new Map<number, Set<string>>();
-    const filesByDepth = new Map<number, string[]>();
-
-    for (const file of files) {
-      const relativePath = file.name.replace(`${gcsBasePath}/`, "");
-
-      if (relativePath.endsWith(`/${DIRECTORY_PLACEHOLDER_FILE}`)) {
-        // Directory placeholder.
-        const dirPath = relativePath.replace(
-          `/${DIRECTORY_PLACEHOLDER_FILE}`,
-          ""
-        );
-        const depth = dirPath.split("/").length;
-
-        if (!dirsByDepth.has(depth)) {
-          dirsByDepth.set(depth, new Set());
-        }
-        dirsByDepth.get(depth)!.add(dirPath);
-      } else {
-        // Regular file.
-        const pathParts = relativePath.split("/");
-        const depth = pathParts.length - 1;
-
-        if (!filesByDepth.has(depth)) {
-          filesByDepth.set(depth, []);
-        }
-        filesByDepth.get(depth)!.push(file.name);
-      }
-    }
-
-    // Convert to sorted batches.
-    const directoryBatches = Array.from(dirsByDepth.entries())
-      .sort(([a], [b]) => a - b) // Sort by depth (shallow first).
-      .map(([depth, dirs]) => ({
-        depth,
-        directories: Array.from(dirs).map((dirPath) => ({
-          gcsPath: `${gcsBasePath}/${dirPath}/${DIRECTORY_PLACEHOLDER_FILE}`,
-          dirPath,
-        })),
-      }));
-
-    const fileBatches = Array.from(filesByDepth.entries())
-      .sort(([a], [b]) => a - b)
-      .map(([depth, files]) => {
-        // Split large depth groups into smaller batches.
-        const batches = [];
-        for (let i = 0; i < files.length; i += batchSize) {
-          batches.push({
-            depth,
-            files: files.slice(i, i + batchSize).map((gcsPath) => ({
-              gcsPath,
-              relativePath: gcsPath.replace(`${gcsBasePath}/`, ""),
-            })),
-          });
-        }
-        return batches;
-      })
-      .flat();
-
-    return { directoryBatches, fileBatches };
   }
 }

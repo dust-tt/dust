@@ -12,7 +12,6 @@ import {
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
@@ -28,7 +27,6 @@ import {
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import type { ConversationWithoutContentType, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
 
@@ -38,26 +36,6 @@ async function destroyActionsRelatedResources(
   auth: Authenticator,
   agentMessageIds: Array<ModelId>
 ) {
-  // First, retrieve the retrieval actions and documents.
-  const retrievalActions = await AgentRetrievalAction.findAll({
-    attributes: ["id"],
-    where: {
-      agentMessageId: { [Op.in]: agentMessageIds },
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-
-  // Destroy retrieval resources.
-  await RetrievalDocumentResource.deleteAllForActions(
-    auth,
-    retrievalActions.map((a) => a.id)
-  );
-
-  await AgentRetrievalAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-
-  // Destroy other actions.
   await AgentTablesQueryAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });

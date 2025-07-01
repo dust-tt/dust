@@ -116,6 +116,12 @@ export function ChangeMemberModal({
                           variant="warning"
                           label="Revoke member access"
                           size="sm"
+                          disabled={member.origin === "provisioned"}
+                          tooltip={
+                            member.origin === "provisioned"
+                              ? "This user is managed by your identity provider."
+                              : undefined
+                          }
                         />
                       </DialogTrigger>
                       <DialogContent>
@@ -161,10 +167,13 @@ export function ChangeMemberModal({
                       </DialogContent>
                     </Dialog>
                   </div>
-                  <Page.P>
-                    Deleting a member will remove them from the workspace. They
-                    will be able to rejoin if they have an invitation link.
-                  </Page.P>
+                  {member.origin !== "provisioned" && (
+                    <Page.P>
+                      Deleting a member will remove them from the workspace.
+                      They will be able to rejoin if they have an invitation
+                      link.
+                    </Page.P>
+                  )}
                 </div>
               </div>
             </SheetContainer>

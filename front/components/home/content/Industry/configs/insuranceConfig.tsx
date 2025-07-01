@@ -1,8 +1,21 @@
 import { ActionHospitalIcon } from "@dust-tt/sparkle";
 
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
+import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
 export const insuranceConfig: IndustryPageConfig = {
+  layout: createLayoutConfig([
+    "hero",
+    "aiAgents",
+    "trustedBy",
+    "painPoints",
+    "dustInAction",
+    "impactMetrics",
+    "demoVideo",
+    "testimonial",
+    "customerStories",
+    "justUseDust",
+  ]),
   hero: {
     chip: {
       label: "Insurance",
@@ -84,12 +97,12 @@ export const insuranceConfig: IndustryPageConfig = {
     ],
   },
   dustInAction: {
-    title: "Dust in Action",
+    title: "Dust in action",
     useCases: [
       {
         title: "Customer service",
-        image: "/static/landing/industry/features/UxWriter.svg",
-        bgColor: "bg-orange-100",
+        image: "/static/landing/industry/features/UxWriter.webp",
+        bgColor: "bg-golden-100",
         features: [
           {
             icon: "bg-golden-500",
@@ -119,7 +132,7 @@ export const insuranceConfig: IndustryPageConfig = {
       },
       {
         title: "Business development",
-        image: "/static/landing/industry/features/Compliance_verification.svg",
+        image: "/static/landing/industry/features/Compliance_verification.webp",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -150,8 +163,8 @@ export const insuranceConfig: IndustryPageConfig = {
       },
       {
         title: "Legal & compliance support",
-        image: "/static/landing/industry/features/Legal_review_2.svg",
-        bgColor: "bg-blue-100",
+        image: "/static/landing/industry/features/Legal_review_3.webp",
+        bgColor: "bg-green-100",
         features: [
           {
             icon: "bg-golden-500",
@@ -175,7 +188,7 @@ export const insuranceConfig: IndustryPageConfig = {
       },
       {
         title: "Intelligence",
-        image: "/static/landing/industry/features/Radar_AIDigest.svg",
+        image: "/static/landing/industry/features/Radar_AIDigest.webp",
         bgColor: "bg-gray-950",
         features: [
           {

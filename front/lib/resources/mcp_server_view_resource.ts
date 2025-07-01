@@ -417,7 +417,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       );
     }
 
-    const [affectedCount] = await this.update({ oAuthUseCase });
+    const [affectedCount] = await this.update({
+      oAuthUseCase,
+      editedAt: new Date(),
+      editedByUserId: auth.getNonNullableUser().id,
+    });
     return new Ok(affectedCount);
   }
 

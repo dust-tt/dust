@@ -665,12 +665,20 @@ export async function syncZendeskTicketBatchActivity({
 
   const comments2d = await concurrentExecutor(
     ticketsToSync,
-    async (ticket) =>
-      listZendeskTicketComments({
+    async (ticket) => {
+      const comments = await listZendeskTicketComments({
         accessToken,
         brandSubdomain,
         ticketId: ticket.id,
-      }),
+      });
+      if (comments.length > 0) {
+        logger.info(
+          { ...loggerArgs, ticketId: ticket.id },
+          "[Zendesk] No comment for ticket."
+        );
+      }
+      return comments;
+    },
     { concurrency: 3, onBatchComplete: heartbeat }
   );
   const users = configuration.hideCustomerDetails

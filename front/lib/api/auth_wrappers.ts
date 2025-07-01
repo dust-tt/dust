@@ -139,7 +139,7 @@ export function withSessionAuthenticationForWorkspace<T>(
       }
 
       // Set permanent cookie with current workspace ID
-      res.setHeader(
+      res.appendHeader(
         "Set-Cookie",
         `lastWorkspaceId=${wId}; Path=/; SameSite=Lax; Max-Age=31536000`
       );

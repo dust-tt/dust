@@ -38,6 +38,14 @@ interface AppProps {
       type: "string";
       shortFlag: "a";
     };
+    message: {
+      type: "string";
+      shortFlag: "m";
+    };
+    conversationId: {
+      type: "string";
+      shortFlag: "c";
+    };
   }>;
 }
 
@@ -64,7 +72,7 @@ const App: FC<AppProps> = ({ cli }) => {
     case "agents-mcp":
       return <AgentsMCP port={flags.port} sId={flags.sId} />;
     case "chat":
-      return <Chat sId={flags.sId?.[0]} agentSearch={flags.agent} />;
+      return <Chat sId={flags.sId?.[0]} agentSearch={flags.agent} message={flags.message} conversationId={flags.conversationId} />;
     case "cache:clear":
       return <Cache />;
     case "help":

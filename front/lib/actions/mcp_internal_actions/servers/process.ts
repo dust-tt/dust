@@ -26,8 +26,8 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ProcessActionOutputsType } from "@app/lib/actions/process";
+import { applyDataSourceFilters } from "@app/lib/actions/process";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
-import { applyDataSourceFilters } from "@app/lib/actions/retrieval";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionGeneratedFileType,

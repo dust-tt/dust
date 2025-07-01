@@ -1,23 +1,28 @@
 import {
+  assertNever,
   CONTENT_NODE_MIME_TYPES,
   isDustMimeType,
   isIncludableInternalMimeType,
 } from "@dust-tt/client";
+import assert from "assert";
 
 import type {
   BaseConversationAttachmentType,
   ConversationAttachmentType,
   ConversationContentNodeType,
+  ConversationFileType,
 } from "@app/lib/actions/conversation/list_files";
 import type {
+  ContentNodeContentFragmentType,
   ConversationType,
+  FileContentFragmentType,
   SupportedContentFragmentType,
 } from "@app/types";
 import {
   isAgentMessageType,
   isContentFragmentType,
-  isContentNodeAttachment,
-  isFileAttachment,
+  isContentNodeContentFragment,
+  isFileContentFragment,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
 } from "@app/types";
@@ -78,14 +83,88 @@ function isExtractableContentType(
   return true;
 }
 
-function isListableContentType(
-  contentType: SupportedContentFragmentType
-): boolean {
-  // We allow listing all content-types that are not images.
-  return !isSupportedImageContentType(contentType);
+export function getContentFragmentFileAttachment(
+  cf: FileContentFragmentType
+): ConversationFileType {
+  const fileId = cf.fileId;
+  assert(fileId, `File attachment must have a fileId (sId: ${cf.sId})`);
+
+  // Here, snippet not null is actually to detect file attachments that are prior to the JIT
+  // actions, and differentiate them from the newer file attachments that do have a snippet.
+  // Former ones cannot be used in JIT.
+  const canDoJIT = cf.snippet !== null;
+  const isQueryable = canDoJIT && isQueryableContentType(cf.contentType);
+  const isIncludable = isConversationIncludableFileContentType(cf.contentType);
+  const isSearchable = canDoJIT && isSearchableContentType(cf.contentType);
+  const isExtractable = canDoJIT && isExtractableContentType(cf.contentType);
+  const baseAttachment: BaseConversationAttachmentType = {
+    title: cf.title,
+    contentType: cf.contentType,
+    snippet: cf.snippet,
+    contentFragmentVersion: cf.contentFragmentVersion,
+    // Backward compatibility: we fallback to the fileId if no generated tables are mentionned
+    // but the file is queryable.
+    generatedTables:
+      cf.generatedTables.length > 0
+        ? cf.generatedTables
+        : isQueryable
+          ? [fileId]
+          : [],
+    isIncludable,
+    isQueryable,
+    isSearchable,
+    isExtractable,
+  };
+
+  return {
+    ...baseAttachment,
+    fileId,
+  };
 }
 
-// Moved to a separate file to avoid circular dependency issue.
+export function getContentFragmentContentNodeAttachment(
+  cf: ContentNodeContentFragmentType
+): ConversationContentNodeType {
+  const isQueryable =
+    isQueryableContentType(cf.contentType) || cf.nodeType === "table";
+  const isIncludable =
+    cf.nodeType !== "folder" &&
+    isConversationIncludableFileContentType(cf.contentType) &&
+    // Tables from knowledge are not materialized as raw content. As such, they cannot be
+    // included.
+    !isQueryable;
+  // Tables from knowledge are not materialized as raw content. As such, they cannot be
+  // searched--except for notion databases, that may have children.
+  const isUnmaterializedTable =
+    isQueryable && cf.contentType !== CONTENT_NODE_MIME_TYPES.NOTION.DATABASE;
+  const isSearchable =
+    isSearchableContentType(cf.contentType) && !isUnmaterializedTable;
+  const isExtractable =
+    isExtractableContentType(cf.contentType) && !isUnmaterializedTable;
+
+  const baseAttachment: BaseConversationAttachmentType = {
+    title: cf.title,
+    contentType: cf.contentType,
+    snippet: null,
+    contentFragmentVersion: cf.contentFragmentVersion,
+    // Backward compatibility: we fallback to the fileId if no generated tables are mentionned
+    // but the file is queryable.
+    generatedTables: isQueryable ? [cf.nodeId] : [],
+    isIncludable,
+    isQueryable,
+    isSearchable,
+    isExtractable,
+  };
+
+  return {
+    ...baseAttachment,
+    nodeDataSourceViewId: cf.nodeDataSourceViewId,
+    contentFragmentId: cf.contentFragmentId,
+    nodeId: cf.nodeId,
+    nodeType: cf.nodeType,
+  };
+}
+
 export function listFiles(
   conversation: ConversationType
 ): ConversationAttachmentType[] {
@@ -93,79 +172,23 @@ export function listFiles(
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
 
-    if (
-      isContentFragmentType(m) &&
-      isListableContentType(m.contentType) &&
-      m.contentFragmentVersion === "latest"
-    ) {
-      if (isFileAttachment(m) || isContentNodeAttachment(m)) {
-        // Here, snippet not null is actually to detect file attachments that are prior to the JIT
-        // actions, and differentiate them from the newer file attachments that do have a snippet.
-        // Former ones cannot be used in JIT. But for content node fragments, with a node id rather
-        // than a file id, we don't care about the snippet.
-        const canDoJIT = m.snippet !== null || isContentNodeAttachment(m);
-        const isQueryable =
-          canDoJIT &&
-          (isQueryableContentType(m.contentType) || m.nodeType === "table");
-        const isContentNodeTable = isContentNodeAttachment(m) && isQueryable;
-        const isIncludable =
-          m.nodeType !== "folder" &&
-          isConversationIncludableFileContentType(m.contentType) &&
-          // Tables from knowledge are not materialized as raw content. As such, they cannot be
-          // included.
-          !isContentNodeTable;
-        // Tables from knowledge are not materialized as raw content. As such, they cannot be
-        // searched--except for notion databases, that may have children.
-        const isUnmaterializedTable =
-          isContentNodeTable &&
-          m.contentType !== CONTENT_NODE_MIME_TYPES.NOTION.DATABASE;
-        const isSearchable =
-          canDoJIT &&
-          isSearchableContentType(m.contentType) &&
-          !isUnmaterializedTable;
-        const isExtractable =
-          canDoJIT &&
-          isExtractableContentType(m.contentType) &&
-          !isUnmaterializedTable;
-        const baseAttachment: BaseConversationAttachmentType = {
-          title: m.title,
-          contentType: m.contentType,
-          snippet: m.snippet,
-          contentFragmentVersion: m.contentFragmentVersion,
-          // Backward compatibility: we fallback to the fileId if no generated tables are mentionned
-          // but the file is queryable.
-          generatedTables:
-            m.generatedTables.length > 0
-              ? m.generatedTables
-              : isQueryable
-                ? [
-                    m.fileId ||
-                      m.nodeId ||
-                      "unreachable_either_file_id_or_node_id_must_be_present",
-                  ]
-                : [],
-          isIncludable,
-          isQueryable,
-          isSearchable,
-          isExtractable,
-        };
+    if (isContentFragmentType(m)) {
+      // We don't list images.
+      if (isSupportedImageContentType(m.contentType)) {
+        continue;
+      }
 
-        if (isContentNodeAttachment(m)) {
-          files.push({
-            ...baseAttachment,
-            nodeDataSourceViewId: m.nodeDataSourceViewId,
-            contentFragmentId: m.contentFragmentId,
-            nodeId: m.nodeId,
-            nodeType: m.nodeType,
-          });
-        }
+      // Only list the latest version of a content fragment.
+      if (m.contentFragmentVersion !== "latest") {
+        continue;
+      }
 
-        if (isFileAttachment(m)) {
-          files.push({
-            ...baseAttachment,
-            fileId: m.fileId,
-          });
-        }
+      if (isFileContentFragment(m)) {
+        files.push(getContentFragmentFileAttachment(m));
+      } else if (isContentNodeContentFragment(m)) {
+        files.push(getContentFragmentContentNodeAttachment(m));
+      } else {
+        assertNever(m);
       }
     } else if (isAgentMessageType(m)) {
       const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
@@ -194,6 +217,8 @@ export function listFiles(
           isExtractable,
         });
       }
+    } else {
+      continue;
     }
   }
 

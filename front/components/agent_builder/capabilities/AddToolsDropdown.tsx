@@ -8,31 +8,39 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { uniqueId } from "lodash";
+import type { FieldArray, FieldArrayWithId } from "react-hook-form";
 
-import { useAgentBuilderCapabilitiesContext } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesContext";
+import type { AgentBuilderAction } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getDataVisualizationActionConfiguration } from "@app/components/assistant_builder/types";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 
-export function AddToolsDropdown() {
-  const { actions, setActions } = useAgentBuilderCapabilitiesContext();
+interface AddToolsDropdownProps {
+  tools: FieldArrayWithId<AgentBuilderFormData, "actions">[];
+  addTools: (
+    value:
+      | FieldArray<AgentBuilderFormData, "actions">
+      | FieldArray<AgentBuilderFormData, "actions">[]
+  ) => void;
+}
 
+export function AddToolsDropdown({ tools, addTools }: AddToolsDropdownProps) {
   function onClickDataVisualization() {
     const dataVisualizationConfig = getDataVisualizationActionConfiguration();
     if (!dataVisualizationConfig) {
       return;
     }
 
-    const newAction = {
+    // The configuration already has an id, but we ensure it matches our expected type
+    const newAction: AgentBuilderAction = {
       ...dataVisualizationConfig,
-      id: uniqueId(),
+      id: dataVisualizationConfig.id,
     };
-
-    setActions((prevActions) => [...prevActions, newAction]);
+    addTools(newAction);
   }
 
-  const hasDataVisualization = actions.some(
-    (action) => action.type === "DATA_VISUALIZATION"
+  const hasDataVisualization = tools.some(
+    (action: AgentBuilderAction) => action.type === "DATA_VISUALIZATION"
   );
 
   return (

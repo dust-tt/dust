@@ -7,6 +7,7 @@ import { dateToHumanReadable } from "@app/types";
 
 type FeatureFlagsDisplayType = {
   name: WhitelistableFeature;
+  description: string;
   enabled: boolean;
   enabledAt: string | null;
 };
@@ -27,6 +28,17 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
               }
             />
           </div>
+        );
+      },
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row }) => {
+        return (
+          <span className="text-sm text-gray-600 dark:text-gray-600-night">
+            {row.original.description}
+          </span>
         );
       },
     },

@@ -11,9 +11,11 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { ModelId } from "@app/types";
+import type { AgentStatus, ModelId } from "@app/types";
 
-async function findWorkspacesWithReasoningConfigurations(): Promise<ModelId[]> {
+async function findWorkspacesWithReasoningConfigurations(
+  agentStatus: AgentStatus
+): Promise<ModelId[]> {
   const reasoningConfigurations = await AgentReasoningConfiguration.findAll({
     attributes: ["workspaceId"],
     where: {
@@ -27,7 +29,7 @@ async function findWorkspacesWithReasoningConfigurations(): Promise<ModelId[]> {
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -43,9 +45,11 @@ async function findWorkspacesWithReasoningConfigurations(): Promise<ModelId[]> {
 async function migrateWorkspaceReasoningActions(
   auth: Authenticator,
   {
+    agentStatus,
     execute,
     parentLogger,
   }: {
+    agentStatus: AgentStatus;
     execute: boolean;
     parentLogger: typeof Logger;
   }
@@ -72,7 +76,7 @@ async function migrateWorkspaceReasoningActions(
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -182,11 +186,20 @@ makeScript(
       description: "Workspace ID to start from",
       required: false,
     },
+    agentStatus: {
+      type: "string",
+      description: "Agent status to filter on",
+      required: false,
+      default: "active",
+      choices: ["active", "archived", "draft"],
+    },
   },
-  async ({ execute, startFromWorkspaceId }, parentLogger) => {
+  async ({ execute, startFromWorkspaceId, agentStatus }, parentLogger) => {
     const now = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
-    const workspaceIds = await findWorkspacesWithReasoningConfigurations();
+    const workspaceIds = await findWorkspacesWithReasoningConfigurations(
+      agentStatus as AgentStatus
+    );
     const workspaces = await WorkspaceModel.findAll({
       where: {
         id: { [Op.in]: workspaceIds },
@@ -202,6 +215,7 @@ makeScript(
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
       const workspaceRevertSql = await migrateWorkspaceReasoningActions(auth, {
+        agentStatus: agentStatus as AgentStatus,
         execute,
         parentLogger,
       });

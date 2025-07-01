@@ -99,6 +99,7 @@ impl Provider for GoogleDriveConnectionProvider {
             ),
             refresh_token: Some(refresh_token.to_string()),
             raw_json,
+            extra_metadata: None,
         })
     }
 

@@ -351,6 +351,7 @@ export function useFileUploaderService(
         const alreadyUploaded = messages.some(
           (m) =>
             m.type === "content_fragment" &&
+            m.contentFragmentType === "file" &&
             m.title === title &&
             m.textBytes === new Blob([tabContent.content ?? ""]).size
         );

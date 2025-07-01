@@ -1,6 +1,7 @@
-import { useContext, useMemo } from "react";
+import { useMemo } from "react";
 
-import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import type {
   AssistantBuilderMCPOrVizState,
   AssistantBuilderState,
@@ -38,7 +39,8 @@ export const isUsableInKnowledge = (
 };
 
 export const useBuilderActionInfo = (builderState: AssistantBuilderState) => {
-  const { spaces, mcpServerViews } = useContext(AssistantBuilderContext);
+  const { spaces } = useSpacesContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
 
   const configurableActions = builderState.actions;
 

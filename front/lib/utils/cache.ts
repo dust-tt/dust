@@ -39,7 +39,8 @@ export function cacheWithRedis<T, Args extends unknown[]>(
   fn: CacheableFunction<JsonSerializable<T>, Args>,
   resolver: KeyResolver<Args>,
   ttlMs: number,
-  redisUri?: string
+  redisUri?: string,
+  useDistributedLock: boolean = false
 ): (...args: Args) => Promise<JsonSerializable<T>> {
   if (ttlMs > 60 * 60 * 24 * 1000) {
     throw new Error("ttlMs should be less than 24 hours");
@@ -69,10 +70,28 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       }
 
       // specific try-finally to ensure unlock is called only after lock
+      let lockValue: string | undefined;
       try {
         // if value not found, lock, recheck and set
         // we avoid locking for the first read to allow parallel calls to redis if the value is set
-        await lock(key);
+        if (useDistributedLock) {
+          while (!lockValue) {
+            lockValue = await distributedLock(redisCli, key);
+
+            if (!lockValue) {
+              // If lock is not acquired, wait and retry.
+              await new Promise((resolve) => setTimeout(resolve, 100));
+              // Check first if value was set while we were waiting.
+              // Most likely, the value will be set by the lock owner when it's done.
+              cacheVal = await redisCli.get(key);
+              if (cacheVal) {
+                return JSON.parse(cacheVal) as JsonSerializable<T>;
+              }
+            }
+          }
+        } else {
+          await lock(key);
+        }
         cacheVal = await redisCli.get(key);
         if (cacheVal) {
           return JSON.parse(cacheVal) as JsonSerializable<T>;
@@ -84,7 +103,13 @@ export function cacheWithRedis<T, Args extends unknown[]>(
         });
         return result;
       } finally {
-        unlock(key);
+        if (useDistributedLock) {
+          if (lockValue) {
+            await distributedUnlock(redisCli, key, lockValue);
+          }
+        } else {
+          unlock(key);
+        }
       }
     } finally {
       if (redisCli) {
@@ -125,4 +150,51 @@ function unlock(key: string) {
     throw new Error("Unreachable: unlock called without lock");
   }
   unlockFn();
+}
+
+// Distributed lock implementation using Redis
+// Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.
+async function distributedLock(
+  redisCli: Awaited<ReturnType<typeof redisClient>>,
+  key: string
+): Promise<string | undefined> {
+  const lockKey = `lock:${key}`;
+  const lockValue = `${Date.now()}-${Math.random()}`;
+  const lockTimeout = 5000; // 5 seconds timeout
+
+  // Try to acquire the lock using SET with NX and PX options
+  const result = await redisCli.set(lockKey, lockValue, {
+    NX: true,
+    PX: lockTimeout,
+  });
+
+  if (result !== "OK") {
+    // Lock acquisition failed, return undefined - no lock value.
+    return undefined;
+  }
+
+  // Return the lock value that can be used to unlock.
+  return lockValue;
+}
+
+async function distributedUnlock(
+  redisCli: Awaited<ReturnType<typeof redisClient>>,
+  key: string,
+  lockValue: string
+): Promise<void> {
+  const lockKey = `lock:${key}`;
+
+  // Use Lua script to ensure atomic unlock (only delete if we own the lock: lock value matches)
+  const luaScript = `
+    if redis.call("get", KEYS[1]) == ARGV[1] then
+      return redis.call("del", KEYS[1])
+    else
+      return 0
+    end
+  `;
+
+  await redisCli.eval(luaScript, {
+    keys: [lockKey],
+    arguments: [lockValue],
+  });
 }

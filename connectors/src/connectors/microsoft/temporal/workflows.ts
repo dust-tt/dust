@@ -205,14 +205,12 @@ export async function microsoftGarbageCollectionWorkflow({
 }: {
   connectorId: number;
 }) {
-  const rootNodeIds = await getRootNodesToSync(connectorId);
   const startGarbageCollectionTs = new Date().getTime();
   let idCursor: number | null = 0;
   while (idCursor !== null) {
     idCursor = await microsoftGarbageCollectionActivity({
       connectorId,
       idCursor,
-      rootNodeIds,
       startGarbageCollectionTs,
     });
     await sleep("30 seconds");

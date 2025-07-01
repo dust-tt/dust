@@ -22,7 +22,6 @@ import {
   isMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
-  isRetrievalConfiguration,
   isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -180,8 +179,6 @@ function renderOtherAction(
       order: 3,
     };
   } else if (isBrowseConfiguration(action)) {
-    return null;
-  } else if (isRetrievalConfiguration(action)) {
     return null;
   } else if (isTablesQueryConfiguration(action)) {
     return null;

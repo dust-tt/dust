@@ -3,7 +3,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
-import { Err, maxFileSizeToHumanReadable, Ok, removeNulls } from "@app/types";
+import { Err, fileSizeToHumanReadable, Ok, removeNulls } from "@app/types";
 
 const DATA_SOURCE_STATISTICS_CONCURRENCY = 10;
 
@@ -100,11 +100,11 @@ export async function computeWorkspaceStatistics(
   );
 
   return new Ok({
-    text_size: maxFileSizeToHumanReadable(stats.text_size, 2),
+    text_size: fileSizeToHumanReadable(stats.text_size, 2),
     document_count: stats.document_count,
     dataSources: stats.dataSources.map((dataSource) => ({
       ...dataSource,
-      text_size: maxFileSizeToHumanReadable(dataSource.text_size, 2),
+      text_size: fileSizeToHumanReadable(dataSource.text_size, 2),
     })),
   });
 }

@@ -16,6 +16,10 @@ export type PostWorkspaceResponseBody = {
   workspace: WorkspaceType;
 };
 
+export type GetWorkspaceResponseBody = {
+  workspace: WorkspaceType;
+};
+
 const WorkspaceNameUpdateBodySchema = t.type({
   name: t.string,
 });
@@ -48,7 +52,9 @@ const PostWorkspaceRequestBodySchema = t.union([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostWorkspaceResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetWorkspaceResponseBody | PostWorkspaceResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
@@ -59,12 +65,16 @@ async function handler(
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `admins` for the current workspace can modify it.",
+          "Only users that are `admins` for the current workspace can access this endpoint.",
       },
     });
   }
 
   switch (req.method) {
+    case "GET":
+      res.status(200).json({ workspace: owner });
+      return;
+
     case "POST":
       const bodyValidation = PostWorkspaceRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
@@ -150,7 +160,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, POST or GET is expected.",
         },
       });
   }

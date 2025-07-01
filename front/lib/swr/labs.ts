@@ -118,9 +118,16 @@ export function useUpdateTranscriptsConfiguration({
     sendNotification({
       type: "success",
       title: "Success!",
-      description: data.dataSourceViewId
-        ? "We will now store your meeting transcripts."
-        : "We will no longer store your meeting transcripts.",
+      description:
+        // Check if we're updating processing (isActive field)
+        data.isActive !== undefined
+          ? data.isActive
+            ? "We will now process your meeting transcripts."
+            : "We will no longer process your meeting transcripts."
+          : // Check if we're updating storage (dataSourceViewId field)
+            data.dataSourceViewId
+            ? "We will now store your meeting transcripts."
+            : "We will no longer store your meeting transcripts.",
     });
     return new Ok(undefined);
   };

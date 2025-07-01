@@ -2,9 +2,9 @@ import assert from "assert";
 import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 
-import logger from "@connectors/logger/logger";
 import { dbConfig } from "@connectors/resources/storage/config";
 import { isDevelopment } from "@connectors/types";
+import { getStatsDClient } from "@connectors/types/shared/statsd";
 
 // Directly require 'pg' here to make sure we are using the same version of the
 // package as the one used by pg package.
@@ -39,6 +39,9 @@ if (process.env.NODE_ENV === "test") {
   Sequelize.useCLS(namespace);
 }
 
+const statsDClient = getStatsDClient();
+const CONNECTION_ACQUISITION_THRESHOLD_MS = 100;
+
 export const sequelizeConnection = new Sequelize(
   dbConfig.getRequiredDatabaseURI(),
   {
@@ -53,13 +56,10 @@ export const sequelizeConnection = new Sequelize(
       },
       afterPoolAcquire: (connection, options) => {
         const elapsedTime = Date.now() - acquireAttempts.get(options);
-        if (elapsedTime > 100) {
-          logger.info(
-            {
-              elapsedTime,
-              callStack: new Error().stack,
-            },
-            "Long sequelize connection acquisition detected"
+        if (elapsedTime > CONNECTION_ACQUISITION_THRESHOLD_MS) {
+          statsDClient.distribution(
+            "sequelize.connection_acquisition.duration",
+            elapsedTime
           );
         }
       },

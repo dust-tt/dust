@@ -34,30 +34,42 @@ export type ContentFragmentNodeData = {
   spaceName: string;
 };
 
-export type ContentFragmentType = {
+export type BaseContentFragmentType = {
+  type: "content_fragment";
   id: ModelId;
   sId: string;
-  fileId: string | null;
-  nodeId: string | null;
-  nodeDataSourceViewId: string | null;
-  nodeType: ContentNodeType | null;
-  snippet: string | null;
-  generatedTables: string[];
   created: number;
-  type: "content_fragment";
   visibility: MessageVisibility;
   version: number;
   sourceUrl: string | null;
-  textUrl: string;
-  textBytes: number | null;
   title: string;
   contentType: SupportedContentFragmentType;
   context: ContentFragmentContextType;
   contentFragmentId: string;
   contentFragmentVersion: ContentFragmentVersion;
-  contentNodeData: ContentFragmentNodeData | null;
   expiredReason: ContentFragmentExpiredReason | null;
 };
+
+export type ContentNodeContentFragmentType = BaseContentFragmentType & {
+  contentFragmentType: "content_node";
+  nodeId: string;
+  nodeDataSourceViewId: string;
+  nodeType: ContentNodeType;
+  contentNodeData: ContentFragmentNodeData;
+};
+
+export type FileContentFragmentType = BaseContentFragmentType & {
+  contentFragmentType: "file";
+  fileId: string | null;
+  snippet: string | null;
+  generatedTables: string[];
+  textUrl: string;
+  textBytes: number | null;
+};
+
+export type ContentFragmentType =
+  | FileContentFragmentType
+  | ContentNodeContentFragmentType;
 
 export type UploadedContentFragment = {
   fileId: string;
@@ -75,18 +87,14 @@ export function isContentFragmentType(
   return arg.type === "content_fragment";
 }
 
-export function isFileAttachment(
+export function isFileContentFragment(
   arg: ContentFragmentType
-): arg is ContentFragmentType & { fileId: string } {
-  return !!arg.fileId;
+): arg is FileContentFragmentType {
+  return arg.contentFragmentType === "file";
 }
 
-export function isContentNodeAttachment(
+export function isContentNodeContentFragment(
   arg: ContentFragmentType
-): arg is ContentFragmentType & {
-  nodeId: string;
-  nodeDataSourceViewId: string;
-  nodeType: ContentNodeType;
-} {
-  return !!arg.nodeId && !!arg.nodeDataSourceViewId;
+): arg is ContentNodeContentFragmentType {
+  return arg.contentFragmentType === "content_node";
 }

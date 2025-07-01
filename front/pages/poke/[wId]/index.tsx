@@ -100,8 +100,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       owner,
       activeSubscription,
       subscriptions,
-      whitelistableFeatures:
-        WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],
+      whitelistableFeatures: WHITELISTABLE_FEATURES,
       registry: getDustProdActionRegistry(),
       workspaceVerifiedDomains,
       worspaceCreationDay: format(worspaceCreationDate, "yyyy-MM-dd"),

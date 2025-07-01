@@ -27,6 +27,7 @@ pub trait OAuthStore {
     ) -> Result<Option<Connection>>;
     async fn update_connection_secrets(&self, connection: &Connection) -> Result<()>;
     async fn update_connection_status(&self, connection: &Connection) -> Result<()>;
+    async fn update_connection_metadata(&self, connection: &Connection) -> Result<()>;
 
     async fn create_credential(
         &self,
@@ -265,6 +266,27 @@ impl OAuthStore for PostgresOAuthStore {
               WHERE id = $2 AND provider = $3 AND secret = $4",
             &[
                 &connection.status().to_string(),
+                &row_id,
+                &connection.provider().to_string(),
+                &secret,
+            ],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    async fn update_connection_metadata(&self, connection: &Connection) -> Result<()> {
+        let (row_id, secret) =
+            Connection::row_id_and_secret_from_connection_id(&connection.connection_id())?;
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        c.execute(
+            "UPDATE connections SET metadata = $1 WHERE id = $2 AND provider = $3 AND secret = $4",
+            &[
+                &connection.metadata(),
                 &row_id,
                 &connection.provider().to_string(),
                 &secret,

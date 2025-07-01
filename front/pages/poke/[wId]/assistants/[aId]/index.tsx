@@ -152,10 +152,6 @@ const AssistantDetailsPage = ({
                         <div key={index}>
                           <div>
                             {action.type}
-                            {action.type === "retrieval_configuration" &&
-                              (action.query === "auto"
-                                ? " (search)"
-                                : " (include)")}
                             {action.type === "mcp_server_configuration" &&
                               " (" + action.name + ")"}
                           </div>

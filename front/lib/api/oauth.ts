@@ -1,7 +1,10 @@
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
-import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type {
+  BaseOAuthStrategyProvider,
+  RelatedCredential,
+} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
@@ -14,8 +17,8 @@ import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
 import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
-import { SlackBotOAuthProvider } from "@app/lib/api/oauth/providers/slack_bot";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
@@ -37,10 +40,6 @@ export type OAuthError = {
   oAuthAPIError?: OAuthAPIError;
 };
 
-function finalizeUriForProvider(provider: OAuthProvider): string {
-  return config.getClientFacingUrl() + `/oauth/${provider}/finalize`;
-}
-
 // DO NOT USE THIS DIRECTLY, USE getProviderStrategy instead.
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
@@ -55,7 +54,6 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   notion: new NotionOAuthProvider(),
   salesforce: new SalesforceOAuthProvider(),
   slack: new SlackOAuthProvider(),
-  slack_bot: new SlackBotOAuthProvider(),
   zendesk: new ZendeskOAuthProvider(),
 };
 
@@ -88,26 +86,33 @@ export async function createConnectionAndGetSetupUrl(
   }
 
   // Extract related credential and update config if the provider has a method for it
-  let relatedCredential:
-    | {
-        content: Record<string, string>;
-        metadata: { workspace_id: string; user_id: string };
-      }
-    | undefined = undefined;
+  let relatedCredential: RelatedCredential | undefined = undefined;
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const userId = auth.getNonNullableUser().sId;
 
   if (providerStrategy.getRelatedCredential) {
-    const result = await providerStrategy.getRelatedCredential!(
-      auth,
+    const credentials = await providerStrategy.getRelatedCredential!(auth, {
       extraConfig,
       workspaceId,
       userId,
-      useCase
-    );
-    if (result) {
-      relatedCredential = result.credential;
-      extraConfig = result.cleanedConfig;
+      useCase,
+    });
+    if (credentials) {
+      if (!providerStrategy.getUpdatedExtraConfig) {
+        // You probably need to clean up the extra config to remove any sensitive data (such as client_secret).
+        return new Err({
+          code: "connection_creation_failed",
+          message:
+            "If the providerStrategy has a getRelatedCredential method, it must also have a getUpdatedExtraConfig method.",
+        });
+      }
+
+      relatedCredential = credentials;
+
+      extraConfig = await providerStrategy.getUpdatedExtraConfig!(auth, {
+        extraConfig,
+        useCase,
+      });
 
       if (
         //TODO: add the same verification for other providers with a getRelatedCredential method.
@@ -128,6 +133,11 @@ export async function createConnectionAndGetSetupUrl(
         });
       }
     }
+  } else if (providerStrategy.getUpdatedExtraConfig) {
+    extraConfig = await providerStrategy.getUpdatedExtraConfig!(auth, {
+      extraConfig,
+      useCase,
+    });
   }
 
   const clientId: string | undefined = extraConfig.client_id as string;
@@ -221,6 +231,18 @@ export async function finalizeConnection(
       message: `Failed to finalize ${provider} connection: ${cRes.error.message}`,
       oAuthAPIError: cRes.error,
     });
+  }
+
+  if (providerStrategy.checkConnectionValidPostFinalize) {
+    const res = providerStrategy.checkConnectionValidPostFinalize(
+      cRes.value.connection
+    );
+    if (res.isErr()) {
+      return new Err({
+        code: "connection_finalization_failed",
+        message: res.error.message,
+      });
+    }
   }
 
   return new Ok(cRes.value.connection);

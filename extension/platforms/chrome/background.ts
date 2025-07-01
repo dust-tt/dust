@@ -575,6 +575,7 @@ const refreshToken = async (
       }
 
       const data = await response.json();
+
       const handlers = state.refreshRequests;
       state.refreshRequests = [];
       handlers.forEach((sendResponse) => {
@@ -582,6 +583,7 @@ const refreshToken = async (
           accessToken: data.access_token,
           refreshToken: data.refresh_token || refreshToken,
           expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+          authentication_method: data.authentication_method,
         });
       });
     } catch (error) {
@@ -626,11 +628,13 @@ const exchangeCodeForTokens = async (
     }
 
     const data = await response.json();
+
     return {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
       ...(data.id_token && { idToken: data.id_token }),
+      authentication_method: data.authentication_method,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";

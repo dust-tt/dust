@@ -7,6 +7,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
 import { AlertCircle } from "lucide-react";
@@ -147,6 +148,14 @@ export function RunPluginDialog({
                     <pre className="copy-sm whitespace-pre-wrap break-words font-mono text-gray-200">
                       {JSON.stringify(result.value, null, 2)}
                     </pre>
+                  </div>
+                </div>
+              )}
+              {result && result.display === "markdown" && (
+                <div className="mb-4 mt-4">
+                  <div className="mb-2 font-medium">Result:</div>
+                  <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
+                    <Markdown content={result.value} />
                   </div>
                 </div>
               )}

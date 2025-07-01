@@ -14,7 +14,8 @@ export async function softDeleteApp(
   if (usage.isErr()) {
     return usage;
   } else if (usage.value.count > 0) {
-    const { agentNames } = usage.value;
+    const { agents } = usage.value;
+    const agentNames = agents.map((a) => a.name);
     return new Err(
       new Error(
         "Cannot delete app in use by " +

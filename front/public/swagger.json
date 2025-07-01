@@ -1286,15 +1286,6 @@
                     "description": "The title of the conversation",
                     "example": "My conversation"
                   },
-                  "visibility": {
-                    "type": "string",
-                    "description": "The visibility of the conversation (The API only accepts `unlisted`)",
-                    "enum": [
-                      "workspace",
-                      "unlisted"
-                    ],
-                    "example": "unlisted"
-                  },
                   "skipToolsValidation": {
                     "type": "boolean",
                     "description": "Whether to skip the tools validation of the agent messages triggered by this user message (optional, defaults to false)",
@@ -1437,8 +1428,8 @@
     },
     "/api/v1/w/{wId}/mcp/heartbeat": {
       "post": {
-        "summary": "Update heartbeat for a local MCP server",
-        "description": "Update the heartbeat for a previously registered MCP server.\nThis extends the TTL for the server registration.\n",
+        "summary": "Update heartbeat for a client-side MCP server",
+        "description": "[Documentation](https://docs.dust.tt/docs/client-side-mcp-server)\nUpdate the heartbeat for a previously registered client-side MCP server.\nThis extends the TTL for the server registration.\n",
         "tags": [
           "MCP"
         ],
@@ -1515,7 +1506,7 @@
     "/api/v1/w/{wId}/mcp/register": {
       "post": {
         "summary": "Register a client-side MCP server",
-        "description": "Register a client-side MCP server to Dust.\nThe registration is scoped to the current user and workspace.\nA serverId identifier is generated and returned in the response.\n",
+        "description": "[Documentation](https://docs.dust.tt/docs/client-side-mcp-server)\nRegister a client-side MCP server to Dust.\nThe registration is scoped to the current user and workspace.\nA serverId identifier is generated and returned in the response.\n",
         "tags": [
           "MCP"
         ],
@@ -1589,7 +1580,7 @@
     "/api/v1/w/{wId}/mcp/requests": {
       "get": {
         "summary": "Stream MCP tool requests for a workspace",
-        "description": "Server-Sent Events (SSE) endpoint that streams MCP tool requests for a workspace.\nThis endpoint is used by local MCP servers to listen for tool requests in real-time.\nThe connection will remain open and events will be sent as new tool requests are made.\n",
+        "description": "[Documentation](https://docs.dust.tt/docs/client-side-mcp-server)\nServer-Sent Events (SSE) endpoint that streams MCP tool requests for a workspace.\nThis endpoint is used by client-side MCP servers to listen for tool requests in real-time.\nThe connection will remain open and events will be sent as new tool requests are made.\n",
         "tags": [
           "MCP"
         ],
@@ -1666,7 +1657,7 @@
     "/api/v1/w/{wId}/mcp/results": {
       "post": {
         "summary": "Submit MCP tool execution results",
-        "description": "Endpoint for local MCP servers to submit the results of tool executions.\nThis endpoint accepts the output from tools that were executed locally.\n",
+        "description": "[Documentation](https://docs.dust.tt/docs/client-side-mcp-server)\nEndpoint for client-side MCP servers to submit the results of tool executions.\nThis endpoint accepts the output from tools that were executed locally.\n",
         "tags": [
           "MCP"
         ],

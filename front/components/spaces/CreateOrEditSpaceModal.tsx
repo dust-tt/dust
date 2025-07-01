@@ -110,7 +110,7 @@ export function CreateOrEditSpaceModal({
 
   const doCreate = useCreateSpace({ owner });
   const doUpdate = useUpdateSpace({ owner });
-  const doDelete = useDeleteSpace({ owner });
+  const doDelete = useDeleteSpace({ owner, force: true });
 
   const router = useRouter();
 
@@ -390,6 +390,7 @@ export function CreateOrEditSpaceModal({
             {isAdmin && space && space.kind === "regular" && (
               <>
                 <ConfirmDeleteSpaceDialog
+                  spaceInfoByCategory={spaceInfo?.categories}
                   space={space}
                   handleDelete={onDelete}
                   isOpen={showDeleteConfirmDialog}

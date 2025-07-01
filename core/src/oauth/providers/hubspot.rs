@@ -72,6 +72,7 @@ impl Provider for HubspotConnectionProvider {
             ),
             refresh_token: result["refresh_token"].as_str().map(|s| s.to_string()),
             raw_json: result,
+            extra_metadata: None,
         })
     }
 

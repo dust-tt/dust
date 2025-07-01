@@ -438,12 +438,15 @@ export function CreateOrUpdateConnectionSnowflakeModal({
           }}
           rightButtonProps={{
             label: isLoading ? "Saving..." : "Save",
-            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+            onClick: async (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
+              e.stopPropagation();
+              setIsLoading(true);
               dataSourceToUpdate
-                ? void updateSnowflakeConnection()
-                : void createSnowflakeConnection();
+                ? await updateSnowflakeConnection()
+                : await createSnowflakeConnection();
             },
+            isLoading: isLoading,
             disabled: isLoading || !areCredentialsValid(),
           }}
         />

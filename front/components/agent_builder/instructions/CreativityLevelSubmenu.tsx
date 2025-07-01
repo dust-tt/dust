@@ -6,39 +6,30 @@ import {
   DropdownMenuSubTrigger,
 } from "@dust-tt/sparkle";
 import React from "react";
+import { useController } from "react-hook-form";
 
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { CREATIVITY_LEVELS } from "@app/components/agent_builder/instructions/utils";
-import type { GenerationSettingsType } from "@app/components/agent_builder/types";
 
-interface CreativityLevelSubmenuProps {
-  generationSettings: GenerationSettingsType;
-  setGenerationSettings: (generationSettings: GenerationSettingsType) => void;
-}
-
-export function CreativityLevelSubmenu({
-  generationSettings,
-  setGenerationSettings,
-}: CreativityLevelSubmenuProps) {
-  const handleCreativityChange = (temperature: number) => {
-    setGenerationSettings({
-      ...generationSettings,
-      temperature,
-    });
-  };
+export function CreativityLevelSubmenu() {
+  const { field } = useController<
+    AgentBuilderFormData,
+    "generationSettings.temperature"
+  >({
+    name: "generationSettings.temperature",
+  });
 
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger label="Creativity level" />
       <DropdownMenuSubContent>
-        <DropdownMenuRadioGroup
-          value={generationSettings?.temperature.toString()}
-        >
+        <DropdownMenuRadioGroup value={field.value?.toString()}>
           {CREATIVITY_LEVELS.map(({ label, value }) => (
             <DropdownMenuRadioItem
               key={value}
               value={value.toString()}
               label={label}
-              onClick={() => handleCreativityChange(value)}
+              onClick={() => field.onChange(value)}
             />
           ))}
         </DropdownMenuRadioGroup>

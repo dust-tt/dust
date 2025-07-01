@@ -224,7 +224,7 @@ export type ToolNotificationEvent = {
   notification: ProgressNotificationContentType;
 };
 
-type ActionBaseParams = Omit<
+export type ActionBaseParams = Omit<
   MCPActionBlob,
   "id" | "type" | "executionState" | "output" | "isError"
 >;

@@ -3,7 +3,7 @@ import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 
 import { dbConfig } from "@app/lib/resources/storage/config";
-import logger from "@app/logger/logger";
+import { getStatsDClient } from "@app/lib/utils/statsd";
 import { isDevelopment } from "@app/types";
 
 // Directly require 'pg' here to make sure we are using the same version of the
@@ -40,6 +40,9 @@ if (process.env.NODE_ENV === "test") {
   Sequelize.useCLS(namespace);
 }
 
+export const statsDClient = getStatsDClient();
+const CONNECTION_ACQUISITION_THRESHOLD_MS = 100;
+
 export const frontSequelize = new Sequelize(
   dbConfig.getRequiredFrontDatabaseURI(),
   {
@@ -54,13 +57,10 @@ export const frontSequelize = new Sequelize(
       },
       afterPoolAcquire: (connection, options) => {
         const elapsedTime = Date.now() - acquireAttempts.get(options);
-        if (elapsedTime > 100) {
-          logger.info(
-            {
-              elapsedTime,
-              callStack: new Error().stack,
-            },
-            "Long sequelize connection acquisition detected"
+        if (elapsedTime > CONNECTION_ACQUISITION_THRESHOLD_MS) {
+          statsDClient.distribution(
+            "sequelize.connection_acquisition.duration",
+            elapsedTime
           );
         }
       },

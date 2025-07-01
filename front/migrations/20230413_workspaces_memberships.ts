@@ -38,6 +38,7 @@ async function main() {
               userId: u.id,
               workspaceId: w.id,
               startAt: new Date(),
+              origin: "invited",
             });
             console.log(`+ ${u.id}`);
           } else {

@@ -12,8 +12,6 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  Separator,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState } from "react";
@@ -24,12 +22,10 @@ import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
-  useMCPServers,
   useSyncRemoteMCPServer,
   useUpdateMCPServer,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
-import { normalizeError } from "@app/types";
 
 interface RemoteMCPFormProps {
   owner: LightWorkspaceType;
@@ -46,8 +42,6 @@ const MCPFormSchema = z.object({
 export type MCPFormType = z.infer<typeof MCPFormSchema>;
 
 export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
-  const sendNotification = useSendNotification();
-
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -63,75 +57,30 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
 
   const { url, lastError, lastSyncAt } = mcpServer;
 
-  const { mutateMCPServers } = useMCPServers({
-    owner,
-    disabled: true,
-  });
-
   // Use the serverId from state for the hooks
   const { updateServer } = useUpdateMCPServer(owner, mcpServer.sId);
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.sId);
 
   const onSubmit = useCallback(
     async (values: MCPFormType) => {
-      try {
-        const result = await updateServer({
-          name: values.name,
-          description: values.description,
-          icon: values.icon,
-          sharedSecret: values.sharedSecret,
-        });
-        if (result.success) {
-          void mutateMCPServers();
-
-          sendNotification({
-            title: `${getMcpServerDisplayName(mcpServer)} updated`,
-            type: "success",
-            description: `${getMcpServerDisplayName(mcpServer)} has been successfully updated.`,
-          });
-
-          form.reset(values);
-        } else {
-          throw new Error("Failed to update MCP server");
-        }
-      } catch (err) {
-        sendNotification({
-          title: `Error updating ${getMcpServerDisplayName(mcpServer)}`,
-          type: "error",
-          description: err instanceof Error ? err.message : "An error occurred",
-        });
+      const updated = await updateServer({
+        name: values.name,
+        description: values.description,
+        icon: values.icon,
+        sharedSecret: values.sharedSecret,
+      });
+      if (updated) {
+        form.reset(values);
       }
     },
-    [updateServer, mutateMCPServers, sendNotification, form, mcpServer]
+    [updateServer, form]
   );
 
   const handleSynchronize = useCallback(async () => {
     setIsSynchronizing(true);
-
-    try {
-      const result = await syncServer();
-
-      if (result.success) {
-        void mutateMCPServers();
-
-        sendNotification({
-          title: "Success",
-          type: "success",
-          description: `${getMcpServerDisplayName(mcpServer)} synchronized successfully.`,
-        });
-      } else {
-        throw new Error("Failed to synchronize MCP server");
-      }
-    } catch (error) {
-      sendNotification({
-        title: `Error synchronizing ${getMcpServerDisplayName(mcpServer)}`,
-        type: "error",
-        description: normalizeError(error ?? "An error occured").message,
-      });
-    } finally {
-      setIsSynchronizing(false);
-    }
-  }, [syncServer, mutateMCPServers, sendNotification, mcpServer]);
+    await syncServer();
+    setIsSynchronizing(false);
+  }, [syncServer]);
 
   const closePopover = () => {
     setIsPopoverOpen(false);
@@ -152,7 +101,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         </ContentMessage>
       )}
 
-      <div className="heading-lg">Server Settings</div>
       <div className="space-y-2">
         <Label htmlFor="url">Server URL</Label>
         <div className="flex space-x-2">
@@ -164,7 +112,8 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             />
           </div>
           <Button
-            label={isSynchronizing ? "Synchronizing..." : "Synchronize"}
+            label={isSynchronizing ? "Syncing..." : "Sync"}
+            isLoading={isSynchronizing}
             icon={CloudArrowLeftRightIcon}
             variant="outline"
             onClick={handleSynchronize}
@@ -303,8 +252,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           />
         </div>
       )}
-
-      <Separator />
     </div>
   );
 }

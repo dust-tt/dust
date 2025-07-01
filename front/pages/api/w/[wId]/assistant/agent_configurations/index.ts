@@ -324,10 +324,9 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
-      auth,
-      actions
-    ),
+    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(auth, {
+      actions,
+    }),
     tags: assistant.tags,
     editors,
   });

@@ -2,6 +2,12 @@ import assert from "assert";
 import { uniq } from "lodash";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
+import {
+  getAgentConfigurations,
+  updateAgentRequestedGroupIds,
+} from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
+import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -14,16 +20,16 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 
-import { getWorkspaceAdministrationVersionLock } from "./workspace";
-
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
-  space: SpaceResource
+  space: SpaceResource,
+  force?: boolean
 ) {
   assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(space.isRegular(), "Cannot delete non regular spaces.");
@@ -60,11 +66,13 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     }
   }
 
-  if (usages.length > 0) {
-    const agentNames = uniq(usages.map((u) => u.agentNames).flat());
+  if (!force && usages.length > 0) {
+    const agentNames = uniq(
+      usages.flatMap((u) => u.agents).map((agent) => agent.name)
+    );
     return new Err(
       new Error(
-        `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}.`
+        `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}. If you'd like to continue set the force query parameter to true.`
       )
     );
   }
@@ -83,31 +91,84 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
 
   await frontSequelize.transaction(async (t) => {
     // Soft delete all data source views.
-    for (const view of dataSourceViews) {
-      // Soft delete view, they will be hard deleted when the data source scrubbing job runs.
-      const res = await view.delete(auth, {
-        transaction: t,
-        hardDelete: false,
-      });
-      if (res.isErr()) {
-        throw res.error;
-      }
-    }
+    await concurrentExecutor(
+      dataSourceViews,
+      async (view) => {
+        // Soft delete view, they will be hard deleted when the data source scrubbing job runs.
+        const res = await view.delete(auth, {
+          transaction: t,
+          hardDelete: false,
+        });
+        if (res.isErr()) {
+          throw res.error;
+        }
+      },
+      { concurrency: 4 }
+    );
 
     // Soft delete data sources they will be hard deleted in the scrubbing job.
-    for (const ds of dataSources) {
-      const res = await ds.delete(auth, { hardDelete: false, transaction: t });
-      if (res.isErr()) {
-        throw res.error;
-      }
-    }
+    await concurrentExecutor(
+      dataSources,
+      async (ds) => {
+        const res = await ds.delete(auth, {
+          hardDelete: false,
+          transaction: t,
+        });
+        if (res.isErr()) {
+          throw res.error;
+        }
+      },
+      { concurrency: 4 }
+    );
 
     // Soft delete the apps, which will be hard deleted in the scrubbing job.
-    for (const app of apps) {
-      const res = await app.delete(auth, { hardDelete: false, transaction: t });
-      if (res.isErr()) {
-        throw res.error;
-      }
+    await concurrentExecutor(
+      apps,
+      async (app) => {
+        const res = await app.delete(auth, {
+          hardDelete: false,
+          transaction: t,
+        });
+        if (res.isErr()) {
+          throw res.error;
+        }
+      },
+      { concurrency: 4 }
+    );
+
+    if (force) {
+      const agentIds = uniq(
+        usages.flatMap((u) => u.agents).map((agent) => agent.sId)
+      );
+      await concurrentExecutor(
+        agentIds,
+        async (agentId) => {
+          const [agentConfig] = await getAgentConfigurations({
+            auth,
+            agentsGetView: { agentIds: [agentId] },
+            variant: "full",
+            dangerouslySkipPermissionFiltering: true,
+          });
+
+          // Get the required group IDs from the agent's actions
+          const requestedGroupIds =
+            await getAgentConfigurationGroupIdsFromActions(auth, {
+              actions: agentConfig.actions,
+              ignoreSpaces: [space],
+            });
+
+          const res = await updateAgentRequestedGroupIds(
+            auth,
+            { agentId, newGroupIds: requestedGroupIds },
+            { transaction: t }
+          );
+
+          if (res.isErr()) {
+            throw res.error;
+          }
+        },
+        { concurrency: 4 }
+      );
     }
 
     // Finally, soft delete the space.

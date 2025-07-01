@@ -329,3 +329,135 @@ export const InteractiveContent: Story = {
     );
   },
 };
+
+export const WithConditionalNavigation: Story = {
+  render: () => {
+    const [currentPageId, setCurrentPageId] = useState("data-selection");
+    const [selectedItems, setSelectedItems] = useState<string[]>([]);
+    const [description, setDescription] = useState("");
+
+    const handleSave = () => {
+      alert(
+        `Configuration saved! Selected: ${selectedItems.join(", ")}, Description: ${description}`
+      );
+    };
+
+    const conditionalPages: MultiPageSheetPage[] = [
+      {
+        id: "data-selection",
+        title: "Select Data Sources",
+        description: "Choose which data sources to include",
+        icon: DocumentTextIcon,
+        content: (
+          <div className="s-space-y-4">
+            <div>
+              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+                Available Data Sources
+              </h3>
+              <p className="s-text-sm s-text-muted-foreground">
+                Select at least one data source to proceed to the next step.
+              </p>
+            </div>
+            <div className="s-space-y-2">
+              {[
+                "Company Database",
+                "Customer Files",
+                "Analytics Data",
+                "Reports Archive",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className={`s-flex s-cursor-pointer s-items-center s-justify-between s-rounded-md s-border s-p-3 s-transition-colors hover:s-bg-gray-50 ${
+                    selectedItems.includes(item)
+                      ? "s-border-blue-300 s-bg-blue-50"
+                      : ""
+                  }`}
+                  onClick={() => {
+                    if (selectedItems.includes(item)) {
+                      setSelectedItems(selectedItems.filter((i) => i !== item));
+                    } else {
+                      setSelectedItems([...selectedItems, item]);
+                    }
+                  }}
+                >
+                  <span className="s-text-sm">{item}</span>
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.includes(item)}
+                    readOnly
+                    className="s-pointer-events-none"
+                  />
+                </div>
+              ))}
+            </div>
+            {selectedItems.length > 0 && (
+              <div className="s-rounded-md s-border s-bg-blue-50 s-p-3">
+                <p className="s-text-sm s-text-blue-700">
+                  {selectedItems.length} data source
+                  {selectedItems.length !== 1 ? "s" : ""} selected
+                </p>
+              </div>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "description",
+        title: "Add Description",
+        description: "Describe your configuration",
+        icon: Cog6ToothIcon,
+        content: (
+          <div className="s-space-y-4">
+            <div>
+              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+                Configuration Details
+              </h3>
+              <p className="s-text-sm s-text-muted-foreground">
+                Add a description for your selected data sources.
+              </p>
+            </div>
+            <div className="s-rounded-md s-border s-bg-blue-50 s-p-3">
+              <p className="s-text-sm s-text-blue-700">
+                Selected: {selectedItems.join(", ")}
+              </p>
+            </div>
+            <div className="s-space-y-2">
+              <label className="s-text-sm s-font-medium">Description</label>
+              <textarea
+                className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+                placeholder="Describe how these data sources will be used..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+              />
+              <p className="s-text-xs s-text-muted-foreground">
+                This description helps explain the purpose of your
+                configuration.
+              </p>
+            </div>
+          </div>
+        ),
+      },
+    ];
+
+    return (
+      <MultiPageSheet>
+        <MultiPageSheetTrigger asChild>
+          <Button label="Open Configuration Wizard" />
+        </MultiPageSheetTrigger>
+        <MultiPageSheetContent
+          pages={conditionalPages}
+          currentPageId={currentPageId}
+          onPageChange={setCurrentPageId}
+          size="lg"
+          onSave={handleSave}
+          showNavigation={true}
+          disableNext={
+            currentPageId === "data-selection" && selectedItems.length === 0
+          }
+          disableSave={!description.trim()}
+        />
+      </MultiPageSheet>
+    );
+  },
+};

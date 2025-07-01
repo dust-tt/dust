@@ -40,6 +40,7 @@ impl Provider for MockConnectionProvider {
             access_token_expiry: Some(utils::now() + ACCESS_TOKEN_REFRESH_BUFFER_MILLIS + 1000),
             refresh_token: Some("mock_refresh_token".to_string()),
             raw_json: json!({}),
+            extra_metadata: None,
         })
     }
 

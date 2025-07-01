@@ -39,6 +39,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
+import { setupOAuthConnection } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -247,13 +248,16 @@ function SlackBotToggle({
 
   const createSlackBotConnectionAndDataSource = async () => {
     try {
-      const connectionIdRes = await setupConnection({
+      // OAuth flow
+      const cRes = await setupOAuthConnection({
+        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
-        provider: "slack_bot",
+        provider: "slack",
+        useCase: "bot",
         extraConfig: {},
       });
-      if (connectionIdRes.isErr()) {
-        throw connectionIdRes.error;
+      if (!cRes.isOk()) {
+        throw cRes.error;
       }
 
       const res = await fetch(
@@ -265,7 +269,7 @@ function SlackBotToggle({
           },
           body: JSON.stringify({
             provider: "slack_bot",
-            connectionId: connectionIdRes.value,
+            connectionId: cRes.value.connection_id,
             name: undefined,
             configuration: null,
           } satisfies PostDataSourceRequestBody),

@@ -1,8 +1,21 @@
 import { CompanyIcon } from "@dust-tt/sparkle";
 
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
+import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
 export const b2bSaasConfig: IndustryPageConfig = {
+  layout: createLayoutConfig([
+    "hero",
+    "aiAgents",
+    "trustedBy",
+    "painPoints",
+    "dustInAction",
+    "impactMetrics",
+    "demoVideo",
+    "testimonial",
+    "customerStories",
+    "justUseDust",
+  ]),
   hero: {
     chip: {
       label: "B2B SaaS",
@@ -83,11 +96,11 @@ export const b2bSaasConfig: IndustryPageConfig = {
     ],
   },
   dustInAction: {
-    title: "Dust in Action",
+    title: "Dust in action",
     useCases: [
       {
         title: "GTM operations & sales enablement",
-        image: "/static/landing/industry/features/Sales_agent.svg",
+        image: "/static/landing/industry/features/Sales_agent.webp",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -118,7 +131,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
       },
       {
         title: "Marketing operations",
-        image: "/static/landing/industry/features/Content_localization.svg",
+        image: "/static/landing/industry/features/Content_localization.webp",
         bgColor: "bg-rose-100",
         features: [
           {
@@ -142,7 +155,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
       },
       {
         title: "Customer experience",
-        image: "/static/landing/industry/features/Connection_management.svg",
+        image: "/static/landing/industry/features/Connection_management.webp",
         bgColor: "bg-green-100",
         features: [
           {
@@ -173,7 +186,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
       },
       {
         title: "Engineering operations",
-        image: "/static/landing/industry/features/Eng_debug.svg",
+        image: "/static/landing/industry/features/Eng_debug.webp",
         bgColor: "bg-gray-100",
         features: [
           {

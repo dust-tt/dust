@@ -1,37 +1,88 @@
 import {
+  Avatar,
   Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   Input,
   Page,
+  PencilSquareIcon,
   SparklesIcon,
+  TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useAgentBuilderInstructionsContext } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsContext";
-import { useAgentBuilderSettingsContext } from "@app/components/agent_builder/settings/AgentSettingsContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
+import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
+import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
+import {
+  buildSelectedEmojiType,
+  makeUrlForEmojiAndBackground,
+} from "@app/components/assistant_builder/avatar_picker/utils";
+import {
+  DROID_AVATAR_URLS,
+  SPIRIT_AVATAR_URLS,
+} from "@app/components/assistant_builder/shared";
+import type {
+  APIError,
+  BuilderEmojiSuggestionsType,
+  Result,
+  WorkspaceType,
+} from "@app/types";
 
-export function AgentBuilderSettingsBlock() {
-  const { name, setName, description, setDescription } =
-    useAgentBuilderSettingsContext();
+const MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION = 30;
+
+async function getEmojiSuggestions({
+  owner,
+  instructions,
+}: {
+  owner: WorkspaceType;
+  instructions: string;
+}): Promise<Result<BuilderEmojiSuggestionsType, APIError>> {
+  return fetchWithErr(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      type: "emoji",
+      inputs: { instructions },
+    }),
+  });
+}
+
+function AgentNameInput() {
   const { owner } = useAgentBuilderContext();
-  const { instructions } = useAgentBuilderInstructionsContext();
+  const instructions = useWatch<AgentBuilderFormData, "instructions">({
+    name: "instructions",
+  });
+  const description = useWatch<
+    AgentBuilderFormData,
+    "agentSettings.description"
+  >({
+    name: "agentSettings.description",
+  });
   const sendNotification = useSendNotification();
-  const [isOpen, setIsOpen] = useState(false);
-  const [isGenerating, setIsGenerating] = useState<
-    "name" | "description" | null
-  >(null);
+
+  const [isGenerating, setIsGenerating] = useState(false);
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
 
+  const { field, fieldState } = useController<
+    AgentBuilderFormData,
+    "agentSettings.name"
+  >({
+    name: "agentSettings.name",
+  });
+
   const handleGenerateNameSuggestions = async () => {
-    setIsGenerating("name");
+    setIsGenerating(true);
     const result = await getNameSuggestions({
       owner,
       instructions,
@@ -45,7 +96,7 @@ export function AgentBuilderSettingsBlock() {
         title: "Failed to generate name suggestions",
         description: result.error.message,
       });
-      setIsGenerating(null);
+      setIsGenerating(false);
       return;
     }
 
@@ -60,11 +111,73 @@ export function AgentBuilderSettingsBlock() {
         });
       }
     }
-    setIsGenerating(null);
+    setIsGenerating(false);
   };
 
+  const handleSelectNameSuggestion = (suggestion: string) => {
+    field.onChange(suggestion);
+  };
+
+  return (
+    <div className="max-w-md space-y-2">
+      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+        Name
+      </label>
+      <div className="flex items-center gap-2">
+        <div className="flex-grow">
+          <Input placeholder="Enter agent name" {...field} />
+        </div>
+        <Button
+          label="Suggest"
+          size="xs"
+          icon={SparklesIcon}
+          variant="outline"
+          isLoading={isGenerating}
+          onClick={handleGenerateNameSuggestions}
+        />
+      </div>
+      {nameSuggestions.length > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
+            Suggestions:
+          </div>
+          {nameSuggestions.slice(0, 3).map((suggestion, index) => (
+            <Button
+              label={suggestion}
+              variant="outline"
+              key={`naming-suggestion-${index}`}
+              size="xs"
+              onClick={() => handleSelectNameSuggestion(suggestion)}
+            />
+          ))}
+        </div>
+      )}
+      {fieldState.error && (
+        <p className="text-sm text-warning-500">{fieldState.error.message}</p>
+      )}
+    </div>
+  );
+}
+
+function AgentDescriptionInput() {
+  const { owner } = useAgentBuilderContext();
+  const instructions = useWatch<AgentBuilderFormData, "instructions">({
+    name: "instructions",
+  });
+  const name = useWatch<AgentBuilderFormData, "agentSettings.name">({
+    name: "agentSettings.name",
+  });
+  const sendNotification = useSendNotification();
+
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const { field, fieldState } = useController<
+    AgentBuilderFormData,
+    "agentSettings.description"
+  >({ name: "agentSettings.description" });
+
   const handleGenerateDescription = async () => {
-    setIsGenerating("description");
+    setIsGenerating(true);
     const result = await getDescriptionSuggestion({
       owner,
       instructions,
@@ -78,7 +191,7 @@ export function AgentBuilderSettingsBlock() {
         title: "Failed to generate description",
         description: result.error.message,
       });
-      setIsGenerating(null);
+      setIsGenerating(false);
       return;
     }
 
@@ -87,10 +200,118 @@ export function AgentBuilderSettingsBlock() {
       result.value.suggestions &&
       result.value.suggestions.length > 0
     ) {
-      setDescription(result.value.suggestions[0]);
+      field.onChange(result.value.suggestions[0]);
     }
-    setIsGenerating(null);
+    setIsGenerating(false);
   };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+        Description
+      </label>
+      <div className="flex items-center gap-2">
+        <div className="flex-grow">
+          <TextArea placeholder="Enter agent description" rows={3} {...field} />
+        </div>
+        <Button
+          label="Suggest"
+          size="xs"
+          icon={SparklesIcon}
+          variant="outline"
+          isLoading={isGenerating}
+          onClick={handleGenerateDescription}
+        />
+      </div>
+      {fieldState.error && (
+        <p className="text-sm text-warning-500">{fieldState.error.message}</p>
+      )}
+    </div>
+  );
+}
+
+function AgentPictureInput() {
+  const { owner } = useAgentBuilderContext();
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const instructions = useWatch<AgentBuilderFormData, "instructions">({
+    name: "instructions",
+  });
+
+  const { field } = useController<
+    AgentBuilderFormData,
+    "agentSettings.pictureUrl"
+  >({
+    name: "agentSettings.pictureUrl",
+  });
+
+  const updateEmojiFromSuggestions = useCallback(async () => {
+    let avatarUrl: string | null = null;
+    const emojiSuggestions = await getEmojiSuggestions({
+      owner,
+      instructions: instructions || "",
+    });
+    if (emojiSuggestions.isOk() && emojiSuggestions.value.suggestions.length) {
+      const suggestion = emojiSuggestions.value.suggestions[0];
+      const emoji = buildSelectedEmojiType(suggestion.emoji);
+      if (emoji) {
+        avatarUrl = makeUrlForEmojiAndBackground(
+          {
+            id: emoji.id,
+            unified: emoji.unified,
+            native: emoji.native,
+          },
+          suggestion.backgroundColor as `bg-${string}`
+        );
+      }
+    }
+    // Default on Ed's babies if no emoji is found
+    if (!avatarUrl) {
+      const availableUrls = [...DROID_AVATAR_URLS, ...SPIRIT_AVATAR_URLS];
+      avatarUrl =
+        availableUrls[Math.floor(Math.random() * availableUrls.length)];
+    }
+
+    field.onChange(avatarUrl);
+  }, [owner, instructions, field]);
+
+  useEffect(() => {
+    if (
+      !field.value &&
+      instructions &&
+      instructions.length >= MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION
+    ) {
+      void updateEmojiFromSuggestions();
+    }
+  }, [field.value, instructions, updateEmojiFromSuggestions]);
+
+  return (
+    <>
+      <AvatarPicker
+        owner={owner}
+        isOpen={isAvatarModalOpen}
+        setOpen={setIsAvatarModalOpen}
+        onPick={field.onChange}
+        droidAvatarUrls={DROID_AVATAR_URLS}
+        spiritAvatarUrls={SPIRIT_AVATAR_URLS}
+        avatarUrl={field.value || null}
+      />
+      <div className="flex flex-col items-center space-y-2">
+        <Avatar size="xl" visual={field.value || null} />
+        <Button
+          label="Change"
+          variant="outline"
+          size="xs"
+          icon={PencilSquareIcon}
+          type="button"
+          onClick={() => setIsAvatarModalOpen(true)}
+        />
+      </div>
+    </>
+  );
+}
+
+export function AgentBuilderSettingsBlock() {
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -109,65 +330,12 @@ export function AgentBuilderSettingsBlock() {
               </span>
             </Page.P>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-                  Name
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-grow">
-                    <Input
-                      placeholder="Enter agent name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </div>
-                  <Button
-                    label="Suggest"
-                    size="xs"
-                    icon={SparklesIcon}
-                    variant="outline"
-                    isLoading={isGenerating === "name"}
-                    onClick={handleGenerateNameSuggestions}
-                  />
+              <div className="flex gap-8">
+                <div className="flex flex-grow flex-col gap-4">
+                  <AgentNameInput />
+                  <AgentDescriptionInput />
                 </div>
-                {nameSuggestions.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
-                      Suggestions:
-                    </div>
-                    {nameSuggestions.slice(0, 3).map((suggestion, index) => (
-                      <Button
-                        label={suggestion}
-                        variant="outline"
-                        key={`naming-suggestion-${index}`}
-                        size="xs"
-                        onClick={() => setName(suggestion)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground dark:text-foreground-night">
-                  Description
-                </label>
-                <div className="flex items-center gap-2">
-                  <div className="flex-grow">
-                    <Input
-                      placeholder="Enter agent description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                    />
-                  </div>
-                  <Button
-                    label="Suggest"
-                    size="xs"
-                    icon={SparklesIcon}
-                    variant="outline"
-                    isLoading={isGenerating === "description"}
-                    onClick={handleGenerateDescription}
-                  />
-                </div>
+                <AgentPictureInput />
               </div>
             </div>
           </div>

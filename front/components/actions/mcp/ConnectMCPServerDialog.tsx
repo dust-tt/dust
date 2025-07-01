@@ -204,11 +204,6 @@ export function ConnectMCPServerDialog({
         <DialogContainer>
           {authorization && (
             <MCPServerOAuthConnexion
-              remoteMCPServerUrl={
-                mcpServer && isRemoteMCPServerType(mcpServer)
-                  ? mcpServer.url
-                  : undefined
-              }
               useCase={useCase}
               setUseCase={setUseCase}
               authorization={authorization}
@@ -227,8 +222,8 @@ export function ConnectMCPServerDialog({
           }}
           rightButtonProps={{
             isLoading: isLoading,
-            label: authorization ? "Save & Connect" : "",
-            variant: "primary",
+            label: authorization ? "Setup connection" : "",
+            variant: "highlight",
             onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               e.stopPropagation();

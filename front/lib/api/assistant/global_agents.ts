@@ -1493,6 +1493,7 @@ The agent should not provide additional information or content that the user did
     };
   }
 
+  // This only happens when we fetch the list version of the agent.
   if (!preFetchedDataSources) {
     return {
       ...dustAgent,
@@ -1502,21 +1503,14 @@ The agent should not provide additional information or content that the user did
     };
   }
 
+  const actions: MCPServerConfigurationType[] = [];
+
   const dataSourceViews = preFetchedDataSources.dataSourceViews.filter(
     (dsView) => dsView.dataSource.assistantDefaultSelected === true
   );
 
-  if (dataSourceViews.length === 0) {
-    return {
-      ...dustAgent,
-      status: "disabled_missing_datasource",
-      actions: [],
-      maxStepsPerRun: 0,
-    };
-  }
-  const actions: MCPServerConfigurationType[] = [];
-
-  if (searchMCPServerView) {
+  // Only add the action if there are data sources and the search MCPServer is available.
+  if (dataSourceViews.length > 0 && searchMCPServerView) {
     // We push one action with all data sources
     actions.push({
       id: -1,

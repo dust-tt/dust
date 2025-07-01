@@ -11,7 +11,6 @@ import {
   isMCPInternalSearch,
   isMCPInternalSlack,
   isMCPInternalWebsearch,
-  isRetrievalConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
@@ -57,38 +56,21 @@ export function getRetrievalTopK({
 }): number {
   const model = getSupportedModelConfig(agentConfiguration.model);
 
-  const retrievalActions = stepActions.filter(isRetrievalConfiguration);
   const searchActions = stepActions.filter(isMCPInternalSearch);
   const includeActions = stepActions.filter(isMCPInternalInclude);
   const dsFsActions = stepActions.filter(isMCPInternalDataSourceFileSystem);
 
   const actionsCount =
-    retrievalActions.length +
-    searchActions.length +
-    includeActions.length +
-    dsFsActions.length;
+    searchActions.length + includeActions.length + dsFsActions.length;
 
   if (actionsCount === 0) {
     return 0;
   }
 
-  const topKs = retrievalActions
-    .map((action) => {
-      if (action.topK === "auto") {
-        if (action.query === "none") {
-          return model.recommendedExhaustiveTopK;
-        } else {
-          return model.recommendedTopK;
-        }
-      } else {
-        return action.topK;
-      }
+  const topKs = searchActions
+    .map(() => {
+      return model.recommendedTopK;
     })
-    .concat(
-      searchActions.map(() => {
-        return model.recommendedTopK;
-      })
-    )
     .concat(
       includeActions.map(() => {
         return model.recommendedExhaustiveTopK;
@@ -163,11 +145,6 @@ export function getCitationsCount({
   const action = stepActions[stepActionIndex];
 
   switch (action.type) {
-    case "retrieval_configuration":
-      return getRetrievalTopK({
-        agentConfiguration,
-        stepActions,
-      });
     case "websearch_configuration":
       return getWebsearchNumResults({
         stepActions,

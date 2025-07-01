@@ -34,6 +34,7 @@ export type OAuthAuthorizeResponse = {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  authentication_method?: string;
 };
 
 type AuthErrorCode =
@@ -172,6 +173,7 @@ export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES = [
   "okta",
   "samlp",
   "waad",
+  "SSO",
 ] as const;
 export type SupportedEnterpriseConnectionStrategy =
   (typeof SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES)[number];

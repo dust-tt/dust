@@ -73,6 +73,7 @@ export type InferPluginArgs<T extends PluginArgs> = {
 export type PluginResponse =
   | { display: "text"; value: string }
   | { display: "json"; value: Record<string, unknown> }
+  | { display: "markdown"; value: string }
   | { display: "textWithLink"; value: string; link: string; linkText: string };
 
 // Base plugin interface.

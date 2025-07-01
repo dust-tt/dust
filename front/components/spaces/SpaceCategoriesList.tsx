@@ -72,7 +72,7 @@ const getTableColumns = () => {
               title={
                 info.row.original.usage.count === 0
                   ? "Un-used"
-                  : `Used by ${info.row.original.usage.agentNames.join(", ")}`
+                  : `Used by ${info.row.original.usage.agents.map((a) => a.name).join(", ")}`
               }
             >
               <span className="flex items-center gap-2 text-sm text-muted-foreground">
