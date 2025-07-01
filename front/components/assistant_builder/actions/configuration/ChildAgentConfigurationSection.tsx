@@ -85,6 +85,7 @@ export function ChildAgentConfigurationSection({
   showInvalidActionDescError,
 }: ChildAgentSelectorProps) {
   const [wasDescriptionEdited, setWasDescriptionEdited] = React.useState(false);
+  const [agentDescription, setAgentDescription] = React.useState("");
 
   const {
     agentConfigurations,
@@ -98,6 +99,7 @@ export function ChildAgentConfigurationSection({
   // When an agent is selected, we update the config and the description unless overridden.
   const handleAgentSelection = (agent: LightAgentConfigurationType) => {
     onAgentSelect(agent.sId);
+    setAgentDescription(agent.description);
     if (!wasDescriptionEdited) {
       updateDescription(agent.description);
     }
@@ -215,9 +217,11 @@ export function ChildAgentConfigurationSection({
       )}
       <ChildAgentDescription
         updateDescription={(description) => {
-          // Removing the description re-enables the automatic description based on the agent's
-          // description.
-          setWasDescriptionEdited(description !== "");
+          // Removing the description or putting back the agent's description re-enables the
+          // automatic description based on the agent's description.
+          setWasDescriptionEdited(
+            description !== "" && description !== agentDescription
+          );
           updateDescription(description);
         }}
         action={action}
