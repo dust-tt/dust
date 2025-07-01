@@ -20,6 +20,7 @@ import {
 import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
 
+import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
@@ -39,7 +40,6 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { setupOAuthConnection } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -249,8 +249,7 @@ function SlackBotToggle({
   const createSlackBotConnectionAndDataSource = async () => {
     try {
       // OAuth flow
-      const cRes = await setupOAuthConnection({
-        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+      const cRes = await setupConnection({
         owner,
         provider: "slack",
         useCase: "bot",
@@ -269,7 +268,7 @@ function SlackBotToggle({
           },
           body: JSON.stringify({
             provider: "slack_bot",
-            connectionId: cRes.value.connection_id,
+            connectionId: cRes.value,
             name: undefined,
             configuration: null,
           } satisfies PostDataSourceRequestBody),
@@ -318,31 +317,46 @@ function SlackBotToggle({
         hasSeparatorIfLast={true}
         action={
           <div className="flex flex-row items-center gap-2">
-            {isSlackBotEnabled && (
+            {isSlackBotEnabled && slackBotDataSource && (
               <Button
                 variant="outline"
                 label="Reconnect"
                 size="xs"
                 icon={ArrowPathIcon}
                 onClick={async () => {
-                  const connectionIdRes = await setupConnection({
+                  const cRes = await setupConnection({
                     owner,
                     provider: "slack",
                     useCase: "bot",
                     extraConfig: {},
                   });
-                  if (connectionIdRes.isErr()) {
+                  if (!cRes.isOk()) {
                     sendNotification({
                       type: "error",
                       title: "Failed to reconnect Slack Bot.",
                       description: "Could not reconnect the Dust Slack Bot.",
                     });
                   } else {
-                    sendNotification({
-                      type: "success",
-                      title: "Slack Bot reconnected.",
-                      description: "The Dust Slack Bot has been reconnected.",
-                    });
+                    const updateRes = await updateConnectorConnectionId(
+                      cRes.value,
+                      "slack_bot",
+                      slackBotDataSource,
+                      owner
+                    );
+
+                    if (updateRes.error) {
+                      sendNotification({
+                        type: "error",
+                        title: "Failed to update the Slack Bot connection",
+                        description: updateRes.error,
+                      });
+                    } else {
+                      sendNotification({
+                        type: "success",
+                        title: "Successfully updated Slack Bot connection",
+                        description: "The connection was successfully updated.",
+                      });
+                    }
                   }
                 }}
               />
