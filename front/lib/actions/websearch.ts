@@ -324,7 +324,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       if (event.type === "error") {
         logger.error(
           {
-            workspaceId: owner.id,
+            workspaceId: owner.sId,
             conversationId: conversation.id,
             error: event.content.message,
           },
@@ -348,7 +348,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         if (e.error) {
           logger.error(
             {
-              workspaceId: owner.id,
+              workspaceId: owner.sId,
               conversationId: conversation.id,
               error: e.error,
             },
@@ -374,7 +374,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
           if (isLeft(outputValidation)) {
             logger.error(
               {
-                workspaceId: owner.id,
+                workspaceId: owner.sId,
                 conversationId: conversation.id,
                 error: outputValidation.left,
               },
