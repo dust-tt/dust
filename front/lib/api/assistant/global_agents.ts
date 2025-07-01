@@ -751,7 +751,7 @@ function _getClaude3HaikuGlobalAgent({
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -801,7 +801,7 @@ function _getClaude3OpusGlobalAgent({
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -851,7 +851,7 @@ function _getClaude3GlobalAgent({
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -901,7 +901,7 @@ function _getClaude4SonnetGlobalAgent({
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -951,7 +951,7 @@ function _getClaude3_7GlobalAgent({
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
