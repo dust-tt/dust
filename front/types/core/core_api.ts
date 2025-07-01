@@ -2088,22 +2088,18 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async getDataSourceStats({
-    projectIds,
-    dataSourceIds,
-  }: {
-    projectIds: string[];
-    dataSourceIds: string[];
-  }): Promise<CoreAPIResponse<CoreAPIDataSourceStatsResponse>> {
-    const response = await this._fetchWithError(
-      `${this._url}/stats?project_id=${projectIds.map(encodeURIComponent).join(",")}&data_source_id=${dataSourceIds.map(encodeURIComponent).join(",")}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+  async getDataSourceStats(
+    query: { project_id: number; data_source_id: string }[]
+  ): Promise<CoreAPIResponse<CoreAPIDataSourceStatsResponse>> {
+    const response = await this._fetchWithError(`${this._url}/stats`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+      }),
+    });
 
     return this._resultFromResponse(response);
   }
