@@ -1,5 +1,5 @@
-import { Button, Page, SparklesIcon } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { Button, SparklesIcon } from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -64,8 +64,6 @@ function TagsSuggestions({
     }
   };
 
-  console.log("tagsSuggestions", tagsSuggestions);
-
   return (
     <div className="flex items-center gap-2">
       <div className="text-muted-foregroup text-xs font-semibold dark:text-muted-foreground-night">
@@ -85,7 +83,7 @@ function TagsSuggestions({
   );
 }
 
-export function AgentTagsSection() {
+export function TagsSection() {
   const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const { tags: allTags } = useTags({ owner });
