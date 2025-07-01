@@ -150,7 +150,7 @@ function _getDefaultWebActionsForGlobalAgent({
       sId: agentId + "-websearch-browse-action",
       type: "mcp_server_configuration",
       name: "web_search_&_browse" satisfies InternalMCPServerNameType,
-      description: null,
+      description: "Agent can search (Google) and retrieve information from specific websites.",
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
       dataSources: null,
