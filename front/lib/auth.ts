@@ -144,6 +144,30 @@ export class Authenticator {
     }));
   }
 
+  static async userFromSession(
+    session: SessionWithUser | null
+  ): Promise<UserResource | null> {
+    if (session?.type === "auth0" && session.user.workOSUserId) {
+      const user = await UserResource.fetchByWorkOSUserId(
+        session.user.workOSUserId
+      );
+      if (user) {
+        return user;
+      }
+    }
+    if (session?.type === "auth0" && session.user.auth0Sub) {
+      const user = await UserResource.fetchByAuth0Sub(session.user.auth0Sub);
+      if (user) {
+        return user;
+      }
+    }
+    if (session?.type === "workos" && session.user.workOSUserId) {
+      return UserResource.fetchByWorkOSUserId(session.user.workOSUserId);
+    }
+
+    return null;
+  }
+
   /**
    * Get a an Authenticator for the target workspace associated with the authentified user from the
    * Auth0 session.
@@ -163,13 +187,7 @@ export class Authenticator {
             sId: wId,
           },
         }),
-        session?.type === "auth0" && session.user.workOSUserId
-          ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
-          : session?.type === "auth0" && session.user.auth0Sub
-            ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
-            : session?.type === "workos" && session.user.workOSUserId
-              ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
-              : null,
+        this.userFromSession(session),
       ]);
 
       let role = "none" as RoleType;
@@ -221,13 +239,7 @@ export class Authenticator {
             where: { sId: wId },
           })
         : null,
-      session?.type === "auth0" && session.user.workOSUserId
-        ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
-        : session?.type === "auth0" && session.user.auth0Sub
-          ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
-          : session?.type === "workos" && session.user.workOSUserId
-            ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
-            : null,
+      this.userFromSession(session),
     ]);
 
     let groups: GroupResource[] = [];
