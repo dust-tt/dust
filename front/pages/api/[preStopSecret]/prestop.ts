@@ -27,7 +27,6 @@ async function handler(
 
   logger.info("Received prestop request, setting shutdown state in Redis");
 
-  // Set prestop state in Redis with 60 second TTL
   await runOnRedis({ origin: "lock" }, async (redis) => {
     await redis.setEx(PRESTOP_SHUTDOWN_KEY, 60, "true");
   });
