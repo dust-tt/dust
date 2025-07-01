@@ -22,7 +22,7 @@ struct Args {
 }
 
 /*
- * Backfills the csv_bucket and csv_bucket_path columns in the Tables table, and create the matching GCS file based on tables_row data.
+ * Backfills the creation of csv files in GCS for each entry in the Tables table
  *
  * Usage:
  * cargo run --bin backfill_tables_gcs_path -- [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
@@ -133,22 +133,20 @@ async fn process_tables_batch(
     for (id, table_id, project, data_source_id) in tables {
         println!("Processing table with id: {}, table_id: {}", id, table_id);
 
-        process_one_table(&store, &db_store, id, &project, &data_source_id, &table_id).await?;
+        process_one_table(&store, &db_store, &project, &data_source_id, &table_id).await?;
 
         last_table_id = id;
     }
 
-    if last_table_id < 0 {
-        return Ok(None);
+    match last_table_id {
+        id if id < 0 => Ok(None),
+        id => Ok(Some(id)),
     }
-
-    Ok(Some(last_table_id))
 }
 
 async fn process_one_table(
     store: &PostgresStore,
     db_store: &PostgresDatabasesStore,
-    id: i64,
     project: &Project,
     data_source_id: &str,
     table_id: &str,
