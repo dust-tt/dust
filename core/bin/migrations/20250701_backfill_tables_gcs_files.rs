@@ -101,7 +101,7 @@ async fn process_tables_batch(
     let rows = c
         .query(
             "
-            SELECT t.id, t.table_id, ds.project, ds.data_source_id
+            SELECT t.id, t.table_id, t.schema, ds.project, ds.data_source_id
                 FROM tables t
                 INNER JOIN data_sources ds ON ds.id = t.data_source
                 WHERE has_file IS NULL AND remote_database_table_id IS NULL
@@ -118,18 +118,34 @@ async fn process_tables_batch(
         .map(|table| {
             let id: i64 = table.get("id");
             let table_id: String = table.get("table_id");
+            let schema: Option<String> = table.get("schema");
             let project: i64 = table.get("project");
             let data_source_id: String = table.get("data_source_id");
 
-            (id, table_id, Project::new_from_id(project), data_source_id)
+            (
+                id,
+                table_id,
+                schema,
+                Project::new_from_id(project),
+                data_source_id,
+            )
         })
         .collect::<Vec<_>>();
 
     let mut last_table_id = -1;
-    for (id, table_id, project, data_source_id) in tables {
+    for (id, table_id, schema, project, data_source_id) in tables {
         println!("Processing table with id: {}, table_id: {}", id, table_id);
 
-        process_one_table(&store, &db_store, id, &project, &data_source_id, &table_id).await?;
+        process_one_table(
+            &store,
+            &db_store,
+            id,
+            &table_id,
+            &schema,
+            &project,
+            &data_source_id,
+        )
+        .await?;
 
         last_table_id = id;
     }
@@ -144,9 +160,10 @@ async fn process_one_table(
     store: &PostgresStore,
     db_store: &PostgresDatabasesStore,
     id: i64,
+    table_id: &str,
+    schema: &Option<String>,
     project: &Project,
     data_source_id: &str,
-    table_id: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let unique_table_id = get_table_unique_id(&project, &data_source_id, &table_id);
 
@@ -156,6 +173,10 @@ async fn process_one_table(
     rows.into_iter().for_each(|row| {
         println!("Row: {:?}", row);
     });
+
+    // store
+    //     .upsert_data_source_table_csv(&project, &data_source_id, &table_id, &schema, &rows)
+    //     .await?;
 
     // Set has_file = true to mark that this table has been processed
     store
