@@ -25,10 +25,45 @@ import {
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ProcessActionOutputsType } from "@app/lib/actions/process";
-import { applyDataSourceFilters } from "@app/lib/actions/process";
-import { getExtractFileTitle } from "@app/lib/actions/process/utils";
+import { getExtractFileTitle } from "./process_utils";
 import { runActionStreamed } from "@app/lib/actions/server";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+
+// Type definition for process action outputs
+type ProcessActionOutputsType = {
+  data: unknown[];
+  total_documents?: number;
+};
+
+// Helper function to apply data source filters to the configuration
+function applyDataSourceFilters(
+  config: any,
+  dataSourceConfigurations: DataSourceConfiguration[],
+  dataSourceViewsMap: Record<string, any>,
+  tagsIn: string[] | null,
+  tagsNot: string[] | null
+) {
+  const parentsIn = dataSourceConfigurations
+    .map((d) => d.filter?.parents?.in ?? [])
+    .flat();
+  const parentsNotIn = dataSourceConfigurations
+    .map((d) => d.filter?.parents?.not ?? [])
+    .flat();
+
+  if (parentsIn.length > 0) {
+    config.DATASOURCE.filter.parents = {
+      in: parentsIn,
+      not: parentsNotIn,
+    };
+  }
+
+  if (tagsIn && tagsIn.length > 0) {
+    config.DATASOURCE.filter.tags = {
+      in: tagsIn,
+      not: tagsNot || [],
+    };
+  }
+}
 import type {
   ActionGeneratedFileType,
   AgentLoopContextType,

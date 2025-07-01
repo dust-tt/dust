@@ -12,8 +12,10 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ProcessConfigurationType } from "@app/lib/actions/process";
+import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
+import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
@@ -36,14 +38,36 @@ export function isDustAppRunConfiguration(
   );
 }
 
-export function isProcessConfiguration(
+export function isWebsearchConfiguration(
   arg: unknown
-): arg is ProcessConfigurationType {
+): arg is WebsearchConfigurationType {
   return (
     !!arg &&
     typeof arg === "object" &&
     "type" in arg &&
-    arg.type === "process_configuration"
+    arg.type === "websearch_configuration"
+  );
+}
+
+export function isTablesQueryConfiguration(
+  arg: unknown
+): arg is TablesQueryConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "tables_query_configuration"
+  );
+}
+
+export function isReasoningConfiguration(
+  arg: unknown
+): arg is ReasoningConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "reasoning_configuration"
   );
 }
 

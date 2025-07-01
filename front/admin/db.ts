@@ -1,3 +1,4 @@
+import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
@@ -13,10 +14,9 @@ import {
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import {
-  AgentProcessAction,
-  AgentProcessConfiguration,
-} from "@app/lib/models/assistant/actions/process";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+  AgentReasoningAction,
+  AgentReasoningConfiguration,
+} from "@app/lib/models/assistant/actions/reasoning";
 import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
@@ -148,7 +148,8 @@ async function main() {
   await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
-  await AgentProcessConfiguration.sync({ alter: true });
+  await AgentWebsearchConfiguration.sync({ alter: true });
+  await AgentBrowseConfiguration.sync({ alter: true });
   await AgentReasoningConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
@@ -165,7 +166,7 @@ async function main() {
   await AgentDataRetentionModel.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
   await AgentStepContentModel.sync({ alter: true });
-  await AgentProcessAction.sync({ alter: true });
+  await AgentReasoningAction.sync({ alter: true });
   await AgentSearchLabelsAction.sync({ alter: true });
   await AgentMCPAction.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });

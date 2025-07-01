@@ -15,6 +15,10 @@ import {
   isWorkspaceRelocationOngoing,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import {
+  AgentBrowseAction,
+  AgentBrowseConfiguration,
+} from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
@@ -26,12 +30,15 @@ import {
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
 import {
-  AgentProcessAction,
-  AgentProcessConfiguration,
-} from "@app/lib/models/assistant/actions/process";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+  AgentReasoningAction,
+  AgentReasoningConfiguration,
+} from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import {
+  AgentWebsearchAction,
+  AgentWebsearchConfiguration,
+} from "@app/lib/models/assistant/actions/websearch";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -318,33 +325,6 @@ export async function deleteAgentsActivity({
       },
     });
     await AgentDustAppRunConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const agentProcessConfigurations = await AgentProcessConfiguration.findAll({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-    await AgentProcessAction.destroy({
-      where: {
-        processConfigurationId: {
-          [Op.in]: agentProcessConfigurations.map((r) => r.sId),
-        },
-      },
-    });
-    await AgentDataSourceConfiguration.destroy({
-      where: {
-        processConfigurationId: {
-          [Op.in]: agentProcessConfigurations.map((r) => r.id),
-        },
-      },
-    });
-    await AgentProcessConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,

@@ -1,4 +1,10 @@
-import { Avatar, BarChartIcon, CommandIcon, ScanIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  BarChartIcon,
+  ChatBubbleThoughtIcon,
+  CommandIcon,
+  GlobeAltIcon,
+} from "@dust-tt/sparkle";
 import _ from "lodash";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
@@ -12,8 +18,9 @@ import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent"
 import {
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
-  isProcessConfiguration,
+  isReasoningConfiguration,
   isServerSideMCPServerConfiguration,
+  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
@@ -129,10 +136,16 @@ function renderOtherAction(
       avatar: <Avatar icon={CommandIcon} size="xs" />,
       order: 2,
     };
-  } else if (isProcessConfiguration(action)) {
+  } else if (isWebsearchConfiguration(action)) {
     return {
-      title: "Extract from documents",
-      avatar: <Avatar icon={ScanIcon} size="xs" />,
+      title: "Web Search & Navigation",
+      avatar: <Avatar icon={GlobeAltIcon} size="xs" />,
+      order: 0,
+    };
+  } else if (isReasoningConfiguration(action)) {
+    return {
+      title: "Reasoning",
+      avatar: <Avatar icon={ChatBubbleThoughtIcon} size="xs" />,
       order: 0,
     };
   } else if (isServerSideMCPServerConfiguration(action)) {

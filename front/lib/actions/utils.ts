@@ -177,7 +177,10 @@ export function getCitationsCount({
 
   switch (action.type) {
     case "dust_app_run_configuration":
-    case "process_configuration":
+    case "browse_configuration":
+    case "reasoning_configuration":
+    case "tables_query_configuration":
+    case "websearch_configuration":
     case "conversation_include_file_configuration":
     case "search_labels_configuration":
       return 0;

@@ -33,7 +33,10 @@ type ConversationBaseActionType =
 
 export type BaseActionType =
   | "dust_app_run_action"
-  | "process_action"
+  | "reasoning_action"
+  | "tables_query_action"
+  | "websearch_action"
+  | "browse_action"
   | "search_labels_action"
   | "tool_action"
   | ConversationBaseActionType;

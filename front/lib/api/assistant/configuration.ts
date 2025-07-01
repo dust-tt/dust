@@ -10,7 +10,6 @@ import {
 
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
-import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type {
@@ -29,7 +28,6 @@ import {
   AgentChildAgentConfiguration,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
-import type { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import type { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
@@ -503,15 +501,21 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const configurationSIds = agentConfigurations.map((a) => a.sId);
 
   const [
-    processActionsConfigurationsPerAgent,
     dustAppRunActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
+    websearchActionsConfigurationsPerAgent,
+    browseActionsConfigurationsPerAgent,
+    tableQueryActionsConfigurationsPerAgent,
+    reasoningActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
     tagsPerAgent,
   ] = await Promise.all([
-    fetchAgentProcessActionConfigurations(auth, { configurationIds, variant }),
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
+    fetchWebsearchActionConfigurations(auth, { configurationIds, variant }),
+    Promise.resolve(new Map()), // Browse configurations (not implemented yet)
+    fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
+    fetchReasoningActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
@@ -530,10 +534,25 @@ async function fetchWorkspaceAgentConfigurationsForView(
         dustAppRunActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...dustAppRunActionsConfigurations);
 
-      // Process configurations.
-      const processActionsConfigurations =
-        processActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...processActionsConfigurations);
+      // Websearch configurations.
+      const websearchActionsConfigurations =
+        websearchActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...websearchActionsConfigurations);
+
+      // Browse configurations.
+      const browseActionsConfigurations =
+        browseActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...browseActionsConfigurations);
+
+      // Table query configurations.
+      const tableQueryActionsConfigurations =
+        tableQueryActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...tableQueryActionsConfigurations);
+
+      // Reasoning configurations
+      const reasoningActionsConfigurations =
+        reasoningActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...reasoningActionsConfigurations);
 
       // MCP server configurations
       const mcpServerActionsConfigurations =
@@ -1130,7 +1149,6 @@ export async function createAgentActionConfiguration(
       await createAgentDataSourcesConfiguration(auth, t, {
         dataSourceConfigurations: action.dataSources,
         retrievalConfiguration: null,
-        processConfiguration: null,
         mcpServerConfiguration: mcpConfig,
       });
     }
@@ -1190,12 +1208,10 @@ async function createAgentDataSourcesConfiguration(
   {
     dataSourceConfigurations,
     retrievalConfiguration,
-    processConfiguration,
     mcpServerConfiguration,
   }: {
     dataSourceConfigurations: DataSourceConfiguration[];
     retrievalConfiguration: AgentRetrievalConfiguration | null;
-    processConfiguration: AgentProcessConfiguration | null;
     mcpServerConfiguration: AgentMCPServerConfiguration | null;
   }
 ): Promise<AgentDataSourceConfiguration[]> {
@@ -1251,7 +1267,6 @@ async function createAgentDataSourcesConfiguration(
         parentsIn: dsConfig.filter.parents?.in,
         parentsNotIn: dsConfig.filter.parents?.not,
         retrievalConfigurationId: retrievalConfiguration?.id || null,
-        processConfigurationId: processConfiguration?.id || null,
         dataSourceViewId: dataSourceView.id,
         mcpServerConfigurationId: mcpServerConfiguration?.id || null,
         tagsMode,
