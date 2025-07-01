@@ -10,6 +10,7 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
+use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
@@ -25,10 +26,7 @@ use tokio::{
     sync::mpsc::unbounded_channel,
 };
 use tokio_stream::Stream;
-use tower_http::trace::{self, TraceLayer};
-use tracing::{error, info, Level};
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::prelude::*;
+use tracing::{error, info};
 
 use dust::{
     api_keys::validate_api_key,
@@ -46,6 +44,7 @@ use dust::{
     databases_store::{self},
     dataset,
     deno::js_executor::JSExecutor,
+    open_telemetry::init_subscribers,
     project,
     providers::provider::{provider, ProviderID},
     run,
@@ -59,7 +58,7 @@ use dust::{
         postgres,
         store::{self, FolderUpsertParams, TableUpsertParams},
     },
-    utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
+    utils::{self, error_response, APIError, APIResponse},
 };
 
 #[global_allocator]
@@ -590,11 +589,14 @@ async fn datasets_register(
     }
 }
 
+#[tracing::instrument(level = "info", skip_all)]
 async fn datasets_list(
     Path(project_id): Path<i64>,
     State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+    tracing::info!("Listing datasets for project: {}", project_id);
+
     match state.store.list_datasets(&project).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -4105,15 +4107,7 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
-        tracing_subscriber::registry()
-            .with(JsonStorageLayer)
-            .with(
-                BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
-                    .skip_fields(vec!["file", "line", "target"].into_iter())
-                    .unwrap(),
-            )
-            .with(tracing_subscriber::EnvFilter::new("info"))
-            .init();
+        let _guard = init_subscribers()?;
 
         let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
             Ok(db_uri) => {
@@ -4350,14 +4344,11 @@ fn main() {
         // Misc
         .route("/tokenize", post(tokenize))
         .route("/tokenize/batch", post(tokenize_batch))
-
+        .layer(OtelInResponseLayer::default())
+        //start OpenTelemetry trace on incoming request
+        .layer(OtelAxumLayer::default())
         // Extensions
         .layer(DefaultBodyLimit::disable())
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(CoreRequestMakeSpan::new())
-                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
-        )
         .layer(from_fn(validate_api_key))
         .with_state(state.clone());
 
