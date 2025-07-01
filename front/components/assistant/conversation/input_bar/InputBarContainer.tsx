@@ -41,6 +41,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
+import { MicrophoneIcon } from "@heroicons/react/20/solid";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",
@@ -262,7 +263,13 @@ const InputBarContainer = ({
       resetTranscript();
       startRecording();
     }
-  }, [isRecording, stopRecording, startRecording, resetTranscript, isSpeechSupported]);
+  }, [
+    isRecording,
+    stopRecording,
+    startRecording,
+    resetTranscript,
+    isSpeechSupported,
+  ]);
 
   // Insert transcript into editor when speech recognition stops
   useEffect(() => {
@@ -349,15 +356,15 @@ const InputBarContainer = ({
               )}
             />
           )}
-          {actions.includes("voice-input") && (
+          {actions.includes("voice-input") && isSpeechSupported && (
             <Button
               variant="ghost-secondary"
-              icon={ActionMicIcon}
+              icon={MicrophoneIcon}
               size="xs"
               onClick={handleVoiceInput}
               className={classNames(
                 isRecording && "animate-pulse bg-red-100 text-red-600",
-                !isSpeechSupported && "opacity-50 cursor-not-allowed"
+                !isSpeechSupported && "cursor-not-allowed opacity-50"
               )}
               tooltip={
                 !isSpeechSupported
