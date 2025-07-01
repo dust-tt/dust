@@ -29,6 +29,7 @@ import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
 import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
 import {
+  fetchAgentMessageFromConversation,
   sendNonInteractiveMessage,
   validateNonInteractiveFlags,
 } from "./chat/nonInteractive.js";
@@ -42,6 +43,8 @@ interface CliChatProps {
   agentSearch?: string;
   message?: string;
   conversationId?: string;
+  messageId?: string;
+  details?: boolean;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -62,14 +65,22 @@ const CliChat: FC<CliChatProps> = ({
   agentSearch,
   message,
   conversationId,
+  messageId,
+  details,
 }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Validate flags usage
   useEffect(() => {
-    validateNonInteractiveFlags(message, agentSearch, conversationId);
-  }, [message, agentSearch, conversationId]);
-
+    validateNonInteractiveFlags(message, agentSearch, conversationId, messageId, details);
+  }, [message, agentSearch, conversationId, messageId, details]);
+  
+  // Handle messageId mode - fetch and display message details
+  useEffect(() => {
+    if (messageId && conversationId) {
+      void fetchAgentMessageFromConversation(conversationId, messageId);
+    }
+  }, [messageId, conversationId]);
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
   );
@@ -334,8 +345,8 @@ const CliChat: FC<CliChatProps> = ({
 
     // Call the standalone function
     setIsProcessingQuestion(true);
-    void sendNonInteractiveMessage(message, selectedAgent, me, conversationId);
-  }, [message, selectedAgent, me, meError, isMeLoading, conversationId]);
+    void sendNonInteractiveMessage(message, selectedAgent, me, conversationId, details);
+  }, [message, selectedAgent, me, meError, isMeLoading, conversationId, details]);
 
   const canSubmit =
     me &&
@@ -1098,7 +1109,7 @@ const CliChat: FC<CliChatProps> = ({
   });
 
   // In non-interactive mode, show minimal UI
-  if (message) {
+  if (message || messageId) {
     // Don't show any UI in non-interactive mode
     // All output is handled via console.log/console.error in the useEffect
     return null;

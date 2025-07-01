@@ -14,7 +14,8 @@ export async function sendNonInteractiveMessage(
   message: string,
   selectedAgent: AgentConfiguration,
   me: MeResponseType["user"],
-  existingConversationId?: string
+  existingConversationId?: string,
+  showDetails?: boolean
 ): Promise<void> {
   const dustClient = await getDustClient();
   if (!dustClient) {
@@ -123,8 +124,17 @@ export async function sendNonInteractiveMessage(
     }
 
     let fullResponse = "";
+    const eventDetails: any[] = [];
     
     for await (const event of streamRes.value.eventStream) {
+      // If details flag is set, collect all events
+      if (showDetails) {
+        eventDetails.push({
+          ...event,
+          timestamp: Date.now()
+        });
+      }
+      
       if (event.type === "generation_tokens") {
         if (event.classification === "tokens") {
           fullResponse += event.text;
@@ -143,11 +153,20 @@ export async function sendNonInteractiveMessage(
         process.exit(1);
       } else if (event.type === "agent_message_success") {
         // Success - output the result
-        console.log(JSON.stringify({
+        const output: any = {
           agentId: selectedAgent.sId,
           agentAnswer: fullResponse.trim(),
-          conversationId: conversation.sId
-        }));
+          conversationId: conversation.sId,
+          messageId: event.message.sId
+        };
+        
+        // Add detailed event history if requested
+        if (showDetails) {
+          output.events = eventDetails;
+          output.agentMessage = event.message;
+        }
+        
+        console.log(JSON.stringify(output));
         process.exit(0);
       }
     }
@@ -163,8 +182,29 @@ export async function sendNonInteractiveMessage(
 export function validateNonInteractiveFlags(
   message?: string,
   agentSearch?: string,
-  conversationId?: string
+  conversationId?: string,
+  messageId?: string,
+  details?: boolean
 ): void {
+  // Check --messageId exclusivity
+  if (messageId && (agentSearch || message || conversationId)) {
+    console.error(JSON.stringify({ 
+      error: "Invalid usage",
+      details: "--messageId is exclusive and cannot be used with --agent, --message, or --conversationId"
+    }));
+    process.exit(1);
+  }
+  
+  // Check --details requirements
+  if (details && (!agentSearch || !message)) {
+    console.error(JSON.stringify({ 
+      error: "Invalid usage",
+      details: "--details requires both --agent and --message to be specified"
+    }));
+    process.exit(1);
+  }
+  
+  // Existing validations
   if (message && !agentSearch) {
     console.error(JSON.stringify({ 
       error: "Invalid usage",
@@ -179,4 +219,14 @@ export function validateNonInteractiveFlags(
     }));
     process.exit(1);
   }
+}
+
+export async function fetchMessageDetails(messageId: string): Promise<void> {
+  // For now, we'll output an error since there's no direct API to get message details
+  // This functionality would require knowing the conversation ID as well
+  console.error(JSON.stringify({ 
+    error: "Not implemented",
+    details: "Message retrieval by ID requires conversation ID. Please use the message details provided when sending messages with --details flag."
+  }));
+  process.exit(1);
 }

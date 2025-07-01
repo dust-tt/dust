@@ -58,6 +58,15 @@ const cli = meow({
       shortFlag: "c",
       description: "Send message to an existing conversation (requires --agent and --message)",
     },
+    messageId: {
+      type: "string",
+      description: "Display details of a specific message (exclusive with -a, -m, -c)",
+    },
+    details: {
+      type: "boolean",
+      shortFlag: "d",
+      description: "Show detailed message information (requires --agent and --message)",
+    },
   },
 });
 
