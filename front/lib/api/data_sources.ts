@@ -29,6 +29,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import type {
@@ -532,9 +533,7 @@ export async function upsertDocument({
     parentId: documentParentId,
     parents: documentParents,
     sourceUrl,
-    // TEMPORARY -- need to unstuck a specific entry
-    // TODO(FONTANIERH): remove this once the entry is unstuck
-    timestamp: timestamp ? Math.floor(timestamp) : null,
+    timestamp: cleanTimestamp(timestamp),
     section: generatedSection,
     credentials,
     lightDocumentOutput: light_document_output === true,

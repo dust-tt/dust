@@ -8,6 +8,7 @@ import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
+import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { CoreAPI, dustManagedCredentials, safeSubstring } from "@app/types";
@@ -104,7 +105,7 @@ export async function upsertDocumentActivity(
     parentId: upsertQueueItem.parentId || null,
     parents: upsertQueueItem.parents || [upsertQueueItem.documentId],
     sourceUrl: upsertQueueItem.sourceUrl,
-    timestamp: upsertQueueItem.timestamp,
+    timestamp: cleanTimestamp(upsertQueueItem.timestamp),
     section: upsertQueueItem.section,
     credentials,
     lightDocumentOutput: true,
