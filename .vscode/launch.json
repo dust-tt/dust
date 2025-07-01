@@ -28,11 +28,11 @@
       "cargo": {
         "args": [
           "build",
-          "--bin=backfill_tables_gcs_path",
+          "--bin=backfill_tables_gcs_files",
           "--manifest-path=${workspaceFolder}/core/Cargo.toml"
         ],
         "filter": {
-          "name": "backfill_tables_gcs_path",
+          "name": "backfill_tables_gcs_files",
           "kind": "bin"
         }
       },
