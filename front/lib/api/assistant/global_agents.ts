@@ -420,9 +420,11 @@ function _getGPT4GlobalAgent({
 function _getO3MiniGlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -433,9 +435,11 @@ function _getO3MiniGlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.O3_MINI;
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.O3_MINI,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -451,7 +455,12 @@ function _getO3MiniGlobalAgent({
       modelId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -464,18 +473,22 @@ function _getO3MiniGlobalAgent({
 function _getO1GlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.O1;
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.O1,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -491,7 +504,12 @@ function _getO1GlobalAgent({
       modelId: O1_MODEL_CONFIG.modelId,
       temperature: 1, // 1 is forced for O1
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: false,
     templateId: null,
@@ -545,18 +563,22 @@ function _getO1MiniGlobalAgent({
 function _getO1HighReasoningGlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.O1_HIGH_REASONING;
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.O1_HIGH_REASONING,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -573,7 +595,12 @@ function _getO1HighReasoningGlobalAgent({
       temperature: 1, // 1 is forced for O1
       reasoningEffort: O1_HIGH_REASONING_MODEL_CONFIG.reasoningEffort,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: false,
     templateId: null,
@@ -587,18 +614,22 @@ function _getO1HighReasoningGlobalAgent({
 function _getO3GlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.O3;
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.O3,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
@@ -614,7 +645,12 @@ function _getO3GlobalAgent({
       modelId: O3_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -704,10 +740,14 @@ function _getClaude2GlobalAgent({
 
 function _getClaude3HaikuGlobalAgent({
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU;
 
   return {
     id: -1,
@@ -727,7 +767,12 @@ function _getClaude3HaikuGlobalAgent({
       modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -741,14 +786,18 @@ function _getClaude3HaikuGlobalAgent({
 function _getClaude3OpusGlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_3_OPUS;
 
   return {
     id: -1,
@@ -768,7 +817,12 @@ function _getClaude3OpusGlobalAgent({
       modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -782,14 +836,18 @@ function _getClaude3OpusGlobalAgent({
 function _getClaude3GlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_3_SONNET;
 
   return {
     id: -1,
@@ -809,7 +867,12 @@ function _getClaude3GlobalAgent({
       modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -823,14 +886,18 @@ function _getClaude3GlobalAgent({
 function _getClaude4SonnetGlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_4_SONNET;
 
   return {
     id: -1,
@@ -850,7 +917,12 @@ function _getClaude4SonnetGlobalAgent({
       modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -864,14 +936,18 @@ function _getClaude4SonnetGlobalAgent({
 function _getClaude3_7GlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
+
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET;
 
   return {
     id: -1,
@@ -891,7 +967,12 @@ function _getClaude3_7GlobalAgent({
       modelId: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentSid: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -1651,44 +1732,71 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.O1:
-      agentConfiguration = _getO1GlobalAgent({ auth, settings });
+      agentConfiguration = _getO1GlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.O1_MINI:
       agentConfiguration = _getO1MiniGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
-      agentConfiguration = _getO1HighReasoningGlobalAgent({ auth, settings });
+      agentConfiguration = _getO1HighReasoningGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.O3_MINI:
-      agentConfiguration = _getO3MiniGlobalAgent({ auth, settings });
+      agentConfiguration = _getO3MiniGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.O3:
-      agentConfiguration = _getO3GlobalAgent({ auth, settings });
+      agentConfiguration = _getO3GlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
-      agentConfiguration = _getClaude4SonnetGlobalAgent({ auth, settings });
+      agentConfiguration = _getClaude4SonnetGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
-      agentConfiguration = _getClaude3OpusGlobalAgent({ auth, settings });
+      agentConfiguration = _getClaude3OpusGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
       agentConfiguration = _getClaude3GlobalAgent({
         auth,
         settings,
+        webSearchBrowseMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
       agentConfiguration = _getClaude3HaikuGlobalAgent({
         settings,
+        webSearchBrowseMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
       agentConfiguration = _getClaude3_7GlobalAgent({
         auth,
         settings,
+        webSearchBrowseMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_2:
