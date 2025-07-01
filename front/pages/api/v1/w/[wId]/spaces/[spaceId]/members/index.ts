@@ -59,17 +59,28 @@ async function handler(
     });
   }
 
+  if (
+    space.managementMode === "group" ||
+    space.groups.some((g) => g.kind === "global")
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message:
+          space.managementMode === "group"
+            ? "Space is externally managed - no editable members available."
+            : "Space is global - no editable members available.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "GET":
       const currentMembers = uniqBy(
         (
           await concurrentExecutor(
-            space.groups.filter((g) => {
-              if (space.managementMode === "manual") {
-                return g.kind === "regular" || g.kind === "global";
-              }
-              return false;
-            }),
+            space.groups,
             (group) => group.getActiveMembers(auth),
             { concurrency: 10 }
           )
