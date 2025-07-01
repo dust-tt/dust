@@ -169,6 +169,10 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
     ) -> Result<Option<DataSource>>;
+    async fn load_data_sources(
+        &self,
+        project_data_sources: Vec<(i64, String)>,
+    ) -> Result<Vec<DataSource>>;
     async fn load_data_source_by_internal_id(
         &self,
         data_source_internal_id: &str,

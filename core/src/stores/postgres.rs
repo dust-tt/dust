@@ -39,6 +39,7 @@ use crate::{
     stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES},
     utils,
 };
+use tracing::info;
 
 use super::store::{DocumentCreateParams, FolderUpsertParams, TableUpsertParams};
 
@@ -1262,6 +1263,61 @@ impl Store for PostgresStore {
                 )))
             }
         }
+    }
+
+    async fn load_data_sources(
+        &self,
+        project_data_sources: Vec<(i64, String)>,
+    ) -> Result<Vec<DataSource>> {
+        if project_data_sources.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Build the query dynamically based on the number of project_data_sources
+        let placeholders: Vec<String> = (0..project_data_sources.len())
+            .map(|i| format!("(${}, ${})", i * 2 + 1, i * 2 + 2))
+            .collect();
+        let query = format!(
+            "SELECT project, id, created, internal_id, config_json, name, data_source_id FROM data_sources 
+             WHERE (project, data_source_id) IN ({})",
+            placeholders.join(", ")
+        );
+        info!(query);
+
+        // Prepare parameters: alternating project_id and data_source_id
+        let mut params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = vec![];
+        for (project_id, data_source_id) in &project_data_sources {
+            params.push(project_id);
+            params.push(data_source_id);
+        }
+
+        let r = c.query(&query, &params[..]).await?;
+
+        let mut data_sources = Vec::new();
+        for row in r {
+            let project_id: i64 = row.get(0);
+            let created: i64 = row.get(2);
+            let internal_id: String = row.get(3);
+            let config_data: String = row.get(4);
+            let name: Option<String> = row.get(5);
+            let data_source_id: String = row.get(6);
+
+            let data_source_config: DataSourceConfig = serde_json::from_str(&config_data)?;
+            data_sources.push(DataSource::new_from_store(
+                &Project::new_from_id(project_id),
+                created as u64,
+                &data_source_id,
+                &internal_id,
+                &data_source_config,
+                // TODO(keyword-search) Remove this once name has been backfilled.
+                &name.unwrap_or("".to_string()),
+            ));
+        }
+
+        Ok(data_sources)
     }
 
     async fn load_data_source_by_internal_id(

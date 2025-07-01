@@ -3618,7 +3618,7 @@ async fn nodes_search(
     )
 }
 
-async fn data_sources_stats(
+async fn data_source_stats(
     Path((project_id, data_source_id)): Path<(i64, String)>,
     State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
@@ -3641,30 +3641,166 @@ async fn data_sources_stats(
             None,
         ),
         Ok(Some(data_source)) => {
+            let data_source_ids = vec![data_source.data_source_id().to_string()];
             match state
                 .search_store
-                .get_data_source_stats(data_source.data_source_id().to_string())
+                .get_data_source_stats(data_source_ids.clone())
                 .await
             {
-                Ok(Some(data_source_stats)) => (
+                Ok(stats) if !stats.is_empty() => (
                     StatusCode::OK,
                     Json(APIResponse {
                         error: None,
                         response: Some(json!({
-                            "data_source": data_source_stats
+                            "data_source": stats[0]
                         })),
                     }),
                 ),
-                Ok(None) => error_response(
+                Ok(_) => error_response(
                     StatusCode::NOT_FOUND,
-                    "data_source_not_found",
-                    &format!("No data source indexed for id `{}`", data_source_id),
+                    "data_sources_not_indexed",
+                    "No data sources indexed",
                     None,
                 ),
                 Err(e) => error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "internal_server_error",
-                    "Failed to get stats relative to data source",
+                    "Failed to get stats relative to data sources",
+                    Some(e),
+                ),
+            }
+        }
+    }
+}
+
+async fn data_sources_stats(
+    Query(params): Query<HashMap<String, String>>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    // Parse data_source_id(s) from query parameters
+    let data_source_ids: Vec<String> = match params.get("data_source_id") {
+        Some(ids_str) => ids_str.split(',').map(|s| s.trim().to_string()).collect(),
+        None => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "missing_parameter",
+                "data_source_id parameter is required",
+                None,
+            );
+        }
+    };
+
+    if data_source_ids.is_empty() || data_source_ids.iter().any(|id| id.is_empty()) {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parameter",
+            "data_source_id parameter cannot be empty",
+            None,
+        );
+    }
+
+    // Parse project_id(s) from query parameters
+    let project_ids: Vec<i64> = match params.get("project_id") {
+        Some(ids_str) => {
+            let parsed: Result<Vec<i64>, _> = ids_str
+                .split(',')
+                .map(|s| s.trim().parse::<i64>())
+                .collect();
+            match parsed {
+                Ok(ids) => ids,
+                Err(_) => {
+                    return error_response(
+                        StatusCode::BAD_REQUEST,
+                        "invalid_parameter",
+                        "Invalid project_id format",
+                        None,
+                    );
+                }
+            }
+        }
+        None => {
+            return error_response(
+                StatusCode::BAD_REQUEST,
+                "missing_parameter",
+                "project_id parameter is required",
+                None,
+            );
+        }
+    };
+
+    if project_ids.is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parameter",
+            "project_id parameter cannot be empty",
+            None,
+        );
+    }
+
+    // Check that data_source_ids and project_ids have the same length
+    if data_source_ids.len() != project_ids.len() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parameter",
+            &format!(
+                "Number of data_source_ids ({}) must match number of project_ids ({})",
+                data_source_ids.len(),
+                project_ids.len()
+            ),
+            None,
+        );
+    }
+
+    // Zip data_source_ids and project_ids together
+    let project_data_sources: Vec<(i64, String)> = project_ids
+        .into_iter()
+        .zip(data_source_ids.into_iter())
+        .map(|(project_id, data_source_id)| (project_id, data_source_id))
+        .collect();
+
+    match state
+        .store
+        .load_data_sources(project_data_sources.clone())
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data sources",
+            Some(e),
+        ),
+        Ok(data_sources) if data_sources.is_empty() => error_response(
+            StatusCode::NOT_FOUND,
+            "data_sources_not_found",
+            "No data sources found",
+            None,
+        ),
+        Ok(data_sources) => {
+            let ds_ids: Vec<String> = data_sources
+                .iter()
+                .map(|ds| ds.data_source_id().to_string())
+                .collect();
+
+            match state.search_store.get_data_source_stats(ds_ids).await {
+                Ok(stats) if !stats.is_empty() => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "data_sources": stats
+                        })),
+                    }),
+                ),
+                Ok(_) => error_response(
+                    StatusCode::NOT_FOUND,
+                    "data_sources_not_indexed",
+                    "No data sources indexed",
+                    None,
+                ),
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to get stats relative to data sources",
                     Some(e),
                 ),
             }
@@ -4299,7 +4435,8 @@ fn main() {
 
         //Search
         .route("/nodes/search", post(nodes_search))
-        .route("/projects/{project_id}/data_sources/{data_source_id}/stats", get(data_sources_stats))
+        .route("/stats", get(data_sources_stats))
+        .route("/projects/{project_id}/data_sources/{data_source_id}/stats", get(data_source_stats))
         .route("/tags/search", post(tags_search))
 
         // Misc
