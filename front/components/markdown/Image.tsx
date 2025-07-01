@@ -2,7 +2,7 @@ import React from "react";
 import { visit } from "unist-util-visit";
 
 import { getFileProcessedUrl } from "@app/lib/swr/file";
-import type { WorkspaceType } from "@app/types";
+import { LightWorkspaceType } from "@app/types";
 
 export function Img({
   src,
@@ -13,7 +13,7 @@ export function Img({
   src?: string | undefined;
   alt?: string | undefined;
   title?: string | undefined;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }) {
   if (!src) {
     return null;
@@ -49,7 +49,7 @@ export function imgDirective() {
   };
 }
 
-export function getImgPlugin(owner: WorkspaceType) {
+export function getImgPlugin(owner: LightWorkspaceType) {
   const ImagePlugin = ({
     src,
     alt,
