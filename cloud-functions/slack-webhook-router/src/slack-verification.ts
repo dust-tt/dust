@@ -3,6 +3,7 @@ import { Request, RequestHandler } from "express";
 import { IncomingHttpHeaders } from "http";
 import querystring from "querystring";
 import rawBody from "raw-body";
+import type { SecretManager } from "./secrets.js";
 
 class ReceiverAuthenticityError extends Error {
   constructor(message: string) {
@@ -77,21 +78,32 @@ async function parseExpressRequestRawBody(req: Request): Promise<string> {
   return (await rawBody(req)).toString();
 }
 
-/**
- * Creates middleware that verifies Slack signatures and sets req.body to original format.
- */
+// Creates middleware that verifies both webhook secret and Slack signature.
 export function createSlackVerificationMiddleware(
-  getSigningSecret: () => Promise<string>
+  secretManager: SecretManager
 ): RequestHandler {
   return async (req, res, next): Promise<void> => {
     try {
-      // Get the raw body for signature verification.
+      // Verify webhook secret first (fast check).
+      const { webhookSecret } = req.params;
+      if (!webhookSecret) {
+        res.status(404).send("Not found");
+        return;
+      }
+
+      const secrets = await secretManager.getSecrets();
+      if (webhookSecret !== secrets.webhookSecret) {
+        console.error("Invalid webhook secret provided", {
+          component: "slack-verification",
+        });
+        res.status(404).send("Not found");
+        return;
+      }
+
+      // Get the raw body for Slack signature verification.
       const stringBody = await parseExpressRequestRawBody(req);
 
-      // Get signing secret.
-      const secret = await getSigningSecret();
-
-      // Verify signature.
+      // Verify Slack signature.
       const {
         "x-slack-signature": signature,
         "x-slack-request-timestamp": requestTimestamp,
@@ -110,16 +122,16 @@ export function createSlackVerificationMiddleware(
         body: stringBody,
         requestTimestamp,
         signature,
-        signingSecret: secret,
+        signingSecret: secrets.slackSigningSecret,
       });
 
-      // For form-encoded (interactions), keep raw string to preserve payload field
-      // For JSON (events), parse it so routes can access the object
+      // For form-encoded (interactions), keep raw string to preserve payload field.
+      // For JSON (events), parse it so routes can access the object.
       const contentType = req.headers["content-type"];
       if (contentType === "application/x-www-form-urlencoded") {
-        req.body = stringBody; // Keep raw for interactions
+        req.body = stringBody; // Keep raw for interactions.
       } else {
-        req.body = JSON.parse(stringBody); // Parse for events
+        req.body = JSON.parse(stringBody); // Parse for events.
       }
 
       next();

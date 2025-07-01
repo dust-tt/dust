@@ -13,10 +13,6 @@ async function main(): Promise<void> {
 
     // Create Express app.
     const app = express();
-    // app.use(express.json({ limit: CONFIG.REQUEST_SIZE_LIMIT }));
-    // app.use(
-    //   express.urlencoded({ extended: true, limit: CONFIG.REQUEST_SIZE_LIMIT })
-    // );
 
     // Start server.
     const server = app.listen(CONFIG.PORT, async () => {
@@ -37,11 +33,8 @@ async function main(): Promise<void> {
       }
     });
 
-    // Create Slack verification middleware with loaded secrets.
-    const slackVerification = createSlackVerificationMiddleware(async () => {
-      const secrets = await secretManager.getSecrets();
-      return secrets.slackSigningSecret;
-    });
+    // Create Slack verification middleware
+    const slackVerification = createSlackVerificationMiddleware(secretManager);
 
     // Setup graceful shutdown.
     const gracefulServer = new GracefulServer(server);

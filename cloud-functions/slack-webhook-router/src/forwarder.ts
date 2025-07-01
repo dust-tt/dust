@@ -92,24 +92,13 @@ export class WebhookForwarder {
   }): Promise<Response> {
     const url = `${baseUrl}/webhooks/${secret}/${endpoint}`;
 
-    // If content-type is form-encoded and body is string, forward as-is.
-    if (
-      headers["content-type"] === "application/x-www-form-urlencoded" &&
-      typeof body === "string"
-    ) {
-      return fetch(url, {
-        method,
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body,
-        signal: AbortSignal.timeout(CONFIG.FETCH_TIMEOUT_MS),
-      });
-    }
-
-    // Otherwise use JSON.
+    // Forward with original content-type and appropriate body format.
     return fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": headers["content-type"] || "application/json",
+      },
+      body: typeof body === "string" ? body : JSON.stringify(body),
       signal: AbortSignal.timeout(CONFIG.FETCH_TIMEOUT_MS),
     });
   }
