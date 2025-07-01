@@ -69,8 +69,8 @@ async function handler(
         type: "space_not_found",
         message:
           space.managementMode === "group"
-            ? "Space is externally managed - no editable members available."
-            : "Space is global - no editable members available.",
+            ? "Space is managed by provisioned group access, members can't be edited by API."
+            : "Non-restricted spaces' members can't be edited.",
       },
     });
   }
