@@ -35,7 +35,22 @@ async fn main() {
     }
 }
 
-async fn process_tables(
+async fn process_one_table(
+    store: &PostgresStore,
+    project: &Project,
+    data_source_id: &str,
+    table_id: &str,
+    id: i64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let unique_id = get_table_unique_id(&project, &data_source_id, &table_id);
+
+    println!("Unique table id: {}", unique_id);
+
+    Ok(())
+}
+
+async fn process_tables_batch(
+    store: &PostgresStore,
     pool: &Pool<PostgresConnectionManager<NoTls>>,
     id_cursor: i64,
     batch_size: i64,
@@ -73,9 +88,7 @@ async fn process_tables(
     for (id, table_id, project, data_source_id) in tables {
         println!("Processing table with id: {}, table_id: {}", id, table_id);
 
-        let unique_id = get_table_unique_id(&project, &data_source_id, &table_id);
-
-        // println!("Unique table id: {}", unique_id);
+        process_one_table(&store, &project, &data_source_id, &table_id, id).await?;
 
         last_table_id = id;
     }
@@ -83,7 +96,6 @@ async fn process_tables(
     if last_table_id < 0 {
         return Ok(None);
     }
-    // println!("Last processed table id: {}", last_table_id);
 
     Ok(Some(last_table_id))
 }
@@ -123,7 +135,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             "Processing {} tables, starting at id {}. ",
             batch_size, next_cursor
         );
-        let next_id_cursor = process_tables(&pool, next_cursor, batch_size as i64).await?;
+        let next_id_cursor =
+            process_tables_batch(&store, &pool, next_cursor, batch_size as i64).await?;
 
         next_cursor = match next_id_cursor {
             Some(cursor) => cursor,
