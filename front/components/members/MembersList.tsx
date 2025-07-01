@@ -25,7 +25,7 @@ type RowData = {
   name: string;
   userId: string;
   email: string;
-  role: `${RoleType} (${MembershipOriginType})` | RoleType;
+  role: RoleType;
   status: "Active" | "Unregistered";
   groups: string[];
   isCurrentUser: boolean;
@@ -52,9 +52,7 @@ function getTableRows({
     name: user.fullName,
     userId: user.sId,
     email: user.email ?? "",
-    role: user.origin
-      ? `${user.workspace.role} (${user.origin})`
-      : user.workspace.role,
+    role: user.workspace.role,
     status: user.lastLoginAt === null ? "Unregistered" : "Active",
     groups: user.workspace.groups ?? [],
     isCurrentUser: user.sId === currentUserId,
@@ -141,7 +139,8 @@ const memberColumns = [
     cell: (info: Info) => {
       return (
         <DataTable.CellContent>
-          {info.row.original.status}
+          {info.row.original.status +
+            (info.row.original.origin ? ` (${info.row.original.origin})` : "")}
         </DataTable.CellContent>
       );
     },
