@@ -120,10 +120,10 @@ async fn process_tables_batch(
     let tables = rows
         .iter()
         .map(|table| {
-            let id: i64 = table.get(0);
-            let table_id: String = table.get(1);
-            let project: i64 = table.get(2);
-            let data_source_id: String = table.get(3);
+            let id: i64 = table.get("id");
+            let table_id: String = table.get("table_id");
+            let project: i64 = table.get("project");
+            let data_source_id: String = table.get("data_source_id");
 
             (id, table_id, Project::new_from_id(project), data_source_id)
         })
