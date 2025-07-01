@@ -27,10 +27,21 @@ function isTimeFrameUnit(unit: string): unit is TimeFrame["unit"] {
 
 const DEFAULT_TIME_FRAME: TimeFrame = { duration: 1, unit: "day" };
 
+type ActionType = "include" | "search" | "extract";
+
+const ACTION_CONFIG: Record<
+  ActionType,
+  { actionText: string; contextText: string }
+> = {
+  include: { actionText: "Include", contextText: "data inclusion" },
+  search: { actionText: "Search", contextText: "searching" },
+  extract: { actionText: "Extract", contextText: "data extraction" },
+};
+
 interface TimeFrameSectionProps {
   timeFrame: TimeFrame | null;
   setTimeFrame: (timeFrame: TimeFrame | null) => void;
-  actionType: "include" | "search";
+  actionType: ActionType;
 }
 
 export function TimeFrameSection({
@@ -38,8 +49,7 @@ export function TimeFrameSection({
   setTimeFrame,
   actionType,
 }: TimeFrameSectionProps) {
-  const actionText = actionType === "include" ? "Include" : "Search";
-  const contextText = actionType === "include" ? "data inclusion" : "searching";
+  const { actionText, contextText } = ACTION_CONFIG[actionType];
 
   return (
     <div className="space-y-4">
