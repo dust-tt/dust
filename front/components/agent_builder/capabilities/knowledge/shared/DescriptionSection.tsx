@@ -1,13 +1,15 @@
 import { TextArea } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 interface DescriptionSectionProps {
   title: string;
   description: string;
-  label: string;
+  label?: string;
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
   helpText?: string;
+  maxLength?: number;
 }
 
 export function DescriptionSection({
@@ -18,7 +20,14 @@ export function DescriptionSection({
   value,
   onChange,
   helpText,
+  maxLength,
 }: DescriptionSectionProps) {
+  const validationError = useMemo(() => {
+    if (maxLength && value.length > maxLength) {
+      return `The description must be less than ${maxLength} characters.`;
+    }
+    return undefined;
+  }, [value, maxLength]);
   return (
     <div className="space-y-4">
       <div>
@@ -27,12 +36,14 @@ export function DescriptionSection({
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">{label}</label>
+        {label && <label className="text-sm font-medium">{label}</label>}
         <TextArea
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={4}
+          error={validationError}
+          showErrorLabel={true}
         />
         {helpText && (
           <p className="text-xs text-muted-foreground">{helpText}</p>

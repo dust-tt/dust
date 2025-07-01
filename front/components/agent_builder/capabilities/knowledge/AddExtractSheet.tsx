@@ -6,13 +6,17 @@ import {
 } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useFormContext } from "react-hook-form";
 
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceSelectionPage } from "@app/components/agent_builder/capabilities/knowledge/shared/DataSourceSelectionPage";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
 import {
   getDataSourceConfigurations,
   getJsonSchema,
+  getJsonSchemaString,
   getTimeFrame,
   hasDataSourceSelections,
   isValidPage,
@@ -47,6 +51,9 @@ export function AddExtractSheet({
   onClose,
   action,
 }: AddExtractSheetProps) {
+  const { owner } = useAgentBuilderContext();
+  const form = useFormContext<AgentBuilderFormData>();
+  const formValues = form.watch();
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     PAGE_IDS.DATA_SOURCE_SELECTION
   );
@@ -140,41 +147,35 @@ export function AddExtractSheet({
               actionType="extract"
             />
             <JsonSchemaSection
-              title="Extraction Schema"
-              description="Define the JSON schema for structured data extraction. Leave empty for automatic schema generation."
-              label="JSON Schema (Optional)"
-              placeholder={`{
-  "type": "object",
-  "properties": {
-    "name": {
-      "type": "string",
-      "description": "The name field"
-    },
-    "value": {
-      "type": "number",
-      "description": "A numeric value"
-    }
-  },
-  "required": ["name"]
-}`}
+              title="Schema"
+              description="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
               value={jsonSchema}
+              initialSchemaString={getJsonSchemaString(action)}
               onChange={setJsonSchema}
-              helpText="If no schema is provided, the AI will automatically generate one based on your description and the data found."
+              agentInstructions={formValues.instructions}
+              agentDescription={description}
+              owner={owner}
             />
             <DescriptionSection
-              title="Extraction Objective"
-              description="Describe what specific information you want to extract from your selected data sources."
-              label="Description"
-              placeholder="Describe what data you want to extract from your selected data sources..."
+              title="What's the data?"
+              description="Provide a brief description (maximum 800 characters) of the data content and context to help the agent determine when to utilize it effectively."
+              placeholder="This data contains…"
               value={description}
               onChange={setDescription}
-              helpText="This description helps the agent understand what type of data to extract and how to structure it."
+              maxLength={800}
             />
           </div>
         ),
       },
     ],
-    [dataSourcePage, timeFrame, jsonSchema, description]
+    [
+      dataSourcePage,
+      timeFrame,
+      jsonSchema,
+      description,
+      formValues.instructions,
+      action,
+    ]
   );
 
   return (
@@ -192,7 +193,9 @@ export function AddExtractSheet({
         disableNext={
           currentPageId === PAGE_IDS.DATA_SOURCE_SELECTION && !hasDataSources
         }
-        disableSave={!hasDataSources || !description.trim()}
+        disableSave={
+          !hasDataSources || !description.trim() || description.length > 800
+        }
       />
     </MultiPageSheet>
   );
