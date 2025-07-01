@@ -168,9 +168,6 @@ function SupportOptionsSection() {
   return (
     <div className={SECTION_CLASSES}>
       <div className={CONTAINER_CLASSES}>
-        <div className="mb-12 text-center">
-          <H2 className="mb-4">Get Support</H2>
-        </div>
         <div className="grid gap-6 sm:gap-8 md:grid-cols-3">
           {SUPPORT_OPTIONS.map((option, index) => (
             <div key={index} className="rounded-2xl bg-gray-50 p-8">
