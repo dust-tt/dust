@@ -1,8 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
+import { makeEnterpriseConnectionName } from "@app/lib/api/enterprise_connection";
 import { getWorkOS } from "@app/lib/api/workos/client";
+import { getFeatureFlags } from "@app/lib/auth";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 type Provider = {
@@ -34,11 +37,23 @@ const providers: Record<string, Provider> = {
   },
 };
 
-function getProvider(
+async function getProvider(
   query: Partial<{
     [key: string]: string | string[];
-  }>
-): Provider {
+  }>,
+  workspace: WorkspaceModel | null
+): Promise<Provider> {
+  if (workspace) {
+    const lightWorkspace = renderLightWorkspaceType({ workspace });
+    const featureFlags = await getFeatureFlags(lightWorkspace);
+    if (
+      featureFlags.includes("okta_enterprise_connection") &&
+      !featureFlags.includes("workos")
+    ) {
+      return providers["auth0"];
+    }
+  }
+
   const forcedProvider =
     typeof query.forcedProvider === "string" ? query.forcedProvider : undefined;
   const provider = forcedProvider || config.getOAuthProvider();
@@ -68,12 +83,28 @@ export default async function handler(
 
 async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
-  const provider = getProvider(query);
-  const workspace =
-    typeof query.organization_id === "string" &&
+
+  let workspaceId = undefined;
+  if (
+    query.organization_id === "string" &&
     query.organization_id.startsWith("workspace-")
-      ? query.organization_id.split("workspace-")[1]
-      : undefined;
+  ) {
+    workspaceId = query.organization_id.split("workspace-")[1];
+  }
+
+  if (typeof query.workspaceId === "string") {
+    workspaceId = query.workspaceId;
+  }
+
+  const workspace = workspaceId
+    ? await WorkspaceModel.findOne({
+        where: {
+          sId: workspaceId,
+        },
+      })
+    : null;
+
+  const provider = await getProvider(query, workspace);
 
   const options: Record<string, string | undefined> = {
     client_id: provider.clientId,
@@ -84,23 +115,10 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
     options.provider = "authkit";
 
     if (workspace) {
-      const w = await WorkspaceModel.findOne({
-        where: {
-          sId: workspace,
-        },
-      });
-      if (!w) {
-        logger.error(
-          `Workspace with sId ${workspace} not found for WorkOS SSO connection.`
-        );
-        res.status(404).json({ error: "Workspace not found" });
-        return;
-      }
-
-      const organizationId = w.workOSOrganizationId;
+      const organizationId = workspace.workOSOrganizationId;
       if (!organizationId) {
         logger.error(
-          `Workspace with sId ${workspace} does not have a WorkOS organization ID.`
+          `Workspace with sId ${workspaceId} does not have a WorkOS organization ID.`
         );
         res.status(400).json({
           error: "Workspace does not have a WorkOS organization ID",
@@ -117,8 +135,8 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
         connections.data.length > 0 ? connections.data[0]?.id : undefined;
     }
   } else {
-    if (query.organization_id) {
-      options.connection = `${query.organization_id}`;
+    if (workspace) {
+      options.connection = makeEnterpriseConnectionName(workspace.sId);
     }
     options.prompt = `${query.prompt}`;
     options.audience = `${query.audience}`;
@@ -130,6 +148,9 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
     redirect_uri: `${query.redirect_uri}`,
     code_challenge_method: `${query.code_challenge_method}`,
     code_challenge: `${query.code_challenge}`,
+    state: JSON.stringify({
+      provider: provider.name,
+    }),
   });
 
   const authorizeUrl = `https://${provider.authorizeUri}?${params}`;
@@ -138,7 +159,7 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
 
 async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const provider = getProvider(req.query);
+    const provider = await getProvider(req.query, null);
     const response = await fetch(`https://${provider.authenticateUri}`, {
       method: "POST",
       headers: {
@@ -161,7 +182,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
 
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
-  const provider = getProvider(query);
+  const provider = getProvider(query, null);
   const params = new URLSearchParams({
     ...query,
     client_id: provider.clientId,

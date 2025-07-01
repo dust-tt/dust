@@ -509,6 +509,10 @@ const authenticate = async (
       const url = new URL(redirectUrl);
       const queryParams = new URLSearchParams(url.search);
       const authorizationCode = queryParams.get("code");
+      const state = queryParams.get("state");
+      const providerFromState = state ? JSON.parse(state).provider : undefined;
+      const provider = providerFromState === "auth0" ? "auth0" : "workos";
+
       const error = queryParams.get("error");
 
       if (error) {
@@ -520,7 +524,8 @@ const authenticate = async (
       if (authorizationCode) {
         const data = await exchangeCodeForTokens(
           authorizationCode,
-          codeVerifier
+          codeVerifier,
+          provider
         );
         sendResponse(data);
       } else {
@@ -558,8 +563,10 @@ const refreshToken = async (
         return;
       }
 
+      const provider = user.authProvider;
+
       const response = await fetch(
-        `${user.dustDomain}/api/v1/auth/authenticate`,
+        `${user.dustDomain}/api/v1/auth/authenticate?forcedProvider=${provider}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -584,6 +591,7 @@ const refreshToken = async (
           refreshToken: data.refresh_token || refreshToken,
           expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
           authentication_method: data.authentication_method,
+          provider,
         });
       });
     } catch (error) {
@@ -604,7 +612,8 @@ const refreshToken = async (
  */
 const exchangeCodeForTokens = async (
   code: string,
-  codeVerifier: string
+  codeVerifier: string,
+  provider: "workos" | "auth0"
 ): Promise<OAuthAuthorizeResponse | AuthBackgroundResponse> => {
   try {
     const tokenParams: Record<string, string> = {
@@ -614,11 +623,14 @@ const exchangeCodeForTokens = async (
       redirect_uri: chrome.identity.getRedirectURL(),
     };
 
-    const response = await fetch(`${DUST_US_URL}/api/v1/auth/authenticate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(tokenParams),
-    });
+    const response = await fetch(
+      `${DUST_US_URL}/api/v1/auth/authenticate?forcedProvider=${provider}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(tokenParams),
+      }
+    );
 
     if (!response.ok) {
       const data = await response.json();
@@ -633,6 +645,7 @@ const exchangeCodeForTokens = async (
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+      provider,
       ...(data.id_token && { idToken: data.id_token }),
       authentication_method: data.authentication_method,
     };
@@ -670,6 +683,8 @@ const logout = async (
   if (!user) {
     return true;
   }
+
+  queryParams.forcedProvider = user.authProvider;
 
   const logoutUrl = `${user.dustDomain}/api/v1/auth/logout?${new URLSearchParams(
     queryParams
