@@ -65,10 +65,9 @@ async function handler(
         (
           await concurrentExecutor(
             space.groups.filter((g) => {
-              if (space.managementMode === "group") {
-                return g.kind === "provisioned";
+              if (space.managementMode === "manual") {
+                return g.kind === "regular" || g.kind === "global";
               }
-              return g.kind === "regular" || g.kind === "global";
             }),
             (group) => group.getActiveMembers(auth),
             { concurrency: 10 }
