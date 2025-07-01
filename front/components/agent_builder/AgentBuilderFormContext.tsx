@@ -3,6 +3,7 @@ import type { UseFormReturn } from "react-hook-form";
 import { FormProvider } from "react-hook-form";
 import { z } from "zod";
 
+import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import { EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 import {
   MODEL_IDS,
@@ -30,14 +31,54 @@ export type AgentBuilderGenerationSettings = z.infer<
   typeof generationSettingsSchema
 >;
 
-const actionSchema = z.object({
+const tagsFilterSchema = z
+  .object({
+    in: z.array(z.string()),
+    not: z.array(z.string()),
+    mode: z.enum(["custom", "auto"]),
+  })
+  .nullable();
+
+const dataSourceViewSelectionConfigurationSchema = z.object({
+  dataSourceView: z.custom<DataSourceViewType>(),
+  selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
+  isSelectAll: z.boolean(),
+  tagsFilter: tagsFilterSchema,
+});
+
+const searchActionConfigurationSchema = z.object({
+  type: z.literal("SEARCH"),
+  dataSourceConfigurations: z.record(
+    z.string(),
+    dataSourceViewSelectionConfigurationSchema
+  ),
+});
+
+const dataVisualizationActionConfigurationSchema = z.object({
+  type: z.literal("DATA_VISUALIZATION"),
+});
+
+const baseActionSchema = z.object({
   id: z.string(),
-  type: z.string(),
   name: z.string(),
   description: z.string(),
-  configuration: z.record(z.unknown()),
-  noConfigurationRequired: z.boolean().optional(),
+  noConfigurationRequired: z.boolean(),
 });
+
+const searchActionSchema = baseActionSchema.extend({
+  type: z.literal("SEARCH"),
+  configuration: searchActionConfigurationSchema,
+});
+
+const dataVisualizationActionSchema = baseActionSchema.extend({
+  type: z.literal("DATA_VISUALIZATION"),
+  configuration: dataVisualizationActionConfigurationSchema,
+});
+
+const actionSchema = z.discriminatedUnion("type", [
+  searchActionSchema,
+  dataVisualizationActionSchema,
+]);
 
 const agentSettingsSchema = z.object({
   name: z.string().min(1, "Agent name is required"),
@@ -54,8 +95,6 @@ export const agentBuilderFormSchema = z.object({
 });
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
-
-export type AgentBuilderAction = z.infer<typeof actionSchema>;
 
 interface AgentBuilderFormProviderProps {
   children: React.ReactNode;

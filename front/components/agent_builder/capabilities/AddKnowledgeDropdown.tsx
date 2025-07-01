@@ -6,37 +6,22 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import React from "react";
 
-import { AddSearchSheet } from "@app/components/agent_builder/capabilities/knowledge/AddSearchSheet";
-import { isSearchServer } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
 interface AddKnowledgeDropdownProps {
   mcpServerViewsWithKnowledge: (MCPServerViewType & { label: string })[];
-  onKnowledgeAdd: () => void;
+  onItemClick: (serverName: string) => void;
 }
 
 export function AddKnowledgeDropdown({
   mcpServerViewsWithKnowledge = [],
-  onKnowledgeAdd,
+  onItemClick,
 }: AddKnowledgeDropdownProps) {
-  const [isSearchSheetOpen, setIsSearchSheetOpen] = useState(false);
-
   const handleDropdownItemClick = (view: MCPServerViewType) => {
-    if (isSearchServer(view)) {
-      setIsSearchSheetOpen(true);
-    }
-  };
-
-  const handleSearchSheetSave = () => {
-    setIsSearchSheetOpen(false);
-    onKnowledgeAdd();
-  };
-
-  const handleSearchSheetClose = () => {
-    setIsSearchSheetOpen(false);
+    onItemClick(view.server.name);
   };
 
   return (
@@ -63,12 +48,6 @@ export function AddKnowledgeDropdown({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <AddSearchSheet
-        onKnowledgeAdd={handleSearchSheetSave}
-        isOpen={isSearchSheetOpen}
-        onClose={handleSearchSheetClose}
-      />
     </>
   );
 }
