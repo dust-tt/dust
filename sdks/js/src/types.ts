@@ -545,7 +545,6 @@ export type GenerationTokensEvent = z.infer<typeof GenerationTokensEventSchema>;
 
 const BaseActionTypeSchema = FlexibleEnumSchema<
   | "dust_app_run_action"
-  | "tables_query_action"
   | "process_action"
   | "visualization_action"
 >();
@@ -745,20 +744,6 @@ const ProcessActionTypeSchema = BaseActionSchema.extend({
   type: z.literal("process_action"),
 });
 type ProcessActionPublicType = z.infer<typeof ProcessActionTypeSchema>;
-
-const TablesQueryActionTypeSchema = BaseActionSchema.extend({
-  params: DustAppParametersSchema,
-  output: z.record(z.union([z.string(), z.number(), z.boolean()])).nullable(),
-  resultsFileId: z.string().nullable(),
-  resultsFileSnippet: z.string().nullable(),
-  sectionFileId: z.string().nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  agentMessageId: ModelIdSchema,
-  step: z.number(),
-  type: z.literal("tables_query_action"),
-});
-type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
@@ -1056,7 +1041,6 @@ export type UserMessageWithRankType = z.infer<
 
 const AgentActionTypeSchema = z.union([
   DustAppRunActionTypeSchema,
-  TablesQueryActionTypeSchema,
   ProcessActionTypeSchema,
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
@@ -1200,30 +1184,6 @@ const ProcessParamsEventSchema = z.object({
   action: ProcessActionTypeSchema,
 });
 
-const TablesQueryStartedEventSchema = z.object({
-  type: z.literal("tables_query_started"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: TablesQueryActionTypeSchema,
-});
-
-const TablesQueryModelOutputEventSchema = z.object({
-  type: z.literal("tables_query_model_output"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: TablesQueryActionTypeSchema,
-});
-
-const TablesQueryOutputEventSchema = z.object({
-  type: z.literal("tables_query_output"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: TablesQueryActionTypeSchema,
-});
-
 const SearchLabelsParamsEventSchema = z.object({
   type: z.literal("search_labels_params"),
   created: z.number(),
@@ -1345,9 +1305,6 @@ const AgentActionSpecificEventSchema = z.union([
   DustAppRunParamsEventSchema,
   ProcessParamsEventSchema,
   SearchLabelsParamsEventSchema,
-  TablesQueryModelOutputEventSchema,
-  TablesQueryOutputEventSchema,
-  TablesQueryStartedEventSchema,
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
@@ -2591,12 +2548,6 @@ export function isMCPActionType(
   return action.type === "tool_action";
 }
 
-export function isTablesQueryActionType(
-  action: AgentActionPublicType
-): action is TablesQueryActionPublicType {
-  return action.type === "tables_query_action";
-}
-
 export function isDustAppRunActionType(
   action: AgentActionPublicType
 ): action is DustAppRunActionPublicType {
@@ -2800,7 +2751,6 @@ export const ACTION_RUNNING_LABELS: Record<
   dust_app_run_action: "Running App",
   process_action: "Extracting data",
   search_labels_action: "Searching labels",
-  tables_query_action: "Querying tables",
   tool_action: "Using a tool",
 };
 
