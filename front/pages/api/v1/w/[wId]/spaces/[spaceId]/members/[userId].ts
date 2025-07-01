@@ -58,6 +58,22 @@ async function handler(
     });
   }
 
+  if (
+    space.managementMode === "group" ||
+    space.groups.some((g) => g.kind === "global")
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message:
+          space.managementMode === "group"
+            ? "Space is externally managed - no editable members available."
+            : "Space is global - no editable members available.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "DELETE": {
       const updateRes = await space.removeMembers(auth, {
