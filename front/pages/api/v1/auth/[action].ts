@@ -83,10 +83,9 @@ export default async function handler(
 
 async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
-
   let workspaceId = undefined;
   if (
-    query.organization_id === "string" &&
+    typeof query.organization_id === "string" &&
     query.organization_id.startsWith("workspace-")
   ) {
     workspaceId = query.organization_id.split("workspace-")[1];
@@ -182,7 +181,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
 
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
-  const provider = getProvider(query, null);
+  const provider = await getProvider(query, null);
   const params = new URLSearchParams({
     ...query,
     client_id: provider.clientId,
