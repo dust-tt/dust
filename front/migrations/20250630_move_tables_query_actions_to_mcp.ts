@@ -324,13 +324,18 @@ async function migrateWorkspaceTablesQueryActions(
   );
 
   let hasMore = false;
+  let lastId = 0;
   do {
     // Step 1: Retrieve the legacy Tables Query actions
     const tablesQueryActions = await AgentTablesQueryAction.findAll({
       where: {
         workspaceId: workspace.id,
+        id: {
+          [Op.gt]: lastId,
+        },
       },
       limit: BATCH_SIZE,
+      order: [["id", "ASC"]],
       include: [
         {
           model: FileModel,
@@ -439,6 +444,7 @@ async function migrateWorkspaceTablesQueryActions(
     }
 
     hasMore = tablesQueryActions.length === BATCH_SIZE;
+    lastId = tablesQueryActions[tablesQueryActions.length - 1].id;
   } while (hasMore);
 }
 
