@@ -3702,20 +3702,6 @@ async fn data_sources_stats(
         );
     }
 
-    // Check for empty data source IDs
-    if payload
-        .query
-        .iter()
-        .any(|item| item.data_source_id.is_empty())
-    {
-        return error_response(
-            StatusCode::BAD_REQUEST,
-            "invalid_parameter",
-            "ds_id cannot be empty",
-            None,
-        );
-    }
-
     // Convert payload data to project_data_sources format
     let project_data_sources: Vec<(i64, String)> = payload
         .query
@@ -3747,7 +3733,7 @@ async fn data_sources_stats(
                 .collect();
 
             match state.search_store.get_data_source_stats(ds_ids).await {
-                Ok((stats, overall_total_size)) if !stats.is_empty() => (
+                Ok((stats, overall_total_size)) => (
                     StatusCode::OK,
                     Json(APIResponse {
                         error: None,
