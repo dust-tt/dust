@@ -1,6 +1,7 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   AgentConfigurationType,
+  DataSourceViewSelectionConfigurations,
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
   Result,
@@ -21,14 +22,11 @@ import {
   isSearchAction,
 } from "./types";
 
-function convertSearchActionToMCPConfiguration(
-  searchAction: SearchAgentBuilderAction,
-  searchMCPServerView: MCPServerViewType,
+function convertDataSourceConfigurations(
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations,
   owner: WorkspaceType
-): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
-  const dataSources = Object.values(
-    searchAction.configuration.dataSourceConfigurations
-  ).map((config) => ({
+) {
+  return Object.values(dataSourceConfigurations).map((config) => ({
     dataSourceViewId: config.dataSourceView.sId,
     workspaceId: owner.sId,
     filter: {
@@ -47,6 +45,17 @@ function convertSearchActionToMCPConfiguration(
         : null,
     },
   }));
+}
+
+function convertSearchActionToMCPConfiguration(
+  searchAction: SearchAgentBuilderAction,
+  searchMCPServerView: MCPServerViewType,
+  owner: WorkspaceType
+): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
+  const dataSources = convertDataSourceConfigurations(
+    searchAction.configuration.dataSourceConfigurations,
+    owner
+  );
 
   return {
     type: "mcp_server_configuration",
@@ -64,19 +73,27 @@ function convertSearchActionToMCPConfiguration(
   };
 }
 
+// Generic MCP server view finder
+function getMCPServerViewByName(
+  mcpServerViews: MCPServerViewType[],
+  serverName: string
+): MCPServerViewType {
+  const mcpServerView = mcpServerViews.find(
+    (view) =>
+      view.server.name === serverName && view.server.availability === "auto"
+  );
+
+  if (!mcpServerView) {
+    throw new Error(`${serverName} MCP server view not found`);
+  }
+
+  return mcpServerView;
+}
+
 function getSearchMCPServerView(
   mcpServerViews: MCPServerViewType[]
 ): MCPServerViewType {
-  const searchMCPServerView = mcpServerViews.find(
-    (view) =>
-      view.server.name === "search" && view.server.availability === "auto"
-  );
-
-  if (!searchMCPServerView) {
-    throw new Error("Search MCP server view not found");
-  }
-
-  return searchMCPServerView;
+  return getMCPServerViewByName(mcpServerViews, "search");
 }
 
 function convertIncludeDataActionToMCPConfiguration(
@@ -84,27 +101,10 @@ function convertIncludeDataActionToMCPConfiguration(
   includeDataMCPServerView: MCPServerViewType,
   owner: WorkspaceType
 ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
-  const dataSources = Object.values(
-    includeDataAction.configuration.dataSourceConfigurations
-  ).map((config) => ({
-    dataSourceViewId: config.dataSourceView.sId,
-    workspaceId: owner.sId,
-    filter: {
-      parents: config.isSelectAll
-        ? null
-        : {
-            in: config.selectedResources.map((resource) => resource.internalId),
-            not: [],
-          },
-      tags: config.tagsFilter
-        ? {
-            in: config.tagsFilter.in,
-            not: config.tagsFilter.not,
-            mode: config.tagsFilter.mode,
-          }
-        : null,
-    },
-  }));
+  const dataSources = convertDataSourceConfigurations(
+    includeDataAction.configuration.dataSourceConfigurations,
+    owner
+  );
 
   return {
     type: "mcp_server_configuration",
@@ -125,16 +125,7 @@ function convertIncludeDataActionToMCPConfiguration(
 function getIncludeDataMCPServerView(
   mcpServerViews: MCPServerViewType[]
 ): MCPServerViewType {
-  const includeDataMCPServerView = mcpServerViews.find(
-    (view) =>
-      view.server.name === "include_data" && view.server.availability === "auto"
-  );
-
-  if (!includeDataMCPServerView) {
-    throw new Error("Include data MCP server view not found");
-  }
-
-  return includeDataMCPServerView;
+  return getMCPServerViewByName(mcpServerViews, "include_data");
 }
 
 function convertExtractDataActionToMCPConfiguration(
@@ -142,27 +133,10 @@ function convertExtractDataActionToMCPConfiguration(
   extractDataMCPServerView: MCPServerViewType,
   owner: WorkspaceType
 ): PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] {
-  const dataSources = Object.values(
-    extractDataAction.configuration.dataSourceConfigurations
-  ).map((config) => ({
-    dataSourceViewId: config.dataSourceView.sId,
-    workspaceId: owner.sId,
-    filter: {
-      parents: config.isSelectAll
-        ? null
-        : {
-            in: config.selectedResources.map((resource) => resource.internalId),
-            not: [],
-          },
-      tags: config.tagsFilter
-        ? {
-            in: config.tagsFilter.in,
-            not: config.tagsFilter.not,
-            mode: config.tagsFilter.mode,
-          }
-        : null,
-    },
-  }));
+  const dataSources = convertDataSourceConfigurations(
+    extractDataAction.configuration.dataSourceConfigurations,
+    owner
+  );
 
   return {
     type: "mcp_server_configuration",
@@ -183,16 +157,7 @@ function convertExtractDataActionToMCPConfiguration(
 function getExtractDataMCPServerView(
   mcpServerViews: MCPServerViewType[]
 ): MCPServerViewType {
-  const extractDataMCPServerView = mcpServerViews.find(
-    (view) =>
-      view.server.name === "extract_data" && view.server.availability === "auto"
-  );
-
-  if (!extractDataMCPServerView) {
-    throw new Error("Extract data MCP server view not found");
-  }
-
-  return extractDataMCPServerView;
+  return getMCPServerViewByName(mcpServerViews, "extract_data");
 }
 
 export async function submitAgentBuilderForm({

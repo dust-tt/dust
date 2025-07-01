@@ -59,23 +59,6 @@ export function getJsonSchema(action?: AgentBuilderAction): JSONSchema | null {
   return null;
 }
 
-export function getJsonSchemaString(
-  action?: AgentBuilderAction
-): string | null {
-  if (!action) {
-    return null;
-  }
-
-  if (isExtractDataAction(action)) {
-    // Convert jsonSchema back to string for editing
-    return action.configuration.jsonSchema
-      ? JSON.stringify(action.configuration.jsonSchema, null, 2)
-      : null;
-  }
-
-  return null;
-}
-
 export function isValidPage<T extends Record<string, string>>(
   pageId: string,
   pageIds: T

@@ -8,15 +8,14 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DataSourceSelectionPage } from "@app/components/agent_builder/capabilities/knowledge/shared/DataSourceSelectionPage";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
 import {
   getDataSourceConfigurations,
   getJsonSchema,
-  getJsonSchemaString,
   getTimeFrame,
   hasDataSourceSelections,
   isValidPage,
@@ -150,7 +149,11 @@ export function AddExtractSheet({
               title="Schema"
               description="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
               value={jsonSchema}
-              initialSchemaString={getJsonSchemaString(action)}
+              initialSchemaString={
+                action && getJsonSchema(action)
+                  ? JSON.stringify(getJsonSchema(action), null, 2)
+                  : null
+              }
               onChange={setJsonSchema}
               agentInstructions={formValues.instructions}
               agentDescription={description}

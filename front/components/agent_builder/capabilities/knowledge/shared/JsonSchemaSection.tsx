@@ -57,51 +57,52 @@ export function JsonSchemaSection({
     : null;
 
   const generateSchemaFromInstructions = async () => {
-    if (agentInstructions !== null) {
-      setIsGeneratingSchema(true);
-      try {
-        let fullInstructions = `${agentInstructions}`;
-        if (agentDescription) {
-          fullInstructions += `\n\nTool description:\n${agentDescription}`;
-        }
-
-        const res = await fetch(
-          `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              instructions: fullInstructions,
-            }),
-          }
-        );
-
-        if (!res.ok) {
-          throw new Error("Failed to generate schema");
-        }
-
-        const data = await res.json();
-        const schemaObject = data.schema || null;
-        const schemaString = schemaObject
-          ? JSON.stringify(schemaObject, null, 2)
-          : null;
-
-        setJsonSchemaString(schemaString || "");
-        onChange(schemaObject);
-      } catch (e) {
-        sendNotification({
-          title: "Failed to generate schema.",
-          type: "error",
-          description: `An error occurred while generating the schema. Please contact us if the error persists.`,
-        });
-      } finally {
-        setIsGeneratingSchema(false);
-      }
-    } else {
+    if (!agentInstructions) {
       setJsonSchemaString("");
       onChange(null);
+      return;
+    }
+
+    setIsGeneratingSchema(true);
+    try {
+      let fullInstructions = agentInstructions;
+      if (agentDescription) {
+        fullInstructions += `\n\nTool description:\n${agentDescription}`;
+      }
+
+      const res = await fetch(
+        `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            instructions: fullInstructions,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to generate schema");
+      }
+
+      const data = await res.json();
+      const schemaObject = data.schema || null;
+      const schemaString = schemaObject
+        ? JSON.stringify(schemaObject, null, 2)
+        : null;
+
+      setJsonSchemaString(schemaString || "");
+      onChange(schemaObject);
+    } catch (e) {
+      sendNotification({
+        title: "Failed to generate schema.",
+        type: "error",
+        description: `An error occurred while generating the schema. Please contact us if the error persists.`,
+      });
+    } finally {
+      setIsGeneratingSchema(false);
     }
   };
 
