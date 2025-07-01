@@ -98,7 +98,7 @@ export function ChildAgentConfigurationSection({
   // When an agent is selected, we update the config and the description unless overridden.
   const handleAgentSelection = (agent: LightAgentConfigurationType) => {
     onAgentSelect(agent.sId);
-    if (!wasDescriptionEdited || action.description === "") {
+    if (!wasDescriptionEdited) {
       updateDescription(agent.description);
     }
   };
@@ -215,6 +215,8 @@ export function ChildAgentConfigurationSection({
       )}
       <ChildAgentDescription
         updateDescription={(description) => {
+          // Removing the description re-enables the automatic description based on the agent's
+          // description.
           setWasDescriptionEdited(description !== "");
           updateDescription(description);
         }}
