@@ -273,9 +273,7 @@ export async function getFullDeltaResults({
     allItems = allItems.concat(results);
     nextLink = newNextLink;
     deltaLink = finalDeltaLink;
-    if (heartbeatFunction) {
-      heartbeatFunction();
-    }
+    heartbeatFunction();
   } while (nextLink);
 
   if (!deltaLink) {
