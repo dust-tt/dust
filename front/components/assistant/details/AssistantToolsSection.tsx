@@ -1,10 +1,4 @@
-import {
-  Avatar,
-  BarChartIcon,
-  CommandIcon,
-  GlobeAltIcon,
-  ScanIcon,
-} from "@dust-tt/sparkle";
+import { Avatar, BarChartIcon, CommandIcon, ScanIcon } from "@dust-tt/sparkle";
 import _ from "lodash";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
