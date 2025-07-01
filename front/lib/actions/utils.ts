@@ -1,4 +1,9 @@
-import { BarChartIcon, BoltIcon, MagnifyingGlassIcon } from "@dust-tt/sparkle";
+import {
+  ActionIncludeIcon,
+  BarChartIcon,
+  BoltIcon,
+  MagnifyingGlassIcon,
+} from "@dust-tt/sparkle";
 
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
@@ -47,10 +52,19 @@ export const SEARCH_SPECIFICATION: ActionSpecification = {
   flag: null,
 };
 
+export const INCLUDE_DATA_SPECIFICATION: ActionSpecification = {
+  label: "Include Data",
+  description: "Include recent documents from selected data sources",
+  cardIcon: ActionIncludeIcon,
+  dropDownIcon: ActionIncludeIcon,
+  flag: null,
+};
+
 // Mapping for action types to their specifications
 export const ACTION_SPECIFICATIONS_MAP = {
   DATA_VISUALIZATION: DATA_VISUALIZATION_SPECIFICATION,
   SEARCH: SEARCH_SPECIFICATION,
+  INCLUDE_DATA: INCLUDE_DATA_SPECIFICATION,
 } as const;
 
 export function getActionSpecification(

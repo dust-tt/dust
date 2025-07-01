@@ -58,6 +58,22 @@ const dataVisualizationActionConfigurationSchema = z.object({
   type: z.literal("DATA_VISUALIZATION"),
 });
 
+const timeFrameSchema = z
+  .object({
+    duration: z.number().min(1),
+    unit: z.enum(["hour", "day", "week", "month", "year"]),
+  })
+  .nullable();
+
+const includeDataActionConfigurationSchema = z.object({
+  type: z.literal("INCLUDE_DATA"),
+  dataSourceConfigurations: z.record(
+    z.string(),
+    dataSourceViewSelectionConfigurationSchema
+  ),
+  timeFrame: timeFrameSchema,
+});
+
 const baseActionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -75,9 +91,15 @@ const dataVisualizationActionSchema = baseActionSchema.extend({
   configuration: dataVisualizationActionConfigurationSchema,
 });
 
+const includeDataActionSchema = baseActionSchema.extend({
+  type: z.literal("INCLUDE_DATA"),
+  configuration: includeDataActionConfigurationSchema,
+});
+
 const actionSchema = z.discriminatedUnion("type", [
   searchActionSchema,
   dataVisualizationActionSchema,
+  includeDataActionSchema,
 ]);
 
 const agentSettingsSchema = z.object({

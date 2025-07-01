@@ -1,6 +1,6 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import {
-  MagnifyingGlassIcon,
+  ActionIncludeIcon,
   MultiPageSheet,
   MultiPageSheetContent,
 } from "@dust-tt/sparkle";
@@ -10,37 +10,42 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import {
   getDataSourceConfigurations,
+  getTimeFrame,
   hasDataSourceSelections,
   isValidPage,
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
+import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
 import type {
   AgentBuilderAction,
-  SearchAgentBuilderAction,
+  IncludeDataAgentBuilderAction,
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
-import type { DataSourceViewSelectionConfigurations } from "@app/types";
+import type {
+  DataSourceViewSelectionConfigurations,
+  TimeFrame,
+} from "@app/types";
 
 const PAGE_IDS = {
   DATA_SOURCE_SELECTION: "data-source-selection",
-  DESCRIPTION: "description",
+  CONFIGURATION: "configuration",
 } as const;
 
 type PageId = (typeof PAGE_IDS)[keyof typeof PAGE_IDS];
 
-interface AddSearchSheetProps {
+interface AddIncludeDataSheetProps {
   onSave: (action: AgentBuilderAction) => void;
   isOpen: boolean;
   onClose: () => void;
   action?: AgentBuilderAction;
 }
 
-export function AddSearchSheet({
+export function AddIncludeDataSheet({
   onSave,
   isOpen,
   onClose,
   action,
-}: AddSearchSheetProps) {
+}: AddIncludeDataSheetProps) {
   const { owner, supportedDataSourceViews } = useAgentBuilderContext();
   const { spaces } = useSpacesContext();
 
@@ -52,11 +57,15 @@ export function AddSearchSheet({
     useState<DataSourceViewSelectionConfigurations>(() =>
       getDataSourceConfigurations(action)
     );
+  const [timeFrame, setTimeFrame] = useState<TimeFrame | null>(() =>
+    getTimeFrame(action)
+  );
 
   useEffect(() => {
     if (isOpen) {
       setDescription(action?.description ?? "");
       setDataSourceConfigurations(getDataSourceConfigurations(action));
+      setTimeFrame(getTimeFrame(action));
     }
   }, [action, isOpen]);
 
@@ -64,24 +73,26 @@ export function AddSearchSheet({
     onClose();
     setDescription("");
     setDataSourceConfigurations({});
+    setTimeFrame(null);
     setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
   };
 
   const hasDataSources = hasDataSourceSelections(dataSourceConfigurations);
 
   const handleSave = () => {
-    const searchAction: SearchAgentBuilderAction = {
-      id: action?.id || `search_${Date.now()}`,
-      type: "SEARCH",
-      name: "Search",
+    const includeDataAction: IncludeDataAgentBuilderAction = {
+      id: action?.id || `include_data_${Date.now()}`,
+      type: "INCLUDE_DATA",
+      name: "Include Data",
       description,
       configuration: {
-        type: "SEARCH",
+        type: "INCLUDE_DATA",
         dataSourceConfigurations,
+        timeFrame,
       },
       noConfigurationRequired: false,
     };
-    onSave(searchAction);
+    onSave(includeDataAction);
     handleClose();
   };
 
@@ -95,8 +106,8 @@ export function AddSearchSheet({
     {
       id: PAGE_IDS.DATA_SOURCE_SELECTION,
       title: "Select Data Sources",
-      description: "Choose which data sources to search across",
-      icon: MagnifyingGlassIcon,
+      description: "Choose which data sources to include data from",
+      icon: ActionIncludeIcon,
       content: (
         <div className="space-y-4">
           <div
@@ -118,20 +129,27 @@ export function AddSearchSheet({
       ),
     },
     {
-      id: PAGE_IDS.DESCRIPTION,
-      title: "Add Description",
-      description: "Describe what you want to search for",
-      icon: MagnifyingGlassIcon,
+      id: PAGE_IDS.CONFIGURATION,
+      title: "Configure Include Data",
+      description: "Set time range and describe what data to include",
+      icon: ActionIncludeIcon,
       content: (
-        <DescriptionSection
-          title="Search Configuration"
-          description="Describe what information you want to search for across your selected data sources."
-          label="Search Description"
-          placeholder="Describe what you want to search for across your selected data sources..."
-          value={description}
-          onChange={setDescription}
-          helpText="This description helps the agent understand what type of information to search for."
-        />
+        <div className="space-y-6">
+          <TimeFrameSection
+            timeFrame={timeFrame}
+            setTimeFrame={setTimeFrame}
+            actionType="include"
+          />
+          <DescriptionSection
+            title="Data Description"
+            description="Describe what type of data you want to include from your selected data sources to provide context to the agent."
+            label="Description"
+            placeholder="Describe what data you want to include from your selected data sources..."
+            value={description}
+            onChange={setDescription}
+            helpText="This description helps the agent understand what type of data to include as context."
+          />
+        </div>
       ),
     },
   ];
