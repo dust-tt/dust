@@ -12,21 +12,22 @@ interface AssistantBuilderProvidersProps {
   children: ReactNode;
 }
 
-export const AssistantBuilderProviders = memo(
-  ({ owner, children }: AssistantBuilderProvidersProps) => {
-    // Note: MCPServerViewsProvider depends on SpacesContext, so SpacesProvider must come first.
-    return (
-      <PreviewPanelProvider>
-        <SpacesProvider owner={owner}>
-          <MCPServerViewsProvider owner={owner}>
-            <DataSourceViewsProvider owner={owner}>
-              {children}
-            </DataSourceViewsProvider>
-          </MCPServerViewsProvider>
-        </SpacesProvider>
-      </PreviewPanelProvider>
-    );
-  }
-);
+export const AssistantBuilderProviders = ({
+  owner,
+  children,
+}: AssistantBuilderProvidersProps) => {
+  // Note: MCPServerViewsProvider depends on SpacesContext, so SpacesProvider must come first.
+  return (
+    <PreviewPanelProvider>
+      <SpacesProvider owner={owner}>
+        <MCPServerViewsProvider owner={owner}>
+          <DataSourceViewsProvider owner={owner}>
+            {children}
+          </DataSourceViewsProvider>
+        </MCPServerViewsProvider>
+      </SpacesProvider>
+    </PreviewPanelProvider>
+  );
+};
 
 AssistantBuilderProviders.displayName = "AssistantBuilderProviders";
