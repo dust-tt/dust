@@ -4,7 +4,6 @@ import type {
   GetAgentConfigurationsResponseType,
   MeResponseType,
 } from "@dust-tt/client";
-import assert from "assert";
 import { Box, Text, useInput, useStdout } from "ink";
 import open from "open";
 import type { FC } from "react";
