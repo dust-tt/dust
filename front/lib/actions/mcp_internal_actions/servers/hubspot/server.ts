@@ -835,7 +835,17 @@ const createServer = (): McpServer => {
 
   server.tool(
     "hubspot-get-link",
-    "Generates HubSpot UI links for different pages based on object types and IDs",
+    `🎯 Purpose:
+      1. Generates HubSpot UI links for different pages based on object types and IDs.
+      2. Supports both index pages (lists of objects) and record pages (specific object details).
+
+    📋 Prerequisites:
+      1. Use the hubspot-get-portal-id tool to get the PortalId and UiDomain.
+
+    🧭 Usage Guidance:
+      1. Use to generate links to HubSpot UI pages when users need to reference specific HubSpot records.
+      2. Validates that object type IDs exist in the HubSpot system.
+  `,
     {
       portalId: z.string().describe("The HubSpot portal/account ID"),
       uiDomain: z.string().describe("The HubSpot UI domain"),
