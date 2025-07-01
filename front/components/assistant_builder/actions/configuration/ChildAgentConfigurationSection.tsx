@@ -103,6 +103,10 @@ export function ChildAgentConfigurationSection({
     if (!wasDescriptionEdited) {
       updateDescription(agent.description);
     }
+    // If we go back to the agent's description, we reset the flag (edge case).
+    if (agent.description === agentDescription) {
+      setWasDescriptionEdited(false);
+    }
   };
 
   if (isAgentConfigurationsError) {
