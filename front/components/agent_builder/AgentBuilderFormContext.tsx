@@ -6,7 +6,6 @@ import { z } from "zod";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
-  TimeFrame,
 } from "@app/types";
 import { EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 import {
