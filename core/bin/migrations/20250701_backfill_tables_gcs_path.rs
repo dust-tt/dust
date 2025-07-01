@@ -21,10 +21,10 @@ struct Args {
 }
 
 /*
- * Backfills the column text_size of the Elasticsearch index behind the alias core_data_sources_nodes.
+ * Backfills the csv_bucket and csv_bucket_path columns in the Tables table, and create the matching GCS file based on tables_row data.
  *
  * Usage:
- * cargo run --bin backfill_elasticsearch_text_size -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
+ * cargo run --bin backfill_tables_gcs_path -- [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
  *
  */
 #[tokio::main]
