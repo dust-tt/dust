@@ -1,4 +1,7 @@
-import type { PostSpaceMembersResponseBody } from "@dust-tt/client";
+import type {
+  GetSpaceMembersResponseBody,
+  PostSpaceMembersResponseBody,
+} from "@dust-tt/client";
 import { PostSpaceMembersRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -17,7 +20,11 @@ import { uniqBy } from "lodash";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostSpaceMembersResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      PostSpaceMembersResponseBody | GetSpaceMembersResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isAdmin()) {
@@ -71,7 +78,6 @@ async function handler(
       );
 
       return res.status(200).json({
-        space: space.toJSON(),
         users: currentMembers.map((member) => ({
           sId: member.sId,
           id: member.id,
