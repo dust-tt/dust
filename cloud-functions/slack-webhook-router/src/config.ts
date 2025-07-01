@@ -11,6 +11,7 @@ export const CONFIG = {
 
   // Environment secrets.
   DUST_CONNECTORS_WEBHOOKS_SECRET: process.env.DUST_CONNECTORS_WEBHOOKS_SECRET,
+  SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET,
 
   // Endpoints.
   US_CONNECTOR_URL: "https://connectors.dust.tt",

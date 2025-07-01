@@ -3,10 +3,12 @@ import express from "express";
 import { WebhookForwarder } from "./forwarder.js";
 import type { SecretManager } from "./secrets.js";
 import type { GracefulServer } from "./server.js";
+import type { RequestHandler } from "express";
 
 export function createRoutes(
   secretManager: SecretManager,
-  gracefulServer: GracefulServer
+  gracefulServer: GracefulServer,
+  slackVerification: RequestHandler
 ) {
   const router = express.Router();
 
@@ -35,22 +37,26 @@ export function createRoutes(
     }
   });
 
-  // Webhook endpoints.
-  router.post("/:webhookSecret/events", async (req, res) => {
+  // Webhook endpoints with Slack signature verification.
+  router.post("/:webhookSecret/events", slackVerification, async (req, res) => {
     await handleWebhook(req, res, "slack_bot", secretManager, gracefulServer);
   });
 
-  router.post("/:webhookSecret/interactions", async (req, res) => {
-    // Slack interactions are sent as application/x-www-form-urlencoded
-    // with JSON payload in a 'payload' field - forwarded as-is to connectors
-    await handleWebhook(
-      req,
-      res,
-      "slack_bot_interaction",
-      secretManager,
-      gracefulServer
-    );
-  });
+  // Use custom Slack verification middleware for interactions.
+  router.post(
+    "/:webhookSecret/interactions",
+    slackVerification,
+    async (req, res) => {
+      // If we get here, signature was valid.
+      await handleWebhook(
+        req,
+        res,
+        "slack_bot_interaction",
+        secretManager,
+        gracefulServer
+      );
+    }
+  );
 
   return router;
 }
@@ -58,6 +64,7 @@ export function createRoutes(
 function isUrlVerification(req: express.Request): boolean {
   return (
     req.body &&
+    typeof req.body === "object" &&
     "type" in req.body &&
     req.body.type === "url_verification" &&
     "challenge" in req.body
@@ -109,6 +116,7 @@ async function handleWebhook(
       body: req.body,
       endpoint,
       method: req.method,
+      headers: req.headers,
     });
   } catch (error) {
     console.error("Webhook router error", {
