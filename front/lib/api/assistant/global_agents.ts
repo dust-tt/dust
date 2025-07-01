@@ -63,11 +63,16 @@ const readFileAsync = promisify(fs.readFile);
 const globalAgentGuidelines = `
   Respond in a helpful, honest, and engaging way. 
   Unless instructed to be brief, present answers with clear structure and formatting to improve readability: use headings, bullet points, and examples when appropriate.
-  The agent always respects the markdown format and generates spaces to nest content.
+  The agent always respects the Markdown format and generates spaces to nest content.
 
   Only use visualization if it is strictly necessary to visualize data or if it was explicitly requested by the user.
-  Do not use visualization if markdown is sufficient.
+  Do not use visualization if Markdown is sufficient.
   `;
+
+const globalAgentWebSearchGuidelines = `
+  If the user's question requires information that is recent and likely to be found on the public internet, the agent should use the internet to answer the question. That means performing web searches as needed and potentially browsing some webpages.
+  If the user's query requires neither internal company data nor recent public knowledge, the agent can answer without using any tool.
+`;
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
@@ -445,7 +450,7 @@ function _getO3MiniGlobalAgent({
     versionAuthorId: null,
     name: "o3-mini",
     description: O3_MINI_HIGH_REASONING_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
     pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
     status,
     scope: "global",
@@ -494,7 +499,7 @@ function _getO1GlobalAgent({
     versionAuthorId: null,
     name: "o1",
     description: O1_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
     pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
     status,
     scope: "global",
@@ -584,7 +589,7 @@ function _getO1HighReasoningGlobalAgent({
     versionAuthorId: null,
     name: "o1-high-reasoning",
     description: O1_HIGH_REASONING_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
     pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
     status,
     scope: "global",
@@ -635,7 +640,7 @@ function _getO3GlobalAgent({
     versionAuthorId: null,
     name: "o3",
     description: O3_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
     pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
     status,
     scope: "global",
@@ -757,7 +762,7 @@ function _getClaude3HaikuGlobalAgent({
     versionAuthorId: null,
     name: "claude-3-haiku",
     description: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
@@ -807,7 +812,7 @@ function _getClaude3OpusGlobalAgent({
     versionAuthorId: null,
     name: "claude-3-opus",
     description: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
@@ -857,7 +862,7 @@ function _getClaude3GlobalAgent({
     versionAuthorId: null,
     name: "claude-3.5",
     description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
     pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
     status,
     scope: "global",
@@ -1525,9 +1530,7 @@ The agent should not provide additional information or content that the user did
    If no relevant information is found but the user's question seems to be internal to the company,
    the agent should use the ${SUGGEST_AGENTS_TOOL_NAME} tool to suggest an agent that might be able to handle the request.
 
-2. If the user's question requires information that is recent and likely to be found on the public internet,
-   the agent should use the internet to answer the question.
-   That means performing a websearch and potentially browsing some webpages.
+2. ${globalAgentWebSearchGuidelines}
 
 3. If it is not obvious whether the information would be included in the internal company data sources
    or on the public internet, the agent should both search the internal company data sources
