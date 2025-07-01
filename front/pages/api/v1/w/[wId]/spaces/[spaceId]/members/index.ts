@@ -70,7 +70,7 @@ async function handler(
         message:
           space.managementMode === "group"
             ? "Space is managed by provisioned group access, members can't be edited by API."
-            : "Non-restricted spaces' members can't be edited.",
+            : "Non-restricted space's members can't be edited.",
       },
     });
   }
