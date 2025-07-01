@@ -1,5 +1,3 @@
-use bb8::Pool;
-use bb8_postgres::PostgresConnectionManager;
 use clap::Parser;
 use dust::{
     databases::table::get_table_unique_id,
@@ -7,7 +5,6 @@ use dust::{
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
 };
-use tokio_postgres::NoTls;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -76,7 +73,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             batch_size, next_cursor
         );
         let next_id_cursor =
-            process_tables_batch(&store, &db_store, &pool, next_cursor, batch_size as i64).await?;
+            process_tables_batch(&store, &db_store, next_cursor, batch_size as i64).await?;
 
         next_cursor = match next_id_cursor {
             Some(cursor) => cursor,
@@ -96,11 +93,10 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 async fn process_tables_batch(
     store: &PostgresStore,
     db_store: &PostgresDatabasesStore,
-    pool: &Pool<PostgresConnectionManager<NoTls>>,
     id_cursor: i64,
     batch_size: i64,
 ) -> Result<Option<i64>, Box<dyn std::error::Error>> {
-    let c = pool.get().await?;
+    let c = store.raw_pool().get().await?;
 
     let rows = c
         .query(
@@ -108,7 +104,7 @@ async fn process_tables_batch(
             SELECT t.id, t.table_id, ds.project, ds.data_source_id
                 FROM tables t
                 INNER JOIN data_sources ds ON ds.id = t.data_source
-                WHERE csv_bucket IS NULL AND remote_database_table_id IS NULL
+                WHERE has_file IS NULL AND remote_database_table_id IS NULL
                     AND t.id > $1
                 ORDER BY t.id ASC
                 LIMIT $2
@@ -133,7 +129,7 @@ async fn process_tables_batch(
     for (id, table_id, project, data_source_id) in tables {
         println!("Processing table with id: {}, table_id: {}", id, table_id);
 
-        process_one_table(&store, &db_store, &project, &data_source_id, &table_id).await?;
+        process_one_table(&store, &db_store, id, &project, &data_source_id, &table_id).await?;
 
         last_table_id = id;
     }
@@ -147,6 +143,7 @@ async fn process_tables_batch(
 async fn process_one_table(
     store: &PostgresStore,
     db_store: &PostgresDatabasesStore,
+    id: i64,
     project: &Project,
     data_source_id: &str,
     table_id: &str,
@@ -159,6 +156,14 @@ async fn process_one_table(
     rows.into_iter().for_each(|row| {
         println!("Row: {:?}", row);
     });
+
+    // Set has_file = true to mark that this table has been processed
+    store
+        .raw_pool()
+        .get()
+        .await?
+        .execute("UPDATE tables SET has_file = TRUE WHERE id = $1", &[&id])
+        .await?;
 
     Ok(())
 }
