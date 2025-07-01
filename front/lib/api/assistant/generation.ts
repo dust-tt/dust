@@ -162,6 +162,12 @@ export async function constructPromptMultiActions(
     "\nEvery latex formula should be inside double dollars $$ blocks." +
     "\nParentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$.\n";
 
+  guidelinesSection +=
+    "\n## RENDERING MARKDOWN IMAGES\n" +
+    "When rendering markdown images, ALWAYS rely on the fileId, which will look like this: fil_randomId (e.g., fil_abc123def456)" +
+    "and the image title which will be provided." +
+    "\nEvery image markdown should follow this pattern ![{title}]({fileId}).\n";
+
   // INSTRUCTIONS section
   let instructions = "# INSTRUCTIONS\n\n";
 

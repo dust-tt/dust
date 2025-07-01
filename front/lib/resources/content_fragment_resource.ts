@@ -583,6 +583,7 @@ export async function getContentFragmentFromAttachmentFile(
           text: renderAttachmentXml({
             attachment,
             content: document.document.text ?? null,
+            fileId: null,
           }),
         },
       ],
@@ -611,6 +612,7 @@ export async function getContentFragmentFromAttachmentFile(
           text: renderAttachmentXml({
             attachment,
             content,
+            fileId: null,
           }),
         },
       ],
@@ -681,8 +683,13 @@ export async function renderLightContentFragmentForModel(
               attachment,
               content:
                 "[Image content interpreted by a vision-enabled model. " +
-                "Description not available in this context. " +
-                `To render image in your response, write out ![${title}](${contentFragment.sId})].`,
+                "Description not available in this context.",
+              fileId: (
+                await getIncludeFileIdsFromContentFragmentResourceId(
+                  auth,
+                  contentFragment.sId
+                )
+              ).fileStringId,
             }),
           },
         ],
@@ -703,12 +710,14 @@ export async function renderLightContentFragmentForModel(
         },
         {
           type: "text",
-          text: renderContentFragmentXml({
-            contentFragmentId: contentFragment.sId,
-            contentType,
-            title,
-            version: contentFragmentVersion,
-            content: `To render image in your response, write out ![${title}](${contentFragment.sId})].`,
+          text: renderAttachmentXml({
+            attachment,
+            fileId: (
+              await getIncludeFileIdsFromContentFragmentResourceId(
+                auth,
+                contentFragment.sId
+              )
+            ).fileStringId,
           }),
         },
       ],
