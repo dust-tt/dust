@@ -1,13 +1,16 @@
+import { InteractiveImageGrid } from "@dust-tt/sparkle";
 import React from "react";
 import { visit } from "unist-util-visit";
 
-import { getFileProcessedUrl } from "@app/lib/swr/file";
+import {
+  getFileProcessedUrl,
+  getProcessedFileDownloadUrl,
+} from "@app/lib/swr/file";
 import type { LightWorkspaceType } from "@app/types";
 
 export function Img({
   src,
   alt,
-  title,
   owner,
 }: {
   src: string | undefined;
@@ -29,10 +32,24 @@ export function Img({
     return null;
   }
 
-  const url = getFileProcessedUrl(owner, matches[0]);
-  const processedSrc = new URL(url, baseUrl);
+  const viewSuffix = getFileProcessedUrl(owner, matches[0]);
+  const downloadSuffix = getProcessedFileDownloadUrl(owner, matches[0]);
+  const viewURL = new URL(viewSuffix, baseUrl);
+  const downloadURL = new URL(downloadSuffix, baseUrl);
 
-  return <img src={processedSrc.toString()} alt={alt} title={title} />;
+  return (
+    <InteractiveImageGrid
+      images={[
+        {
+          imageUrl: viewURL.toString(),
+          downloadUrl: downloadURL.toString(),
+          alt: alt ? alt : "",
+          title: alt ? alt : "",
+          isLoading: false,
+        },
+      ]}
+    />
+  );
 }
 
 export function imgDirective() {
@@ -43,23 +60,14 @@ export function imgDirective() {
       data.hProperties = {
         src: node.url,
         alt: node.alt,
-        title: node.title,
       };
     });
   };
 }
 
 export function getImgPlugin(owner: LightWorkspaceType) {
-  const ImagePlugin = ({
-    src,
-    alt,
-    title,
-  }: {
-    src: string;
-    alt: string;
-    title?: string;
-  }) => {
-    return <Img src={src} alt={alt} title={title} owner={owner} />;
+  const ImagePlugin = ({ src, alt }: { src: string; alt: string }) => {
+    return <Img src={src} alt={alt} owner={owner} />;
   };
 
   return ImagePlugin;
