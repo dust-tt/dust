@@ -3070,7 +3070,7 @@ export interface PostSpaceMembersResponseBody {
 }
 
 export interface GetSpaceMembersResponseBody {
-  users: Pick<UserType, "sId" | "id" | "email">[];
+  users: Pick<UserType, "sId" | "email">[];
 }
 
 export interface GetWorkspaceMembersResponseBody {

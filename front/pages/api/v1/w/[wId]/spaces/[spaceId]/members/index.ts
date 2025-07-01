@@ -80,7 +80,6 @@ async function handler(
       return res.status(200).json({
         users: currentMembers.map((member) => ({
           sId: member.sId,
-          id: member.id,
           email: member.email,
         })),
       });
