@@ -10,8 +10,7 @@
     "dev": "npm run start",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "deploy": "./deploy.sh",
-    "deploy:simple": "npm run build && firebase deploy --only functions"
+    "deploy": "./deploy.sh"
   },
   "author": "Dust",
   "license": "ISC",

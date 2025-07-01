@@ -7,17 +7,17 @@ import { createSlackVerificationMiddleware } from "./slack-verification.js";
  * Creates and configures the Express application
  */
 export async function createApp(): Promise<express.Application> {
-  // Initialize dependencies
+  // Initialize dependencies.
   const secretManager = new SecretManager();
 
-  // Create Slack verification middleware
+  // Create Slack verification middleware.
   const slackVerification = createSlackVerificationMiddleware(secretManager);
 
-  // Create Express app
+  // Create Express app.
   const app = express();
-  // No body parsing middleware needed - Slack verification handles it
+  // No body parsing middleware needed - Slack verification handles it.
 
-  // Setup routes with Slack verification middleware
+  // Setup routes with Slack verification middleware.
   const routes = createRoutes(secretManager, slackVerification);
 
   app.use(routes);

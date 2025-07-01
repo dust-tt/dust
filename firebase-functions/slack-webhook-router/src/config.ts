@@ -1,15 +1,12 @@
 import { defineString } from "firebase-functions/params";
 
-// Define environment parameters
+// Define environment parameters.
 const gcpGlobalProjectId = defineString("GCP_GLOBAL_PROJECT_ID");
 const gcpUsProjectId = defineString("GCP_US_PROJECT_ID");
 const gcpEuProjectId = defineString("GCP_EU_PROJECT_ID");
 
 export const CONFIG = {
-  PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 8080,
-  REQUEST_SIZE_LIMIT: "1mb",
   FETCH_TIMEOUT_MS: 10000,
-  SHUTDOWN_TIMEOUT_MS: 30000,
 
   // Environment secrets.
   DUST_CONNECTORS_WEBHOOKS_SECRET: process.env.DUST_CONNECTORS_WEBHOOKS_SECRET,
@@ -24,12 +21,9 @@ export const CONFIG = {
   SLACK_SIGNING_SECRET_NAME: "SLACK_SIGNING_SECRET",
 } as const;
 
-// Runtime getters for Firebase params
+// Runtime getters for Firebase params.
 export const getProjectIds = () => ({
   GCP_GLOBAL_PROJECT_ID: gcpGlobalProjectId.value(),
   GCP_US_PROJECT_ID: gcpUsProjectId.value(),
   GCP_EU_PROJECT_ID: gcpEuProjectId.value(),
 });
-
-export const getServiceAccount = () =>
-  `slack-webhook-router-sa@${gcpGlobalProjectId.value()}.iam.gserviceaccount.com`;
