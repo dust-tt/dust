@@ -11,6 +11,8 @@ export default async function handler(
 
   res.status(200).send("ok");
 
+  statsDClient.decrement("prestop.request", 1);
+
   const elapsed = performance.now() - start;
 
   statsDClient.distribution("requests.health.check", elapsed);
