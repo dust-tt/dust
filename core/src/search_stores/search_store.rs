@@ -149,7 +149,7 @@ pub trait SearchStore {
     async fn get_data_source_stats(
         &self,
         data_source_ids: Vec<String>,
-    ) -> Result<Vec<DataSourceESDocumentWithStats>>;
+    ) -> Result<(Vec<DataSourceESDocumentWithStats>, i64)>;
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
     async fn delete_data_source(&self, data_source: &DataSource) -> Result<()>;
 
@@ -448,9 +448,9 @@ impl SearchStore for ElasticsearchSearchStore {
     async fn get_data_source_stats(
         &self,
         data_source_ids: Vec<String>,
-    ) -> Result<Vec<DataSourceESDocumentWithStats>> {
+    ) -> Result<(Vec<DataSourceESDocumentWithStats>, i64)> {
         if data_source_ids.is_empty() {
-            return Ok(vec![]);
+            return Ok((vec![], 0));
         }
 
         // Search for data sources first to get their metadata
@@ -490,7 +490,7 @@ impl SearchStore for ElasticsearchSearchStore {
             ));
         }
 
-        let stats_map = self
+        let (stats_map, overall_total_size) = self
             .compute_multiple_data_sources_stats(&data_source_ids)
             .await?;
 
@@ -511,7 +511,7 @@ impl SearchStore for ElasticsearchSearchStore {
             }
         }
 
-        Ok(results)
+        Ok((results, overall_total_size))
     }
 
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()> {
@@ -1154,7 +1154,7 @@ impl ElasticsearchSearchStore {
     async fn compute_multiple_data_sources_stats(
         &self,
         data_source_ids: &[String],
-    ) -> Result<HashMap<String, (i64, i64)>> {
+    ) -> Result<(HashMap<String, (i64, i64)>, i64)> {
         let stats_response = self
             .client
             .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
@@ -1199,7 +1199,13 @@ impl ElasticsearchSearchStore {
             }
         }
 
-        Ok(stats_map)
+        // Extract the overall total_size from aggregations
+        let overall_total_size = stats_body["aggregations"]["total_size"]["value"]
+            .as_f64()
+            .unwrap_or(0.0)
+            .round() as i64;
+
+        Ok((stats_map, overall_total_size))
     }
 
     // Generic document methods.

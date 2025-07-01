@@ -3647,7 +3647,7 @@ async fn data_source_stats(
                 .get_data_source_stats(data_source_ids.clone())
                 .await
             {
-                Ok(stats) if !stats.is_empty() => (
+                Ok((stats, _)) if !stats.is_empty() => (
                     StatusCode::OK,
                     Json(APIResponse {
                         error: None,
@@ -3782,12 +3782,13 @@ async fn data_sources_stats(
                 .collect();
 
             match state.search_store.get_data_source_stats(ds_ids).await {
-                Ok(stats) if !stats.is_empty() => (
+                Ok((stats, overall_total_size)) if !stats.is_empty() => (
                     StatusCode::OK,
                     Json(APIResponse {
                         error: None,
                         response: Some(json!({
-                            "data_sources": stats
+                            "data_sources": stats,
+                            "overall_total_size": overall_total_size,
                         })),
                     }),
                 ),
