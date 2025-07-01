@@ -5,6 +5,8 @@ import { wakeLockIsFree } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import { withLogging } from "@app/logger/withlogging";
 
+export const PRESTOP_SHUTDOWN_KEY = "prestop:shutdown";
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -27,7 +29,7 @@ async function handler(
 
   // Set prestop state in Redis with 60 second TTL
   await runOnRedis({ origin: "lock" }, async (redis) => {
-    await redis.setEx("prestop:shutdown", 60, "true");
+    await redis.setEx(PRESTOP_SHUTDOWN_KEY, 60, "true");
   });
 
   logger.info("Prestop state set, waiting 10s");

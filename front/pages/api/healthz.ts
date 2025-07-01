@@ -2,6 +2,7 @@ import { StatsD } from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runOnRedis } from "@app/lib/api/redis";
+import { PRESTOP_SHUTDOWN_KEY } from "@app/pages/api/[preStopSecret]/prestop";
 
 export const statsDClient = new StatsD();
 
@@ -13,7 +14,7 @@ export default async function handler(
 
   // Check if prestop has been called
   const isShuttingDown = await runOnRedis({ origin: "lock" }, async (redis) => {
-    const prestopState = await redis.get("prestop:shutdown");
+    const prestopState = await redis.get(PRESTOP_SHUTDOWN_KEY);
     return prestopState === "true";
   });
 
