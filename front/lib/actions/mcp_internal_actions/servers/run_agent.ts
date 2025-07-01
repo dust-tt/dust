@@ -15,13 +15,15 @@ import {
   isServerSideMCPServerConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { AgentConfigurationType , Result } from "@app/types";
+import { isGlobalAgentId } from "@app/types";
 import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -63,14 +65,24 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   description: string;
 } | null> {
   const owner = auth.getNonNullableWorkspace();
-  const agentConfiguration = await AgentConfiguration.findOne({
-    where: {
-      sId: agentId,
-      workspaceId: owner.id,
-      status: "active",
-    },
-    attributes: ["name", "description"],
-  });
+
+  let agentConfiguration: AgentConfigurationType | AgentConfiguration | null;
+  if (isGlobalAgentId(agentId)) {
+    [agentConfiguration] = await getGlobalAgents(
+      auth,
+      [agentId],
+      "extra_light"
+    );
+  } else {
+    agentConfiguration = await AgentConfiguration.findOne({
+      where: {
+        sId: agentId,
+        workspaceId: owner.id,
+        status: "active",
+      },
+      attributes: ["name", "description"],
+    });
+  }
 
   if (!agentConfiguration) {
     return null;
