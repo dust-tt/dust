@@ -689,7 +689,14 @@ export async function syncDeltaForRootNodesInDrive({
       if (driveItem.deleted) {
         // no need to delete children here since they will all be listed
         // in the delta with the 'deleted' field set
-        await deleteFolder({ connectorId, dataSourceConfig, internalId });
+        // we can delete, even if it is not a root node, because microsoft
+        // tells us the client has already deleted the folder
+        await deleteFolder({
+          connectorId,
+          dataSourceConfig,
+          internalId,
+          deleteRootNode: true,
+        });
       } else {
         const isMoved = await isFolderMovedInSameRoot({
           connectorId,
