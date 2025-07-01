@@ -2,7 +2,7 @@ import React from "react";
 import { visit } from "unist-util-visit";
 
 import { getFileProcessedUrl } from "@app/lib/swr/file";
-import { LightWorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 
 export function Img({
   src,
