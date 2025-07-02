@@ -43,7 +43,6 @@ use crate::{
     stores::store::{Store, POSTGRES_TABLES, SQL_FUNCTIONS, SQL_INDEXES},
     utils,
 };
-use tracing::info;
 
 use super::store::{DocumentCreateParams, FolderUpsertParams, TableUpsertParams};
 
