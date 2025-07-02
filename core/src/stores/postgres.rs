@@ -2949,7 +2949,7 @@ impl Store for PostgresStore {
         )
         .await?;
 
-        // Update the csv bucket and path.
+        // Update migration flag.
         let stmt = c
             .prepare(
                 "UPDATE tables SET migrated_to_csv = true WHERE data_source = $1 AND table_id = $2",
