@@ -37,6 +37,9 @@ import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 import { isBuilder } from "@app/types";
 
+import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "./constant";
+import { InputBarContext } from "./input_bar/InputBarContext";
+
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
 };
@@ -183,9 +186,20 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     ? groupConversationsByDate(conversations)
     : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
+  const { setAnimate } = useContext(InputBarContext);
+
   const handleNewClick = useCallback(async () => {
     setSidebarOpen(false);
-  }, [setSidebarOpen]);
+    const { cId } = router.query;
+    const isNewConversation =
+      router.pathname === "/w/[wId]/assistant/[cId]" &&
+      typeof cId === "string" &&
+      cId === "new";
+    if (isNewConversation) {
+      setAnimate(true);
+      document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
+    }
+  }, [setSidebarOpen, router, setAnimate]);
 
   return (
     <>
