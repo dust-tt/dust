@@ -318,9 +318,9 @@ export default function SlackIntegration() {
 
       <div className="container flex w-full flex-col gap-16 px-2 py-2">
         <HeroSection />
+        <InstallationSection />
         <PainPointsSection />
         <VideoSection />
-        <InstallationSection />
         <TrustedBy logoSet="landing" />
         <JustUseDustSection />
       </div>
