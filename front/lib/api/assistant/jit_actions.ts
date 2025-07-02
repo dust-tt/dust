@@ -6,7 +6,6 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { makeConversationListFilesAction } from "@app/lib/actions/conversation/list_files";
 import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
@@ -23,10 +22,7 @@ import {
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
-import {
-  isSearchableFolder,
-  listAttachments,
-} from "@app/lib/api/assistant/jit_utils";
+import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -34,14 +30,10 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type {
-  AgentActionType,
-  AgentMessageType,
-  ConversationType,
-} from "@app/types";
+import type { ConversationType } from "@app/types";
 import { assertNever, CoreAPI } from "@app/types";
 
-async function getJITServers(
+export async function getJITServers(
   auth: Authenticator,
   {
     conversation,
@@ -372,44 +364,6 @@ async function getJITServers(
   }
 
   return jitServers;
-}
-
-export async function getEmulatedActionsAndJITServers(
-  auth: Authenticator,
-  {
-    agentMessage,
-    conversation,
-  }: {
-    agentMessage: AgentMessageType;
-    conversation: ConversationType;
-  }
-): Promise<{
-  emulatedActions: AgentActionType[];
-  jitServers: MCPServerConfigurationType[];
-}> {
-  const emulatedActions: AgentActionType[] = [];
-
-  const attachments = listAttachments(conversation);
-  const a = makeConversationListFilesAction({
-    agentMessage,
-    attachments,
-  });
-  if (a) {
-    emulatedActions.push(a);
-  }
-
-  const jitServers = await getJITServers(auth, {
-    conversation,
-    attachments,
-  });
-
-  // We ensure that all emulated actions are injected with step -1.
-  assert(
-    emulatedActions.every((a) => a.step === -1),
-    "Emulated actions must have step -1"
-  );
-
-  return { emulatedActions, jitServers };
 }
 
 async function getTablesFromMultiSheetSpreadsheet(

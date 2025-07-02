@@ -35,7 +35,8 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import { getEmulatedActionsAndJITServers } from "@app/lib/api/assistant/jit_actions";
+import { getJITServers } from "@app/lib/api/assistant/jit_actions";
+import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
@@ -387,13 +388,11 @@ async function* runMultiActionsAgent(
     }
   }
 
-  const { emulatedActions, jitServers } = await getEmulatedActionsAndJITServers(
-    auth,
-    {
-      agentMessage,
-      conversation,
-    }
-  );
+  const attachments = listAttachments(conversation);
+  const jitServers = await getJITServers(auth, {
+    conversation,
+    attachments,
+  });
 
   // Get client-side MCP server configurations from user message context.
   const clientSideMCPActionConfigurations =
@@ -522,10 +521,6 @@ async function* runMultiActionsAgent(
     }))
   );
 
-  // Prepend emulated actions to the current agent message before rendering the conversation for the
-  // model.
-  agentMessage.actions = emulatedActions.concat(agentMessage.actions);
-
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
@@ -534,11 +529,6 @@ async function* runMultiActionsAgent(
     tools,
     allowedTokenCount: model.contextSize - model.generationTokensCount,
   });
-
-  // Scrub emulated actions from the agent message after rendering.
-  agentMessage.actions = agentMessage.actions.filter(
-    (a) => !emulatedActions.includes(a)
-  );
 
   if (modelConversationRes.isErr()) {
     logger.error(
