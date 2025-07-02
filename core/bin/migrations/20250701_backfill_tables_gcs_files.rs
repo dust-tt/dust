@@ -107,7 +107,7 @@ async fn process_tables_batch(
             SELECT t.id, t.table_id, t.schema, ds.project, ds.data_source_id
                 FROM tables t
                 INNER JOIN data_sources ds ON ds.id = t.data_source
-                WHERE migrated_to_csv IS NULL AND remote_database_table_id IS NULL
+                WHERE NOT migrated_to_csv AND remote_database_table_id IS NULL
                     AND t.id > $1
                 ORDER BY t.id ASC
                 LIMIT $2
