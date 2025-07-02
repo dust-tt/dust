@@ -1,10 +1,13 @@
 import { Spinner } from "@dust-tt/sparkle";
 import React from "react";
-import { useFormContext } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { usePreviewAgent, useTryAgentCore } from "@app/components/agent_builder/hooks/useAgentPreview";
+import {
+  usePreviewAgent,
+  useTryAgentCore,
+} from "@app/components/agent_builder/hooks/useAgentPreview";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -41,12 +44,13 @@ function LoadingState({ message }: { message: string }) {
   );
 }
 
-export function AgentBuilderPreview()  {
+export function AgentBuilderPreview() {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
 
-  const form = useFormContext<AgentBuilderFormData>();
-  const formData = form.watch();
+  const instructions = useWatch<AgentBuilderFormData, "instructions">({
+    name: "instructions",
+  });
 
   const { draftAgent, isSavingDraftAgent, createDraftAgent } =
     usePreviewAgent();
@@ -58,7 +62,7 @@ export function AgentBuilderPreview()  {
       createDraftAgent,
     });
 
-  const hasContent = formData.instructions?.trim() || formData.actions.length > 0;
+  const hasContent = instructions.trim();
 
   const renderContent = () => {
     if (!hasContent) {
