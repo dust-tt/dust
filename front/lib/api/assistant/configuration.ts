@@ -1148,7 +1148,7 @@ export async function createAgentActionConfiguration(
         mcpConfig,
       });
     }
-    // Creating the AgentTablesQueryConfigurationTable if configured
+    // Creating the AgentReasoningConfiguration if configured
     if (action.reasoningModel) {
       await createReasoningConfiguration(auth, t, {
         reasoningModel: action.reasoningModel,
