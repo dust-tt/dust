@@ -40,30 +40,20 @@ import {
   TextContentSchema,
   AudioContentSchema,
   EmbeddedResourceSchema,
+  ImageContentSchema as OriginalImageContentSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
 // FORKED: Fixed ImageContentSchema without .base64() validation.
-export const ImageContentSchema = z
-  .object({
-    type: z.literal("image"),
-    /**
-     * The base64-encoded image data.
-     *
-     * IMPORTANT: We removed .base64() validation here to prevent "Maximum call stack
-     * size exceeded" errors with large image data. The MCP server is trusted to
-     * provide valid base64 encoding.
-     */
-    data: z.string(), // FIXED: was z.string().base64().
-    /**
-     * The MIME type of the image. Different providers may support different image types.
-     */
-    mimeType: z.string(),
-    /**
-     * See MCP specification for notes on _meta usage.
-     */
-    _meta: z.optional(z.object({}).passthrough()),
-  })
-  .passthrough();
+export const ImageContentSchema = OriginalImageContentSchema.extend({
+  /**
+   * The base64-encoded image data.
+   *
+   * IMPORTANT: We removed .base64() validation here to prevent "Maximum call stack
+   * size exceeded" errors with large image data. The MCP server is trusted to
+   * provide valid base64 encoding.
+   */
+  data: z.string(), // FIXED: was z.string().base64().
+});
 
 // FORKED: ContentBlockSchema using our fixed ImageContentSchema
 export const ContentBlockSchema = z.union([
