@@ -15,7 +15,7 @@ import {
   isServerSideMCPServerConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agent_metadata";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -68,11 +68,14 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
 
   let agentConfiguration: AgentConfigurationType | AgentConfiguration | null;
   if (isGlobalAgentId(agentId)) {
-    [agentConfiguration] = await getGlobalAgents(
-      auth,
-      [agentId],
-      "extra_light"
-    );
+    const metadata = getGlobalAgentMetadata(agentId);
+    if (!metadata) {
+      return null;
+    }
+    return {
+      name: metadata.name,
+      description: metadata.description,
+    };
   } else {
     agentConfiguration = await AgentConfiguration.findOne({
       where: {
