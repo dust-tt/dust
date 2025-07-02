@@ -291,7 +291,7 @@ function createServer(
         content.push({
           type: "resource",
           resource: {
-            text: "Your query results were generated successfully.",
+            text: "Your query results were generated successfully. They are available as a structured CSV file.",
             uri: csvFile.getPublicUrl(auth),
             mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
             fileId: csvFile.sId,
@@ -341,7 +341,7 @@ function createServer(
           content.push({
             type: "resource",
             resource: {
-              text: "Your query results were generated successfully.",
+              text: "Results are also available as a rich text file that can be searched.",
               uri: sectionFile.getPublicUrl(auth),
               mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
               fileId: sectionFile.sId,

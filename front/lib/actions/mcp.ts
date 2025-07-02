@@ -49,6 +49,10 @@ import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
+  getAttachmentFromToolOutput,
+  renderAttachmentXml,
+} from "@app/lib/api/assistant/conversation/attachments";
+import {
   processAndStoreFromUrl,
   uploadBase64DataToFileStorage,
   uploadBase64ImageToFileStorage,
@@ -269,7 +273,25 @@ function hideFileFromActionOutput({
 function rewriteContentForModel(
   content: CallToolResult["content"][number]
 ): CallToolResult["content"][number] | null {
-  // Hide certain types of content from the model: those are only used for display.
+  if (isToolGeneratedFile(content)) {
+    const attachment = getAttachmentFromToolOutput({
+      fileId: content.resource.fileId,
+      contentType: content.resource.contentType,
+      title: content.resource.title,
+      snippet: content.resource.snippet,
+    });
+    const xml = renderAttachmentXml({ attachment });
+    let text = content.resource.text;
+    if (text) {
+      text += `\n`;
+    }
+    text += xml;
+    return {
+      type: "text",
+      text,
+    };
+  }
+
   if (isSearchQueryResourceType(content) || isToolMarkerResourceType(content)) {
     return null;
   }
@@ -374,8 +396,8 @@ export class MCPActionType extends BaseAction {
         return "Successfully executed action, no output.";
       }
 
-      if (outputItems.length === 1 && isTextContent(outputItems[0])) {
-        return outputItems[0].text;
+      if (outputItems.every((item) => isTextContent(item))) {
+        return outputItems.map((item) => item.text).join("\n");
       }
 
       return JSON.stringify(outputItems);
