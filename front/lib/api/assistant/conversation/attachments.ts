@@ -186,7 +186,7 @@ export function getAttachmentFromToolOutput({
   title: string;
   snippet: string | null;
 }): FileAttachmentType {
-  const canDoJIT = snippet != null;
+  const canDoJIT = snippet !== null;
   const isIncludable = isConversationIncludableFileContentType(contentType);
   const isQueryable = canDoJIT && isQueryableContentType(contentType);
   const isSearchable = canDoJIT && isSearchableContentType(contentType);
@@ -230,8 +230,7 @@ export function renderAttachmentXml({
   const contentToRender = content ?? attachment.snippet;
 
   if (contentToRender) {
-    tag += ">";
-    tag += `${contentToRender}\n</attachment>`;
+    tag += `>${contentToRender}\n</attachment>`;
   } else {
     tag += "/>";
   }
