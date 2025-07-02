@@ -23,6 +23,7 @@ export const MCPInternalActionIconSchema = z.enum([
   "GmailLogo",
   "GcalLogo",
   "SlackLogo",
+  "StripeLogo",
 ]);
 
 export const MCPExternalActionIconSchema = z.enum([

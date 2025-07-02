@@ -373,7 +373,7 @@ export class MCPActionType extends BaseAction {
     const totalTextLength =
       this.output?.reduce(
         (acc, curr) =>
-          acc + (curr.type === "text" ? (curr.text?.length ?? 0) : 0),
+          acc + (curr.type === "text" ? curr.text?.length ?? 0 : 0),
         0
       ) ?? 0;
 
@@ -1023,7 +1023,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
               const fileName = isResourceWithName(block.resource)
                 ? block.resource.name
-                : (block.resource.uri.split("/").pop() ?? "generated-file");
+                : block.resource.uri.split("/").pop() ?? "generated-file";
 
               const fileUpsertResult = await processAndStoreFromUrl(auth, {
                 url: block.resource.uri,
