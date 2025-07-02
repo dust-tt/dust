@@ -84,9 +84,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   show_debug_tools: {
     description: "Display debug tools in the interface",
   },
-  slack_tool: {
-    description: "Slack integration tool",
-  },
   usage_data_api: {
     description: "API for accessing usage data",
   },

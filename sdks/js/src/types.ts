@@ -544,26 +544,12 @@ export const GenerationTokensEventSchema = z.object({
 export type GenerationTokensEvent = z.infer<typeof GenerationTokensEventSchema>;
 
 const BaseActionTypeSchema = FlexibleEnumSchema<
-  | "dust_app_run_action"
-  | "process_action"
-  | "visualization_action"
+  "dust_app_run_action" | "process_action" | "visualization_action"
 >();
 
 const BaseActionSchema = z.object({
   id: ModelIdSchema,
   type: BaseActionTypeSchema,
-});
-
-const BrowseActionOutputSchema = z.object({
-  results: z.array(
-    z.object({
-      requestedUrl: z.string(),
-      browsedUrl: z.string(),
-      content: z.string(),
-      responseCode: z.string(),
-      errorMessage: z.string(),
-    })
-  ),
 });
 
 const SearchLabelsActionOutputSchema = z.object({
@@ -775,7 +761,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "show_debug_tools"
-  | "slack_tool"
   | "usage_data_api"
   | "workos"
   | "workos_user_provisioning"
@@ -838,16 +823,6 @@ export const WebsearchResultSchema = z.object({
 });
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
-
-const WebsearchActionOutputSchema = z.union([
-  z.object({
-    results: z.array(WebsearchResultSchema),
-  }),
-  z.object({
-    results: z.array(WebsearchResultSchema),
-    error: z.string(),
-  }),
-]);
 
 const MCPActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
