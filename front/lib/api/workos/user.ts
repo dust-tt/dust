@@ -48,12 +48,12 @@ export async function getWorkOSSession(
     if (result.cookie === "") {
       res.setHeader("Set-Cookie", [
         "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
-        `sessionType=workos; Path=/; Secure; SameSite=Lax`,
+        "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
       ]);
     } else if (result.cookie) {
       res.setHeader("Set-Cookie", [
-        `workos_session=${result.cookie}; Path=/; HttpOnly; Secure; SameSite=Lax`,
-        `sessionType=workos; Path=/; Secure; SameSite=Lax`,
+        `workos_session=${result.cookie}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+        `sessionType=workos; Path=/; Secure; SameSite=Lax; Max-Age=2592000`,
       ]);
     }
 
