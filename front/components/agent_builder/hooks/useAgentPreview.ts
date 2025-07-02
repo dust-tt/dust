@@ -46,7 +46,11 @@ export function usePreviewAgent() {
 
   const createDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
-      if (draftAgent && isEqual(lastFormDataRef.current, formData)) {
+      // Always create a new draft if form data has changed
+      if (!isEqual(lastFormDataRef.current, formData)) {
+        // Form data has changed, we need to create a new draft
+      } else if (draftAgent) {
+        // Form data hasn't changed and we have a draft, return existing
         return draftAgent;
       }
 
