@@ -50,7 +50,7 @@ export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
 
 export const DEFAULT_REASONING_ACTION_NAME = "advanced_reasoning";
 export const DEFAULT_REASONING_ACTION_DESCRIPTION =
-  "Offload a reasoning-heavy task to to a powerful reasoning model. The reasoning model does not have access to any tools.";
+  "Offload a reasoning-heavy task to a powerful reasoning model. The reasoning model does not have access to any tools.";
 
 export const DEFAULT_DATA_VISUALIZATION_NAME = "data_visualization";
 export const DEFAULT_DATA_VISUALIZATION_DESCRIPTION =
