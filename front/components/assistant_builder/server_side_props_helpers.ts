@@ -5,7 +5,6 @@ import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant
 import { getDefaultMCPServerActionConfiguration } from "@app/components/assistant_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type {
   DataSourceConfiguration,

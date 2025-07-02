@@ -16,24 +16,15 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import type {
-  ReasoningActionRunningEvents,
-  ReasoningConfigurationType,
-} from "@app/lib/actions/reasoning";
-import type {
   SearchLabelsActionRunningEvents,
   SearchLabelsConfigurationType,
 } from "@app/lib/actions/search_labels";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
-import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 
 /**
  * Agent Action configuration when setting up the agent.
  */
 export type AgentActionConfigurationType =
   | DustAppRunConfigurationType
-  | ReasoningConfigurationType
-  | TablesQueryConfigurationType
-  | WebsearchConfigurationType
   | MCPServerConfigurationType;
 
 /**
@@ -54,9 +45,6 @@ export function isActionConfigurationType(
   switch (value.type) {
     case "conversation_include_file_configuration":
     case "dust_app_run_configuration":
-    case "reasoning_configuration":
-    case "tables_query_configuration":
-    case "websearch_configuration":
     case "mcp_configuration":
     case "search_labels_configuration":
       return true;
@@ -168,6 +156,5 @@ export function inputSchemaToDustAppRunInputs(
 export type AgentActionSpecificEvent =
   | ConversationIncludeFileActionRunningEvents
   | DustAppRunActionRunningEvents
-  | ReasoningActionRunningEvents
   | SearchLabelsActionRunningEvents
   | MCPActionRunningEvents;
