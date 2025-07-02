@@ -6,10 +6,7 @@ import { useFormContext } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
-import {
-  createConversationWithMessage,
-  submitMessage,
-} from "@app/components/assistant/conversation/lib";
+import { createConversationWithMessage, submitMessage } from "@app/components/assistant/conversation/lib";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import type { DustError } from "@app/lib/error";
 import type {
@@ -27,6 +24,7 @@ import { Err, Ok } from "@app/types";
 export function usePreviewAgent() {
   const { owner } = useAgentBuilderContext();
   const { mcpServerViews } = useMCPServerViewsContext();
+  // const allForm = useWatch<AgentBuilderFormData>()
   const form = useFormContext<AgentBuilderFormData>();
   const formData = form.watch();
 

@@ -1,13 +1,10 @@
 import { Spinner } from "@dust-tt/sparkle";
-import React, { useMemo } from "react";
+import React from "react";
 import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  usePreviewAgent,
-  useTryAgentCore,
-} from "@app/components/agent_builder/hooks/useAgentPreview";
+import { usePreviewAgent, useTryAgentCore } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -44,11 +41,13 @@ function LoadingState({ message }: { message: string }) {
   );
 }
 
-export const AgentBuilderPreview = React.memo(function AgentBuilderPreview() {
+export function AgentBuilderPreview()  {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
+
   const form = useFormContext<AgentBuilderFormData>();
   const formData = form.watch();
+
   const { draftAgent, isSavingDraftAgent, createDraftAgent } =
     usePreviewAgent();
   const { conversation, stickyMentions, setStickyMentions, handleSubmit } =
@@ -59,16 +58,9 @@ export const AgentBuilderPreview = React.memo(function AgentBuilderPreview() {
       createDraftAgent,
     });
 
-  const hasContent = useMemo(() => {
-    return formData.instructions?.trim() || formData.actions.length > 0;
-  }, [formData.instructions, formData.actions.length]);
+  const hasContent = formData.instructions?.trim() || formData.actions.length > 0;
 
-  // Determine what to render in the main content area
   const renderContent = () => {
-    if (!user) {
-      return <LoadingState message="Loading user..." />;
-    }
-
     if (!hasContent) {
       return (
         <EmptyState
@@ -91,11 +83,10 @@ export const AgentBuilderPreview = React.memo(function AgentBuilderPreview() {
       );
     }
 
-    // Show the actual conversation interface with proper flex layout
     return (
       <div className="flex h-full flex-col">
         <div className="flex-1 overflow-y-auto">
-          {conversation ? (
+          {conversation && user ? (
             <ConversationViewer
               owner={owner}
               user={user}
@@ -139,4 +130,4 @@ export const AgentBuilderPreview = React.memo(function AgentBuilderPreview() {
       </ActionValidationProvider>
     </div>
   );
-});
+}
