@@ -36,7 +36,6 @@ import {
 import type { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import type { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import type { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
@@ -1143,7 +1142,6 @@ export async function createAgentActionConfiguration(
     if (action.tables) {
       await createTableDataSourceConfiguration(auth, t, {
         tableConfigurations: action.tables,
-        tablesQueryConfig: null,
         mcpConfig,
       });
     }
@@ -1278,12 +1276,10 @@ async function createTableDataSourceConfiguration(
   t: Transaction,
   {
     tableConfigurations,
-    tablesQueryConfig,
     mcpConfig,
   }: {
     tableConfigurations: TableDataSourceConfiguration[];
-    tablesQueryConfig: AgentTablesQueryConfiguration | null;
-    mcpConfig: AgentMCPServerConfiguration | null;
+    mcpConfig: AgentMCPServerConfiguration;
   }
 ) {
   const owner = auth.getNonNullableWorkspace();
@@ -1321,8 +1317,7 @@ async function createTableDataSourceConfiguration(
         dataSourceId: dataSource.id,
         dataSourceViewId: dataSourceView.id,
         tableId: tc.tableId,
-        tablesQueryConfigurationId: tablesQueryConfig?.id || null,
-        mcpServerConfigurationId: mcpConfig?.id || null,
+        mcpServerConfigurationId: mcpConfig.id,
         workspaceId: owner.id,
       };
     })

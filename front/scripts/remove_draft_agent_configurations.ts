@@ -3,10 +3,6 @@ import { Op } from "sequelize";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import {
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Mention } from "@app/lib/models/assistant/conversation";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -69,36 +65,6 @@ async function deleteDustAppRunConfigurationForAgent(
   });
 }
 
-async function deleteTableQueryConfigurationForAgent(
-  agent: AgentConfiguration
-) {
-  const tableQueryConfigurations = await AgentTablesQueryConfiguration.findAll({
-    where: {
-      agentConfigurationId: agent.id,
-      workspaceId: agent.workspaceId,
-    },
-  });
-
-  if (tableQueryConfigurations.length === 0) {
-    return;
-  }
-
-  await AgentTablesQueryConfigurationTable.destroy({
-    where: {
-      tablesQueryConfigurationId: {
-        [Op.in]: tableQueryConfigurations.map((r) => r.id),
-      },
-    },
-  });
-
-  await AgentTablesQueryConfiguration.destroy({
-    where: {
-      agentConfigurationId: agent.id,
-      workspaceId: agent.workspaceId,
-    },
-  });
-}
-
 /**
  * Destroys a draft agent configuration and all associated configurations.
  * Avoids using transactions to prevent locks.
@@ -140,9 +106,6 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
 
   // Delete the dust app run configurations.
   await deleteDustAppRunConfigurationForAgent(agent);
-
-  // Delete the table query configurations.
-  await deleteTableQueryConfigurationForAgent(agent);
 
   // Finally delete the agent configuration.
   await AgentConfiguration.destroy({
