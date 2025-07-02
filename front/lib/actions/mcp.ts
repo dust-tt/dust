@@ -25,8 +25,10 @@ import {
   isMCPProgressNotificationType,
   isResourceWithName,
   isSearchQueryResourceType,
+  isTextContent,
   isToolApproveBubbleUpNotificationType,
   isToolGeneratedFile,
+  isToolMarkerResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
@@ -264,11 +266,15 @@ function hideFileFromActionOutput({
   };
 }
 
-function shouldHideContentForModel(
+function rewriteContentForModel(
   content: CallToolResult["content"][number]
-): boolean {
+): CallToolResult["content"][number] | null {
   // Hide certain types of content from the model: those are only used for display.
-  return isSearchQueryResourceType(content);
+  if (isSearchQueryResourceType(content) || isToolMarkerResourceType(content)) {
+    return null;
+  }
+
+  return content;
 }
 
 export type MCPActionRunningEvents =
@@ -359,15 +365,27 @@ export class MCPActionType extends BaseAction {
       };
     }
 
+    const outputItems = removeNulls(
+      this.output?.map(rewriteContentForModel) ?? []
+    );
+
+    const output = (() => {
+      if (outputItems.length === 0) {
+        return "Successfully executed action, no output.";
+      }
+
+      if (outputItems.length === 1 && isTextContent(outputItems[0])) {
+        return outputItems[0].text;
+      }
+
+      return JSON.stringify(outputItems);
+    })();
+
     return {
       role: "function" as const,
       name: this.functionCallName,
       function_call_id: this.functionCallId,
-      content: this.output
-        ? JSON.stringify(
-            this.output.filter((o) => !shouldHideContentForModel(o))
-          )
-        : "Successfully executed action, no output.",
+      content: output,
     };
   }
 

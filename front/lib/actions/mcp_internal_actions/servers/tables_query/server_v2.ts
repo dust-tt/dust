@@ -9,11 +9,14 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
-  ExecuteTablesQueryMarkerResourceType,
-  GetDatabaseSchemaMarkerResourceType,
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
+  ToolMarkerResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import {
+  EXECUTE_TABLES_QUERY_MARKER,
+  GET_DATABASE_SCHEMA_MARKER,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   getDatabaseExampleRowsContent,
@@ -41,8 +44,7 @@ type TablesQueryOutputResources =
   | ThinkingOutputType
   | SqlQueryOutputType
   | ToolGeneratedFileType
-  | GetDatabaseSchemaMarkerResourceType
-  | ExecuteTablesQueryMarkerResourceType;
+  | ToolMarkerResourceType;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "query_tables_v2",
@@ -124,9 +126,8 @@ function createServer(
           {
             type: "resource",
             resource: {
-              text: "get_database_schema_marker",
-              mimeType:
-                INTERNAL_MIME_TYPES.TOOL_OUTPUT.GET_DATABASE_SCHEMA_MARKER,
+              text: GET_DATABASE_SCHEMA_MARKER,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER,
               uri: "",
             },
           },
@@ -215,9 +216,8 @@ function createServer(
               {
                 type: "resource",
                 resource: {
-                  text: "execute_tables_query_marker",
-                  mimeType:
-                    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_MARKER,
+                  text: EXECUTE_TABLES_QUERY_MARKER,
+                  mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER,
                   uri: "",
                 },
               },
@@ -253,9 +253,8 @@ function createServer(
         content.push({
           type: "resource",
           resource: {
-            text: "tables_query_v2",
-            mimeType:
-              INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_MARKER,
+            text: EXECUTE_TABLES_QUERY_MARKER,
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER,
             uri: "",
           },
         });
