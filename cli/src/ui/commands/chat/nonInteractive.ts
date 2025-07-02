@@ -186,11 +186,20 @@ export function validateNonInteractiveFlags(
   messageId?: string,
   details?: boolean
 ): void {
-  // Check --messageId exclusivity
-  if (messageId && (agentSearch || message || conversationId)) {
+  // Check --messageId requirements
+  if (messageId && !conversationId) {
     console.error(JSON.stringify({ 
       error: "Invalid usage",
-      details: "--messageId is exclusive and cannot be used with --agent, --message, or --conversationId"
+      details: "--messageId requires --conversationId to be specified"
+    }));
+    process.exit(1);
+  }
+  
+  // Check --messageId exclusivity with other flags
+  if (messageId && (agentSearch || message)) {
+    console.error(JSON.stringify({ 
+      error: "Invalid usage",
+      details: "--messageId cannot be used with --agent or --message"
     }));
     process.exit(1);
   }
@@ -212,21 +221,73 @@ export function validateNonInteractiveFlags(
     }));
     process.exit(1);
   }
-  if (conversationId && (!agentSearch || !message)) {
+  if (conversationId && !messageId && (!agentSearch || !message)) {
     console.error(JSON.stringify({ 
       error: "Invalid usage",
-      details: "--conversationId requires both --agent and --message to be specified"
+      details: "--conversationId requires both --agent and --message to be specified (or --messageId)"
     }));
     process.exit(1);
   }
 }
 
-export async function fetchMessageDetails(messageId: string): Promise<void> {
-  // For now, we'll output an error since there's no direct API to get message details
-  // This functionality would require knowing the conversation ID as well
-  console.error(JSON.stringify({ 
-    error: "Not implemented",
-    details: "Message retrieval by ID requires conversation ID. Please use the message details provided when sending messages with --details flag."
-  }));
-  process.exit(1);
+export async function fetchAgentMessageFromConversation(
+  conversationId: string,
+  messageId: string
+): Promise<void> {
+  const dustClient = await getDustClient();
+  if (!dustClient) {
+    console.error(JSON.stringify({ 
+      error: "Authentication required",
+      details: "Run `dust login` first"
+    }));
+    process.exit(1);
+  }
+
+  try {
+    // Get conversation with messages
+    const convRes = await dustClient.getConversation({ 
+      conversationId: conversationId 
+    });
+    
+    if (convRes.isErr()) {
+      console.error(JSON.stringify({ 
+        error: "Failed to fetch conversation",
+        details: convRes.error.message
+      }));
+      process.exit(1);
+    }
+
+    const conversation = convRes.value;
+    
+    // Find the agent message with the specified sId
+    let agentMessage = null;
+    for (const contentGroup of conversation.content) {
+      for (const msg of contentGroup) {
+        if (msg.type === "agent_message" && msg.sId === messageId) {
+          agentMessage = msg;
+          break;
+        }
+      }
+      if (agentMessage) break;
+    }
+
+    if (!agentMessage) {
+      console.error(JSON.stringify({ 
+        error: "Message not found",
+        details: `Agent message with ID ${messageId} not found in conversation ${conversationId}`
+      }));
+      process.exit(1);
+    }
+
+    // Output the agent message as JSON
+    console.log(JSON.stringify(agentMessage));
+    process.exit(0);
+  } catch (error) {
+    console.error(JSON.stringify({ 
+      error: "Unexpected error",
+      details: normalizeError(error).message
+    }));
+    process.exit(1);
+  }
 }
+

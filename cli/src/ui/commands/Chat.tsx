@@ -75,7 +75,7 @@ const CliChat: FC<CliChatProps> = ({
     validateNonInteractiveFlags(message, agentSearch, conversationId, messageId, details);
   }, [message, agentSearch, conversationId, messageId, details]);
   
-  // Handle messageId mode - fetch and display message details
+  // Handle messageId mode - fetch agent message from conversation
   useEffect(() => {
     if (messageId && conversationId) {
       void fetchAgentMessageFromConversation(conversationId, messageId);

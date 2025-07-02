@@ -56,11 +56,11 @@ const cli = meow({
     conversationId: {
       type: "string",
       shortFlag: "c",
-      description: "Send message to an existing conversation (requires --agent and --message)",
+      description: "Conversation ID (use with --agent and --message, or with --messageId)",
     },
     messageId: {
       type: "string",
-      description: "Display details of a specific message (exclusive with -a, -m, -c)",
+      description: "Display details of a specific message (requires --conversationId)",
     },
     details: {
       type: "boolean",
