@@ -16,7 +16,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
@@ -507,7 +507,7 @@ async function handler(
       if (flags.includes("enforce_datasource_quota")) {
         // Enforce plan limits: Datasource quota
         const [activeSeats, quotaUsed] = await Promise.all([
-          countActiveSeatsInWorkspace(owner.sId),
+          countActiveSeatsInWorkspaceCached(owner.sId),
           computeWorkspaceOverallSizeCached(auth),
         ]);
 
