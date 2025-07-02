@@ -3,7 +3,6 @@ import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/Du
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
-import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentActionType, LightWorkspaceType } from "@app/types";
 import { ACTION_RUNNING_LABELS } from "@app/types";
@@ -36,10 +35,6 @@ const actionsSpecification: ActionSpecifications = {
   process_action: {
     detailsComponent: ProcessActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.process_action,
-  },
-  tables_query_action: {
-    detailsComponent: TablesQueryActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.tables_query_action,
   },
   conversation_list_files_action: {
     detailsComponent: () => null,

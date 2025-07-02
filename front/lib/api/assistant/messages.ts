@@ -6,7 +6,6 @@ import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_ru
 import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
 import { processActionTypesFromAgentMessageIds } from "@app/lib/actions/process";
 import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
-import { tableQueryTypesFromAgentMessageIds } from "@app/lib/actions/tables_query";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -132,7 +131,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   const [
     agentConfigurations,
     agentDustAppRunActions,
-    agentTablesQueryActions,
     agentProcessActions,
     agentConversationIncludeFileActions,
     agentSearchLabelsActions,
@@ -160,8 +158,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       return agents as LightAgentConfigurationType[];
     })(),
     (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    (async () =>
-      tableQueryTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       processActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
@@ -196,7 +192,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         agentDustAppRunActions,
         agentProcessActions,
         agentSearchLabelsActions,
-        agentTablesQueryActions,
         agentMCPActions,
       ]
         .flat()

@@ -25,7 +25,6 @@ import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/acti
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import {
-  AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
@@ -176,7 +175,6 @@ async function main() {
   await AgentProcessAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
   await AgentSearchLabelsAction.sync({ alter: true });
-  await AgentTablesQueryAction.sync({ alter: true });
   await AgentMCPAction.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });
   await AgentChildAgentConfiguration.sync({ alter: true });

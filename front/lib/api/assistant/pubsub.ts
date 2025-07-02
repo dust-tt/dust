@@ -219,9 +219,6 @@ async function handleUserMessageEvents(
             case "generation_tokens":
             case "process_params":
             case "search_labels_params":
-            case "tables_query_model_output":
-            case "tables_query_output":
-            case "tables_query_started":
             case "tool_approve_execution":
             case "tool_notification":
             case "tool_params": {
@@ -387,9 +384,6 @@ export async function retryAgentMessageWithPubSub(
               case "generation_tokens":
               case "process_params":
               case "search_labels_params":
-              case "tables_query_model_output":
-              case "tables_query_output":
-              case "tables_query_started":
               case "tool_approve_execution":
               case "tool_notification":
               case "tool_params": {

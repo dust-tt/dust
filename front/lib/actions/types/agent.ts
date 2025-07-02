@@ -23,10 +23,6 @@ import type {
   SearchLabelsActionRunningEvents,
   SearchLabelsConfigurationType,
 } from "@app/lib/actions/search_labels";
-import type {
-  TablesQueryActionRunningEvents,
-  TablesQueryConfigurationType,
-} from "@app/lib/actions/tables_query";
 
 /**
  * Agent Action configuration when setting up the agent.
@@ -34,7 +30,6 @@ import type {
 export type AgentActionConfigurationType =
   | DustAppRunConfigurationType
   | ProcessConfigurationType
-  | TablesQueryConfigurationType
   | MCPServerConfigurationType;
 
 /**
@@ -55,10 +50,9 @@ export function isActionConfigurationType(
   switch (value.type) {
     case "conversation_include_file_configuration":
     case "dust_app_run_configuration":
-    case "mcp_configuration":
     case "process_configuration":
+    case "mcp_configuration":
     case "search_labels_configuration":
-    case "tables_query_configuration":
       return true;
     case "mcp_server_configuration":
       return false;
@@ -170,5 +164,4 @@ export type AgentActionSpecificEvent =
   | DustAppRunActionRunningEvents
   | ProcessActionRunningEvents
   | SearchLabelsActionRunningEvents
-  | TablesQueryActionRunningEvents
   | MCPActionRunningEvents;

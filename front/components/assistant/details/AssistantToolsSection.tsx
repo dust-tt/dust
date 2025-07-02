@@ -14,7 +14,6 @@ import {
   isMCPServerConfiguration,
   isProcessConfiguration,
   isServerSideMCPServerConfiguration,
-  isTablesQueryConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
@@ -156,8 +155,6 @@ function renderOtherAction(
       avatar: <Avatar icon={CommandIcon} size="xs" />,
       order: 3,
     };
-  } else if (isTablesQueryConfiguration(action)) {
-    return null;
   } else {
     return assertNever(action);
   }

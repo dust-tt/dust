@@ -35,7 +35,6 @@ export type BaseActionType =
   | "dust_app_run_action"
   | "process_action"
   | "search_labels_action"
-  | "tables_query_action"
   | "tool_action"
   | ConversationBaseActionType;
 

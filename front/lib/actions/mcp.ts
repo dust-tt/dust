@@ -30,7 +30,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentLoopRunContextType,
   BaseActionRunParams,
@@ -45,6 +44,7 @@ import type {
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   processAndStoreFromUrl,

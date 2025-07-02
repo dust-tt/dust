@@ -12,7 +12,6 @@ import {
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
-import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -34,9 +33,6 @@ async function destroyActionsRelatedResources(
   auth: Authenticator,
   agentMessageIds: Array<ModelId>
 ) {
-  await AgentTablesQueryAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
   await AgentDustAppRunAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });

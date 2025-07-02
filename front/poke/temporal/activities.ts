@@ -8,6 +8,7 @@ import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
+import { deleteUserFromWorkOS } from "@app/lib/api/workos/user";
 import {
   areAllSubscriptionsCanceled,
   isWorkspaceRelocationDone,
@@ -34,7 +35,6 @@ import {
 } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import {
-  AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
   AgentTablesQueryConfigurationTable,
 } from "@app/lib/models/assistant/actions/tables_query";
@@ -77,7 +77,6 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types";
-import { deleteUserFromWorkOS } from "@app/lib/api/workos/user";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -375,13 +374,6 @@ export async function deleteAgentsActivity({
           workspaceId: workspace.id,
         },
       });
-    await AgentTablesQueryAction.destroy({
-      where: {
-        tablesQueryConfigurationId: {
-          [Op.in]: tablesQueryConfigurations.map((r) => r.sId),
-        },
-      },
-    });
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
         tablesQueryConfigurationId: {

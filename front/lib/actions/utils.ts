@@ -166,7 +166,6 @@ export function getCitationsCount({
   const action = stepActions[stepActionIndex];
 
   switch (action.type) {
-    case "tables_query_configuration":
     case "dust_app_run_configuration":
     case "process_configuration":
     case "conversation_include_file_configuration":

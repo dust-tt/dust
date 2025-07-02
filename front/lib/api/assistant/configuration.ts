@@ -11,14 +11,12 @@ import {
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
-import { fetchTableQueryActionConfigurations } from "@app/lib/actions/configuration/table_query";
 import {
   DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_RETRIEVAL_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
@@ -95,6 +93,13 @@ export type DataSourceConfiguration = {
   workspaceId: string;
   dataSourceViewId: string;
   filter: DataSourceFilter;
+};
+
+export type TableDataSourceConfiguration = {
+  sId?: string; // The sId is not always available, for instance it is not in an unsaved state of the builder.
+  workspaceId: string;
+  dataSourceViewId: string;
+  tableId: string;
 };
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
@@ -505,14 +510,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const [
     processActionsConfigurationsPerAgent,
     dustAppRunActionsConfigurationsPerAgent,
-    tableQueryActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
     tagsPerAgent,
   ] = await Promise.all([
     fetchAgentProcessActionConfigurations(auth, { configurationIds, variant }),
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
-    fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
@@ -531,11 +534,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       const dustAppRunActionsConfigurations =
         dustAppRunActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...dustAppRunActionsConfigurations);
-
-      // Table query configurations.
-      const tableQueryActionsConfigurations =
-        tableQueryActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...tableQueryActionsConfigurations);
 
       // Process configurations.
       const processActionsConfigurations =

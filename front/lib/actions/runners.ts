@@ -8,8 +8,6 @@ import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import { ProcessConfigurationServerRunner } from "@app/lib/actions/process";
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
 import { SearchLabelsConfigurationServerRunner } from "@app/lib/actions/search_labels";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
-import { TablesQueryConfigurationServerRunner } from "@app/lib/actions/tables_query";
 import type {
   BaseActionConfigurationServerRunner,
   BaseActionConfigurationServerRunnerConstructor,
@@ -22,7 +20,6 @@ interface ActionToConfigTypeMap {
   dust_app_run_configuration: DustAppRunConfigurationType;
   process_configuration: ProcessConfigurationType;
   search_labels_configuration: SearchLabelsConfigurationType;
-  tables_query_configuration: TablesQueryConfigurationType;
   mcp_configuration: MCPToolConfigurationType;
 }
 
@@ -31,7 +28,6 @@ interface ActionTypeToClassMap {
   dust_app_run_configuration: DustAppRunConfigurationServerRunner;
   process_configuration: ProcessConfigurationServerRunner;
   search_labels_configuration: SearchLabelsConfigurationServerRunner;
-  tables_query_configuration: TablesQueryConfigurationServerRunner;
   mcp_configuration: MCPConfigurationServerRunner;
 }
 
@@ -76,7 +72,6 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   dust_app_run_configuration: DustAppRunConfigurationServerRunner,
   process_configuration: ProcessConfigurationServerRunner,
   search_labels_configuration: SearchLabelsConfigurationServerRunner,
-  tables_query_configuration: TablesQueryConfigurationServerRunner,
   mcp_configuration: MCPConfigurationServerRunner,
 } as const;
 

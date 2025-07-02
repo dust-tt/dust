@@ -3,11 +3,9 @@ import { DataTypes } from "sequelize";
 
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class AgentTablesQueryConfiguration extends WorkspaceAwareModel<AgentTablesQueryConfiguration> {
@@ -188,128 +186,4 @@ DataSourceViewModel.hasMany(AgentTablesQueryConfigurationTable, {
 AgentTablesQueryConfigurationTable.belongsTo(DataSourceViewModel, {
   as: "dataSourceView",
   foreignKey: { allowNull: false },
-});
-
-export class AgentTablesQueryAction extends WorkspaceAwareModel<AgentTablesQueryAction> {
-  declare createdAt: CreationOptional<Date>;
-  declare updatedAt: CreationOptional<Date>;
-  declare runId: string | null;
-
-  declare tablesQueryConfigurationId: string;
-
-  declare params: unknown | null;
-  declare output: unknown | null;
-  declare resultsFileSnippet: string | null;
-
-  declare functionCallId: string | null;
-  declare functionCallName: string | null;
-
-  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
-
-  declare step: number;
-  declare resultsFileId: ForeignKey<FileModel["id"]> | null;
-  declare sectionFileId: ForeignKey<FileModel["id"]> | null;
-
-  declare resultsFile: NonAttribute<FileModel>;
-  declare sectionFile: NonAttribute<FileModel>;
-}
-
-AgentTablesQueryAction.init(
-  {
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    runId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-
-    tablesQueryConfigurationId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-
-    params: {
-      type: DataTypes.JSONB,
-      allowNull: true,
-    },
-    output: {
-      type: DataTypes.JSONB,
-      allowNull: true,
-    },
-    resultsFileSnippet: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    functionCallId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    functionCallName: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    step: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-  },
-  {
-    modelName: "agent_tables_query_action",
-    sequelize: frontSequelize,
-    indexes: [
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
-      {
-        fields: ["agentMessageId"],
-        concurrently: true,
-      },
-      {
-        fields: ["workspaceId", "agentMessageId"],
-        concurrently: true,
-      },
-      {
-        fields: ["resultsFileId"],
-        concurrently: true,
-      },
-      {
-        fields: ["sectionFileId"],
-        concurrently: true,
-      },
-    ],
-  }
-);
-
-AgentTablesQueryAction.belongsTo(AgentMessage, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-AgentMessage.hasMany(AgentTablesQueryAction, {
-  foreignKey: { name: "agentMessageId", allowNull: false },
-});
-
-FileModel.hasMany(AgentTablesQueryAction, {
-  foreignKey: { name: "resultsFileId", allowNull: true },
-  onDelete: "SET NULL",
-});
-AgentTablesQueryAction.belongsTo(FileModel, {
-  as: "resultsFile",
-  foreignKey: { name: "resultsFileId", allowNull: true },
-  onDelete: "SET NULL",
-});
-
-FileModel.hasMany(AgentTablesQueryAction, {
-  foreignKey: { name: "sectionFileId", allowNull: true },
-  onDelete: "SET NULL",
-});
-AgentTablesQueryAction.belongsTo(FileModel, {
-  as: "sectionFile",
-  foreignKey: { name: "sectionFileId", allowNull: true },
-  onDelete: "SET NULL",
 });

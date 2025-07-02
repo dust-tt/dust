@@ -163,9 +163,6 @@ export function messageReducer(
     case "dust_app_run_params":
     case "process_params":
     case "search_labels_params":
-    case "tables_query_model_output":
-    case "tables_query_output":
-    case "tables_query_started":
     case "tool_params":
       return {
         ...state,

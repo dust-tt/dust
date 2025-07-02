@@ -6,11 +6,8 @@ import { getDefaultMCPServerActionConfiguration } from "@app/components/assistan
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
-import type {
-  TableDataSourceConfiguration,
-  TablesQueryConfigurationType,
-} from "@app/lib/actions/tables_query";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -253,9 +250,9 @@ async function renderDataSourcesConfigurations(
 }
 
 async function renderTableDataSourcesConfigurations(
-  action:
-    | TablesQueryConfigurationType
-    | (MCPServerConfigurationType & { tables: TableDataSourceConfiguration[] }),
+  action: MCPServerConfigurationType & {
+    tables: TableDataSourceConfiguration[];
+  },
   dataSourceViews: DataSourceViewResource[]
 ): Promise<DataSourceViewSelectionConfigurations> {
   const selectedResources = action.tables.map((table) => ({
