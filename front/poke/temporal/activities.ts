@@ -232,7 +232,7 @@ export async function deleteAgentsActivity({
     });
     await AgentDataSourceConfiguration.destroy({
       where: {
-        retrievalConfigurationId: {
+        mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
         },
       },
