@@ -24,83 +24,76 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     useCase: OAuthUseCase;
     extraConfig?: ExtraConfigType;
   }) {
-    const default_scopes = (() => {
+    const { user_scopes, bot_scopes } = (() => {
       switch (useCase) {
         case "personal_actions":
         case "platform_actions":
+          return {
+            user_scopes: [
+              "chat:write",
+              "search:read",
+              "users:read",
+              "channels:read",
+            ],
+            bot_scopes: [],
+          };
         case "connection": {
-          return [
-            "app_mentions:read",
-            "channels:history",
-            "channels:join",
-            "channels:read",
-            "chat:write",
-            "groups:history",
-            "groups:read",
-            "im:history",
-            "metadata.message:read",
-            "mpim:read",
-            "team:read",
-            "users:read",
-            "users:read.email",
-            "im:read",
-            "mpim:history",
-            "files:read",
-          ];
+          return {
+            user_scopes: [],
+            bot_scopes: [
+              "app_mentions:read",
+              "channels:history",
+              "channels:join",
+              "channels:read",
+              "chat:write",
+              "groups:history",
+              "groups:read",
+              "im:history",
+              "metadata.message:read",
+              "mpim:read",
+              "team:read",
+              "users:read",
+              "users:read.email",
+              "im:read",
+              "mpim:history",
+              "files:read",
+            ],
+          };
         }
         case "bot": {
-          return [
-            "app_mentions:read",
-            "channels:history",
-            "channels:join",
-            "channels:read",
-            "chat:write",
-            "files:read",
-            "groups:history",
-            "groups:read",
-            "im:history",
-            "mpim:history",
-            "mpim:read",
-            "team:read",
-            "im:read",
-            "users:read",
-            "users:read.email",
-          ];
+          return {
+            user_scopes: [],
+            bot_scopes: [
+              "app_mentions:read",
+              "channels:history",
+              "channels:join",
+              "channels:read",
+              "chat:write",
+              "files:read",
+              "groups:history",
+              "groups:read",
+              "im:history",
+              "mpim:history",
+              "mpim:read",
+              "team:read",
+              "im:read",
+              "users:read",
+              "users:read.email",
+            ],
+          };
         }
         case "labs_transcripts":
           assert(
             "Unreachable provider `labs_transcripts` in SlackOAuthProvider"
           );
-          return [];
+          return { user_scopes: [], bot_scopes: [] };
         default:
           assertNever(useCase);
       }
     })();
 
-    let user_scopes: string[] = [];
-    let bot_scopes: string[] = [...default_scopes];
-
-    if (extraConfig?.scope) {
-      const scopes_raw = extraConfig.scope.split(" ");
-
-      // it's a bit of hack here to split the scopes into user and bot scopes which is a slack specific thing.
-      user_scopes = scopes_raw
-        .filter((scope) => scope.startsWith("user_scope:"))
-        .map((scope) => scope.replace("user_scope:", ""));
-
-      bot_scopes = scopes_raw.filter(
-        (scope) => !scope.startsWith("user_scope")
-      );
-
-      if (user_scopes.length !== 0 && bot_scopes.length !== 0) {
-        // To simplify the implementation, we don't support both user and bot scopes at the same time.
-        throw new Error("User and bot scopes cannot be set at the same time.");
-      }
-    }
-
-    if (["bot", "connection"].includes(useCase) && user_scopes.length > 0) {
-      assert("User scopes are not expected for bot or connection use cases.");
-    }
+    // To simplify the implementation, we don't support both user and bot scopes at the same time.
+    assert(!(user_scopes.length !== 0 && bot_scopes.length !== 0));
 
     const clientId = (() => {
       switch (useCase) {
