@@ -3741,12 +3741,6 @@ async fn data_sources_stats(
                         })),
                     }),
                 ),
-                Ok(_) => error_response(
-                    StatusCode::NOT_FOUND,
-                    "data_sources_not_indexed",
-                    "No data sources indexed",
-                    None,
-                ),
                 Err(e) => error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "internal_server_error",
