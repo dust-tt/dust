@@ -6,7 +6,6 @@ import {
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
   isMCPConfigurationWithDataSource,
-  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
@@ -125,7 +124,6 @@ export async function constructPromptMultiActions(
   let guidelinesSection = "# GUIDELINES\n";
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
-      isWebsearchConfiguration(action) ||
       isMCPConfigurationWithDataSource(action) ||
       isMCPConfigurationForInternalWebsearch(action) ||
       isMCPConfigurationForInternalSlack(action) ||

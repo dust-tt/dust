@@ -1,10 +1,4 @@
-import {
-  Avatar,
-  BarChartIcon,
-  CommandIcon,
-  GlobeAltIcon,
-  ScanIcon,
-} from "@dust-tt/sparkle";
+import { Avatar, BarChartIcon, CommandIcon, ScanIcon } from "@dust-tt/sparkle";
 import _ from "lodash";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
@@ -16,13 +10,11 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isBrowseConfiguration,
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
   isProcessConfiguration,
   isServerSideMCPServerConfiguration,
   isTablesQueryConfiguration,
-  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
@@ -144,12 +136,6 @@ function renderOtherAction(
       avatar: <Avatar icon={ScanIcon} size="xs" />,
       order: 0,
     };
-  } else if (isWebsearchConfiguration(action)) {
-    return {
-      title: "Web Search & Navigation",
-      avatar: <Avatar icon={GlobeAltIcon} size="xs" />,
-      order: 0,
-    };
   } else if (isServerSideMCPServerConfiguration(action)) {
     const mcpServer = mcpServers.find((s) =>
       s.views.some((v) => v.sId === action.mcpServerViewId)
@@ -170,8 +156,6 @@ function renderOtherAction(
       avatar: <Avatar icon={CommandIcon} size="xs" />,
       order: 3,
     };
-  } else if (isBrowseConfiguration(action)) {
-    return null;
   } else if (isTablesQueryConfiguration(action)) {
     return null;
   } else {

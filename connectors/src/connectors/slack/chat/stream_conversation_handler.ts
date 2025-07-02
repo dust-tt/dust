@@ -128,7 +128,6 @@ async function streamAgentAnswerToSlack(
   const actions: AgentActionPublicType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
-      case "browse_params":
       case "conversation_include_file_params":
       case "dust_app_run_block":
       case "dust_app_run_params":
@@ -139,7 +138,6 @@ async function streamAgentAnswerToSlack(
       case "tables_query_started":
       case "tool_params":
       case "tool_notification":
-      case "websearch_params":
         await postSlackMessageUpdate(
           {
             messageUpdate: {
