@@ -12,7 +12,7 @@ export const PROCESS_ACTION_TOP_K = 768;
 export const DEFAULT_PROCESS_ACTION_NAME =
   "extract_structured_data_from_data_sources";
 
-// If we have actions that used in global agents, we define the name and description of the action
+// If we have actions that are used in global agents, we define the name and description of the action
 // (<=> of the internal MCP server) here and use it from here in both the internal MCP server
 // and `global_agents.ts`.
 
