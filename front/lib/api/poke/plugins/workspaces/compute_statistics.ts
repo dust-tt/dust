@@ -1,7 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistics";
-import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { Err, fileSizeToHumanReadable, Ok } from "@app/types";
 
 export const computeWorkspaceStatsPlugin = createPlugin({
