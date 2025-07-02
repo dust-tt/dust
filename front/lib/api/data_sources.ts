@@ -29,6 +29,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
@@ -1291,3 +1292,27 @@ export async function computeDataSourceStatistics(
     }))
   );
 }
+
+export const computeWorkspaceOverallSizeCached = cacheWithRedis(
+  async (auth: Authenticator) => {
+    const dataSources = await DataSourceResource.listByWorkspace(
+      auth,
+      // TODO(DATASOURCE_SID): Clean-up
+      { origin: "v1_data_sources_documents_document_get_or_upsert" }
+    );
+    const result = await computeDataSourceStatistics(dataSources);
+
+    if (result.isErr()) {
+      throw new Error(
+        `Failed to get data source stats: ${result.error.message}`
+      );
+    }
+
+    return result.value.overall_total_size;
+  },
+  (auth: Authenticator) => {
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+    return `compute-datasource-stats:${workspaceId}`;
+  },
+  60 * 10 * 1000 // 10 minutes
+);

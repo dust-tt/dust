@@ -14,6 +14,8 @@ import {
 import type { LightWorkspaceType, Result } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
 
+export const DATASOURCE_QUOTA_PER_SEAT = 1024 * 1024 * 1024; // 1GB
+
 export function getUsageToReportForSubscriptionItem(
   item: Stripe.SubscriptionItem
 ): Result<SupportedReportUsage | null, InvalidReportUsageError> {
