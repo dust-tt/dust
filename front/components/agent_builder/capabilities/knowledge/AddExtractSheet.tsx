@@ -6,7 +6,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useEffect, useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -53,8 +53,9 @@ export function AddExtractSheet({
 }: AddExtractSheetProps) {
   const { owner, supportedDataSourceViews } = useAgentBuilderContext();
   const { spaces } = useSpacesContext();
-  const form = useFormContext<AgentBuilderFormData>();
-  const formValues = form.watch();
+  const instructions = useWatch<AgentBuilderFormData, "instructions">({
+    name: "instructions",
+  });
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     PAGE_IDS.DATA_SOURCE_SELECTION
   );
@@ -154,7 +155,7 @@ export function AddExtractSheet({
                 : null
             }
             onChange={setJsonSchema}
-            agentInstructions={formValues.instructions}
+            agentInstructions={instructions}
             agentDescription={description}
             owner={owner}
           />
