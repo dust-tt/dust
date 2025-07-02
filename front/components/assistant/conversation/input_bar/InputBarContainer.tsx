@@ -216,11 +216,12 @@ const InputBarContainer = ({
   useEffect(() => {
     if (animate) {
       editorService.focusEnd();
-      /**
-       * Scroll to top when animate change
-       */
-      document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
     }
+    /**
+     * Scroll to top when animate change or the editorService re-render.
+     * Which so far are good enough to scroll to the top.
+     */
+    document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
   }, [animate, editorService]);
 
   useHandleMentions(
