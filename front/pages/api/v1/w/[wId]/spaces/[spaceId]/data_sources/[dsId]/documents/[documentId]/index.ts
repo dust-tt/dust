@@ -514,7 +514,7 @@ async function handler(
 
           if (
             quotaUsed >
-            (activeSeats + 1) * DATASOURCE_QUOTA_PER_SEAT // +1 because we allow the current upload to go over the limit
+            (activeSeats + 1) * DATASOURCE_QUOTA_PER_SEAT // +1 we allow to go over the limit by one additional seat
           ) {
             logger.info(
               {
