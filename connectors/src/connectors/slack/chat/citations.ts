@@ -2,7 +2,6 @@ import type { AgentActionPublicType } from "@dust-tt/client";
 import {
   isMCPActionType,
   isSearchResultResourceType,
-  isWebsearchActionType,
   isWebsearchResultResourceType,
 } from "@dust-tt/client";
 
@@ -27,15 +26,6 @@ export function annotateCitations(
   } = {};
 
   for (const action of actions) {
-    if (action && isWebsearchActionType(action) && action.output) {
-      action.output.results.forEach((r) => {
-        references[r.reference] = {
-          reference: r.reference,
-          link: r.link,
-          title: r.title,
-        };
-      });
-    }
     if (action && isMCPActionType(action) && action.output) {
       // Handle MCP search results
       action.output?.filter(isSearchResultResourceType).forEach((o) => {

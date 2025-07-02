@@ -8,8 +8,8 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ConfigurableToolInputType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputJSONSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {

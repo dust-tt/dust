@@ -37,9 +37,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: {
     provider: "slack" as const,
     supported_use_cases: ["personal_actions"] as const,
-    // Use a magic prefix to split the scopes into user and bot scopes which is a slack specific thing.
-    scope:
-      "user_scope:chat:write user_scope:search:read user_scope:users:read user_scope:channels:read" as const,
   },
   icon: "SlackLogo",
   documentationUrl: "https://docs.dust.tt/docs/slack-tool-setup",

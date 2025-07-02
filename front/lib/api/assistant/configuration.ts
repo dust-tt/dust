@@ -8,19 +8,15 @@ import {
   ValidationError,
 } from "sequelize";
 
-import { fetchBrowseActionConfigurations } from "@app/lib/actions/configuration/browse";
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
-import { fetchTableQueryActionConfigurations } from "@app/lib/actions/configuration/table_query";
-import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configuration/websearch";
 import {
   DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_RETRIEVAL_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
@@ -40,7 +36,6 @@ import {
 import type { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import type { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import type { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
@@ -97,6 +92,13 @@ export type DataSourceConfiguration = {
   workspaceId: string;
   dataSourceViewId: string;
   filter: DataSourceFilter;
+};
+
+export type TableDataSourceConfiguration = {
+  sId?: string; // The sId is not always available, for instance it is not in an unsaved state of the builder.
+  workspaceId: string;
+  dataSourceViewId: string;
+  tableId: string;
 };
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
@@ -507,18 +509,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const [
     processActionsConfigurationsPerAgent,
     dustAppRunActionsConfigurationsPerAgent,
-    tableQueryActionsConfigurationsPerAgent,
-    websearchActionsConfigurationsPerAgent,
-    browseActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
     tagsPerAgent,
   ] = await Promise.all([
     fetchAgentProcessActionConfigurations(auth, { configurationIds, variant }),
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
-    fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
-    fetchWebsearchActionConfigurations(auth, { configurationIds, variant }),
-    fetchBrowseActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
@@ -537,21 +533,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       const dustAppRunActionsConfigurations =
         dustAppRunActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...dustAppRunActionsConfigurations);
-
-      // Websearch configurations.
-      const websearchActionsConfigurations =
-        websearchActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...websearchActionsConfigurations);
-
-      // Browse configurations.
-      const browseActionsConfigurations =
-        browseActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...browseActionsConfigurations);
-
-      // Table query configurations.
-      const tableQueryActionsConfigurations =
-        tableQueryActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...tableQueryActionsConfigurations);
 
       // Process configurations.
       const processActionsConfigurations =
@@ -1161,7 +1142,6 @@ export async function createAgentActionConfiguration(
     if (action.tables) {
       await createTableDataSourceConfiguration(auth, t, {
         tableConfigurations: action.tables,
-        tablesQueryConfig: null,
         mcpConfig,
       });
     }
@@ -1296,12 +1276,10 @@ async function createTableDataSourceConfiguration(
   t: Transaction,
   {
     tableConfigurations,
-    tablesQueryConfig,
     mcpConfig,
   }: {
     tableConfigurations: TableDataSourceConfiguration[];
-    tablesQueryConfig: AgentTablesQueryConfiguration | null;
-    mcpConfig: AgentMCPServerConfiguration | null;
+    mcpConfig: AgentMCPServerConfiguration;
   }
 ) {
   const owner = auth.getNonNullableWorkspace();
@@ -1339,8 +1317,7 @@ async function createTableDataSourceConfiguration(
         dataSourceId: dataSource.id,
         dataSourceViewId: dataSourceView.id,
         tableId: tc.tableId,
-        tablesQueryConfigurationId: tablesQueryConfig?.id || null,
-        mcpServerConfigurationId: mcpConfig?.id || null,
+        mcpServerConfigurationId: mcpConfig.id,
         workspaceId: owner.id,
       };
     })

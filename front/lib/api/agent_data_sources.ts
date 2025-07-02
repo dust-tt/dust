@@ -8,10 +8,7 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import {
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -282,71 +279,6 @@ export async function getDataSourceViewsUsageByCategory({
           attributes: [],
           required: true,
           include: [agentConfigurationInclude],
-        },
-      ],
-    }),
-    AgentTablesQueryConfigurationTable.findAll({
-      raw: true,
-      group: ["dataSourceView.id"],
-      where: {
-        workspaceId: owner.id,
-      },
-      attributes: [
-        [Sequelize.col("dataSourceView.id"), "dataSourceViewId"],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
-      ],
-      include: [
-        {
-          model: DataSourceViewModel,
-          as: "dataSourceView",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: DataSourceModel,
-              as: "dataSourceForView",
-              attributes: [],
-              required: true,
-              where: {
-                connectorProvider: connectorProvider,
-              },
-            },
-          ],
-        },
-        {
-          model: AgentTablesQueryConfiguration,
-          as: "agent_tables_query_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfiguration,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
-          ],
         },
       ],
     }),
@@ -677,63 +609,6 @@ export async function getDataSourcesUsageByCategory({
           Sequelize.fn(
             "array_agg",
             Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
-      ],
-      include: [
-        {
-          model: DataSourceModel,
-          as: "dataSource",
-          attributes: [],
-          required: true,
-          where: {
-            connectorProvider: connectorProvider,
-          },
-        },
-        {
-          model: AgentTablesQueryConfiguration,
-          as: "agent_tables_query_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfiguration,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
-          ],
-        },
-      ],
-    }),
-    AgentTablesQueryConfigurationTable.findAll({
-      raw: true,
-      group: ["dataSource.id"],
-      where: {
-        workspaceId: owner.id,
-      },
-      attributes: [
-        [Sequelize.col("dataSource.id"), "dataSourceId"],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
               '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
@@ -992,53 +867,6 @@ export async function getDataSourceUsage({
           Sequelize.fn(
             "array_agg",
             Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
-      ],
-      where: {
-        workspaceId: owner.id,
-        dataSourceId: dataSource.id,
-      },
-      include: [
-        {
-          model: AgentTablesQueryConfiguration,
-          as: "agent_tables_query_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfiguration,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
-          ],
-        },
-      ],
-    }),
-    AgentTablesQueryConfigurationTable.findOne({
-      raw: true,
-      attributes: [
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
               '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
@@ -1254,53 +1082,6 @@ export async function getDataSourceViewUsage({
         {
           model: AgentMCPServerConfiguration,
           as: "agent_mcp_server_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfiguration,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
-          ],
-        },
-      ],
-    }),
-    AgentTablesQueryConfigurationTable.findOne({
-      raw: true,
-      attributes: [
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
-            )
-          ),
-          "names",
-        ],
-        [
-          Sequelize.fn(
-            "array_agg",
-            Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
-            )
-          ),
-          "sIds",
-        ],
-      ],
-      where: {
-        workspaceId: owner.id,
-        dataSourceViewId: dataSourceView.id,
-      },
-      include: [
-        {
-          model: AgentTablesQueryConfiguration,
-          as: "agent_tables_query_configuration",
           attributes: [],
           required: true,
           include: [

@@ -1,10 +1,6 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type {
-  BrowseActionRunningEvents,
-  BrowseConfigurationType,
-} from "@app/lib/actions/browse";
-import type {
   ConversationIncludeFileActionRunningEvents,
   ConversationIncludeFileConfigurationType,
 } from "@app/lib/actions/conversation/include_file";
@@ -27,24 +23,13 @@ import type {
   SearchLabelsActionRunningEvents,
   SearchLabelsConfigurationType,
 } from "@app/lib/actions/search_labels";
-import type {
-  TablesQueryActionRunningEvents,
-  TablesQueryConfigurationType,
-} from "@app/lib/actions/tables_query";
-import type {
-  WebsearchActionRunningEvents,
-  WebsearchConfigurationType,
-} from "@app/lib/actions/websearch";
 
 /**
  * Agent Action configuration when setting up the agent.
  */
 export type AgentActionConfigurationType =
-  | BrowseConfigurationType
   | DustAppRunConfigurationType
   | ProcessConfigurationType
-  | TablesQueryConfigurationType
-  | WebsearchConfigurationType
   | MCPServerConfigurationType;
 
 /**
@@ -63,14 +48,11 @@ export function isActionConfigurationType(
   value: AgentActionConfigurationType | ActionConfigurationType
 ): value is ActionConfigurationType {
   switch (value.type) {
-    case "browse_configuration":
+    case "conversation_include_file_configuration":
     case "dust_app_run_configuration":
     case "process_configuration":
-    case "tables_query_configuration":
-    case "websearch_configuration":
     case "mcp_configuration":
     case "search_labels_configuration":
-    case "conversation_include_file_configuration":
       return true;
     case "mcp_server_configuration":
       return false;
@@ -178,11 +160,8 @@ export function inputSchemaToDustAppRunInputs(
 
 // Event sent during the execution of an action. These are action-specific.
 export type AgentActionSpecificEvent =
-  | BrowseActionRunningEvents
   | ConversationIncludeFileActionRunningEvents
   | DustAppRunActionRunningEvents
   | ProcessActionRunningEvents
   | SearchLabelsActionRunningEvents
-  | TablesQueryActionRunningEvents
-  | WebsearchActionRunningEvents
   | MCPActionRunningEvents;

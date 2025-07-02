@@ -1189,7 +1189,10 @@ impl ElasticsearchSearchStore {
             for bucket in buckets {
                 if let Some(data_source_id) = bucket["key"].as_str() {
                     let doc_count = bucket["doc_count"].as_i64().unwrap_or(0);
-                    let total_size = bucket["total_size"]["value"].as_i64().unwrap_or(0);
+                    let total_size = bucket["total_size"]["value"]
+                        .as_f64()
+                        .unwrap_or(0.0)
+                        .round() as i64;
                     stats_map.insert(data_source_id.to_string(), (total_size, doc_count));
                 }
             }
@@ -1197,8 +1200,9 @@ impl ElasticsearchSearchStore {
 
         // Extract the overall total_size from aggregations
         let overall_total_size = stats_body["aggregations"]["total_size"]["value"]
-            .as_i64()
-            .unwrap_or(0);
+            .as_f64()
+            .unwrap_or(0.0)
+            .round() as i64;
 
         Ok((stats_map, overall_total_size))
     }

@@ -2,10 +2,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { ConversationIncludeFileActionType } from "@app/lib/actions/conversation/include_file";
-import { conversationAttachmentId } from "@app/lib/actions/conversation/list_files";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { listFiles } from "@app/lib/api/assistant/jit_utils";
+import { conversationAttachmentId } from "@app/lib/api/assistant/conversation/attachments";
+import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -70,8 +70,10 @@ function createServer(
       const { content, title } = fileRes.value;
 
       // Get the file metadata to extract the actual content type
-      const files = listFiles(conversation);
-      const file = files.find((f) => conversationAttachmentId(f) === fileId);
+      const attachments = listAttachments(conversation);
+      const attachment = attachments.find(
+        (a) => conversationAttachmentId(a) === fileId
+      );
 
       if (isTextContent(content)) {
         return {
@@ -92,7 +94,7 @@ function createServer(
               type: "resource",
               resource: {
                 uri: content.image_url.url,
-                mimeType: file?.contentType || "application/octet-stream",
+                mimeType: attachment?.contentType || "application/octet-stream",
                 text: `Image: ${title}`,
               },
             },
@@ -101,7 +103,7 @@ function createServer(
       }
 
       return makeMCPToolTextError(
-        `File ${file?.title || fileId} of type ${file?.contentType || "unknown"} has no text or image content`
+        `File ${attachment?.title || fileId} of type ${attachment?.contentType || "unknown"} has no text or image content`
       );
     }
   );

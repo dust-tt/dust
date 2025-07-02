@@ -8,16 +8,13 @@ import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
+import { deleteUserFromWorkOS } from "@app/lib/api/workos/user";
 import {
   areAllSubscriptionsCanceled,
   isWorkspaceRelocationDone,
   isWorkspaceRelocationOngoing,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import {
-  AgentBrowseAction,
-  AgentBrowseConfiguration,
-} from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentDustAppRunAction,
@@ -37,15 +34,7 @@ import {
   AgentReasoningConfiguration,
 } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import {
-  AgentTablesQueryAction,
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
-import {
-  AgentWebsearchAction,
-  AgentWebsearchConfiguration,
-} from "@app/lib/models/assistant/actions/websearch";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -85,7 +74,6 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types";
-import { deleteUserFromWorkOS } from "@app/lib/api/workos/user";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -254,7 +242,7 @@ export async function deleteAgentsActivity({
     });
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
-        tablesQueryConfigurationId: {
+        mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
         },
       },
@@ -370,75 +358,6 @@ export async function deleteAgentsActivity({
       },
     });
     await AgentDustAppRunConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const tablesQueryConfigurations =
-      await AgentTablesQueryConfiguration.findAll({
-        where: {
-          agentConfigurationId: agent.id,
-          workspaceId: workspace.id,
-        },
-      });
-    await AgentTablesQueryAction.destroy({
-      where: {
-        tablesQueryConfigurationId: {
-          [Op.in]: tablesQueryConfigurations.map((r) => r.sId),
-        },
-      },
-    });
-    await AgentTablesQueryConfigurationTable.destroy({
-      where: {
-        tablesQueryConfigurationId: {
-          [Op.in]: tablesQueryConfigurations.map((r) => r.id),
-        },
-      },
-    });
-    await AgentTablesQueryConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const agentBrowseConfigurations = await AgentBrowseConfiguration.findAll({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-    await AgentBrowseAction.destroy({
-      where: {
-        browseConfigurationId: {
-          [Op.in]: agentBrowseConfigurations.map((r) => r.sId),
-        },
-      },
-    });
-    await AgentBrowseConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const agentWebsearchConfigurations =
-      await AgentWebsearchConfiguration.findAll({
-        where: {
-          agentConfigurationId: agent.id,
-          workspaceId: workspace.id,
-        },
-      });
-    await AgentWebsearchAction.destroy({
-      where: {
-        websearchConfigurationId: {
-          [Op.in]: agentWebsearchConfigurations.map((r) => r.sId),
-        },
-      },
-    });
-    await AgentWebsearchConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,

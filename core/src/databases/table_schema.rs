@@ -443,7 +443,9 @@ impl TableSchema {
         result
     }
 
-    fn try_parse_date_object(maybe_date_obj: &serde_json::Map<String, Value>) -> Option<String> {
+    pub fn try_parse_date_object(
+        maybe_date_obj: &serde_json::Map<String, Value>,
+    ) -> Option<String> {
         match (maybe_date_obj.get("type"), maybe_date_obj.get("epoch")) {
             (Some(Value::String(date_type)), Some(Value::Number(epoch))) => {
                 if date_type == "datetime" {

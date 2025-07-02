@@ -3,7 +3,6 @@ import { Op } from "sequelize";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
@@ -13,8 +12,6 @@ import {
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
-import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -36,19 +33,10 @@ async function destroyActionsRelatedResources(
   auth: Authenticator,
   agentMessageIds: Array<ModelId>
 ) {
-  await AgentTablesQueryAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
   await AgentDustAppRunAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
   await AgentProcessAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentWebsearchAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentBrowseAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
   await AgentSearchLabelsAction.destroy({

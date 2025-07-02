@@ -17,14 +17,11 @@ import type {
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isBrowseConfiguration,
   isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
   isMCPToolConfiguration,
   isProcessConfiguration,
   isSearchLabelsConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
@@ -38,7 +35,8 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import { getEmulatedActionsAndJITServers } from "@app/lib/api/assistant/jit_actions";
+import { getJITServers } from "@app/lib/api/assistant/jit_actions";
+import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
@@ -390,13 +388,11 @@ async function* runMultiActionsAgent(
     }
   }
 
-  const { emulatedActions, jitServers } = await getEmulatedActionsAndJITServers(
-    auth,
-    {
-      agentMessage,
-      conversation,
-    }
-  );
+  const attachments = listAttachments(conversation);
+  const jitServers = await getJITServers(auth, {
+    conversation,
+    attachments,
+  });
 
   // Get client-side MCP server configurations from user message context.
   const clientSideMCPActionConfigurations =
@@ -525,10 +521,6 @@ async function* runMultiActionsAgent(
     }))
   );
 
-  // Prepend emulated actions to the current agent message before rendering the conversation for the
-  // model.
-  agentMessage.actions = emulatedActions.concat(agentMessage.actions);
-
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
@@ -537,11 +529,6 @@ async function* runMultiActionsAgent(
     tools,
     allowedTokenCount: model.contextSize - model.generationTokensCount,
   });
-
-  // Scrub emulated actions from the agent message after rendering.
-  agentMessage.actions = agentMessage.actions.filter(
-    (a) => !emulatedActions.includes(a)
-  );
 
   if (modelConversationRes.isErr()) {
     logger.error(
@@ -1215,54 +1202,6 @@ async function* runAction(
           assertNever(event);
       }
     }
-  } else if (isTablesQueryConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "tables_query_started":
-        case "tables_query_model_output":
-          yield event;
-          break;
-        case "tables_query_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "tables_query_output":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-        default:
-          assertNever(event);
-      }
-    }
   } else if (isProcessConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
@@ -1295,110 +1234,6 @@ async function* runAction(
           };
           return;
         case "process_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isWebsearchConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(
-      auth,
-      {
-        agentConfiguration: configuration,
-        conversation,
-        agentMessage,
-        rawInputs: inputs,
-        functionCallId,
-        step,
-      },
-      {
-        stepActionIndex,
-        stepActions,
-        citationsRefsOffset,
-      }
-    );
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "websearch_params":
-          yield event;
-          break;
-        case "websearch_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "websearch_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isBrowseConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "browse_params":
-          yield event;
-          break;
-        case "browse_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "browse_success":
           yield {
             type: "agent_action_success",
             created: event.created,

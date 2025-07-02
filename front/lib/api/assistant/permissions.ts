@@ -50,7 +50,6 @@ export function getDataSourceViewIdsFromActions(
   const relevantActions = actions.filter(
     (action) =>
       action.type === "process_configuration" ||
-      action.type === "tables_query_configuration" ||
       (action.type === "mcp_server_configuration" &&
         isServerSideMCPServerConfiguration(action))
   );
@@ -61,8 +60,6 @@ export function getDataSourceViewIdsFromActions(
         return action.dataSources.map(
           (dataSource) => dataSource.dataSourceViewId
         );
-      } else if (action.type === "tables_query_configuration") {
-        return action.tables.map((table) => table.dataSourceViewId);
       } else if (
         action.type === "mcp_server_configuration" &&
         isServerSideMCPServerConfiguration(action)

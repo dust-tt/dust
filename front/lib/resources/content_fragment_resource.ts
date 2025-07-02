@@ -6,6 +6,12 @@ import type {
   Transaction,
 } from "sequelize";
 
+import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  conversationAttachmentId,
+  getAttachmentFromContentFragment,
+  renderAttachmentXml,
+} from "@app/lib/api/assistant/conversation/attachments";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -37,7 +43,6 @@ import type {
   ModelConfigurationType,
   ModelId,
   Result,
-  SupportedContentFragmentType,
 } from "@app/types";
 import {
   assertNever,
@@ -471,27 +476,23 @@ async function getSignedUrlForProcessedContent(
   return getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
 }
 
-export async function renderFromAttachmentId(
+export async function getContentFragmentFromAttachmentFile(
   auth: Authenticator,
   {
-    contentType,
+    attachment,
     excludeImages,
-    conversationAttachmentId,
     model,
-    title,
-    contentFragmentVersion,
   }: {
-    contentType: SupportedContentFragmentType;
+    attachment: ConversationAttachmentType;
     excludeImages: boolean;
-    conversationAttachmentId: string;
     model: ModelConfigurationType;
-    title: string;
-    contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
   // At time of writing, passed resourceId can be either a file or a content fragment.
+  // TODO(durable agents): check if this is actually true (seems false)
+
   const { resourceName } = getResourceNameAndIdFromSId(
-    conversationAttachmentId
+    conversationAttachmentId(attachment)
   ) ?? {
     resourceName: "content_fragment",
   };
@@ -499,32 +500,24 @@ export async function renderFromAttachmentId(
   const { fileStringId, nodeId, nodeDataSourceViewId } =
     resourceName === "file"
       ? {
-          fileStringId: conversationAttachmentId,
+          fileStringId: conversationAttachmentId(attachment),
           nodeId: null,
           nodeDataSourceViewId: null,
         }
       : await getIncludeFileIdsFromContentFragmentResourceId(
           auth,
-          conversationAttachmentId
+          conversationAttachmentId(attachment)
         );
 
-  if (isSupportedImageContentType(contentType)) {
+  if (isSupportedImageContentType(attachment.contentType)) {
     if (excludeImages || !model.supportsVision) {
       return new Ok({
         role: "content_fragment",
-        name: `inject_${contentType}`,
+        name: `inject_${attachment.contentType}`,
         content: [
           {
             type: "text",
-            text: renderContentFragmentXml({
-              contentFragmentId: null,
-              contentType,
-              title,
-              version: contentFragmentVersion,
-              content:
-                "[Image content interpreted by a vision-enabled model. " +
-                "Description not available in this context.]",
-            }),
+            text: renderAttachmentXml({ attachment }),
           },
         ],
       });
@@ -540,7 +533,7 @@ export async function renderFromAttachmentId(
 
     return new Ok({
       role: "content_fragment",
-      name: `inject_${contentType}`,
+      name: `inject_${attachment.contentType}`,
       content: [
         {
           type: "image_url",
@@ -583,15 +576,12 @@ export async function renderFromAttachmentId(
 
     return new Ok({
       role: "content_fragment",
-      name: `inject_${contentType}`,
+      name: `inject_${attachment.contentType}`,
       content: [
         {
           type: "text",
-          text: renderContentFragmentXml({
-            contentFragmentId: conversationAttachmentId,
-            contentType,
-            title,
-            version: contentFragmentVersion,
+          text: renderAttachmentXml({
+            attachment,
             content: document.document.text ?? null,
           }),
         },
@@ -604,7 +594,7 @@ export async function renderFromAttachmentId(
       logger.warn(
         {
           fileId: fileStringId,
-          contentType,
+          contentType: attachment.contentType,
           workspaceId: auth.getNonNullableWorkspace().sId,
         },
         "No content extracted from file processed version, we are retrieving the original file as a fallback."
@@ -614,15 +604,12 @@ export async function renderFromAttachmentId(
 
     return new Ok({
       role: "content_fragment",
-      name: `inject_${contentType}`,
+      name: `inject_${attachment.contentType}`,
       content: [
         {
           type: "text",
-          text: renderContentFragmentXml({
-            contentFragmentId: conversationAttachmentId,
-            contentType,
-            title,
-            version: contentFragmentVersion,
+          text: renderAttachmentXml({
+            attachment,
             content,
           }),
         },
@@ -648,7 +635,7 @@ export async function renderLightContentFragmentForModel(
     excludeImages: boolean;
   }
 ): Promise<ContentFragmentMessageTypeModel> {
-  const { contentType, sId, title, contentFragmentVersion } = message;
+  const { contentType, sId } = message;
 
   const contentFragment = await ContentFragmentResource.fromMessageId(
     auth,
@@ -671,6 +658,8 @@ export async function renderLightContentFragmentForModel(
     };
   }
 
+  const attachment = getAttachmentFromContentFragment(message);
+
   const { fileId: fileModelId } = contentFragment;
 
   const fileStringId = fileModelId
@@ -688,11 +677,8 @@ export async function renderLightContentFragmentForModel(
         content: [
           {
             type: "text",
-            text: renderContentFragmentXml({
-              contentFragmentId: contentFragment.sId,
-              contentType,
-              title,
-              version: contentFragmentVersion,
+            text: renderAttachmentXml({
+              attachment,
               content:
                 "[Image content interpreted by a vision-enabled model. " +
                 "Description not available in this context.]",
@@ -724,40 +710,14 @@ export async function renderLightContentFragmentForModel(
     content: [
       {
         type: "text",
-        text: renderContentFragmentXml({
+        text: renderAttachmentXml({
           // Use fileId as contentFragmentId to provide a consistent identifier for the model
           // to reference content fragments across different actions like include_file.
-          contentFragmentId: fileStringId ?? contentFragment.sId,
-          contentType,
-          title,
-          version: contentFragmentVersion,
-          content: null,
+          attachment,
         }),
       },
     ],
   };
-}
-
-function renderContentFragmentXml({
-  contentFragmentId,
-  contentType,
-  title,
-  version,
-  content,
-}: {
-  contentFragmentId: string | null;
-  contentType: string;
-  title: string;
-  version: ContentFragmentVersion;
-  content: string | null;
-}) {
-  let tag = `<attachment id="${contentFragmentId}" type="${contentType}" title="${title}" version="${version}"`;
-  if (content) {
-    tag += `>\n${content}\n</attachment>`;
-  } else {
-    tag += "/>";
-  }
-  return tag;
 }
 
 async function getIncludeFileIdsFromContentFragmentResourceId(

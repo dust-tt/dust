@@ -48,7 +48,6 @@ export function AddIncludeDataSheet({
 }: AddIncludeDataSheetProps) {
   const { owner, supportedDataSourceViews } = useAgentBuilderContext();
   const { spaces } = useSpacesContext();
-
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     PAGE_IDS.DATA_SOURCE_SELECTION
   );

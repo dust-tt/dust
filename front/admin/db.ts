@@ -1,7 +1,3 @@
-import {
-  AgentBrowseAction,
-  AgentBrowseConfiguration,
-} from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
@@ -28,15 +24,7 @@ import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_m
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
-import {
-  AgentTablesQueryAction,
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
-import {
-  AgentWebsearchAction,
-  AgentWebsearchConfiguration,
-} from "@app/lib/models/assistant/actions/websearch";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -162,11 +150,8 @@ async function main() {
   await AgentMCPServerConfiguration.sync({ alter: true });
   await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDustAppRunConfiguration.sync({ alter: true });
-  await AgentTablesQueryConfiguration.sync({ alter: true });
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
   await AgentProcessConfiguration.sync({ alter: true });
-  await AgentWebsearchConfiguration.sync({ alter: true });
-  await AgentBrowseConfiguration.sync({ alter: true });
   await AgentReasoningConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
@@ -179,7 +164,6 @@ async function main() {
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });
 
-  await AgentBrowseAction.sync({ alter: true });
   await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentDataRetentionModel.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
@@ -187,8 +171,6 @@ async function main() {
   await AgentProcessAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
   await AgentSearchLabelsAction.sync({ alter: true });
-  await AgentTablesQueryAction.sync({ alter: true });
-  await AgentWebsearchAction.sync({ alter: true });
   await AgentMCPAction.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });
   await AgentChildAgentConfiguration.sync({ alter: true });

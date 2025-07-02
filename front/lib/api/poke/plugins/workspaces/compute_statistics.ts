@@ -29,7 +29,7 @@ export const computeWorkspaceStatsPlugin = createPlugin({
     return new Ok({
       display: "markdown",
       value: `
-Limit is ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} GB per datasource (${activeSeats} active seats x 1 Gb per seat)
+Limit is ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} per datasource (${activeSeats} active seats x 1 GB per seat)
 
 | Datasource | Document count | Total size |
 |------------|----------------|------------|

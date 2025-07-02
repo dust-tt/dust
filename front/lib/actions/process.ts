@@ -2,7 +2,6 @@ import _, { isObject } from "lodash";
 
 import {
   generateJSONFileAndSnippet,
-  getJSONFileAttachment,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import {
@@ -55,6 +54,10 @@ import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  getAttachmentFromToolOutput,
+  renderAttachmentXml,
+} from "@app/lib/api/assistant/conversation/attachments";
 import { FileResource } from "@app/lib/resources/file_resource";
 
 // Properties in the process configuration table are stored as an array of objects.
@@ -162,29 +165,39 @@ export class ProcessActionType extends BaseAction {
 
     content += "PROCESSED OUTPUTS:\n";
 
-    if (this.outputs) {
-      if (this.outputs.data.length === 0) {
-        content += "(none)\n";
-      } else {
-        for (const o of this.outputs.data) {
-          content += `${JSON.stringify(o)}\n`;
-        }
-
-        const jsonAttachment = getJSONFileAttachment({
-          jsonFileId: this.jsonFileId,
-          jsonFileSnippet: this.jsonFileSnippet,
-          title: getExtractFileTitle({
-            schema: this.jsonSchema,
-          }),
-        });
-
-        if (jsonAttachment) {
-          content += `${jsonAttachment}\n`;
-        }
-      }
-    } else if (this.outputs === null) {
-      content += "(processing failed)\n";
+    if (!this.outputs) {
+      return {
+        role: "function" as const,
+        name: this.functionCallName ?? "process_data_sources",
+        function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+        content: content + "(processing failed)",
+      };
     }
+
+    if (this.outputs.data.length === 0 || !this.jsonFileId) {
+      return {
+        role: "function" as const,
+        name: this.functionCallName ?? "process_data_sources",
+        function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+        content: content + "(none)",
+      };
+    }
+
+    for (const o of this.outputs.data) {
+      content += `${JSON.stringify(o)}\n`;
+    }
+
+    const attachment = getAttachmentFromToolOutput({
+      fileId: this.jsonFileId,
+      contentType: "application/json",
+      title: getExtractFileTitle({
+        schema: this.jsonSchema,
+      }),
+      snippet: this.jsonFileSnippet,
+    });
+
+    const xml = renderAttachmentXml({ attachment });
+    content += `${xml}\n`;
 
     return {
       role: "function" as const,
