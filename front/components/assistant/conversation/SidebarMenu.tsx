@@ -25,7 +25,6 @@ import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
-import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -187,10 +186,6 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   const { setAnimate } = useContext(InputBarContext);
 
-  const triggerInputAnimation = useCallback(() => {
-    setAnimate(true);
-  }, [setAnimate]);
-
   const handleNewClick = useCallback(async () => {
     setSidebarOpen(false);
     const { cId } = router.query;
@@ -199,14 +194,10 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       typeof cId === "string" &&
       cId === "new";
 
-    if (isNewConversation && triggerInputAnimation) {
-      triggerInputAnimation();
-    } else {
-      await router.push(`/w/${owner.sId}/assistant/new`);
+    if (isNewConversation) {
+      setAnimate(true);
     }
-
-    document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
-  }, [owner.sId, router, setSidebarOpen, triggerInputAnimation]);
+  }, [router, setSidebarOpen, setAnimate]);
 
   return (
     <>
@@ -247,6 +238,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
                 <Button
                   label="New"
+                  href={`/w/${owner.sId}/assistant/new`}
                   icon={ChatBubbleBottomCenterTextIcon}
                   className="shrink"
                   tooltip="Create a new conversation"
