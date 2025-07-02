@@ -237,8 +237,8 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     // Set session cookie and redirect to returnTo URL
 
     res.setHeader("Set-Cookie", [
-      `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax`,
-      `sessionType=workos; Path=/; Secure;SameSite=Lax`,
+      `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax; Max-Age=2592000`,
+      `sessionType=workos; Path=/; Secure;SameSite=Lax; Max-Age=2592000`,
     ]);
 
     if (isString(state)) {
