@@ -40,8 +40,6 @@ import type {
 } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
 
-import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "../constant";
-
 export const INPUT_BAR_ACTIONS = [
   "attachment",
   "assistants-list",
@@ -217,11 +215,6 @@ const InputBarContainer = ({
     if (animate) {
       editorService.focusEnd();
     }
-    /**
-     * Scroll to top when animate change or the editorService re-render.
-     * Which so far are good enough to scroll to the top.
-     */
-    document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
   }, [animate, editorService]);
 
   useHandleMentions(

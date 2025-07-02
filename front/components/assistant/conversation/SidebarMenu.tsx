@@ -27,7 +27,6 @@ import React, { useCallback, useContext, useState } from "react";
 
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
@@ -184,20 +183,9 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     ? groupConversationsByDate(conversations)
     : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
-  const { setAnimate } = useContext(InputBarContext);
-
   const handleNewClick = useCallback(async () => {
     setSidebarOpen(false);
-    const { cId } = router.query;
-    const isNewConversation =
-      router.pathname === "/w/[wId]/assistant/[cId]" &&
-      typeof cId === "string" &&
-      cId === "new";
-
-    if (isNewConversation) {
-      setAnimate(true);
-    }
-  }, [router, setSidebarOpen, setAnimate]);
+  }, [setSidebarOpen]);
 
   return (
     <>
