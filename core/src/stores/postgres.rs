@@ -3002,7 +3002,7 @@ impl Store for PostgresStore {
         .await
         {
             Ok(_) => {
-                // Clear the csv bucket and path.
+                // Clear the migration flag.
                 let stmt = c.prepare(
                     "UPDATE tables SET migrated_to_csv = false WHERE data_source = $1 AND table_id = $2",
                 ).await?;
