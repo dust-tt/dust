@@ -284,7 +284,7 @@ function createServer(
           content.push({
             type: "resource",
             resource: {
-              text: `Your query results were generated successfully. They are available as a structured CSV file.`,
+              text: "Your query results were generated successfully. They are available as a structured CSV file.",
               uri: csvFile.getPublicUrl(auth),
               mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
               fileId: csvFile.sId,
