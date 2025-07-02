@@ -34,10 +34,7 @@ import {
   AgentReasoningConfiguration,
 } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import {
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
   AgentUserRelation,
@@ -245,7 +242,7 @@ export async function deleteAgentsActivity({
     });
     await AgentTablesQueryConfigurationTable.destroy({
       where: {
-        tablesQueryConfigurationId: {
+        mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
         },
       },
@@ -361,27 +358,6 @@ export async function deleteAgentsActivity({
       },
     });
     await AgentDustAppRunConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const tablesQueryConfigurations =
-      await AgentTablesQueryConfiguration.findAll({
-        where: {
-          agentConfigurationId: agent.id,
-          workspaceId: workspace.id,
-        },
-      });
-    await AgentTablesQueryConfigurationTable.destroy({
-      where: {
-        tablesQueryConfigurationId: {
-          [Op.in]: tablesQueryConfigurations.map((r) => r.id),
-        },
-      },
-    });
-    await AgentTablesQueryConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,
