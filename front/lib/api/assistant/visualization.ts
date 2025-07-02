@@ -67,7 +67,7 @@ if (file) {
 }
 \`\`\`
 
-\`fileId\` can be extracted from the \`<file id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
+\`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
 
 Example using the \`triggerUserFileDownload\` hook:
 

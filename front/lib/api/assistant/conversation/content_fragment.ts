@@ -1,7 +1,7 @@
 import type { DustMimeType } from "@dust-tt/client";
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 
-import { isContentFragmentDataSourceNode } from "@app/lib/actions/conversation/list_files";
+import { isContentFragmentDataSourceNode } from "@app/lib/api/assistant/conversation/attachments";
 import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";

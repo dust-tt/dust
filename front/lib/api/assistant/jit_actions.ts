@@ -6,26 +6,26 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type {
-  ConversationAttachmentType,
-  ConversationContentNodeType,
-} from "@app/lib/actions/conversation/list_files";
-import {
-  isContentFragmentDataSourceNode,
-  isConversationContentNodeType,
-  isConversationFileType,
-  makeConversationListFilesAction,
-} from "@app/lib/actions/conversation/list_files";
+import { makeConversationListFilesAction } from "@app/lib/actions/conversation/list_files";
 import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  ContentNodeAttachmentType,
+  ConversationAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
 import {
-  isMultiSheetSpreadsheetContentType,
+  isContentFragmentDataSourceNode,
+  isContentNodeAttachmentType,
+  isFileAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
+import { isMultiSheetSpreadsheetContentType } from "@app/lib/api/assistant/conversation/content_types";
+import {
   isSearchableFolder,
-  listFiles,
+  listAttachments,
 } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -45,15 +45,15 @@ async function getJITServers(
   auth: Authenticator,
   {
     conversation,
-    files,
+    attachments,
   }: {
     conversation: ConversationType;
-    files: ConversationAttachmentType[];
+    attachments: ConversationAttachmentType[];
   }
 ): Promise<MCPServerConfigurationType[]> {
   const jitServers: MCPServerConfigurationType[] = [];
 
-  if (files.length === 0) {
+  if (attachments.length === 0) {
     return [];
   }
 
@@ -90,13 +90,13 @@ async function getJITServers(
   jitServers.push(conversationFilesServer);
 
   // Check tables for the table query action.
-  const filesUsableAsTableQuery = files.filter((f) => f.isQueryable);
+  const filesUsableAsTableQuery = attachments.filter((f) => f.isQueryable);
 
   // Check files for the retrieval query action.
-  const filesUsableAsRetrievalQuery = files.filter((f) => f.isSearchable);
+  const filesUsableAsRetrievalQuery = attachments.filter((f) => f.isSearchable);
 
   // Check files for the process action.
-  const filesUsableForExtracting = files.filter((f) => f.isExtractable);
+  const filesUsableForExtracting = attachments.filter((f) => f.isExtractable);
 
   if (
     filesUsableAsTableQuery.length === 0 &&
@@ -117,7 +117,7 @@ async function getJITServers(
     ),
     async (f) => {
       assert(
-        isConversationContentNodeType(f),
+        isContentNodeAttachmentType(f),
         "Unreachable: file should be a content node"
       );
       f.generatedTables = await getTablesFromMultiSheetSpreadsheet(auth, f);
@@ -142,7 +142,7 @@ async function getJITServers(
 
     const tables: TableDataSourceConfiguration[] =
       filesUsableAsTableQuery.flatMap((f) => {
-        if (isConversationFileType(f)) {
+        if (isFileAttachmentType(f)) {
           assert(
             conversationDataSourceView,
             "No conversation datasource view found for table when trying to get JIT actions"
@@ -152,7 +152,7 @@ async function getJITServers(
             dataSourceViewId: conversationDataSourceView.sId,
             tableId,
           }));
-        } else if (isConversationContentNodeType(f)) {
+        } else if (isContentNodeAttachmentType(f)) {
           return f.generatedTables.map((tableId) => ({
             workspaceId: auth.getNonNullableWorkspace().sId,
             dataSourceViewId: f.nodeDataSourceViewId,
@@ -207,23 +207,25 @@ async function getJITServers(
   );
 
   if (filesUsableAsRetrievalQuery.length > 0) {
-    const dataSources: DataSourceConfiguration[] = filesUsableAsRetrievalQuery
-      // For each searchable content node, we add its datasourceview with itself as parent
-      // filter.
-      .filter((f) => isConversationContentNodeType(f))
-      .map((f) => ({
+    const contentNodeAttachments: ContentNodeAttachmentType[] = [];
+    for (const f of filesUsableAsRetrievalQuery) {
+      if (isContentNodeAttachmentType(f)) {
+        contentNodeAttachments.push(f);
+      }
+    }
+    const dataSources: DataSourceConfiguration[] = contentNodeAttachments.map(
+      (f) => ({
         workspaceId: auth.getNonNullableWorkspace().sId,
-        // Cast ok here because of the filter above.
-        dataSourceViewId: (f as ConversationContentNodeType)
-          .nodeDataSourceViewId,
+        dataSourceViewId: f.nodeDataSourceViewId,
         filter: {
           parents: {
-            in: [(f as ConversationContentNodeType).nodeId],
+            in: [f.nodeId],
             not: [],
           },
           tags: null,
         },
-      }));
+      })
+    );
     if (conversationDataSourceView) {
       dataSources.push({
         workspaceId: auth.getNonNullableWorkspace().sId,
@@ -254,17 +256,20 @@ async function getJITServers(
 
   // Add extract data MCP server for processable files
   if (filesUsableForExtracting.length > 0) {
-    const dataSources: DataSourceConfiguration[] = filesUsableForExtracting
+    const contentNodeAttachments: ContentNodeAttachmentType[] = [];
+    for (const f of filesUsableForExtracting) {
+      if (isContentNodeAttachmentType(f)) {
+        contentNodeAttachments.push(f);
+      }
+    }
+    const dataSources: DataSourceConfiguration[] = contentNodeAttachments
       // For each extractable content node, we add its datasourceview with itself as parent filter.
-      .filter((f) => isConversationContentNodeType(f))
       .map((f) => ({
         workspaceId: auth.getNonNullableWorkspace().sId,
-        // Cast ok here because of the filter above.
-        dataSourceViewId: (f as ConversationContentNodeType)
-          .nodeDataSourceViewId,
+        dataSourceViewId: f.nodeDataSourceViewId,
         filter: {
           parents: {
-            in: [(f as ConversationContentNodeType).nodeId],
+            in: [f.nodeId],
             not: [],
           },
           tags: null,
@@ -298,11 +303,16 @@ async function getJITServers(
     jitServers.push(extractServer);
   }
 
-  for (const [i, f] of files
-    .filter((f) => isConversationContentNodeType(f) && isSearchableFolder(f))
-    .entries()) {
-    // This is valid because of the filter above.
-    const folder = f as ConversationContentNodeType;
+  const searchableFolders: ContentNodeAttachmentType[] = [];
+  for (const attachment of attachments) {
+    if (
+      isContentNodeAttachmentType(attachment) &&
+      isSearchableFolder(attachment)
+    ) {
+      searchableFolders.push(attachment);
+    }
+  }
+  for (const [i, folder] of searchableFolders.entries()) {
     const dataSources: DataSourceConfiguration[] = [
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
@@ -379,10 +389,10 @@ export async function getEmulatedActionsAndJITServers(
 }> {
   const emulatedActions: AgentActionType[] = [];
 
-  const files = listFiles(conversation);
+  const attachments = listAttachments(conversation);
   const a = makeConversationListFilesAction({
     agentMessage,
-    files,
+    attachments,
   });
   if (a) {
     emulatedActions.push(a);
@@ -390,7 +400,7 @@ export async function getEmulatedActionsAndJITServers(
 
   const jitServers = await getJITServers(auth, {
     conversation,
-    files,
+    attachments,
   });
 
   // We ensure that all emulated actions are injected with step -1.
@@ -404,7 +414,7 @@ export async function getEmulatedActionsAndJITServers(
 
 async function getTablesFromMultiSheetSpreadsheet(
   auth: Authenticator,
-  f: ConversationContentNodeType
+  f: ContentNodeAttachmentType
 ): Promise<string[]> {
   assert(
     isMultiSheetSpreadsheetContentType(f.contentType),
