@@ -337,13 +337,6 @@ pie title Distribution
     "Category D" : 10
     "Category E" : 25
 \`\`\`
-
-
-### Images Are Only Displayed If Internal:
-#### Untrusted Images:
-![](https://dust.tt)
-![](notarealurl.com)
-![](https://shorturl.at/T7jIt)
 `;
 
 export const ExtendedMarkdownStory: Story = {
