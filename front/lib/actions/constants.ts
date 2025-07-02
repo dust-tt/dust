@@ -20,8 +20,9 @@ export const DEFAULT_RETRIEVAL_ACTION_NAME = "search_data_sources";
 
 export const DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME = "include_data_sources";
 
-export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search";
-export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION = "Perform a web search";
+export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search_&_browse";
+export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION =
+  "Agent can search (Google) and retrieve information from specific websites.";
 
 export const DEFAULT_TABLES_QUERY_ACTION_NAME = "query_tables";
 
