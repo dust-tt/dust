@@ -337,6 +337,7 @@ pie title Distribution
     "Category D" : 10
     "Category E" : 25
 \`\`\`
+
 `;
 
 export const ExtendedMarkdownStory: Story = {
