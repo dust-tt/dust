@@ -16,9 +16,7 @@ import {
   isBrowseScrapeSuccessResponse,
 } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
-import type { OAuthProvider } from "@app/types";
 
-export const provider: OAuthProvider = "google_drive" as const;
 export const serverInfo: InternalMCPServerDefinitionType = {
   name: "web_search_&_browse",
   version: "1.0.0",
