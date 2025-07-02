@@ -65,7 +65,8 @@ export const AddActionMenu = ({
             <Button
               icon={PlusIcon}
               label="Add MCP Server"
-              onClick={() => createRemoteMCPServer(undefined)}
+              // Required given onClick passes a MouseEvent
+              onClick={() => createRemoteMCPServer()}
             />
           }
         />

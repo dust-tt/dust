@@ -2,7 +2,7 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import {
   getMcpServerDisplayName,
@@ -713,7 +713,7 @@ export function useUpdateMCPServerToolsPermissions({
     permission,
   }: {
     toolName: string;
-    permission: RemoteMCPToolStakeLevelType;
+    permission: MCPToolStakeLevelType;
   }): Promise<PatchMCPServerToolsPermissionsResponseBody> => {
     const response = await fetch(
       `/api/w/${owner.sId}/mcp/${serverId}/tools/${toolName}`,

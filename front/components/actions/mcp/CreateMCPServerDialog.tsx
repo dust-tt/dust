@@ -1,12 +1,10 @@
 import {
-  Button,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExternalLinkIcon,
   Input,
   Label,
   SliderToggle,
@@ -84,10 +82,7 @@ export function CreateMCPServerDialog({
       setRemoteServerUrl(defaultServerConfig.url);
     }
     if (defaultServerConfig && isOpen) {
-      setRequiresBearerToken(
-        defaultServerConfig.authMethod === "bearer" &&
-          defaultServerConfig.requiresAuth
-      );
+      setRequiresBearerToken(defaultServerConfig.authMethod === "bearer");
     }
   }, [defaultServerConfig, isOpen]);
 
@@ -271,72 +266,63 @@ export function CreateMCPServerDialog({
           <DialogTitle>
             {internalMCPServer
               ? `Add ${getMcpServerDisplayName(internalMCPServer)}`
-              : "Add MCP Server"}
+              : defaultServerConfig
+                ? `Add ${defaultServerConfig.name}`
+                : "Add MCP Server"}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           {!internalMCPServer && !authorization && (
             <>
               {defaultServerConfig && (
-                <div className="space-y-4 rounded-lg border bg-muted/50 p-4">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-sm font-semibold">
-                        {defaultServerConfig.name} Remote Server
-                      </h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {defaultServerConfig.description}
-                      </p>
-                    </div>
+                <div className="mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    {defaultServerConfig.description}
                     {defaultServerConfig.documentationUrl && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          window.open(
-                            defaultServerConfig.documentationUrl,
-                            "_blank"
-                          )
-                        }
-                        icon={ExternalLinkIcon}
-                        label="Documentation"
-                      />
+                      <>
+                        {" "}
+                        <a
+                          href={defaultServerConfig.documentationUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline"
+                        >
+                          See {defaultServerConfig.name} documentation.
+                        </a>
+                      </>
                     )}
-                  </div>
+                  </p>
                   {defaultServerConfig.connectionInstructions && (
-                    <div className="text-sm text-muted-foreground">
+                    <p className="mt-2 text-sm text-muted-foreground">
                       {defaultServerConfig.connectionInstructions}
-                    </div>
+                    </p>
                   )}
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label htmlFor="url">URL</Label>
-                <div className="flex space-x-2">
-                  <div className="flex-grow">
-                    <Input
-                      id="url"
-                      placeholder="https://example.com/api/mcp"
-                      value={remoteServerUrl}
-                      onChange={(e) => setRemoteServerUrl(e.target.value)}
-                      isError={!!error}
-                      message={error}
-                      autoFocus
-                      disabled={!!defaultServerConfig?.url}
-                    />
+              {!defaultServerConfig?.url && (
+                <div className="space-y-2">
+                  <Label htmlFor="url">URL</Label>
+                  <div className="flex space-x-2">
+                    <div className="flex-grow">
+                      <Input
+                        id="url"
+                        placeholder="https://example.com/api/mcp"
+                        value={remoteServerUrl}
+                        onChange={(e) => setRemoteServerUrl(e.target.value)}
+                        isError={!!error}
+                        message={error}
+                        autoFocus
+                      />
+                    </div>
                   </div>
                 </div>
-                {defaultServerConfig?.url && (
-                  <div className="text-sm text-muted-foreground">
-                    This is a trusted remote MCP server. The URL is
-                    pre-configured and cannot be changed.
-                  </div>
-                )}
-              </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="requiresBearerToken">
-                  Requires Bearer Token
+                  {defaultServerConfig?.authMethod === "bearer"
+                    ? `${defaultServerConfig.name} API Key`
+                    : "Authentication"}
                 </Label>
                 <div className="flex items-center space-x-2">
                   {!defaultServerConfig && (
@@ -365,7 +351,8 @@ export function CreateMCPServerDialog({
                       value={sharedSecret}
                       onChange={(e) => setSharedSecret(e.target.value)}
                       isError={
-                        defaultServerConfig?.requiresAuth && !sharedSecret
+                        defaultServerConfig?.authMethod === "bearer" &&
+                        !sharedSecret
                       }
                     />
                   </div>
@@ -404,7 +391,7 @@ export function CreateMCPServerDialog({
             disabled:
               !isOAuthFormValid ||
               (authorization && !useCase) ||
-              (defaultServerConfig?.requiresAuth && !sharedSecret) ||
+              (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
               isLoading,
           }}
         />

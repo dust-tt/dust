@@ -10,10 +10,9 @@ export type DefaultRemoteMCPServerConfig = {
   icon: InternalAllowedIconType;
   documentationUrl?: string;
   connectionInstructions?: string;
-  authMethod: "bearer" | "oauth";
+  authMethod: "bearer" | "oauth" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
-  requiresAuth: boolean;
-  toolStakes?: Record<string, "high" | "low">;
+  toolStakes?: Record<string, "high" | "low" | "never_ask">;
 };
 
 export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
@@ -27,9 +26,8 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     connectionInstructions:
       "You will need to provide your Stripe API key as a bearer token. We recommend using restricted API keys to limit access to the functionality your agents require.",
     authMethod: "bearer",
-    requiresAuth: true,
     toolStakes: {
-      search_documentation: "low",
+      search_documentation: "never_ask",
       list_customers: "low",
       list_products: "low",
       list_prices: "low",
@@ -62,7 +60,7 @@ export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {
 };
 
 export const getDefaultRemoteMCPServerByURL = (
-  url: string
+  url: string | undefined
 ): DefaultRemoteMCPServerConfig | null => {
   return (
     DEFAULT_REMOTE_MCP_SERVERS.find((server) => server.url === url) || null
