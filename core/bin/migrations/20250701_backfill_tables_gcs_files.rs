@@ -1,9 +1,6 @@
 use clap::Parser;
 use dust::{
-    databases::{
-        table::{get_table_unique_id, Table},
-        table_schema::TableSchema,
-    },
+    databases::{table::get_table_unique_id, table_schema::TableSchema},
     databases_store::store::{DatabasesStore, PostgresDatabasesStore},
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
@@ -172,28 +169,25 @@ async fn process_one_table(
 
     println!("**** Unique table id: {}", unique_table_id);
 
+    let table_schema: TableSchema;
+
     let (rows, _count) = db_store.list_table_rows(&unique_table_id, None).await?;
-    if rows.is_empty() {
+    if rows.is_empty() && !schema.is_none() {
         println!(
             "No rows found for table with id: {}, table_id: {}",
             id, table_id
         );
-        // return Ok(());
-    }
 
-    let table_schema = TableSchema::from_rows_async(std::sync::Arc::new(rows.clone())).await?;
+        // If there are no rows, we wouldn't be able to get a schema from them,
+        // so we use the existing schema from the database
+        table_schema = serde_json::from_str(schema.as_ref().unwrap())?;
+    } else {
+        table_schema = TableSchema::from_rows_async(std::sync::Arc::new(rows.clone())).await?;
+    }
 
     store
         .store_data_source_table_csv(&project, &data_source_id, &table_id, &table_schema, &rows)
         .await?;
-
-    // Set migrated_to_csv = true to mark that this table has been processed
-    // store
-    //     .raw_pool()
-    //     .get()
-    //     .await?
-    //     .execute("UPDATE tables SET migrated_to_csv = TRUE WHERE id = $1", &[&id])
-    //     .await?;
 
     Ok(())
 }
