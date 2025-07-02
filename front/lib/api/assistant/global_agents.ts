@@ -14,6 +14,7 @@ import {
   SUGGEST_AGENTS_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agent_metadata";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -308,16 +309,19 @@ function _getHelperGlobalAgent({
     )
   );
 
+  const sId = GLOBAL_AGENTS_SID.HELPER;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.HELPER,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "help",
-    description: "Help on how to use Dust",
+    name: metadata.name,
+    description: metadata.description,
     instructions: prompt + globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status: status,
     userFavorite: false,
     scope: "global",
@@ -343,6 +347,7 @@ function _getGPT35TurboGlobalAgent({
   const status = settings ? settings.status : "active";
 
   const sId = GLOBAL_AGENTS_SID.GPT35_TURBO;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -350,10 +355,10 @@ function _getGPT35TurboGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "gpt3.5-turbo",
-    description: GPT_3_5_TURBO_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -396,6 +401,7 @@ function _getGPT4GlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.GPT4;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -403,10 +409,10 @@ function _getGPT4GlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "gpt4",
-    description: GPT_4_1_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -449,6 +455,7 @@ function _getO3MiniGlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.O3_MINI;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -456,10 +463,10 @@ function _getO3MiniGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o3-mini",
-    description: O3_MINI_HIGH_REASONING_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -498,6 +505,7 @@ function _getO1GlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.O1;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -505,10 +513,10 @@ function _getO1GlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o1",
-    description: O1_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -544,16 +552,19 @@ function _getO1MiniGlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.O1_MINI;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.O1_MINI,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o1-mini",
-    description: O1_MINI_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -588,6 +599,7 @@ function _getO1HighReasoningGlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.O1_HIGH_REASONING;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -595,10 +607,10 @@ function _getO1HighReasoningGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o1-high-reasoning",
-    description: O1_HIGH_REASONING_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -639,6 +651,7 @@ function _getO3GlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.O3;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -646,10 +659,10 @@ function _getO3GlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o3",
-    description: O3_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -680,16 +693,18 @@ function _getClaudeInstantGlobalAgent({
   settings: GlobalAgentSettings | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.CLAUDE_INSTANT);
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-instant",
-    description: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -721,16 +736,18 @@ function _getClaude2GlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.CLAUDE_2);
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE_2,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-2",
-    description: CLAUDE_2_DEFAULT_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -761,6 +778,7 @@ function _getClaude3HaikuGlobalAgent({
   const status = settings ? settings.status : "disabled_by_admin";
 
   const sId = GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -768,10 +786,10 @@ function _getClaude3HaikuGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-3-haiku",
-    description: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -811,6 +829,7 @@ function _getClaude3OpusGlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.CLAUDE_3_OPUS;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -818,10 +837,10 @@ function _getClaude3OpusGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-3-opus",
-    description: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -861,6 +880,7 @@ function _getClaude3GlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.CLAUDE_3_SONNET;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -868,10 +888,10 @@ function _getClaude3GlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-3.5",
-    description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -911,6 +931,7 @@ function _getClaude4SonnetGlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.CLAUDE_4_SONNET;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -918,10 +939,10 @@ function _getClaude4SonnetGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-4-sonnet",
-    description: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -961,6 +982,7 @@ function _getClaude3_7GlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -968,10 +990,10 @@ function _getClaude3_7GlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-3.7",
-    description: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -1011,6 +1033,7 @@ function _getMistralLargeGlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.MISTRAL_LARGE;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -1018,10 +1041,10 @@ function _getMistralLargeGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "mistral",
-    description: MISTRAL_LARGE_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -1061,6 +1084,7 @@ function _getMistralMediumGlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.MISTRAL_MEDIUM;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -1068,10 +1092,10 @@ function _getMistralMediumGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "mistral-medium",
-    description: MISTRAL_MEDIUM_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -1106,6 +1130,7 @@ function _getMistralSmallGlobalAgent({
   const status = settings ? settings.status : "disabled_by_admin";
 
   const sId = GLOBAL_AGENTS_SID.MISTRAL_SMALL;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -1113,10 +1138,10 @@ function _getMistralSmallGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "mistral-small",
-    description: MISTRAL_SMALL_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -1156,6 +1181,7 @@ function _getGeminiProGlobalAgent({
   }
 
   const sId = GLOBAL_AGENTS_SID.GEMINI_PRO;
+  const metadata = getGlobalAgentMetadata(sId);
 
   return {
     id: -1,
@@ -1163,10 +1189,10 @@ function _getGeminiProGlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "gemini-pro",
-    description: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
-    pictureUrl: "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -1203,17 +1229,19 @@ function _getDeepSeekR1GlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.DEEPSEEK_R1;
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DEEPSEEK_R1);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DEEPSEEK_R1,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "DeepSeek R1",
-    description:
-      "DeepSeek's reasoning model. Served from a US inference provider. Cannot use any tools",
+    name: metadata.name,
+    description: metadata.description,
     instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/deepseek_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -1377,13 +1405,16 @@ function _getGoogleDriveGlobalAgent(
     searchMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
+  const agentId = GLOBAL_AGENTS_SID.GOOGLE_DRIVE;
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.GOOGLE_DRIVE);
+
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "google_drive",
-    agentId: GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
-    name: "googledrive",
-    description: "An agent with context on your Google Drives.",
-    pictureUrl: "https://dust.tt/static/systemavatar/drive_avatar_full.png",
+    agentId,
+    name: metadata.name,
+    description: metadata.description,
+    pictureUrl: metadata.pictureUrl,
     instructions:
       "Assist the user based on the retrieved data from their Google Drives." +
       `\n${BREVITY_PROMPT}`,
@@ -1404,13 +1435,16 @@ function _getSlackGlobalAgent(
     searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
+  const agentId = GLOBAL_AGENTS_SID.SLACK;
+  const metadata = getGlobalAgentMetadata(agentId);
+
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "slack",
-    agentId: GLOBAL_AGENTS_SID.SLACK,
-    name: "slack",
-    description: "An agent with context on your Slack Channels.",
-    pictureUrl: "https://dust.tt/static/systemavatar/slack_avatar_full.png",
+    agentId,
+    name: metadata.name,
+    description: metadata.description,
+    pictureUrl: metadata.pictureUrl,
     instructions:
       "Assist the user based on the retrieved data from their Slack channels." +
       `\n${BREVITY_PROMPT}`,
@@ -1431,13 +1465,16 @@ function _getGithubGlobalAgent(
     searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
+  const agentId = GLOBAL_AGENTS_SID.GITHUB;
+  const metadata = getGlobalAgentMetadata(agentId);
+
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "github",
-    agentId: GLOBAL_AGENTS_SID.GITHUB,
-    name: "github",
-    description: "An agent with context on your Github Issues and Discussions.",
-    pictureUrl: "https://dust.tt/static/systemavatar/github_avatar_full.png",
+    agentId,
+    name: metadata.name,
+    description: metadata.description,
+    pictureUrl: metadata.pictureUrl,
     instructions:
       "Assist the user based on the retrieved data from their Github Issues and Discussions." +
       `\n${BREVITY_PROMPT}`,
@@ -1458,13 +1495,16 @@ function _getNotionGlobalAgent(
     searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
+  const agentId = GLOBAL_AGENTS_SID.NOTION;
+  const metadata = getGlobalAgentMetadata(agentId);
+
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "notion",
     agentId: GLOBAL_AGENTS_SID.NOTION,
-    name: "notion",
-    description: "An agent with context on your Notion Spaces.",
-    pictureUrl: "https://dust.tt/static/systemavatar/notion_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    pictureUrl: metadata.pictureUrl,
     instructions:
       "Assist the user based on the retrieved data from their Notion Spaces." +
       `\n${BREVITY_PROMPT}`,
@@ -1485,13 +1525,16 @@ function _getIntercomGlobalAgent(
     searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
+  const agentId = GLOBAL_AGENTS_SID.INTERCOM;
+  const metadata = getGlobalAgentMetadata(agentId);
+
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "intercom",
-    agentId: GLOBAL_AGENTS_SID.INTERCOM,
-    name: "intercom",
-    description: "An agent with context on your Intercom Help Center data.",
-    pictureUrl: "https://dust.tt/static/systemavatar/intercom_avatar_full.png",
+    agentId,
+    name: metadata.name,
+    description: metadata.description,
+    pictureUrl: metadata.pictureUrl,
     instructions:
       "Assist the user based on the retrieved data from their Intercom Workspace." +
       `\n${BREVITY_PROMPT}`,
