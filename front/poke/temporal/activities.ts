@@ -8,6 +8,7 @@ import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
+import { deleteUserFromWorkOS } from "@app/lib/api/workos/user";
 import {
   areAllSubscriptionsCanceled,
   isWorkspaceRelocationDone,
@@ -76,7 +77,6 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types";
-import { deleteUserFromWorkOS } from "@app/lib/api/workos/user";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
