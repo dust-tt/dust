@@ -17,6 +17,7 @@ use tracing::info;
 
 use crate::data_sources::data_source::DocumentStatus;
 use crate::data_sources::node::{Node, NodeESDocument, NodeType, ProviderVisibility};
+use crate::databases::table::LocalTable;
 use crate::search_filter::Filterable;
 use crate::{
     blocks::block::BlockType,
@@ -2720,7 +2721,7 @@ impl Store for PostgresStore {
                    timestamp = EXCLUDED.timestamp, \
                      remote_database_table_id = EXCLUDED.remote_database_table_id, \
                      remote_database_secret_id = EXCLUDED.remote_database_secret_id \
-                   RETURNING id, created, schema, schema_stale_at, csv_bucket, csv_bucket_path",
+                   RETURNING id, created, schema, schema_stale_at, migrated_to_csv",
             )
             .await?;
 
@@ -2744,8 +2745,7 @@ impl Store for PostgresStore {
         let table_created = table_row.get::<usize, i64>(1) as u64;
         let raw_schema = table_row.get::<usize, Option<String>>(2);
         let table_schema_stale_at = table_row.get::<usize, Option<i64>>(3);
-        let csv_bucket = table_row.get::<usize, Option<String>>(4);
-        let csv_bucket_path = table_row.get::<usize, Option<String>>(5);
+        let migrated_to_csv = table_row.get::<usize, bool>(4);
 
         let parsed_schema: Option<TableSchema> = match raw_schema {
             None => None,
@@ -2778,8 +2778,7 @@ impl Store for PostgresStore {
             upsert_params.source_url,
             parsed_schema,
             table_schema_stale_at.map(|t| t as u64),
-            csv_bucket,
-            csv_bucket_path,
+            migrated_to_csv,
             upsert_params.remote_database_table_id,
             upsert_params.remote_database_secret_id,
         );
@@ -2899,7 +2898,6 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         table_id: &str,
-        bucket: &str,
         schema: &TableSchema,
         rows: &Vec<Row>,
     ) -> Result<()> {
@@ -2940,21 +2938,22 @@ impl Store for PostgresStore {
         let now = utils::now();
 
         let csv = wtr.into_inner()?;
-        let bucket_path = format!("{}.csv", table_id);
 
-        Object::create(bucket, csv, &bucket_path, "text/csv").await?;
+        Object::create(
+            &LocalTable::get_bucket()?,
+            csv,
+            &LocalTable::get_csv_storage_file_path(&table_id),
+            "text/csv",
+        )
+        .await?;
 
         // Update the csv bucket and path.
         let stmt = c
             .prepare(
-                "UPDATE tables SET csv_bucket = $1, csv_bucket_path = $2 WHERE data_source = $3 AND table_id = $4",
+                "UPDATE tables SET migrated_to_csv = true WHERE data_source = $1 AND table_id = $2",
             )
             .await?;
-        c.query(
-            &stmt,
-            &[&bucket, &bucket_path, &data_source_row_id, &table_id],
-        )
-        .await?;
+        c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
 
         let upload_duration = utils::now() - now;
 
@@ -2972,8 +2971,6 @@ impl Store for PostgresStore {
         project: &Project,
         data_source_id: &str,
         table_id: &str,
-        bucket: &str,
-        bucket_path: &str,
     ) -> Result<()> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -2996,11 +2993,16 @@ impl Store for PostgresStore {
         };
 
         // Remove from GCS.
-        match Object::delete(bucket, &bucket_path).await {
+        match Object::delete(
+            LocalTable::get_bucket()?.as_str(),
+            &LocalTable::get_csv_storage_file_path(&table_id),
+        )
+        .await
+        {
             Ok(_) => {
                 // Clear the csv bucket and path.
                 let stmt = c.prepare(
-                    "UPDATE tables SET csv_bucket = NULL, csv_bucket_path = NULL WHERE data_source = $1 AND table_id = $2",
+                    "UPDATE tables SET migrated_to_csv = false WHERE data_source = $1 AND table_id = $2",
                 ).await?;
                 c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
             }
@@ -3046,7 +3048,7 @@ impl Store for PostgresStore {
                 "SELECT t.created, t.table_id, t.name, t.description, \
                         t.timestamp, dsn.tags_array, dsn.parents, dsn.source_url, \
                         t.schema, t.schema_stale_at, \
-                        t.csv_bucket, t.csv_bucket_path, \
+                        t.migrated_to_csv, \
                         t.remote_database_table_id, t.remote_database_secret_id, \
                         dsn.title, dsn.mime_type, dsn.provider_visibility \
                         FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
@@ -3066,8 +3068,7 @@ impl Store for PostgresStore {
             Option<String>,
             Option<String>,
             Option<i64>,
-            Option<String>,
-            Option<String>,
+            bool,
             Option<String>,
             Option<String>,
             String,
@@ -3092,7 +3093,6 @@ impl Store for PostgresStore {
                 r[0].get(13),
                 r[0].get(14),
                 r[0].get(15),
-                r[0].get(16),
             )),
             _ => unreachable!(),
         };
@@ -3110,8 +3110,7 @@ impl Store for PostgresStore {
                 source_url,
                 schema,
                 schema_stale_at,
-                csv_bucket,
-                csv_bucket_path,
+                migrated_to_csv,
                 remote_database_table_id,
                 remote_database_secret_id,
                 title,
@@ -3147,8 +3146,7 @@ impl Store for PostgresStore {
                     source_url,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
-                    csv_bucket,
-                    csv_bucket_path,
+                    migrated_to_csv,
                     remote_database_table_id,
                     remote_database_secret_id,
                 )))
@@ -3220,7 +3218,7 @@ impl Store for PostgresStore {
             "SELECT t.created, t.table_id, t.name, t.description, \
                     t.timestamp, dsn.tags_array, dsn.parents, \
                     t.schema, t.schema_stale_at, \
-                    t.csv_bucket, t.csv_bucket_path, \
+                    t.migrated_to_csv, \
                     t.remote_database_table_id, t.remote_database_secret_id, \
                     dsn.title, dsn.mime_type, dsn.source_url, dsn.provider_visibility \
                 FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
@@ -3260,14 +3258,13 @@ impl Store for PostgresStore {
                 let parents: Vec<String> = r.get(6);
                 let schema: Option<String> = r.get(7);
                 let schema_stale_at: Option<i64> = r.get(8);
-                let csv_bucket: Option<String> = r.get(9);
-                let csv_file_path: Option<String> = r.get(10);
-                let remote_database_table_id: Option<String> = r.get(11);
-                let remote_database_secret_id: Option<String> = r.get(12);
-                let title: String = r.get(13);
-                let mime_type: String = r.get(14);
-                let source_url: Option<String> = r.get(15);
-                let provider_visibility: Option<ProviderVisibility> = r.get(16);
+                let migrated_to_csv: bool = r.get(9);
+                let remote_database_table_id: Option<String> = r.get(10);
+                let remote_database_secret_id: Option<String> = r.get(11);
+                let title: String = r.get(12);
+                let mime_type: String = r.get(13);
+                let source_url: Option<String> = r.get(14);
+                let provider_visibility: Option<ProviderVisibility> = r.get(15);
 
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -3298,8 +3295,7 @@ impl Store for PostgresStore {
                     source_url,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
-                    csv_bucket,
-                    csv_file_path,
+                    migrated_to_csv,
                     remote_database_table_id,
                     remote_database_secret_id,
                 ))
