@@ -1,6 +1,9 @@
 use clap::Parser;
 use dust::{
-    databases::table::get_table_unique_id,
+    databases::{
+        table::{get_table_unique_id, Table},
+        table_schema::TableSchema,
+    },
     databases_store::store::{DatabasesStore, PostgresDatabasesStore},
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
@@ -104,7 +107,7 @@ async fn process_tables_batch(
             SELECT t.id, t.table_id, t.schema, ds.project, ds.data_source_id
                 FROM tables t
                 INNER JOIN data_sources ds ON ds.id = t.data_source
-                WHERE has_file IS NULL AND remote_database_table_id IS NULL
+                WHERE migrated_to_csv IS NULL AND remote_database_table_id IS NULL
                     AND t.id > $1
                 ORDER BY t.id ASC
                 LIMIT $2
@@ -170,21 +173,27 @@ async fn process_one_table(
     println!("**** Unique table id: {}", unique_table_id);
 
     let (rows, _count) = db_store.list_table_rows(&unique_table_id, None).await?;
-    rows.into_iter().for_each(|row| {
-        println!("Row: {:?}", row);
-    });
+    if rows.is_empty() {
+        println!(
+            "No rows found for table with id: {}, table_id: {}",
+            id, table_id
+        );
+        // return Ok(());
+    }
 
-    // store
-    //     .upsert_data_source_table_csv(&project, &data_source_id, &table_id, &schema, &rows)
-    //     .await?;
+    let table_schema = TableSchema::from_rows_async(std::sync::Arc::new(rows.clone())).await?;
 
-    // Set has_file = true to mark that this table has been processed
     store
-        .raw_pool()
-        .get()
-        .await?
-        .execute("UPDATE tables SET has_file = TRUE WHERE id = $1", &[&id])
+        .store_data_source_table_csv(&project, &data_source_id, &table_id, &table_schema, &rows)
         .await?;
+
+    // Set migrated_to_csv = true to mark that this table has been processed
+    // store
+    //     .raw_pool()
+    //     .get()
+    //     .await?
+    //     .execute("UPDATE tables SET migrated_to_csv = TRUE WHERE id = $1", &[&id])
+    //     .await?;
 
     Ok(())
 }
