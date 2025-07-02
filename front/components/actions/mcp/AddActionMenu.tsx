@@ -12,7 +12,7 @@ import { useState } from "react";
 
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type {DefaultRemoteMCPServerConfig} from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import {
   getDefaultRemoteMCPServerByName
 } from "@app/lib/actions/mcp_internal_actions/remote_servers";

@@ -18,7 +18,7 @@ import {
   mcpServersSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type {DefaultRemoteMCPServerConfig} from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import {
