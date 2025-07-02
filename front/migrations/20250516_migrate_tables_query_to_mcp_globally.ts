@@ -2,7 +2,6 @@
 // import fs from "fs";
 // import { Op } from "sequelize";
 //
-// import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 // import { Authenticator } from "@app/lib/auth";
 // import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 // import {
@@ -150,7 +149,8 @@
 //           additionalConfiguration: {},
 //           timeFrame: null,
 //           name:
-//             tablesQueryConfig.name === DEFAULT_TABLES_QUERY_ACTION_NAME
+//             // "query_tables" is the value we used to have in DEFAULT_TABLES_QUERY_ACTION_NAME.
+//             tablesQueryConfig.name === "query_tables"
 //               ? null
 //               : tablesQueryConfig.name,
 //           singleToolDescriptionOverride: tablesQueryConfig.description,
