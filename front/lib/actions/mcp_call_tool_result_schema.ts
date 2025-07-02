@@ -1,3 +1,12 @@
+import {
+  AudioContentSchema,
+  EmbeddedResourceSchema,
+  CallToolResultSchema as OriginalCallToolResultSchema,
+  ImageContentSchema as OriginalImageContentSchema,
+  TextContentSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+
 /**
  * Forked MCP CallToolResult schemas to fix base64 validation circular reference issue.
  *
@@ -34,15 +43,6 @@
  * @see https://github.com/modelcontextprotocol/typescript-sdk for upstream MCP SDK
  */
 
-import { z } from "zod";
-import {
-  CallToolResultSchema as OriginalCallToolResultSchema,
-  TextContentSchema,
-  AudioContentSchema,
-  EmbeddedResourceSchema,
-  ImageContentSchema as OriginalImageContentSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-
 // FORKED: Fixed ImageContentSchema without .base64() validation.
 export const ImageContentSchema = OriginalImageContentSchema.extend({
   /**
@@ -64,10 +64,11 @@ export const ContentBlockSchema = z.union([
 ]);
 
 // FORKED: CallToolResultSchema using our fixed ContentBlockSchema
-export const CallToolResultSchemaWithoutBase64Validation = OriginalCallToolResultSchema.extend({
-  /**
-   * Override content array to use our fixed ContentBlockSchema that doesn't
-   * validate base64 format for images.
-   */
-  content: z.array(ContentBlockSchema).default([]),
-});
+export const CallToolResultSchemaWithoutBase64Validation =
+  OriginalCallToolResultSchema.extend({
+    /**
+     * Override content array to use our fixed ContentBlockSchema that doesn't
+     * validate base64 format for images.
+     */
+    content: z.array(ContentBlockSchema).default([]),
+  });

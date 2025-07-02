@@ -24,6 +24,7 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
+import { CallToolResultSchemaWithoutBase64Validation } from "@app/lib/actions/mcp_call_tool_result_schema";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getInternalMCPServerAvailability,
@@ -69,7 +70,6 @@ import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
-import { CallToolResultSchemaWithoutBase64Validation } from "@app/lib/actions/mcp_call_tool_result_schema";
 
 const MAX_OUTPUT_ITEMS = 128;
 
