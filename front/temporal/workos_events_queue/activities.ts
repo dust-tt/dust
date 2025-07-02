@@ -670,7 +670,16 @@ async function handleGroupDelete(
   );
 
   if (!group) {
-    throw new Error("Group to delete not found");
+    // Group already deleted, log and return success to avoid blocking the workflow
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        directoryId: event.directoryId,
+        groupId: event.id,
+      },
+      "Group to delete not found, likely already deleted"
+    );
+    return;
   }
 
   await group.delete(auth);
