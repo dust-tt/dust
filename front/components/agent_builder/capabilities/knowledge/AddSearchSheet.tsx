@@ -4,7 +4,7 @@ import {
   MultiPageSheet,
   MultiPageSheetContent,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
@@ -58,18 +58,16 @@ export function AddSearchSheet({
     setDataSourceConfigurations(getDataSourceConfigurations(action));
   }, [action]);
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     onClose();
     setDescription("");
     setDataSourceConfigurations({});
     setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
-  }, [onClose]);
+  };
 
-  const hasDataSources = useMemo(() => {
-    return hasDataSourceSelections(dataSourceConfigurations);
-  }, [dataSourceConfigurations]);
+  const hasDataSources = hasDataSourceSelections(dataSourceConfigurations);
 
-  const handleSave = useCallback(() => {
+  const handleSave = () => {
     const searchAction: SearchAgentBuilderAction = {
       id: action?.id || `search_${Date.now()}`,
       type: "SEARCH",
@@ -83,13 +81,13 @@ export function AddSearchSheet({
     };
     onSave(searchAction);
     handleClose();
-  }, [action?.id, description, dataSourceConfigurations, onSave, handleClose]);
+  };
 
-  const handlePageChange = useCallback((pageId: string) => {
+  const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, PAGE_IDS)) {
       setCurrentPageId(pageId);
     }
-  }, []);
+  };
 
   const pages: MultiPageSheetPage[] = [
     {
