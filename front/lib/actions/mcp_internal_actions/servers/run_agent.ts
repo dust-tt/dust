@@ -22,7 +22,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType , Result } from "@app/types";
+import type { AgentConfigurationType, Result } from "@app/types";
 import { isGlobalAgentId } from "@app/types";
 import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
 
@@ -64,28 +64,29 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   name: string;
   description: string;
 } | null> {
-  const owner = auth.getNonNullableWorkspace();
-
-  let agentConfiguration: AgentConfigurationType | AgentConfiguration | null;
   if (isGlobalAgentId(agentId)) {
     const metadata = getGlobalAgentMetadata(agentId);
+
     if (!metadata) {
       return null;
     }
+
     return {
       name: metadata.name,
       description: metadata.description,
     };
-  } else {
-    agentConfiguration = await AgentConfiguration.findOne({
-      where: {
-        sId: agentId,
-        workspaceId: owner.id,
-        status: "active",
-      },
-      attributes: ["name", "description"],
-    });
   }
+
+  const owner = auth.getNonNullableWorkspace();
+
+  const agentConfiguration = await AgentConfiguration.findOne({
+    where: {
+      sId: agentId,
+      workspaceId: owner.id,
+      status: "active",
+    },
+    attributes: ["name", "description"],
+  });
 
   if (!agentConfiguration) {
     return null;
