@@ -29,10 +29,7 @@ import {
   AgentProcessAction,
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
-import {
-  AgentReasoningAction,
-  AgentReasoningConfiguration,
-} from "@app/lib/models/assistant/actions/reasoning";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
@@ -244,23 +241,6 @@ export async function deleteAgentsActivity({
       where: {
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-      },
-    });
-
-    const mcpReasoningConfigurations =
-      await AgentReasoningConfiguration.findAll({
-        where: {
-          mcpServerConfigurationId: {
-            [Op.in]: mcpServerConfigurations.map((r) => r.id),
-          },
-        },
-      });
-
-    await AgentReasoningAction.destroy({
-      where: {
-        reasoningConfigurationId: {
-          [Op.in]: mcpReasoningConfigurations.map((r) => `${r.id}`),
         },
       },
     });

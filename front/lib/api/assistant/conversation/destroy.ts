@@ -10,7 +10,6 @@ import {
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
@@ -43,9 +42,6 @@ async function destroyActionsRelatedResources(
     where: { agentMessageId: agentMessageIds },
   });
   await AgentConversationIncludeFileAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentReasoningAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
 
