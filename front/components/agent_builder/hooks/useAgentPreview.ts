@@ -1,8 +1,9 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import { isEqual } from "lodash";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
+import { useDebounce } from "@app/hooks/useDebounce";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
@@ -38,12 +39,21 @@ export function usePreviewAgent() {
 
   const sendNotification = useSendNotification();
   const lastFormDataRef = useRef<AgentBuilderFormData>(formData);
-  const nameDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastDebouncedNameRef = useRef<string>(
+    formData.agentSettings.name || ""
+  );
 
-  // Memoize the form data to check for meaningful content
-  const hasContent = useMemo(() => {
-    return formData.instructions?.trim() || formData.actions.length > 0;
-  }, [formData.instructions, formData.actions.length]);
+  const { debouncedValue: debouncedAgentName, setValue: setAgentNameValue } =
+    useDebounce(formData.agentSettings.name || "", {
+      delay: 1000,
+    });
+
+  useEffect(() => {
+    setAgentNameValue(formData.agentSettings.name || "");
+  }, [formData.agentSettings.name, setAgentNameValue]);
+
+  const hasContent =
+    formData.instructions?.trim() || formData.actions.length > 0;
 
   const createDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -93,7 +103,7 @@ export function usePreviewAgent() {
       setIsSavingDraftAgent(false);
 
       return aRes.value;
-    }, [draftAgent, owner, formData, mcpServerViews, sendNotification]);
+    }, [owner, mcpServerViews, sendNotification, formData, draftAgent]);
 
   useEffect(() => {
     const createDraftAgentIfNeeded = async () => {
@@ -127,32 +137,61 @@ export function usePreviewAgent() {
 
   // Debounced draft creation for agent name changes
   useEffect(() => {
-    const previousName = lastFormDataRef.current.agentSettings.name;
-    const currentName = formData.agentSettings.name;
+    const previousName = lastDebouncedNameRef.current;
+    const currentName = debouncedAgentName;
 
     // Only trigger debounced creation if name changed and we have content
     if (previousName !== currentName && currentName?.trim() && hasContent) {
-      if (nameDebounceTimeoutRef.current) {
-        clearTimeout(nameDebounceTimeoutRef.current);
-      }
+      // Force creation of new draft with debounced name by temporarily updating formData
+      const createDraftWithDebouncedName = async () => {
+        setIsSavingDraftAgent(true);
+        setDraftCreationFailed(false);
 
-      nameDebounceTimeoutRef.current = setTimeout(() => {
-        void createDraftAgent();
-      }, 1000);
+        const aRes = await submitAgentBuilderForm({
+          formData: {
+            ...formData,
+            agentSettings: {
+              ...formData.agentSettings,
+              name: currentName || "Draft Agent",
+              description:
+                formData.agentSettings.description || "Draft Agent for Testing",
+              pictureUrl:
+                formData.agentSettings.pictureUrl ||
+                "https://dust.tt/static/assistants/logo.svg",
+            },
+          },
+          owner,
+          mcpServerViews,
+          agentConfigurationId: null,
+          isDraft: true,
+        });
+
+        if (!aRes.isOk()) {
+          sendNotification({
+            title: "Error saving Draft Agent",
+            description: aRes.error.message,
+            type: "error",
+          });
+          setIsSavingDraftAgent(false);
+          setDraftCreationFailed(true);
+          return;
+        }
+
+        setDraftAgent(aRes.value);
+        lastDebouncedNameRef.current = currentName;
+        setIsSavingDraftAgent(false);
+      };
+
+      void createDraftWithDebouncedName();
     }
-  }, [formData.agentSettings.name, hasContent, createDraftAgent]);
-
-  useEffect(() => {
-    return () => {
-      // Cleanup debounce timeout on unmount
-      if (nameDebounceTimeoutRef.current) {
-        clearTimeout(nameDebounceTimeoutRef.current);
-      }
-      // Note: We don't delete the draft agent here as it may be referenced
-      // in conversations. Draft agents are cleaned up by a background process
-      // that only removes unused drafts.
-    };
-  }, []);
+  }, [
+    debouncedAgentName,
+    hasContent,
+    formData,
+    owner,
+    mcpServerViews,
+    sendNotification,
+  ]);
 
   return {
     draftAgent,
@@ -180,10 +219,7 @@ export function useTryAgentCore({
   );
   const sendNotification = useSendNotification();
 
-  // Memoize the conversation title to avoid unnecessary string concatenation
-  const conversationTitle = useMemo(() => {
-    return `Trying @${agent?.name || "your agent"}`;
-  }, [agent?.name]);
+  const conversationTitle = `Trying @${agent?.name || "your agent"}`;
 
   const handleSubmit = async (
     input: string,

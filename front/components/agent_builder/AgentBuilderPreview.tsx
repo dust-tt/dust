@@ -14,13 +14,12 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useUser } from "@app/lib/swr/user";
 
-function EmptyState({
-  message,
-  description,
-}: {
+interface EmptyStateProps {
   message: string;
   description: string;
-}) {
+}
+
+function EmptyState({ message, description }: EmptyStateProps) {
   return (
     <div className="flex h-full min-h-0 items-center justify-center">
       <div className="px-4 text-center">
@@ -33,7 +32,11 @@ function EmptyState({
   );
 }
 
-function LoadingState({ message }: { message: string }) {
+interface LoadingStateProps {
+  message: string;
+}
+
+function LoadingState({ message }: LoadingStateProps) {
   return (
     <div className="flex h-full min-h-0 items-center justify-center">
       <div className="flex items-center gap-3">
