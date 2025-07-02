@@ -39,7 +39,6 @@ export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION = `The ta
 
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
-export const DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION = `Search within the 'searchable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;
 
 export const DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME =
   "extract_conversation_files";
