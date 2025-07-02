@@ -9,14 +9,16 @@ import type {
 // future based on user feedback.
 export const PROCESS_ACTION_TOP_K = 768;
 
+export const DEFAULT_BROWSE_ACTION_NAME = "browse";
+export const DEFAULT_BROWSE_ACTION_DESCRIPTION =
+  "Browse the content of a web page";
+
 export const DEFAULT_PROCESS_ACTION_NAME =
   "extract_structured_data_from_data_sources";
 
-export const DEFAULT_RETRIEVAL_ACTION_NAME = "semantic_search";
-export const DEFAULT_RETRIEVAL_ACTION_DESCRIPTION =
-  "Search the data sources specified by the user." +
-  " The search is based on semantic similarity between the query and chunks of information" +
-  " from the data sources.";
+export const DEFAULT_RETRIEVAL_ACTION_NAME = "search_data_sources";
+
+export const DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME = "include_data_sources";
 
 export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search_&_browse";
 export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION =
