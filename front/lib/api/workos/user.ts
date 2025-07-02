@@ -23,7 +23,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, Ok, sha256 } from "@app/types";
+import { Err, normalizeError, Ok, sha256 } from "@app/types";
 
 export type SessionCookie = {
   sessionData: string;
@@ -315,4 +315,16 @@ export async function fetchOrCreateWorkOSUserWithEmail({
   localLogger.info("Found WorkOS user for webhook event.");
 
   return new Ok(existingUser);
+}
+
+export async function deleteUserFromWorkOS(
+  userId: string
+): Promise<Result<undefined, Error>> {
+  try {
+    await getWorkOS().userManagement.deleteUser(userId);
+    return new Ok(undefined);
+  } catch (error) {
+    logger.error({ error }, "Failed to delete user from WorkOS");
+    return new Err(normalizeError(error));
+  }
 }

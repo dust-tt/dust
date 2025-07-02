@@ -219,9 +219,6 @@ async function handleUserMessageEvents(
             case "dust_app_run_params":
             case "generation_tokens":
             case "process_params":
-            case "reasoning_started":
-            case "reasoning_thinking":
-            case "reasoning_tokens":
             case "search_labels_params":
             case "tables_query_model_output":
             case "tables_query_output":
@@ -392,9 +389,6 @@ export async function retryAgentMessageWithPubSub(
               case "dust_app_run_params":
               case "generation_tokens":
               case "process_params":
-              case "reasoning_started":
-              case "reasoning_thinking":
-              case "reasoning_tokens":
               case "search_labels_params":
               case "tables_query_model_output":
               case "tables_query_output":

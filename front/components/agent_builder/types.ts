@@ -18,15 +18,24 @@ export type DataVisualizationAgentBuilderAction = Extract<
   { type: "DATA_VISUALIZATION" }
 >;
 
+export type IncludeDataAgentBuilderAction = Extract<
+  AgentBuilderAction,
+  { type: "INCLUDE_DATA" }
+>;
+
 export type SearchActionConfiguration =
   SearchAgentBuilderAction["configuration"];
 
 export type DataVisualizationActionConfiguration =
   DataVisualizationAgentBuilderAction["configuration"];
 
+export type IncludeDataActionConfiguration =
+  IncludeDataAgentBuilderAction["configuration"];
+
 export type AgentBuilderActionConfiguration =
   | SearchActionConfiguration
-  | DataVisualizationActionConfiguration;
+  | DataVisualizationActionConfiguration
+  | IncludeDataActionConfiguration;
 
 // Type guards
 export function isSearchAction(
@@ -41,8 +50,14 @@ export function isDataVisualizationAction(
   return action.type === "DATA_VISUALIZATION";
 }
 
+export function isIncludeDataAction(
+  action: AgentBuilderAction
+): action is IncludeDataAgentBuilderAction {
+  return action.type === "INCLUDE_DATA";
+}
+
 // Knowledge server names that require configuration sheets
-export const KNOWLEDGE_SERVER_NAMES = ["search"] as const;
+export const KNOWLEDGE_SERVER_NAMES = ["search", "include_data"] as const;
 export type KnowledgeServerName = (typeof KNOWLEDGE_SERVER_NAMES)[number];
 
 export function isKnowledgeServerName(

@@ -1,10 +1,11 @@
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
-import { CONFIG } from "./config.js";
+import { CONFIG, getProjectIds } from "./config.js";
 
 export interface Secrets {
-  webhookSecret: string;
-  usSecret: string;
   euSecret: string;
+  slackSigningSecret: string;
+  usSecret: string;
+  webhookSecret: string;
 }
 
 export class SecretManager {
@@ -38,9 +39,10 @@ export class SecretManager {
         source: "environment",
       });
       return {
-        webhookSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
-        usSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
         euSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
+        slackSigningSecret: CONFIG.SLACK_SIGNING_SECRET ?? "",
+        usSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
+        webhookSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
       };
     }
 
@@ -54,30 +56,39 @@ export class SecretManager {
 
   private async loadFromSecretManager(): Promise<Secrets> {
     const { GCP_GLOBAL_PROJECT_ID, GCP_US_PROJECT_ID, GCP_EU_PROJECT_ID } =
-      CONFIG;
+      getProjectIds();
 
     if (!GCP_GLOBAL_PROJECT_ID || !GCP_US_PROJECT_ID || !GCP_EU_PROJECT_ID) {
       throw new Error("Missing required project environment variables");
     }
 
     try {
-      const [webhookSecretResponse, usSecretResponse, euSecretResponse] =
-        await Promise.all([
-          this.client.accessSecretVersion({
-            name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
-          }),
-          this.client.accessSecretVersion({
-            name: `projects/${GCP_US_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
-          }),
-          this.client.accessSecretVersion({
-            name: `projects/${GCP_EU_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
-          }),
-        ]);
+      const [
+        webhookSecretResponse,
+        usSecretResponse,
+        euSecretResponse,
+        slackSigningSecretResponse,
+      ] = await Promise.all([
+        this.client.accessSecretVersion({
+          name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
+        }),
+        this.client.accessSecretVersion({
+          name: `projects/${GCP_US_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
+        }),
+        this.client.accessSecretVersion({
+          name: `projects/${GCP_EU_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
+        }),
+        this.client.accessSecretVersion({
+          name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.SLACK_SIGNING_SECRET_NAME}/versions/latest`,
+        }),
+      ]);
 
       return {
         webhookSecret: webhookSecretResponse[0].payload?.data?.toString() || "",
         usSecret: usSecretResponse[0].payload?.data?.toString() || "",
         euSecret: euSecretResponse[0].payload?.data?.toString() || "",
+        slackSigningSecret:
+          slackSigningSecretResponse[0].payload?.data?.toString() || "",
       };
     } catch (error) {
       console.error("Failed to load secrets from Secret Manager", {

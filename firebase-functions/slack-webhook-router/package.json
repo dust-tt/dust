@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "Slack webhook router for multi-region deployment.",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/firebase.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "npm run build && PORT=8081 node dist/index.js",
+    "start": "npm run build && firebase emulators:start --only functions",
+    "dev": "npm run start",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "deploy": "./deploy.sh"
@@ -15,11 +15,14 @@
   "author": "Dust",
   "license": "ISC",
   "engines": {
-    "node": ">=20.19.0"
+    "node": "20"
   },
   "dependencies": {
     "@google-cloud/secret-manager": "^5.6.0",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "firebase-admin": "^13.4.0",
+    "firebase-functions": "^6.3.2",
+    "raw-body": "^3.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

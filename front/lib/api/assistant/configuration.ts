@@ -12,7 +12,6 @@ import { fetchBrowseActionConfigurations } from "@app/lib/actions/configuration/
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
-import { fetchReasoningActionConfigurations } from "@app/lib/actions/configuration/reasoning";
 import { fetchTableQueryActionConfigurations } from "@app/lib/actions/configuration/table_query";
 import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configuration/websearch";
 import {
@@ -511,7 +510,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     tableQueryActionsConfigurationsPerAgent,
     websearchActionsConfigurationsPerAgent,
     browseActionsConfigurationsPerAgent,
-    reasoningActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
     tagsPerAgent,
@@ -521,7 +519,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
     fetchWebsearchActionConfigurations(auth, { configurationIds, variant }),
     fetchBrowseActionConfigurations(auth, { configurationIds, variant }),
-    fetchReasoningActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
@@ -560,11 +557,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       const processActionsConfigurations =
         processActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...processActionsConfigurations);
-
-      // Reasoning configurations
-      const reasoningActionsConfigurations =
-        reasoningActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...reasoningActionsConfigurations);
 
       // MCP server configurations
       const mcpServerActionsConfigurations =
@@ -982,7 +974,7 @@ export async function createAgentConfiguration(
           if (result.isErr()) {
             logger.error(
               {
-                workspaceId: owner.id,
+                workspaceId: owner.sId,
                 agentConfigurationId: existingAgent.sId,
               },
               `Error adding group to agent ${existingAgent.sId}: ${result.error}`

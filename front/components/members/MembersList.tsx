@@ -139,7 +139,10 @@ const memberColumns = [
     cell: (info: Info) => {
       return (
         <DataTable.CellContent>
-          {info.row.original.status}
+          {info.row.original.status +
+            (info.row.original.origin
+              ? ` (${_.capitalize(info.row.original.origin)})`
+              : "")}
         </DataTable.CellContent>
       );
     },
@@ -155,6 +158,16 @@ const memberColumns = [
   },
 ];
 
+interface MembersListProps {
+  currentUser: UserType | null;
+  membersData: MembersData;
+  onRowClick: (user: UserTypeWithWorkspace) => void;
+  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
+  showColumns: ("name" | "email" | "role" | "remove" | "status" | "groups")[];
+  pagination?: PaginationState;
+  setPagination?: (pagination: PaginationState) => void;
+}
+
 export function MembersList({
   currentUser,
   membersData,
@@ -163,15 +176,7 @@ export function MembersList({
   showColumns,
   pagination,
   setPagination,
-}: {
-  currentUser: UserType | null;
-  membersData: MembersData;
-  onRowClick: (user: UserTypeWithWorkspace) => void;
-  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
-  showColumns: ("name" | "email" | "role" | "remove" | "status" | "groups")[];
-  pagination?: PaginationState;
-  setPagination?: (pagination: PaginationState) => void;
-}) {
+}: MembersListProps) {
   assert(
     !showColumns.includes("remove") || onRemoveMemberClick,
     "onRemoveMemberClick is required if remove column is shown"

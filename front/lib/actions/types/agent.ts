@@ -24,10 +24,6 @@ import type {
   ProcessConfigurationType,
 } from "@app/lib/actions/process";
 import type {
-  ReasoningActionRunningEvents,
-  ReasoningConfigurationType,
-} from "@app/lib/actions/reasoning";
-import type {
   SearchLabelsActionRunningEvents,
   SearchLabelsConfigurationType,
 } from "@app/lib/actions/search_labels";
@@ -47,7 +43,6 @@ export type AgentActionConfigurationType =
   | BrowseConfigurationType
   | DustAppRunConfigurationType
   | ProcessConfigurationType
-  | ReasoningConfigurationType
   | TablesQueryConfigurationType
   | WebsearchConfigurationType
   | MCPServerConfigurationType;
@@ -71,7 +66,6 @@ export function isActionConfigurationType(
     case "browse_configuration":
     case "dust_app_run_configuration":
     case "process_configuration":
-    case "reasoning_configuration":
     case "tables_query_configuration":
     case "websearch_configuration":
     case "mcp_configuration":
@@ -188,7 +182,6 @@ export type AgentActionSpecificEvent =
   | ConversationIncludeFileActionRunningEvents
   | DustAppRunActionRunningEvents
   | ProcessActionRunningEvents
-  | ReasoningActionRunningEvents
   | SearchLabelsActionRunningEvents
   | TablesQueryActionRunningEvents
   | WebsearchActionRunningEvents

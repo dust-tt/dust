@@ -1,3 +1,4 @@
+import { IncomingHttpHeaders } from "http";
 import { CONFIG } from "./config.js";
 import type { Secrets } from "./secrets.js";
 
@@ -8,10 +9,12 @@ export class WebhookForwarder {
     body,
     endpoint,
     method,
+    headers,
   }: {
     body: unknown;
     endpoint: string;
     method: string;
+    headers: IncomingHttpHeaders;
   }): Promise<void> {
     const targets = [
       {
@@ -27,7 +30,7 @@ export class WebhookForwarder {
     ];
 
     const requests = targets.map((target) =>
-      this.forwardToTarget({ target, endpoint, method, body })
+      this.forwardToTarget({ target, endpoint, method, body, headers })
     );
 
     await Promise.allSettled(requests);
@@ -38,11 +41,13 @@ export class WebhookForwarder {
     endpoint,
     method,
     target,
+    headers,
   }: {
     body: unknown;
     endpoint: string;
     method: string;
     target: { region: string; url: string; secret: string };
+    headers: IncomingHttpHeaders;
   }): Promise<void> {
     try {
       const response = await this.createRequest({
@@ -51,6 +56,7 @@ export class WebhookForwarder {
         endpoint,
         method,
         secret: target.secret,
+        headers,
       });
 
       console.log("Webhook forwarding succeeded", {
@@ -75,19 +81,24 @@ export class WebhookForwarder {
     endpoint,
     method,
     secret,
+    headers,
   }: {
     baseUrl: string;
     body: unknown;
     endpoint: string;
     method: string;
     secret: string;
+    headers: IncomingHttpHeaders;
   }): Promise<Response> {
     const url = `${baseUrl}/webhooks/${secret}/${endpoint}`;
 
+    // Forward with original content-type and appropriate body format.
     return fetch(url, {
       method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": headers["content-type"] || "application/json",
+      },
+      body: typeof body === "string" ? body : JSON.stringify(body),
       signal: AbortSignal.timeout(CONFIG.FETCH_TIMEOUT_MS),
     });
   }

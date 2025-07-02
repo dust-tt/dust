@@ -625,6 +625,7 @@ export async function syncDeltaForRootNodesInDrive({
     logger,
     client,
     node,
+    heartbeat,
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
 
@@ -688,7 +689,14 @@ export async function syncDeltaForRootNodesInDrive({
       if (driveItem.deleted) {
         // no need to delete children here since they will all be listed
         // in the delta with the 'deleted' field set
-        await deleteFolder({ connectorId, dataSourceConfig, internalId });
+        // we can delete, even if it is not a root node, because microsoft
+        // tells us the client has already deleted the folder
+        await deleteFolder({
+          connectorId,
+          dataSourceConfig,
+          internalId,
+          deleteRootNode: true,
+        });
       } else {
         const isMoved = await isFolderMovedInSameRoot({
           connectorId,
@@ -881,10 +889,12 @@ async function getDeltaData({
   logger,
   client,
   node,
+  heartbeat,
 }: {
   logger: LoggerInterface;
   client: Client;
   node: MicrosoftNodeResource;
+  heartbeat: () => void;
 }) {
   if (!node.deltaLink) {
     throw new Error(`No delta link for root node ${node.internalId}`);
@@ -896,17 +906,23 @@ async function getDeltaData({
   );
 
   try {
-    return await getFullDeltaResults(
+    return await getFullDeltaResults({
       logger,
       client,
-      node.internalId,
-      node.deltaLink
-    );
+      parentInternalId: node.internalId,
+      initialDeltaLink: node.deltaLink,
+      heartbeatFunction: heartbeat,
+    });
   } catch (e) {
     if (e instanceof GraphError && e.statusCode === 410) {
       // API is answering 'resync required'
       // we repopulate the delta from scratch
-      return await getFullDeltaResults(logger, client, node.internalId);
+      return await getFullDeltaResults({
+        logger,
+        client,
+        parentInternalId: node.internalId,
+        heartbeatFunction: heartbeat,
+      });
     }
     throw e;
   }

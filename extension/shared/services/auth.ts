@@ -28,13 +28,16 @@ export type StoredUser = UserTypeWithExtensionWorkspaces & {
   dustDomain: string;
   connectionStrategy: SupportedEnterpriseConnectionStrategy | undefined;
   connection?: string;
+  authProvider: "workos" | "auth0";
 };
 
 export type OAuthAuthorizeResponse = {
+  success: true;
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
   authentication_method?: string;
+  provider: "workos" | "auth0";
 };
 
 type AuthErrorCode =
