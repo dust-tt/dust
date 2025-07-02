@@ -4,6 +4,10 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
+import {
+  DEFAULT_RETRIEVAL_ACTION_DESCRIPTION,
+  DEFAULT_RETRIEVAL_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -45,8 +49,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: null,
   documentationUrl: null,
 };
-
-const SEARCH_TOOL_NAME = "semantic_search";
 
 export async function searchFunction({
   query,
@@ -287,33 +289,29 @@ function createServer(
 
   if (!areTagsDynamic) {
     server.tool(
-      SEARCH_TOOL_NAME,
-      "Search the data sources specified by the user." +
-        " The search is based on semantic similarity between the query and chunks of information" +
-        " from the data sources.",
+      DEFAULT_RETRIEVAL_ACTION_NAME,
+      DEFAULT_RETRIEVAL_ACTION_DESCRIPTION,
       commonInputsSchema,
-      withToolLogging(auth, SEARCH_TOOL_NAME, async (args) =>
+      withToolLogging(auth, DEFAULT_RETRIEVAL_ACTION_NAME, async (args) =>
         searchFunction({ ...args, auth, agentLoopContext })
       )
     );
   } else {
     server.tool(
-      SEARCH_TOOL_NAME,
-      "Search the data sources specified by the user." +
-        " The search is based on semantic similarity between the query and chunks of information" +
-        " from the data sources.",
+      DEFAULT_RETRIEVAL_ACTION_NAME,
+      DEFAULT_RETRIEVAL_ACTION_DESCRIPTION,
       {
         ...commonInputsSchema,
         ...tagsInputSchema,
       },
-      withToolLogging(auth, SEARCH_TOOL_NAME, async (args) =>
+      withToolLogging(auth, DEFAULT_RETRIEVAL_ACTION_NAME, async (args) =>
         searchFunction({ ...args, auth, agentLoopContext })
       )
     );
 
     server.tool(
       "find_tags",
-      makeFindTagsDescription(SEARCH_TOOL_NAME),
+      makeFindTagsDescription(DEFAULT_RETRIEVAL_ACTION_NAME),
       findTagsSchema,
       makeFindTagsTool(auth)
     );
