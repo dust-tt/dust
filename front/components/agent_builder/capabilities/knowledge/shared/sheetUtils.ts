@@ -1,5 +1,8 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
+  isExtractDataAction,
   isIncludeDataAction,
   isSearchAction,
 } from "@app/components/agent_builder/types";
@@ -15,7 +18,11 @@ export function getDataSourceConfigurations(
     return {};
   }
 
-  if (isSearchAction(action) || isIncludeDataAction(action)) {
+  if (
+    isSearchAction(action) ||
+    isIncludeDataAction(action) ||
+    isExtractDataAction(action)
+  ) {
     return action.configuration.dataSourceConfigurations;
   }
 
@@ -27,7 +34,7 @@ export function getTimeFrame(action?: AgentBuilderAction): TimeFrame | null {
     return null;
   }
 
-  if (isIncludeDataAction(action)) {
+  if (isIncludeDataAction(action) || isExtractDataAction(action)) {
     return action.configuration.timeFrame;
   }
 
@@ -38,6 +45,18 @@ export function hasDataSourceSelections(
   dataSourceConfigurations: DataSourceViewSelectionConfigurations
 ): boolean {
   return Object.keys(dataSourceConfigurations).length > 0;
+}
+
+export function getJsonSchema(action?: AgentBuilderAction): JSONSchema | null {
+  if (!action) {
+    return null;
+  }
+
+  if (isExtractDataAction(action)) {
+    return action.configuration.jsonSchema;
+  }
+
+  return null;
 }
 
 export function isValidPage<T extends Record<string, string>>(

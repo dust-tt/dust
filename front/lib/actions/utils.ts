@@ -1,5 +1,6 @@
 import {
   ActionIncludeIcon,
+  ActionScanIcon,
   BarChartIcon,
   BoltIcon,
   MagnifyingGlassIcon,
@@ -58,11 +59,20 @@ export const INCLUDE_DATA_SPECIFICATION: ActionSpecification = {
   flag: null,
 };
 
+export const EXTRACT_DATA_SPECIFICATION: ActionSpecification = {
+  label: "Extract Data",
+  description: "Extract structured data from selected data sources",
+  cardIcon: ActionScanIcon,
+  dropDownIcon: ActionScanIcon,
+  flag: null,
+};
+
 // Mapping for action types to their specifications
 export const ACTION_SPECIFICATIONS_MAP = {
   DATA_VISUALIZATION: DATA_VISUALIZATION_SPECIFICATION,
   SEARCH: SEARCH_SPECIFICATION,
   INCLUDE_DATA: INCLUDE_DATA_SPECIFICATION,
+  EXTRACT_DATA: EXTRACT_DATA_SPECIFICATION,
 } as const;
 
 export function getActionSpecification(
