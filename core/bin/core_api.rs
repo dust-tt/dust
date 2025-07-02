@@ -3676,9 +3676,7 @@ async fn data_source_stats(
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct DataSourceAndProject {
-    #[serde(rename = "data_source_id")]
     data_source_id: String,
-    #[serde(rename = "project_id")]
     project_id: i64,
 }
 
