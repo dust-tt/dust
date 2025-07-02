@@ -20,6 +20,7 @@ import {
 import { useAgents } from "../../utils/hooks/use_agents.js";
 import { useMe } from "../../utils/hooks/use_me.js";
 import { clearTerminal } from "../../utils/terminal.js";
+import { toolsCache } from "../../utils/toolsCache.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
@@ -136,8 +137,20 @@ const CliChat: FC<CliChatProps> = ({
         return true;
       }
 
+      // For low stake tools, check cache first
+      if (event.stake === "low") {
+        const cachedApproval = toolsCache.getCachedApproval(
+          event.metadata.agentName,
+          event.metadata.mcpServerName,
+          event.metadata.toolName
+        );
+
+        if (cachedApproval !== null) {
+          return cachedApproval;
+        }
+      }
+
       // For low/high stake, prompt user for approval
-      // TODO(adrien): Once cache is merged, allow to never_ask_again the low stake tools
       return new Promise<boolean>((resolve) => {
         setPendingApproval(event);
         setApprovalResolver(() => resolve);
@@ -147,8 +160,27 @@ const CliChat: FC<CliChatProps> = ({
   );
 
   const handleApproval = useCallback(
-    (approved: boolean) => {
+    (approved: boolean, cacheApproval?: boolean) => {
       if (approvalResolver && pendingApproval) {
+        if (pendingApproval.type !== "tool_approve_execution") {
+          console.error(
+            "Unexpected event type for approval handling:",
+            pendingApproval.type
+          );
+          approvalResolver(false);
+          setPendingApproval(null);
+          setApprovalResolver(null);
+          return;
+        }
+        // Cache the approval if requested and it's a low stake tool
+        if (cacheApproval && pendingApproval.stake === "low") {
+          toolsCache.setCachedApproval(
+            pendingApproval.metadata.agentName,
+            pendingApproval.metadata.mcpServerName,
+            pendingApproval.metadata.toolName
+          );
+        }
+
         approvalResolver(approved);
         setPendingApproval(null);
         setApprovalResolver(null);
@@ -1163,8 +1195,8 @@ const CliChat: FC<CliChatProps> = ({
     return (
       <ToolApprovalSelector
         event={pendingApproval}
-        onApproval={(approved) => {
-          handleApproval(approved);
+        onApproval={(approved, cachedApproval) => {
+          handleApproval(approved, cachedApproval);
           void clearTerminal();
         }}
       />
