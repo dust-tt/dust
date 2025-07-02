@@ -54,9 +54,11 @@ export function AddSearchSheet({
     );
 
   useEffect(() => {
-    setDescription(action?.description ?? "");
-    setDataSourceConfigurations(getDataSourceConfigurations(action));
-  }, [action]);
+    if (isOpen) {
+      setDescription(action?.description ?? "");
+      setDataSourceConfigurations(getDataSourceConfigurations(action));
+    }
+  }, [action, isOpen]);
 
   const handleClose = () => {
     onClose();

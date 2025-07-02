@@ -61,10 +61,12 @@ export function AddIncludeDataSheet({
   );
 
   useEffect(() => {
-    setDescription(action?.description ?? "");
-    setDataSourceConfigurations(getDataSourceConfigurations(action));
-    setTimeFrame(getTimeFrame(action));
-  }, [action]);
+    if (isOpen) {
+      setDescription(action?.description ?? "");
+      setDataSourceConfigurations(getDataSourceConfigurations(action));
+      setTimeFrame(getTimeFrame(action));
+    }
+  }, [action, isOpen]);
 
   const handleClose = () => {
     onClose();

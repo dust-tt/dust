@@ -31,6 +31,8 @@ import type {
   TimeFrame,
 } from "@app/types";
 
+const DESCRIPTION_MAX_LENGTH = 800;
+
 const PAGE_IDS = {
   DATA_SOURCE_SELECTION: "data-source-selection",
   CONFIGURATION: "configuration",
@@ -165,7 +167,7 @@ export function AddExtractSheet({
             placeholder="This data contains…"
             value={description}
             onChange={setDescription}
-            maxLength={800}
+            maxLength={DESCRIPTION_MAX_LENGTH}
           />
         </div>
       ),
