@@ -2931,6 +2931,8 @@ impl Store for PostgresStore {
 
         // Read all rows and upload to GCS
         let mut wtr = Writer::from_writer(vec![]);
+        // Write the header row.
+        wtr.write_record(field_names.as_slice())?;
         for row in rows {
             wtr.write_record(row.to_csv_record(&field_names)?.as_slice())?;
         }
