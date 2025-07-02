@@ -2872,6 +2872,10 @@ export interface PostSpaceMembersResponseBody {
   users: Pick<UserType, "sId" | "id" | "email">[];
 }
 
+export interface GetSpaceMembersResponseBody {
+  users: Pick<UserType, "sId" | "email">[];
+}
+
 export interface GetWorkspaceMembersResponseBody {
   users: Pick<UserType, "sId" | "id" | "email">[];
 }
