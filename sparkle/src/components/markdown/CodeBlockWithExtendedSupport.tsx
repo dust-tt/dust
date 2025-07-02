@@ -21,6 +21,7 @@ import {
 } from "@sparkle/components";
 import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
+import { PrettyJsonViewer } from "@sparkle/components/markdown/PrettyJsonViewer";
 import { CommandLineIcon, SparklesIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -285,6 +286,8 @@ export function CodeBlockWithExtendedSupport({
   const validChildrenContent = String(children).trim();
   const [showMermaid, setShowMermaid] = useState<boolean>(false);
   const [isValidMermaid, setIsValidMermaid] = useState<boolean>(false);
+  const [showPrettyJson, setShowPrettyJson] = useState<boolean>(false);
+  const [parsedJson, setParsedJson] = useState<unknown>(null);
   const { isStreaming } = useContext(MarkdownContentContext);
 
   // Detect language from className
@@ -303,28 +306,41 @@ export function CodeBlockWithExtendedSupport({
       : undefined;
 
   useEffect(() => {
-    if (isStreaming || !validChildrenContent || isValidMermaid || showMermaid) {
+    if (isStreaming || !validChildrenContent) {
       return;
     }
 
-    const checkValidMermaid = async () => {
-      try {
-        await mermaid.parse(validChildrenContent);
-        setIsValidMermaid(true);
-        setShowMermaid(true);
-      } catch (e) {
-        setIsValidMermaid(false);
-        setShowMermaid(false);
-      }
-    };
+    // Check for valid Mermaid
+    if (language === "mermaid" && !isValidMermaid && !showMermaid) {
+      const checkValidMermaid = async () => {
+        try {
+          await mermaid.parse(validChildrenContent);
+          setIsValidMermaid(true);
+          setShowMermaid(true);
+        } catch (e) {
+          setIsValidMermaid(false);
+          setShowMermaid(false);
+        }
+      };
+      void checkValidMermaid();
+    }
 
-    void checkValidMermaid();
+    // Check for valid JSON
+    if (language === "json") {
+      try {
+        const parsed = JSON.parse(validChildrenContent);
+        setParsedJson(parsed);
+        setShowPrettyJson(true);
+      } catch (e) {
+        setParsedJson(null);
+        setShowPrettyJson(false);
+      }
+    }
   }, [
     isStreaming,
     isValidMermaid,
     showMermaid,
-    setIsValidMermaid,
-    setShowMermaid,
+    language,
     validChildrenContent,
   ]);
 
@@ -352,6 +368,33 @@ export function CodeBlockWithExtendedSupport({
       >
         {showMermaid ? (
           <MermaidGraph chart={validChildrenContent} />
+        ) : (
+          <CodeBlock className={className} inline={inline}>
+            {children}
+          </CodeBlock>
+        )}
+      </ContentBlockWrapper>
+    );
+  } else if (!inline && language === "json" && parsedJson !== null) {
+    return (
+      <ContentBlockWrapper
+        content={validChildrenContent}
+        getContentToDownload={getContentToDownload}
+        actions={
+          <Button
+            size="xs"
+            variant={"outline"}
+            label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
+            icon={showPrettyJson ? CommandLineIcon : SparklesIcon}
+            onClick={() => setShowPrettyJson(!showPrettyJson)}
+            tooltip={
+              showPrettyJson ? "Switch to Raw JSON" : "Switch to Pretty View"
+            }
+          />
+        }
+      >
+        {showPrettyJson ? (
+          <PrettyJsonViewer data={parsedJson} />
         ) : (
           <CodeBlock className={className} inline={inline}>
             {children}
