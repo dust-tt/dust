@@ -288,7 +288,9 @@ export async function fetchAgentMessageFromConversation(
           break;
         }
       }
-      if (agentMessage) break;
+      if (agentMessage) {
+        break;
+      }
     }
 
     if (!agentMessage) {
