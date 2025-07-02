@@ -32,11 +32,9 @@ type ConversationBaseActionType =
   | "conversation_include_file_action";
 
 export type BaseActionType =
-  | "browse_action"
   | "dust_app_run_action"
   | "process_action"
   | "search_labels_action"
-  | "websearch_action"
   | "tool_action"
   | ConversationBaseActionType;
 

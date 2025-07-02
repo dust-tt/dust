@@ -16,9 +16,7 @@ import {
   isMCPInternalSearch,
   isMCPInternalSlack,
   isMCPInternalWebsearch,
-  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType, AgentMessageType } from "@app/types";
@@ -137,29 +135,14 @@ export function getWebsearchNumResults({
 }: {
   stepActions: ActionConfigurationType[];
 }): number {
-  const websearchActions: WebsearchConfigurationType[] = stepActions.filter(
-    isWebsearchConfiguration
-  );
-
-  const websearchV2Actions = stepActions.filter(isMCPInternalWebsearch);
-
-  const numResults = websearchActions
-    .map(() => {
-      return WEBSEARCH_ACTION_NUM_RESULTS;
-    })
-    .concat(
-      websearchV2Actions.map(() => {
-        return WEBSEARCH_ACTION_NUM_RESULTS;
-      })
-    );
-
-  const totalActions = websearchActions.length + websearchV2Actions.length;
+  const websearchActions = stepActions.filter(isMCPInternalWebsearch);
+  const totalActions = websearchActions.length;
 
   if (totalActions === 0) {
     return 0;
   }
 
-  return Math.ceil(Math.max(...numResults) / totalActions);
+  return Math.ceil(WEBSEARCH_ACTION_NUM_RESULTS / totalActions);
 }
 
 /**
@@ -183,13 +166,8 @@ export function getCitationsCount({
   const action = stepActions[stepActionIndex];
 
   switch (action.type) {
-    case "websearch_configuration":
-      return getWebsearchNumResults({
-        stepActions,
-      });
     case "dust_app_run_configuration":
     case "process_configuration":
-    case "browse_configuration":
     case "conversation_include_file_configuration":
     case "search_labels_configuration":
       return 0;

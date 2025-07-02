@@ -176,6 +176,20 @@ const createServer = (auth: Authenticator): McpServer => {
           "Error generating image."
         );
 
+        if (error instanceof OpenAI.APIError) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text:
+                  `Error generating image. Image generation service error: Status: ` +
+                  `${error.status}, Code: ${error.code}, Message: ${error.message}`,
+              },
+            ],
+          };
+        }
+
         return {
           isError: true,
           content: [

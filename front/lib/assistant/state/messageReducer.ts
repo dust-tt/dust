@@ -158,13 +158,11 @@ export function messageReducer(
       return newState;
     }
 
-    case "browse_params":
     case "conversation_include_file_params":
     case "dust_app_run_block":
     case "dust_app_run_params":
     case "process_params":
     case "search_labels_params":
-    case "websearch_params":
     case "tool_params":
       return {
         ...state,

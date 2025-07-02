@@ -547,8 +547,6 @@ const BaseActionTypeSchema = FlexibleEnumSchema<
   | "dust_app_run_action"
   | "tables_query_action"
   | "process_action"
-  | "websearch_action"
-  | "browse_action"
   | "visualization_action"
 >();
 
@@ -568,17 +566,6 @@ const BrowseActionOutputSchema = z.object({
     })
   ),
 });
-
-const BrowseActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  urls: z.array(z.string()),
-  output: BrowseActionOutputSchema.nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("browse_action"),
-});
-type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
 
 const SearchLabelsActionOutputSchema = z.object({
   tags: z.array(
@@ -876,20 +863,6 @@ const WebsearchActionOutputSchema = z.union([
   }),
 ]);
 
-const WebsearchActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  query: z.string(),
-  output: WebsearchActionOutputSchema.nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("websearch_action"),
-});
-
-export type WebsearchActionPublicType = z.infer<
-  typeof WebsearchActionTypeSchema
->;
-
 const MCPActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
@@ -1085,8 +1058,6 @@ const AgentActionTypeSchema = z.union([
   DustAppRunActionTypeSchema,
   TablesQueryActionTypeSchema,
   ProcessActionTypeSchema,
-  WebsearchActionTypeSchema,
-  BrowseActionTypeSchema,
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
   SearchLabelsActionTypeSchema,
@@ -1196,14 +1167,6 @@ export type ConversationMessageReactionsType = z.infer<
   typeof ConversationMessageReactionsSchema
 >;
 
-const BrowseParamsEventSchema = z.object({
-  type: z.literal("browse_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: BrowseActionTypeSchema,
-});
-
 const ConversationIncludeFileParamsEventSchema = z.object({
   type: z.literal("conversation_include_file_params"),
   created: z.number(),
@@ -1259,14 +1222,6 @@ const TablesQueryOutputEventSchema = z.object({
   configurationId: z.string(),
   messageId: z.string(),
   action: TablesQueryActionTypeSchema,
-});
-
-const WebsearchParamsEventSchema = z.object({
-  type: z.literal("websearch_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: WebsearchActionTypeSchema,
 });
 
 const SearchLabelsParamsEventSchema = z.object({
@@ -1385,7 +1340,6 @@ const AgentErrorEventSchema = z.object({
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
 const AgentActionSpecificEventSchema = z.union([
-  BrowseParamsEventSchema,
   ConversationIncludeFileParamsEventSchema,
   DustAppRunBlockEventSchema,
   DustAppRunParamsEventSchema,
@@ -1394,7 +1348,6 @@ const AgentActionSpecificEventSchema = z.union([
   TablesQueryModelOutputEventSchema,
   TablesQueryOutputEventSchema,
   TablesQueryStartedEventSchema,
-  WebsearchParamsEventSchema,
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
@@ -2632,12 +2585,6 @@ export type CancelMessageGenerationRequestType = z.infer<
 
 // Typeguards.
 
-export function isWebsearchActionType(
-  action: AgentActionPublicType
-): action is WebsearchActionPublicType {
-  return action.type === "websearch_action";
-}
-
 export function isMCPActionType(
   action: AgentActionPublicType
 ): action is MCPActionPublicType {
@@ -2660,12 +2607,6 @@ export function isProcessActionType(
   action: AgentActionPublicType
 ): action is ProcessActionPublicType {
   return action.type === "process_action";
-}
-
-export function BrowseActionPublicType(
-  action: AgentActionPublicType
-): action is BrowseActionPublicType {
-  return action.type === "browse_action";
 }
 
 export function isSearchLabelsActionType(
@@ -2854,14 +2795,12 @@ export const ACTION_RUNNING_LABELS: Record<
   AgentActionPublicType["type"],
   string
 > = {
-  browse_action: "Browsing page",
   conversation_include_file_action: "Reading file",
   conversation_list_files_action: "Listing files",
   dust_app_run_action: "Running App",
   process_action: "Extracting data",
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
-  websearch_action: "Searching the web",
   tool_action: "Using a tool",
 };
 
