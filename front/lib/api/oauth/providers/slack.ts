@@ -203,7 +203,12 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
     return extraConfig;
   }
 
-  isExtraConfigValid(extraConfig: ExtraConfigType) {
+  isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
+    if (useCase === "personal_actions") {
+      return (
+        Object.keys(extraConfig).length === 1 && "mcp_server_id" in extraConfig
+      );
+    }
     return Object.keys(extraConfig).length === 0;
   }
 
