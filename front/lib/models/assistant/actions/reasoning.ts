@@ -2,7 +2,6 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -18,17 +17,11 @@ export class AgentReasoningConfiguration extends WorkspaceAwareModel<AgentReason
   declare temperature: number | null;
   declare reasoningEffort: AgentReasoningEffort | null;
 
-  // If we have an agentConfigurationId, it means that the agent has the reasoning tool.
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["id"]> | null;
-  // If we have a mcpServerConfigurationId, it means that the MCP server is configured with a reasoning model.
   declare mcpServerConfigurationId: ForeignKey<
     AgentMCPServerConfiguration["id"]
   > | null;
 
   declare sId: string;
-
-  declare name: string | null;
-  declare description: string | null;
 }
 
 AgentReasoningConfiguration.init(
@@ -63,14 +56,6 @@ AgentReasoningConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    description: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-    },
   },
   {
     modelName: "agent_reasoning_configuration",
@@ -78,15 +63,6 @@ AgentReasoningConfiguration.init(
       {
         unique: true,
         fields: ["sId"],
-      },
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
-      {
-        fields: ["agentConfigurationId"],
-      },
-      {
-        fields: ["workspaceId", "agentConfigurationId"],
-        name: "agent_reasoning_config_workspace_id_agent_config_id",
-        concurrently: true,
       },
       {
         fields: ["workspaceId", "mcpServerConfigurationId"],
@@ -97,15 +73,6 @@ AgentReasoningConfiguration.init(
     sequelize: frontSequelize,
   }
 );
-
-AgentConfiguration.hasMany(AgentReasoningConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: true },
-  onDelete: "RESTRICT",
-});
-AgentReasoningConfiguration.belongsTo(AgentConfiguration, {
-  foreignKey: { name: "agentConfigurationId", allowNull: true },
-  onDelete: "RESTRICT",
-});
 
 AgentMCPServerConfiguration.hasMany(AgentReasoningConfiguration, {
   foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
