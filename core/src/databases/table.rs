@@ -348,8 +348,12 @@ impl LocalTable {
         }
     }
 
-    pub fn get_csv_storage_file_path(table_id: &str) -> String {
-        format!("{}.csv", table_id)
+    pub fn get_csv_storage_file_path(
+        project_id: &i64,
+        data_source_id: &str,
+        table_id: &str,
+    ) -> String {
+        format!("project-{}/{}/{}.csv", project_id, data_source_id, table_id)
     }
 
     pub fn from_table(table: Table) -> Result<LocalTable> {

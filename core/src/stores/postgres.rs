@@ -2942,7 +2942,7 @@ impl Store for PostgresStore {
         Object::create(
             &LocalTable::get_bucket()?,
             csv,
-            &LocalTable::get_csv_storage_file_path(&table_id),
+            &LocalTable::get_csv_storage_file_path(&project_id, &data_source_id, &table_id),
             "text/csv",
         )
         .await?;
@@ -2995,7 +2995,7 @@ impl Store for PostgresStore {
         // Remove from GCS.
         match Object::delete(
             LocalTable::get_bucket()?.as_str(),
-            &LocalTable::get_csv_storage_file_path(&table_id),
+            &LocalTable::get_csv_storage_file_path(&project_id, &data_source_id, &table_id),
         )
         .await
         {
