@@ -23,6 +23,8 @@ export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION =
   "Agent can search (Google) and retrieve information from specific websites.";
 
 export const DEFAULT_TABLES_QUERY_ACTION_NAME = "query_tables";
+export const DEFAULT_TABLES_QUERY_ACTION_DESCRIPTION =
+  "Tables, Spreadsheets, Notion DBs (quantitative).";
 
 export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME =
   "list_conversation_files";
