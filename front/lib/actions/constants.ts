@@ -16,8 +16,6 @@ export const DEFAULT_BROWSE_ACTION_DESCRIPTION =
 export const DEFAULT_PROCESS_ACTION_NAME =
   "extract_structured_data_from_data_sources";
 
-export const DEFAULT_RETRIEVAL_ACTION_NAME = "search_data_sources";
-
 export const DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME = "include_data_sources";
 
 export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search_&_browse";

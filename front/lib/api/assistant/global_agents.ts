@@ -3,7 +3,6 @@ import path from "path";
 import { promisify } from "util";
 
 import {
-  DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
@@ -1369,7 +1368,7 @@ function _getManagedDataSourceAgent(
       id: -1,
       sId: agentId + "-search-action",
       type: "mcp_server_configuration",
-      name: DEFAULT_RETRIEVAL_ACTION_NAME,
+      name: "search_data_sources",
       description: `The user's ${connectorProvider} data source.`,
       mcpServerViewId: searchMCPServerView.sId,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
