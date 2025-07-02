@@ -18,7 +18,7 @@ export class AgentReasoningConfiguration extends WorkspaceAwareModel<AgentReason
 
   declare mcpServerConfigurationId: ForeignKey<
     AgentMCPServerConfiguration["id"]
-  > | null;
+  >;
 
   declare sId: string;
 }
@@ -74,10 +74,10 @@ AgentReasoningConfiguration.init(
 );
 
 AgentMCPServerConfiguration.hasMany(AgentReasoningConfiguration, {
-  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
 AgentReasoningConfiguration.belongsTo(AgentMCPServerConfiguration, {
-  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
