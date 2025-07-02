@@ -3618,7 +3618,7 @@ async fn nodes_search(
     )
 }
 
-async fn data_sources_stats(
+async fn data_source_stats(
     Path((project_id, data_source_id)): Path<(i64, String)>,
     State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
@@ -3641,30 +3641,110 @@ async fn data_sources_stats(
             None,
         ),
         Ok(Some(data_source)) => {
+            let data_source_ids = vec![data_source.data_source_id().to_string()];
             match state
                 .search_store
-                .get_data_source_stats(data_source.data_source_id().to_string())
+                .get_data_source_stats(data_source_ids.clone())
                 .await
             {
-                Ok(Some(data_source_stats)) => (
+                Ok((stats, _)) if !stats.is_empty() => (
                     StatusCode::OK,
                     Json(APIResponse {
                         error: None,
                         response: Some(json!({
-                            "data_source": data_source_stats
+                            "data_source": stats[0]
                         })),
                     }),
                 ),
-                Ok(None) => error_response(
+                Ok(_) => error_response(
                     StatusCode::NOT_FOUND,
-                    "data_source_not_found",
-                    &format!("No data source indexed for id `{}`", data_source_id),
+                    "data_sources_not_indexed",
+                    "No data sources indexed",
                     None,
                 ),
                 Err(e) => error_response(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "internal_server_error",
-                    "Failed to get stats relative to data source",
+                    "Failed to get stats relative to data sources",
+                    Some(e),
+                ),
+            }
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DataSourceAndProject {
+    data_source_id: String,
+    project_id: i64,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StatsPayload {
+    query: Vec<DataSourceAndProject>,
+}
+
+async fn data_sources_stats(
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<StatsPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    // Validate payload data sources
+    if payload.query.is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_parameter",
+            "query array cannot be empty",
+            None,
+        );
+    }
+
+    // Convert payload data to project_data_sources format
+    let project_data_sources: Vec<(i64, String)> = payload
+        .query
+        .into_iter()
+        .map(|item| (item.project_id, item.data_source_id))
+        .collect();
+
+    match state
+        .store
+        .load_data_sources(project_data_sources.clone())
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data sources",
+            Some(e),
+        ),
+        Ok(data_sources) if data_sources.is_empty() => error_response(
+            StatusCode::NOT_FOUND,
+            "data_sources_not_found",
+            "No data sources found",
+            None,
+        ),
+        Ok(data_sources) => {
+            let ds_ids: Vec<String> = data_sources
+                .iter()
+                .map(|ds| ds.data_source_id().to_string())
+                .collect();
+
+            match state.search_store.get_data_source_stats(ds_ids).await {
+                Ok((stats, overall_total_size)) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "data_sources": stats,
+                            "overall_total_size": overall_total_size,
+                        })),
+                    }),
+                ),
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to get stats relative to data sources",
                     Some(e),
                 ),
             }
@@ -4299,7 +4379,8 @@ fn main() {
 
         //Search
         .route("/nodes/search", post(nodes_search))
-        .route("/projects/{project_id}/data_sources/{data_source_id}/stats", get(data_sources_stats))
+        .route("/stats", post(data_sources_stats))
+        .route("/projects/{project_id}/data_sources/{data_source_id}/stats", get(data_source_stats))
         .route("/tags/search", post(tags_search))
 
         // Misc
