@@ -22,7 +22,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType, Result } from "@app/types";
+import type { Result } from "@app/types";
 import { isGlobalAgentId } from "@app/types";
 import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
 
