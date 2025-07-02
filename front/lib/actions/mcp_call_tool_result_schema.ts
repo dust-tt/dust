@@ -1,7 +1,7 @@
 import {
   AudioContentSchema,
-  EmbeddedResourceSchema,
   CallToolResultSchema as OriginalCallToolResultSchema,
+  EmbeddedResourceSchema,
   ImageContentSchema as OriginalImageContentSchema,
   TextContentSchema,
 } from "@modelcontextprotocol/sdk/types.js";
