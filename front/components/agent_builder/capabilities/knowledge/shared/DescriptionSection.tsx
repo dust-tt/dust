@@ -1,5 +1,4 @@
 import { TextArea } from "@dust-tt/sparkle";
-import { useMemo } from "react";
 
 interface DescriptionSectionProps {
   title: string;
@@ -22,12 +21,10 @@ export function DescriptionSection({
   helpText,
   maxLength,
 }: DescriptionSectionProps) {
-  const validationError = useMemo(() => {
-    if (maxLength && value.length > maxLength) {
-      return `The description must be less than ${maxLength} characters.`;
-    }
-    return undefined;
-  }, [value, maxLength]);
+  const validationError =
+    maxLength && value.length > maxLength
+      ? `The description must be less than ${maxLength} characters.`
+      : undefined;
   return (
     <div className="space-y-4">
       <div>

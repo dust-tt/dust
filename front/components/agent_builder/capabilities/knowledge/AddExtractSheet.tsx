@@ -5,7 +5,7 @@ import {
   MultiPageSheetContent,
 } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -112,77 +112,64 @@ export function AddExtractSheet({
     }
   };
 
-  const pages: MultiPageSheetPage[] = useMemo(
-    () => [
-      {
-        id: PAGE_IDS.DATA_SOURCE_SELECTION,
-        title: "Data Sources",
-        description: "Choose which data sources to extract data from",
-        icon: ActionScanIcon,
-        content: (
-          <DataSourceViewsSpaceSelector
-            useCase="assistantBuilder"
-            dataSourceViews={supportedDataSourceViews}
-            allowedSpaces={spaces}
-            owner={owner}
-            selectionConfigurations={dataSourceConfigurations}
-            setSelectionConfigurations={setDataSourceConfigurations}
-            viewType="document"
-            isRootSelectable={true}
+  const pages: MultiPageSheetPage[] = [
+    {
+      id: PAGE_IDS.DATA_SOURCE_SELECTION,
+      title: "Data Sources",
+      description: "Choose which data sources to extract data from",
+      icon: ActionScanIcon,
+      content: (
+        <DataSourceViewsSpaceSelector
+          useCase="assistantBuilder"
+          dataSourceViews={supportedDataSourceViews}
+          allowedSpaces={spaces}
+          owner={owner}
+          selectionConfigurations={dataSourceConfigurations}
+          setSelectionConfigurations={setDataSourceConfigurations}
+          viewType="document"
+          isRootSelectable={true}
+        />
+      ),
+    },
+    {
+      id: PAGE_IDS.CONFIGURATION,
+      title: "Configure Extract Data",
+      description:
+        "Set extraction parameters and describe what data to extract",
+      icon: ActionScanIcon,
+      content: (
+        <div className="space-y-6">
+          <TimeFrameSection
+            timeFrame={timeFrame}
+            setTimeFrame={setTimeFrame}
+            actionType="extract"
           />
-        ),
-      },
-      {
-        id: PAGE_IDS.CONFIGURATION,
-        title: "Configure Extract Data",
-        description:
-          "Set extraction parameters and describe what data to extract",
-        icon: ActionScanIcon,
-        content: (
-          <div className="space-y-6">
-            <TimeFrameSection
-              timeFrame={timeFrame}
-              setTimeFrame={setTimeFrame}
-              actionType="extract"
-            />
-            <JsonSchemaSection
-              title="Schema"
-              description="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
-              value={jsonSchema}
-              initialSchemaString={
-                action && getJsonSchema(action)
-                  ? JSON.stringify(getJsonSchema(action), null, 2)
-                  : null
-              }
-              onChange={setJsonSchema}
-              agentInstructions={formValues.instructions}
-              agentDescription={description}
-              owner={owner}
-            />
-            <DescriptionSection
-              title="What's the data?"
-              description="Provide a brief description (maximum 800 characters) of the data content and context to help the agent determine when to utilize it effectively."
-              placeholder="This data contains…"
-              value={description}
-              onChange={setDescription}
-              maxLength={800}
-            />
-          </div>
-        ),
-      },
-    ],
-    [
-      supportedDataSourceViews,
-      spaces,
-      owner,
-      dataSourceConfigurations,
-      timeFrame,
-      jsonSchema,
-      description,
-      formValues.instructions,
-      action,
-    ]
-  );
+          <JsonSchemaSection
+            title="Schema"
+            description="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+            value={jsonSchema}
+            initialSchemaString={
+              action && getJsonSchema(action)
+                ? JSON.stringify(getJsonSchema(action), null, 2)
+                : null
+            }
+            onChange={setJsonSchema}
+            agentInstructions={formValues.instructions}
+            agentDescription={description}
+            owner={owner}
+          />
+          <DescriptionSection
+            title="What's the data?"
+            description="Provide a brief description (maximum 800 characters) of the data content and context to help the agent determine when to utilize it effectively."
+            placeholder="This data contains…"
+            value={description}
+            onChange={setDescription}
+            maxLength={800}
+          />
+        </div>
+      ),
+    },
+  ];
 
   return (
     <MultiPageSheet
