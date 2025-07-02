@@ -506,39 +506,51 @@ async function handler(
       const flags = await getFeatureFlags(owner);
       if (flags.includes("enforce_datasource_quota")) {
         // Enforce plan limits: Datasource quota
-        const [activeSeats, quotaUsed] = await Promise.all([
-          countActiveSeatsInWorkspaceCached(owner.sId),
-          computeWorkspaceOverallSizeCached(auth),
-        ]);
+        try {
+          const [activeSeats, quotaUsed] = await Promise.all([
+            countActiveSeatsInWorkspaceCached(owner.sId),
+            computeWorkspaceOverallSizeCached(auth),
+          ]);
 
-        if (activeSeats && quotaUsed) {
-          if (
-            quotaUsed >
-            (activeSeats + 1) * DATASOURCE_QUOTA_PER_SEAT // +1 because we allow the current upload to go over the limit
-          ) {
-            logger.info(
+          if (activeSeats && quotaUsed) {
+            if (
+              quotaUsed >
+              (activeSeats + 1) * DATASOURCE_QUOTA_PER_SEAT // +1 because we allow the current upload to go over the limit
+            ) {
+              logger.info(
+                {
+                  workspace: owner.sId,
+                  datasource_project_id: dataSource.dustAPIProjectId,
+                  datasource_id: dataSource.dustAPIDataSourceId,
+                  quota_used: quotaUsed,
+                  quota_limit: activeSeats * DATASOURCE_QUOTA_PER_SEAT,
+                },
+                "Datasource quota exceeded for upsert document (overrun expected)"
+              );
+              return apiError(req, res, {
+                status_code: 403,
+                api_error: {
+                  type: "data_source_quota_error",
+                  message: `You are currently using ${fileSizeToHumanReadable(quotaUsed)}/${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} on your current plan.`,
+                },
+              });
+            }
+          } else {
+            logger.warn(
               {
+                active_seats: activeSeats,
+                quota_used: quotaUsed,
                 workspace: owner.sId,
                 datasource_project_id: dataSource.dustAPIProjectId,
                 datasource_id: dataSource.dustAPIDataSourceId,
-                quota_used: quotaUsed,
-                quota_limit: activeSeats * DATASOURCE_QUOTA_PER_SEAT,
               },
-              "Datasource quota exceeded for upsert document (overrun expected)"
+              "Unable to enforce datasource quota"
             );
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "data_source_quota_error",
-                message: `You are currently using ${fileSizeToHumanReadable(quotaUsed)}/${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} on your current plan.`,
-              },
-            });
           }
-        } else {
-          logger.warn(
+        } catch (error) {
+          logger.error(
             {
-              active_seats: activeSeats,
-              quota_used: quotaUsed,
+              error,
               workspace: owner.sId,
               datasource_project_id: dataSource.dustAPIProjectId,
               datasource_id: dataSource.dustAPIDataSourceId,
