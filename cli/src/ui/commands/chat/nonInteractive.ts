@@ -10,6 +10,26 @@ import { normalizeError } from "../../../utils/errors.js";
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
 
+// Event types we handle in the code
+interface BaseEvent {
+  type: string;
+  created?: number;
+  [key: string]: unknown;
+}
+
+interface EventDetail extends BaseEvent {
+  timestamp: number;
+}
+
+interface NonInteractiveOutput {
+  agentId: string;
+  agentAnswer: string;
+  conversationId: string;
+  messageId: string;
+  events?: EventDetail[];
+  agentMessage?: unknown;
+}
+
 export async function sendNonInteractiveMessage(
   message: string,
   selectedAgent: AgentConfiguration,
@@ -124,13 +144,13 @@ export async function sendNonInteractiveMessage(
     }
 
     let fullResponse = "";
-    const eventDetails: any[] = [];
+    const eventDetails: EventDetail[] = [];
     
     for await (const event of streamRes.value.eventStream) {
       // If details flag is set, collect all events
       if (showDetails) {
         eventDetails.push({
-          ...event,
+          ...(event as BaseEvent),
           timestamp: Date.now()
         });
       }
@@ -153,7 +173,7 @@ export async function sendNonInteractiveMessage(
         process.exit(1);
       } else if (event.type === "agent_message_success") {
         // Success - output the result
-        const output: any = {
+        const output: NonInteractiveOutput = {
           agentId: selectedAgent.sId,
           agentAnswer: fullResponse.trim(),
           conversationId: conversation.sId,
