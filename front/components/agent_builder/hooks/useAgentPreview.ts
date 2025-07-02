@@ -55,16 +55,10 @@ export function usePreviewAgent() {
   const hasContent =
     formData.instructions?.trim() || formData.actions.length > 0;
 
-  const createDraftAgent =
-    useCallback(async (): Promise<LightAgentConfigurationType | null> => {
-      // Always create a new draft if form data has changed
-      if (!isEqual(lastFormDataRef.current, formData)) {
-        // Form data has changed, we need to create a new draft
-      } else if (draftAgent) {
-        // Form data hasn't changed and we have a draft, return existing
-        return draftAgent;
-      }
-
+  const createDraftAgentWithName = useCallback(
+    async (
+      overrideName?: string
+    ): Promise<LightAgentConfigurationType | null> => {
       setIsSavingDraftAgent(true);
       setDraftCreationFailed(false);
 
@@ -73,7 +67,7 @@ export function usePreviewAgent() {
           ...formData,
           agentSettings: {
             ...formData.agentSettings,
-            name: formData.agentSettings.name || "Draft Agent",
+            name: overrideName || formData.agentSettings.name || "Draft Agent",
             description:
               formData.agentSettings.description || "Draft Agent for Testing",
             pictureUrl:
@@ -99,11 +93,28 @@ export function usePreviewAgent() {
       }
 
       setDraftAgent(aRes.value);
-      lastFormDataRef.current = formData;
       setIsSavingDraftAgent(false);
-
       return aRes.value;
-    }, [owner, mcpServerViews, sendNotification, formData, draftAgent]);
+    },
+    [owner, mcpServerViews, sendNotification, formData]
+  );
+
+  const createDraftAgent =
+    useCallback(async (): Promise<LightAgentConfigurationType | null> => {
+      // Always create a new draft if form data has changed
+      if (!isEqual(lastFormDataRef.current, formData)) {
+        // Form data has changed, we need to create a new draft
+      } else if (draftAgent) {
+        // Form data hasn't changed and we have a draft, return existing
+        return draftAgent;
+      }
+
+      const result = await createDraftAgentWithName();
+      if (result) {
+        lastFormDataRef.current = formData;
+      }
+      return result;
+    }, [formData, draftAgent, createDraftAgentWithName]);
 
   useEffect(() => {
     const createDraftAgentIfNeeded = async () => {
@@ -142,56 +153,16 @@ export function usePreviewAgent() {
 
     // Only trigger debounced creation if name changed and we have content
     if (previousName !== currentName && currentName?.trim() && hasContent) {
-      // Force creation of new draft with debounced name by temporarily updating formData
       const createDraftWithDebouncedName = async () => {
-        setIsSavingDraftAgent(true);
-        setDraftCreationFailed(false);
-
-        const aRes = await submitAgentBuilderForm({
-          formData: {
-            ...formData,
-            agentSettings: {
-              ...formData.agentSettings,
-              name: currentName || "Draft Agent",
-              description:
-                formData.agentSettings.description || "Draft Agent for Testing",
-              pictureUrl:
-                formData.agentSettings.pictureUrl ||
-                "https://dust.tt/static/assistants/logo.svg",
-            },
-          },
-          owner,
-          mcpServerViews,
-          agentConfigurationId: null,
-          isDraft: true,
-        });
-
-        if (!aRes.isOk()) {
-          sendNotification({
-            title: "Error saving Draft Agent",
-            description: aRes.error.message,
-            type: "error",
-          });
-          setIsSavingDraftAgent(false);
-          setDraftCreationFailed(true);
-          return;
+        const result = await createDraftAgentWithName(currentName);
+        if (result) {
+          lastDebouncedNameRef.current = currentName;
         }
-
-        setDraftAgent(aRes.value);
-        lastDebouncedNameRef.current = currentName;
-        setIsSavingDraftAgent(false);
       };
 
       void createDraftWithDebouncedName();
     }
-  }, [
-    debouncedAgentName,
-    hasContent,
-    formData,
-    owner,
-    mcpServerViews,
-    sendNotification,
-  ]);
+  }, [debouncedAgentName, hasContent, createDraftAgentWithName]);
 
   return {
     draftAgent,

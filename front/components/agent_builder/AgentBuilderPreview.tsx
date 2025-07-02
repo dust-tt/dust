@@ -54,6 +54,9 @@ export function AgentBuilderPreview() {
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
+  const name = useWatch<AgentBuilderFormData, "agentSettings.name">({
+    name: "agentSettings.name",
+  });
 
   const { draftAgent, isSavingDraftAgent, createDraftAgent } =
     usePreviewAgent();
@@ -68,7 +71,7 @@ export function AgentBuilderPreview() {
   const hasContent = instructions.trim();
 
   const renderContent = () => {
-    if (!hasContent) {
+    if (!hasContent || !name) {
       return (
         <EmptyState
           message="Ready to test your agent?"
