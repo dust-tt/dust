@@ -5,7 +5,7 @@ import {
   MultiPageSheetContent,
 } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -77,20 +77,18 @@ export function AddExtractSheet({
     setJsonSchema(getJsonSchema(action));
   }, [action]);
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     onClose();
     setDescription("");
     setDataSourceConfigurations({});
     setTimeFrame(null);
     setJsonSchema(null);
     setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
-  }, [onClose]);
+  };
 
-  const hasDataSources = useMemo(() => {
-    return hasDataSourceSelections(dataSourceConfigurations);
-  }, [dataSourceConfigurations]);
+  const hasDataSources = hasDataSourceSelections(dataSourceConfigurations);
 
-  const handleSave = useCallback(() => {
+  const handleSave = () => {
     const extractDataAction: ExtractDataAgentBuilderAction = {
       id: action?.id || `extract_data_${Date.now()}`,
       type: "EXTRACT_DATA",
@@ -106,21 +104,13 @@ export function AddExtractSheet({
     };
     onSave(extractDataAction);
     handleClose();
-  }, [
-    action?.id,
-    description,
-    dataSourceConfigurations,
-    timeFrame,
-    jsonSchema,
-    onSave,
-    handleClose,
-  ]);
+  };
 
-  const handlePageChange = useCallback((pageId: string) => {
+  const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, PAGE_IDS)) {
       setCurrentPageId(pageId);
     }
-  }, []);
+  };
 
   const pages: MultiPageSheetPage[] = useMemo(
     () => [

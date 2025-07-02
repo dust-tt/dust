@@ -4,7 +4,7 @@ import {
   MultiPageSheet,
   MultiPageSheetContent,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
@@ -66,19 +66,17 @@ export function AddIncludeDataSheet({
     setTimeFrame(getTimeFrame(action));
   }, [action]);
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     onClose();
     setDescription("");
     setDataSourceConfigurations({});
     setTimeFrame(null);
     setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
-  }, [onClose]);
+  };
 
-  const hasDataSources = useMemo(() => {
-    return hasDataSourceSelections(dataSourceConfigurations);
-  }, [dataSourceConfigurations]);
+  const hasDataSources = hasDataSourceSelections(dataSourceConfigurations);
 
-  const handleSave = useCallback(() => {
+  const handleSave = () => {
     const includeDataAction: IncludeDataAgentBuilderAction = {
       id: action?.id || `include_data_${Date.now()}`,
       type: "INCLUDE_DATA",
@@ -93,20 +91,13 @@ export function AddIncludeDataSheet({
     };
     onSave(includeDataAction);
     handleClose();
-  }, [
-    action?.id,
-    description,
-    dataSourceConfigurations,
-    timeFrame,
-    onSave,
-    handleClose,
-  ]);
+  };
 
-  const handlePageChange = useCallback((pageId: string) => {
+  const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, PAGE_IDS)) {
       setCurrentPageId(pageId);
     }
-  }, []);
+  };
 
   const pages: MultiPageSheetPage[] = [
     {
