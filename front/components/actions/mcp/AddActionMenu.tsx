@@ -13,9 +13,7 @@ import { useState } from "react";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import {
-  getDefaultRemoteMCPServerByName
-} from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
@@ -67,7 +65,7 @@ export const AddActionMenu = ({
             <Button
               icon={PlusIcon}
               label="Add MCP Server"
-              onClick={createRemoteMCPServer}
+              onClick={() => createRemoteMCPServer(undefined)}
             />
           }
         />

@@ -336,9 +336,7 @@ export function CreateMCPServerDialog({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="requiresBearerToken">
-                  {defaultServerConfig?.authMethod === "bearer"
-                    ? `${defaultServerConfig.authMethod === "bearer" ? "Bearer Token" : "Authentication"} (Required)`
-                    : "Requires Bearer Token"}
+                  Requires Bearer Token
                 </Label>
                 <div className="flex items-center space-x-2">
                   {!defaultServerConfig && (
