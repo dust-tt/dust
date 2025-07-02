@@ -8,6 +8,7 @@ export interface BaseItem {
 }
 
 interface SelectWithSearchProps<T extends BaseItem> {
+  enableSearch?: boolean;
   selectMultiple?: boolean;
   items: T[];
   onConfirm: (selectedIds: string[]) => void;
@@ -25,6 +26,7 @@ const DEFAULT_SEARCH_PROMPT = "Search Items:";
 const DEFAULT_SELECT_PROMPT = "Select Items";
 
 export const SelectWithSearch = <T extends BaseItem>({
+  enableSearch = true,
   selectMultiple = true,
   items,
   onConfirm,
@@ -41,7 +43,6 @@ export const SelectWithSearch = <T extends BaseItem>({
 }: SelectWithSearchProps<T>) => {
   const { stdout } = useStdout();
   const terminalHeight = stdout?.rows || 24;
-
   const [cursor, setCursor] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectionOrder, setSelectionOrder] = useState<string[]>([]);
@@ -52,24 +53,29 @@ export const SelectWithSearch = <T extends BaseItem>({
     selectionOrder.length > 0
       ? 1 + 1 + 2 + selectionOrder.length // marginTop + header + border + lines
       : 0;
+
   const baseAvailableHeight = Math.max(0, terminalHeight - legRoom);
   const listAvailableHeight = Math.max(
     0,
     baseAvailableHeight - selectedBlockHeight
   );
+
   const dynamicPageSize = Math.max(
     1,
     Math.floor(listAvailableHeight / itemLines)
   );
 
-  const filteredItems = items.filter((item) =>
-    item.label.toLowerCase().startsWith(searchQuery.toLowerCase())
-  );
+  const filteredItems = enableSearch
+    ? items.filter((item) =>
+        item.label.toLowerCase().startsWith(searchQuery.toLowerCase())
+      )
+    : items;
 
   const totalPages = Math.max(
     1,
     Math.ceil(filteredItems.length / dynamicPageSize)
   );
+
   const startIndex = currentPage * dynamicPageSize;
   const endIndex = startIndex + dynamicPageSize;
   const paginatedFilteredItems = filteredItems.slice(startIndex, endIndex);
@@ -86,9 +92,11 @@ export const SelectWithSearch = <T extends BaseItem>({
   }, [filteredItems.length, dynamicPageSize, currentPage]);
 
   useEffect(() => {
-    setCursor(0);
-    setCurrentPage(0);
-  }, [searchQuery]);
+    if (enableSearch) {
+      setCursor(0);
+      setCurrentPage(0);
+    }
+  }, [searchQuery, enableSearch]);
 
   useInput(
     (input, key) => {
@@ -153,9 +161,9 @@ export const SelectWithSearch = <T extends BaseItem>({
             return newSelected;
           });
         }
-      } else if (key.backspace || key.delete) {
+      } else if (enableSearch && (key.backspace || key.delete)) {
         setSearchQuery((prev) => prev.slice(0, -1));
-      } else if (input && !key.ctrl && !key.meta) {
+      } else if (enableSearch && input && !key.ctrl && !key.meta) {
         setSearchQuery((prev) => prev + input);
       }
     },
@@ -164,17 +172,23 @@ export const SelectWithSearch = <T extends BaseItem>({
 
   return (
     <Box flexDirection="column">
-      <Box>
-        <Text>{searchPrompt} </Text>
-        <Text color="cyan">{searchQuery}</Text>
-        <Text color="gray">_</Text>
-      </Box>
-      {searchQuery !== "" && filteredItems.length > 0 && totalPages > 1 && (
-        <Text>
-          Use Up/Down to navigate, Left/Right for pages ({currentPage + 1} /{" "}
-          {totalPages})
-        </Text>
+      {enableSearch && (
+        <Box>
+          <Text>{searchPrompt} </Text>
+          <Text color="cyan">{searchQuery}</Text>
+          <Text color="gray">_</Text>
+        </Box>
       )}
+
+      {((enableSearch && searchQuery !== "" && filteredItems.length > 0) ||
+        !enableSearch) &&
+        totalPages > 1 && (
+          <Text>
+            Use Up/Down to navigate, Left/Right for pages ({currentPage + 1} /{" "}
+            {totalPages})
+          </Text>
+        )}
+
       <Box marginTop={1}>
         <Text bold>
           {selectPrompt}
@@ -183,11 +197,14 @@ export const SelectWithSearch = <T extends BaseItem>({
             : " (Enter to confirm)"}
         </Text>
       </Box>
+
       <Box flexDirection="column" marginTop={1} minHeight={5}>
-        {searchQuery === "" ? (
+        {enableSearch && searchQuery === "" ? (
           <Text color="gray">Type to search...</Text>
         ) : paginatedFilteredItems.length === 0 ? (
-          <Text color="yellow">No matching items found.</Text>
+          <Text color="yellow">
+            {enableSearch ? "No matching items found." : "No items available."}
+          </Text>
         ) : (
           paginatedFilteredItems.map((item, index) => {
             const isSelected = selected.has(item.id);
@@ -218,13 +235,14 @@ export const SelectWithSearch = <T extends BaseItem>({
         </Box>
       )}
 
-      {searchQuery !== "" && totalPages > 1 && (
-        <Box marginTop={1} justifyContent="center">
-          <Text dimColor>
-            --- Page {currentPage + 1} of {totalPages} ---
-          </Text>
-        </Box>
-      )}
+      {((enableSearch && searchQuery !== "") || !enableSearch) &&
+        totalPages > 1 && (
+          <Box marginTop={1} justifyContent="center">
+            <Text dimColor>
+              --- Page {currentPage + 1} of {totalPages} ---
+            </Text>
+          </Box>
+        )}
     </Box>
   );
 };

@@ -7,7 +7,6 @@ import AgentsMCP from "./commands/AgentsMCP.js";
 import Auth from "./commands/Auth.js";
 import Cache from "./commands/Cache.js";
 import Chat from "./commands/Chat.js";
-import LocalDev from "./commands/LocalDev.js";
 import Logout from "./commands/Logout.js";
 import Status from "./commands/Status.js";
 import Help from "./Help.js";
@@ -72,8 +71,6 @@ const App: FC<AppProps> = ({ cli }) => {
       return <Logout />;
     case "agents-mcp":
       return <AgentsMCP port={flags.port} sId={flags.sId} />;
-    case "local-dev":
-      return <LocalDev port={flags.port} />;
     case "chat":
       return (
         <Chat
