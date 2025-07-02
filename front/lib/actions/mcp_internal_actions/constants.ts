@@ -234,9 +234,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   slack: {
     id: 18,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("slack_tool");
-    },
     tools_stakes: {
       search_messages: "never_ask",
       list_users: "never_ask",
