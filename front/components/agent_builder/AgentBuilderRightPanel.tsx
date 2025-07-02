@@ -109,7 +109,7 @@ function ExpandedContent({ selectedTab }: ExpandedContentProps) {
   return (
     <div className="flex flex-1 flex-col">
       {selectedTab === "testing" && (
-        <div className="flex-1">
+        <div className="flex-1 h-full min-h-0">
           <AgentBuilderPreview />
         </div>
       )}

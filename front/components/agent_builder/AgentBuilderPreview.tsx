@@ -22,7 +22,7 @@ function EmptyState({
   description: string;
 }) {
   return (
-    <div className="flex h-full items-center justify-center">
+    <div className="flex h-full min-h-0 items-center justify-center">
       <div className="px-4 text-center">
         <div className="mb-2 text-lg font-medium text-foreground">
           {message}
@@ -35,7 +35,7 @@ function EmptyState({
 
 function LoadingState({ message }: { message: string }) {
   return (
-    <div className="flex h-full items-center justify-center">
+    <div className="flex h-full min-h-0 items-center justify-center">
       <div className="flex items-center gap-3">
         <Spinner />
         <span className="text-muted-foreground">{message}</span>
@@ -91,10 +91,10 @@ export const AgentBuilderPreview = React.memo(function AgentBuilderPreview() {
       );
     }
 
-    // Show the actual conversation interface
+    // Show the actual conversation interface with proper flex layout
     return (
-      <>
-        <div className="flex-grow overflow-y-auto">
+      <div className="flex h-full flex-col">
+        <div className="flex-1 overflow-y-auto">
           {conversation ? (
             <ConversationViewer
               owner={owner}
@@ -111,7 +111,7 @@ export const AgentBuilderPreview = React.memo(function AgentBuilderPreview() {
             />
           )}
         </div>
-        <div className="shrink-0">
+        <div className="flex-shrink-0 border-t border-border">
           <AssistantInputBar
             disableButton={isSavingDraftAgent}
             owner={owner}
@@ -124,7 +124,7 @@ export const AgentBuilderPreview = React.memo(function AgentBuilderPreview() {
             isFloating={false}
           />
         </div>
-      </>
+      </div>
     );
   };
 
