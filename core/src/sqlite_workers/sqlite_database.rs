@@ -299,7 +299,7 @@ async fn create_in_memory_sqlite_db_with_csv(
             let temp_file_path = temp_file.path().to_str().unwrap().to_string();
             let schema = format!(
                 r#"
-                CREATE VIRTUAL TABLE {table_name}
+                CREATE VIRTUAL TABLE "{table_name}"
                 USING csv(filename='{temp_file_path}', header=yes, schema='{create_sql}')
                 "#
             );
