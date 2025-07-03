@@ -27,6 +27,7 @@ const LOGO_SETS = {
     { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
     { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
     { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+    { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
   ],
   b2bSaas: [
     { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
@@ -36,7 +37,7 @@ const LOGO_SETS = {
     },
     { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
     { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
-    { name: "gitguardian", src: "/static/landing/logos/gray/gitguardian.svg" },
+    { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
     { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
   ],
   marketplace: [
