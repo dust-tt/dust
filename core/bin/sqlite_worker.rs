@@ -350,8 +350,9 @@ fn main() {
             .with(tracing_subscriber::EnvFilter::new("info"))
             .init();
 
-        let s = databases_store::store::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
-            .await?;
+        let s =
+            databases_store::postgres::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
+                .await?;
         let databases_store = Box::new(s);
 
         let state = Arc::new(WorkerState::new(databases_store));

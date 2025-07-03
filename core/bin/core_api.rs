@@ -43,8 +43,7 @@ use dust::{
         database::{execute_query, get_tables_schema, QueryDatabaseError},
         table::{LocalTable, Row, Table},
     },
-    databases_store::store as databases_store,
-    dataset,
+    databases_store, dataset,
     deno::js_executor::JSExecutor,
     project,
     providers::provider::{provider, ProviderID},
@@ -74,7 +73,7 @@ struct RunManager {
 
 struct APIState {
     store: Box<dyn store::Store + Sync + Send>,
-    databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>,
+    databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send>,
     qdrant_clients: QdrantClients,
     search_store: Box<dyn SearchStore + Sync + Send>,
     run_manager: Arc<Mutex<RunManager>>,
@@ -83,7 +82,7 @@ struct APIState {
 impl APIState {
     fn new(
         store: Box<dyn store::Store + Sync + Send>,
-        databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send>,
+        databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send>,
         qdrant_clients: QdrantClients,
         search_store: Box<dyn SearchStore + Sync + Send>,
     ) -> Self {
@@ -4101,10 +4100,10 @@ fn main() {
             }
             Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
         };
-        let databases_store: Box<dyn databases_store::DatabasesStore + Sync + Send> =
+        let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
             match std::env::var("DATABASES_STORE_DATABASE_URI") {
                 Ok(db_uri) => {
-                    let s = databases_store::PostgresDatabasesStore::new(&db_uri).await?;
+                    let s = databases_store::postgres::PostgresDatabasesStore::new(&db_uri).await?;
                     Box::new(s)
                 }
                 Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,

@@ -383,7 +383,7 @@ impl LocalTable {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         rows: Vec<Row>,
         truncate: bool,
-    ) -> Result<TableSchema> {
+    ) -> Result<()> {
         let rows = Arc::new(rows);
 
         let mut now = utils::now();
@@ -492,6 +492,36 @@ impl LocalTable {
         );
 
         now = utils::now();
+        // Upload the CSV file to the bucket.
+        if truncate {
+            store
+                .store_data_source_table_csv(
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
+                    &new_table_schema,
+                    &rows,
+                )
+                .await?;
+        } else {
+            if self.table.migrated_to_csv() {
+                store
+                    .delete_data_source_table_csv(
+                        &self.table.project,
+                        &self.table.data_source_id,
+                        &self.table.table_id,
+                    )
+                    .await?;
+            }
+        }
+
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            "DSSTRUCTSTAT [upsert_rows] csv upload"
+        );
+
+        now = utils::now();
         // Invalidate the databases that use the table.
         try_join_all(
             (store
@@ -518,7 +548,7 @@ impl LocalTable {
             "DSSTRUCTSTAT [upsert_rows] invalidate dbs"
         );
 
-        Ok(new_table_schema)
+        Ok(())
     }
 
     pub async fn upsert_csv_content(
@@ -541,44 +571,17 @@ impl LocalTable {
         let csv_parse_duration = utils::now() - now;
 
         let now = utils::now();
-        let schema = self
-            .upsert_rows(
-                store.clone(),
-                databases_store.clone(),
-                rows.clone(),
-                truncate,
-            )
-            .await?;
+        self.upsert_rows(
+            store.clone(),
+            databases_store.clone(),
+            rows.clone(),
+            truncate,
+        )
+        .await?;
         let upsert_duration = utils::now() - now;
-
-        let now = utils::now();
-        if truncate {
-            store
-                .store_data_source_table_csv(
-                    &self.table.project,
-                    &self.table.data_source_id,
-                    &self.table.table_id,
-                    &schema,
-                    &rows,
-                )
-                .await?;
-        } else {
-            if self.table.migrated_to_csv() {
-                store
-                    .delete_data_source_table_csv(
-                        &self.table.project,
-                        &self.table.data_source_id,
-                        &self.table.table_id,
-                    )
-                    .await?;
-            }
-        }
-
-        let csv_upload_duration = utils::now() - now;
 
         info!(
             csv_parse_duration = csv_parse_duration,
-            csv_upload_duration = csv_upload_duration,
             upsert_duration = upsert_duration,
             "CSV upsert"
         );
