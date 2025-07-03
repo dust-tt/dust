@@ -259,10 +259,10 @@ export function DustAppLogsModal({
             ([
               action,
               {
-                app: { appId, workspaceId: appWorkspaceid, appSpaceId },
+                app: { appId, workspaceId: appWorkspaceId, appSpaceId },
               },
             ]) => {
-              const url = `${baseUrl}/w/${appWorkspaceid}/spaces/${appSpaceId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
+              const url = `${baseUrl}/w/${appWorkspaceId}/spaces/${appSpaceId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
 
               return (
                 <div key={appId}>
