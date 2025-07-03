@@ -246,3 +246,7 @@ export const BuilderEmojiSuggestionsResponseBodySchema = t.type({
 export type BuilderEmojiSuggestionsType = t.TypeOf<
   typeof BuilderEmojiSuggestionsResponseBodySchema
 >;
+
+export const InternalPostBuilderGenerateSchemaRequestBodySchema = t.type({
+  instructions: t.string,
+});
