@@ -164,7 +164,7 @@ export async function constructPromptMultiActions(
 
   guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +
-    "When rendering markdown images, ALWAYS rely on the fileId, which will look like this: fil_randomId (e.g., fil_abc123def456)" +
+    "When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding \`<attachment id="\${FILE_ID}" type... name...>\` tag in the conversation history." +
     "and the image title which will be provided." +
     "\nEvery image markdown should follow this pattern ![{title}]({fileId}).\n";
 
