@@ -40,7 +40,10 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
-import type { TextContentType } from "@app/types/assistant/agent_message_content";
+import type {
+  ReasoningContentType,
+  TextContentType,
+} from "@app/types/assistant/agent_message_content";
 
 async function batchRenderUserMessages(
   auth: Authenticator,
@@ -238,14 +241,44 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           textContents.push({ step: content.step, content: content.content });
         }
       }
-      const contentParser = new AgentMessageContentParser(
-        agentConfiguration,
-        message.sId,
-        getDelimitersConfiguration({ agentConfiguration })
-      );
-      const parsedContent = await contentParser.parseContents(
-        textContents.map((r) => r.content.value)
-      );
+      const reasoningContents: Array<{
+        step: number;
+        content: ReasoningContentType;
+      }> = [];
+      for (const content of agentStepContents) {
+        if (content.content.type === "reasoning") {
+          reasoningContents.push({
+            step: content.step,
+            content: content.content,
+          });
+        }
+      }
+
+      const { content, chainOfThought } = await (async () => {
+        if (reasoningContents.length > 0) {
+          // don't use the content parser, we just use raw contents and native CoT
+          return {
+            content: textContents.map((c) => c.content.value).join(""),
+            chainOfThought: reasoningContents
+              .map((sc) => sc.content.value.reasoning)
+              .filter((r) => !!r)
+              .join("\n\n"),
+          };
+        } else {
+          const contentParser = new AgentMessageContentParser(
+            agentConfiguration,
+            message.sId,
+            getDelimitersConfiguration({ agentConfiguration })
+          );
+          const parsedContent = await contentParser.parseContents(
+            textContents.map((r) => r.content.value)
+          );
+          return {
+            content: parsedContent.content,
+            chainOfThought: parsedContent.chainOfThought,
+          };
+        }
+      })();
 
       const m = {
         id: message.id,
@@ -259,8 +292,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           messages.find((m) => m.id === message.parentId)?.sId ?? null,
         status: agentMessage.status,
         actions,
-        content: parsedContent.content,
-        chainOfThought: parsedContent.chainOfThought,
+        content,
+        chainOfThought,
         rawContents: textContents.map((c) => ({
           step: c.step,
           content: c.content.value,
