@@ -164,7 +164,7 @@ export const InputBarAttachmentsPicker = ({
                   e.preventDefault();
                   const firstMenuItem =
                     itemsContainerRef.current?.querySelector(
-                      '[role="menuitem"]'
+                      '[role="menuitemcheckbox"]'
                     );
                   (firstMenuItem as HTMLElement)?.focus();
                 }
