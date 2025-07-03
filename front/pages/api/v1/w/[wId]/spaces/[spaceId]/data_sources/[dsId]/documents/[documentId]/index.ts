@@ -503,29 +503,29 @@ async function handler(
         });
       }
 
-      const flags = await getFeatureFlags(owner);
-      if (flags.includes("enforce_datasource_quota")) {
-        // Enforce plan limits: Datasource quota
-        try {
-          const [activeSeats, quotaUsed] = await Promise.all([
-            countActiveSeatsInWorkspaceCached(owner.sId),
-            computeWorkspaceOverallSizeCached(auth),
-          ]);
+      // Enforce plan limits: Datasource quota
+      try {
+        const [activeSeats, quotaUsed] = await Promise.all([
+          countActiveSeatsInWorkspaceCached(owner.sId),
+          computeWorkspaceOverallSizeCached(auth),
+        ]);
 
-          if (
-            quotaUsed >
-            (activeSeats + 1) * DATASOURCE_QUOTA_PER_SEAT // +1 we allow to go over the limit by one additional seat
-          ) {
-            logger.info(
-              {
-                workspace: owner.sId,
-                datasource_project_id: dataSource.dustAPIProjectId,
-                datasource_id: dataSource.dustAPIDataSourceId,
-                quota_used: quotaUsed,
-                quota_limit: activeSeats * DATASOURCE_QUOTA_PER_SEAT,
-              },
-              "Datasource quota exceeded for upsert document (overrun expected)"
-            );
+        if (
+          quotaUsed >
+          (activeSeats + 1) * DATASOURCE_QUOTA_PER_SEAT // +1 we allow to go over the limit by one additional seat
+        ) {
+          logger.info(
+            {
+              workspace: owner.sId,
+              datasource_project_id: dataSource.dustAPIProjectId,
+              datasource_id: dataSource.dustAPIDataSourceId,
+              quota_used: quotaUsed,
+              quota_limit: activeSeats * DATASOURCE_QUOTA_PER_SEAT,
+            },
+            "Datasource quota exceeded for upsert document (overrun expected)"
+          );
+          const flags = await getFeatureFlags(owner);
+          if (flags.includes("enforce_datasource_quota")) {
             return apiError(req, res, {
               status_code: 403,
               api_error: {
@@ -534,17 +534,17 @@ async function handler(
               },
             });
           }
-        } catch (error) {
-          logger.error(
-            {
-              error,
-              workspace: owner.sId,
-              datasource_project_id: dataSource.dustAPIProjectId,
-              datasource_id: dataSource.dustAPIDataSourceId,
-            },
-            "Unable to enforce datasource quota"
-          );
         }
+      } catch (error) {
+        logger.error(
+          {
+            error,
+            workspace: owner.sId,
+            datasource_project_id: dataSource.dustAPIProjectId,
+            datasource_id: dataSource.dustAPIDataSourceId,
+          },
+          "Unable to enforce datasource quota"
+        );
       }
 
       // Prohibit passing parents when not coming from connectors.
