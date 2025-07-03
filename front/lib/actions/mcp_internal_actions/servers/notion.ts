@@ -818,6 +818,158 @@ const createServer = (
       )
   );
 
+  server.tool(
+    "duplicate_page",
+    "Duplicate a Notion page with all its properties and content. Creates a new page in the same parent location with '(Copy)' appended to the title.",
+    {
+      pageId: z.string().regex(uuidRegex).describe("The ID of the page to duplicate."),
+      newTitle: z.string().optional().describe("Optional new title for the duplicated page. If not provided, '(Copy)' will be appended to the original title."),
+    },
+    async ({ pageId, newTitle }, { authInfo }) => {
+      try {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          throw new Error("No access token found");
+        }
+        const notion = new Client({ auth: accessToken });
+
+        // Step 1: Retrieve the original page
+        const originalPage = await notion.pages.retrieve({ page_id: pageId });
+        
+        if (!isFullPage(originalPage)) {
+          throw new Error("Could not retrieve full page details");
+        }
+
+        // Step 2: Extract parent information and convert to proper format
+        let parent: { page_id: string; type?: "page_id" } | { database_id: string; type?: "database_id" };
+        
+        if (originalPage.parent.type === "page_id") {
+          parent = { page_id: originalPage.parent.page_id, type: "page_id" };
+        } else if (originalPage.parent.type === "database_id") {
+          parent = { database_id: originalPage.parent.database_id, type: "database_id" };
+        } else {
+          throw new Error("Cannot duplicate pages with workspace or block_id parent");
+        }
+
+        // Step 3: Process properties for the new page
+        const newProperties: any = {};
+        
+        for (const [key, value] of Object.entries(originalPage.properties)) {
+          // Skip computed properties
+          if (value.type === "formula" || value.type === "rollup" || value.type === "created_time" || value.type === "last_edited_time" || value.type === "created_by" || value.type === "last_edited_by") {
+            continue;
+          }
+
+          // Handle title property specially
+          if (value.type === "title") {
+            const originalTitle = value.title.length > 0 ? value.title[0].plain_text : "Untitled";
+            const titleText = newTitle || `${originalTitle} (Copy)`;
+            newProperties[key] = {
+              title: [{
+                type: "text",
+                text: { content: titleText }
+              }]
+            };
+          } else {
+            // Copy other properties as-is
+            newProperties[key] = value;
+          }
+        }
+
+        // Step 4: Create the new page with properties, handling icon and cover properly
+        const createPageParams: any = {
+          parent,
+          properties: newProperties,
+        };
+
+        // Handle icon - only copy if it's emoji, external, or custom_emoji (not file)
+        if (originalPage.icon && originalPage.icon.type !== "file") {
+          createPageParams.icon = originalPage.icon;
+        }
+
+        // Handle cover - only copy if it's external (not file)
+        if (originalPage.cover && originalPage.cover.type === "external") {
+          createPageParams.cover = originalPage.cover;
+        }
+
+        const newPage = await notion.pages.create(createPageParams);
+
+        // Step 5: Retrieve and copy all content blocks
+        let hasMore = true;
+        let startCursor: string | undefined = undefined;
+        const allBlocks: any[] = [];
+
+        while (hasMore) {
+          const response = await notion.blocks.children.list({
+            block_id: pageId,
+            start_cursor: startCursor,
+            page_size: 100,
+          });
+
+          allBlocks.push(...response.results);
+          hasMore = response.has_more;
+          startCursor = response.next_cursor || undefined;
+        }
+
+        // Helper function to copy blocks recursively
+        const copyBlocksRecursively = async (blocks: any[], parentBlockId: string) => {
+          for (const block of blocks) {
+            // Remove properties that shouldn't be copied
+            const { id, has_children, ...blockContent } = block;
+
+            try {
+              // Create the new block
+              const newBlock = await notion.blocks.children.append({
+                block_id: parentBlockId,
+                children: [blockContent as BlockObjectRequest],
+              });
+
+              // If the original block has children, copy them recursively
+              if (has_children && newBlock.results && newBlock.results.length > 0) {
+                const childrenResponse = await notion.blocks.children.list({
+                  block_id: id,
+                  page_size: 100,
+                });
+                
+                if (childrenResponse.results.length > 0) {
+                  await copyBlocksRecursively(childrenResponse.results, newBlock.results[0].id);
+                }
+              }
+            } catch (error) {
+              // Some block types might fail to copy, continue with others
+              console.error(`Failed to copy block type ${block.type}:`, error);
+            }
+          }
+        };
+
+        // Copy all blocks to the new page
+        if (allBlocks.length > 0) {
+          await copyBlocksRecursively(allBlocks, newPage.id);
+        }
+
+        // Get the URL for the new page
+        let newPageUrl = "";
+        if ("url" in newPage) {
+          newPageUrl = newPage.url;
+        } else {
+          // Construct URL manually if not available
+          newPageUrl = `https://www.notion.so/${newPage.id.replace(/-/g, "")}`;
+        }
+
+        return makeMCPToolJSONSuccess({
+          message: "Page duplicated successfully",
+          result: JSON.stringify({
+            originalPageId: pageId,
+            newPageId: newPage.id,
+            newPageUrl: newPageUrl,
+          }),
+        });
+      } catch (e) {
+        return makeMCPToolTextError(normalizeError(e).message);
+      }
+    }
+  );
+
   return server;
 };
 
