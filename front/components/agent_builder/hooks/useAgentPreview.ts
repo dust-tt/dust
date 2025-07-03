@@ -3,7 +3,6 @@ import { isEqual } from "lodash";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { useDebounce } from "@app/hooks/useDebounce";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
@@ -12,6 +11,7 @@ import {
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { useDebounce } from "@app/hooks/useDebounce";
 import type { DustError } from "@app/lib/error";
 import type {
   AgentMention,
