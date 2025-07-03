@@ -126,7 +126,7 @@ export function renderTagsForToolOutput(
 
 function renderSearchNodeIds(nodeIds?: string[]): string {
   return nodeIds && nodeIds.length > 0
-    ? ` within nodes ${nodeIds?.join(", ")}`
+    ? `within ${nodeIds.length} different subtrees `
     : "";
 }
 
