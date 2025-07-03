@@ -130,15 +130,20 @@ function renderSearchNodeIds(nodeIds?: string[]): string {
     : "";
 }
 
-export function makeQueryResource(
-  query: string,
-  relativeTimeFrame: TimeFrame | null,
-  tagsIn?: string[],
-  tagsNot?: string[],
-  nodeIds?: string[]
-): SearchQueryResourceType {
-  const timeFrameAsString =
-    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
+export function makeQueryResource({
+  query,
+  timeFrame,
+  tagsIn,
+  tagsNot,
+  nodeIds,
+}: {
+  query: string;
+  timeFrame: TimeFrame | null;
+  tagsIn?: string[];
+  tagsNot?: string[];
+  nodeIds?: string[];
+}): SearchQueryResourceType {
+  const timeFrameAsString = renderRelativeTimeFrameForToolOutput(timeFrame);
   const tagsAsString = renderTagsForToolOutput(tagsIn, tagsNot);
   const nodeIdsAsString = renderSearchNodeIds(nodeIds);
 

@@ -348,7 +348,13 @@ async function searchCallback(
     content: [
       {
         type: "resource" as const,
-        resource: makeQueryResource(query, timeFrame, tagsIn, tagsNot, nodeIds),
+        resource: makeQueryResource({
+          query,
+          timeFrame,
+          tagsIn,
+          tagsNot,
+          nodeIds,
+        }),
       },
       ...(renderedNodes
         ? [{ type: "resource" as const, resource: renderedNodes }]

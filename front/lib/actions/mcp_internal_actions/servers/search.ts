@@ -230,7 +230,7 @@ export async function searchFunction({
       })),
       {
         type: "resource" as const,
-        resource: makeQueryResource(query, timeFrame, tagsIn, tagsNot),
+        resource: makeQueryResource({ query, timeFrame, tagsIn, tagsNot }),
       },
     ],
   };
