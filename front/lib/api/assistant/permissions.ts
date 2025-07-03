@@ -48,7 +48,7 @@ export function getDataSourceViewIdsFromActions(
   actions: UnsavedAgentActionConfigurationType[]
 ): string[] {
   const relevantActions = actions.filter(
-    (action) =>
+    (action): action is ServerSideMCPServerConfigurationType =>
       action.type === "mcp_server_configuration" &&
       isServerSideMCPServerConfiguration(action)
   );
