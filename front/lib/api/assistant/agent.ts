@@ -214,7 +214,6 @@ async function* runMultiActionsAgentLoop(
                 configuration,
                 actionConfiguration: action,
                 conversation,
-                userMessage,
                 agentMessage,
                 inputs,
                 specification,
@@ -1092,8 +1091,6 @@ async function* runAction(
     configuration,
     actionConfiguration,
     conversation,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    userMessage,
     agentMessage,
     inputs,
     specification,
@@ -1106,7 +1103,6 @@ async function* runAction(
     configuration: AgentConfigurationType;
     actionConfiguration: ActionConfigurationType;
     conversation: ConversationType;
-    userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     inputs: Record<string, string | boolean | number>;
     specification: AgentActionSpecification | null;

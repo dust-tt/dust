@@ -55,21 +55,15 @@ export function getDataSourceViewIdsFromActions(
 
   return removeNulls(
     relevantActions.flatMap((action) => {
-      if (
-        action.type === "mcp_server_configuration" &&
-        isServerSideMCPServerConfiguration(action)
-      ) {
-        if (action.dataSources) {
-          return action.dataSources.map(
-            (dataSource) => dataSource.dataSourceViewId
-          );
-        } else if (action.tables) {
-          return action.tables.map((table) => table.dataSourceViewId);
-        } else {
-          return [];
-        }
+      if (action.dataSources) {
+        return action.dataSources.map(
+          (dataSource) => dataSource.dataSourceViewId
+        );
+      } else if (action.tables) {
+        return action.tables.map((table) => table.dataSourceViewId);
+      } else {
+        return [];
       }
-      return [];
     })
   );
 }

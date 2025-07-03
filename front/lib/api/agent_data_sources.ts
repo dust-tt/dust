@@ -766,7 +766,6 @@ export async function getDataSourceUsage({
         workspaceId: owner.id,
         dataSourceId: dataSource.id,
       },
-      include: [],
     }),
     AgentDataSourceConfiguration.findOne({
       raw: true,
@@ -986,7 +985,6 @@ export async function getDataSourceViewUsage({
         workspaceId: owner.id,
         dataSourceViewId: dataSourceView.id,
       },
-      include: [],
     }),
     AgentDataSourceConfiguration.findOne({
       raw: true,
