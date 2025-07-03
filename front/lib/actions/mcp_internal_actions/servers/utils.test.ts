@@ -23,6 +23,7 @@ describe("MCP Internal Actions Server Utils", () => {
       async (t: Transaction) => {
         const workspace = await WorkspaceFactory.basic();
         const otherWorkspace = await WorkspaceFactory.basic();
+        await SpaceFactory.system(workspace, t);
         const globalSpace = await SpaceFactory.global(workspace, t);
         await GroupFactory.defaults(workspace);
         const { agentOwnerAuth: auth } = await setupAgentOwner(
@@ -113,6 +114,7 @@ describe("MCP Internal Actions Server Utils", () => {
           "admin"
         );
 
+        await SpaceFactory.system(workspace, t);
         const space = await SpaceFactory.global(workspace, t);
         const folder = await DataSourceViewFactory.folder(workspace, space, t);
         const mcpServerConfiguration =
