@@ -3,7 +3,6 @@ import { Op } from "sequelize";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
   AgentMCPAction,
@@ -39,9 +38,6 @@ async function destroyActionsRelatedResources(
     where: { agentMessageId: agentMessageIds },
   });
   await AgentSearchLabelsAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentConversationIncludeFileAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
 
