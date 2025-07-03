@@ -692,6 +692,7 @@ async function* runMultiActionsAgent(
   };
 
   let rawContent = "";
+  let nativeChainOfThought = "";
   for await (const event of eventStream) {
     if (event.type === "function_call") {
       isGeneration = false;
@@ -736,6 +737,30 @@ async function* runMultiActionsAgent(
     if (event.type === "tokens" && isGeneration) {
       rawContent += event.content.tokens.text;
       yield* contentParser.emitTokens(event.content.tokens.text);
+    }
+
+    if (event.type === "reasoning_tokens") {
+      yield {
+        type: "generation_tokens",
+        classification: "chain_of_thought",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        text: event.content.tokens.text,
+      } satisfies GenerationTokensEvent;
+      nativeChainOfThought += event.content.tokens.text;
+    }
+
+    if (event.type === "reasoning_item") {
+      yield {
+        type: "generation_tokens",
+        classification: "chain_of_thought",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        text: "\n\n",
+      } satisfies GenerationTokensEvent;
+      nativeChainOfThought += "\n\n";
     }
 
     if (event.type === "block_execution") {
@@ -872,7 +897,8 @@ async function* runMultiActionsAgent(
       );
     }
 
-    const chainOfThought = contentParser.getChainOfThought() ?? "";
+    const chainOfThought =
+      nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
 
     yield {
       type: "agent_message_content",
@@ -1051,7 +1077,8 @@ async function* runMultiActionsAgent(
 
   yield* contentParser.flushTokens();
 
-  const chainOfThought = contentParser.getChainOfThought();
+  const chainOfThought =
+    nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
 
   if (chainOfThought?.length) {
     yield {

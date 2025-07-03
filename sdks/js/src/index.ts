@@ -21,6 +21,8 @@ import type {
   DustAppRunFinalEvent,
   DustAppRunFunctionCallArgumentsTokensEvent,
   DustAppRunFunctionCallEvent,
+  DustAppRunReasoningItemEvent,
+  DustAppRunReasoningTokensEvent,
   DustAppRunRunStatusEvent,
   DustAppRunTokensEvent,
   FileUploadUrlRequestType,
@@ -384,6 +386,8 @@ export class DustAPI {
         | DustAppRunBlockStatusEvent
         | DustAppRunBlockExecutionEvent
         | DustAppRunTokensEvent
+        | DustAppRunReasoningTokensEvent
+        | DustAppRunReasoningItemEvent
         | DustAppRunFunctionCallEvent
         | DustAppRunFunctionCallArgumentsTokensEvent
         | DustAppRunFinalEvent
@@ -434,6 +438,23 @@ export class DustAPI {
                   } as DustAppRunTokensEvent);
                   break;
                 }
+
+                case "reasoning_tokens": {
+                  pendingEvents.push({
+                    type: "reasoning_tokens",
+                    content: data.content,
+                  } as DustAppRunReasoningTokensEvent);
+                  break;
+                }
+
+                case "reasoning_item": {
+                  pendingEvents.push({
+                    type: "reasoning_item",
+                    content: data.content,
+                  } as DustAppRunReasoningItemEvent);
+                  break;
+                }
+
                 case "function_call": {
                   pendingEvents.push({
                     type: "function_call",

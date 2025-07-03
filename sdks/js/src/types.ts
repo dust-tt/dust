@@ -1589,6 +1589,46 @@ export const DustAppRunTokensEventSchema = z.object({
 });
 export type DustAppRunTokensEvent = z.infer<typeof DustAppRunTokensEventSchema>;
 
+export const DustAppRunReasoningTokensEventSchema = z.object({
+  type: z.literal("reasoning_tokens"),
+  content: z.object({
+    block_type: z.string(),
+    block_name: z.string(),
+    input_index: z.number(),
+    map: z
+      .object({
+        name: z.string(),
+        iteration: z.number(),
+      })
+      .nullable(),
+    tokens: z.object({
+      text: z.string(),
+    }),
+  }),
+});
+export type DustAppRunReasoningTokensEvent = z.infer<
+  typeof DustAppRunReasoningTokensEventSchema
+>;
+
+export const DustAppRunReasoningItemEventSchema = z.object({
+  type: z.literal("reasoning_item"),
+  content: z.object({
+    block_type: z.string(),
+    block_name: z.string(),
+    input_index: z.number(),
+    map: z
+      .object({
+        name: z.string(),
+        iteration: z.number(),
+      })
+      .nullable(),
+    item: z.unknown(),
+  }),
+});
+export type DustAppRunReasoningItemEvent = z.infer<
+  typeof DustAppRunReasoningItemEventSchema
+>;
+
 export const DustAppRunFunctionCallEventSchema = z.object({
   type: z.literal("function_call"),
   content: z.object({

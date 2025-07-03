@@ -497,6 +497,30 @@ impl Block for Chat {
                                                 },
                                             }));
                                         }
+                                        if s == "reasoning_tokens" {
+                                            let _ = sender.send(json!({
+                                                "type": s,
+                                                "content": {
+                                                    "block_type": "chat",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "tokens": c,
+                                                },
+                                            }));
+                                        }
+                                        if s == "reasoning_item" {
+                                            let _ = sender.send(json!({
+                                                "type": s,
+                                                "content": {
+                                                    "block_type": "chat",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "item": c,
+                                                },
+                                            }));
+                                        }
                                         if s == "function_call" {
                                             let _ = sender.send(json!({
                                                 "type": s,

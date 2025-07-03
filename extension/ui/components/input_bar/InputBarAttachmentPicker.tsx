@@ -169,8 +169,9 @@ export const InputBarAttachmentsPicker = ({
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault();
-              const firstMenuItem =
-                itemsContainerRef.current?.querySelector('[role="menuitemcheckbox"]');
+              const firstMenuItem = itemsContainerRef.current?.querySelector(
+                '[role="menuitemcheckbox"]'
+              );
               (firstMenuItem as HTMLElement)?.focus();
             }
           }}
