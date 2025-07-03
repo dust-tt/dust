@@ -682,5 +682,8 @@ async function handleGroupDelete(
     return;
   }
 
-  await group.delete(auth);
+  const deleteResult = await group.delete(auth);
+  if (deleteResult.isErr()) {
+    throw deleteResult.error;
+  }
 }
