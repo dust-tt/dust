@@ -29,6 +29,7 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { SpaceDataTable } from "@app/components/poke/spaces/table";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
 import { TrackerDataTable } from "@app/components/poke/trackers/table";
+import { DirectorySyncStatus } from "@app/components/poke/workspace/DirectorySyncStatus";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import config from "@app/lib/api/config";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
@@ -59,7 +60,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   subscriptions: SubscriptionType[];
   whitelistableFeatures: WhitelistableFeature[];
   workspaceVerifiedDomains: WorkspaceDomain[];
-  worspaceCreationDay: string;
+  workspaceCreationDay: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const activeSubscription = auth.subscription();
@@ -91,7 +92,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   );
 
   const workspaceVerifiedDomains = await getWorkspaceVerifiedDomains(owner);
-  const worspaceCreationDate = await getWorkspaceCreationDate(owner.sId);
+  const workspaceCreationDay = await getWorkspaceCreationDate(owner.sId);
 
   const extensionConfig =
     await ExtensionConfigurationResource.fetchForWorkspace(auth);
@@ -104,7 +105,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       whitelistableFeatures: WHITELISTABLE_FEATURES,
       registry: getDustProdActionRegistry(),
       workspaceVerifiedDomains,
-      worspaceCreationDay: format(worspaceCreationDate, "yyyy-MM-dd"),
+      workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
       extensionConfig: extensionConfig?.toJSON() ?? null,
       baseUrl: config.getClientFacingUrl(),
     },
@@ -118,7 +119,7 @@ const WorkspacePage = ({
   whitelistableFeatures,
   registry,
   workspaceVerifiedDomains,
-  worspaceCreationDay,
+  workspaceCreationDay,
   extensionConfig,
   baseUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -199,7 +200,7 @@ const WorkspacePage = ({
               <WorkspaceInfoTable
                 owner={owner}
                 workspaceVerifiedDomains={workspaceVerifiedDomains}
-                worspaceCreationDay={worspaceCreationDay}
+                workspaceCreationDay={workspaceCreationDay}
                 extensionConfig={extensionConfig}
               />
               <div className="flex flex-grow flex-col gap-4">

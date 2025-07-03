@@ -16,12 +16,12 @@ import type {
 export function WorkspaceInfoTable({
   owner,
   workspaceVerifiedDomains,
-  worspaceCreationDay,
+  workspaceCreationDay,
   extensionConfig,
 }: {
   owner: WorkspaceType;
   workspaceVerifiedDomains: WorkspaceDomain[];
-  worspaceCreationDay: string;
+  workspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
 }) {
   return (
@@ -54,7 +54,7 @@ export function WorkspaceInfoTable({
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Creation</PokeTableCell>
-              <PokeTableCell>{worspaceCreationDay}</PokeTableCell>
+              <PokeTableCell>{workspaceCreationDay}</PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>SSO Enforced</PokeTableCell>
