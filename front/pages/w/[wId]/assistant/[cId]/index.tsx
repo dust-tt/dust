@@ -20,7 +20,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     plan: PlanType | null;
   }
 >(async (context, auth) => {
-  const authRes = auth.toJSON();
+  const authRes = auth.toResultJSON();
 
   if (authRes.isErr()) {
     const { cId } = context.query;

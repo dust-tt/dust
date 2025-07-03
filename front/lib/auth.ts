@@ -997,7 +997,7 @@ export class Authenticator {
     return this._key ?? null;
   }
 
-  toJSON(): Result<AuthenticatorType, AuthToJSONError> {
+  toResultJSON(): Result<AuthenticatorType, AuthToJSONError> {
     const user = this.user();
     if (!user) {
       return new Err(new AuthToJSONError("Missing user", "user"));
