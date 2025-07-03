@@ -77,7 +77,7 @@ export default function AssistantBuilderRightPanel({
   mcpServerViews,
 }: AssistantBuilderRightPanelProps) {
   const [rightPanelTab, setRightPanelTab] =
-    useState<AssistantBuilderRightPanelTabType>("Preview");
+    useState<AssistantBuilderRightPanelTabType>("Template");
 
   const { draftAssistant, isSavingDraftAgent, createDraftAgent } =
     usePreviewAssistant({
