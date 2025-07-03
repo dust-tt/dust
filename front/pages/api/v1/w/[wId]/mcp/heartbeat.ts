@@ -13,9 +13,10 @@ import type { WithAPIErrorResponse } from "@app/types";
  * @swagger
  * /api/v1/w/{wId}/mcp/heartbeat:
  *   post:
- *     summary: Update heartbeat for a local MCP server
+ *     summary: Update heartbeat for a client-side MCP server
  *     description: |
- *       Update the heartbeat for a previously registered MCP server.
+ *       [Documentation](https://docs.dust.tt/docs/client-side-mcp-server)
+ *       Update the heartbeat for a previously registered client-side MCP server.
  *       This extends the TTL for the server registration.
  *     tags:
  *       - MCP

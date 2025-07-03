@@ -3,7 +3,6 @@ import { Op } from "sequelize";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
@@ -11,12 +10,7 @@ import {
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
-import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -29,7 +23,6 @@ import {
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import type { ConversationWithoutContentType, ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
 
@@ -39,48 +32,16 @@ async function destroyActionsRelatedResources(
   auth: Authenticator,
   agentMessageIds: Array<ModelId>
 ) {
-  // First, retrieve the retrieval actions and documents.
-  const retrievalActions = await AgentRetrievalAction.findAll({
-    attributes: ["id"],
-    where: {
-      agentMessageId: { [Op.in]: agentMessageIds },
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
-
-  // Destroy retrieval resources.
-  await RetrievalDocumentResource.deleteAllForActions(
-    auth,
-    retrievalActions.map((a) => a.id)
-  );
-
-  await AgentRetrievalAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-
-  // Destroy other actions.
-  await AgentTablesQueryAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
   await AgentDustAppRunAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
   await AgentProcessAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
-  await AgentWebsearchAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentBrowseAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
   await AgentSearchLabelsAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
   await AgentConversationIncludeFileAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentReasoningAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
 
@@ -241,9 +202,6 @@ export async function destroyConversation(
 
     await UserMessage.destroy({
       where: { id: userMessageIds },
-    });
-    await AgentMessageContent.destroy({
-      where: { agentMessageId: agentMessageIds },
     });
     await AgentStepContentModel.destroy({
       where: { agentMessageId: agentMessageIds },

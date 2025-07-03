@@ -63,6 +63,7 @@ async function handler(
     user: u,
     workspace,
     role: "admin",
+    origin: "invited",
   });
 
   res.status(200).json({ sId: workspace.sId });

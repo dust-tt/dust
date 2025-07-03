@@ -1,3 +1,4 @@
+import { assertNever } from "@dust-tt/client";
 import type { Context } from "@temporalio/activity";
 import type {
   ActivityExecuteInput,
@@ -12,7 +13,11 @@ import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-import { DustConnectorWorkflowError, ExternalOAuthTokenError } from "./error";
+import {
+  DustConnectorWorkflowError,
+  ExternalOAuthTokenError,
+  WorkspaceQuotaExceededError,
+} from "./error";
 import { syncFailed } from "./sync_status";
 import { getConnectorId } from "./temporal";
 
@@ -117,25 +122,35 @@ export class ActivityInboundLogInterceptor
     } catch (err: unknown) {
       error = err;
 
-      if (err instanceof ExternalOAuthTokenError) {
+      if (
+        err instanceof ExternalOAuthTokenError ||
+        err instanceof WorkspaceQuotaExceededError
+      ) {
         // We have a connector working on an expired token, we need to cancel the workflow.
         const { workflowId } = this.context.info.workflowExecution;
 
         const connectorId = await getConnectorId(workflowId);
         if (connectorId) {
-          await syncFailed(connectorId, "oauth_token_revoked");
-
-          // In case of an invalid token, stop all workflows for the connector.
-          this.logger.info(
-            `Stopping connector manager because of expired token.`
-          );
-
           const connector = await ConnectorResource.fetchById(connectorId);
 
           if (!connector) {
             throw new Error(
               `Unexpected: Connector with id ${connectorId} not found in the database.`
             );
+          }
+
+          if (err instanceof ExternalOAuthTokenError) {
+            await syncFailed(connectorId, "oauth_token_revoked");
+            this.logger.info(
+              `Stopping connector manager because of expired token.`
+            );
+          } else if (err instanceof WorkspaceQuotaExceededError) {
+            await syncFailed(connectorId, "workspace_quota_exceeded");
+            this.logger.info(
+              `Stopping connector manager because of quota exceeded for the workspace.`
+            );
+          } else {
+            assertNever(err);
           }
 
           const connectorManager = getConnectorManager({

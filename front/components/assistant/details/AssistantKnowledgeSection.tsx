@@ -22,12 +22,8 @@ import { useMemo, useState } from "react";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
-import {
-  isRetrievalConfiguration,
-  isServerSideMCPServerConfiguration,
-  isTablesQueryConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -76,11 +72,7 @@ export function AssistantKnowledgeSection({
     };
 
     return agentConfiguration.actions.reduce((acc, action) => {
-      if (isRetrievalConfiguration(action)) {
-        acc.retrieval.push(action);
-      } else if (isTablesQueryConfiguration(action)) {
-        acc.queryTables.push(action);
-      } else if (isServerSideMCPServerConfiguration(action)) {
+      if (isServerSideMCPServerConfiguration(action)) {
         const { tables, dataSources } = action;
         if (dataSources) {
           acc.retrieval.push({ dataSources });

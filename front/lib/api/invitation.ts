@@ -3,9 +3,10 @@ import { sign } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import { getAuth0UsersFromEmail } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
+import { fetchWorkOSOrganizationMembershipsForUserIdAndOrgId } from "@app/lib/api/workos/organization_membership";
+import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import {
   getMembers,
   getWorkspaceAdministrationVersionLock,
@@ -16,6 +17,7 @@ import { MembershipInvitationModel } from "@app/lib/models/membership_invitation
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { isEmailValid } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   ActiveRoleType,
@@ -401,19 +403,41 @@ export async function handleMembershipInvitations(
         transaction: t,
       });
 
-      const auth0Users = await getAuth0UsersFromEmail(
+      const workOSUsers = await fetchUsersFromWorkOSWithEmails(
         invitationRequests.map((invite) => invite.email)
       );
 
-      const otherRegionUsers = auth0Users
-        .filter(
-          (user) =>
-            // Type isn't accurate, user.app_metadata can be undefined.
-            typeof user.app_metadata === "object" &&
-            "region" in user.app_metadata &&
-            user.app_metadata.region !== regionConfig.getCurrentRegion()
-        )
-        .map((user) => user.email);
+      /** Those are emails that already are in the WorkOS Organizations so we don't need to check their region. */
+      let emailsOkToBeInvited: string[] = [];
+
+      const { workOSOrganizationId } = owner;
+      if (workOSOrganizationId != null) {
+        // So for each found workOS users, we check if they're already in the organizations
+        const organizationMembershipsResponse = await concurrentExecutor(
+          workOSUsers,
+          async (user) => {
+            const response =
+              await fetchWorkOSOrganizationMembershipsForUserIdAndOrgId(
+                user.id,
+                workOSOrganizationId
+              );
+
+            return response.length > 0 ? [user.email] : [];
+          },
+          { concurrency: 10 }
+        );
+        emailsOkToBeInvited = organizationMembershipsResponse.flat();
+      }
+
+      const otherRegionUsers = workOSUsers.reduce((acc, user) => {
+        if (
+          !emailsOkToBeInvited.includes(user.email) &&
+          user.metadata.region !== regionConfig.getCurrentRegion()
+        ) {
+          acc.push(user.email);
+        }
+        return acc;
+      }, [] as string[]);
 
       const unconsumedInvitations = await getRecentPendingAndRevokedInvitations(
         auth,

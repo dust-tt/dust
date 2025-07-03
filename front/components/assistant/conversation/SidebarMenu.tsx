@@ -187,10 +187,6 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   const { setAnimate } = useContext(InputBarContext);
 
-  const triggerInputAnimation = useCallback(() => {
-    setAnimate(true);
-  }, [setAnimate]);
-
   const handleNewClick = useCallback(async () => {
     setSidebarOpen(false);
     const { cId } = router.query;
@@ -198,15 +194,11 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
       router.pathname === "/w/[wId]/assistant/[cId]" &&
       typeof cId === "string" &&
       cId === "new";
-
-    if (isNewConversation && triggerInputAnimation) {
-      triggerInputAnimation();
-    } else {
-      await router.push(`/w/${owner.sId}/assistant/new`);
+    if (isNewConversation) {
+      setAnimate(true);
+      document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
     }
-
-    document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
-  }, [owner.sId, router, setSidebarOpen, triggerInputAnimation]);
+  }, [setSidebarOpen, router, setAnimate]);
 
   return (
     <>
@@ -247,6 +239,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                 />
                 <Button
                   label="New"
+                  href={`/w/${owner.sId}/assistant/new`}
                   icon={ChatBubbleBottomCenterTextIcon}
                   className="shrink"
                   tooltip="Create a new conversation"

@@ -122,7 +122,7 @@ export async function handleUpdatePermissions(
   if (updateRes.error) {
     sendNotification({
       type: "error",
-      title: "Failed to update the permissions",
+      title: "Failed to update the connection",
       description: updateRes.error,
     });
   } else {
@@ -134,9 +134,9 @@ export async function handleUpdatePermissions(
   }
 }
 
-async function updateConnectorConnectionId(
+export async function updateConnectorConnectionId(
   newConnectionId: string,
-  provider: string,
+  provider: ConnectorProvider,
   dataSource: DataSourceType,
   owner: LightWorkspaceType
 ) {
@@ -163,8 +163,7 @@ async function updateConnectorConnectionId(
   if (error.type === "connector_oauth_target_mismatch") {
     return {
       success: false,
-      error:
-        CONNECTOR_CONFIGURATIONS[provider as ConnectorProvider].mismatchError,
+      error: CONNECTOR_CONFIGURATIONS[provider].mismatchError,
     };
   }
   if (error.type === "connector_oauth_user_missing_rights") {

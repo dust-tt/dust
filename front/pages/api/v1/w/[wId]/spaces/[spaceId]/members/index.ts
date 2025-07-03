@@ -1,10 +1,15 @@
-import type { PostSpaceMembersResponseBody } from "@dust-tt/client";
+import type {
+  GetSpaceMembersResponseBody,
+  PostSpaceMembersResponseBody,
+} from "@dust-tt/client";
 import { PostSpaceMembersRequestBodySchema } from "@dust-tt/client";
+import { uniqBy } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { assertNever, isString } from "@app/types";
@@ -15,7 +20,11 @@ import { assertNever, isString } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostSpaceMembersResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      PostSpaceMembersResponseBody | GetSpaceMembersResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   if (!auth.isAdmin()) {
@@ -50,7 +59,42 @@ async function handler(
     });
   }
 
+  if (
+    space.managementMode === "group" ||
+    space.groups.some((g) => g.kind === "global")
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message:
+          space.managementMode === "group"
+            ? "Space is managed by provisioned group access, members can't be edited by API."
+            : "Non-restricted space's members can't be edited.",
+      },
+    });
+  }
+
   switch (req.method) {
+    case "GET":
+      const currentMembers = uniqBy(
+        (
+          await concurrentExecutor(
+            space.groups,
+            (group) => group.getActiveMembers(auth),
+            { concurrency: 1 }
+          )
+        ).flat(),
+        "sId"
+      );
+
+      return res.status(200).json({
+        users: currentMembers.map((member) => ({
+          sId: member.sId,
+          email: member.email,
+        })),
+      });
+
     case "POST": {
       const bodyValidation = PostSpaceMembersRequestBodySchema.safeParse(
         req.body
@@ -127,7 +171,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }

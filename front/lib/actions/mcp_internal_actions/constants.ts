@@ -50,6 +50,14 @@ const MCP_SERVER_AVAILABILITY = [
 ] as const;
 export type MCPServerAvailability = (typeof MCP_SERVER_AVAILABILITY)[number];
 
+export const isMCPServerAvailability = (
+  availability: string
+): availability is MCPServerAvailability => {
+  return MCP_SERVER_AVAILABILITY.includes(
+    availability as MCPServerAvailability
+  );
+};
+
 export const INTERNAL_MCP_SERVERS: Record<
   InternalMCPServerNameType,
   {
@@ -186,10 +194,11 @@ export const INTERNAL_MCP_SERVERS: Record<
   salesforce: {
     id: 14,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      // When we are ready to release the feature, the condition will be:
-      // return !featureFlags.includes("salesforce_tool") && !plan.limits.connections.isSalesforceAllowed;
-      return !featureFlags.includes("salesforce_tool");
+    isRestricted: ({ featureFlags, plan }) => {
+      const isInPlan = plan.limits.connections.isSalesforceAllowed;
+      const hasFeatureFlag = featureFlags.includes("salesforce_tool");
+      const isAvailable = isInPlan || hasFeatureFlag;
+      return !isAvailable;
     },
     tools_stakes: {
       execute_read_query: "low",
@@ -200,9 +209,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   gmail: {
     id: 15,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("gmail_tool");
-    },
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
@@ -211,9 +217,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   google_calendar: {
     id: 16,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("google_calendar_tool");
-    },
     tools_stakes: {
       list_calendars: "never_ask",
       list_events: "never_ask",
@@ -231,9 +234,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   slack: {
     id: 18,
     availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("slack_tool");
-    },
     tools_stakes: {
       search_messages: "never_ask",
       list_users: "never_ask",
@@ -274,9 +274,9 @@ export const INTERNAL_MCP_SERVERS: Record<
   data_sources_file_system: {
     id: 1010,
     availability: "auto",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("dev_mcp_actions");
-    },
+    // This server is hidden for everyone, it is only available through the search tool
+    // when the advanced_search mode is enabled.
+    isRestricted: () => true,
   },
 };
 

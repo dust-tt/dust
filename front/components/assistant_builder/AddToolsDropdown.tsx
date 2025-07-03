@@ -8,6 +8,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
+  Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import assert from "assert";
@@ -16,15 +17,15 @@ import { useState } from "react";
 
 import type {
   ActionSpecificationWithType,
-  AssistantBuilderActionType,
   AssistantBuilderDataVisualizationType,
+  AssistantBuilderMCPServerType,
   AssistantBuilderSetActionType,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
 import {
   getDataVisualizationActionConfiguration,
-  getDefaultActionConfiguration,
   getDefaultMCPServerActionConfiguration,
+  getDefaultMCPServerConfigurationWithId,
 } from "@app/components/assistant_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
@@ -45,6 +46,7 @@ interface AddToolsDropdownProps {
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
   reasoningModels: ModelConfigurationType[];
+  isLoading: boolean;
 }
 
 const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
@@ -57,6 +59,7 @@ export function AddToolsDropdown({
   defaultMCPServerViews,
   nonDefaultMCPServerViews,
   reasoningModels,
+  isLoading,
 }: AddToolsDropdownProps) {
   const [searchText, setSearchText] = useState("");
   const [filteredNonMCPActions, setFilteredNonMCPActions] =
@@ -97,7 +100,7 @@ export function AddToolsDropdown({
 
   function onClickDefaultTool(
     actionType:
-      | AssistantBuilderActionType
+      | AssistantBuilderMCPServerType
       | AssistantBuilderDataVisualizationType
   ) {
     setEdited(true);
@@ -114,8 +117,7 @@ export function AddToolsDropdown({
     const defaultAction =
       actionType === "DATA_VISUALIZATION"
         ? getDataVisualizationActionConfiguration()
-        : getDefaultActionConfiguration(actionType);
-    assert(defaultAction);
+        : getDefaultMCPServerConfigurationWithId();
 
     setAction({
       type: defaultAction.noConfigurationRequired ? "insert" : "pending",
@@ -207,7 +209,13 @@ export function AddToolsDropdown({
           />
         }
       >
-        {searchText.length > 0 &&
+        {isLoading && (
+          <div className="flex h-full w-full items-center justify-center rounded-xl">
+            <Spinner />
+          </div>
+        )}
+        {!isLoading &&
+          searchText.length > 0 &&
           (noFilteredTools ? (
             <DropdownMenuLabel label="No tools found" />
           ) : (
@@ -230,7 +238,7 @@ export function AddToolsDropdown({
             </>
           ))}
 
-        {searchText.length === 0 && (
+        {!isLoading && searchText.length === 0 && (
           <>
             <DropdownMenuLabel label="Top tools" />
             {nonDefaultMCPActions.map((tool) => (

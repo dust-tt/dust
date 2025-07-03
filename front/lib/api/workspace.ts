@@ -22,6 +22,7 @@ import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import type {
   GroupKind,
   LightWorkspaceType,
+  MembershipOriginType,
   MembershipRoleType,
   PublicAPILimitsType,
   Result,
@@ -161,6 +162,7 @@ export async function getMembers(
   const usersWithWorkspaces = await Promise.all(
     memberships.map(async (m) => {
       let role = "none" as RoleType;
+      let origin: MembershipOriginType | undefined = undefined;
       if (m && !m.isRevoked()) {
         switch (m.role) {
           case "admin":
@@ -171,6 +173,7 @@ export async function getMembers(
           default:
             role = "none";
         }
+        origin = m.origin;
       }
 
       let user: UserResource | null;
@@ -187,6 +190,7 @@ export async function getMembers(
       return {
         ...user.toJSON(),
         workspaces: [{ ...owner, role, flags: null }],
+        origin,
       };
     })
   );
@@ -243,6 +247,7 @@ export async function searchMembers(
       const [m] = u.memberships ?? [];
       let role: RoleType = "none";
       let groups: string[] | undefined;
+      let origin: MembershipOriginType | undefined = undefined;
 
       if (m) {
         const membership = new MembershipResource(
@@ -255,6 +260,8 @@ export async function searchMembers(
             ? membership.role
             : "none"
           : "none";
+
+        origin = membership.origin;
       }
 
       if (options.groupKind) {
@@ -270,6 +277,7 @@ export async function searchMembers(
       return {
         ...u.toJSON(),
         workspace: { ...owner, role, groups, flags: null },
+        origin,
       };
     })
   );

@@ -19,12 +19,16 @@ export class SlackConnectorStrategy
     blob: WithCreationAttributes<SlackConfigurationModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["slack"] | null> {
-    await SlackConfigurationResource.makeNew({
+    return SlackConfigurationResource.makeNew({
       slackTeamId: blob.slackTeamId,
+      autoReadChannelPatterns: blob.autoReadChannelPatterns,
+      whitelistedDomains: blob.whitelistedDomains
+        ? [...blob.whitelistedDomains] // Ensure it's a readonly string[]
+        : undefined,
+      restrictedSpaceAgentsEnabled: blob.restrictedSpaceAgentsEnabled,
       connectorId,
       transaction,
     });
-    return null;
   }
 
   async delete(

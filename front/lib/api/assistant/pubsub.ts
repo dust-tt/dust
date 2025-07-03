@@ -213,24 +213,15 @@ async function handleUserMessageEvents(
             case "agent_error":
             case "agent_generation_cancelled":
             case "agent_message_success":
-            case "browse_params":
             case "conversation_include_file_params":
             case "dust_app_run_block":
             case "dust_app_run_params":
             case "generation_tokens":
             case "process_params":
-            case "reasoning_started":
-            case "reasoning_thinking":
-            case "reasoning_tokens":
-            case "retrieval_params":
             case "search_labels_params":
-            case "tables_query_model_output":
-            case "tables_query_output":
-            case "tables_query_started":
             case "tool_approve_execution":
             case "tool_notification":
-            case "tool_params":
-            case "websearch_params": {
+            case "tool_params": {
               const pubsubChannel = getEventMessageChannelId(event);
 
               await publishEvent({
@@ -387,24 +378,15 @@ export async function retryAgentMessageWithPubSub(
               case "agent_error":
               case "agent_generation_cancelled":
               case "agent_message_success":
-              case "browse_params":
               case "conversation_include_file_params":
               case "dust_app_run_block":
               case "dust_app_run_params":
               case "generation_tokens":
               case "process_params":
-              case "reasoning_started":
-              case "reasoning_thinking":
-              case "reasoning_tokens":
-              case "retrieval_params":
               case "search_labels_params":
-              case "tables_query_model_output":
-              case "tables_query_output":
-              case "tables_query_started":
               case "tool_approve_execution":
               case "tool_notification":
-              case "tool_params":
-              case "websearch_params": {
+              case "tool_params": {
                 const pubsubChannel = getEventMessageChannelId(event);
                 await publishEvent({
                   origin: "retry_agent_message",

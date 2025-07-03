@@ -13,7 +13,12 @@ import type { KeyedMutator } from "swr";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type { RoleType, UserType, UserTypeWithWorkspace } from "@app/types";
+import type {
+  MembershipOriginType,
+  RoleType,
+  UserType,
+  UserTypeWithWorkspace,
+} from "@app/types";
 
 type RowData = {
   icon: string;
@@ -26,6 +31,7 @@ type RowData = {
   isCurrentUser: boolean;
   onClick: () => void;
   onRemoveMemberClick?: () => void;
+  origin?: MembershipOriginType;
 };
 
 type Info = CellContext<RowData, string>;
@@ -52,6 +58,7 @@ function getTableRows({
     isCurrentUser: user.sId === currentUserId,
     onClick: () => onClick(user),
     onRemoveMemberClick: () => onRemoveMemberClick?.(user),
+    origin: user.origin,
   }));
 }
 
@@ -111,7 +118,8 @@ const memberColumns = [
     header: "",
     cell: (info: Info) => (
       <DataTable.CellContent>
-        {info.row.original.isCurrentUser ? (
+        {info.row.original.isCurrentUser ||
+        info.row.original.origin === "provisioned" ? (
           <></>
         ) : (
           <IconButton
@@ -131,7 +139,10 @@ const memberColumns = [
     cell: (info: Info) => {
       return (
         <DataTable.CellContent>
-          {info.row.original.status}
+          {info.row.original.status +
+            (info.row.original.origin
+              ? ` (${_.capitalize(info.row.original.origin)})`
+              : "")}
         </DataTable.CellContent>
       );
     },
@@ -147,6 +158,16 @@ const memberColumns = [
   },
 ];
 
+interface MembersListProps {
+  currentUser: UserType | null;
+  membersData: MembersData;
+  onRowClick: (user: UserTypeWithWorkspace) => void;
+  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
+  showColumns: ("name" | "email" | "role" | "remove" | "status" | "groups")[];
+  pagination?: PaginationState;
+  setPagination?: (pagination: PaginationState) => void;
+}
+
 export function MembersList({
   currentUser,
   membersData,
@@ -155,15 +176,7 @@ export function MembersList({
   showColumns,
   pagination,
   setPagination,
-}: {
-  currentUser: UserType | null;
-  membersData: MembersData;
-  onRowClick: (user: UserTypeWithWorkspace) => void;
-  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
-  showColumns: ("name" | "email" | "role" | "remove" | "status" | "groups")[];
-  pagination?: PaginationState;
-  setPagination?: (pagination: PaginationState) => void;
-}) {
+}: MembersListProps) {
   assert(
     !showColumns.includes("remove") || onRemoveMemberClick,
     "onRemoveMemberClick is required if remove column is shown"

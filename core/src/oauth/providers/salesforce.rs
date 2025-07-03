@@ -126,6 +126,7 @@ impl Provider for SalesforceConnectionProvider {
             access_token_expiry: Some(utils::now() + 15 * 60 * 1000),
             refresh_token: Some(refresh_token.to_string()),
             raw_json,
+            extra_metadata: None,
         })
     }
 

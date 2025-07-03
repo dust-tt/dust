@@ -75,22 +75,25 @@ export class FrontAuthService extends AuthService {
 
   private async openAuthPopup(
     options: Record<string, string>
-  ): Promise<{ code: string }> {
+  ): Promise<{ code: string; provider: "workos" | "auth0" }> {
     const queryString = new URLSearchParams(options).toString();
     const authUrl = `${DUST_US_URL}/api/v1/auth/authorize?${queryString}`;
 
-    const result = await openAndWaitForPopup<{ code: string }>(
-      authUrl,
-      "Authentication",
-      (popup) => {
-        const popupUrl = popup.location.href;
-        if (popupUrl?.includes("code=")) {
-          const code = new URL(popupUrl).searchParams.get("code");
-          return code ? { data: { code } } : null;
-        }
-        return null;
+    const result = await openAndWaitForPopup<{
+      code: string;
+      provider: "workos" | "auth0";
+    }>(authUrl, "Authentication", (popup) => {
+      const popupUrl = popup.location.href;
+      if (popupUrl?.includes("code=")) {
+        const popupUrlAsUrl = new URL(popupUrl);
+        const code = popupUrlAsUrl.searchParams.get("code");
+        const providerFromUrl = popupUrlAsUrl.searchParams.get("provider");
+        const provider = providerFromUrl === "auth0" ? "auth0" : "workos";
+
+        return code && provider ? { data: { code, provider } } : null;
       }
-    );
+      return null;
+    });
 
     if (result.error) {
       throw result.error;
@@ -172,9 +175,11 @@ export class FrontAuthService extends AuthService {
 
       // Store tokens
       const tokens = await this.saveTokens({
+        success: true,
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
         expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,
+        provider: result.provider,
       });
 
       const claims = jwtDecode<Record<string, string>>(data.access_token);
@@ -289,9 +294,11 @@ export class FrontAuthService extends AuthService {
 
       const data = await response.json();
       const storedTokens = await this.saveTokens({
+        success: true,
         accessToken: data.access_token,
         refreshToken: data.refresh_token || "",
         expiresIn: data.expires_in || DEFAULT_TOKEN_EXPIRY,
+        provider: user.authProvider,
       });
       return new Ok(storedTokens);
     } catch (error) {

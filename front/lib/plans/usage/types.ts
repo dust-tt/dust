@@ -1,6 +1,8 @@
 // This is the key used in Stripe's metadata to indicate that this is a usage-based price.
 export const REPORT_USAGE_METADATA_KEY = "REPORT_USAGE";
 
+export const DATASOURCE_QUOTA_PER_SEAT = 1024 * 1024 * 1024; // 1GB
+
 export class InvalidReportUsageError extends Error {}
 
 export const SUPPORTED_ENTERPRISE_REPORT_USAGE = [

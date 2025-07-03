@@ -8,22 +8,12 @@ import type {
   AssistantBuilderActionAndDataVisualizationConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import {
-  DEFAULT_BROWSE_ACTION_DESCRIPTION,
-  DEFAULT_BROWSE_ACTION_NAME,
-  DEFAULT_REASONING_ACTION_DESCRIPTION,
-  DEFAULT_REASONING_ACTION_NAME,
-  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/actions/constants";
-import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type {
   AgentConfigurationType,
   DataSourceViewSelectionConfigurations,
   LightAgentConfigurationType,
-  ModelConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
   Result,
   WorkspaceType,
@@ -82,7 +72,6 @@ export async function submitAssistantBuilderForm({
   agentConfigurationId,
   slackData,
   isDraft,
-  reasoningModels,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -93,7 +82,6 @@ export async function submitAssistantBuilderForm({
     slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
   };
   isDraft?: boolean;
-  reasoningModels: ModelConfigurationType[];
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
@@ -120,88 +108,7 @@ export async function submitAssistantBuilderForm({
   const map: (
     a: AssistantBuilderActionAndDataVisualizationConfiguration
   ) => ActionsType = (a) => {
-    let retrievalTimeFrame: RetrievalTimeframe = "auto";
-
-    if (a.type === "RETRIEVAL_EXHAUSTIVE") {
-      if (a.configuration.timeFrame) {
-        retrievalTimeFrame = {
-          duration: a.configuration.timeFrame.value,
-          unit: a.configuration.timeFrame.unit,
-        };
-      } else {
-        retrievalTimeFrame = "none";
-      }
-    } else if (a.type === "PROCESS") {
-      if (a.configuration.timeFrame) {
-        retrievalTimeFrame = {
-          duration: a.configuration.timeFrame.value,
-          unit: a.configuration.timeFrame.unit,
-        };
-      }
-    }
-
     switch (a.type) {
-      case "RETRIEVAL_SEARCH":
-      case "RETRIEVAL_EXHAUSTIVE":
-        return [
-          {
-            type: "retrieval_configuration",
-            name: a.name,
-            description: a.description,
-            query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
-            relativeTimeFrame: retrievalTimeFrame,
-            topK: "auto",
-            dataSources: processDataSourcesSelection({
-              owner,
-              dataSourceConfigurations:
-                a.configuration.dataSourceConfigurations,
-            }),
-          },
-        ];
-
-      case "DUST_APP_RUN":
-        if (!a.configuration.app) {
-          return [];
-        }
-        return [
-          {
-            type: "dust_app_run_configuration",
-            appWorkspaceId: owner.sId,
-            appId: a.configuration.app.sId,
-            // These fields are required by the API (`name` and `description`)
-            // but will be overridden with the app name and description.
-            name: a.configuration.app.name,
-            description: a.configuration.app.description,
-          },
-        ];
-
-      case "TABLES_QUERY":
-        return [
-          {
-            type: "tables_query_configuration",
-            name: a.name,
-            description: a.description,
-            tables: processTableSelection({
-              owner,
-              tablesConfigurations: a.configuration,
-            }),
-          },
-        ];
-
-      case "WEB_NAVIGATION":
-        return [
-          {
-            type: "websearch_configuration",
-            name: DEFAULT_WEBSEARCH_ACTION_NAME,
-            description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-          },
-          {
-            type: "browse_configuration",
-            name: DEFAULT_BROWSE_ACTION_NAME,
-            description: DEFAULT_BROWSE_ACTION_DESCRIPTION,
-          },
-        ];
-
       case "MCP":
         const {
           configuration: {
@@ -240,72 +147,6 @@ export async function submitAssistantBuilderForm({
             additionalConfiguration,
             dustAppConfiguration,
             jsonSchema,
-          },
-        ];
-
-      case "PROCESS":
-        return [
-          {
-            type: "process_configuration",
-            name: a.name,
-            description: a.description,
-            dataSources: Object.values(
-              a.configuration.dataSourceConfigurations
-            ).map(
-              ({
-                dataSourceView,
-                selectedResources,
-                isSelectAll,
-                tagsFilter,
-              }) => ({
-                dataSourceViewId: dataSourceView.sId,
-                workspaceId: owner.sId,
-                filter: {
-                  parents: !isSelectAll
-                    ? {
-                        in: selectedResources.map(
-                          (resource) => resource.internalId
-                        ),
-                        not: [],
-                      }
-                    : null,
-                  tags: tagsFilter,
-                },
-              })
-            ),
-            tagsFilter: a.configuration.tagsFilter,
-            relativeTimeFrame: retrievalTimeFrame,
-            jsonSchema: a.configuration.jsonSchema,
-          },
-        ];
-
-      case "REASONING":
-        // User doesn't have any reasoning models available.
-        if (!reasoningModels.length) {
-          return [];
-        }
-
-        const selectedSupportedReasoningModel = reasoningModels.find(
-          (m) =>
-            m.modelId === a.configuration.modelId &&
-            m.providerId === a.configuration.providerId &&
-            (m.reasoningEffort ?? null) ===
-              (a.configuration.reasoningEffort ?? null)
-        );
-
-        // If the selected model is no longer available, we switch to the first available model.
-        const reasoningModel =
-          selectedSupportedReasoningModel || reasoningModels[0];
-
-        return [
-          {
-            type: "reasoning_configuration",
-            name: DEFAULT_REASONING_ACTION_NAME,
-            description: DEFAULT_REASONING_ACTION_DESCRIPTION,
-            modelId: reasoningModel.modelId,
-            providerId: reasoningModel.providerId,
-            temperature: a.configuration.temperature,
-            reasoningEffort: reasoningModel.reasoningEffort ?? null,
           },
         ];
 

@@ -139,7 +139,7 @@ export const CONTENT_NODE_MIME_TYPES = {
   }),
   SALESFORCE: generateConnectorRelativeMimeTypes({
     provider: "salesforce",
-    resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
+    resourceTypes: ["SYNCED_QUERY_FOLDER"],
   }),
   GONG: generateConnectorRelativeMimeTypes({
     provider: "gong",
@@ -240,19 +240,22 @@ const TOOL_MIME_TYPES = {
       "REASONING_SUCCESS",
       // Content of a SQL query formulated by the model.
       "SQL_QUERY",
+      // Error when executing a query.
+      "EXECUTE_TABLES_QUERY_ERROR",
       // Generic thinking tokens.
       "THINKING",
       "DATABASE_SCHEMA",
       "QUERY_WRITING_INSTRUCTIONS",
       "EXAMPLE_ROWS",
-      "GET_DATABASE_SCHEMA_MARKER",
-      "EXECUTE_TABLES_QUERY_MARKER",
-      "EXECUTE_TABLES_QUERY_ERROR",
+      "TOOL_MARKER",
       "WEBSEARCH_QUERY",
       "WEBSEARCH_RESULT",
       "RUN_AGENT_RESULT",
       "RUN_AGENT_QUERY",
       "WARNING",
+      // Legacy, kept for backwards compatibility.
+      "GET_DATABASE_SCHEMA_MARKER",
+      "EXECUTE_TABLES_QUERY_MARKER",
     ],
   }),
 };

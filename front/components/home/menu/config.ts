@@ -92,9 +92,38 @@ const LegalMenuConfig: MenuConfig = {
   ],
 };
 
+const IndustriesMenuConfig: MenuConfig = {
+  title: "Industries",
+  items: [
+    {
+      title: "B2B SaaS",
+      href: "/home/industry/b2b-saas",
+    },
+    {
+      title: "Financial Services",
+      href: "/home/industry/financial-services",
+    },
+    {
+      title: "Insurance",
+      href: "/home/industry/insurance",
+    },
+    {
+      title: "Marketplaces",
+      href: "/home/industry/marketplace",
+    },
+    {
+      title: "Retail & E-commerce",
+      href: "/home/industry/retail-ecommerce",
+    },
+  ],
+};
+
 const SolutionsMenuConfig: MenuConfig = {
   title: "Solutions",
   items: [
+    {
+      title: "Departments",
+    },
     {
       title: "Sales",
       href: "/home/solutions/sales",
@@ -115,7 +144,9 @@ const SolutionsMenuConfig: MenuConfig = {
       title: "Data & Analytics",
       href: "/home/solutions/data-analytics",
     },
-
+    {
+      title: "",
+    },
     {
       title: "Knowledge",
       href: "/home/solutions/knowledge",
@@ -136,6 +167,14 @@ const SolutionsMenuConfig: MenuConfig = {
       title: "Productivity",
       href: "/home/solutions/productivity",
     },
+    {
+      title: IndustriesMenuConfig.title,
+    },
+    IndustriesMenuConfig.items[0],
+    IndustriesMenuConfig.items[1],
+    IndustriesMenuConfig.items[2],
+    IndustriesMenuConfig.items[3],
+    IndustriesMenuConfig.items[4],
   ],
 };
 
@@ -215,9 +254,9 @@ const ConnectMenuConfig: MenuConfig = {
     },
 
     {
-      title: "Contact Support",
-      href: "mailto:support@dust.tt",
-      isExternal: true,
+      title: "Support",
+      href: "/home/support",
+      isExternal: false,
     },
     {
       title: "Become a Partner",
@@ -292,7 +331,7 @@ export const menuConfig: DocsConfig = {
     {
       title: SolutionsMenuConfig.title,
       label: "Dust for...",
-      rows: 5,
+      rows: 6,
       items: SolutionsMenuConfig.items,
     },
     {
@@ -389,6 +428,10 @@ export const menuConfig: DocsConfig = {
     {
       title: DevelopersMenuConfig.title,
       items: DevelopersMenuConfig.items,
+    },
+    {
+      title: ConnectMenuConfig.title,
+      items: ConnectMenuConfig.items,
     },
     {
       title: CareersMenuConfig.title,

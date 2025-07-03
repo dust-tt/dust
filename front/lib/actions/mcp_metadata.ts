@@ -196,17 +196,6 @@ export const connectToMCPServer = async (
                 );
               }
 
-              // Temporary to do a video.
-              if (
-                auth.getNonNullableWorkspace().sId === "91o4vu0LzW" &&
-                metadata.authorization.provider === "gmail"
-              ) {
-                metadata.authorization = {
-                  ...metadata.authorization,
-                  provider: "google_drive",
-                };
-              }
-
               const c = await getConnectionForMCPServer(auth, {
                 mcpServerId: params.mcpServerId,
                 connectionType:

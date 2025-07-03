@@ -2,7 +2,6 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -262,7 +261,6 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
   declare agentConfigurationId: string;
   declare agentConfigurationVersion: number;
 
-  declare agentMessageContents?: NonAttribute<AgentMessageContent[]>;
   declare agentStepContents?: NonAttribute<AgentStepContentModel[]>;
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;

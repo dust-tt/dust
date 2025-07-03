@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { usePlatform } from "@app/shared/context/PlatformContext";
-import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import { retryMessage } from "@app/shared/lib/conversation";
 import type { StoredUser } from "@app/shared/services/auth";
 import type {
@@ -28,27 +27,22 @@ import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import { useEventSource } from "@app/ui/hooks/useEventSource";
 import { useTheme } from "@app/ui/hooks/useTheme";
 import type {
-  AgentActionPublicType,
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
   AgentMessagePublicType,
-  AgentMessageSuccessEvent,
-  GenerationTokensEvent,
   LightWorkspaceType,
-  RetrievalActionPublicType,
   RetrievalDocumentPublicType,
+  SearchResultResourceType,
   WebsearchActionPublicType,
   WebsearchResultPublicType,
+  WebsearchResultResourceType,
   WorkspaceType,
 } from "@dust-tt/client";
 import {
   assertNever,
   getProviderFromRetrievedDocument,
   getTitleFromRetrievedDocument,
-  isRetrievalActionType,
-  isWebsearchActionType,
+  isMCPActionType,
+  isSearchResultResourceType,
+  isWebsearchResultResourceType,
   removeNulls,
 } from "@dust-tt/client";
 import {
@@ -134,13 +128,12 @@ export function makeDocumentCitation(
   };
 }
 
-export function makeWebsearchResultsCitation(
-  result: WebsearchResultPublicType
+export function makeMCPActionCitation(
+  result: SearchResultResourceType | WebsearchResultResourceType
 ): MarkdownCitation {
   return {
-    description: result.snippet,
-    href: result.link,
-    title: result.title,
+    href: result.uri,
+    title: result.text,
     icon: <DocumentTextIcon />,
   };
 }
@@ -377,36 +370,44 @@ export function AgentMessage({
   ]);
 
   useEffect(() => {
-    // Retrieval actions
-    const retrievalActionsWithDocs = agentMessageToRender.actions
-      .filter((a) => isRetrievalActionType(a) && a.documents)
-      .sort((a, b) => a.id - b.id) as RetrievalActionPublicType[];
-    const allDocs = removeNulls(
-      retrievalActionsWithDocs.map((a) => a.documents).flat()
-    );
-    const allDocsReferences = allDocs.reduce<{
+    // MCP search actions
+    const allMCPSearchResources = agentMessageToRender.actions
+      .filter((a) => isMCPActionType(a))
+      .map((a) =>
+        a.output?.filter(isSearchResultResourceType).map((o) => o.resource)
+      )
+      .flat();
+
+    const allMCPSearchReferences = removeNulls(allMCPSearchResources).reduce<{
       [key: string]: MarkdownCitation;
-    }>((acc, d) => {
-      acc[d.reference] = makeDocumentCitation(d, theme === "dark");
+    }>((acc, l) => {
+      acc[l.ref] = makeMCPActionCitation(l);
       return acc;
     }, {});
 
-    // Websearch actions
-    const websearchActionsWithResults = agentMessageToRender.actions
-      .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
-      .sort((a, b) => a.id - b.id) as WebsearchActionPublicType[];
-    const allWebResults = removeNulls(
-      websearchActionsWithResults.map((a) => a.output?.results).flat()
-    );
-    const allWebReferences = allWebResults.reduce<{
+    // MCP websearch actions
+    const allMCPWebSearchResources = agentMessageToRender.actions
+      .filter((a) => isMCPActionType(a))
+      .map((a) =>
+        a.output?.filter(isWebsearchResultResourceType).map((o) => o.resource)
+      )
+      .flat();
+
+    const allMCPWebSearchReferences = removeNulls(
+      allMCPWebSearchResources
+    ).reduce<{
       [key: string]: MarkdownCitation;
     }>((acc, l) => {
-      acc[l.reference] = makeWebsearchResultsCitation(l);
+      acc[l.reference] = makeMCPActionCitation(l);
       return acc;
     }, {});
 
     // Merge all references
-    setReferences({ ...allDocsReferences, ...allWebReferences });
+    setReferences({
+      ...allWebReferences,
+      ...allMCPSearchReferences,
+      ...allMCPWebSearchReferences,
+    });
   }, [
     agentMessageToRender.actions,
     agentMessageToRender.status,

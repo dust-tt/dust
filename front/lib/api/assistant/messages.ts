@@ -1,16 +1,11 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { browseActionTypesFromAgentMessageIds } from "@app/lib/actions/browse";
 import { conversationIncludeFileTypesFromAgentMessageIds } from "@app/lib/actions/conversation/include_file";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_run";
 import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
 import { processActionTypesFromAgentMessageIds } from "@app/lib/actions/process";
-import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/actions/reasoning";
-import { retrievalActionTypesFromAgentMessageIds } from "@app/lib/actions/retrieval";
 import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
-import { tableQueryTypesFromAgentMessageIds } from "@app/lib/actions/tables_query";
-import { websearchActionTypesFromAgentMessageIds } from "@app/lib/actions/websearch";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -19,7 +14,6 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -46,6 +40,7 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
+import type { TextContentType } from "@app/types/assistant/agent_message_content";
 
 async function batchRenderUserMessages(
   auth: Authenticator,
@@ -135,14 +130,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   );
   const [
     agentConfigurations,
-    agentRetrievalActions,
     agentDustAppRunActions,
-    agentTablesQueryActions,
     agentProcessActions,
-    agentWebsearchActions,
-    agentBrowseActions,
     agentConversationIncludeFileActions,
-    agentReasoningActions,
     agentSearchLabelsActions,
     agentMCPActions,
   ] = await Promise.all([
@@ -167,23 +157,13 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       return agents as LightAgentConfigurationType[];
     })(),
-    (async () =>
-      retrievalActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () =>
-      tableQueryTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
       processActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
-      websearchActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
-      browseActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       conversationIncludeFileTypesFromAgentMessageIds(auth, {
         agentMessageIds,
       }))(),
-    (async () =>
-      reasoningActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       searchLabelsActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
@@ -208,15 +188,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       const agentMessage = message.agentMessage;
 
       const actions: AgentActionType[] = [
-        agentBrowseActions,
         agentConversationIncludeFileActions,
         agentDustAppRunActions,
         agentProcessActions,
-        agentReasoningActions,
-        agentRetrievalActions,
         agentSearchLabelsActions,
-        agentTablesQueryActions,
-        agentWebsearchActions,
         agentMCPActions,
       ]
         .flat()
@@ -249,17 +224,29 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         };
       }
 
-      const rawContents =
-        agentMessage.agentMessageContents?.sort((a, b) => a.step - b.step) ??
+      const agentStepContents =
+        agentMessage.agentStepContents
+          ?.sort((a, b) => a.step - b.step || a.index - b.index)
+          .map((sc) => ({
+            step: sc.step,
+            content: sc.value,
+          })) ?? [];
+      const textContents: Array<{ step: number; content: TextContentType }> =
         [];
+      for (const content of agentStepContents) {
+        if (content.content.type === "text_content") {
+          textContents.push({ step: content.step, content: content.content });
+        }
+      }
       const contentParser = new AgentMessageContentParser(
         agentConfiguration,
         message.sId,
         getDelimitersConfiguration({ agentConfiguration })
       );
       const parsedContent = await contentParser.parseContents(
-        rawContents.map((r) => r.content)
+        textContents.map((r) => r.content.value)
       );
+
       const m = {
         id: message.id,
         agentMessageId: agentMessage.id,
@@ -274,18 +261,11 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         actions,
         content: parsedContent.content,
         chainOfThought: parsedContent.chainOfThought,
-        rawContents:
-          agentMessage.agentMessageContents?.map((rc) => ({
-            step: rc.step,
-            content: rc.content,
-          })) ?? [],
-        contents:
-          agentMessage.agentStepContents
-            ?.sort((a, b) => a.step - b.step || a.index - b.index)
-            .map((sc) => ({
-              step: sc.step,
-              content: sc.value,
-            })) ?? [],
+        rawContents: textContents.map((c) => ({
+          step: c.step,
+          content: c.content.value,
+        })),
+        contents: agentStepContents,
         error,
         configuration: agentConfiguration,
         skipToolsValidation: agentMessage.skipToolsValidation,
@@ -418,11 +398,6 @@ async function fetchMessagesForPage(
         as: "agentMessage",
         required: false,
         include: [
-          {
-            model: AgentMessageContent,
-            as: "agentMessageContents",
-            required: false,
-          },
           {
             model: AgentStepContentModel,
             as: "agentStepContents",

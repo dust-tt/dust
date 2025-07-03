@@ -66,13 +66,18 @@ export function PluginForm({
           case "number":
             return [key, 0];
           case "boolean":
-            return [key, false];
+            return [
+              key,
+              arg.async && asyncArgs?.[key] !== undefined
+                ? (asyncArgs[key] as boolean)
+                : false,
+            ];
           default:
             return [key, null];
         }
       })
     );
-  }, [manifest]);
+  }, [manifest, asyncArgs]);
 
   const form = useForm({
     resolver: argsCodec ? ioTsResolver(argsCodec) : undefined,

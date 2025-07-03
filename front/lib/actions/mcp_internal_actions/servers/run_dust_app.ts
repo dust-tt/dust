@@ -31,7 +31,7 @@ import { extractConfig } from "@app/lib/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import type { DatasetSchema } from "@app/types";
+import type { BlockRunConfig, DatasetSchema } from "@app/types";
 import type { SpecificationBlockType } from "@app/types";
 import {
   getHeaderFromGroupIds,
@@ -93,7 +93,11 @@ async function prepareAppContext(
   actionConfig:
     | ServerSideMCPServerConfigurationType
     | ServerSideMCPToolConfigurationType
-) {
+): Promise<{
+  app: AppResource;
+  schema: DatasetSchema | null;
+  appConfig: BlockRunConfig;
+}> {
   if (!actionConfig.dustAppConfiguration?.appId) {
     throw new Error("Missing Dust app ID");
   }
@@ -115,8 +119,8 @@ async function prepareAppContext(
   const inputConfig = inputSpec ? appConfig[inputSpec.name] : null;
   const datasetName = inputConfig?.dataset;
 
-  if (!datasetName || !app.description) {
-    throw new Error("Missing dataset name or app description");
+  if (!datasetName) {
+    return { app, schema: null, appConfig };
   }
 
   const schema = await getDatasetSchema(auth, app, datasetName);
@@ -232,7 +236,7 @@ async function processDustFileOutput(
 
 async function prepareParamsWithHistory(
   params: any,
-  schema: DatasetSchema,
+  schema: DatasetSchema | null,
   agentLoopRunContext: AgentLoopRunContextType,
   auth: Authenticator
 ) {

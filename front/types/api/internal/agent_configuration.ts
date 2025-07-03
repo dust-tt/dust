@@ -98,46 +98,10 @@ const ReasoningModelConfigurationSchema = t.type({
 
 // Actions
 
-const RetrievalActionConfigurationSchema = t.type({
-  type: t.literal("retrieval_configuration"),
-  query: t.union([t.literal("auto"), t.literal("none")]),
-  relativeTimeFrame: t.union([
-    t.literal("auto"),
-    t.literal("none"),
-    t.type({
-      duration: t.number,
-      unit: TimeframeUnitCodec,
-    }),
-  ]),
-  topK: t.union([t.number, t.literal("auto")]),
-  dataSources: DataSourcesConfigurationsCodec,
-});
-
 const DustAppRunActionConfigurationSchema = t.type({
   type: t.literal("dust_app_run_configuration"),
   appWorkspaceId: t.string,
   appId: t.string,
-});
-
-const TablesQueryActionConfigurationSchema = t.type({
-  type: t.literal("tables_query_configuration"),
-  tables: TablesConfigurationsCodec,
-});
-
-const WebsearchActionConfigurationSchema = t.type({
-  type: t.literal("websearch_configuration"),
-});
-
-const BrowseActionConfigurationSchema = t.type({
-  type: t.literal("browse_configuration"),
-});
-
-const ReasoningActionConfigurationSchema = t.type({
-  type: t.literal("reasoning_configuration"),
-  modelId: ModelIdCodec,
-  providerId: ModelProviderIdCodec,
-  temperature: t.union([t.number, t.null]),
-  reasoningEffort: t.union([ReasoningEffortCodec, t.null]),
 });
 
 const JsonSchemaCodec = new t.Type<JSONSchema7, unknown, unknown>(
@@ -163,7 +127,8 @@ const JsonSchemaCodec = new t.Type<JSONSchema7, unknown, unknown>(
 const MCPServerActionConfigurationSchema = t.type({
   type: t.literal("mcp_server_configuration"),
   mcpServerViewId: t.string,
-
+  name: t.string,
+  description: t.union([t.string, t.null]),
   dataSources: t.union([t.null, DataSourcesConfigurationsCodec]),
   tables: t.union([t.null, TablesConfigurationsCodec]),
   childAgentId: t.union([t.null, t.string]),
@@ -183,43 +148,10 @@ const MCPServerActionConfigurationSchema = t.type({
   dustAppConfiguration: t.union([DustAppRunActionConfigurationSchema, t.null]),
 });
 
-const ProcessActionConfigurationSchema = t.type({
-  type: t.literal("process_configuration"),
-  dataSources: DataSourcesConfigurationsCodec,
-  relativeTimeFrame: t.union([
-    t.literal("auto"),
-    t.literal("none"),
-    t.type({
-      duration: t.number,
-      unit: TimeframeUnitCodec,
-    }),
-  ]),
-  jsonSchema: t.union([t.record(t.unknown, t.unknown), t.null]),
-});
-
 const multiActionsCommonFields = {
   name: t.union([t.string, t.null]),
   description: t.union([t.string, t.null]),
 };
-
-const requiredMultiActionsCommonFields = t.type({
-  name: t.string,
-  description: t.union([t.string, t.null]),
-});
-
-const ActionConfigurationSchema = t.intersection([
-  t.union([
-    RetrievalActionConfigurationSchema,
-    DustAppRunActionConfigurationSchema,
-    TablesQueryActionConfigurationSchema,
-    ProcessActionConfigurationSchema,
-    WebsearchActionConfigurationSchema,
-    BrowseActionConfigurationSchema,
-    ReasoningActionConfigurationSchema,
-    MCPServerActionConfigurationSchema,
-  ]),
-  requiredMultiActionsCommonFields,
-]);
 
 const ModelConfigurationSchema = t.intersection([
   t.type({
@@ -264,7 +196,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
     ]),
     scope: t.union([t.literal("hidden"), t.literal("visible")]),
     model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),
-    actions: t.array(ActionConfigurationSchema),
+    actions: t.array(MCPServerActionConfigurationSchema),
     templateId: t.union([t.string, t.null, t.undefined]),
     maxStepsPerRun: t.union([t.number, t.undefined]),
     visualizationEnabled: t.boolean,

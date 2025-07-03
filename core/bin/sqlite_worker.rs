@@ -358,8 +358,8 @@ fn main() {
 
         let router = Router::new()
             .route("/databases", delete(expire_all))
-            .route("/databases/:database_id", post(databases_query))
-            .route("/databases/:database_id", delete(databases_delete))
+            .route("/databases/{database_id}", post(databases_query))
+            .route("/databases/{database_id}", delete(databases_delete))
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(CoreRequestMakeSpan::new())

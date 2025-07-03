@@ -14,7 +14,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description: "Gmail tools for managing email drafts.",
   authorization: {
-    provider: "gmail" as const,
+    provider: "google_drive" as const,
     supported_use_cases: ["personal_actions"] as const,
     scope:
       "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose" as const,
@@ -108,18 +108,21 @@ const createServer = (): McpServer => {
     async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
       const accessToken = authInfo?.token;
 
+      // Always encode subject line using RFC 2047 to handle any special characters
+      const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, "utf-8").toString("base64")}?=`;
+
       // Create the email message with proper headers and content.
       const message = [
         `To: ${to.join(", ")}`,
-        cc?.length ? `Cc: ${cc.join(", ")}` : "",
-        bcc?.length ? `Bcc: ${bcc.join(", ")}` : "",
-        `Subject: ${subject}`,
+        cc?.length ? `Cc: ${cc.join(", ")}` : null,
+        bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
+        `Subject: ${encodedSubject}`,
         "Content-Type: " + contentType,
         "MIME-Version: 1.0",
         "",
         body,
       ]
-        .filter(Boolean)
+        .filter((line) => line !== null)
         .join("\n");
 
       // Encode the message in base64 as required by the Gmail API.

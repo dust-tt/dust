@@ -11,7 +11,7 @@ import type {
   SearchQueryResourceType,
   SearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
@@ -37,9 +37,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
   authorization: {
     provider: "slack" as const,
     supported_use_cases: ["personal_actions"] as const,
-    // Use a magic prefix to split the scopes into user and bot scopes which is a slack specific thing.
-    scope:
-      "user_scope:chat:write user_scope:search:read user_scope:users:read user_scope:channels:read" as const,
   },
   icon: "SlackLogo",
   documentationUrl: "https://docs.dust.tt/docs/slack-tool-setup",

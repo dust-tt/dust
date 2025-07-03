@@ -431,24 +431,24 @@ pub async fn create_app() -> Result<Router> {
         // Connections
         .route("/connections", post(connections_create))
         .route(
-            "/connections/:connection_id/finalize",
+            "/connections/{connection_id}/finalize",
             post(connections_finalize),
         )
         .route(
-            "/connections/:connection_id/access_token",
+            "/connections/{connection_id}/access_token",
             post(deprecated_connections_access_token),
         )
         .route(
-            "/connections/:connection_id/access_token",
+            "/connections/{connection_id}/access_token",
             get(connections_access_token),
         )
         .route(
-            "/connections/:connection_id/metadata",
+            "/connections/{connection_id}/metadata",
             get(connections_metadata),
         )
         .route("/credentials", post(credentials_create))
-        .route("/credentials/:credential_id", get(credentials_retrieve))
-        .route("/credentials/:credential_id", delete(credentials_delete))
+        .route("/credentials/{credential_id}", get(credentials_retrieve))
+        .route("/credentials/{credential_id}", delete(credentials_delete))
         // Extensions
         .layer(
             TraceLayer::new_for_http()

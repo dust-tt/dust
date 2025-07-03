@@ -11,6 +11,7 @@ import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/github/temporal/activities";
 import type * as activitiesSyncCode from "@connectors/connectors/github/temporal/activities/sync_code";
+import type { DirectoryListing } from "@connectors/connectors/github/temporal/activities/sync_code";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 
@@ -67,21 +68,26 @@ const { githubCodeSyncActivity } = proxyActivities<typeof activities>({
 const {
   githubCleanupCodeSyncActivity,
   githubEnsureCodeSyncEnabledActivity,
-  githubExtractToGcsActivity,
-  githubGetGcsFilesByDepthActivity,
+  githubGetGcsFilesActivity,
   githubProcessDirectoryChunkActivity,
   githubProcessFileChunkActivity,
 } = proxyActivities<typeof activitiesSyncCode>({
   startToCloseTimeout: "10 minute",
 });
 
+const { githubExtractToGcsActivity } = proxyActivities<
+  typeof activitiesSyncCode
+>({
+  startToCloseTimeout: "60 minute",
+});
+
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
 const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
-const FILE_CHUNK_SIZE = 50;
-const DIRECTORY_CHUNK_SIZE = 20;
+const FILE_CHUNK_SIZE = 200;
+const DIRECTORY_CHUNK_SIZE = 100;
 
-const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [15, 8714];
+const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [15, 8714, 8986, 24601];
 
 /**
  * This workflow is used to fetch and sync all the repositories of a GitHub connector.
@@ -560,20 +566,24 @@ export async function githubCodeSyncStatelessWorkflow({
     return;
   }
 
-  // Get files organized by depth for hierarchical processing.
-  const { directoryBatches, fileBatches } =
-    await githubGetGcsFilesByDepthActivity({
-      gcsBasePath: extractResult.gcsBasePath,
-      repoId,
-    });
-
-  // 1. Process ALL files first to accumulate updatedDirectoryIds.
+  // Process files and directories with pagination to avoid Temporal return size limits.
   const allUpdatedDirectoryIds = new Set<string>();
-  const fileChunkPromises = [];
+  const allDirectories: DirectoryListing[] = [];
 
-  for (const batch of fileBatches) {
-    const chunks = chunk(batch.files, FILE_CHUNK_SIZE);
-    for (const fileChunk of chunks) {
+  // Process all pages of files and directories.
+  let pageToken: string | undefined;
+  do {
+    const { directories, files, nextPageToken } =
+      await githubGetGcsFilesActivity({
+        gcsBasePath: extractResult.gcsBasePath,
+        repoId,
+        pageToken,
+      });
+
+    // 1. Process files in this page to accumulate updatedDirectoryIds.
+    const fileChunkPromises = [];
+    const fileChunks = chunk(files, FILE_CHUNK_SIZE);
+    for (const fileChunk of fileChunks) {
       fileChunkPromises.push(
         githubProcessFileChunkActivity({
           codeSyncStartedAtMs,
@@ -590,39 +600,39 @@ export async function githubCodeSyncStatelessWorkflow({
         })
       );
     }
-  }
 
-  // Wait for all file processing and collect updated directory IDs.
-  const fileResults = await Promise.all(fileChunkPromises);
-  for (const result of fileResults) {
-    for (const dirId of result.updatedDirectoryIds) {
-      allUpdatedDirectoryIds.add(dirId);
+    // Wait for file processing and collect updated directory IDs.
+    const fileResults = await Promise.all(fileChunkPromises);
+    for (const result of fileResults) {
+      for (const dirId of result.updatedDirectoryIds) {
+        allUpdatedDirectoryIds.add(dirId);
+      }
     }
-  }
 
-  // 2. Process directories with updated directory info.
+    // Collect directories for later processing
+    allDirectories.push(...directories);
+
+    pageToken = nextPageToken;
+  } while (pageToken);
+
+  // 2. Process all collected directories with updated directory info.
   const directoryChunkPromises = [];
-  for (const dirBatch of directoryBatches) {
-    const directoryDepthChunks = chunk(
-      dirBatch.directories,
-      DIRECTORY_CHUNK_SIZE
+  const directoryChunks = chunk(allDirectories, DIRECTORY_CHUNK_SIZE);
+  for (const directoryChunk of directoryChunks) {
+    directoryChunkPromises.push(
+      githubProcessDirectoryChunkActivity({
+        codeSyncStartedAtMs,
+        connectorId,
+        dataSourceConfig,
+        defaultBranch: extractResult.repoInfo.default_branch,
+        directories: directoryChunk,
+        repoId,
+        repoLogin,
+        repoName,
+        // Temporal does not support Sets in activity arguments, so we convert to an array.
+        updatedDirectoryIdsArray: Array.from(allUpdatedDirectoryIds),
+      })
     );
-    for (const directoryDepthChunk of directoryDepthChunks) {
-      directoryChunkPromises.push(
-        githubProcessDirectoryChunkActivity({
-          codeSyncStartedAtMs,
-          connectorId,
-          dataSourceConfig,
-          defaultBranch: extractResult.repoInfo.default_branch,
-          directories: directoryDepthChunk,
-          repoId,
-          repoLogin,
-          repoName,
-          // Temporal does not support Sets in activity arguments, so we convert to an array.
-          updatedDirectoryIdsArray: Array.from(allUpdatedDirectoryIds),
-        })
-      );
-    }
   }
 
   await Promise.all(directoryChunkPromises);

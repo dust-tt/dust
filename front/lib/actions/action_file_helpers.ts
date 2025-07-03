@@ -292,19 +292,3 @@ export async function generateJSONFileAndSnippet(
 
   return { jsonFile, jsonSnippet };
 }
-
-export function getJSONFileAttachment({
-  jsonFileId,
-  jsonFileSnippet,
-  title,
-}: {
-  jsonFileId: string | null;
-  jsonFileSnippet: string | null;
-  title: string;
-}): string | null {
-  if (!jsonFileId || !jsonFileSnippet) {
-    return null;
-  }
-
-  return `<file id="${jsonFileId}" type="application/json" title="${title}">\n${jsonFileSnippet}\n</file>`;
-}

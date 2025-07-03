@@ -5,6 +5,7 @@ import {
   OrganizationDomainState,
 } from "@workos-inc/node";
 import assert from "assert";
+import { uniqueId } from "lodash";
 
 import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
@@ -126,6 +127,16 @@ export async function addWorkOSOrganizationDomain(
     ],
   });
 
+  // WARN: Hacky update done after the domain data, so that it trigger
+  // the webhook. Should be remove once WorkOS send us webhook when just
+  // the domains change.
+  await getWorkOS().organizations.updateOrganization({
+    organization: organization.id,
+    metadata: {
+      _webhookTrigger: uniqueId(),
+    },
+  });
+
   return new Ok(undefined);
 }
 
@@ -158,7 +169,29 @@ export async function removeWorkOSOrganizationDomain(
       })),
   });
 
+  // WARN: Hacky update done after the domain data, so that it trigger
+  // the webhook. Should be remove once WorkOS send us webhook when just
+  // the domains change.
+  await getWorkOS().organizations.updateOrganization({
+    organization: organization.id,
+    metadata: {
+      _webhookTrigger: uniqueId(),
+    },
+  });
+
   return new Ok(undefined);
+}
+
+export async function listWorkOSOrganizationsWithDomain(
+  domain: string
+): Promise<Organization[]> {
+  const workOS = getWorkOS();
+  const organizations = await workOS.organizations.listOrganizations({
+    domains: [domain],
+    limit: 100,
+  });
+
+  return organizations.data;
 }
 
 // Mapping WorkOSPortalIntent to GeneratePortalLinkIntent,
@@ -266,5 +299,30 @@ export async function deleteWorkOSOrganizationDSyncConnection(
     return new Ok(undefined);
   } catch (error) {
     return new Err(normalizeError(error));
+  }
+}
+
+export async function deleteWorksOSOrganizationWithWorkspace(
+  workspaceId: string
+): Promise<Result<undefined, Error>> {
+  const localLogger = logger.child({
+    workspaceId,
+  });
+
+  let organization: Organization;
+  try {
+    organization =
+      await getWorkOS().organizations.getOrganizationByExternalId(workspaceId);
+  } catch (err) {
+    localLogger.warn({ workspaceId }, "Can't get workOSOrganization");
+    return new Ok(undefined);
+  }
+
+  try {
+    await getWorkOS().organizations.deleteOrganization(organization.id);
+
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
   }
 }

@@ -1,10 +1,6 @@
 import fs from "fs";
 import { Op } from "sequelize";
 
-import {
-  DEFAULT_RETRIEVAL_ACTION_NAME,
-  DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -19,7 +15,11 @@ import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
 
-async function findWorkspacesWithRetrievalConfigurations(): Promise<ModelId[]> {
+type AgentStatus = "active" | "archived" | "draft";
+
+async function findWorkspacesWithRetrievalConfigurations(
+  agentStatus: AgentStatus
+): Promise<ModelId[]> {
   const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
     attributes: ["workspaceId"],
     // Filter on active agents.
@@ -29,7 +29,7 @@ async function findWorkspacesWithRetrievalConfigurations(): Promise<ModelId[]> {
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -49,9 +49,11 @@ async function migrateWorkspaceRetrievalActions(
   {
     execute,
     parentLogger,
+    agentStatus,
   }: {
     execute: boolean;
     parentLogger: typeof Logger;
+    agentStatus: AgentStatus;
   }
 ): Promise<string> {
   const logger = parentLogger.child({
@@ -73,7 +75,7 @@ async function migrateWorkspaceRetrievalActions(
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -147,8 +149,10 @@ async function migrateWorkspaceRetrievalActions(
           name:
             !retrievalConfig.name ||
             [
-              DEFAULT_RETRIEVAL_ACTION_NAME,
-              DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
+              // "search_data_sources" is the value we used to have in DEFAULT_RETRIEVAL_ACTION_NAME
+              "search_data_sources",
+              // "include_data_sources" is the value we used to have in DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME
+              "include_data_sources",
             ].includes(retrievalConfig.name)
               ? null
               : retrievalConfig.name,
@@ -227,8 +231,15 @@ makeScript(
       description: "Workspace SID to migrate",
       required: false,
     },
+    agentStatus: {
+      type: "string",
+      description: "Agent status to filter on",
+      required: false,
+      default: "active",
+      choices: ["active", "archived", "draft"],
+    },
   },
-  async ({ execute, workspaceId }, parentLogger) => {
+  async ({ execute, workspaceId, agentStatus }, parentLogger) => {
     const now = new Date().toISOString().slice(0, 16).replace(/-/g, "");
 
     let workspaces: WorkspaceModel[] = [];
@@ -243,7 +254,9 @@ makeScript(
       }
       workspaces = [workspace];
     } else {
-      const workspaceIds = await findWorkspacesWithRetrievalConfigurations();
+      const workspaceIds = await findWorkspacesWithRetrievalConfigurations(
+        agentStatus as AgentStatus
+      );
       workspaces = await WorkspaceModel.findAll({
         where: {
           id: { [Op.in]: workspaceIds },
@@ -259,6 +272,7 @@ makeScript(
       const workspaceRevertSql = await migrateWorkspaceRetrievalActions(auth, {
         execute,
         parentLogger,
+        agentStatus: agentStatus as AgentStatus,
       });
 
       if (execute) {
