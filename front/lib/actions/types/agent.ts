@@ -1,9 +1,6 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-import type {
-  ConversationIncludeFileActionRunningEvents,
-  ConversationIncludeFileConfigurationType,
-} from "@app/lib/actions/conversation/include_file";
+import type { ConversationIncludeFileActionRunningEvents } from "@app/lib/actions/conversation/include_file";
 import type {
   DustAppRunActionRunningEvents,
   DustAppRunConfigurationType,
@@ -33,8 +30,7 @@ export type AgentActionConfigurationType =
 export type ActionConfigurationType =
   | Exclude<AgentActionConfigurationType, MCPServerConfigurationType>
   | MCPToolConfigurationType
-  | SearchLabelsConfigurationType
-  | ConversationIncludeFileConfigurationType;
+  | SearchLabelsConfigurationType;
 
 /**
  * Type guard to check if a value is of type ActionConfigurationType
@@ -43,7 +39,6 @@ export function isActionConfigurationType(
   value: AgentActionConfigurationType | ActionConfigurationType
 ): value is ActionConfigurationType {
   switch (value.type) {
-    case "conversation_include_file_configuration":
     case "dust_app_run_configuration":
     case "mcp_configuration":
     case "search_labels_configuration":
