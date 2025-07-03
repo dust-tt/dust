@@ -38,7 +38,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       notFound: true,
     };
   }
-  
+
   const group = groupRes.value;
 
   const groupMembers = await group.getActiveMembers(auth);
@@ -81,9 +81,7 @@ export default function GroupPage({
       </h3>
       <div className="flex flex-row gap-x-6">
         <ViewGroupTable group={group} />
-        <div className="flex grow flex-col">
-          <MembersDataTable members={members} owner={owner} readonly />
-        </div>
+        <MembersDataTable members={members} owner={owner} readonly />
       </div>
     </>
   );
