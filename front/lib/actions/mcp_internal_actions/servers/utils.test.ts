@@ -6,6 +6,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { setupAgentOwner } from "@app/pages/api/w/[wId]/assistant/agent_configurations/index.test";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -21,8 +22,9 @@ describe("MCP Internal Actions Server Utils", () => {
       async (t: Transaction) => {
         const workspace = await WorkspaceFactory.basic();
         const otherWorkspace = await WorkspaceFactory.basic();
-        const auth = await Authenticator.internalAdminForWorkspace(
-          workspace.sId
+        const { agentOwnerAuth: auth } = await setupAgentOwner(
+          workspace,
+          "admin"
         );
 
         const otherSpace = await SpaceFactory.global(otherWorkspace, t);
@@ -102,8 +104,9 @@ describe("MCP Internal Actions Server Utils", () => {
       "should return table configurations when they belong to the workspace",
       async (t: Transaction) => {
         const workspace = await WorkspaceFactory.basic();
-        const auth = await Authenticator.internalAdminForWorkspace(
-          workspace.sId
+        const { agentOwnerAuth: auth } = await setupAgentOwner(
+          workspace,
+          "admin"
         );
 
         const space = await SpaceFactory.global(workspace, t);
