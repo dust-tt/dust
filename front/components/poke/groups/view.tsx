@@ -1,5 +1,6 @@
 import { Chip } from "@dust-tt/sparkle";
 
+import { getPokeGroupKindChipColor } from "@app/components/poke/groups/columns";
 import {
   PokeTable,
   PokeTableBody,
@@ -10,21 +11,6 @@ import {
 import type { GroupType } from "@app/types";
 
 export function ViewGroupTable({ group }: { group: GroupType }) {
-  const getKindChipColor = (kind: string) => {
-    switch (kind) {
-      case "provisioned":
-        return "blue";
-      case "global":
-        return "green";
-      case "system":
-        return "warning";
-      case "agent_editors":
-        return "rose";
-      default:
-        return "primary";
-    }
-  };
-
   return (
     <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
       <div className="flex items-center justify-between gap-3">
@@ -47,7 +33,7 @@ export function ViewGroupTable({ group }: { group: GroupType }) {
           <PokeTableRow>
             <PokeTableCell>Kind</PokeTableCell>
             <PokeTableCell>
-              <Chip color={getKindChipColor(group.kind)}>
+              <Chip color={getPokeGroupKindChipColor(group.kind)}>
                 {group.kind}
               </Chip>
             </PokeTableCell>

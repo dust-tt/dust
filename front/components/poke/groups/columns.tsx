@@ -4,6 +4,21 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import type { GroupKind, GroupType, WorkspaceType } from "@app/types";
 
+export const getPokeGroupKindChipColor = (kind: GroupKind) => {
+  switch (kind) {
+    case "provisioned":
+      return "blue";
+    case "global":
+      return "green";
+    case "system":
+      return "warning";
+    case "agent_editors":
+      return "rose";
+    default:
+      return "primary";
+  }
+};
+
 export function makeColumnsForGroups(
   owner: WorkspaceType
 ): ColumnDef<GroupType>[] {
@@ -55,23 +70,7 @@ export function makeColumnsForGroups(
       accessorKey: "kind",
       cell: ({ row }) => {
         const kind: GroupKind = row.getValue("kind");
-        
-        const getChipColor = (kind: GroupKind) => {
-          switch (kind) {
-            case "provisioned":
-              return "blue";
-            case "global":
-              return "green";
-            case "system":
-              return "warning";
-            case "agent_editors":
-              return "rose";
-            default:
-              return "primary";
-          }
-        };
-        
-        return <Chip color={getChipColor(kind)}>{kind}</Chip>;
+        return <Chip color={getPokeGroupKindChipColor(kind)}>{kind}</Chip>;
       },
       header: ({ column }) => {
         return (
