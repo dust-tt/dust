@@ -245,7 +245,7 @@ async function migrateWorkspaceConversationIncludeFileActions(
   let hasMore = false;
   let lastId = 0;
   do {
-    // Step 1: Retrieve the legacy Conversation Include File actions
+    // Step 1: Retrieve the legacy Conversation Include File actions.
     const includeFileActions = await AgentConversationIncludeFileAction.findAll(
       {
         where: {
@@ -267,7 +267,7 @@ async function migrateWorkspaceConversationIncludeFileActions(
       `Found ${includeFileActions.length} Conversation Include File actions`
     );
 
-    // Step 2: Find the corresponding AgentMessages with their Messages (to get conversationId)
+    // Step 2: Find the corresponding AgentMessages.
     const agentMessages = await AgentMessage.findAll({
       where: {
         id: {
@@ -284,7 +284,7 @@ async function migrateWorkspaceConversationIncludeFileActions(
       ],
     });
 
-    // Step 4: Find the corresponding AgentConfigurations
+    // Step 3: Find the corresponding AgentConfigurations.
     const agentConfigurationSIds = [
       ...new Set(agentMessages.map((message) => message.agentConfigurationId)),
     ];
@@ -315,7 +315,7 @@ async function migrateWorkspaceConversationIncludeFileActions(
       agentMessages.map((message) => [message.id, message])
     );
 
-    // Step 5: Create the MCP actions with their output items
+    // Step 4: Create the MCP actions with their output items.
     await concurrentExecutor(
       includeFileActions,
       async (includeFileAction) => {
@@ -361,7 +361,7 @@ async function migrateWorkspaceConversationIncludeFileActions(
       }
     );
 
-    // Step 6: Delete the legacy Conversation Include File actions
+    // Step 5: Delete the legacy Conversation Include File actions
     if (execute) {
       await AgentConversationIncludeFileAction.destroy({
         where: {
