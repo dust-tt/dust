@@ -583,7 +583,6 @@ export async function getContentFragmentFromAttachmentFile(
           text: renderAttachmentXml({
             attachment,
             content: document.document.text ?? null,
-            fileId: null,
           }),
         },
       ],
@@ -612,7 +611,6 @@ export async function getContentFragmentFromAttachmentFile(
           text: renderAttachmentXml({
             attachment,
             content,
-            fileId: null,
           }),
         },
       ],
