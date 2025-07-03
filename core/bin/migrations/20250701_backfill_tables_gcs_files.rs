@@ -5,6 +5,7 @@ use dust::{
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
 };
+use futures::future::try_join_all;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -132,26 +133,37 @@ async fn process_tables_batch(
         })
         .collect::<Vec<_>>();
 
-    let mut last_table_id = -1;
-    for (id, table_id, schema, project, data_source_id) in tables {
-        process_one_table(
-            &store,
-            &db_store,
-            id,
-            &table_id,
-            &schema,
-            &project,
-            &data_source_id,
-        )
-        .await?;
-
-        last_table_id = id;
+    if tables.is_empty() {
+        return Ok(None);
     }
 
-    match last_table_id {
-        id if id < 0 => Ok(None),
-        id => Ok(Some(id)),
-    }
+    let futures = tables
+        .into_iter()
+        .map(|(id, table_id, schema, project, data_source_id)| {
+            let store = store.clone();
+            let db_store = db_store.clone();
+            async move {
+                match process_one_table(
+                    &store,
+                    &db_store,
+                    id,
+                    &table_id,
+                    &schema,
+                    &project,
+                    &data_source_id,
+                )
+                .await
+                {
+                    Ok(_) => Ok(id),
+                    Err(e) => Err(e),
+                }
+            }
+        });
+
+    let results = try_join_all(futures).await?;
+
+    // Return the id of the last processed table
+    Ok(results.into_iter().last())
 }
 
 async fn process_one_table(
