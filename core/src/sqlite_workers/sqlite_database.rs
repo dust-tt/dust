@@ -1,13 +1,3 @@
-use anyhow::{anyhow, Result};
-use futures::future::try_join_all;
-use parking_lot::Mutex;
-use rayon::prelude::*;
-use rusqlite::{params_from_iter, Connection, InterruptHandle};
-use std::sync::Arc;
-use thiserror::Error;
-use tokio::{task, time::timeout};
-use tracing::info;
-
 use crate::{
     databases::{
         database::QueryResult,
@@ -17,11 +7,23 @@ use crate::{
     databases_store::store::DatabasesStore,
     utils,
 };
+use anyhow::{anyhow, Result};
+use cloud_storage::Object;
+use futures::future::try_join_all;
+use parking_lot::Mutex;
+use rayon::prelude::*;
+use rusqlite::{params_from_iter, Connection, InterruptHandle};
+use std::{collections::HashMap, io::Write, sync::Arc};
+use tempfile::NamedTempFile;
+use thiserror::Error;
+use tokio::{task, time::timeout};
+use tokio_stream::StreamExt;
+use tracing::info;
 
-#[derive(Clone)]
 pub struct SqliteDatabase {
     conn: Option<Arc<Mutex<Connection>>>,
     interrupt_handle: Option<Arc<tokio::sync::Mutex<InterruptHandle>>>,
+    temporary_files: Option<Vec<NamedTempFile>>,
 }
 
 #[derive(Debug, Error)]
@@ -53,6 +55,7 @@ impl SqliteDatabase {
         Self {
             conn: None,
             interrupt_handle: None,
+            temporary_files: None,
         }
     }
 
@@ -64,10 +67,16 @@ impl SqliteDatabase {
         match &self.conn {
             Some(_) => Ok(()),
             None => {
-                let conn = create_in_memory_sqlite_db(databases_store, tables).await?;
-                let interrupt_handle = conn.get_interrupt_handle();
-                self.conn = Some(Arc::new(Mutex::new(conn)));
+                let (conn, temporary_files) =
+                    create_in_memory_sqlite_db(databases_store, tables).await?;
+
+                let interrupt_handle = {
+                    let conn = conn.lock();
+                    conn.get_interrupt_handle()
+                };
+                self.conn = Some(conn);
                 self.interrupt_handle = Some(Arc::new(tokio::sync::Mutex::new(interrupt_handle)));
+                self.temporary_files = temporary_files;
 
                 Ok(())
             }
@@ -191,9 +200,141 @@ impl SqliteDatabase {
 async fn create_in_memory_sqlite_db(
     databases_store: Box<dyn DatabasesStore + Sync + Send>,
     tables: Vec<LocalTable>,
-) -> Result<Connection> {
-    let time_get_rows_start = utils::now();
+) -> Result<(Arc<Mutex<Connection>>, Option<Vec<NamedTempFile>>)> {
+    let conn = Connection::open_in_memory()?;
+    let unique_table_names = get_transient_database_unique_table_names(&tables);
 
+    let conn = Arc::new(Mutex::new(conn));
+
+    let temporary_files = create_in_memory_sqlite_db_with_csv(
+        conn.clone(),
+        tables.clone(),
+        unique_table_names.clone(),
+    )
+    .await?;
+    create_in_memory_sqlite_db_without_csv(
+        conn.clone(),
+        databases_store.clone(),
+        tables.clone(),
+        unique_table_names.clone(),
+    )
+    .await?;
+
+    Ok((conn, temporary_files))
+}
+
+async fn create_in_memory_sqlite_db_with_csv(
+    conn: Arc<Mutex<Connection>>,
+    tables: Vec<LocalTable>,
+    unique_table_names: HashMap<String, String>,
+) -> Result<Option<Vec<NamedTempFile>>> {
+    let tables_with_csv = tables
+        .iter()
+        .filter(|lt| lt.table.migrated_to_csv())
+        .map(|lt| lt.clone())
+        .collect::<Vec<_>>();
+
+    if tables_with_csv.is_empty() {
+        return Ok(None);
+    }
+
+    // Load the csvtab module early but don't hold the lock
+    {
+        let conn_guard = conn.lock();
+        rusqlite::vtab::csvtab::load_module(&conn_guard)?;
+    } // Lock is released here
+
+    let now = utils::now();
+
+    // Process CSV files and create tables in parallel
+    let csv_tasks: Vec<_> = tables_with_csv
+        .into_iter()
+        .map(|table| {
+            let table_name = unique_table_names
+                .get(&table.table.unique_id())
+                .expect("Unreachable: table name not found in unique_table_names")
+                .clone();
+
+            let create_sql = table
+                .table
+                .schema_cached()
+                .unwrap()
+                .get_create_table_sql_string(&table_name);
+
+            async move {
+                let mut stream = Object::download_streamed(
+                    &LocalTable::get_bucket()?,
+                    &LocalTable::get_csv_storage_file_path(
+                        &table.table.project().project_id(),
+                        &table.table.data_source_id(),
+                        &table.table.table_id(),
+                    ),
+                )
+                .await?;
+                let mut temp_file = NamedTempFile::new()?;
+                while let Some(byte) = stream.next().await {
+                    temp_file.write_all(&[byte.unwrap()]).unwrap();
+                }
+
+                Ok::<_, anyhow::Error>((table_name, temp_file, create_sql))
+            }
+        })
+        .collect();
+
+    let csv_results = try_join_all(csv_tasks).await?;
+
+    info!(
+        duration = utils::now() - now,
+        "DSSTRUCTSTAT - WORKER Finished downloading CSV files"
+    );
+
+    let now = utils::now();
+
+    // Execute SQLite operations in spawn_blocking
+    let temporary_files = task::spawn_blocking(move || {
+        let mut temporary_files: Vec<NamedTempFile> = Vec::new();
+        let conn = conn.lock(); // Lock inside the spawn_blocking
+
+        for (table_name, temp_file, create_sql) in csv_results {
+            let temp_file_path = temp_file.path().to_str().unwrap().to_string();
+            let schema = format!(
+                r#"
+                CREATE VIRTUAL TABLE {table_name}
+                USING csv(filename='{temp_file_path}', header=yes, schema='{create_sql}')
+                "#
+            );
+            conn.execute_batch(schema.as_str())?;
+            temporary_files.push(temp_file);
+        }
+        Ok::<_, anyhow::Error>(temporary_files)
+    })
+    .await??;
+
+    info!(
+        duration = utils::now() - now,
+        "DSSTRUCTSTAT - WORKER Finished creating tables from CSV files"
+    );
+
+    Ok(Some(temporary_files))
+}
+
+async fn create_in_memory_sqlite_db_without_csv(
+    conn: Arc<Mutex<Connection>>,
+    databases_store: Box<dyn DatabasesStore + Sync + Send>,
+    tables: Vec<LocalTable>,
+    unique_table_names: HashMap<String, String>,
+) -> Result<()> {
+    let tables_without_csv = tables
+        .iter()
+        .filter(|lt| !lt.table.migrated_to_csv())
+        .map(|lt| lt.clone())
+        .collect::<Vec<_>>();
+
+    if tables_without_csv.is_empty() {
+        return Ok(());
+    }
+
+    let time_get_rows_start = utils::now();
     let tables_with_rows: Vec<(Table, Vec<Row>)> = try_join_all(tables.iter().map(|lt| {
         let databases_store = databases_store.clone();
         async move {
@@ -228,7 +369,6 @@ async fn create_in_memory_sqlite_db(
     // Create the in-memory database in a blocking thread (in-memory rusqlite is CPU).
     task::spawn_blocking(move || {
         let generate_create_table_sql_start = utils::now();
-        let unique_table_names = get_transient_database_unique_table_names(&tables);
         let create_tables_sql: String = tables
             .into_iter()
             .filter_map(|lt| match lt.table.schema_cached() {
@@ -252,9 +392,8 @@ async fn create_in_memory_sqlite_db(
             "DSSTRUCTSTAT - WORKER Finished generating create table SQL"
         );
 
-        let conn = Connection::open_in_memory()?;
-
         let create_tables_execute_start = utils::now();
+        let conn = conn.lock();
         conn.execute_batch(&create_tables_sql)?;
         info!(
             duration = utils::now() - create_tables_execute_start,
@@ -299,7 +438,7 @@ async fn create_in_memory_sqlite_db(
             "DSSTRUCTSTAT - WORKER Finished inserting rows"
         );
 
-        Result::<_>::Ok(conn)
+        Result::<_>::Ok(())
     })
     .await?
 }
