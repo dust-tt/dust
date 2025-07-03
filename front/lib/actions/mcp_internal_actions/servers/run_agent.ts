@@ -1,5 +1,5 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { DustAPI } from "@dust-tt/client";
+import type { ConversationPublicType } from "@dust-tt/client";
+import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import { z } from "zod";
@@ -23,8 +23,13 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { isGlobalAgentId } from "@app/types";
-import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
+import {
+  Err,
+  getHeaderFromUserEmail,
+  isGlobalAgentId,
+  normalizeError,
+  Ok,
+} from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "run_agent",
@@ -270,7 +275,7 @@ export default async function createServer(
       }
 
       const streamRes = await api.streamAgentAnswerEvents({
-        conversation: conversation,
+        conversation: conversation as ConversationPublicType,
         userMessageId: createdUserMessage.sId,
       });
 
