@@ -78,7 +78,7 @@ export const TagsSelector = ({
         owner={owner}
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
-        onTagCreated={onTagCreated}
+        addTag={onTagCreated}
       />
       <div className="mb-2 flex flex-wrap gap-2">
         {assistantTags.map((tag) => (
