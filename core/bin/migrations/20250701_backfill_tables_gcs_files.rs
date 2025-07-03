@@ -70,7 +70,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     while next_cursor <= last_id {
         println!(
-            "Processing {} tables, starting at id {}. ",
+            "Processing up to {} tables, starting at id {}. ",
             batch_size, next_cursor
         );
         let next_id_cursor =
@@ -86,6 +86,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             }
         };
+        println!("Processed up to id: {}", next_cursor);
     }
 
     Ok(())
