@@ -155,13 +155,48 @@ export const fetchTables = async ({
             return null;
           }
           if (fetchTablesDescription) {
-            const metadata = await table.getMetadata();
-            return {
-              name: table.id!,
-              database_name: credentials.project_id,
-              schema_name: dataset,
-              description: metadata[0].description,
-            };
+            try {
+              const metadata = await table.getMetadata();
+              return {
+                name: table.id!,
+                database_name: credentials.project_id,
+                schema_name: dataset,
+                description: metadata[0].description,
+              };
+            } catch (error) {
+              // Handle BigQuery permission errors gracefully
+              if (
+                error &&
+                typeof error === "object" &&
+                "code" in error &&
+                error.code === 403 &&
+                "errors" in error &&
+                Array.isArray(error.errors) &&
+                error.errors[0]?.reason === "accessDenied"
+              ) {
+                const errorMessage =
+                  "message" in error && typeof error.message === "string"
+                    ? error.message
+                    : "Permission denied";
+                logger.warn(
+                  {
+                    projectId: credentials.project_id,
+                    dataset,
+                    table: table.id,
+                    error: errorMessage,
+                  },
+                  "[BigQuery] Permission denied accessing table metadata, continuing without description"
+                );
+                // Return table info without description when we lack permissions
+                return {
+                  name: table.id!,
+                  database_name: credentials.project_id,
+                  schema_name: dataset,
+                };
+              }
+              // Re-throw other errors
+              throw error;
+            }
           } else {
             return {
               name: table.id!,
