@@ -9,6 +9,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { useWorkOSDSyncStatus } from "@app/lib/swr/workos";
+import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type {
   ExtensionConfigurationType,
   WorkspaceDomain,
@@ -28,7 +29,7 @@ export function WorkspaceInfoTable({
 }) {
   const { dsyncStatus } = useWorkOSDSyncStatus({ owner });
 
-  const getStatusChipColor = (status: string) => {
+  const getStatusChipColor = (status: WorkOSConnectionSyncStatus["status"]) => {
     switch (status) {
       case "configured":
         return "green";
@@ -122,7 +123,11 @@ export function WorkspaceInfoTable({
             <PokeTableRow>
               <PokeTableCell>Directory Sync</PokeTableCell>
               <PokeTableCell>
-                <Chip color={getStatusChipColor(dsyncStatus?.status || "not_configured")}>
+                <Chip
+                  color={getStatusChipColor(
+                    dsyncStatus?.status || "not_configured"
+                  )}
+                >
                   {dsyncStatus?.status || "not_configured"}
                 </Chip>
               </PokeTableCell>
@@ -131,7 +136,11 @@ export function WorkspaceInfoTable({
               <PokeTableRow>
                 <PokeTableCell>Directory Sync State</PokeTableCell>
                 <PokeTableCell>
-                  <Chip color={getConnectionStateChipColor(dsyncStatus.connection.state)}>
+                  <Chip
+                    color={getConnectionStateChipColor(
+                      dsyncStatus.connection.state
+                    )}
+                  >
                     {dsyncStatus.connection.state}
                   </Chip>
                 </PokeTableCell>
