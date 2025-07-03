@@ -99,7 +99,7 @@ const CliChat: FC<CliChatProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [showFileSelector, setShowFileSelector] = useState(false);
-  // const [shouldInitFileSystem, setShouldInitFileSystem] = useState(false);
+  const [chosenFileSystemUsage, setChosenFileSystemUsage] = useState(false);
   const [fileSystemServerId, setFileSystemServerId] = useState<string | null>(
     null
   );
@@ -1171,7 +1171,7 @@ const CliChat: FC<CliChatProps> = ({
     );
   }
 
-  if ((selectedAgent || !isSelectingNewAgent) && !fileSystemServerId) {
+  if ((selectedAgent || !isSelectingNewAgent) && !chosenFileSystemUsage) {
     return (
       <FileAccessSelector
         selectMultiple={false}
@@ -1185,6 +1185,7 @@ const CliChat: FC<CliChatProps> = ({
               setFileSystemServerId(serverId);
             });
           }
+          setChosenFileSystemUsage(true);
         }}
       />
     );
