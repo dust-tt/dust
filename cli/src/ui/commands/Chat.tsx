@@ -139,11 +139,11 @@ const CliChat: FC<CliChatProps> = ({
 
       // For low stake tools, check cache first
       if (event.stake === "low") {
-        const cachedApproval = await toolsCache.getCachedApproval(
-          event.metadata.agentName,
-          event.metadata.mcpServerName,
-          event.metadata.toolName
-        );
+        const cachedApproval = await toolsCache.getCachedApproval({
+          agentName: event.metadata.agentName,
+          mcpServerName: event.metadata.mcpServerName,
+          toolName: event.metadata.toolName,
+        });
 
         if (cachedApproval !== null) {
           return cachedApproval;
@@ -174,11 +174,11 @@ const CliChat: FC<CliChatProps> = ({
         }
         // Cache the approval if requested and it's a low stake tool
         if (cacheApproval && pendingApproval.stake === "low") {
-          await toolsCache.setCachedApproval(
-            pendingApproval.metadata.agentName,
-            pendingApproval.metadata.mcpServerName,
-            pendingApproval.metadata.toolName
-          );
+          await toolsCache.setCachedApproval({
+            agentName: pendingApproval.metadata.agentName,
+            mcpServerName: pendingApproval.metadata.mcpServerName,
+            toolName: pendingApproval.metadata.toolName,
+          });
         }
 
         approvalResolver(approved);

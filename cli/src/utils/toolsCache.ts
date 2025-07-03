@@ -6,6 +6,12 @@ interface ToolsCacheOptions {
   cacheDir?: string;
 }
 
+type ToolsCacheKeyParams = {
+  agentName: string;
+  mcpServerName: string;
+  toolName: string;
+};
+
 export class ToolsCache {
   private cacheDir: string;
   private cacheFilePath: string;
@@ -51,21 +57,21 @@ export class ToolsCache {
     }
   }
 
-  private createToolKey(
-    agentName: string,
-    mcpServerName: string,
-    toolName: string
-  ): string {
+  private createToolKey({
+    agentName,
+    mcpServerName,
+    toolName,
+  }: ToolsCacheKeyParams): string {
     return `${agentName}:${mcpServerName}:${toolName}`;
   }
 
-  public async getCachedApproval(
-    agentName: string,
-    toolName: string,
-    mcpServerName: string
-  ): Promise<boolean | null> {
+  public async getCachedApproval({
+    agentName,
+    mcpServerName,
+    toolName,
+  }: ToolsCacheKeyParams): Promise<boolean | null> {
     const cache = await this.loadCache();
-    const toolKey = this.createToolKey(agentName, mcpServerName, toolName);
+    const toolKey = this.createToolKey({ agentName, mcpServerName, toolName });
     const cachedEntry = cache.find((entry) => entry === toolKey);
 
     if (!cachedEntry) {
@@ -75,13 +81,13 @@ export class ToolsCache {
     return true;
   }
 
-  public async setCachedApproval(
-    agentName: string,
-    toolName: string,
-    mcpServerName: string
-  ): Promise<void> {
+  public async setCachedApproval({
+    agentName,
+    mcpServerName,
+    toolName,
+  }: ToolsCacheKeyParams): Promise<void> {
     const cache = await this.loadCache();
-    const toolKey = this.createToolKey(agentName, mcpServerName, toolName);
+    const toolKey = this.createToolKey({ agentName, mcpServerName, toolName });
     await this.saveCache([...cache, toolKey]);
   }
 
