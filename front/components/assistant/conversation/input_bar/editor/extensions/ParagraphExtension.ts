@@ -1,13 +1,7 @@
 import { Paragraph } from "@tiptap/extension-paragraph";
 
-import { isSubmitMessageKey } from "@app/lib/keymaps";
-
 export const ParagraphExtension = Paragraph.extend({
   addKeyboardShortcuts() {
-    const submitMessageKey = localStorage.getItem("submitMessageKey");
-    const isCmdEnter =
-      isSubmitMessageKey(submitMessageKey) && submitMessageKey === "cmd+enter";
-
     return {
       ...this.parent?.(),
 
