@@ -305,13 +305,12 @@ export function CodeBlockWithExtendedSupport({
         })
       : undefined;
 
+  // Check for valid Mermaid and JSON.
   useEffect(() => {
     if (isStreaming || !validChildrenContent) {
       return;
     }
-
-    // Check for valid Mermaid
-    if (language === "mermaid" && !isValidMermaid && !showMermaid) {
+    if (language === "mermaid") {
       const checkValidMermaid = async () => {
         try {
           await mermaid.parse(validChildrenContent);
@@ -324,8 +323,6 @@ export function CodeBlockWithExtendedSupport({
       };
       void checkValidMermaid();
     }
-
-    // Check for valid JSON
     if (language === "json") {
       try {
         const parsed = JSON.parse(validChildrenContent);
@@ -336,13 +333,7 @@ export function CodeBlockWithExtendedSupport({
         setShowPrettyJson(false);
       }
     }
-  }, [
-    isStreaming,
-    isValidMermaid,
-    showMermaid,
-    language,
-    validChildrenContent,
-  ]);
+  }, [isStreaming, language, validChildrenContent]);
 
   if (inline) {
     return (
@@ -350,7 +341,9 @@ export function CodeBlockWithExtendedSupport({
         {children}
       </CodeBlock>
     );
-  } else if (!inline && isValidMermaid) {
+  }
+
+  if (isValidMermaid) {
     return (
       <ContentBlockWrapper
         content={validChildrenContent}
@@ -375,7 +368,9 @@ export function CodeBlockWithExtendedSupport({
         )}
       </ContentBlockWrapper>
     );
-  } else if (!inline && language === "json" && parsedJson !== null) {
+  }
+
+  if (parsedJson !== null) {
     return (
       <ContentBlockWrapper
         content={validChildrenContent}
@@ -402,16 +397,16 @@ export function CodeBlockWithExtendedSupport({
         )}
       </ContentBlockWrapper>
     );
-  } else {
-    return (
-      <ContentBlockWrapper
-        content={validChildrenContent}
-        getContentToDownload={getContentToDownload}
-      >
-        <CodeBlock className={className} inline={inline}>
-          {children}
-        </CodeBlock>
-      </ContentBlockWrapper>
-    );
   }
+
+  return (
+    <ContentBlockWrapper
+      content={validChildrenContent}
+      getContentToDownload={getContentToDownload}
+    >
+      <CodeBlock className={className} inline={inline}>
+        {children}
+      </CodeBlock>
+    </ContentBlockWrapper>
+  );
 }
