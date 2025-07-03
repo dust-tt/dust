@@ -4,6 +4,7 @@ import { useController, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { TagsSelector } from "@app/components/agent_builder/settings/TagsSelector";
 import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
 import { useTags } from "@app/lib/swr/tags";
 import type {
@@ -14,8 +15,6 @@ import type {
 } from "@app/types";
 import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
-
-import { TagsSelector } from "./TagsSelector";
 
 async function getTagsSuggestions({
   owner,
