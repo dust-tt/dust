@@ -204,6 +204,7 @@ const WorkspacePage = ({
                 extensionConfig={extensionConfig}
               />
               <div className="flex flex-grow flex-col gap-4">
+                <DirectorySyncStatus owner={owner} />
                 <PluginList
                   pluginResourceTarget={{
                     resourceId: owner.sId,
