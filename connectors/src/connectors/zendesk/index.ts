@@ -593,12 +593,42 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
             )
           );
         }
+
         const finalRetentionDays =
           configValue.trim() === "" ? DEFAULT_RETENTION_DAYS : retentionDays;
+
+        logger.info(
+          { connectorId, retentionDays },
+          "[Zendesk] Setting retention period"
+        );
+
+        const currentRetentionDays = zendeskConfiguration.retentionPeriodDays;
 
         await zendeskConfiguration.update({
           retentionPeriodDays: finalRetentionDays,
         });
+
+        // Triggers a ticket sync for a Zendesk connector when retention period is increased.
+        if (finalRetentionDays > currentRetentionDays) {
+          const syncResult = await launchZendeskTicketReSyncWorkflow(
+            connector,
+            {
+              forceResync: false,
+            }
+          );
+
+          if (syncResult instanceof Err) {
+            logger.error(
+              { connectorId, error: syncResult.error },
+              "[Zendesk] Failed to execute ticket sync"
+            );
+          } else {
+            logger.info(
+              { connectorId, workflowId: syncResult.value },
+              "[Zendesk] Successfully executed ticket sync"
+            );
+          }
+        }
         break;
       }
       default: {

@@ -698,17 +698,6 @@ export type ZendeskFetchBrandResponseType = t.TypeOf<
 export const ZendeskGetRetentionPeriodResponseSchema = t.type({
   retentionPeriodDays: t.number,
 });
-export type ZendeskGetRetentionPeriodResponseType = t.TypeOf<
-  typeof ZendeskGetRetentionPeriodResponseSchema
->;
-
-export const ZendeskSetRetentionPeriodResponseSchema = t.type({
-  success: t.boolean,
-  retentionPeriodDays: t.number,
-});
-export type ZendeskSetRetentionPeriodResponseType = t.TypeOf<
-  typeof ZendeskSetRetentionPeriodResponseSchema
->;
 /**
  * </Zendesk>
  */
@@ -775,8 +764,6 @@ export const AdminResponseSchema = t.union([
   ZendeskCountTicketsResponseSchema,
   ZendeskFetchBrandResponseSchema,
   ZendeskFetchTicketResponseSchema,
-  ZendeskGetRetentionPeriodResponseSchema,
-  ZendeskSetRetentionPeriodResponseSchema,
 ]);
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
 /**

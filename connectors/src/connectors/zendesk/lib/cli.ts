@@ -1,4 +1,4 @@
-import { updateRetentionPeriod } from "@connectors/connectors/zendesk/lib/edit_retention";
+import { ZendeskConnectorManager } from "@connectors/connectors/zendesk";
 import {
   extractMetadataFromDocumentUrl,
   shouldSyncTicket,
@@ -35,8 +35,6 @@ import type {
   ZendeskCountTicketsResponseType,
   ZendeskFetchBrandResponseType,
   ZendeskFetchTicketResponseType,
-  ZendeskGetRetentionPeriodResponseType,
-  ZendeskSetRetentionPeriodResponseType,
 } from "@connectors/types";
 
 export const zendesk = async ({
@@ -47,9 +45,8 @@ export const zendesk = async ({
   | ZendeskCountTicketsResponseType
   | ZendeskFetchTicketResponseType
   | ZendeskFetchBrandResponseType
-  | ZendeskGetRetentionPeriodResponseType
-  | ZendeskSetRetentionPeriodResponseType
   | AdminResponseType
+  | { retentionPeriodDays: number }
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
 
@@ -380,7 +377,11 @@ export const zendesk = async ({
       if (retentionPeriodDays === undefined) {
         throw new Error("Missing --retentionPeriodDays argument");
       }
-      await updateRetentionPeriod(connector, retentionPeriodDays);
+      const manager = new ZendeskConnectorManager(connectorId);
+      await manager.setConfigurationKey({
+        configKey: "zendeskRetentionPeriodDays",
+        configValue: retentionPeriodDays.toString(),
+      });
       return { success: true };
     }
   }
