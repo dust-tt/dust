@@ -1,5 +1,5 @@
 import React from "react";
-import type { UseFormReturn } from "react-hook-form";
+import type { FieldValues, UseFormReturn } from "react-hook-form";
 import { FormProvider } from "react-hook-form";
 import { z } from "zod";
 
@@ -65,27 +65,3 @@ export const agentBuilderFormSchema = z.object({
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderAction = z.infer<typeof actionSchema>;
-
-interface AgentBuilderFormProviderProps {
-  children: React.ReactNode;
-  form: UseFormReturn<AgentBuilderFormData>;
-  onSubmit?: (data: AgentBuilderFormData) => void | Promise<void>;
-}
-
-export function AgentBuilderFormProvider({
-  children,
-  form,
-  onSubmit,
-}: AgentBuilderFormProviderProps) {
-  const handleSubmit = async (data: AgentBuilderFormData) => {
-    if (onSubmit) {
-      await onSubmit(data);
-    }
-  };
-
-  return (
-    <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)}>{children}</form>
-    </FormProvider>
-  );
-}

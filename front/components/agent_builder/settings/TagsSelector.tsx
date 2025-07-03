@@ -62,10 +62,6 @@ export const TagsSelector = ({
 
   const sortedTags = tags.toSorted(tagsSorter);
 
-  const onTagCreated = (tag: TagType) => {
-    onTagsChange([...tags, tag]);
-  };
-
   const addTag = (tag: TagType) => {
     onTagsChange([...tags, tag]);
   };
@@ -80,7 +76,7 @@ export const TagsSelector = ({
         owner={owner}
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
-        onTagCreated={onTagCreated}
+        addTag={addTag}
       />
       <div className="mb-2 flex flex-wrap gap-2">
         {sortedTags.map((tag) => (

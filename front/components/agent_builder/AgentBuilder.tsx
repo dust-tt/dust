@@ -6,10 +6,7 @@ import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  AgentBuilderFormProvider,
-  agentBuilderFormSchema,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
@@ -22,6 +19,7 @@ import {
   GPT_4O_MODEL_ID,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 
 export default function AgentBuilder() {
   const { owner } = useAgentBuilderContext();
@@ -87,7 +85,7 @@ export default function AgentBuilder() {
   };
 
   return (
-    <AgentBuilderFormProvider form={form} onSubmit={handleSubmit}>
+    <FormProvider<AgentBuilderFormData> form={form} onSubmit={handleSubmit}>
       <AgentBuilderLayout
         leftPanel={
           <AgentBuilderLeftPanel
@@ -101,6 +99,6 @@ export default function AgentBuilder() {
         }
         rightPanel={<AgentBuilderRightPanel />}
       />
-    </AgentBuilderFormProvider>
+    </FormProvider>
   );
 }
