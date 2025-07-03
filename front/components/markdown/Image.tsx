@@ -8,16 +8,12 @@ import {
 } from "@app/lib/swr/file";
 import type { LightWorkspaceType } from "@app/types";
 
-export function Img({
-  src,
-  alt,
-  owner,
-}: {
-  src: string | undefined;
-  alt: string | undefined;
-  title?: string | undefined;
+interface ImgProps {
+  src: string;
+  alt: string;
   owner: LightWorkspaceType;
-}) {
+}
+export function Img({ src, alt, owner }: ImgProps) {
   if (!src) {
     return null;
   }
