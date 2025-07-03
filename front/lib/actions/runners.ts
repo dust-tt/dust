@@ -1,5 +1,3 @@
-import type { ConversationIncludeFileConfigurationType } from "@app/lib/actions/conversation/include_file";
-import { ConversationIncludeFileConfigurationServerRunner } from "@app/lib/actions/conversation/include_file";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { DustAppRunConfigurationServerRunner } from "@app/lib/actions/dust_app_run";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
@@ -16,7 +14,6 @@ import type {
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 
 interface ActionToConfigTypeMap {
-  conversation_include_file_configuration: ConversationIncludeFileConfigurationType;
   dust_app_run_configuration: DustAppRunConfigurationType;
   process_configuration: ProcessConfigurationType;
   search_labels_configuration: SearchLabelsConfigurationType;
@@ -24,7 +21,6 @@ interface ActionToConfigTypeMap {
 }
 
 interface ActionTypeToClassMap {
-  conversation_include_file_configuration: ConversationIncludeFileConfigurationServerRunner;
   dust_app_run_configuration: DustAppRunConfigurationServerRunner;
   process_configuration: ProcessConfigurationServerRunner;
   search_labels_configuration: SearchLabelsConfigurationServerRunner;
@@ -67,8 +63,6 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
       CombinedMap[K]["configType"]
     >;
 } = {
-  conversation_include_file_configuration:
-    ConversationIncludeFileConfigurationServerRunner,
   dust_app_run_configuration: DustAppRunConfigurationServerRunner,
   process_configuration: ProcessConfigurationServerRunner,
   search_labels_configuration: SearchLabelsConfigurationServerRunner,
