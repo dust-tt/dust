@@ -278,7 +278,7 @@ export async function deleteAgentsActivity({
     });
     await AgentChildAgentConfiguration.destroy({
       where: {
-        agentConfigurationId: agent.id,
+        agentConfigurationId: agent.sId,
         workspaceId: workspace.id,
       },
     });
