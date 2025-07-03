@@ -55,7 +55,7 @@
       },
       "args": [
         "--start-cursor",
-        "25",
+        "0",
         "--batch-size",
         "3",
         "--skip-confirmation"

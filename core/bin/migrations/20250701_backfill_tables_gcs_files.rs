@@ -134,8 +134,6 @@ async fn process_tables_batch(
 
     let mut last_table_id = -1;
     for (id, table_id, schema, project, data_source_id) in tables {
-        println!("Processing table with id: {}, table_id: {}", id, table_id);
-
         process_one_table(
             &store,
             &db_store,
@@ -182,12 +180,14 @@ async fn process_one_table(
                 .map_err(|e| anyhow::anyhow!("Failed to serialize table schema: {}", e))?;
 
             if Some(schema_from_rows.as_str()) != schema.as_deref() {
-                return Err(anyhow::anyhow!(
-                    "Table schema from rows does not match schema from DB for table with id: {}, table_id: {}",
+                println!(
+                    "Warning: Table schema from rows does not match schema from DB for table with id: {}, table_id: {}. From rows: {}, from DB: {}",
                     id,
-                    table_id
-                )
-                .into());
+                    table_id,
+                    schema_from_rows,
+                    schema.as_deref().unwrap_or("null")
+                );
+                return Ok(());
             }
         }
     } else if !schema.is_none() {
