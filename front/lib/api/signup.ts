@@ -324,11 +324,8 @@ export async function handleRegularSignupFlow(
 
     return new Ok({ flow: "joined", workspace });
   } else {
-    return new Err(
-      new AuthFlowError(
-        "invalid_domain",
-        "The domain attached to your email address is not authorized to join this workspace."
-      )
-    );
+    // Redirect the user to their existing workspace if they are not allowed to join the target
+    // workspace.
+    return new Ok({ flow: null, workspace: null });
   }
 }
