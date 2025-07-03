@@ -12,6 +12,7 @@ import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilde
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import {
@@ -19,7 +20,6 @@ import {
   GPT_4O_MODEL_ID,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
-import { FormProvider } from "@app/components/sparkle/FormProvider";
 
 export default function AgentBuilder() {
   const { owner } = useAgentBuilderContext();
