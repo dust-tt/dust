@@ -14,6 +14,7 @@ import {
 } from "@app/lib/api/data_sources";
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import type { ActionApp } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -41,6 +42,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     integrations: DataSourceIntegration[];
     registryApps: ActionApp[] | null;
     user: UserType;
+    activeSeats: number;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -139,6 +141,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     ? Object.values(getDustProdActionRegistry()).map((action) => action.app)
     : null;
 
+  const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
+
   return {
     props: {
       canReadInSpace: space.canRead(auth),
@@ -154,6 +158,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       space: space.toJSON(),
       subscription,
       systemSpace: systemSpace.toJSON(),
+      activeSeats,
     },
   };
 });
@@ -168,6 +173,7 @@ export default function Space({
   space,
   systemSpace,
   integrations,
+  activeSeats,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -182,6 +188,7 @@ export default function Space({
       canWriteInSpace={canWriteInSpace}
       category={category}
       integrations={integrations}
+      activeSeats={activeSeats}
       onSelect={(sId) => {
         void router.push(
           `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${sId}`

@@ -2,7 +2,10 @@ import fs from "fs";
 import path from "path";
 import { promisify } from "util";
 
-import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
+import {
+  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+  DEFAULT_WEBSEARCH_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
@@ -150,11 +153,10 @@ function _getDefaultWebActionsForGlobalAgent({
       id: -1,
       sId: agentId + "-websearch-browse-action",
       type: "mcp_server_configuration",
-      name: "web_search_&_browse" satisfies InternalMCPServerNameType,
+      name: DEFAULT_WEBSEARCH_ACTION_NAME satisfies InternalMCPServerNameType,
       // Putting a description here is important as it prevents the global agent being detected as
       // a legacy agent (see isLegacyAgent) and being capped to 1 action.
-      description:
-        "Agent can search (Google) and retrieve information from specific websites.",
+      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
       dataSources: null,
@@ -1366,7 +1368,7 @@ function _getManagedDataSourceAgent(
       id: -1,
       sId: agentId + "-search-action",
       type: "mcp_server_configuration",
-      name: DEFAULT_RETRIEVAL_ACTION_NAME,
+      name: "search_data_sources",
       description: `The user's ${connectorProvider} data source.`,
       mcpServerViewId: searchMCPServerView.sId,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,

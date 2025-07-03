@@ -1,10 +1,6 @@
 import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import {
-  DEFAULT_REASONING_ACTION_DESCRIPTION,
-  DEFAULT_REASONING_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -31,8 +27,8 @@ function createServer(
   const server = new McpServer(serverInfo);
 
   server.tool(
-    DEFAULT_REASONING_ACTION_NAME,
-    DEFAULT_REASONING_ACTION_DESCRIPTION,
+    "advanced_reasoning",
+    "Offload a reasoning-heavy task to a powerful reasoning model. The reasoning model does not have access to any tools.",
     {
       model:
         ConfigurableToolInputSchemas[

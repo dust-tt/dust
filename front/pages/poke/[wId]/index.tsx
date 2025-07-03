@@ -22,6 +22,7 @@ import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
+import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
@@ -58,7 +59,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   subscriptions: SubscriptionType[];
   whitelistableFeatures: WhitelistableFeature[];
   workspaceVerifiedDomains: WorkspaceDomain[];
-  worspaceCreationDay: string;
+  workspaceCreationDay: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const activeSubscription = auth.subscription();
@@ -90,7 +91,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   );
 
   const workspaceVerifiedDomains = await getWorkspaceVerifiedDomains(owner);
-  const worspaceCreationDate = await getWorkspaceCreationDate(owner.sId);
+  const workspaceCreationDay = await getWorkspaceCreationDate(owner.sId);
 
   const extensionConfig =
     await ExtensionConfigurationResource.fetchForWorkspace(auth);
@@ -103,7 +104,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       whitelistableFeatures: WHITELISTABLE_FEATURES,
       registry: getDustProdActionRegistry(),
       workspaceVerifiedDomains,
-      worspaceCreationDay: format(worspaceCreationDate, "yyyy-MM-dd"),
+      workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
       extensionConfig: extensionConfig?.toJSON() ?? null,
       baseUrl: config.getClientFacingUrl(),
     },
@@ -117,7 +118,7 @@ const WorkspacePage = ({
   whitelistableFeatures,
   registry,
   workspaceVerifiedDomains,
-  worspaceCreationDay,
+  workspaceCreationDay,
   extensionConfig,
   baseUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -198,7 +199,7 @@ const WorkspacePage = ({
               <WorkspaceInfoTable
                 owner={owner}
                 workspaceVerifiedDomains={workspaceVerifiedDomains}
-                worspaceCreationDay={worspaceCreationDay}
+                workspaceCreationDay={workspaceCreationDay}
                 extensionConfig={extensionConfig}
               />
               <div className="flex flex-grow flex-col gap-4">
@@ -220,6 +221,7 @@ const WorkspacePage = ({
             <DataSourceViewsDataTable owner={owner} />
             <MCPServerViewsDataTable owner={owner} />
             <SpaceDataTable owner={owner} />
+            <GroupDataTable owner={owner} />
             <AssistantsDataTable owner={owner} />
             <AppDataTable owner={owner} />
             <FeatureFlagsDataTable
@@ -257,10 +259,10 @@ export function DustAppLogsModal({
             ([
               action,
               {
-                app: { appId, workspaceId: appWorkspaceid, appSpaceId },
+                app: { appId, workspaceId: appWorkspaceId, appSpaceId },
               },
             ]) => {
-              const url = `${baseUrl}/w/${appWorkspaceid}/spaces/${appSpaceId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
+              const url = `${baseUrl}/w/${appWorkspaceId}/spaces/${appSpaceId}/apps/${appId}/runs?wIdTarget=${owner.sId}`;
 
               return (
                 <div key={appId}>

@@ -124,20 +124,33 @@ export function renderTagsForToolOutput(
   return `${tagsInAsString}${tagsNotAsString}`;
 }
 
-export function makeQueryResource(
-  query: string,
-  relativeTimeFrame: TimeFrame | null,
-  tagsIn?: string[],
-  tagsNot?: string[]
-): SearchQueryResourceType {
-  const timeFrameAsString =
-    renderRelativeTimeFrameForToolOutput(relativeTimeFrame);
+function renderSearchNodeIds(nodeIds?: string[]): string {
+  return nodeIds && nodeIds.length > 0
+    ? `within ${nodeIds.length} different subtrees `
+    : "";
+}
+
+export function makeQueryResource({
+  query,
+  timeFrame,
+  tagsIn,
+  tagsNot,
+  nodeIds,
+}: {
+  query: string;
+  timeFrame: TimeFrame | null;
+  tagsIn?: string[];
+  tagsNot?: string[];
+  nodeIds?: string[];
+}): SearchQueryResourceType {
+  const timeFrameAsString = renderRelativeTimeFrameForToolOutput(timeFrame);
   const tagsAsString = renderTagsForToolOutput(tagsIn, tagsNot);
+  const nodeIdsAsString = renderSearchNodeIds(nodeIds);
 
   return {
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
     text: query
-      ? `Searching "${query}", ${timeFrameAsString}${tagsAsString}.`
+      ? `Searching "${query}" ${nodeIdsAsString}${timeFrameAsString}${tagsAsString}.`
       : `Searching ${timeFrameAsString}${tagsAsString}.`,
     uri: "",
   };
