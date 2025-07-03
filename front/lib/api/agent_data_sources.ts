@@ -6,7 +6,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { isManagedConnectorProvider } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -218,13 +217,6 @@ export async function getDataSourceViewsUsageByCategory({
               },
             },
           ],
-        },
-        {
-          model: AgentProcessConfiguration,
-          as: "agent_process_configuration",
-          attributes: [],
-          required: true,
-          include: [agentConfigurationInclude],
         },
       ],
     }),
@@ -520,24 +512,6 @@ export async function getDataSourcesUsageByCategory({
             connectorProvider: connectorProvider,
           },
         },
-        {
-          model: AgentProcessConfiguration,
-          as: "agent_process_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfiguration,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
-          ],
-        },
       ],
     }),
     AgentDataSourceConfiguration.findAll({
@@ -792,26 +766,7 @@ export async function getDataSourceUsage({
         workspaceId: owner.id,
         dataSourceId: dataSource.id,
       },
-      include: [
-        {
-          model: AgentProcessConfiguration,
-          as: "agent_process_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfiguration,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
-          ],
-        },
-      ],
+      include: [],
     }),
     AgentDataSourceConfiguration.findOne({
       raw: true,
@@ -1031,26 +986,7 @@ export async function getDataSourceViewUsage({
         workspaceId: owner.id,
         dataSourceViewId: dataSourceView.id,
       },
-      include: [
-        {
-          model: AgentProcessConfiguration,
-          as: "agent_process_configuration",
-          attributes: [],
-          required: true,
-          include: [
-            {
-              model: AgentConfiguration,
-              as: "agent_configuration",
-              attributes: [],
-              required: true,
-              where: {
-                status: "active",
-                workspaceId: owner.id,
-              },
-            },
-          ],
-        },
-      ],
+      include: [],
     }),
     AgentDataSourceConfiguration.findOne({
       raw: true,

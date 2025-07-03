@@ -49,18 +49,13 @@ export function getDataSourceViewIdsFromActions(
 ): string[] {
   const relevantActions = actions.filter(
     (action) =>
-      action.type === "process_configuration" ||
-      (action.type === "mcp_server_configuration" &&
-        isServerSideMCPServerConfiguration(action))
+      action.type === "mcp_server_configuration" &&
+      isServerSideMCPServerConfiguration(action)
   );
 
   return removeNulls(
     relevantActions.flatMap((action) => {
-      if (action.type === "process_configuration") {
-        return action.dataSources.map(
-          (dataSource) => dataSource.dataSourceViewId
-        );
-      } else if (
+      if (
         action.type === "mcp_server_configuration" &&
         isServerSideMCPServerConfiguration(action)
       ) {

@@ -1,3 +1,4 @@
+import type { ConversationPublicType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -269,7 +270,7 @@ export default async function createServer(
       }
 
       const streamRes = await api.streamAgentAnswerEvents({
-        conversation: conversation,
+        conversation: conversation as ConversationPublicType,
         userMessageId: createdUserMessage.sId,
       });
 

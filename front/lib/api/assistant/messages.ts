@@ -4,7 +4,6 @@ import { Op, Sequelize } from "sequelize";
 import { conversationIncludeFileTypesFromAgentMessageIds } from "@app/lib/actions/conversation/include_file";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_run";
 import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
-import { processActionTypesFromAgentMessageIds } from "@app/lib/actions/process";
 import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
 import {
   AgentMessageContentParser,
@@ -131,7 +130,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   const [
     agentConfigurations,
     agentDustAppRunActions,
-    agentProcessActions,
     agentConversationIncludeFileActions,
     agentSearchLabelsActions,
     agentMCPActions,
@@ -158,8 +156,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       return agents as LightAgentConfigurationType[];
     })(),
     (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    (async () =>
-      processActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       conversationIncludeFileTypesFromAgentMessageIds(auth, {
         agentMessageIds,
@@ -190,7 +186,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       const actions: AgentActionType[] = [
         agentConversationIncludeFileActions,
         agentDustAppRunActions,
-        agentProcessActions,
         agentSearchLabelsActions,
         agentMCPActions,
       ]

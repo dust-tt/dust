@@ -1,9 +1,7 @@
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
-import { getDustProdAction } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   ConversationError,
@@ -49,23 +47,6 @@ export async function getPokeConversation(
             {
               for (const a of m.actions) {
                 switch (a.type) {
-                  case "process_action": {
-                    a.runId = (
-                      await AgentProcessAction.findOne({
-                        where: {
-                          id: a.id,
-                          workspaceId: owner.id,
-                        },
-                        attributes: ["runId"],
-                        raw: true,
-                      })
-                    )?.runId;
-                    const { app } = getDustProdAction("assistant-v2-process");
-                    a.appId = app.appId;
-                    a.appSpaceId = app.appSpaceId;
-                    a.appWorkspaceId = app.workspaceId;
-                    break;
-                  }
                   case "dust_app_run_action": {
                     const runAction = await AgentDustAppRunAction.findOne({
                       where: {

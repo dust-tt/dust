@@ -12,7 +12,7 @@ import { uniq } from "lodash";
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import type * as sync_status from "@connectors/lib/sync_status";
-import type { ModelId } from "@connectors/types";
+import { concurrentExecutor, type ModelId } from "@connectors/types";
 
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";
 import { folderUpdatesSignal } from "./signals";
@@ -225,25 +225,29 @@ export async function googleDriveIncrementalSync(
         nextPageToken = syncRes.nextPageToken;
       }
 
-      if (foldersToBrowse.length > 0) {
-        await executeChild(googleDriveFullSync, {
-          workflowId: `googleDrive-newFolderSync-${startSyncTs}-${connectorId}`,
-          searchAttributes: {
-            connectorId: [connectorId],
-          },
-          args: [
-            {
-              connectorId: connectorId,
-              garbageCollect: false,
-              foldersToBrowse,
-              totalCount: 0,
-              startSyncTs: startSyncTs,
-              mimeTypeFilter: undefined,
+      await concurrentExecutor(
+        foldersToBrowse,
+        async (folder) => {
+          await executeChild(googleDriveFullSync, {
+            workflowId: `googleDrive-newFolderSync-${startSyncTs}-${connectorId}-${folder}`,
+            searchAttributes: {
+              connectorId: [connectorId],
             },
-          ],
-          memo: workflowInfo().memo,
-        });
-      }
+            args: [
+              {
+                connectorId: connectorId,
+                garbageCollect: false,
+                foldersToBrowse: [folder],
+                totalCount: 0,
+                startSyncTs: startSyncTs,
+                mimeTypeFilter: undefined,
+              },
+            ],
+            memo: workflowInfo().memo,
+          });
+        },
+        { concurrency: 8 }
+      );
 
       // Will restart exactly where it was.
       if (workflowInfo().historyLength > 4000) {

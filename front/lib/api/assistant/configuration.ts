@@ -512,10 +512,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
   ] = await Promise.all([
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
-    fetchWebsearchActionConfigurations(auth, { configurationIds, variant }),
+    Promise.resolve(new Map()), // Websearch configurations (removed)
     Promise.resolve(new Map()), // Browse configurations (not implemented yet)
-    fetchTableQueryActionConfigurations(auth, { configurationIds, variant }),
-    fetchReasoningActionConfigurations(auth, { configurationIds, variant }),
+    Promise.resolve(new Map()), // Table query configurations (removed)
+    Promise.resolve(new Map()), // Reasoning configurations (removed)
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
