@@ -1,7 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { ConversationIncludeFileActionType } from "@app/lib/actions/conversation/include_file";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { conversationAttachmentId } from "@app/lib/api/assistant/conversation/attachments";
@@ -9,7 +8,18 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { isImageContent, isTextContent } from "@app/types";
+import {
+  CONTENT_OUTDATED_MSG,
+  getContentFragmentFromAttachmentFile,
+} from "@app/lib/resources/content_fragment_resource";
+import type {
+  ConversationType,
+  ImageContent,
+  ModelConfigurationType,
+  Result,
+  TextContent,
+} from "@app/types";
+import { Err, isImageContent, isTextContent, Ok } from "@app/types";
 
 /**
  * MCP server for handling conversation file operations.
@@ -55,13 +65,12 @@ function createServer(
         agentLoopContext.runContext.agentConfiguration.model
       );
 
-      const fileRes =
-        await ConversationIncludeFileActionType.fileFromConversation(
-          auth,
-          fileId,
-          conversation,
-          model
-        );
+      const fileRes = await getFileFromConversation(
+        auth,
+        fileId,
+        conversation,
+        model
+      );
 
       if (fileRes.isErr()) {
         return makeMCPToolTextError(fileRes.error);
@@ -109,6 +118,66 @@ function createServer(
   );
 
   return server;
+}
+
+export async function getFileFromConversation(
+  auth: Authenticator,
+  fileId: string,
+  conversation: ConversationType,
+  model: ModelConfigurationType
+): Promise<
+  Result<
+    { fileId: string; title: string; content: ImageContent | TextContent },
+    string
+  >
+> {
+  // Note on `contentFragmentVersion`: two content fragment versions are created with different
+  // fileIds. So we accept here rendering content fragments that are superseded. This will mean
+  // that past actions on a previous version of a content fragment will correctly render the
+  // content as being superseded, showing the model that a new version is available. The fileId of
+  // this new version will be different, but the title will likely be the same and the model should
+  // be able to understand the state of affairs. We use content.flat() to consider all versions of
+  // messages here (to support rendering a file that was part of an old version of a previous
+  // message).
+  const attachments = listAttachments(conversation);
+  const attachment = attachments.find(
+    (a) => conversationAttachmentId(a) === fileId
+  );
+  if (!attachment || !attachment.isIncludable) {
+    return new Err(`File \`${fileId}\` not found in conversation`);
+  }
+  if (attachment.contentFragmentVersion === "superseded") {
+    return new Ok({
+      fileId,
+      title: attachment.title,
+      content: {
+        type: "text",
+        text: CONTENT_OUTDATED_MSG,
+      },
+    });
+  }
+  const r = await getContentFragmentFromAttachmentFile(auth, {
+    attachment,
+    excludeImages: false,
+    model,
+  });
+
+  if (r.isErr()) {
+    return new Err(`Error including conversation file: ${r.error}`);
+  }
+
+  if (
+    !isTextContent(r.value.content[0]) &&
+    !isImageContent(r.value.content[0])
+  ) {
+    return new Err(`File \`${fileId}\` has no text or image content`);
+  }
+
+  return new Ok({
+    fileId,
+    title: attachment.title,
+    content: r.value.content[0],
+  });
 }
 
 export default createServer;
