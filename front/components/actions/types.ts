@@ -1,7 +1,6 @@
 import { ConversationIncludeFileActionDetails } from "@app/components/actions/conversation/include_file/IncludeFileActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
-import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentActionType, LightWorkspaceType } from "@app/types";
@@ -31,10 +30,6 @@ const actionsSpecification: ActionSpecifications = {
   dust_app_run_action: {
     detailsComponent: DustAppRunActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.dust_app_run_action,
-  },
-  process_action: {
-    detailsComponent: ProcessActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.process_action,
   },
   conversation_list_files_action: {
     detailsComponent: () => null,

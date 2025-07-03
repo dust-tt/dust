@@ -1,4 +1,4 @@
-import { Avatar, BarChartIcon, CommandIcon, ScanIcon } from "@dust-tt/sparkle";
+import { Avatar, BarChartIcon, CommandIcon } from "@dust-tt/sparkle";
 import _ from "lodash";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
@@ -12,7 +12,6 @@ import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent"
 import {
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
-  isProcessConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
@@ -128,12 +127,6 @@ function renderOtherAction(
       title: action.name,
       avatar: <Avatar icon={CommandIcon} size="xs" />,
       order: 2,
-    };
-  } else if (isProcessConfiguration(action)) {
-    return {
-      title: "Extract from documents",
-      avatar: <Avatar icon={ScanIcon} size="xs" />,
-      order: 0,
     };
   } else if (isServerSideMCPServerConfiguration(action)) {
     const mcpServer = mcpServers.find((s) =>

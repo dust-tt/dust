@@ -20,7 +20,6 @@ import {
   isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
   isMCPToolConfiguration,
-  isProcessConfiguration,
   isSearchLabelsConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
@@ -215,7 +214,6 @@ async function* runMultiActionsAgentLoop(
                 configuration,
                 actionConfiguration: action,
                 conversation,
-                userMessage,
                 agentMessage,
                 inputs,
                 specification,
@@ -1120,7 +1118,6 @@ async function* runAction(
     configuration,
     actionConfiguration,
     conversation,
-    userMessage,
     agentMessage,
     inputs,
     specification,
@@ -1133,7 +1130,6 @@ async function* runAction(
     configuration: AgentConfigurationType;
     actionConfiguration: ActionConfigurationType;
     conversation: ConversationType;
-    userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     inputs: Record<string, string | boolean | number>;
     specification: AgentActionSpecification | null;
@@ -1212,55 +1208,6 @@ async function* runAction(
           yield event;
           break;
         case "dust_app_run_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isProcessConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      userMessage,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "process_params":
-          yield event;
-          break;
-        case "process_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "process_success":
           yield {
             type: "agent_action_success",
             created: event.created,

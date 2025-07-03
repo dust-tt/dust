@@ -2,7 +2,6 @@ import type { ConversationIncludeFileActionType } from "@app/lib/actions/convers
 import type { ConversationListFilesActionType } from "@app/lib/actions/conversation/list_files";
 import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import type { ProcessActionType } from "@app/lib/actions/process";
 import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
 import type {
   ActionGeneratedFileType,
@@ -123,10 +122,7 @@ export function isUserMessageType(
 /**
  * Agent messages
  */
-export type ConfigurableAgentActionType =
-  | DustAppRunActionType
-  | ProcessActionType
-  | MCPActionType;
+export type ConfigurableAgentActionType = DustAppRunActionType | MCPActionType;
 
 export type ConversationAgentActionType =
   | ConversationListFilesActionType
@@ -147,7 +143,6 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   conversation_include_file_action: "Reading file",
   conversation_list_files_action: "Listing files",
   dust_app_run_action: "Running App",
-  process_action: "Extracting data",
   search_labels_action: "Searching labels",
   tool_action: "Using a tool",
 };

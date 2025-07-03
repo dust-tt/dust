@@ -2,7 +2,6 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -26,12 +25,9 @@ export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataS
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
 
-  // AgentDataSourceConfiguration can be used by both the retrieval, the process
+  // AgentDataSourceConfiguration can be used by both the retrieval
   // and the MCP actions' configurations.
   declare retrievalConfigurationId: ForeignKey<
-    AgentRetrievalConfiguration["id"]
-  > | null;
-  declare processConfigurationId: ForeignKey<
     AgentRetrievalConfiguration["id"]
   > | null;
   declare mcpServerConfigurationId: ForeignKey<
@@ -83,13 +79,6 @@ AgentDataSourceConfiguration.init(
         fields: ["workspaceId", "retrievalConfigurationId"],
         concurrently: true,
         name: "agent_data_source_config_workspace_id_retrieval_config_id",
-      },
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
-      { fields: ["processConfigurationId"] },
-      {
-        fields: ["workspaceId", "processConfigurationId"],
-        name: "agent_data_source_config_workspace_id_process_config_id",
-        concurrently: true,
       },
       // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       { fields: ["mcpServerConfigurationId"] },
@@ -160,15 +149,6 @@ AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
 });
 AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: true },
-});
-
-// Process config <> Data source config
-AgentProcessConfiguration.hasMany(AgentDataSourceConfiguration, {
-  foreignKey: { name: "processConfigurationId", allowNull: true },
-  onDelete: "RESTRICT",
-});
-AgentDataSourceConfiguration.belongsTo(AgentProcessConfiguration, {
-  foreignKey: { name: "processConfigurationId", allowNull: true },
 });
 
 // MCP server config <> Data source config

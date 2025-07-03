@@ -12,6 +12,7 @@ import type {
   AppsCheckRequestType,
   CancelMessageGenerationRequestType,
   ConversationPublicType,
+  CreateConversationResponseType,
   DataSourceViewType,
   DustAPICredentials,
   DustAppConfigType,
@@ -646,7 +647,9 @@ export class DustAPI {
     contentFragments,
     blocking = false,
     skipToolsValidation = false,
-  }: PublicPostConversationsRequestBody) {
+  }: PublicPostConversationsRequestBody): Promise<
+    Result<CreateConversationResponseType, APIError>
+  > {
     const res = await this.request({
       method: "POST",
       path: "assistant/conversations",

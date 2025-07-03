@@ -12,7 +12,6 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
 import type {
   ActionConfigurationType,
@@ -33,17 +32,6 @@ export function isDustAppRunConfiguration(
     typeof arg === "object" &&
     "type" in arg &&
     arg.type === "dust_app_run_configuration"
-  );
-}
-
-export function isProcessConfiguration(
-  arg: unknown
-): arg is ProcessConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "process_configuration"
   );
 }
 

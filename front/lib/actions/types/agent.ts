@@ -16,10 +16,6 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import type {
-  ProcessActionRunningEvents,
-  ProcessConfigurationType,
-} from "@app/lib/actions/process";
-import type {
   SearchLabelsActionRunningEvents,
   SearchLabelsConfigurationType,
 } from "@app/lib/actions/search_labels";
@@ -29,7 +25,6 @@ import type {
  */
 export type AgentActionConfigurationType =
   | DustAppRunConfigurationType
-  | ProcessConfigurationType
   | MCPServerConfigurationType;
 
 /**
@@ -50,7 +45,6 @@ export function isActionConfigurationType(
   switch (value.type) {
     case "conversation_include_file_configuration":
     case "dust_app_run_configuration":
-    case "process_configuration":
     case "mcp_configuration":
     case "search_labels_configuration":
       return true;
@@ -162,6 +156,5 @@ export function inputSchemaToDustAppRunInputs(
 export type AgentActionSpecificEvent =
   | ConversationIncludeFileActionRunningEvents
   | DustAppRunActionRunningEvents
-  | ProcessActionRunningEvents
   | SearchLabelsActionRunningEvents
   | MCPActionRunningEvents;

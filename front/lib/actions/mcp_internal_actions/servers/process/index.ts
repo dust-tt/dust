@@ -25,9 +25,6 @@ import {
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type { ProcessActionOutputsType } from "@app/lib/actions/process";
-import { applyDataSourceFilters } from "@app/lib/actions/process";
-import { getExtractFileTitle } from "@app/lib/actions/process/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionGeneratedFileType,
@@ -53,6 +50,14 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { isUserMessageType, timeFrameFromNow } from "@app/types";
+
+import { applyDataSourceFilters, getExtractFileTitle } from "./utils";
+
+// Type definition for process action outputs
+type ProcessActionOutputsType = {
+  data: unknown[];
+  total_documents?: number;
+};
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "extract_data",

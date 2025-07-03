@@ -230,7 +230,6 @@ export default async function createServer(
             origin: "run_agent",
           },
         },
-        contentFragment: undefined,
         skipToolsValidation:
           agentLoopContext.runContext.agentMessage.skipToolsValidation ?? false,
       });
