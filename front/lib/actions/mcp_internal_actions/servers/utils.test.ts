@@ -23,6 +23,7 @@ describe("MCP Internal Actions Server Utils", () => {
       async (t: Transaction) => {
         const workspace = await WorkspaceFactory.basic();
         const otherWorkspace = await WorkspaceFactory.basic();
+        const globalSpace = await SpaceFactory.global(workspace, t);
         await GroupFactory.defaults(workspace);
         const { agentOwnerAuth: auth } = await setupAgentOwner(
           workspace,
@@ -36,7 +37,7 @@ describe("MCP Internal Actions Server Utils", () => {
           t
         );
         const mcpServerConfiguration =
-          await AgentMCPServerConfigurationFactory.create(auth, t);
+          await AgentMCPServerConfigurationFactory.create(auth, globalSpace, t);
 
         // Create a table configuration in a different workspace
         const tableConfig = await AgentTablesQueryConfigurationTable.create(
@@ -115,7 +116,7 @@ describe("MCP Internal Actions Server Utils", () => {
         const space = await SpaceFactory.global(workspace, t);
         const folder = await DataSourceViewFactory.folder(workspace, space, t);
         const mcpServerConfiguration =
-          await AgentMCPServerConfigurationFactory.create(auth, t);
+          await AgentMCPServerConfigurationFactory.create(auth, space, t);
 
         // Create a table configuration in the workspace
         const tableConfig = await AgentTablesQueryConfigurationTable.create(

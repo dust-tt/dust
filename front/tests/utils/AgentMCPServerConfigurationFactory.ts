@@ -2,14 +2,15 @@ import type { Transaction } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 export class AgentMCPServerConfigurationFactory {
   static async create(
     auth: Authenticator,
+    space: SpaceResource,
     t: Transaction
   ): Promise<AgentMCPServerConfiguration> {
     const owner = auth.getNonNullableWorkspace();
@@ -18,7 +19,7 @@ export class AgentMCPServerConfigurationFactory {
     const mcpServerView = await MCPServerViewFactory.create(
       owner,
       "dummy_mcp_server_id",
-      await SpaceFactory.global(owner, t)
+      space
     );
 
     return AgentMCPServerConfiguration.create(
