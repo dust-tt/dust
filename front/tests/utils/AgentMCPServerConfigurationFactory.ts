@@ -1,5 +1,6 @@
 import type { Transaction } from "sequelize";
 
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -18,7 +19,10 @@ export class AgentMCPServerConfigurationFactory {
     const agent = await AgentConfigurationFactory.createTestAgent(auth, t);
     const mcpServerView = await MCPServerViewFactory.create(
       owner,
-      "dummy_mcp_server_id",
+      internalMCPServerNameToSId({
+        name: "data_sources_file_system",
+        workspaceId: owner.id,
+      }),
       space
     );
 
