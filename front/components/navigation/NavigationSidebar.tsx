@@ -12,7 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
@@ -51,16 +51,16 @@ export const NavigationSidebar = React.forwardRef<
   ref
 ) {
   const router = useRouter();
-  const [activePath, setActivePath] = useState("");
+  const activePath = useMemo(() => {
+    if (router.isReady && router.route) {
+      return router.route;
+    }
+    return "";
+  }, [router.isReady, router.route]);
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  useEffect(() => {
-    if (router.isReady && router.route) {
-      setActivePath(router.route);
-    }
-  }, [router.route, router.isReady]);
 
   const { spaceMenuButtonRef } = useWelcomeTourGuide();
 

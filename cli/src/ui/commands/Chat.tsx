@@ -1,20 +1,37 @@
 import type {
+  AgentActionSpecificEvent,
   CreateConversationResponseType,
   GetAgentConfigurationsResponseType,
 } from "@dust-tt/client";
 import { Box, Text, useInput, useStdout } from "ink";
 import open from "open";
 import type { FC } from "react";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
+import type { FileInfo } from "../../utils/fileHandling.js";
+import {
+  formatFileSize,
+  isImageFile,
+  validateAndGetFileInfo,
+} from "../../utils/fileHandling.js";
+import { useAgents } from "../../utils/hooks/use_agents.js";
 import { useMe } from "../../utils/hooks/use_me.js";
 import { clearTerminal } from "../../utils/terminal.js";
+import { toolsCache } from "../../utils/toolsCache.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
+import { FileSelector } from "../components/FileSelector.js";
+import type { UploadedFile } from "../components/FileUpload.js";
+import { FileUpload } from "../components/FileUpload.js";
+import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
+import {
+  sendNonInteractiveMessage,
+  validateNonInteractiveFlags,
+} from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -22,6 +39,9 @@ type AgentConfiguration =
 
 interface CliChatProps {
   sId?: string;
+  agentSearch?: string;
+  message?: string;
+  conversationId?: string;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -37,13 +57,26 @@ function getLastConversationItem<T extends ConversationItem>(
   return null;
 }
 
-const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
+const CliChat: FC<CliChatProps> = ({
+  sId: requestedSId,
+  agentSearch,
+  message,
+  conversationId,
+}) => {
   const [error, setError] = useState<string | null>(null);
+
+  // Validate flags usage
+  useEffect(() => {
+    validateNonInteractiveFlags(message, agentSearch, conversationId);
+  }, [message, agentSearch, conversationId]);
+
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
   );
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
   const [conversationItems, setConversationItems] = useState<
     ConversationItem[]
   >([]);
@@ -56,6 +89,15 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
   const [isSelectingNewAgent, setIsSelectingNewAgent] = useState(false);
+  const [pendingApproval, setPendingApproval] =
+    useState<AgentActionSpecificEvent | null>(null);
+  const [approvalResolver, setApprovalResolver] = useState<
+    ((approved: boolean) => void) | null
+  >(null);
+  const [pendingFiles, setPendingFiles] = useState<FileInfo[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [showFileSelector, setShowFileSelector] = useState(false);
 
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
@@ -64,6 +106,13 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
   const { stdout } = useStdout();
 
   const { me, isLoading: isMeLoading, error: meError } = useMe();
+
+  // Import useAgents hook for agent search functionality
+  const {
+    allAgents,
+    error: agentsError,
+    isLoading: agentsIsLoading,
+  } = useAgents();
 
   const triggerAgentSwitch = useCallback(async () => {
     // Clear all input states before switching.
@@ -78,7 +127,215 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     setIsSelectingNewAgent(true);
   }, []);
 
-  const commands = createCommands({ triggerAgentSwitch });
+  const handleApprovalRequest = useCallback(
+    async (event: AgentActionSpecificEvent): Promise<boolean> => {
+      if (event.type !== "tool_approve_execution") {
+        return false;
+      }
+      // Auto-approve if stake is never_ask
+      if (event.stake === "never_ask") {
+        return true;
+      }
+
+      // For low stake tools, check cache first
+      if (event.stake === "low") {
+        const cachedApproval = await toolsCache.getCachedApproval({
+          agentName: event.metadata.agentName,
+          mcpServerName: event.metadata.mcpServerName,
+          toolName: event.metadata.toolName,
+        });
+
+        if (cachedApproval !== null) {
+          return cachedApproval;
+        }
+      }
+
+      // For low/high stake, prompt user for approval
+      return new Promise<boolean>((resolve) => {
+        setPendingApproval(event);
+        setApprovalResolver(() => resolve);
+      });
+    },
+    []
+  );
+
+  const handleApproval = useCallback(
+    async (approved: boolean, cacheApproval?: boolean) => {
+      if (approvalResolver && pendingApproval) {
+        if (pendingApproval.type !== "tool_approve_execution") {
+          console.error(
+            "Unexpected event type for approval handling:",
+            pendingApproval.type
+          );
+          approvalResolver(false);
+          setPendingApproval(null);
+          setApprovalResolver(null);
+          return;
+        }
+        // Cache the approval if requested and it's a low stake tool
+        if (cacheApproval && pendingApproval.stake === "low") {
+          await toolsCache.setCachedApproval({
+            agentName: pendingApproval.metadata.agentName,
+            mcpServerName: pendingApproval.metadata.mcpServerName,
+            toolName: pendingApproval.metadata.toolName,
+          });
+        }
+
+        approvalResolver(approved);
+        setPendingApproval(null);
+        setApprovalResolver(null);
+      }
+    },
+    [approvalResolver, pendingApproval]
+  );
+
+  const clearFiles = useCallback(() => {
+    setUploadedFiles([]);
+    setPendingFiles([]);
+    setIsUploadingFiles(false);
+  }, []);
+
+  const showAttachDialog = useCallback(async () => {
+    await clearTerminal();
+    setShowFileSelector(true);
+  }, []);
+
+  // Helper to create a conversation for file uploads if none exists
+  // Only useful for uploading files to the first message
+  const createConversationForFiles = useCallback(
+    async (title: string) => {
+      if (!selectedAgent || !me || meError || isMeLoading) {
+        return null;
+      }
+
+      const dustClient = await getDustClient();
+      if (!dustClient) {
+        setError("Authentication required. Run `dust login` first.");
+        return null;
+      }
+
+      const convRes = await dustClient.createConversation({
+        title,
+        visibility: "unlisted",
+        contentFragments: [],
+      });
+
+      if (convRes.isErr()) {
+        setError(`Failed to create conversation: ${convRes.error.message}`);
+        return null;
+      }
+
+      setCurrentConversationId(convRes.value.conversation.sId);
+      return convRes.value.conversation.sId;
+    },
+    [selectedAgent, me, meError, isMeLoading]
+  );
+
+  const handleFileSelected = useCallback(
+    async (filePathOrPaths: string | string[]) => {
+      setShowFileSelector(false);
+      try {
+        // Normalize to array for unified handling
+        const paths = Array.isArray(filePathOrPaths)
+          ? filePathOrPaths
+          : [filePathOrPaths];
+
+        const fileInfos = [];
+        for (const p of paths) {
+          fileInfos.push(await validateAndGetFileInfo(p));
+        }
+
+        let convId = conversationId || currentConversationId;
+        if (!convId) {
+          convId = await createConversationForFiles(
+            `File Upload: ${fileInfos.map((f) => f.name).join(", ")}`.slice(
+              0,
+              50
+            )
+          );
+          if (!convId) {
+            // error already handled in createConversationForFiles
+            return;
+          }
+        }
+
+        setPendingFiles(fileInfos);
+        setIsUploadingFiles(true);
+      } catch (error) {
+        setError(`File error: ${normalizeError(error).message}`);
+      }
+    },
+    [conversationId, createConversationForFiles]
+  );
+
+  const handleFileSelectorCancel = useCallback(() => {
+    setShowFileSelector(false);
+  }, []);
+
+  const commands = createCommands({
+    triggerAgentSwitch,
+    clearFiles,
+    attachFile: showAttachDialog,
+  });
+
+  // Handle agent search when component mounts
+  useEffect(() => {
+    if (!agentSearch || !allAgents || allAgents.length === 0 || selectedAgent) {
+      return;
+    }
+
+    // Search for agents matching the search string (case-insensitive)
+    const searchLower = agentSearch.toLowerCase();
+    const matchingAgents = allAgents.filter((agent) =>
+      agent.name.toLowerCase().startsWith(searchLower)
+    );
+
+    if (matchingAgents.length === 0) {
+      setError(`No agent found starting with "${agentSearch}"`);
+      return;
+    }
+
+    // Select the first matching agent (same as SelectWithSearch behavior)
+    const agentToSelect = matchingAgents[0];
+
+    // Set the selected agent and initial conversation items
+    setSelectedAgent(agentToSelect);
+    setConversationItems([
+      {
+        key: "welcome_header",
+        type: "welcome_header",
+        agentName: agentToSelect.name,
+        agentId: agentToSelect.sId,
+      },
+    ]);
+  }, [agentSearch, allAgents, selectedAgent]);
+
+  // Handle non-interactive mode when message is provided
+  useEffect(() => {
+    if (!message || !selectedAgent) {
+      return;
+    }
+
+    // Wait for authentication to load
+    if (isMeLoading) {
+      return;
+    }
+
+    // Check for authentication errors
+    if (!me || meError) {
+      console.error(
+        JSON.stringify({
+          error: "Authentication error",
+          details: meError || "Not authenticated",
+        })
+      );
+      process.exit(1);
+    }
+
+    // Call the standalone function
+    setIsProcessingQuestion(true);
+    void sendNonInteractiveMessage(message, selectedAgent, me, conversationId);
+  }, [message, selectedAgent, me, meError, isMeLoading, conversationId]);
 
   const canSubmit =
     me &&
@@ -89,12 +346,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     !!userInput.trim();
 
   const handleSubmitQuestion = useCallback(
-    async (questionText: string) => {
+    async (questionText: string, attachedFiles: UploadedFile[] = []) => {
       if (!selectedAgent || !me || meError || isMeLoading) {
         return;
       }
 
-      // Append the user message and agent message header to the conversation items
       setConversationItems((prev) => {
         const lastUserMessage = getLastConversationItem<
           ConversationItem & { type: "user_message" }
@@ -115,9 +371,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
         const newAgentMessageHeaderKey = `agent_message_header_${newAgentMessageHeaderIndex}`;
 
         const newItems = [...prev];
-
-        return [
-          ...newItems,
+        const itemsToAdd: ConversationItem[] = [
           {
             key: newUserMessageKey,
             type: "user_message",
@@ -125,13 +379,26 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             content: questionText,
             index: newUserMessageIndex,
           },
-          {
-            key: newAgentMessageHeaderKey,
-            type: "agent_message_header",
-            agentName: selectedAgent.name,
-            index: newAgentMessageHeaderIndex,
-          },
         ];
+
+        // Add attachments if present
+        if (attachedFiles.length > 0) {
+          itemsToAdd.push({
+            key: `user_message_attachments_${newUserMessageIndex}`,
+            type: "user_message_attachments",
+            attachments: attachedFiles,
+            index: newUserMessageIndex,
+          });
+        }
+
+        itemsToAdd.push({
+          key: newAgentMessageHeaderKey,
+          type: "agent_message_header",
+          agentName: selectedAgent.name,
+          index: newAgentMessageHeaderIndex,
+        });
+
+        return [...newItems, ...itemsToAdd];
       });
 
       setIsProcessingQuestion(true);
@@ -150,9 +417,40 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
       let conversation: CreateConversationResponseType["conversation"];
 
       try {
-        // Either create a new conversation or add to an existing one
-        if (!conversationId) {
-          // Create a new conversation with the agent
+        let createdContentFragments = [];
+        // If there are files to attach, create content fragments for each
+        if (attachedFiles.length > 0 && currentConversationId) {
+          for (const file of attachedFiles) {
+            const fragmentRes = await dustClient.postContentFragment({
+              conversationId: currentConversationId,
+              contentFragment: {
+                title: file.fileName,
+                fileId: file.fileId,
+              },
+            });
+            if (fragmentRes.isErr()) {
+              setError(
+                `Failed to create content fragment: ${fragmentRes.error.message}`
+              );
+              setIsProcessingQuestion(false);
+              return;
+            }
+            createdContentFragments.push({
+              type: "file_attachment",
+              fileId: file.fileId,
+              title: file.fileName,
+            });
+          }
+        }
+
+        if (!currentConversationId) {
+          // For new conversation, pass contentFragments (from uploaded files)
+          const contentFragments = attachedFiles.map((file) => ({
+            type: "file_attachment" as const,
+            fileId: file.fileId,
+            title: file.fileName,
+          }));
+
           const convRes = await dustClient.createConversation({
             title: `CLI Question: ${questionText.substring(0, 30)}${
               questionText.length > 30 ? "..." : ""
@@ -169,7 +467,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
                 origin: "api",
               },
             },
-            contentFragment: undefined,
+            contentFragments,
           });
 
           if (convRes.isErr()) {
@@ -179,7 +477,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           }
 
           conversation = convRes.value.conversation;
-          setConversationId(conversation.sId);
+          setCurrentConversationId(conversation.sId);
 
           if (!convRes.value.message) {
             throw new Error("No message created");
@@ -192,7 +490,7 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           }
 
           const messageRes = await dustClient.postUserMessage({
-            conversationId: conversationId,
+            conversationId: currentConversationId,
             message: {
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
@@ -215,7 +513,9 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
           userMessageId = messageRes.value.sId;
 
           // Get the conversation for streaming
-          const convRes = await dustClient.getConversation({ conversationId });
+          const convRes = await dustClient.getConversation({
+            conversationId: currentConversationId,
+          });
           if (convRes.isErr()) {
             throw new Error(
               `Error retrieving conversation: ${convRes.error.message}`
@@ -357,6 +657,14 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
             chainOfThoughtRef.current = "";
             contentRef.current = "";
             break;
+          } else if (event.type === "tool_approve_execution") {
+            const approved = await handleApprovalRequest(event);
+            await dustClient.validateAction({
+              conversationId: event.conversationId,
+              messageId: event.messageId,
+              actionId: event.actionId,
+              approved: approved ? "approved" : "rejected",
+            });
           }
         }
       } catch (error) {
@@ -398,13 +706,41 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
         setAbortController(null);
       }
     },
-    [selectedAgent, conversationId, me, meError, isMeLoading]
+    [selectedAgent, conversationId, me, meError, isMeLoading, uploadedFiles]
   );
+
+  // Handle file upload completion
+  const handleFileUploadComplete = useCallback(
+    (files: UploadedFile[]) => {
+      setUploadedFiles(files);
+      setIsUploadingFiles(false);
+      setPendingFiles([]);
+
+      // If there's a message waiting to be sent with these files, send it now
+      if (userInput.trim()) {
+        void handleSubmitQuestion(userInput, files);
+        setUserInput("");
+        setCursorPosition(0);
+      }
+    },
+    [userInput, handleSubmitQuestion]
+  );
+
+  // Handle file upload error
+  const handleFileUploadError = useCallback((error: string) => {
+    setError(error);
+    setIsUploadingFiles(false);
+    setPendingFiles([]);
+  }, []);
 
   // Handle keyboard events.
   useInput((input, key) => {
-    // Skip all input handling when selecting a new agent
-    if (!selectedAgent || isSelectingNewAgent) {
+    // Skip input handling when there's a pending approval
+    if (pendingApproval) {
+      return;
+    }
+
+    if (!selectedAgent || isSelectingNewAgent || showFileSelector) {
       return;
     }
 
@@ -465,11 +801,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     }
 
     if (key.ctrl && input === "g") {
-      if (conversationId) {
+      if (currentConversationId) {
         void (async () => {
           const workspaceId = await AuthService.getSelectedWorkspaceId();
           if (workspaceId) {
-            const url = `https://dust.tt/w/${workspaceId}/assistant/${conversationId}`;
+            const url = `https://dust.tt/w/${workspaceId}/assistant/${currentConversationId}`;
             await open(url);
           } else {
             console.error("\nCould not determine workspace ID");
@@ -509,9 +845,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
         return;
       }
 
-      void handleSubmitQuestion(userInput);
+      // No files, send message immediately
+      void handleSubmitQuestion(userInput, uploadedFiles);
       setUserInput("");
       setCursorPosition(0);
+      setUploadedFiles([]); // Clear uploaded files after sending
 
       return;
     }
@@ -759,14 +1097,32 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     }
   });
 
+  // In non-interactive mode, show minimal UI
+  if (message) {
+    // Don't show any UI in non-interactive mode
+    // All output is handled via console.log/console.error in the useEffect
+    return null;
+  }
+
+  // Show loading state while searching for agent
+  if (agentSearch && agentsIsLoading) {
+    return (
+      <Box flexDirection="column">
+        <Text color="green">
+          Searching for agent matching "{agentSearch}"...
+        </Text>
+      </Box>
+    );
+  }
+
   // Render error state
-  if (error) {
+  if (error || agentsError) {
     return (
       <Box flexDirection="column" height="100%">
         <Box flexDirection="column" flexGrow={1}>
           <Box marginY={1}>
             <Box borderStyle="round" borderColor="red" padding={1}>
-              <Text>{error}</Text>
+              <Text>{error || agentsError}</Text>
             </Box>
           </Box>
         </Box>
@@ -780,7 +1136,16 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
     );
   }
 
-  if (!selectedAgent || isSelectingNewAgent) {
+  if (showFileSelector) {
+    return (
+      <FileSelector
+        onSelect={handleFileSelected}
+        onCancel={handleFileSelectorCancel}
+      />
+    );
+  }
+
+  if ((!selectedAgent || isSelectingNewAgent) && !agentSearch) {
     const isInitialSelection = !selectedAgent;
 
     return (
@@ -820,22 +1185,84 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId }) => {
 
   const mentionPrefix = selectedAgent ? `@${selectedAgent.name} ` : "";
 
+  // Show approval prompt if pending
+  if (pendingApproval) {
+    if (pendingApproval.type !== "tool_approve_execution") {
+      setError(`Unexpected pending approval type: ${pendingApproval.type}`);
+      return null; // Exit early if we encounter an unexpected type
+    }
+
+    return (
+      <ToolApprovalSelector
+        event={pendingApproval}
+        onApproval={async (approved, cachedApproval) => {
+          await clearTerminal();
+          await handleApproval(approved, cachedApproval);
+        }}
+      />
+    );
+  }
+
   // Main chat UI
   return (
-    <Conversation
-      conversationItems={conversationItems}
-      isProcessingQuestion={isProcessingQuestion}
-      userInput={userInput}
-      cursorPosition={cursorPosition}
-      mentionPrefix={mentionPrefix}
-      conversationId={conversationId}
-      stdout={stdout}
-      showCommandSelector={showCommandSelector}
-      commandQuery={commandQuery}
-      selectedCommandIndex={selectedCommandIndex}
-      commandCursorPosition={commandCursorPosition}
-      commands={commands}
-    />
+    <Box flexDirection="column">
+      {/* File upload component */}
+      {pendingFiles.length > 0 && currentConversationId && (
+        <FileUpload
+          files={pendingFiles}
+          onUploadComplete={handleFileUploadComplete}
+          onUploadError={handleFileUploadError}
+          conversationId={currentConversationId}
+        />
+      )}
+
+      {/* Display uploaded files ready to be sent */}
+      {uploadedFiles.length > 0 && !isUploadingFiles && (
+        <Box flexDirection="column" marginY={1}>
+          <Box borderStyle="round" borderColor="green" padding={1}>
+            <Box flexDirection="column">
+              <Text color="green" bold>
+                📁 {uploadedFiles.length} file
+                {uploadedFiles.length > 1 ? "s" : ""}
+              </Text>
+
+              {uploadedFiles.map((file) => {
+                const isImage = isImageFile(file.contentType);
+
+                return (
+                  <Box key={file.path} flexDirection="column" marginTop={1}>
+                    <Box>
+                      <Text color={isImage ? "yellow" : "cyan"}>
+                        {isImage ? "🖼️  " : "📄 "} {file.fileName}
+                      </Text>
+                      <Text color="gray">
+                        {" "}
+                        ({formatFileSize(file.fileSize)})
+                      </Text>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      <Conversation
+        conversationItems={conversationItems}
+        isProcessingQuestion={isProcessingQuestion}
+        userInput={userInput}
+        cursorPosition={cursorPosition}
+        mentionPrefix={mentionPrefix}
+        conversationId={currentConversationId}
+        stdout={stdout}
+        showCommandSelector={showCommandSelector}
+        commandQuery={commandQuery}
+        selectedCommandIndex={selectedCommandIndex}
+        commandCursorPosition={commandCursorPosition}
+        commands={commands}
+      />
+    </Box>
   );
 };
 

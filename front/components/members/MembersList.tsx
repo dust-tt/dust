@@ -13,7 +13,12 @@ import type { KeyedMutator } from "swr";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type { RoleType, UserType, UserTypeWithWorkspaces } from "@app/types";
+import type {
+  MembershipOriginType,
+  RoleType,
+  UserType,
+  UserTypeWithWorkspace,
+} from "@app/types";
 
 type RowData = {
   icon: string;
@@ -21,9 +26,12 @@ type RowData = {
   userId: string;
   email: string;
   role: RoleType;
+  status: "Active" | "Unregistered";
+  groups: string[];
   isCurrentUser: boolean;
   onClick: () => void;
   onRemoveMemberClick?: () => void;
+  origin?: MembershipOriginType;
 };
 
 type Info = CellContext<RowData, string>;
@@ -34,9 +42,9 @@ function getTableRows({
   onRemoveMemberClick,
   currentUserId,
 }: {
-  allUsers: UserTypeWithWorkspaces[];
-  onClick: (user: UserTypeWithWorkspaces) => void;
-  onRemoveMemberClick?: (user: UserTypeWithWorkspaces) => void;
+  allUsers: UserTypeWithWorkspace[];
+  onClick: (user: UserTypeWithWorkspace) => void;
+  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
   currentUserId: string;
 }): RowData[] {
   return allUsers.map((user) => ({
@@ -44,15 +52,18 @@ function getTableRows({
     name: user.fullName,
     userId: user.sId,
     email: user.email ?? "",
-    role: user.workspaces[0].role,
+    role: user.workspace.role,
+    status: user.lastLoginAt === null ? "Unregistered" : "Active",
+    groups: user.workspace.groups ?? [],
     isCurrentUser: user.sId === currentUserId,
     onClick: () => onClick(user),
     onRemoveMemberClick: () => onRemoveMemberClick?.(user),
+    origin: user.origin,
   }));
 }
 
 type MembersData = {
-  members: UserTypeWithWorkspaces[];
+  members: UserTypeWithWorkspace[];
   totalMembersCount: number;
   isLoading: boolean;
   mutateRegardlessOfQueryParams:
@@ -107,7 +118,8 @@ const memberColumns = [
     header: "",
     cell: (info: Info) => (
       <DataTable.CellContent>
-        {info.row.original.isCurrentUser ? (
+        {info.row.original.isCurrentUser ||
+        info.row.original.origin === "provisioned" ? (
           <></>
         ) : (
           <IconButton
@@ -121,7 +133,40 @@ const memberColumns = [
       className: "w-12",
     },
   },
+  {
+    id: "status" as const,
+    header: "Status",
+    cell: (info: Info) => {
+      return (
+        <DataTable.CellContent>
+          {info.row.original.status +
+            (info.row.original.origin
+              ? ` (${_.capitalize(info.row.original.origin)})`
+              : "")}
+        </DataTable.CellContent>
+      );
+    },
+  },
+  {
+    id: "groups" as const,
+    header: "Groups",
+    cell: (info: Info) => (
+      <DataTable.CellContent className="max-w-40 truncate capitalize">
+        {info.row.original.groups.join(", ")}
+      </DataTable.CellContent>
+    ),
+  },
 ];
+
+interface MembersListProps {
+  currentUser: UserType | null;
+  membersData: MembersData;
+  onRowClick: (user: UserTypeWithWorkspace) => void;
+  onRemoveMemberClick?: (user: UserTypeWithWorkspace) => void;
+  showColumns: ("name" | "email" | "role" | "remove" | "status" | "groups")[];
+  pagination?: PaginationState;
+  setPagination?: (pagination: PaginationState) => void;
+}
 
 export function MembersList({
   currentUser,
@@ -131,15 +176,7 @@ export function MembersList({
   showColumns,
   pagination,
   setPagination,
-}: {
-  currentUser: UserType | null;
-  membersData: MembersData;
-  onRowClick: (user: UserTypeWithWorkspaces) => void;
-  onRemoveMemberClick?: (user: UserTypeWithWorkspaces) => void;
-  showColumns: ("name" | "email" | "role" | "remove")[];
-  pagination?: PaginationState;
-  setPagination?: (pagination: PaginationState) => void;
-}) {
+}: MembersListProps) {
   assert(
     !showColumns.includes("remove") || onRemoveMemberClick,
     "onRemoveMemberClick is required if remove column is shown"
@@ -150,9 +187,7 @@ export function MembersList({
   const columns = memberColumns.filter((c) => showColumns.includes(c.id));
 
   const rows = useMemo(() => {
-    const filteredMembers = members.filter(
-      (m) => m.workspaces[0].role !== "none"
-    );
+    const filteredMembers = members.filter((m) => m.workspace.role !== "none");
     return getTableRows({
       allUsers: filteredMembers,
       onClick: onRowClick,

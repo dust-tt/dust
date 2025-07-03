@@ -60,7 +60,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
           className="justify-end"
           label={
             info.getValue()
-              ? formatTimestampToFriendlyDate(info.getValue(), "compact")
+              ? formatTimestampToFriendlyDate(info.getValue(), "short")
               : "-"
           }
         />

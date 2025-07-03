@@ -1,31 +1,23 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { useEffect } from "react";
 
-import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type {
-  AppType,
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
+import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
+import { supportsDocumentsData } from "@app/lib/data_sources";
+import { useDataSourceViews } from "@app/lib/swr/data_source_views";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { DataSourceViewType, WorkspaceType } from "@app/types";
 
 type AgentBuilderContextType = {
-  dustApps: AppType[];
-  dataSourceViews: DataSourceViewType[];
-  spaces: SpaceType[];
-  mcpServerViews: MCPServerViewType[];
   owner: WorkspaceType;
+  supportedDataSourceViews: DataSourceViewType[];
   isPreviewPanelOpen: boolean;
   setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export const AgentBuilderContext = createContext<AgentBuilderContextType>({
-  dustApps: [],
-  dataSourceViews: [],
-  spaces: [],
-  mcpServerViews: [],
   owner: {} as WorkspaceType,
+  supportedDataSourceViews: [],
   isPreviewPanelOpen: true,
   setIsPreviewPanelOpen: () => {},
 });
@@ -33,20 +25,28 @@ export const AgentBuilderContext = createContext<AgentBuilderContextType>({
 interface AgentBuilderContextProps
   extends Omit<
     AgentBuilderContextType,
-    "isPreviewPanelOpen" | "setIsPreviewPanelOpen"
+    "supportedDataSourceViews" | "isPreviewPanelOpen" | "setIsPreviewPanelOpen"
   > {
   children: React.ReactNode;
 }
 
 export function AgentBuilderProvider({
-  dustApps,
-  dataSourceViews,
-  spaces,
-  mcpServerViews,
   owner,
   children,
 }: AgentBuilderContextProps) {
   const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(false);
+
+  const { dataSourceViews } = useDataSourceViews(owner);
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  // Filter data sources for document search (excluding table-only sources)
+  const supportedDataSourceViews = useMemo(() => {
+    return dataSourceViews.filter((dsv) =>
+      supportsDocumentsData(dsv.dataSource, featureFlags)
+    );
+  }, [dataSourceViews, featureFlags]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");
@@ -65,16 +65,17 @@ export function AgentBuilderProvider({
   return (
     <AgentBuilderContext.Provider
       value={{
-        dustApps,
-        dataSourceViews,
-        spaces,
-        mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
         owner,
+        supportedDataSourceViews,
         isPreviewPanelOpen,
         setIsPreviewPanelOpen,
       }}
     >
-      {children}
+      <SpacesProvider owner={owner}>
+        <MCPServerViewsProvider owner={owner}>
+          {children}
+        </MCPServerViewsProvider>
+      </SpacesProvider>
     </AgentBuilderContext.Provider>
   );
 }

@@ -247,12 +247,19 @@ export async function getDeltaResults({
  * Similar to getDeltaResults but goes through pagination (returning results and
  * the deltalink)
  */
-export async function getFullDeltaResults(
-  logger: LoggerInterface,
-  client: Client,
-  parentInternalId: string,
-  initialDeltaLink?: string
-): Promise<{ results: DriveItem[]; deltaLink: string }> {
+export async function getFullDeltaResults({
+  logger,
+  client,
+  parentInternalId,
+  initialDeltaLink,
+  heartbeatFunction,
+}: {
+  logger: LoggerInterface;
+  client: Client;
+  parentInternalId: string;
+  initialDeltaLink?: string;
+  heartbeatFunction: () => void;
+}): Promise<{ results: DriveItem[]; deltaLink: string }> {
   let nextLink: string | undefined = initialDeltaLink;
   let allItems: DriveItem[] = [];
   let deltaLink: string | undefined = undefined;
@@ -266,6 +273,7 @@ export async function getFullDeltaResults(
     allItems = allItems.concat(results);
     nextLink = newNextLink;
     deltaLink = finalDeltaLink;
+    heartbeatFunction();
   } while (nextLink);
 
   if (!deltaLink) {

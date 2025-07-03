@@ -1,7 +1,9 @@
 import {
+  ActionGlobeAltIcon,
   Button,
   Chip,
   DataTable,
+  EmptyCTA,
   IconButton,
   Page,
   PlusIcon,
@@ -23,6 +25,8 @@ import {
 } from "@app/lib/swr/workos";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType, PlanType, WorkspaceDomain } from "@app/types";
+
+import { WorkspaceSection } from "./WorkspaceSection";
 
 interface WorkspaceAccessPanelProps {
   workspaceVerifiedDomains: WorkspaceDomain[];
@@ -85,26 +89,38 @@ function DomainVerification({
   owner,
 }: DomainVerificationProps) {
   return (
-    <div className="flex w-full flex-col gap-2">
-      <Page.H variant="h4">Domain Verification</Page.H>
+    <WorkspaceSection icon={ActionGlobeAltIcon} title="Domain Verification">
       <Page.P variant="secondary">
         Verify one or multiple company domains to enable Single Sign-On (SSO)
         and allow team members to automatically join your workspace when they
         sign up with their work email address.
       </Page.P>
-      {isDomainsLoading ? (
+      {isDomainsLoading && (
         <div className="flex justify-center">
           <Spinner size="lg" />
         </div>
-      ) : (
-        <DomainVerificationTable
-          addDomainLink={addDomainLink}
-          domains={domains}
-          workspaceVerifiedDomains={workspaceVerifiedDomains}
-          owner={owner}
-        />
       )}
-    </div>
+      {!isDomainsLoading &&
+        (domains.length === 0 ? (
+          <EmptyCTA
+            action={
+              <Button
+                label="Add Domain"
+                variant="primary"
+                icon={PlusIcon}
+                href={addDomainLink}
+              />
+            }
+          />
+        ) : (
+          <DomainVerificationTable
+            addDomainLink={addDomainLink}
+            domains={domains}
+            workspaceVerifiedDomains={workspaceVerifiedDomains}
+            owner={owner}
+          />
+        ))}
+    </WorkspaceSection>
   );
 }
 

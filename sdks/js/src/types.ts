@@ -3,11 +3,11 @@ import moment from "moment-timezone";
 import { z } from "zod";
 
 import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
-import { CallToolResultSchema } from "./raw_mcp_types";
 import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
+import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -316,6 +316,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "intercom"
   | "notion"
   | "slack"
+  | "slack_bot"
   | "microsoft"
   | "webcrawler"
   | "snowflake"
@@ -543,43 +544,13 @@ export const GenerationTokensEventSchema = z.object({
 export type GenerationTokensEvent = z.infer<typeof GenerationTokensEventSchema>;
 
 const BaseActionTypeSchema = FlexibleEnumSchema<
-  | "dust_app_run_action"
-  | "tables_query_action"
-  | "retrieval_action"
-  | "process_action"
-  | "websearch_action"
-  | "browse_action"
-  | "reasoning_action"
-  | "visualization_action"
+  "dust_app_run_action" | "process_action" | "visualization_action"
 >();
 
 const BaseActionSchema = z.object({
   id: ModelIdSchema,
   type: BaseActionTypeSchema,
 });
-
-const BrowseActionOutputSchema = z.object({
-  results: z.array(
-    z.object({
-      requestedUrl: z.string(),
-      browsedUrl: z.string(),
-      content: z.string(),
-      responseCode: z.string(),
-      errorMessage: z.string(),
-    })
-  ),
-});
-
-const BrowseActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  urls: z.array(z.string()),
-  output: BrowseActionOutputSchema.nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("browse_action"),
-});
-type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
 
 const SearchLabelsActionOutputSchema = z.object({
   tags: z.array(
@@ -602,17 +573,6 @@ const SearchLabelsActionTypeSchema = BaseActionSchema.extend({
 type SearchLabelsActionPublicType = z.infer<
   typeof SearchLabelsActionTypeSchema
 >;
-
-const ReasoningActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  output: z.string().nullable(),
-  thinking: z.string().nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("reasoning_action"),
-});
-type ReasoningActionPublicType = z.infer<typeof ReasoningActionTypeSchema>;
 
 const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
@@ -744,24 +704,6 @@ export type RetrievalDocumentPublicType = z.infer<
   typeof RetrievalDocumentTypeSchema
 >;
 
-const RetrievalActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  params: z.object({
-    relativeTimeFrame: TimeFrameSchema.nullable(),
-    query: z.string().nullable(),
-    topK: z.number(),
-  }),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  documents: z.array(RetrievalDocumentTypeSchema).nullable(),
-  step: z.number(),
-  type: z.literal("retrieval_action"),
-});
-
-export type RetrievalActionPublicType = z.infer<
-  typeof RetrievalActionTypeSchema
->;
-
 const ProcessSchemaPropertySchema = z.union([
   z.custom<JSONSchema7>(),
   z.null(),
@@ -789,41 +731,24 @@ const ProcessActionTypeSchema = BaseActionSchema.extend({
 });
 type ProcessActionPublicType = z.infer<typeof ProcessActionTypeSchema>;
 
-const TablesQueryActionTypeSchema = BaseActionSchema.extend({
-  params: DustAppParametersSchema,
-  output: z.record(z.union([z.string(), z.number(), z.boolean()])).nullable(),
-  resultsFileId: z.string().nullable(),
-  resultsFileSnippet: z.string().nullable(),
-  sectionFileId: z.string().nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  agentMessageId: ModelIdSchema,
-  step: z.number(),
-  type: z.literal("tables_query_action"),
-});
-type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
-
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
+  | "advanced_search"
   | "agent_builder_v2"
-  | "agent_discovery"
   | "claude_3_7_reasoning"
   | "claude_4_opus_feature"
   | "co_edition"
-  | "custom_webcrawler"
   | "deepseek_feature"
   | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
-  | "document_tracker"
+  | "enforce_datasource_quota"
   | "exploded_tables_query"
   | "extended_max_steps_per_run"
-  | "gmail_tool"
   | "google_ai_studio_experimental_models_feature"
-  | "google_calendar_tool"
   | "index_private_slack_channel"
-  | "labs_salesforce_personal_connections"
+  | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
   | "okta_enterprise_connection"
@@ -833,17 +758,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_mini_feature"
   | "pro_plan_salesforce_connector"
-  | "salesforce_feature"
   | "salesforce_synced_queries"
   | "salesforce_tool"
-  | "search_knowledge_builder"
   | "show_debug_tools"
-  | "snowflake_connector_feature"
   | "usage_data_api"
-  | "workos_user_provisioning"
   | "workos"
+  | "workos_user_provisioning"
   | "xai_feature"
-  | "labs_mcp_actions_dashboard"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -902,30 +823,6 @@ export const WebsearchResultSchema = z.object({
 });
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
-
-const WebsearchActionOutputSchema = z.union([
-  z.object({
-    results: z.array(WebsearchResultSchema),
-  }),
-  z.object({
-    results: z.array(WebsearchResultSchema),
-    error: z.string(),
-  }),
-]);
-
-const WebsearchActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  query: z.string(),
-  output: WebsearchActionOutputSchema.nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("websearch_action"),
-});
-
-export type WebsearchActionPublicType = z.infer<
-  typeof WebsearchActionTypeSchema
->;
 
 const MCPActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
@@ -1034,17 +931,14 @@ const ContentFragmentNodeData = z.object({
   spaceName: z.string(),
 });
 
-const ContentFragmentSchema = z.object({
+const BaseContentFragmentSchema = z.object({
+  type: z.literal("content_fragment"),
   id: ModelIdSchema,
   sId: z.string(),
-  fileId: z.string().nullable(),
   created: z.number(),
-  type: z.literal("content_fragment"),
   visibility: VisibilitySchema,
   version: z.number(),
   sourceUrl: z.string().nullable(),
-  textUrl: z.string(),
-  textBytes: z.number().nullable(),
   title: z.string(),
   contentType: SupportedContentFragmentTypeSchema,
   context: ContentFragmentContextSchema,
@@ -1053,8 +947,30 @@ const ContentFragmentSchema = z.object({
     z.literal("latest"),
     z.literal("superseded"),
   ]),
-  contentNodeData: ContentFragmentNodeData.nullable(),
 });
+
+const FileContentFragmentSchema = BaseContentFragmentSchema.extend({
+  contentFragmentType: z.literal("file"),
+  fileId: z.string().nullable(),
+  snippet: z.string().nullable(),
+  generatedTables: z.array(z.string()),
+  textUrl: z.string(),
+  textBytes: z.number().nullable(),
+});
+
+const ContentNodeContentFragmentSchema = BaseContentFragmentSchema.extend({
+  contentFragmentType: z.literal("content_node"),
+  nodeId: z.string(),
+  nodeDataSourceViewId: z.string(),
+  nodeType: ContentNodeTypeSchema,
+  contentNodeData: ContentFragmentNodeData,
+});
+
+const ContentFragmentSchema = z.union([
+  FileContentFragmentSchema,
+  ContentNodeContentFragmentSchema,
+]);
+
 export type ContentFragmentType = z.infer<typeof ContentFragmentSchema>;
 
 export type UploadedContentFragmentType = {
@@ -1100,15 +1016,10 @@ export type UserMessageWithRankType = z.infer<
 >;
 
 const AgentActionTypeSchema = z.union([
-  RetrievalActionTypeSchema,
   DustAppRunActionTypeSchema,
-  TablesQueryActionTypeSchema,
   ProcessActionTypeSchema,
-  WebsearchActionTypeSchema,
-  BrowseActionTypeSchema,
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
-  ReasoningActionTypeSchema,
   SearchLabelsActionTypeSchema,
   MCPActionTypeSchema,
 ]);
@@ -1216,14 +1127,6 @@ export type ConversationMessageReactionsType = z.infer<
   typeof ConversationMessageReactionsSchema
 >;
 
-const BrowseParamsEventSchema = z.object({
-  type: z.literal("browse_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: BrowseActionTypeSchema,
-});
-
 const ConversationIncludeFileParamsEventSchema = z.object({
   type: z.literal("conversation_include_file_params"),
   created: z.number(),
@@ -1255,73 +1158,6 @@ const ProcessParamsEventSchema = z.object({
   messageId: z.string(),
   dataSources: z.array(DataSourceConfigurationSchema),
   action: ProcessActionTypeSchema,
-});
-
-const RetrievalParamsEventSchema = z.object({
-  type: z.literal("retrieval_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  dataSources: z.array(DataSourceConfigurationSchema),
-  action: RetrievalActionTypeSchema,
-});
-
-const TablesQueryStartedEventSchema = z.object({
-  type: z.literal("tables_query_started"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: TablesQueryActionTypeSchema,
-});
-
-const TablesQueryModelOutputEventSchema = z.object({
-  type: z.literal("tables_query_model_output"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: TablesQueryActionTypeSchema,
-});
-
-const TablesQueryOutputEventSchema = z.object({
-  type: z.literal("tables_query_output"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: TablesQueryActionTypeSchema,
-});
-
-const WebsearchParamsEventSchema = z.object({
-  type: z.literal("websearch_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: WebsearchActionTypeSchema,
-});
-
-const ReasoningStartedEventSchema = z.object({
-  type: z.literal("reasoning_started"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: ReasoningActionTypeSchema,
-});
-
-const ReasoningThinkingEventSchema = z.object({
-  type: z.literal("reasoning_thinking"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: ReasoningActionTypeSchema,
-});
-
-const ReasoningTokensEventSchema = z.object({
-  type: z.literal("reasoning_tokens"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: ReasoningActionTypeSchema,
-  content: z.string(),
-  classification: TokensClassificationSchema,
 });
 
 const SearchLabelsParamsEventSchema = z.object({
@@ -1440,20 +1276,11 @@ const AgentErrorEventSchema = z.object({
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
 const AgentActionSpecificEventSchema = z.union([
-  BrowseParamsEventSchema,
   ConversationIncludeFileParamsEventSchema,
   DustAppRunBlockEventSchema,
   DustAppRunParamsEventSchema,
   ProcessParamsEventSchema,
-  ReasoningStartedEventSchema,
-  ReasoningThinkingEventSchema,
-  ReasoningTokensEventSchema,
-  RetrievalParamsEventSchema,
   SearchLabelsParamsEventSchema,
-  TablesQueryModelOutputEventSchema,
-  TablesQueryOutputEventSchema,
-  TablesQueryStartedEventSchema,
-  WebsearchParamsEventSchema,
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
@@ -2691,28 +2518,10 @@ export type CancelMessageGenerationRequestType = z.infer<
 
 // Typeguards.
 
-export function isRetrievalActionType(
-  action: AgentActionPublicType
-): action is RetrievalActionPublicType {
-  return action.type === "retrieval_action";
-}
-
-export function isWebsearchActionType(
-  action: AgentActionPublicType
-): action is WebsearchActionPublicType {
-  return action.type === "websearch_action";
-}
-
 export function isMCPActionType(
   action: AgentActionPublicType
 ): action is MCPActionPublicType {
   return action.type === "tool_action";
-}
-
-export function isTablesQueryActionType(
-  action: AgentActionPublicType
-): action is TablesQueryActionPublicType {
-  return action.type === "tables_query_action";
 }
 
 export function isDustAppRunActionType(
@@ -2725,18 +2534,6 @@ export function isProcessActionType(
   action: AgentActionPublicType
 ): action is ProcessActionPublicType {
   return action.type === "process_action";
-}
-
-export function BrowseActionPublicType(
-  action: AgentActionPublicType
-): action is BrowseActionPublicType {
-  return action.type === "browse_action";
-}
-
-export function isReasoningActionType(
-  action: AgentActionPublicType
-): action is ReasoningActionPublicType {
-  return action.type === "reasoning_action";
 }
 
 export function isSearchLabelsActionType(
@@ -2925,16 +2722,11 @@ export const ACTION_RUNNING_LABELS: Record<
   AgentActionPublicType["type"],
   string
 > = {
-  browse_action: "Browsing page",
   conversation_include_file_action: "Reading file",
   conversation_list_files_action: "Listing files",
   dust_app_run_action: "Running App",
   process_action: "Extracting data",
-  reasoning_action: "Reasoning",
-  retrieval_action: "Searching data",
   search_labels_action: "Searching labels",
-  tables_query_action: "Querying tables",
-  websearch_action: "Searching the web",
   tool_action: "Using a tool",
 };
 
@@ -3035,6 +2827,18 @@ const MCP_VALIDATION_OUTPUTS = [
 export type MCPValidationOutputPublicType =
   (typeof MCP_VALIDATION_OUTPUTS)[number];
 
+const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
+export type MCPViewsRequestAvailabilityType = z.infer<
+  typeof MCPViewsRequestAvailabilitySchema
+>;
+
+export const GetMCPViewsRequestSchema = z.object({
+  spaceIds: z.array(z.string()),
+  availabilities: z.array(MCPViewsRequestAvailabilitySchema),
+});
+
+export type GetMCPViewsRequestType = z.infer<typeof GetMCPViewsRequestSchema>;
+
 export const PostSpaceMembersRequestBodySchema = z.object({
   userIds: z.array(z.string()),
 });
@@ -3042,6 +2846,10 @@ export const PostSpaceMembersRequestBodySchema = z.object({
 export interface PostSpaceMembersResponseBody {
   space: SpaceType;
   users: Pick<UserType, "sId" | "id" | "email">[];
+}
+
+export interface GetSpaceMembersResponseBody {
+  users: Pick<UserType, "sId" | "email">[];
 }
 
 export interface GetWorkspaceMembersResponseBody {

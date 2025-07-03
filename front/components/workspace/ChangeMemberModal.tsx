@@ -25,7 +25,7 @@ import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type { ActiveRoleType, UserTypeWithWorkspaces } from "@app/types";
+import type { ActiveRoleType, UserTypeWithWorkspace } from "@app/types";
 import { isActiveRoleType } from "@app/types";
 
 export function ChangeMemberModal({
@@ -34,10 +34,10 @@ export function ChangeMemberModal({
   mutateMembers,
 }: {
   onClose: () => void;
-  member: UserTypeWithWorkspaces | null;
+  member: UserTypeWithWorkspace | null;
   mutateMembers: KeyedMutator<SearchMembersResponseBody>;
 }) {
-  const { role = null } = member?.workspaces[0] ?? {};
+  const { role = null } = member?.workspace ?? {};
 
   const sendNotification = useSendNotification();
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
@@ -116,6 +116,12 @@ export function ChangeMemberModal({
                           variant="warning"
                           label="Revoke member access"
                           size="sm"
+                          disabled={member.origin === "provisioned"}
+                          tooltip={
+                            member.origin === "provisioned"
+                              ? "This user is managed by your identity provider."
+                              : undefined
+                          }
                         />
                       </DialogTrigger>
                       <DialogContent>
@@ -161,10 +167,13 @@ export function ChangeMemberModal({
                       </DialogContent>
                     </Dialog>
                   </div>
-                  <Page.P>
-                    Deleting a member will remove them from the workspace. They
-                    will be able to rejoin if they have an invitation link.
-                  </Page.P>
+                  {member.origin !== "provisioned" && (
+                    <Page.P>
+                      Deleting a member will remove them from the workspace.
+                      They will be able to rejoin if they have an invitation
+                      link.
+                    </Page.P>
+                  )}
                 </div>
               </div>
             </SheetContainer>
@@ -172,8 +181,7 @@ export function ChangeMemberModal({
               rightButtonProps={{
                 label: "Update role",
                 onClick: handleSave,
-                disabled:
-                  selectedRole === member.workspaces[0].role || isSaving,
+                disabled: selectedRole === member.workspace.role || isSaving,
                 loading: isSaving,
               }}
             />

@@ -137,7 +137,6 @@ export async function getDataSourceTables({
   localLogger.info(
     {
       tableBlobsLength: tableBlobs.length,
-      dataLength: JSON.stringify(blobs).length,
     },
     "[Core] Blobs fetched, now writing to target storage"
   );

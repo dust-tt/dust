@@ -139,6 +139,7 @@ impl Provider for MCPConnectionProvider {
             ),
             refresh_token: refresh_token,
             raw_json,
+            extra_metadata: None,
         })
     }
 

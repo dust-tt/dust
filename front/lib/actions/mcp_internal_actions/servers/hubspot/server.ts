@@ -23,6 +23,7 @@ import {
   getMeeting,
   getObjectByEmail,
   getObjectProperties,
+  getUserDetails,
   MAX_COUNT_LIMIT,
   MAX_LIMIT,
   searchCrmObjects,
@@ -31,10 +32,13 @@ import {
   updateContact,
   updateDeal,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
+import { HUBSPOT_ID_TO_OBJECT_TYPE } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
   ERROR_MESSAGES,
+  generateUrls,
+  validateRequests,
   withAuth,
-} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hupspot_utils";
+} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
@@ -822,6 +826,81 @@ const createServer = (): McpServer => {
           return makeMCPToolJSONSuccess({
             message: "CRM objects searched successfully.",
             result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "hubspot-get-link",
+    `🎯 Purpose:
+      1. Generates HubSpot UI links for different pages based on object types and IDs.
+      2. Supports both index pages (lists of objects) and record pages (specific object details).
+
+    📋 Prerequisites:
+      1. Use the hubspot-get-portal-id tool to get the PortalId and UiDomain.
+
+    🧭 Usage Guidance:
+      1. Use to generate links to HubSpot UI pages when users need to reference specific HubSpot records.
+      2. Validates that object type IDs exist in the HubSpot system.
+  `,
+    {
+      portalId: z.string().describe("The HubSpot portal/account ID"),
+      uiDomain: z.string().describe("The HubSpot UI domain"),
+      pageRequests: z.array(
+        z.object({
+          pagetype: z.enum(["record", "index"]),
+          objectTypeId: z.string(),
+          objectId: z.string().optional(),
+        })
+      ),
+    },
+    async ({ portalId, uiDomain, pageRequests }) => {
+      const validationResult = validateRequests(pageRequests);
+      if (validationResult.errors.length > 0) {
+        const errorResponse = {
+          errors: validationResult.errors,
+        };
+
+        // Add valid object type IDs only if there were invalid IDs that couldn't be converted
+        if (validationResult.invalidObjectTypeIds.length > 0) {
+          const validObjectTypes = Object.keys(HUBSPOT_ID_TO_OBJECT_TYPE)
+            .map((id) => {
+              const objectType = (
+                HUBSPOT_ID_TO_OBJECT_TYPE as Record<string, string>
+              )[id];
+              return `${objectType} (${id})`;
+            })
+            .join(", ");
+          errorResponse.errors.push(
+            `Valid object types and IDs: ${validObjectTypes}`
+          );
+        }
+
+        return makeMCPToolTextError(JSON.stringify(errorResponse, null, 2));
+      }
+      const urlResults = generateUrls(portalId, uiDomain, pageRequests);
+
+      return makeMCPToolJSONSuccess({
+        message: "HubSpot links generated successfully.",
+        result: urlResults,
+      });
+    }
+  );
+
+  server.tool(
+    "hubspot-get-portal-id",
+    "Gets the current user's portal ID. To use before calling hubspot-get-link",
+    {},
+    async (_, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getUserDetails(accessToken);
+          return makeMCPToolJSONSuccess({
+            message: "Portal ID retrieved successfully.",
+            result: result.hub_id,
           });
         },
         authInfo,

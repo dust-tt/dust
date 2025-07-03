@@ -1,11 +1,11 @@
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import type { WhitelistableFeature } from "@app/types";
 import { WHITELISTABLE_FEATURES } from "@app/types";
 
 async function enableFeatureFlag(
-  workspace: Workspace,
+  workspace: WorkspaceModel,
   featureFlag: WhitelistableFeature,
   execute: boolean
 ) {
@@ -39,7 +39,7 @@ async function enableFeatureFlag(
 }
 
 async function disableFeatureFlag(
-  workspace: Workspace,
+  workspace: WorkspaceModel,
   featureFlag: WhitelistableFeature,
   execute: boolean
 ) {
@@ -89,7 +89,7 @@ makeScript(
   },
   async ({ enable, featureFlag, workspaceIds, execute }) => {
     for (const wId of workspaceIds) {
-      const workspace = await Workspace.findOne({
+      const workspace = await WorkspaceModel.findOne({
         where: {
           sId: wId,
         },

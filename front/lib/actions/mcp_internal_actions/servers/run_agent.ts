@@ -15,6 +15,7 @@ import {
   isServerSideMCPServerConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agent_metadata";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -22,6 +23,7 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
+import { isGlobalAgentId } from "@app/types";
 import { Err, getHeaderFromUserEmail, normalizeError, Ok } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -62,7 +64,21 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   name: string;
   description: string;
 } | null> {
+  if (isGlobalAgentId(agentId)) {
+    const metadata = getGlobalAgentMetadata(agentId);
+
+    if (!metadata) {
+      return null;
+    }
+
+    return {
+      name: metadata.name,
+      description: metadata.description,
+    };
+  }
+
   const owner = auth.getNonNullableWorkspace();
+
   const agentConfiguration = await AgentConfiguration.findOne({
     where: {
       sId: agentId,

@@ -148,8 +148,8 @@ pub trait SearchStore {
     // Data sources.
     async fn get_data_source_stats(
         &self,
-        data_source_id: String,
-    ) -> Result<Option<DataSourceESDocumentWithStats>>;
+        data_source_ids: Vec<String>,
+    ) -> Result<(Vec<DataSourceESDocumentWithStats>, i64)>;
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
     async fn delete_data_source(&self, data_source: &DataSource) -> Result<()>;
 
@@ -447,15 +447,20 @@ impl SearchStore for ElasticsearchSearchStore {
 
     async fn get_data_source_stats(
         &self,
-        data_source_id: String,
-    ) -> Result<Option<DataSourceESDocumentWithStats>> {
-        // Search on data_source_id.
+        data_source_ids: Vec<String>,
+    ) -> Result<(Vec<DataSourceESDocumentWithStats>, i64)> {
+        if data_source_ids.is_empty() {
+            return Ok((vec![], 0));
+        }
+
+        // Search for data sources first to get their metadata
         let response = self
             .client
             .search(SearchParts::Index(&[DATA_SOURCE_INDEX_NAME]))
             .body(
                 Search::new()
-                    .query(Query::bool().filter(Query::term("data_source_id", data_source_id))),
+                    .query(Query::bool().filter(Query::terms("data_source_id", &data_source_ids)))
+                    .size(data_source_ids.len() as u64),
             )
             .send()
             .await?;
@@ -475,16 +480,38 @@ impl SearchStore for ElasticsearchSearchStore {
             }
         };
 
-        if items.len() > 1 {
-            // This should never ever happen since we are searching by data_source_id.
-            Err(anyhow::anyhow!("Found more than one matching data source."))
-        } else {
-            if let Some(item) = items.first() {
-                Some(self.compute_data_sources_stats(item.clone()).await).transpose()
-            } else {
-                Ok(None)
+        // Consistency check: we should find exactly the number of data sources we requested
+        // (unless some don't exist, which is valid)
+        if items.len() != data_source_ids.len() {
+            return Err(anyhow::anyhow!(
+                "Found inconsistency between returned data sources ({}) vs requested data sources ({}). This should never happen.",
+                items.len(),
+                data_source_ids.len()
+            ));
+        }
+
+        let (stats_map, overall_total_size) = self
+            .compute_multiple_data_sources_stats(&data_source_ids)
+            .await?;
+
+        // Combine data sources with their stats
+        let mut results = Vec::new();
+        for item in items {
+            if let SearchItem::DataSource(data_source) = item {
+                let (total_size, doc_count) = stats_map
+                    .get(&data_source.data_source_id)
+                    .copied()
+                    .unwrap_or((0, 0));
+
+                results.push(DataSourceESDocumentWithStats::from((
+                    data_source,
+                    total_size,
+                    doc_count,
+                )));
             }
         }
+
+        Ok((results, overall_total_size))
     }
 
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()> {
@@ -1124,64 +1151,60 @@ impl ElasticsearchSearchStore {
         ]
     }
 
-    async fn compute_data_sources_stats(
+    async fn compute_multiple_data_sources_stats(
         &self,
-        item: SearchItem,
-    ) -> Result<DataSourceESDocumentWithStats> {
-        let data_source = match item {
-            SearchItem::DataSource(ds) => ds,
-            _ => {
-                return Err(anyhow::anyhow!(
-                    "Invalid search item type, expected a DataSource."
-                ));
-            }
-        };
-
-        // Build and execute the search query.
-        let response = self
+        data_source_ids: &[String],
+    ) -> Result<(HashMap<String, (i64, i64)>, i64)> {
+        let stats_response = self
             .client
             .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
             .body(
                 Search::new()
                     .size(0)
-                    .query(Query::bool().filter(Query::term(
-                        "data_source_id",
-                        data_source.data_source_id.clone(),
-                    )))
+                    .query(Query::terms("data_source_id", data_source_ids))
                     .aggregate(
                         "data_sources",
                         Aggregation::terms("data_source_id")
+                            .size(data_source_ids.len() as u64)
                             .aggregate("total_size", Aggregation::sum("text_size")),
-                    ),
+                    )
+                    .aggregate("total_size", Aggregation::sum("text_size")),
             )
             .send()
             .await?;
 
-        // Parse the response.
-        let response_body = response.json::<serde_json::Value>().await?;
+        let stats_body = match stats_response.status_code().is_success() {
+            true => stats_response.json::<serde_json::Value>().await?,
+            false => {
+                return Err(anyhow::anyhow!(
+                    "Failed to get data source stats: {}",
+                    stats_response.json::<serde_json::Value>().await?
+                ));
+            }
+        };
 
-        // Extract stats from the first bucket or default to zeros.
-        let (total_size, doc_count) = response_body["aggregations"]["data_sources"]["buckets"]
-            .as_array()
-            .and_then(|buckets| buckets.first())
-            .map(|bucket| {
-                let size = bucket["total_size"]["value"]
-                    .as_f64()
-                    .unwrap_or(0.0)
-                    .round() as i64;
+        // Build a map of data_source_id -> (total_size, doc_count)
+        let mut stats_map = HashMap::new();
+        if let Some(buckets) = stats_body["aggregations"]["data_sources"]["buckets"].as_array() {
+            for bucket in buckets {
+                if let Some(data_source_id) = bucket["key"].as_str() {
+                    let doc_count = bucket["doc_count"].as_i64().unwrap_or(0);
+                    let total_size = bucket["total_size"]["value"]
+                        .as_f64()
+                        .unwrap_or(0.0)
+                        .round() as i64;
+                    stats_map.insert(data_source_id.to_string(), (total_size, doc_count));
+                }
+            }
+        }
 
-                let count = bucket["doc_count"].as_i64().unwrap_or(0);
+        // Extract the overall total_size from aggregations
+        let overall_total_size = stats_body["aggregations"]["total_size"]["value"]
+            .as_f64()
+            .unwrap_or(0.0)
+            .round() as i64;
 
-                (size, count)
-            })
-            .unwrap_or((0, 0));
-
-        // Create and return the document with stats.
-        Ok(DataSourceESDocumentWithStats::from((
-            data_source,
-            total_size,
-            doc_count,
-        )))
+        Ok((stats_map, overall_total_size))
     }
 
     // Generic document methods.

@@ -7,9 +7,9 @@ import {
 } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { Workspace } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import mainLogger from "@app/logger/logger";
 
@@ -20,7 +20,7 @@ export async function updateSpacePermissions({
   spaceId: string;
   workspaceId: string;
 }) {
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       sId: workspaceId,
     },
@@ -89,7 +89,7 @@ export async function updateSpacePermissions({
 
     const requestedGroupIds = await getAgentConfigurationGroupIdsFromActions(
       auth,
-      ac.actions
+      { actions: ac.actions }
     );
 
     const requestedGroupIdsToSIds = requestedGroupIds.map((gs) =>

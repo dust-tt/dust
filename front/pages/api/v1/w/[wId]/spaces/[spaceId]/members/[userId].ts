@@ -58,6 +58,22 @@ async function handler(
     });
   }
 
+  if (
+    space.managementMode === "group" ||
+    space.groups.some((g) => g.kind === "global")
+  ) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message:
+          space.managementMode === "group"
+            ? "Space is managed by provisioned group access, members can't be edited by API."
+            : "Non-restricted space's members can't be edited.",
+      },
+    });
+  }
+
   switch (req.method) {
     case "DELETE": {
       const updateRes = await space.removeMembers(auth, {

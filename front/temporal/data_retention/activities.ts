@@ -2,10 +2,12 @@ import { Op } from "sequelize";
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
+import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { ModelId } from "@app/types";
 
 /**
  * Get workspace ids with conversations retention policy.
@@ -13,7 +15,7 @@ import logger from "@app/logger/logger";
 export async function getWorkspacesWithConversationsRetentionActivity(): Promise<
   number[]
 > {
-  const workspaces = await Workspace.findAll({
+  const workspaces = await WorkspaceModel.findAll({
     attributes: ["id"],
     where: {
       conversationsRetentionDays: {
@@ -42,7 +44,7 @@ export async function purgeConversationsBatchActivity({
   const res: PurgeConversationsBatchActivityReturnType[] = [];
 
   for (const workspaceId of workspaceIds) {
-    const workspace = await Workspace.findByPk(workspaceId);
+    const workspace = await WorkspaceModel.findByPk(workspaceId);
     if (!workspace) {
       logger.error(
         { workspaceId },
@@ -94,4 +96,74 @@ export async function purgeConversationsBatchActivity({
   }
 
   return res;
+}
+
+/**
+ * Get agent configurations with conversations retention policy.
+ */
+export async function getAgentsWithConversationsRetentionActivity(): Promise<
+  {
+    agentConfigurationId: string;
+    workspaceId: ModelId;
+    retentionDays: number;
+  }[]
+> {
+  const agentRetentions = await AgentDataRetentionModel.findAll();
+  return agentRetentions.map((a) => ({
+    agentConfigurationId: a.agentConfigurationId,
+    workspaceId: a.workspaceId,
+    retentionDays: a.retentionDays,
+  }));
+}
+
+/**
+ * Purge conversations for an agent.
+ * We chunk the conversations to avoid hitting the database with too many queries at once.
+ */
+export async function purgeAgentConversationsBatchActivity({
+  agentConfigurationId,
+  workspaceId,
+  retentionDays,
+}: {
+  agentConfigurationId: string;
+  workspaceId: ModelId;
+  retentionDays: number;
+}): Promise<{
+  agentConfigurationId: string;
+  workspaceModelId: ModelId;
+  workspaceId: string;
+  retentionDays: number;
+  nbConversationsDeleted: number;
+}> {
+  const workspace = await WorkspaceModel.findByPk(workspaceId);
+  if (!workspace) {
+    throw new Error("Workspace not found");
+  }
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+
+  const conversationIds =
+    await ConversationResource.listConversationWithAgentCreatedBeforeDate({
+      auth,
+      agentConfigurationId,
+      cutoffDate,
+    });
+
+  await concurrentExecutor(
+    conversationIds,
+    async (cId) => destroyConversation(auth, { conversationId: cId }),
+    {
+      concurrency: 4,
+    }
+  );
+
+  return {
+    agentConfigurationId,
+    workspaceModelId: workspace.id,
+    workspaceId: workspace.sId,
+    retentionDays,
+    nbConversationsDeleted: conversationIds.length,
+  };
 }

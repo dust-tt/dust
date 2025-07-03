@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
@@ -19,14 +20,41 @@ import { default as reasoningServer } from "@app/lib/actions/mcp_internal_action
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/actions/mcp_internal_actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
-import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search/search";
+import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
+import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack";
 import { default as tablesQueryServer } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server_v2";
 import { default as thinkServer } from "@app/lib/actions/mcp_internal_actions/servers/think";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  isServerSideMCPServerConfiguration,
+  isServerSideMCPToolConfiguration,
+} from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
+
+/**
+ * Check if we are in advanced search mode,
+ * relying on a magic value stored in the additionalConfiguration.
+ */
+function isAdvancedSearchMode(agentLoopContext?: AgentLoopContextType) {
+  return (
+    (agentLoopContext?.runContext &&
+      isServerSideMCPToolConfiguration(
+        agentLoopContext.runContext.actionConfiguration
+      ) &&
+      agentLoopContext.runContext.actionConfiguration.additionalConfiguration[
+        ADVANCED_SEARCH_SWITCH
+      ] === true) ||
+    (agentLoopContext?.listToolsContext &&
+      isServerSideMCPServerConfiguration(
+        agentLoopContext.listToolsContext.agentActionConfiguration
+      ) &&
+      agentLoopContext.listToolsContext.agentActionConfiguration
+        .additionalConfiguration[ADVANCED_SEARCH_SWITCH] === true)
+  );
+}
 
 export async function getInternalMCPServer(
   auth: Authenticator,
@@ -39,7 +67,7 @@ export async function getInternalMCPServer(
 ): Promise<McpServer> {
   switch (internalMCPServerName) {
     case "github":
-      return githubServer();
+      return githubServer(auth);
     case "hubspot":
       return hubspotServer();
     case "image_generation":
@@ -57,11 +85,15 @@ export async function getInternalMCPServer(
     case "web_search_&_browse":
       return webtoolsServer(agentLoopContext);
     case "search":
+      // If we are in advanced search mode, we use the data_sources_file_system server instead.
+      if (isAdvancedSearchMode(agentLoopContext)) {
+        return dataSourcesFileSystemServer(auth, agentLoopContext);
+      }
       return searchServer(auth, agentLoopContext);
     case "missing_action_catcher":
       return missingActionCatcherServer(auth, agentLoopContext);
     case "notion":
-      return notionServer();
+      return notionServer(auth, agentLoopContext);
     case "include_data":
       return includeDataServer(auth, agentLoopContext);
     case "run_agent":
@@ -84,6 +116,8 @@ export async function getInternalMCPServer(
       return dataSourcesFileSystemServer(auth, agentLoopContext);
     case "conversation_files":
       return conversationFilesServer(auth, agentLoopContext);
+    case "slack":
+      return slackServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

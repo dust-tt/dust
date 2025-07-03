@@ -51,6 +51,7 @@ export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIError>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
 export const CONNECTORS_ERROR_TYPES = [
   "oauth_token_revoked",
+  "workspace_quota_exceeded",
   "third_party_internal_error",
   "webcrawling_error",
   "webcrawling_error_empty_content",
@@ -573,6 +574,43 @@ export class ConnectorsAPI {
       headers: this.getDefaultHeaders(),
       body: JSON.stringify(adminCommand),
     });
+
+    return this._resultFromResponse(res);
+  }
+
+  async getNotionUrlStatus({
+    connectorId,
+    url,
+  }: {
+    connectorId: string;
+    url: string;
+  }): Promise<
+    ConnectorsAPIResponse<{
+      notion: {
+        exists: boolean;
+        type?: "page" | "database";
+      };
+      dust: {
+        synced: boolean;
+        lastSync?: string;
+        breadcrumbs?: Array<{
+          id: string;
+          title: string;
+          type: "page" | "database" | "workspace";
+        }>;
+      };
+      summary: string;
+    }>
+  > {
+    const res = await this._fetchWithError(
+      `${this._url}/notion/url/status?connector_id=${encodeURIComponent(
+        connectorId
+      )}&url=${encodeURIComponent(url)}`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
 
     return this._resultFromResponse(res);
   }

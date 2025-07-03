@@ -129,10 +129,10 @@ export function MCPServerDetailsSharing({
     <div className="flex flex-col gap-2">
       <div className="mb-2 flex w-full flex-col gap-y-2 pt-2">
         <div className="flex w-full items-center justify-between overflow-visible">
-          <Page.SectionHeader title="Restricted Access" />
+          <Page.SectionHeader title="Available to all Spaces" />
           <SliderToggle
             disabled={loading}
-            selected={isRestricted}
+            selected={!isRestricted}
             onClick={async () => {
               if (globalSpace) {
                 setLoading(true);
@@ -150,14 +150,11 @@ export function MCPServerDetailsSharing({
         <div className="text-foreground dark:text-foreground-night">
           {isRestricted ? (
             <>
-              This action is only available to the users of the selected spaces:
+              These tools are only available to the users of the selected
+              spaces:
             </>
           ) : (
-            <>
-              Restricted access is disabled.
-              <br />
-              This action is accessible to everyone in the workspace.
-            </>
+            <>These tools are accessible to everyone in the workspace.</>
           )}
         </div>
       </div>

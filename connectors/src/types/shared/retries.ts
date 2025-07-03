@@ -1,6 +1,8 @@
 import type { LoggerInterface } from "@dust-tt/client";
+import { AxiosError } from "axios";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
+import { WorkspaceQuotaExceededError } from "@connectors/lib/error";
 import { normalizeError } from "@connectors/types/api";
 
 export class WithRetriesError extends Error {
@@ -43,6 +45,16 @@ export function withRetries<T, U>(
       try {
         return await fn(arg);
       } catch (e) {
+        if (
+          e instanceof AxiosError &&
+          e.code === "ERR_BAD_REQUEST" &&
+          e.status === 403
+        ) {
+          if (e.response?.data?.error?.type === "workspace_quota_error") {
+            throw new WorkspaceQuotaExceededError(e);
+          }
+        }
+
         const sleepTime = delayBetweenRetriesMs * (i + 1) ** 2;
         logger.warn(
           {

@@ -26,8 +26,72 @@ import { newWebhookSignal, syncChannelSignal } from "./signals";
 // Configuration for slow lane routing.
 const SLOW_LANE_CONNECTOR_IDS: string[] = [
   // Add connector IDs that should be routed to slow lane.
-  "5",
-  "14029",
+  "20542",
+  "20640",
+  "23791",
+  "24659",
+  "23840",
+  "24497",
+  "24948",
+  "24473",
+  "23796",
+  "24378",
+  "24272",
+  "23913",
+  "24295",
+  "23697",
+  "24289",
+  "23703",
+  "24432",
+  "23760",
+  "23726",
+  "23919",
+  "24051",
+  "24536",
+  "23917",
+  "24287",
+  "23922",
+  "23978",
+  "24302",
+  "24385",
+  "23756",
+  "24268",
+  "24114",
+  "24581",
+  "23852",
+  "24266",
+  "24838",
+  "24801",
+  "23805",
+  "24606",
+  "23717",
+  "23164",
+  "24623",
+  "24768",
+  "24080",
+  "24750",
+  "23876",
+  "23741",
+  "24400",
+  "24588",
+  "23844",
+  "23786",
+  "24754",
+  "24879",
+  "24171",
+  "24878",
+  "24505",
+  "24712",
+  "24875",
+  "23936",
+  "24310",
+  "24090",
+  "24075",
+  "274877908648",
+  "274877908541",
+  "274877908701",
+  "274877908661",
+  "274877907284",
 ];
 
 // Dynamic activity creation with fresh routing evaluation (enables retry queue switching).
@@ -69,7 +133,7 @@ function getSlackActivities() {
       slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
       activityOptions: {
         heartbeatTimeout: "5 minutes",
-        startToCloseTimeout: "10 minutes",
+        startToCloseTimeout: "20 minutes",
       },
     }
   );
@@ -152,10 +216,6 @@ export async function workspaceFullSync(
   });
 
   await getSlackActivities().saveSuccessSyncActivity(connectorId);
-  log.info(`Workspace sync done for connector ${connectorId}`, {
-    connectorId,
-    fromTs,
-  });
 }
 
 /**
@@ -211,13 +271,7 @@ export async function syncOneThreadDebounced(
 
   setHandler(newWebhookSignal, async () => {
     receivedSignalsCount++;
-    log.info("Got a new webhook signal for syncOneThreadDebounced", {
-      connectorId,
-      channelId,
-      threadTs,
-      debounceCount,
-      receivedSignalsCount,
-    });
+
     if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
       log.info(
         `Continuing as Workflow as new due to too many signals received for syncOneThreadDebounced: ${receivedSignalsCount}`,
@@ -250,12 +304,6 @@ export async function syncOneThreadDebounced(
       throw new Error(`Could not find channel name for channel ${channelId}`);
     }
 
-    log.info(`Talked to slack after debouncing ${debounceCount} time(s)`, {
-      connectorId,
-      channelId,
-      threadTs,
-      debounceCount,
-    });
     await getSlackActivities().syncChannelMetadata(
       connectorId,
       channelId,
@@ -286,13 +334,7 @@ export async function syncOneMessageDebounced(
 
   setHandler(newWebhookSignal, async () => {
     receivedSignalsCount++;
-    log.info("Got a new webhook signal for syncOneMessageDebounced", {
-      connectorId,
-      channelId,
-      threadTs,
-      debounceCount,
-      receivedSignalsCount,
-    });
+
     if (receivedSignalsCount >= MAX_SIGNAL_RECEIVED_COUNT) {
       log.info(
         `Continuing as Workflow as new due to too many signals received for syncOneMessageDebounced: ${receivedSignalsCount}`,
@@ -315,20 +357,9 @@ export async function syncOneMessageDebounced(
     await sleep(10000);
     if (signaled) {
       debounceCount++;
-      log.info("Debouncing, sleep 10 secs", {
-        connectorId,
-        channelId,
-        threadTs,
-        debounceCount,
-      });
+
       continue;
     }
-    log.info(`Talked to slack after debouncing ${debounceCount} time(s)`, {
-      connectorId,
-      channelId,
-      threadTs,
-      debounceCount,
-    });
 
     const channel = await getSlackActivities().getChannel(
       connectorId,

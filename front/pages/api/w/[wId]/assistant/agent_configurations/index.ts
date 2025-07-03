@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
@@ -19,7 +19,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { AppResource } from "@app/lib/resources/app_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -32,7 +31,6 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import {
-  assertNever,
   Err,
   GetAgentConfigurationsQuerySchema,
   Ok,
@@ -326,10 +324,9 @@ export async function createOrUpgradeAgentConfiguration({
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(
-      auth,
-      actions
-    ),
+    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(auth, {
+      actions,
+    }),
     tags: assistant.tags,
     editors,
   });
@@ -338,176 +335,34 @@ export async function createOrUpgradeAgentConfiguration({
     return agentConfigurationRes;
   }
 
-  const actionConfigs: AgentActionConfigurationType[] = [];
+  const actionConfigs: MCPServerConfigurationType[] = [];
 
   for (const action of actions) {
-    if (action.type === "retrieval_configuration") {
-      const res = await createAgentActionConfiguration(
-        auth,
-        {
-          type: "retrieval_configuration",
-          query: action.query,
-          relativeTimeFrame: action.relativeTimeFrame,
-          topK: action.topK,
-          dataSources: action.dataSources,
-          name: action.name ?? null,
-          description: action.description ?? null,
-        },
-        agentConfigurationRes.value
-      );
-      if (res.isErr()) {
-        // If we fail to create an action, we should delete the agent configuration
-        // we just created and re-throw the error.
-        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
-        return res;
-      }
-      actionConfigs.push(res.value);
-    } else if (action.type === "dust_app_run_configuration") {
-      const app = await AppResource.fetchById(auth, action.appId);
-      if (!app) {
-        return new Err(new Error(`App ${action.appId} not found`));
-      }
-
-      const res = await createAgentActionConfiguration(
-        auth,
-        {
-          type: "dust_app_run_configuration",
-          appWorkspaceId: action.appWorkspaceId,
-          appId: action.appId,
-          name: action.name ?? null,
-          description: action.description ?? null,
-        },
-        agentConfigurationRes.value
-      );
-      if (res.isErr()) {
-        // If we fail to create an action, we should delete the agent configuration
-        // we just created and re-throw the error.
-        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
-        return res;
-      }
-      actionConfigs.push(res.value);
-    } else if (action.type === "tables_query_configuration") {
-      const res = await createAgentActionConfiguration(
-        auth,
-        {
-          type: "tables_query_configuration",
-          tables: action.tables,
-          name: action.name ?? null,
-          description: action.description ?? null,
-        },
-        agentConfigurationRes.value
-      );
-      if (res.isErr()) {
-        // If we fail to create an action, we should delete the agent configuration
-        // we just created and re-throw the error.
-        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
-        return res;
-      }
-      actionConfigs.push(res.value);
-    } else if (action.type === "process_configuration") {
-      const res = await createAgentActionConfiguration(
-        auth,
-        {
-          type: "process_configuration",
-          dataSources: action.dataSources,
-          relativeTimeFrame: action.relativeTimeFrame,
-          jsonSchema: action.jsonSchema ?? null,
-          name: action.name ?? null,
-          description: action.description ?? null,
-        },
-        agentConfigurationRes.value
-      );
-      if (res.isErr()) {
-        // If we fail to create an action, we should delete the agent configuration
-        // we just created and re-throw the error.
-        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
-        return res;
-      }
-      actionConfigs.push(res.value);
-    } else if (action.type === "websearch_configuration") {
-      const res = await createAgentActionConfiguration(
-        auth,
-        {
-          type: "websearch_configuration",
-          name: action.name ?? null,
-          description: action.description ?? null,
-        },
-        agentConfigurationRes.value
-      );
-      if (res.isErr()) {
-        // If we fail to create an action, we should delete the agent configuration
-        // we just created and re-throw the error.
-        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
-        return res;
-      }
-      actionConfigs.push(res.value);
-    } else if (action.type === "browse_configuration") {
-      const res = await createAgentActionConfiguration(
-        auth,
-        {
-          type: "browse_configuration",
-          name: action.name ?? null,
-          description: action.description ?? null,
-        },
-        agentConfigurationRes.value
-      );
-      if (res.isErr()) {
-        // If we fail to create an action, we should delete the agent configuration
-        // we just created and re-throw the error.
-        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
-        return res;
-      }
-      actionConfigs.push(res.value);
-    } else if (action.type === "reasoning_configuration") {
-      const res = await createAgentActionConfiguration(
-        auth,
-        {
-          type: "reasoning_configuration",
-          name: action.name ?? null,
-          description: action.description ?? null,
-          providerId: action.providerId,
-          modelId: action.modelId,
-          temperature: action.temperature,
-          reasoningEffort: action.reasoningEffort,
-        },
-        agentConfigurationRes.value
-      );
-      if (res.isErr()) {
-        // If we fail to create an action, we should delete the agent configuration
-        // we just created and re-throw the error.
-        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
-        return res;
-      }
-      actionConfigs.push(res.value);
-    } else if (action.type === "mcp_server_configuration") {
-      const res = await createAgentActionConfiguration(
-        auth,
-        {
-          type: "mcp_server_configuration",
-          name: action.name,
-          description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
-          mcpServerViewId: action.mcpServerViewId,
-          dataSources: action.dataSources || null,
-          reasoningModel: action.reasoningModel,
-          tables: action.tables,
-          childAgentId: action.childAgentId,
-          additionalConfiguration: action.additionalConfiguration,
-          dustAppConfiguration: action.dustAppConfiguration,
-          timeFrame: action.timeFrame,
-          jsonSchema: action.jsonSchema,
-        } as ServerSideMCPServerConfigurationType,
-        agentConfigurationRes.value
-      );
-      if (res.isErr()) {
-        // If we fail to create an action, we should delete the agent configuration
-        // we just created and re-throw the error.
-        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
-        return res;
-      }
-      actionConfigs.push(res.value);
-    } else {
-      assertNever(action);
+    const res = await createAgentActionConfiguration(
+      auth,
+      {
+        type: "mcp_server_configuration",
+        name: action.name,
+        description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+        mcpServerViewId: action.mcpServerViewId,
+        dataSources: action.dataSources || null,
+        reasoningModel: action.reasoningModel,
+        tables: action.tables,
+        childAgentId: action.childAgentId,
+        additionalConfiguration: action.additionalConfiguration,
+        dustAppConfiguration: action.dustAppConfiguration,
+        timeFrame: action.timeFrame,
+        jsonSchema: action.jsonSchema,
+      } as ServerSideMCPServerConfigurationType,
+      agentConfigurationRes.value
+    );
+    if (res.isErr()) {
+      // If we fail to create an action, we should delete the agent configuration
+      // we just created and re-throw the error.
+      await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+      return res;
     }
+    actionConfigs.push(res.value);
   }
 
   const agentConfiguration: AgentConfigurationType = {

@@ -17,6 +17,7 @@ export const CONNECTOR_PROVIDERS = [
   "notion",
   "salesforce",
   "slack",
+  "slack_bot",
   "snowflake",
   "webcrawler",
   "zendesk",
@@ -63,7 +64,7 @@ export type DataSourceWithConnectorDetailsType = DataSourceType &
 
 export type DataSourceWithAgentsUsageType = {
   count: number;
-  agentNames: string[];
+  agents: Array<{ sId: string; name: string }>;
 };
 
 export function isDataSourceNameValid(name: string): Result<void, string> {

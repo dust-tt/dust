@@ -11,12 +11,12 @@ import {
   TrackerDataSourceConfigurationModel,
   TrackerGenerationModel,
 } from "@app/lib/models/doc_tracker";
-import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -504,7 +504,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [
         {
-          model: Workspace,
+          model: WorkspaceModel,
           attributes: ["sId"],
           required: true,
         },

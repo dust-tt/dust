@@ -10,7 +10,10 @@ import {
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
-import { DataSourceNodeContentDetails } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
+import {
+  DataSourceNodeContentDetails,
+  FilesystemPathDetails,
+} from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
@@ -25,6 +28,7 @@ import {
   isDataSourceNodeListType,
   isExecuteTablesQueryMarkerResourceType,
   isExtractResultResourceType,
+  isFilesystemPathType,
   isGetDatabaseSchemaMarkerResourceType,
   isIncludeResultResourceType,
   isReasoningSuccessOutput,
@@ -34,7 +38,7 @@ import {
   isSqlQueryOutput,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isSupportedImageContentType } from "@app/types";
 
 export function MCPActionDetails(
@@ -64,6 +68,7 @@ export function MCPActionDetails(
   );
 
   const isCat = props.action.output?.some(isDataSourceNodeContentType);
+  const isFilesystemPath = props.action.output?.some(isFilesystemPathType);
 
   if (isSearch) {
     return (
@@ -111,6 +116,8 @@ export function MCPActionDetails(
     );
   } else if (isCat) {
     return <DataSourceNodeContentDetails {...props} />;
+  } else if (isFilesystemPath) {
+    return <FilesystemPathDetails {...props} />;
   } else if (isExtract) {
     return <MCPExtractActionDetails {...props} />;
   } else if (isRunAgent) {
@@ -129,7 +136,7 @@ export function GenericActionDetails({
     <ActionDetailsWrapper
       actionName={action.functionCallName ?? "Calling MCP Server"}
       defaultOpen={defaultOpen}
-      visual={ACTION_SPECIFICATIONS["MCP"].cardIcon}
+      visual={MCP_SPECIFICATION.cardIcon}
     >
       <div className="flex flex-col gap-4 py-4 pl-6">
         <CollapsibleComponent

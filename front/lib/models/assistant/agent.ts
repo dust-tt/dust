@@ -1,8 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
-import type { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
+import type { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -52,8 +51,7 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
 
   declare author: NonAttribute<UserModel>;
 
-  declare browseConfigurations: NonAttribute<AgentBrowseConfiguration[]>;
-  declare websearchConfigurations: NonAttribute<AgentWebsearchConfiguration[]>;
+  declare mcpServerConfigurations: NonAttribute<AgentMCPServerConfiguration[]>;
 }
 
 AgentConfiguration.init(

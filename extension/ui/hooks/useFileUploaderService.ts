@@ -58,11 +58,12 @@ export function useFileUploaderService(
   conversationId?: string
 ) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
-  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [numFilesProcessing, setNumFilesProcessing] = useState(0);
   const sendNotification = useSendNotification();
   const dustAPI = useDustAPI();
 
+  const isProcessingFiles = numFilesProcessing > 0;
   const findAvailableTitle = (
     baseTitle: string,
     ext: string,
@@ -86,7 +87,7 @@ export function useFileUploaderService(
     updateBlobs?: boolean;
     kind: UploadedFileKind;
   }): Promise<FileBlob[] | undefined> => {
-    setIsProcessingFiles(true);
+    setNumFilesProcessing((prev: number) => prev + files.length);
 
     const { totalTextualSize, totalImageSize } = [
       ...fileBlobs,
@@ -118,6 +119,7 @@ export function useFileUploaderService(
         description:
           "Combined file sizes exceed the limits. Please upload smaller files.",
       });
+      setNumFilesProcessing((prev: number) => prev - files.length);
       return;
     }
 
@@ -127,7 +129,7 @@ export function useFileUploaderService(
     const uploadResults = await uploadFiles(newFileBlobs);
     const finalFileBlobs = processResults(uploadResults, updateBlobs);
 
-    setIsProcessingFiles(false);
+    setNumFilesProcessing((prev: number) => prev - files.length);
 
     return finalFileBlobs;
   };
@@ -277,7 +279,7 @@ export function useFileUploaderService(
 
       const allFilesReady = fileBlobs.every((f) => f.isUploading === false);
       if (allFilesReady && isProcessingFiles) {
-        setIsProcessingFiles(false);
+        setNumFilesProcessing(0);
       }
     }
   };
@@ -349,6 +351,7 @@ export function useFileUploaderService(
         const alreadyUploaded = messages.some(
           (m) =>
             m.type === "content_fragment" &&
+            m.contentFragmentType === "file" &&
             m.title === title &&
             m.textBytes === new Blob([tabContent.content ?? ""]).size
         );

@@ -43,6 +43,21 @@ const cli = meow({
       isMultiple: true,
       description: "Specify agent sId(s) to use directly (can be repeated)",
     },
+    agent: {
+      type: "string",
+      shortFlag: "a",
+      description: "Search for and use an agent by name",
+    },
+    message: {
+      type: "string",
+      shortFlag: "m",
+      description: "Send a message to the agent non-interactively",
+    },
+    conversationId: {
+      type: "string",
+      shortFlag: "c",
+      description: "Send message to an existing conversation (requires --agent and --message)",
+    },
   },
 });
 

@@ -7,14 +7,13 @@ import type {
 } from "next";
 
 import type { Auth0JwtPayload } from "@app/lib/api/auth0";
-import { getAuth0Session } from "@app/lib/api/auth0";
+import { getAuth0Session, getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
 import { SSOEnforcedError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { Workspace } from "@app/lib/models/workspace";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
@@ -23,6 +22,7 @@ import {
   SECRET_KEY_PREFIX,
 } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -76,7 +76,7 @@ export class Authenticator {
   _subscription: SubscriptionResource | null;
   _user: UserResource | null;
   _groups: GroupResource[];
-  _workspace: Workspace | null;
+  _workspace: WorkspaceModel | null;
 
   // Should only be called from the static methods below.
   constructor({
@@ -87,7 +87,7 @@ export class Authenticator {
     subscription,
     key,
   }: {
-    workspace?: Workspace | null;
+    workspace?: WorkspaceModel | null;
     user?: UserResource | null;
     role: RoleType;
     groups: GroupResource[];
@@ -144,6 +144,30 @@ export class Authenticator {
     }));
   }
 
+  static async userFromSession(
+    session: SessionWithUser | null
+  ): Promise<UserResource | null> {
+    if (session?.type === "auth0" && session.user.workOSUserId) {
+      const user = await UserResource.fetchByWorkOSUserId(
+        session.user.workOSUserId
+      );
+      if (user) {
+        return user;
+      }
+    }
+    if (session?.type === "auth0" && session.user.auth0Sub) {
+      const user = await UserResource.fetchByAuth0Sub(session.user.auth0Sub);
+      if (user) {
+        return user;
+      }
+    }
+    if (session?.type === "workos" && session.user.workOSUserId) {
+      return UserResource.fetchByWorkOSUserId(session.user.workOSUserId);
+    }
+
+    return null;
+  }
+
   /**
    * Get a an Authenticator for the target workspace associated with the authentified user from the
    * Auth0 session.
@@ -158,16 +182,12 @@ export class Authenticator {
   ): Promise<Authenticator> {
     return tracer.trace("fromSession", async () => {
       const [workspace, user] = await Promise.all([
-        Workspace.findOne({
+        WorkspaceModel.findOne({
           where: {
             sId: wId,
           },
         }),
-        session?.type === "auth0" && session.user.auth0Sub
-          ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
-          : session?.type === "workos" && session.user.workOSUserId
-            ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
-            : null,
+        this.userFromSession(session),
       ]);
 
       let role = "none" as RoleType;
@@ -215,15 +235,11 @@ export class Authenticator {
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       wId
-        ? Workspace.findOne({
+        ? WorkspaceModel.findOne({
             where: { sId: wId },
           })
         : null,
-      session?.type === "auth0" && session.user.auth0Sub
-        ? UserResource.fetchByAuth0Sub(session.user.auth0Sub)
-        : session?.type === "workos" && session.user.workOSUserId
-          ? UserResource.fetchByWorkOSUserId(session.user.workOSUserId)
-          : null,
+      this.userFromSession(session),
     ]);
 
     let groups: GroupResource[] = [];
@@ -263,7 +279,7 @@ export class Authenticator {
     wId: string
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
-      Workspace.findOne({
+      WorkspaceModel.findOne({
         where: {
           sId: wId,
         },
@@ -321,12 +337,13 @@ export class Authenticator {
       }
     >
   > {
-    const user = await UserResource.fetchByAuth0Sub(token.sub);
+    const user = await getUserFromAuth0Token(token);
+
     if (!user) {
       return new Err({ code: "user_not_found" });
     }
 
-    const workspace = await Workspace.findOne({
+    const workspace = await WorkspaceModel.findOne({
       where: {
         sId: wId,
       },
@@ -396,7 +413,7 @@ export class Authenticator {
       return new Err({ code: "user_not_found" });
     }
 
-    const workspace = await Workspace.findOne({
+    const workspace = await WorkspaceModel.findOne({
       where: {
         sId: wId,
       },
@@ -457,14 +474,14 @@ export class Authenticator {
   }> {
     const [workspace, keyWorkspace] = await Promise.all([
       (async () => {
-        return Workspace.findOne({
+        return WorkspaceModel.findOne({
           where: {
             sId: wId,
           },
         });
       })(),
       (async () => {
-        return Workspace.findOne({
+        return WorkspaceModel.findOne({
           where: {
             id: key.workspaceId,
           },
@@ -488,7 +505,7 @@ export class Authenticator {
       }
     }
 
-    const getSubscriptionForWorkspace = (workspace: Workspace) =>
+    const getSubscriptionForWorkspace = (workspace: WorkspaceModel) =>
       SubscriptionResource.fetchActiveByWorkspace(
         renderLightWorkspaceType({ workspace })
       );
@@ -559,7 +576,7 @@ export class Authenticator {
       throw new Error("Invalid secret for registry lookup");
     }
 
-    const workspace = await Workspace.findOne({
+    const workspace = await WorkspaceModel.findOne({
       where: {
         sId: workspaceId,
       },
@@ -597,7 +614,7 @@ export class Authenticator {
   static async internalBuilderForWorkspace(
     workspaceId: string
   ): Promise<Authenticator> {
-    const workspace = await Workspace.findOne({
+    const workspace = await WorkspaceModel.findOne({
       where: {
         sId: workspaceId,
       },
@@ -632,7 +649,7 @@ export class Authenticator {
       dangerouslyRequestAllGroups: boolean;
     }
   ): Promise<Authenticator> {
-    const workspace = await Workspace.findOne({
+    const workspace = await WorkspaceModel.findOne({
       where: {
         sId: workspaceId,
       },
@@ -977,11 +994,21 @@ export async function getSession(
   req: NextApiRequest | GetServerSidePropsContext["req"],
   res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | null> {
-  return (
-    (await getWorkOSSession(req, res)) ||
-    (await getAuth0Session(req, res)) ||
-    null
-  );
+  const workOsSession = await getWorkOSSession(req, res);
+  const auth0Session = await getAuth0Session(req, res);
+
+  // If any of the sessions is SSO, we return the SSO session. Priority goes to WorkOS.
+  if (workOsSession?.isSSO) {
+    return workOsSession;
+  }
+
+  // If the Auth0 session is SSO, we return it.
+  if (auth0Session?.isSSO) {
+    return auth0Session;
+  }
+
+  // If none of the sessions is SSO, we return the first one that exists. Priority goes to WorkOS.
+  return workOsSession || auth0Session || null;
 }
 
 /**

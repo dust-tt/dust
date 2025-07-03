@@ -3,9 +3,10 @@ import { sign } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import { getAuth0UsersFromEmail } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
+import { fetchWorkOSOrganizationMembershipsForUserIdAndOrgId } from "@app/lib/api/workos/organization_membership";
+import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import {
   getMembers,
   getWorkspaceAdministrationVersionLock,
@@ -16,6 +17,7 @@ import { MembershipInvitationModel } from "@app/lib/models/membership_invitation
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { isEmailValid } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   ActiveRoleType,
@@ -342,11 +344,13 @@ export async function handleMembershipInvitations(
     owner,
     subscription,
     user,
+    force = false,
   }: {
     owner: WorkspaceType;
     subscription: SubscriptionType;
     user: UserType;
     invitationRequests: MembershipInvitationBlob[];
+    force?: boolean;
   }
 ): Promise<Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>> {
   const { maxUsers } = subscription.plan.limits.users;
@@ -398,19 +402,41 @@ export async function handleMembershipInvitations(
         transaction: t,
       });
 
-      const auth0Users = await getAuth0UsersFromEmail(
+      const workOSUsers = await fetchUsersFromWorkOSWithEmails(
         invitationRequests.map((invite) => invite.email)
       );
 
-      const otherRegionUsers = auth0Users
-        .filter(
-          (user) =>
-            // Type isn't accurate, user.app_metadata can be undefined.
-            typeof user.app_metadata === "object" &&
-            "region" in user.app_metadata &&
-            user.app_metadata.region !== regionConfig.getCurrentRegion()
-        )
-        .map((user) => user.email);
+      /** Those are emails that already are in the WorkOS Organizations so we don't need to check their region. */
+      let emailsOkToBeInvited: string[] = [];
+
+      const { workOSOrganizationId } = owner;
+      if (workOSOrganizationId != null) {
+        // So for each found workOS users, we check if they're already in the organizations
+        const organizationMembershipsResponse = await concurrentExecutor(
+          workOSUsers,
+          async (user) => {
+            const response =
+              await fetchWorkOSOrganizationMembershipsForUserIdAndOrgId(
+                user.id,
+                workOSOrganizationId
+              );
+
+            return response.length > 0 ? [user.email] : [];
+          },
+          { concurrency: 10 }
+        );
+        emailsOkToBeInvited = organizationMembershipsResponse.flat();
+      }
+
+      const otherRegionUsers = workOSUsers.reduce((acc, user) => {
+        if (
+          !emailsOkToBeInvited.includes(user.email) &&
+          user.metadata.region !== regionConfig.getCurrentRegion()
+        ) {
+          acc.push(user.email);
+        }
+        return acc;
+      }, [] as string[]);
 
       const unconsumedInvitations = await getRecentPendingAndRevokedInvitations(
         auth,
@@ -440,20 +466,25 @@ export async function handleMembershipInvitations(
       const requestedEmails = new Set(
         invitationRequests.map((r) => r.email.toLowerCase().trim())
       );
-      const emailsToSendInvitations = invitationRequests.filter(
-        (r) =>
-          !emailsWithRecentUnconsumedInvitations.has(
-            r.email.toLowerCase().trim()
-          )
-      );
-      const invitationsToUnrevoke = unconsumedInvitations.revoked.filter((i) =>
-        requestedEmails.has(i.inviteEmail.toLowerCase().trim())
-      );
+      const emailsToSendInvitations = force
+        ? invitationRequests // If force is true, send to all requested emails
+        : invitationRequests.filter(
+            (r) =>
+              !emailsWithRecentUnconsumedInvitations.has(
+                r.email.toLowerCase().trim()
+              )
+          );
+      const invitationsToUnrevoke = force
+        ? [] // If force is true, don't unrevoke any invitations
+        : unconsumedInvitations.revoked.filter((i) =>
+            requestedEmails.has(i.inviteEmail.toLowerCase().trim())
+          );
 
       if (
         !emailsToSendInvitations.length &&
         !invitationsToUnrevoke.length &&
-        invitationRequests.length > 0
+        invitationRequests.length > 0 &&
+        !force // Only return this error if force is false
       ) {
         return new Err({
           status_code: 400,
@@ -469,6 +500,12 @@ export async function handleMembershipInvitations(
         invitationsToUnrevoke.map((i) => i.sId),
         t
       );
+
+      const unrevokedResults: HandleMembershipInvitationResult[] =
+        invitationsToUnrevoke.map((i) => ({
+          success: true,
+          email: i.inviteEmail,
+        }));
 
       const invitationResults = await Promise.all(
         emailsToSendInvitations.map(async ({ email, role }) => {
@@ -519,7 +556,7 @@ export async function handleMembershipInvitations(
         })
       );
 
-      return new Ok(invitationResults);
+      return new Ok([...invitationResults, ...unrevokedResults]);
     }
   );
 

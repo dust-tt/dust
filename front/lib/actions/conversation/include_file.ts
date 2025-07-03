@@ -4,21 +4,21 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { conversationAttachmentId } from "@app/lib/actions/conversation/list_files";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
 import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
-import { listFiles } from "@app/lib/api/assistant/jit_utils";
+import { conversationAttachmentId } from "@app/lib/api/assistant/conversation/attachments";
+import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import {
   CONTENT_OUTDATED_MSG,
-  renderFromAttachmentId,
+  getContentFragmentFromAttachmentFile,
 } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -129,50 +129,45 @@ export class ConversationIncludeFileActionType extends BaseAction {
     // be able to undertstand the state of affair. We use content.flat() to consider all versions of
     // messages here (to support rendering a file that was part of an old version of a previous
     // message).
-    const files = listFiles(conversation);
-    for (const f of files) {
-      if (conversationAttachmentId(f) === fileId && f.isIncludable) {
-        if (f.contentFragmentVersion === "superseded") {
-          return new Ok({
-            fileId,
-            title: f.title,
-            content: {
-              type: "text",
-              text: CONTENT_OUTDATED_MSG,
-            },
-          });
-        }
+    const attachments = listAttachments(conversation);
+    const attachment = attachments.find(
+      (a) => conversationAttachmentId(a) === fileId
+    );
+    if (!attachment || !attachment.isIncludable) {
+      return new Err(`File \`${fileId}\` not found in conversation`);
+    }
+    if (attachment.contentFragmentVersion === "superseded") {
+      return new Ok({
+        fileId,
+        title: attachment.title,
+        content: {
+          type: "text",
+          text: CONTENT_OUTDATED_MSG,
+        },
+      });
+    }
+    const r = await getContentFragmentFromAttachmentFile(auth, {
+      attachment,
+      excludeImages: false,
+      model,
+    });
 
-        const r = await renderFromAttachmentId(auth, {
-          contentType: f.contentType,
-          excludeImages: false,
-          conversationAttachmentId: conversationAttachmentId(f),
-          model,
-          title: f.title,
-          contentFragmentVersion: f.contentFragmentVersion,
-        });
-
-        if (r.isErr()) {
-          return new Err(`${r.error}`);
-        }
-        if (
-          !isTextContent(r.value.content[0]) &&
-          !isImageContent(r.value.content[0])
-        ) {
-          return new Err(`File \`${fileId}\` has no text or image content`);
-        }
-
-        return new Ok({
-          fileId,
-          title: f.title,
-          content: r.value.content[0],
-        });
-      }
+    if (r.isErr()) {
+      return new Err(`Error including conversation file: ${r.error}`);
     }
 
-    return new Err(
-      `File \`${fileId}\` not includable or not found in conversation`
-    );
+    if (
+      !isTextContent(r.value.content[0]) &&
+      !isImageContent(r.value.content[0])
+    ) {
+      return new Err(`File \`${fileId}\` has no text or image content`);
+    }
+
+    return new Ok({
+      fileId,
+      title: attachment.title,
+      content: r.value.content[0],
+    });
   }
 
   renderForFunctionCall(): FunctionCallType {

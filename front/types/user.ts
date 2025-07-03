@@ -4,6 +4,7 @@ import type {
   EmbeddingProviderIdType,
   ModelProviderIdType,
 } from "./assistant/assistant";
+import type { MembershipOriginType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import { assertNever } from "./shared/utils/assert_never";
 
@@ -64,6 +65,7 @@ export type LightWorkspaceType = {
     [key: string]: string | number | boolean | object | undefined;
   } | null;
   workOSOrganizationId?: string | null;
+  groups?: string[];
 };
 
 export type WorkspaceType = LightWorkspaceType & {
@@ -97,8 +99,14 @@ export type UserType = {
   lastLoginAt: number | null;
 };
 
+export type UserTypeWithWorkspace = UserType & {
+  workspace: WorkspaceType;
+  origin?: MembershipOriginType;
+};
+
 export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
+  origin?: MembershipOriginType;
 };
 
 export type UserTypeWithExtensionWorkspaces = UserType & {

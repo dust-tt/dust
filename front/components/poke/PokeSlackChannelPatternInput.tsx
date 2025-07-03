@@ -129,6 +129,7 @@ export function SlackChannelPatternInput({
       <div className="flex flex-col gap-2">
         <SlackAutoReadPatternsTable
           autoReadPatterns={patterns}
+          dataSource={dataSource}
           onDelete={handleDelete}
           spaces={spaces}
         />

@@ -11,14 +11,15 @@ import type {
   IncludeResultResourceType,
   WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
   findTagsSchema,
   makeFindTagsDescription,
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
+  checkConflictingTags,
   getCoreSearchArgs,
-  renderRelativeTimeFrameForToolOutput,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -157,6 +158,17 @@ function createServer(
     const coreSearchArgs = removeNulls(
       coreSearchArgsResults.map((res) => (res.isOk() ? res.value : null))
     );
+
+    const conflictingTagsError = checkConflictingTags(coreSearchArgs, {
+      tagsIn,
+      tagsNot,
+    });
+    if (conflictingTagsError) {
+      return {
+        isError: false,
+        content: [{ type: "text", text: conflictingTagsError }],
+      };
+    }
 
     const searchResults = await coreAPI.searchDataSources(
       "",

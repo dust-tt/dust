@@ -5,35 +5,43 @@ import {
   createWorkspace,
   findWorkspaceWithVerifiedDomain,
 } from "@app/lib/iam/workspaces";
-import { Workspace } from "@app/lib/models/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import type { ActiveRoleType, LightWorkspaceType, Result } from "@app/types";
+import type {
+  ActiveRoleType,
+  LightWorkspaceType,
+  MembershipOriginType,
+  Result,
+} from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export async function createAndLogMembership({
   user,
   workspace,
   role,
+  origin,
 }: {
   user: UserResource;
-  workspace: Workspace | LightWorkspaceType;
+  workspace: WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
+  origin: MembershipOriginType;
 }) {
   const w =
-    workspace instanceof Workspace
+    workspace instanceof WorkspaceModel
       ? renderLightWorkspaceType({ workspace })
       : workspace;
   const m = await MembershipResource.createMembership({
     role,
     user,
     workspace: w,
+    origin,
   });
 
   void ServerSideTracking.trackCreateMembership({
@@ -59,7 +67,7 @@ export async function handleMembershipInvite(
   Result<
     {
       flow: "joined";
-      workspace: Workspace;
+      workspace: WorkspaceModel;
     },
     AuthFlowError | SSOEnforcedError
   >
@@ -134,6 +142,7 @@ export async function handleMembershipInvite(
       workspace,
       user,
       role: membershipInvite.initialRole,
+      origin: "invited",
     });
   }
 
@@ -147,10 +156,10 @@ export async function handleEnterpriseSignUpFlow(
   enterpriseConnectionWorkspaceId: string
 ): Promise<{
   flow: "unauthorized" | "joined" | null;
-  workspace: Workspace | null;
+  workspace: WorkspaceModel | null;
 }> {
   // Combine queries to optimize database calls.
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       sId: enterpriseConnectionWorkspaceId,
     },
@@ -186,6 +195,7 @@ export async function handleEnterpriseSignUpFlow(
       workspace,
       user,
       role: pendingMembershipInvitation?.initialRole ?? "user",
+      origin: pendingMembershipInvitation ? "invited" : "auto-joined",
     });
   }
 
@@ -207,7 +217,7 @@ export async function handleRegularSignupFlow(
   Result<
     {
       flow: "no-auto-join" | "revoked" | "joined" | null;
-      workspace: Workspace | null;
+      workspace: WorkspaceModel | null;
     },
     AuthFlowError | SSOEnforcedError
   >
@@ -227,7 +237,7 @@ export async function handleRegularSignupFlow(
   }
 
   const targetWorkspace = targetWorkspaceId
-    ? await Workspace.findOne({
+    ? await WorkspaceModel.findOne({
         where: {
           sId: targetWorkspaceId,
         },
@@ -293,6 +303,7 @@ export async function handleRegularSignupFlow(
         workspace: existingWorkspace,
         user,
         role: "user",
+        origin: "auto-joined",
       });
     }
 
@@ -303,6 +314,7 @@ export async function handleRegularSignupFlow(
       workspace,
       user,
       role: "admin",
+      origin: "auto-joined",
     });
 
     return new Ok({ flow: "joined", workspace });

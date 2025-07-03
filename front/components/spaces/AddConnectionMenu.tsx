@@ -35,6 +35,7 @@ import type {
   ConnectorType,
   DataSourceType,
   LightWorkspaceType,
+  OAuthUseCase,
   PlanType,
   Result,
   SpaceType,
@@ -64,10 +65,12 @@ type AddConnectionMenuProps = {
 export async function setupConnection({
   owner,
   provider,
+  useCase = "connection",
   extraConfig,
 }: {
   owner: LightWorkspaceType;
   provider: ConnectorProvider;
+  useCase?: OAuthUseCase;
   extraConfig: Record<string, string>;
 }): Promise<Result<string, Error>> {
   let connectionId: string;
@@ -78,7 +81,7 @@ export async function setupConnection({
       dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider,
-      useCase: "connection",
+      useCase,
       extraConfig,
     });
     if (!cRes.isOk()) {
@@ -153,7 +156,7 @@ export const AddConnectionMenu = ({
     [owner, systemSpace]
   );
 
-  // Filter available integrations
+  // Filter available integrations.
   const availableIntegrations = integrations.filter((i) => {
     const hide = CONNECTOR_CONFIGURATIONS[i.connectorProvider].hide;
     const rolloutFlag =
@@ -423,6 +426,7 @@ export const AddConnectionMenu = ({
                   }}
                 />
               );
+            case "slack_bot":
             case undefined:
               return null;
             default:

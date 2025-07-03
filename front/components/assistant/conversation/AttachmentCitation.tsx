@@ -17,6 +17,11 @@ import React from "react";
 
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import type { ContentFragmentType } from "@app/types";
+import {
+  assertNever,
+  isContentNodeContentFragment,
+  isFileContentFragment,
+} from "@app/types";
 
 export type FileAttachment = {
   type: "file";
@@ -153,7 +158,7 @@ export function contentFragmentToAttachmentCitation(
     };
   }
 
-  if (contentFragment.contentNodeData) {
+  if (isContentNodeContentFragment(contentFragment)) {
     const { provider, nodeType } = contentFragment.contentNodeData;
     const logo = getConnectorProviderLogoWithFallback({ provider });
 
@@ -182,16 +187,20 @@ export function contentFragmentToAttachmentCitation(
       visual,
       spaceName: contentFragment.contentNodeData.spaceName,
     };
+  } else if (isFileContentFragment(contentFragment)) {
+    const isImageType = contentFragment.contentType.startsWith("image/");
+    return {
+      type: "file",
+      id: contentFragment.sId,
+      title: contentFragment.title,
+      sourceUrl: contentFragment.sourceUrl,
+      visual: (
+        <Icon visual={isImageType ? ImageIcon : DocumentIcon} size="md" />
+      ),
+    };
+  } else {
+    assertNever(contentFragment);
   }
-
-  const isImageType = contentFragment.contentType.startsWith("image/");
-  return {
-    type: "file",
-    id: contentFragment.sId,
-    title: contentFragment.title,
-    sourceUrl: contentFragment.sourceUrl,
-    visual: <Icon visual={isImageType ? ImageIcon : DocumentIcon} size="md" />,
-  };
 }
 
 export function attachmentToAttachmentCitation(

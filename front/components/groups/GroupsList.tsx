@@ -25,9 +25,9 @@ const groupColumns = [
   {
     id: "name" as const,
     accessorKey: "name",
-    header: "Directory name",
+    header: "Group name",
     cell: (info: GroupInfo) => (
-      <DataTable.CellContent icon={UserGroupIcon}>
+      <DataTable.CellContent icon={UserGroupIcon} className="capitalize">
         {info.row.original.name}
       </DataTable.CellContent>
     ),
@@ -84,7 +84,6 @@ export type GroupsListProps = {
 };
 
 export function GroupsList({
-  searchTerm,
   isLoading,
   groups,
   showColumns,
@@ -115,7 +114,6 @@ export function GroupsList({
 
   return (
     <DataTable
-      filter={searchTerm}
       filterColumn="name"
       data={rows}
       columns={groupColumns.filter(filterColumn(showColumns))}

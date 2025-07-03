@@ -2,6 +2,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import type {
   CoreAPIError,
@@ -53,7 +54,7 @@ export async function deleteTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         dataSourceName: dataSource.name,
-        workspaceId: owner.id,
+        workspaceId: owner.sId,
         error: deleteRes.error,
       },
       "Failed to delete table."
@@ -160,7 +161,7 @@ export async function upsertTableFromCsv({
     tableId,
     name: tableName,
     description: tableDescription,
-    timestamp: tableTimestamp,
+    timestamp: cleanTimestamp(tableTimestamp),
     tags: tableTags,
     parentId: tableParentId,
     parents: tableParents,
@@ -181,7 +182,7 @@ export async function upsertTableFromCsv({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         dataSourceName: dataSource.name,
-        workspaceId: owner.id,
+        workspaceId: owner.sId,
         tableId,
         tableName,
       },
@@ -212,7 +213,7 @@ export async function upsertTableFromCsv({
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
           dataSourceName: dataSource.name,
-          workspaceId: owner.id,
+          workspaceId: owner.sId,
           tableId,
           tableName,
         },
@@ -233,7 +234,7 @@ export async function upsertTableFromCsv({
             projectId: dataSource.dustAPIProjectId,
             dataSourceId: dataSource.dustAPIDataSourceId,
             dataSourceName: dataSource.name,
-            workspaceId: owner.id,
+            workspaceId: owner.sId,
             tableId,
             tableName,
           },

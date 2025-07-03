@@ -21,6 +21,10 @@ import {
   dustAppRunInputsToInputSchema,
   inputSchemaToDustAppRunInputs,
 } from "@app/lib/actions/types/agent";
+import {
+  getAttachmentFromToolOutput,
+  renderAttachmentXml,
+} from "@app/lib/api/assistant/conversation/attachments";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
@@ -164,15 +168,18 @@ export class DustAppRunActionType extends BaseAction {
       this.resultsFileContentType;
 
     if (hasResultsFile) {
-      const attachment = getDustAppRunResultsFileAttachment({
-        resultsFileId: this.resultsFileId,
-        resultsFileSnippet: this.resultsFileSnippet,
-        resultsFileContentType: this.resultsFileContentType,
-        includeSnippet: true,
-        appName: this.appName,
+      const attachment = getAttachmentFromToolOutput({
+        fileId: this.resultsFileId,
+        contentType: this.resultsFileContentType,
+        title: getDustAppRunResultsFileTitle({
+          appName: this.appName,
+          resultsFileContentType: this.resultsFileContentType,
+        }),
+        snippet: this.resultsFileSnippet,
       });
+      const xml = renderAttachmentXml({ attachment });
 
-      content += `${attachment}\n\n`;
+      content += `${xml}\n\n`;
     }
 
     // Note action.output can be any valid JSON including null.
@@ -458,11 +465,13 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       const MIN_GENERATION_TOKENS = 2048;
       const allowedTokenCount = model.contextSize - MIN_GENERATION_TOKENS;
       const prompt = "";
+      const tools = "";
 
       const convoRes = await renderConversationForModel(auth, {
         conversation,
         model,
         prompt,
+        tools,
         allowedTokenCount,
         excludeImages: true,
       });
@@ -886,36 +895,6 @@ export async function dustAppRunTypesFromAgentMessageIds(
       type: "dust_app_run_action",
     });
   });
-}
-
-export function getDustAppRunResultsFileAttachment({
-  resultsFileId,
-  resultsFileSnippet,
-  resultsFileContentType,
-  includeSnippet = true,
-  appName,
-}: {
-  resultsFileId: string | null;
-  resultsFileSnippet: string | null;
-  resultsFileContentType: SupportedFileContentType;
-  includeSnippet: boolean;
-  appName: string;
-}): string | null {
-  if (!resultsFileId || !resultsFileSnippet) {
-    return null;
-  }
-
-  const attachment =
-    `<file ` +
-    `id="${resultsFileId}" type="${resultsFileContentType}" title=${getDustAppRunResultsFileTitle(
-      { appName, resultsFileContentType }
-    )}`;
-
-  if (!includeSnippet) {
-    return `${attachment} />`;
-  }
-
-  return `${attachment}>\n${resultsFileSnippet}\n</file>`;
 }
 
 function containsValidJsonOutput(output: unknown): output is {

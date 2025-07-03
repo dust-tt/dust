@@ -3,11 +3,6 @@ import {
   Chip,
   ContextItem,
   DocumentTextIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
   EyeIcon,
   Input,
   LockIcon,
@@ -19,7 +14,6 @@ import {
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
@@ -31,12 +25,10 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
@@ -45,11 +37,9 @@ import type {
   ConnectorType,
   CoreAPIDataSource,
   DataSourceType,
-  GroupType,
   NotionCheckUrlResponseType,
   NotionFindUrlResponseType,
   SlackAutoReadPattern,
-  SlackbotWhitelistType,
   WorkspaceType,
   ZendeskFetchTicketResponseType,
 } from "@app/types";
@@ -87,7 +77,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     runId: string;
     status: string;
   }[];
-  groupsForSlackBot: GroupType[];
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
@@ -170,6 +159,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   );
   if (dataSource.connectorId) {
     switch (dataSource.connectorProvider) {
+      case "slack_bot":
       case "slack":
         const botEnabledRes = await connectorsAPI.getConnectorConfig(
           dataSource.connectorId,
@@ -299,14 +289,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     }
   }
 
-  // Getting groups that a Slack bot/workflow can be assigned to
-  const authForSlackBot = await Authenticator.internalAdminForWorkspace(
-    owner.sId
-  );
-  const groupsForSlackBot = (
-    await GroupResource.listAllWorkspaceGroups(authForSlackBot)
-  ).map((g) => g.toJSON());
-
   return {
     props: {
       owner,
@@ -316,7 +298,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       features,
       temporalWorkspace: TEMPORAL_CONNECTORS_NAMESPACE,
       temporalRunningWorkflows: workflowInfos,
-      groupsForSlackBot,
     },
   };
 });
@@ -329,7 +310,6 @@ const DataSourcePage = ({
   temporalWorkspace,
   temporalRunningWorkflows,
   features,
-  groupsForSlackBot,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const [limit] = useState(10);
   const [offsetDocument, setOffsetDocument] = useState(0);
@@ -441,16 +421,6 @@ const DataSourcePage = ({
               label="Search Data"
               icon={LockIcon}
             />
-            {dataSource.connectorProvider === "slack" && (
-              <ConfigToggle
-                title="Slackbot enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="botEnabled"
-                featureKey="slackBotEnabled"
-              />
-            )}
             {dataSource.connectorProvider === "notion" && (
               <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
             )}
@@ -535,21 +505,16 @@ const DataSourcePage = ({
               </>
             )}
           </div>
-          {dataSource.connectorProvider === "slack" && (
-            <>
-              <SlackWhitelistBot
+          {["slack", "slack_bot"].includes(
+            dataSource.connectorProvider ?? ""
+          ) && (
+            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+              <SlackChannelPatternInput
+                initialValues={features.autoReadChannelPatterns || ""}
                 owner={owner}
-                connectorId={connector?.id}
-                groups={groupsForSlackBot}
+                dataSource={dataSource}
               />
-              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-                <SlackChannelPatternInput
-                  initialValues={features.autoReadChannelPatterns || ""}
-                  owner={owner}
-                  dataSource={dataSource}
-                />
-              </div>
-            </>
+            </div>
           )}
           {!dataSource.connectorId ? (
             <>
@@ -802,46 +767,6 @@ async function handleCheckZendeskTicket(
     return null;
   }
   return res.json();
-}
-
-async function handleWhitelistBot({
-  botName,
-  wId,
-  groupId,
-  whitelistType,
-}: {
-  botName: string;
-  wId: string;
-  groupId: string;
-  whitelistType: SlackbotWhitelistType;
-}): Promise<void> {
-  const res = await fetch(`/api/poke/admin`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      majorCommand: "slack",
-      command: "whitelist-bot",
-      args: {
-        botName,
-        wId,
-        groupId,
-        whitelistType,
-      },
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json();
-    alert(
-      `Failed to whitelist bot: ${
-        err.error?.connectors_error?.message
-      }\n\n${JSON.stringify(err)}`
-    );
-    return;
-  }
-  alert("Bot whitelisted successfully");
 }
 
 function NotionUrlCheckOrFind({
@@ -1224,119 +1149,5 @@ const ConfigToggle = ({
     </div>
   );
 };
-
-function SlackWhitelistBot({
-  owner,
-  connectorId,
-  groups,
-}: {
-  owner: WorkspaceType;
-  connectorId?: string;
-  groups: GroupType[];
-}) {
-  const [botName, setBotName] = useState("");
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-  const [whitelistType, setWhitelistType] =
-    useState<SlackbotWhitelistType>("summon_agent");
-
-  const selectedGroupName = groups.find(
-    (group) => group.sId === selectedGroup
-  )?.name;
-
-  return (
-    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
-      <div className="flex items-center gap-2">
-        <div>Whitelist slack bot or workflow</div>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="grow">
-          <Input
-            placeholder="Bot or workflow name"
-            onChange={(e) => setBotName(e.target.value)}
-            value={botName}
-          />
-        </div>
-        <div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" label={whitelistType} />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="min-w-72">
-              <DropdownMenuRadioGroup
-                value={whitelistType ?? undefined}
-                onValueChange={(value) => {
-                  setWhitelistType(value as SlackbotWhitelistType);
-                }}
-              >
-                {["summon_agent", "index_messages"].map((whitelistType) => (
-                  <DropdownMenuRadioItem
-                    value={whitelistType}
-                    key={whitelistType}
-                    label={whitelistType}
-                  />
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                label={selectedGroupName ?? "Select a group"}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="min-w-72">
-              <DropdownMenuRadioGroup
-                value={selectedGroup ?? undefined}
-                onValueChange={setSelectedGroup}
-              >
-                {groups.map((group) => (
-                  <DropdownMenuRadioItem
-                    value={group.sId}
-                    key={group.sId}
-                    label={group.name}
-                  />
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <Button
-          variant="primary"
-          label="Whitelist"
-          onClick={async () => {
-            if (!botName) {
-              alert("Please enter a bot name");
-              return;
-            }
-            if (!selectedGroup) {
-              alert("Please select a group");
-              return;
-            }
-            await handleWhitelistBot({
-              botName,
-              wId: owner.sId,
-              groupId: selectedGroup,
-              whitelistType,
-            });
-            setBotName("");
-          }}
-        />
-      </div>
-      <div>
-        See{" "}
-        <Link
-          href={`https://metabase.dust.tt/question/637-whitelisted-bots-given-connector?connectorId=${connectorId}`}
-          target="_blank"
-          className="text-sm text-highlight-400"
-        >
-          list of whitelisted bots for this workspace
-        </Link>
-      </div>
-    </div>
-  );
-}
 
 export default DataSourcePage;

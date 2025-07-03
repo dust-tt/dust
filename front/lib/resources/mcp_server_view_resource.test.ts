@@ -42,11 +42,13 @@ describe("MCPServerViewResource", () => {
           value: {
             ...originalThinkConfig,
             availability: "auto",
-            isRestricted: (
-              plan: PlanType,
-              featureFlags: WhitelistableFeature[]
-            ) => {
-              return featureFlags.includes("dev_mcp_actions");
+            isRestricted: ({
+              featureFlags,
+            }: {
+              plan: PlanType;
+              featureFlags: WhitelistableFeature[];
+            }) => {
+              return !featureFlags.includes("dev_mcp_actions");
             },
           },
           writable: true,

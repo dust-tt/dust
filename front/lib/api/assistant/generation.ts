@@ -1,12 +1,18 @@
 import moment from "moment-timezone";
 
+import {
+  DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
+  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
+  isMCPConfigurationForInternalNotion,
+  isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
   isMCPConfigurationWithDataSource,
-  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
-import { isRetrievalConfiguration } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
@@ -120,14 +126,26 @@ export async function constructPromptMultiActions(
 
   toolsSection += toolServersPrompt;
 
+  const attachmentsSection =
+    "# ATTACHMENTS\n" +
+    "The conversation history may contain file attachments, indicated by <attachment> tags. " +
+    "Attachments may originate from the user directly or from tool outputs. " +
+    "These tags indicate when the file was attached but do not always contain the full contents (it may contain a small snippet or description of the file).\n" +
+    "Each file attachment has a specific content type and status (includable, queryable, searchable, extractable):\n\n" +
+    `// includable: full content can be retrieved using \`${DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME}\`\n` +
+    `// queryable: represents tabular data that can be queried alongside other queryable files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`\n` +
+    `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
+    `// extractable: files can also be processed to extract structured data using \`${DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME}\`\n` +
+    "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files mime types to decide which tool to use on which file.\n";
+
   // GUIDELINES section
   let guidelinesSection = "# GUIDELINES\n";
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
-      isRetrievalConfiguration(action) ||
-      isWebsearchConfiguration(action) ||
       isMCPConfigurationWithDataSource(action) ||
-      isMCPConfigurationForInternalWebsearch(action)
+      isMCPConfigurationForInternalWebsearch(action) ||
+      isMCPConfigurationForInternalSlack(action) ||
+      isMCPConfigurationForInternalNotion(action)
   );
 
   if (canRetrieveDocuments) {
@@ -174,7 +192,7 @@ export async function constructPromptMultiActions(
     );
   }
 
-  const prompt = `${context}\n${toolsSection}\n${guidelinesSection}\n${instructions}`;
+  const prompt = `${context}\n${toolsSection}\n${attachmentsSection}\n${guidelinesSection}\n${instructions}`;
 
   return prompt;
 }

@@ -1,6 +1,6 @@
-import { Workspace } from "@app/lib/models/workspace";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 
 async function main() {
   const users = await UserModel.findAll();
@@ -26,7 +26,7 @@ async function main() {
             // @ts-expect-error new_id deprecated after #5755
             const uId = new_id();
 
-            const w = await Workspace.create({
+            const w = await WorkspaceModel.create({
               sId: uId.slice(0, 10),
               name: u.username,
               //@ts-expect-error old migration code kept for reference
@@ -38,6 +38,7 @@ async function main() {
               userId: u.id,
               workspaceId: w.id,
               startAt: new Date(),
+              origin: "invited",
             });
             console.log(`+ ${u.id}`);
           } else {

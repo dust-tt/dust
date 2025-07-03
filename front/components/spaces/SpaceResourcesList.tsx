@@ -41,7 +41,6 @@ import {
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
-import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
 import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
@@ -76,10 +75,11 @@ type NumberColumnDef = ColumnDef<RowData, number>;
 type TableColumnDef = StringColumnDef | NumberColumnDef;
 
 function getTableColumns(
-  setAssistantName: (a: string | null) => void,
+  setAssistantSId: (a: string | null) => void,
   isManaged: boolean,
   isWebsite: boolean,
-  space: SpaceType
+  space: SpaceType,
+  activeSeats: number
 ): TableColumnDef[] {
   const isGlobalOrSystemSpace = ["global", "system"].includes(space.kind);
   const nameColumn: ColumnDef<RowData, string> = {
@@ -126,7 +126,7 @@ function getTableColumns(
       const usage = ctx.row.original.dataSourceView.usage;
       return (
         <DataTable.CellContent>
-          <UsedByButton usage={usage} onItemClick={setAssistantName} />
+          <UsedByButton usage={usage} onItemClick={setAssistantSId} />
         </DataTable.CellContent>
       );
     },
@@ -155,6 +155,7 @@ function getTableColumns(
               initialState={ds.connector}
               workspaceId={info.row.original.workspaceId}
               dataSource={ds}
+              activeSeats={activeSeats}
             />
           )}
         </DataTable.CellContent>
@@ -242,6 +243,7 @@ interface SpaceResourcesListProps {
   onSelect: (sId: string) => void;
   integrations: DataSourceIntegration[];
   user: UserType;
+  activeSeats: number;
 }
 
 export const SpaceResourcesList = ({
@@ -255,13 +257,10 @@ export const SpaceResourcesList = ({
   onSelect,
   integrations,
   user,
+  activeSeats,
 }: SpaceResourcesListProps) => {
   const { isDark } = useTheme();
-  const [assistantName, setAssistantName] = useState<string | null>(null);
-  const { sId: assistantSId } = useAgentConfigurationSIdLookup({
-    workspaceId: owner.sId,
-    agentConfigurationName: assistantName,
-  });
+  const [assistantSId, setAssistantSId] = useState<string | null>(null);
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
@@ -311,62 +310,67 @@ export const SpaceResourcesList = ({
       return [];
     }
 
-    return spaceDataSourceViews.map((dataSourceView) => {
-      const provider = dataSourceView.dataSource.connectorProvider;
+    return spaceDataSourceViews
+      .filter(
+        (dataSourceView) =>
+          dataSourceView.dataSource.connectorProvider !== "slack_bot"
+      )
+      .map((dataSourceView) => {
+        const provider = dataSourceView.dataSource.connectorProvider;
 
-      const menuItems: MenuItem[] = [];
-      if (isWebsiteOrFolder && canWriteInSpace) {
-        menuItems.push({
-          label: "Edit",
-          kind: "item",
-          icon: PencilSquareIcon,
-          onClick: (e) => {
-            e.stopPropagation();
-            setSelectedDataSourceView(dataSourceView);
-            setShowFolderOrWebsiteModal(true);
-          },
-        });
-        if (isFolder) {
+        const menuItems: MenuItem[] = [];
+        if (isWebsiteOrFolder && canWriteInSpace) {
           menuItems.push({
-            label: "Use from API",
+            label: "Edit",
             kind: "item",
-            icon: CubeIcon,
+            icon: PencilSquareIcon,
             onClick: (e) => {
               e.stopPropagation();
               setSelectedDataSourceView(dataSourceView);
-              setShowViewFolderAPIModal(true);
+              setShowFolderOrWebsiteModal(true);
+            },
+          });
+          if (isFolder) {
+            menuItems.push({
+              label: "Use from API",
+              kind: "item",
+              icon: CubeIcon,
+              onClick: (e) => {
+                e.stopPropagation();
+                setSelectedDataSourceView(dataSourceView);
+                setShowViewFolderAPIModal(true);
+              },
+            });
+          }
+          menuItems.push({
+            label: "Delete",
+            icon: TrashIcon,
+            kind: "item",
+            variant: "warning",
+            onClick: (e) => {
+              e.stopPropagation();
+              setSelectedDataSourceView(dataSourceView);
+              setShowDeleteConfirmDialog(true);
             },
           });
         }
-        menuItems.push({
-          label: "Delete",
-          icon: TrashIcon,
-          kind: "item",
-          variant: "warning",
-          onClick: (e) => {
+
+        return {
+          dataSourceView,
+          label: getDataSourceNameFromView(dataSourceView),
+          icon: getConnectorProviderLogoWithFallback({ provider, isDark }),
+          workspaceId: owner.sId,
+          isAdmin,
+          isLoading: provider ? isLoadingByProvider[provider] : false,
+          menuItems,
+          buttonOnClick: (e) => {
             e.stopPropagation();
             setSelectedDataSourceView(dataSourceView);
-            setShowDeleteConfirmDialog(true);
+            setShowConnectorPermissionsModal(true);
           },
-        });
-      }
-
-      return {
-        dataSourceView,
-        label: getDataSourceNameFromView(dataSourceView),
-        icon: getConnectorProviderLogoWithFallback({ provider, isDark }),
-        workspaceId: owner.sId,
-        isAdmin,
-        isLoading: provider ? isLoadingByProvider[provider] : false,
-        menuItems,
-        buttonOnClick: (e) => {
-          e.stopPropagation();
-          setSelectedDataSourceView(dataSourceView);
-          setShowConnectorPermissionsModal(true);
-        },
-        onClick: () => onSelect(dataSourceView.sId),
-      };
-    });
+          onClick: () => onSelect(dataSourceView.sId),
+        };
+      });
   }, [
     spaceDataSourceViews,
     owner.sId,
@@ -511,7 +515,7 @@ export const SpaceResourcesList = ({
         owner={owner}
         user={user}
         assistantId={assistantSId}
-        onClose={() => setAssistantName(null)}
+        onClose={() => setAssistantSId(null)}
       />
 
       {isEmpty && (
@@ -532,10 +536,11 @@ export const SpaceResourcesList = ({
         <DataTable<RowData>
           data={rows}
           columns={getTableColumns(
-            setAssistantName,
+            setAssistantSId,
             isManagedCategory,
             isWebsite,
-            space
+            space,
+            activeSeats
           )}
           sorting={sorting}
           setSorting={setSorting}

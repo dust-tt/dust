@@ -2,23 +2,18 @@ import tracer from "dd-trace";
 import type { InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
-import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { getAccessibleSourcesAndApps } from "@app/components/assistant_builder/server_side_props_helpers";
+import { AssistantBuilderProviders } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
-  AppType,
-  DataSourceViewType,
   LightAgentConfigurationType,
   PlanType,
-  SpaceType,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -28,13 +23,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: LightAgentConfigurationType;
   agentEditors: UserType[];
   baseUrl: string;
-  dataSourceViews: DataSourceViewType[];
-  dustApps: AppType[];
-  mcpServerViews: MCPServerViewType[];
   flow: BuilderFlow;
   owner: WorkspaceType;
   plan: PlanType;
-  spaces: SpaceType[];
   subscription: SubscriptionType;
 }>(async (context, auth) => {
   return tracer.trace("getServerSideProps", async () => {
@@ -53,11 +44,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    const [
-      { spaces, dataSourceViews, dustApps, mcpServerViews },
-      configuration,
-    ] = await Promise.all([
-      getAccessibleSourcesAndApps(auth),
+    const [configuration] = await Promise.all([
       getAgentConfiguration(auth, context.params?.aId as string, "light"),
       MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
     ]);
@@ -80,8 +67,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       ? (context.query.flow as BuilderFlow)
       : "personal_assistants";
 
-    const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
-
     const editorGroupRes = await GroupResource.findEditorGroupForAgent(
       auth,
       configuration
@@ -99,14 +84,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         agentConfiguration: configuration,
         agentEditors,
         baseUrl: config.getClientFacingUrl(),
-        dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
-        dustApps: dustApps.map((a) => a.toJSON()),
-        mcpServerViews: mcpServerViewsJSON,
         flow,
         owner,
         plan,
         subscription,
-        spaces: spaces.map((s) => s.toJSON()),
       },
     };
   });
@@ -116,10 +97,6 @@ export default function EditAssistant({
   agentConfiguration,
   agentEditors,
   baseUrl,
-  spaces,
-  dataSourceViews,
-  dustApps,
-  mcpServerViews,
   flow,
   owner,
   plan,
@@ -134,12 +111,7 @@ export default function EditAssistant({
   }
 
   return (
-    <AssistantBuilderProvider
-      spaces={spaces}
-      dustApps={dustApps}
-      dataSourceViews={dataSourceViews}
-      mcpServerViews={mcpServerViews}
-    >
+    <AssistantBuilderProviders owner={owner}>
       <AssistantBuilder
         owner={owner}
         subscription={subscription}
@@ -171,7 +143,7 @@ export default function EditAssistant({
         baseUrl={baseUrl}
         defaultTemplate={null}
       />
-    </AssistantBuilderProvider>
+    </AssistantBuilderProviders>
   );
 }
 

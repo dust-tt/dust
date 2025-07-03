@@ -34,19 +34,17 @@ pub mod databases {
         pub mod get_remote_database;
         pub mod remote_database;
 
-        pub mod snowflake;
-
-        pub mod salesforce {
-            pub mod process_json_query;
-            pub mod salesforce;
-            pub mod sandbox {
+        pub mod snowflake {
+            pub mod api {
+                pub mod auth;
+                pub mod chunk;
+                pub mod client;
                 pub mod error;
-                pub mod extract;
-                pub mod models;
-
-                pub mod to_soql;
-                pub mod validator;
+                pub mod query;
+                pub mod row;
+                pub mod session;
             }
+            pub mod snowflake;
         }
     }
     pub mod transient_database;
@@ -70,7 +68,12 @@ pub mod providers {
     pub mod sentencepiece {
         pub mod sentencepiece;
     }
-    pub mod anthropic;
+    pub mod anthropic {
+        pub mod anthropic;
+        pub mod helpers;
+        pub mod streaming;
+        pub mod types;
+    }
     pub mod deepseek;
     pub mod fireworks;
     pub mod google_ai_studio;

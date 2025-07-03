@@ -1,4 +1,5 @@
 import assert from "assert";
+import { sortBy } from "lodash";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
@@ -128,11 +129,22 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       },
     });
 
-    const agentNames = [
-      ...new Set(agentConfigurations.map((a) => a.name)),
-    ].sort();
+    const agents = sortBy(
+      [
+        ...new Set(
+          agentConfigurations.map((a) => ({
+            sId: a.sId,
+            name: a.name,
+          }))
+        ),
+      ],
+      "name"
+    );
 
-    return new Ok({ count: agentNames.length, agentNames });
+    return new Ok({
+      count: agents.length,
+      agents,
+    });
   }
 
   // Clone.

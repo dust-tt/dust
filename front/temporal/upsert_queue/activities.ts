@@ -8,11 +8,24 @@ import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
+import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { CoreAPI, dustManagedCredentials, safeSubstring } from "@app/types";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
+
+function cleanUtf8Content(content: string): string {
+  // Early exit if no \uD sequences found.
+  if (!/[\uD800-\uDFFF]/.test(content)) {
+    return content;
+  }
+  // Replace invalid high surrogates not followed by a low surrogate with a valid JSON string
+  // Replace invalid low surrogates not preceded by a high surrogate with a valid JSON string
+  return content
+    .replace(/\\uD[89AB][0-9A-F]{2}(?!\\uD[CDEF][0-9A-F]{2})/gi, "\\u003F")
+    .replace(/(?<!\\uD[89AB][0-9A-F]{2})\\uD[CDEF][0-9A-F]{2}/gi, "\\u003F");
+}
 
 export async function upsertDocumentActivity(
   upsertQueueId: string,
@@ -29,7 +42,7 @@ export async function upsertDocumentActivity(
   const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
   const content = await bucket.file(`${upsertQueueId}.json`).download();
 
-  const upsertDocument = JSON.parse(content.toString());
+  const upsertDocument = JSON.parse(cleanUtf8Content(content.toString()));
 
   const documentItemValidation = EnqueueUpsertDocument.decode(upsertDocument);
 
@@ -92,7 +105,7 @@ export async function upsertDocumentActivity(
     parentId: upsertQueueItem.parentId || null,
     parents: upsertQueueItem.parents || [upsertQueueItem.documentId],
     sourceUrl: upsertQueueItem.sourceUrl,
-    timestamp: upsertQueueItem.timestamp,
+    timestamp: cleanTimestamp(upsertQueueItem.timestamp),
     section: upsertQueueItem.section,
     credentials,
     lightDocumentOutput: true,

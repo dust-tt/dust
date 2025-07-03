@@ -27,7 +27,10 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentContentItemType,
+  TextContentType,
+} from "@app/types/assistant/agent_message_content";
 
 /**
  * Model conversation rendering
@@ -39,6 +42,7 @@ export async function renderConversationForModel(
     conversation,
     model,
     prompt,
+    tools,
     allowedTokenCount,
     excludeActions,
     excludeImages,
@@ -46,6 +50,7 @@ export async function renderConversationForModel(
     conversation: ConversationType;
     model: ModelConfigurationType;
     prompt: string;
+    tools: string;
     allowedTokenCount: number;
     excludeActions?: boolean;
     excludeImages?: boolean;
@@ -76,7 +81,6 @@ export async function renderConversationForModel(
       const stepByStepIndex = {} as Record<
         string,
         {
-          legacyTextContents: string[];
           contents: Array<{ step: number; content: AgentContentItemType }>;
           actions: Array<{
             call: FunctionCallType;
@@ -87,7 +91,6 @@ export async function renderConversationForModel(
 
       const emptyStep = () =>
         ({
-          legacyTextContents: [],
           contents: [],
           actions: [],
         }) satisfies (typeof stepByStepIndex)[number];
@@ -106,76 +109,6 @@ export async function renderConversationForModel(
         });
       }
 
-      // Use the contents array if available, otherwise use the rawContents array.
-      const nonEmptyRawContents = m.rawContents.filter(
-        (c) => !!c.content.trim()
-      );
-      const shadowReadRawContents: { step: number; content: string }[] = [];
-      if (nonEmptyRawContents.length || m.contents.length) {
-        if (m.contents.length) {
-          for (const content of m.contents) {
-            if (
-              content.content.type === "text_content" &&
-              !!content.content.value.trim()
-            ) {
-              shadowReadRawContents.push({
-                step: content.step,
-                content: content.content.value,
-              });
-            }
-          }
-
-          // Check if the shadowReadRawContents is the same as the rawContents.
-          if (
-            shadowReadRawContents.length === nonEmptyRawContents.length &&
-            shadowReadRawContents.every(
-              (sc, i) =>
-                sc.content.trim() === nonEmptyRawContents[i].content.trim()
-            )
-          ) {
-            logger.info(
-              {
-                workspaceId: conversation.owner.sId,
-                conversationId: conversation.sId,
-                agentMessageId: m.sId,
-              },
-              "[CONVERSATION RENDERING] Shadow read raw contents is the same as the raw contents"
-            );
-          } else {
-            logger.info(
-              {
-                workspaceId: conversation.owner.sId,
-                conversationId: conversation.sId,
-                agentMessageId: m.sId,
-                shadowReadRawContents,
-                nonEmptyRawContents,
-                messageCreatedAt: new Date(m.created).toISOString(),
-              },
-              "[CONVERSATION RENDERING] Shadow read raw contents is different from the raw contents"
-            );
-          }
-        } else {
-          logger.info(
-            {
-              workspaceId: conversation.owner.sId,
-              conversationId: conversation.sId,
-              agentMessageId: m.sId,
-            },
-            "[CONVERSATION RENDERING] No contents available."
-          );
-        }
-      }
-
-      for (const content of nonEmptyRawContents) {
-        stepByStepIndex[content.step] =
-          stepByStepIndex[content.step] || emptyStep();
-        if (content.content.trim()) {
-          stepByStepIndex[content.step].legacyTextContents.push(
-            content.content
-          );
-        }
-      }
-
       for (const content of m.contents) {
         stepByStepIndex[content.step] =
           stepByStepIndex[content.step] || emptyStep();
@@ -191,17 +124,23 @@ export async function renderConversationForModel(
 
       if (excludeActions) {
         // In Exclude Actions mode, we only render the last step that has text content.
-        const stepsWithContent = steps.filter(
-          (s) => s?.legacyTextContents.length
+        const stepsWithContent = steps.filter((s) =>
+          s?.contents.some((c) => c.content.type === "text_content")
         );
         if (stepsWithContent.length) {
           const lastStepWithContent =
             stepsWithContent[stepsWithContent.length - 1];
+          const textContents: TextContentType[] = [];
+          for (const content of lastStepWithContent.contents) {
+            if (content.content.type === "text_content") {
+              textContents.push(content.content);
+            }
+          }
           messages.push({
             role: "assistant",
             name: m.configuration.name,
-            content: lastStepWithContent.legacyTextContents.join("\n"),
-            contents: lastStepWithContent.contents,
+            content: textContents.map((c) => c.value).join("\n"),
+            contents: lastStepWithContent.contents.map((c) => c.content),
           } satisfies AssistantContentMessageTypeModel);
         }
       } else {
@@ -219,7 +158,13 @@ export async function renderConversationForModel(
             );
             continue;
           }
-          if (!step.actions.length && !step.legacyTextContents.length) {
+          const textContents: TextContentType[] = [];
+          for (const content of step.contents) {
+            if (content.content.type === "text_content") {
+              textContents.push(content.content);
+            }
+          }
+          if (!step.actions.length && !textContents.length) {
             logger.error(
               {
                 workspaceId: conversation.owner.sId,
@@ -235,15 +180,15 @@ export async function renderConversationForModel(
             messages.push({
               role: "assistant",
               function_calls: step.actions.map((s) => s.call),
-              content: step.legacyTextContents.join("\n"),
-              contents: step.contents,
+              content: textContents.map((c) => c.value).join("\n"),
+              contents: step.contents.map((c) => c.content),
             } satisfies AssistantFunctionCallMessageTypeModel);
           } else {
             messages.push({
               role: "assistant",
-              content: step.legacyTextContents.join("\n"),
+              content: textContents.map((c) => c.value).join("\n"),
               name: m.configuration.name,
-              contents: step.contents,
+              contents: step.contents.map((c) => c.content),
             } satisfies AssistantContentMessageTypeModel);
           }
 
@@ -292,19 +237,25 @@ export async function renderConversationForModel(
 
   // Compute in parallel the token count for each message and the prompt.
   const res = await tokenCountForTexts(
-    [prompt, ...getTextRepresentationFromMessages(messages)],
+    [prompt, tools, ...getTextRepresentationFromMessages(messages)],
     model
   );
   if (res.isErr()) {
     return new Err(res.error);
   }
 
-  const [promptCount, ...messagesCount] = res.value;
+  const [promptCount, toolsCount, ...messagesCount] = res.value;
+
+  // Models turns the json schema into an internal representation that is more efficient to tokenize.
+  const toolsCountAdjustmentFactor = 0.7;
 
   // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
   // approximations.
   const tokensMargin = 1024;
-  let tokensUsed = promptCount + tokensMargin;
+  let tokensUsed =
+    promptCount +
+    Math.floor(toolsCount * toolsCountAdjustmentFactor) +
+    tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.
   const selected: ModelMessageTypeMultiActions[] = [];

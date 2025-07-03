@@ -27,7 +27,6 @@ import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesfor
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
-import { isProPlan } from "@app/lib/plans/plan_codes";
 import type {
   ConnectorPermission,
   ConnectorProvider,
@@ -56,6 +55,15 @@ export interface ConnectorOauthExtraConfigProps {
   setIsExtraConfigValid: (valid: boolean) => void;
 }
 
+type ConnectorPermissionsConfigurable =
+  | {
+      isPermissionsConfigurableBlocked: true;
+      permissionsDisabledPlaceholder: string;
+    }
+  | {
+      isPermissionsConfigurableBlocked?: never;
+    };
+
 export type ConnectorProviderConfiguration = {
   name: string;
   connectorProvider: ConnectorProvider;
@@ -82,7 +90,28 @@ export type ConnectorProviderConfiguration = {
     unselected: ConnectorPermission;
   };
   isDeletable: boolean;
-};
+} & ConnectorPermissionsConfigurable;
+
+// TODO(slack 2025-06-19): Remove this function once the new app is published.
+export function getConnectorPermissionsConfigurableBlocked(
+  provider?: ConnectorProvider | null
+): { blocked: boolean; placeholder?: string } {
+  if (!provider) {
+    return { blocked: false };
+  }
+
+  const connectorConfig = CONNECTOR_CONFIGURATIONS[provider];
+  const isBlocked = connectorConfig.isPermissionsConfigurableBlocked;
+
+  if (!isBlocked) {
+    return { blocked: false };
+  }
+
+  return {
+    blocked: true,
+    placeholder: connectorConfig.permissionsDisabledPlaceholder,
+  };
+}
 
 export const isConnectorPermissionsEditable = (
   provider?: ConnectorProvider | null
@@ -90,6 +119,7 @@ export const isConnectorPermissionsEditable = (
   if (!provider) {
     return false;
   }
+
   return (
     CONNECTOR_CONFIGURATIONS[provider].permissions.selected !== "none" ||
     CONNECTOR_CONFIGURATIONS[provider].permissions.unselected !== "none"
@@ -169,7 +199,13 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Slack",
     connectorProvider: "slack",
     status: "built",
-    hide: false,
+    // TODO(slack 2025-06-19): Hide the Slack connector until we publish the new app.
+    hide: true,
+    // TODO(slack 2025-06-19): Prevent users from editing permissions.
+    isPermissionsConfigurableBlocked: true,
+    permissionsDisabledPlaceholder:
+      "Slack permissions are currently being updated with a new integration, due to new restrictive rate limits from Slack. " +
+      "Editing permissions is temporarily disabled. Learn more by clicking [here](https://dust-tt.notion.site/Slack-API-Changes-Impact-and-Response-Plan-21728599d94180f3b2b4e892e6d20af6).",
     description:
       "Authorize granular access to your Slack workspace on a channel-by-channel basis.",
     limitations: "External files and content behind links are not indexed.",
@@ -180,6 +216,31 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return SlackLogo;
     },
     optionsComponent: SlackBotEnableView,
+    isNested: false,
+    isTitleFilterEnabled: true,
+    permissions: {
+      selected: "read_write",
+      unselected: "write",
+    },
+    isDeletable: false,
+  },
+  slack_bot: {
+    name: "Slack (Bot)",
+    connectorProvider: "slack_bot",
+    status: "built",
+    // Hidden from connections since used as bot integration only. Strings below are therefore all
+    // set to N/A
+    hide: true,
+    isPermissionsConfigurableBlocked: true,
+    permissionsDisabledPlaceholder: "N/A",
+    description: "N/A",
+    limitations: "N/A",
+    mismatchError: "N/A",
+    guideLink: "https://docs.dust.tt/docs/slack-connection",
+    selectLabel: "N/A",
+    getLogoComponent: () => {
+      return SlackLogo;
+    },
     isNested: false,
     isTitleFilterEnabled: true,
     permissions: {
@@ -344,7 +405,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Salesforce",
     connectorProvider: "salesforce",
     status: "rolling_out",
-    rollingOutFlag: "salesforce_feature",
+    rollingOutFlag: "salesforce_synced_queries",
     hide: true,
     description:
       "Authorize access to your Salesforce organization, in order to query your Salesforce data from Dust.",
@@ -359,7 +420,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       selected: "read",
       unselected: "none",
     },
-    isDeletable: true,
+    isDeletable: false,
     guideLink: "https://docs.dust.tt/docs/salesforce",
   },
   gong: {
@@ -437,15 +498,9 @@ export const isConnectorProviderAllowedForPlan = (
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
     case "salesforce":
-      // Either salesforce is allowed for the plan, or the workspace
-      // is pro plan but has the pro_plan_salesforce_connector feature flag enabled
-      return (
-        plan.limits.connections.isSalesforceAllowed ||
-        (isProPlan(plan.code) &&
-          !!featureFlags?.includes("pro_plan_salesforce_connector"))
-      );
-
+      return !!featureFlags?.includes("salesforce_synced_queries");
     case "microsoft":
+    case "slack_bot":
     case "snowflake":
     case "zendesk":
     case "bigquery":
@@ -473,6 +528,7 @@ export const isConnectorProviderAssistantDefaultSelected = (
     // As of today (07/02/2025), the default selected provider are going to be used for semantic search
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
     case "bigquery":
+    case "slack_bot":
     case "salesforce":
     case "snowflake":
     case "webcrawler":
@@ -526,6 +582,7 @@ export function isConnectorTypeTrackable(
     case "gong":
       return true;
     case "slack":
+    case "slack_bot":
       return false;
     default:
       assertNever(connectorType);

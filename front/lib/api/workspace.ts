@@ -4,8 +4,6 @@ import { Op } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -14,18 +12,23 @@ import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import type {
+  GroupKind,
   LightWorkspaceType,
+  MembershipOriginType,
   MembershipRoleType,
   PublicAPILimitsType,
   Result,
   RoleType,
   SubscriptionType,
+  UserTypeWithWorkspace,
   UserTypeWithWorkspaces,
   WorkspaceSegmentationType,
   WorkspaceType,
@@ -39,12 +42,13 @@ import {
   removeNulls,
 } from "@app/types";
 
+import { GroupResource } from "../resources/group_resource";
 import { frontSequelize } from "../resources/storage";
 
 export async function getWorkspaceInfos(
   wId: string
 ): Promise<LightWorkspaceType | null> {
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       sId: wId,
     },
@@ -70,7 +74,7 @@ export async function removeAllWorkspaceDomains(
 export async function getWorkspaceCreationDate(
   workspaceId: string
 ): Promise<Date> {
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       sId: workspaceId,
     },
@@ -94,7 +98,7 @@ export async function setInternalWorkspaceSegmentation(
     throw new Error("Forbidden update to workspace segmentation.");
   }
 
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       id: owner.id,
     },
@@ -158,6 +162,7 @@ export async function getMembers(
   const usersWithWorkspaces = await Promise.all(
     memberships.map(async (m) => {
       let role = "none" as RoleType;
+      let origin: MembershipOriginType | undefined = undefined;
       if (m && !m.isRevoked()) {
         switch (m.role) {
           case "admin":
@@ -168,6 +173,7 @@ export async function getMembers(
           default:
             role = "none";
         }
+        origin = m.origin;
       }
 
       let user: UserResource | null;
@@ -184,6 +190,7 @@ export async function getMembers(
       return {
         ...user.toJSON(),
         workspaces: [{ ...owner, role, flags: null }],
+        origin,
       };
     })
   );
@@ -200,9 +207,10 @@ export async function searchMembers(
   options: {
     searchTerm?: string;
     searchEmails?: string[];
+    groupKind?: Omit<GroupKind, "system">;
   },
   paginationParams: SearchMembersPaginationParams
-): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
+): Promise<{ members: UserTypeWithWorkspace[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
@@ -234,30 +242,47 @@ export async function searchMembers(
     total = results.total;
   }
 
-  const usersWithWorkspaces = users.map((u) => {
-    const [m] = u.memberships ?? [];
-    let role: RoleType = "none";
+  const usersWithWorkspace = await Promise.all(
+    users.map(async (u) => {
+      const [m] = u.memberships ?? [];
+      let role: RoleType = "none";
+      let groups: string[] | undefined;
+      let origin: MembershipOriginType | undefined = undefined;
 
-    if (m) {
-      const membership = new MembershipResource(
-        MembershipResource.model,
-        m.get()
-      );
+      if (m) {
+        const membership = new MembershipResource(
+          MembershipResource.model,
+          m.get()
+        );
 
-      role = !membership.isRevoked()
-        ? ACTIVE_ROLES.includes(membership.role)
-          ? membership.role
-          : "none"
-        : "none";
-    }
+        role = !membership.isRevoked()
+          ? ACTIVE_ROLES.includes(membership.role)
+            ? membership.role
+            : "none"
+          : "none";
 
-    return {
-      ...u.toJSON(),
-      workspaces: [{ ...owner, role, flags: null }],
-    };
-  });
+        origin = membership.origin;
+      }
 
-  return { members: usersWithWorkspaces, total };
+      if (options.groupKind) {
+        const groupsResult = await GroupResource.listUserGroupsInWorkspace({
+          user: u,
+          workspace: owner,
+          groupKinds: [options.groupKind],
+        });
+
+        groups = groupsResult.map((g) => g.toJSON()).map((g) => g.name);
+      }
+
+      return {
+        ...u.toJSON(),
+        workspace: { ...owner, role, groups, flags: null },
+        origin,
+      };
+    })
+  );
+
+  return { members: usersWithWorkspace, total };
 }
 
 export async function getMembersCount(
@@ -288,7 +313,7 @@ export async function checkWorkspaceSeatAvailabilityUsingAuth(
 }
 
 export async function evaluateWorkspaceSeatAvailability(
-  workspace: WorkspaceType | Workspace,
+  workspace: WorkspaceType | WorkspaceModel,
   subscription: SubscriptionType
 ): Promise<boolean> {
   const { maxUsers } = subscription.plan.limits.users;
@@ -312,7 +337,7 @@ export async function unsafeGetWorkspacesByModelId(
     return [];
   }
   return (
-    await Workspace.findAll({
+    await WorkspaceModel.findAll({
       where: {
         id: modelIds,
       },
@@ -390,7 +415,7 @@ export async function changeWorkspaceName(
   owner: LightWorkspaceType,
   newName: string
 ): Promise<Result<void, Error>> {
-  const [affectedCount] = await Workspace.update(
+  const [affectedCount] = await WorkspaceModel.update(
     { name: newName },
     {
       where: {
@@ -410,7 +435,7 @@ export async function updateWorkspaceConversationsRetention(
   owner: LightWorkspaceType,
   nbDays: number
 ): Promise<Result<void, Error>> {
-  const [affectedCount] = await Workspace.update(
+  const [affectedCount] = await WorkspaceModel.update(
     { conversationsRetentionDays: nbDays === -1 ? null : nbDays },
     {
       where: {
@@ -429,7 +454,7 @@ export async function updateWorkspaceConversationsRetention(
 export async function disableSSOEnforcement(
   owner: LightWorkspaceType
 ): Promise<Result<void, Error>> {
-  const [affectedCount] = await Workspace.update(
+  const [affectedCount] = await WorkspaceModel.update(
     { ssoEnforced: false },
     {
       where: {
@@ -457,7 +482,7 @@ export async function updateWorkspaceMetadata(
 ): Promise<Result<void, Error>> {
   const previousMetadata = owner.metadata || {};
   const newMetadata = { ...previousMetadata, ...metadata };
-  const [affectedCount] = await Workspace.update(
+  const [affectedCount] = await WorkspaceModel.update(
     { metadata: newMetadata },
     {
       where: {
@@ -547,7 +572,7 @@ export async function upgradeWorkspaceToBusinessPlan(
     return new Err(new Error("Workspace is already on business plan."));
   }
 
-  await Workspace.update(
+  await WorkspaceModel.update(
     {
       metadata: {
         ...workspace.metadata,
@@ -666,7 +691,7 @@ export async function getWorkspaceAdministrationVersionLock(
 export async function findWorkspaceByWorkOSOrganizationId(
   workOSOrganizationId: string
 ): Promise<LightWorkspaceType | null> {
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: { workOSOrganizationId },
   });
 

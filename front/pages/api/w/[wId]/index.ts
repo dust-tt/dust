@@ -6,13 +6,17 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse, WorkspaceType } from "@app/types";
 import { EmbeddingProviderCodec, ModelProviderIdCodec } from "@app/types";
 
 export type PostWorkspaceResponseBody = {
+  workspace: WorkspaceType;
+};
+
+export type GetWorkspaceResponseBody = {
   workspace: WorkspaceType;
 };
 
@@ -48,7 +52,9 @@ const PostWorkspaceRequestBodySchema = t.union([
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostWorkspaceResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<GetWorkspaceResponseBody | PostWorkspaceResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
@@ -59,12 +65,16 @@ async function handler(
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `admins` for the current workspace can modify it.",
+          "Only users that are `admins` for the current workspace can access this endpoint.",
       },
     });
   }
 
   switch (req.method) {
+    case "GET":
+      res.status(200).json({ workspace: owner });
+      return;
+
     case "POST":
       const bodyValidation = PostWorkspaceRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
@@ -79,7 +89,7 @@ async function handler(
       }
       const { right: body } = bodyValidation;
 
-      const w = await Workspace.findOne({
+      const w = await WorkspaceModel.findOne({
         where: { id: owner.id },
       });
       if (!w) {
@@ -150,7 +160,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, POST is expected.",
+          message:
+            "The method passed is not supported, POST or GET is expected.",
         },
       });
   }

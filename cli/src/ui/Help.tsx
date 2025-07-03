@@ -36,6 +36,11 @@ const Help: FC = () => {
           server
         </Text>
       </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>cache:clear</Text> Clear agents cache
+        </Text>
+      </Box>
       <Box marginTop={1}>
         <Text>Options:</Text>
       </Box>
@@ -64,6 +69,21 @@ const Help: FC = () => {
         <Text>
           <Text bold>--sId</Text> Specify agent sId(s) to use directly (can be
           repeated)
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>-a, --agent</Text> Search for and use an agent by name
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>-m, --message</Text> Send a message non-interactively (requires --agent)
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>-c, --conversationId</Text> Send to existing conversation (requires --agent and --message)
         </Text>
       </Box>
     </Box>

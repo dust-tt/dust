@@ -12,7 +12,6 @@ import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types";
-import { isGlobalAgentId } from "@app/types";
 
 interface ChildAgentSelectorProps {
   owner: LightWorkspaceType;
@@ -108,8 +107,7 @@ export function ChildAgentConfigurationSection({
               <AssistantPicker
                 owner={owner}
                 assistants={agentConfigurations.filter(
-                  (agent) =>
-                    agent.sId !== selectedAgentId && !isGlobalAgentId(agent.sId)
+                  (agent) => agent.sId !== selectedAgentId
                 )}
                 onItemClick={(agent) => {
                   onAgentSelect(agent.sId);
@@ -122,7 +120,6 @@ export function ChildAgentConfigurationSection({
                   />
                 }
                 showFooterButtons={false}
-                mountPortal={false}
               />
             </div>
           </div>
@@ -133,7 +130,7 @@ export function ChildAgentConfigurationSection({
             <AssistantPicker
               owner={owner}
               assistants={agentConfigurations.filter(
-                (agent) => !isGlobalAgentId(agent.sId)
+                (agent) => agent.sId !== selectedAgentId
               )}
               onItemClick={(agent) => {
                 onAgentSelect(agent.sId);
@@ -146,7 +143,6 @@ export function ChildAgentConfigurationSection({
                 />
               }
               showFooterButtons={false}
-              mountPortal={false}
             />
           </div>
         </Card>

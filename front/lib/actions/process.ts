@@ -2,7 +2,6 @@ import _, { isObject } from "lodash";
 
 import {
   generateJSONFileAndSnippet,
-  getJSONFileAttachment,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import {
@@ -10,12 +9,6 @@ import {
   PROCESS_ACTION_TOP_K,
 } from "@app/lib/actions/constants";
 import { getExtractFileTitle } from "@app/lib/actions/process/utils";
-import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
-import {
-  applyDataSourceFilters,
-  retrievalAutoTimeFrameInputSpecification,
-  retrievalTagsInputSpecification,
-} from "@app/lib/actions/retrieval";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionGeneratedFileType,
@@ -57,9 +50,14 @@ export const PROCESS_SCHEMA_ALLOWED_TYPES = [
   "number",
   "boolean",
 ] as const;
+import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  getAttachmentFromToolOutput,
+  renderAttachmentXml,
+} from "@app/lib/api/assistant/conversation/attachments";
 import { FileResource } from "@app/lib/resources/file_resource";
 
 // Properties in the process configuration table are stored as an array of objects.
@@ -167,29 +165,39 @@ export class ProcessActionType extends BaseAction {
 
     content += "PROCESSED OUTPUTS:\n";
 
-    if (this.outputs) {
-      if (this.outputs.data.length === 0) {
-        content += "(none)\n";
-      } else {
-        for (const o of this.outputs.data) {
-          content += `${JSON.stringify(o)}\n`;
-        }
-
-        const jsonAttachment = getJSONFileAttachment({
-          jsonFileId: this.jsonFileId,
-          jsonFileSnippet: this.jsonFileSnippet,
-          title: getExtractFileTitle({
-            schema: this.jsonSchema,
-          }),
-        });
-
-        if (jsonAttachment) {
-          content += `${jsonAttachment}\n`;
-        }
-      }
-    } else if (this.outputs === null) {
-      content += "(processing failed)\n";
+    if (!this.outputs) {
+      return {
+        role: "function" as const,
+        name: this.functionCallName ?? "process_data_sources",
+        function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+        content: content + "(processing failed)",
+      };
     }
+
+    if (this.outputs.data.length === 0 || !this.jsonFileId) {
+      return {
+        role: "function" as const,
+        name: this.functionCallName ?? "process_data_sources",
+        function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
+        content: content + "(none)",
+      };
+    }
+
+    for (const o of this.outputs.data) {
+      content += `${JSON.stringify(o)}\n`;
+    }
+
+    const attachment = getAttachmentFromToolOutput({
+      fileId: this.jsonFileId,
+      contentType: "application/json",
+      title: getExtractFileTitle({
+        schema: this.jsonSchema,
+      }),
+      snippet: this.jsonFileSnippet,
+    });
+
+    const xml = renderAttachmentXml({ attachment });
+    content += `${xml}\n`;
 
     return {
       role: "function" as const,
@@ -434,7 +442,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
     if (res.isErr()) {
       logger.error(
         {
-          workspaceId: owner.id,
+          workspaceId: owner.sId,
           conversationId: conversation.id,
           error: res.error,
         },
@@ -460,7 +468,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       if (event.type === "error") {
         logger.error(
           {
-            workspaceId: owner.id,
+            workspaceId: owner.sId,
             conversationId: conversation.id,
             error: event.content.message,
           },
@@ -484,7 +492,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         if (e.error) {
           logger.error(
             {
-              workspaceId: owner.id,
+              workspaceId: owner.sId,
               conversationId: conversation.id,
               error: e.error,
             },
@@ -732,3 +740,113 @@ function retrievalSchemaInputSpecification() {
     type: "string" as const,
   };
 }
+
+function retrievalAutoTimeFrameInputSpecification() {
+  return {
+    name: "relativeTimeFrame",
+    description:
+      "The time frame (relative to LOCAL_TIME) to restrict the search based" +
+      " on the user request and past conversation context." +
+      " Possible values are: `all`, `{k}h`, `{k}d`, `{k}w`, `{k}m`, `{k}y`" +
+      " where {k} is a number. Be strict, do not invent invalid values.",
+    type: "string" as const,
+  };
+}
+
+function retrievalTagsInputSpecification() {
+  return [
+    {
+      name: "tagsIn",
+      description:
+        "The list of labels to restrict the search based on the user request and past conversation context." +
+        "If multiple labels are provided, the search will return documents that have at least one of the labels." +
+        "You can't check that all labels are present, only that at least one is present." +
+        "If no labels are provided, the search will return all documents.",
+      type: "array" as const,
+      items: {
+        type: "string" as const,
+      },
+    },
+    {
+      name: "tagsNot",
+      description:
+        "The list of labels to exclude from the search based on the user request and past conversation context." +
+        "Any document having one of these labels will be excluded from the search.",
+      type: "array" as const,
+      items: {
+        type: "string" as const,
+      },
+    },
+  ];
+}
+
+export function applyDataSourceFilters(
+  config: any,
+  dataSources: DataSourceConfiguration[],
+  dataSourceViewsMap: Record<string, DataSourceViewResource>,
+  globalTagsIn: string[] | null,
+  globalTagsNot: string[] | null
+) {
+  for (const ds of dataSources) {
+    // Not: empty array in parents/tags.in means "no document match" since no documents has any
+    // tags/parents that is in the empty array.
+    if (!config.DATASOURCE.filter.parents) {
+      config.DATASOURCE.filter.parents = {};
+    }
+    if (ds.filter.parents?.in) {
+      if (!config.DATASOURCE.filter.parents.in_map) {
+        config.DATASOURCE.filter.parents.in_map = {};
+      }
+
+      const dsView = dataSourceViewsMap[ds.dataSourceViewId];
+      // This should never happen since dataSourceViews are stored by id in the
+      // agent_data_source_configurations table.
+      assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
+
+      // Note we use the dustAPIDataSourceId here since this is what is returned from the registry
+      // lookup.
+      config.DATASOURCE.filter.parents.in_map[
+        dsView.dataSource.dustAPIDataSourceId
+      ] = ds.filter.parents.in;
+    }
+    if (ds.filter.parents?.not) {
+      if (!config.DATASOURCE.filter.parents.not) {
+        config.DATASOURCE.filter.parents.not = [];
+      }
+      config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
+    }
+
+    // Handle tags filtering.
+    if (ds.filter.tags) {
+      if (!config.DATASOURCE.filter.tags?.in_map) {
+        config.DATASOURCE.filter.tags = {
+          in_map: {},
+          not_map: {},
+        };
+      }
+
+      const dsView = dataSourceViewsMap[ds.dataSourceViewId];
+      assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
+
+      const tagsIn =
+        ds.filter.tags.mode === "auto"
+          ? [...(globalTagsIn ?? []), ...(ds.filter.tags.in ?? [])]
+          : ds.filter.tags.in;
+      const tagsNot =
+        ds.filter.tags.mode === "auto"
+          ? [...(globalTagsNot ?? []), ...(ds.filter.tags.not ?? [])]
+          : ds.filter.tags.not;
+
+      if (tagsIn && tagsNot && (tagsIn.length > 0 || tagsNot.length > 0)) {
+        config.DATASOURCE.filter.tags.in_map[
+          dsView.dataSource.dustAPIDataSourceId
+        ] = tagsIn;
+        config.DATASOURCE.filter.tags.not_map[
+          dsView.dataSource.dustAPIDataSourceId
+        ] = tagsNot;
+      }
+    }
+  }
+}
+
+export type RetrievalTimeframe = "auto" | "none" | TimeFrame;

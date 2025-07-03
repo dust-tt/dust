@@ -127,6 +127,10 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         );
       }
 
+      await connectorState.update({
+        installationId: newGithubInstallationId,
+      });
+
       await c.update({ connectionId });
 
       // If connector was previously paused, unpause it.

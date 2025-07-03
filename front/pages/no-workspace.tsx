@@ -6,8 +6,9 @@ import {
   getUserFromSession,
   withDefaultUserAuthPaywallWhitelisted,
 } from "@app/lib/iam/session";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/models/workspace_has_domain";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { UserTypeWithWorkspaces } from "@app/types";
 
@@ -22,7 +23,7 @@ async function fetchWorkspaceDetails(
     },
     include: [
       {
-        model: Workspace,
+        model: WorkspaceModel,
         as: "workspace",
         required: true,
       },
@@ -50,13 +51,18 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
       ? context.query.flow
       : null;
 
-  let workspace: Workspace | null = null;
+  let workspace: WorkspaceResource | null = null;
   let workspaceVerifiedDomain: string | null = null;
   let status: "auto-join-disabled" | "revoked";
   if (flow === "no-auto-join") {
     status = "auto-join-disabled";
     const workspaceHasDomain = await fetchWorkspaceDetails(user);
-    workspace = workspaceHasDomain?.workspace ?? null;
+    workspace = workspaceHasDomain?.workspace
+      ? new WorkspaceResource(
+          WorkspaceResource.model,
+          workspaceHasDomain.workspace.get()
+        )
+      : null;
     workspaceVerifiedDomain = workspaceHasDomain?.domain ?? null;
 
     if (!workspace || !workspaceVerifiedDomain) {

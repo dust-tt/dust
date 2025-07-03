@@ -296,14 +296,15 @@ export type CoreAPINodesSearchFilter = t.TypeOf<
 >;
 
 export interface CoreAPIDataSourceStatsResponse {
-  data_source: {
+  data_sources: {
     data_source_id: string;
     data_source_internal_id: string;
     timestamp: number;
     name: string;
     text_size: number;
     document_count: number;
-  };
+  }[];
+  overall_total_size: number;
 }
 
 export interface CoreAPIUpsertDataSourceDocumentPayload {
@@ -324,7 +325,7 @@ export interface CoreAPIUpsertDataSourceDocumentPayload {
 
 // TODO(keyword-search): Until we remove the `managed-` prefix, we need to
 // sanitize the search name.
-function formatDataSourceDisplayName(name: string) {
+export function formatDataSourceDisplayName(name: string) {
   return name
     .replace(/[-_]/g, " ") // Replace both hyphens and underscores with spaces.
     .split(" ")
@@ -2088,24 +2089,18 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async getDataSourceStats({
-    projectId,
-    dataSourceId,
-  }: {
-    projectId: string;
-    dataSourceId: string;
-  }): Promise<CoreAPIResponse<CoreAPIDataSourceStatsResponse>> {
-    const response = await this._fetchWithError(
-      `${this._url}/projects/${encodeURIComponent(
-        projectId
-      )}/data_sources/${encodeURIComponent(dataSourceId)}/stats`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+  async getDataSourceStats(
+    query: { project_id: number; data_source_id: string }[]
+  ): Promise<CoreAPIResponse<CoreAPIDataSourceStatsResponse>> {
+    const response = await this._fetchWithError(`${this._url}/stats`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query,
+      }),
+    });
 
     return this._resultFromResponse(response);
   }

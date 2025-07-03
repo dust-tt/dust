@@ -8,6 +8,7 @@ import {
   getMcpServerDisplayName,
   mcpServersSortingFn,
 } from "@app/lib/actions/mcp_helper";
+import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import type {
@@ -35,19 +36,52 @@ import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/m
 import type { GetMCPServerViewsListResponseBody } from "@app/pages/api/w/[wId]/mcp/views";
 import type { GetMCPServerViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
 import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type {
+  LightWorkspaceType,
+  SpaceType,
+  WithAPIErrorResponse,
+} from "@app/types";
 import type {
   MCPOAuthUseCase,
   OAuthProvider,
   OAuthUseCase,
   Result,
 } from "@app/types";
-import { Err, Ok, setupOAuthConnection } from "@app/types";
+import {
+  Err,
+  isAdmin,
+  isAPIErrorResponse,
+  Ok,
+  setupOAuthConnection,
+} from "@app/types";
 
 export type MCPConnectionType = {
   useCase: MCPOAuthUseCase;
   connectionId: string;
 };
+
+function useMutateMCPServersViewsForAdmin(owner: LightWorkspaceType) {
+  const { spaces } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: !isAdmin(owner),
+  });
+  const { mutateMCPServerViews } = useMCPServerViews({
+    owner,
+    space: spaces.find((s) => s.kind === "system"),
+    disabled: true,
+  });
+  const { mutateMCPServers } = useMCPServers({
+    disabled: true,
+    owner,
+  });
+
+  return {
+    mutate: useCallback(async () => {
+      await mutateMCPServerViews();
+      await mutateMCPServers();
+    }, [mutateMCPServerViews, mutateMCPServers]),
+  };
+}
 
 /**
  * Hook to fetch a specific remote MCP server by ID
@@ -152,44 +186,63 @@ export function useMCPServers({
  * Hook to delete an MCP server
  */
 export function useDeleteMCPServer(owner: LightWorkspaceType) {
-  const { mutateMCPServers } = useMCPServers({
-    disabled: true,
-    owner,
-  });
+  const sendNotification = useSendNotification();
+  const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
-  const deleteServer = async (
-    serverId: string
-  ): Promise<DeleteMCPServerResponseBody> => {
-    const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}`, {
+  const deleteServer = async (server: MCPServerType): Promise<boolean> => {
+    const response = await fetch(`/api/w/${owner.sId}/mcp/${server.sId}`, {
       method: "DELETE",
     });
 
     if (!response.ok) {
       const body = await response.json();
-      throw new Error(body.error?.message || "Failed to delete server");
+      sendNotification({
+        title: `Failure`,
+        type: "error",
+        description:
+          body.error?.message ||
+          `Failed to delete ${getMcpServerDisplayName(server)}`,
+      });
+      return false;
     }
 
-    await mutateMCPServers();
-    return response.json();
+    const result: WithAPIErrorResponse<DeleteMCPServerResponseBody> =
+      await response.json();
+
+    if (isAPIErrorResponse(result)) {
+      sendNotification({
+        title: `Failure`,
+        type: "error",
+        description:
+          result.error?.message ||
+          `Failed to delete ${getMcpServerDisplayName(server)}`,
+      });
+      return false;
+    }
+
+    if (!result.deleted) {
+      sendNotification({
+        title: `Failure`,
+        type: "error",
+        description: `Failed to delete ${getMcpServerDisplayName(server)}`,
+      });
+      return false;
+    }
+
+    sendNotification({
+      title: `Success`,
+      type: "success",
+      description: `Successfully deleted ${getMcpServerDisplayName(server)}`,
+    });
+    await mutate();
+    return result.deleted;
   };
 
   return { deleteServer };
 }
 
 export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
-  const { spaces } = useSpacesAsAdmin({
-    workspaceId: owner.sId,
-    disabled: false,
-  });
-  const { mutateMCPServerViews } = useMCPServerViews({
-    owner,
-    space: spaces.find((s) => s.kind === "system"),
-    disabled: true,
-  });
-  const { mutateMCPServers } = useMCPServers({
-    disabled: true,
-    owner,
-  });
+  const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
   const createInternalMCPServer = async ({
     name,
@@ -219,8 +272,7 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
       );
     }
 
-    await mutateMCPServerViews();
-    await mutateMCPServers();
+    await mutate();
     return new Ok(await response.json());
   };
 
@@ -268,19 +320,7 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
  * Hook to create a new MCP server from a URL
  */
 export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
-  const { spaces } = useSpacesAsAdmin({
-    workspaceId: owner.sId,
-    disabled: false,
-  });
-  const { mutateMCPServerViews } = useMCPServerViews({
-    owner,
-    space: spaces.find((s) => s.kind === "system"),
-    disabled: true,
-  });
-  const { mutateMCPServers } = useMCPServers({
-    disabled: true,
-    owner,
-  });
+  const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
   const { mutateConnections } = useMCPServerConnections({
     disabled: true,
@@ -321,15 +361,14 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
           new Error(body.error?.message || "Failed to create server")
         );
       }
-      await mutateMCPServerViews();
-      await mutateMCPServers();
+      await mutate();
       if (oauthConnection?.connectionId) {
         await mutateConnections();
       }
       const r = await response.json();
       return new Ok(r);
     },
-    [mutateMCPServers, mutateConnections, mutateMCPServerViews, owner.sId]
+    [mutate, mutateConnections, owner.sId]
   );
 
   return { createWithURL };
@@ -342,25 +381,52 @@ export function useSyncRemoteMCPServer(
   owner: LightWorkspaceType,
   serverId: string
 ) {
+  const sendNotification = useSendNotification();
+
   const { mutateMCPServer } = useMCPServer({
     disabled: true,
     owner,
     serverId: serverId || "",
   });
 
-  const syncServer = async (): Promise<SyncMCPServerResponseBody> => {
+  const { mutate } = useMutateMCPServersViewsForAdmin(owner);
+
+  const syncServer = async (): Promise<boolean> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}/sync`, {
       method: "POST",
     });
 
     if (!response.ok) {
       const body = await response.json();
-      await mutateMCPServer();
-      throw new Error(body.error?.message || "Failed to synchronize server");
+      sendNotification({
+        title: `Error synchronizing server`,
+        type: "error",
+        description: body.error?.message || "An error occurred",
+      });
+      return false;
     }
 
-    await mutateMCPServer();
-    return response.json();
+    const result: WithAPIErrorResponse<SyncMCPServerResponseBody> =
+      await response.json();
+
+    if (isAPIErrorResponse(result)) {
+      sendNotification({
+        title: `Error synchronizing server`,
+        type: "error",
+        description: result.error.message || "An error occurred",
+      });
+      return false;
+    }
+
+    sendNotification({
+      title: "Success",
+      type: "success",
+      description: `${getMcpServerDisplayName(result.server)} synchronized successfully.`,
+    });
+
+    void mutateMCPServer();
+    void mutate();
+    return true;
   };
 
   return { syncServer };
@@ -373,11 +439,14 @@ export function useUpdateMCPServer(
   owner: LightWorkspaceType,
   serverId: string
 ) {
+  const sendNotification = useSendNotification();
   const { mutateMCPServer } = useMCPServer({
     disabled: true,
     owner,
     serverId,
   });
+
+  const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
   const updateServer = async (
     data:
@@ -390,7 +459,7 @@ export function useUpdateMCPServer(
       | {
           oAuthUseCase: MCPOAuthUseCase;
         }
-  ): Promise<PatchMCPServerResponseBody> => {
+  ): Promise<boolean> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -399,11 +468,36 @@ export function useUpdateMCPServer(
 
     if (!response.ok) {
       const body = await response.json();
-      throw new Error(body.error?.message || "Failed to update server");
+      sendNotification({
+        title: `Error updating server`,
+        type: "error",
+        description: body.error?.message || "An error occurred",
+      });
+
+      return false;
     }
 
-    await mutateMCPServer();
-    return response.json();
+    const result: WithAPIErrorResponse<PatchMCPServerResponseBody> =
+      await response.json();
+    if (isAPIErrorResponse(result)) {
+      sendNotification({
+        title: `Error updating server`,
+        type: "error",
+        description: result.error?.message || "An error occurred",
+      });
+      return false;
+    }
+
+    const server = result.server;
+    sendNotification({
+      title: `${getMcpServerDisplayName(server)} updated`,
+      type: "success",
+      description: `${getMcpServerDisplayName(server)} has been successfully updated.`,
+    });
+
+    void mutateMCPServer();
+    void mutate();
+    return true;
   };
 
   return { updateServer };
@@ -448,6 +542,9 @@ export function useCreateMCPServerConnection({
     connectionType,
     owner,
   });
+
+  const { mutate } = useMutateMCPServersViewsForAdmin(owner);
+
   const sendNotification = useSendNotification();
   const createMCPServerConnection = async ({
     connectionId,
@@ -479,6 +576,9 @@ export function useCreateMCPServerConnection({
         description: `Successfully connected to ${getMcpServerDisplayName(mcpServer)}.`,
       });
       void mutateConnections();
+      if (connectionType === "workspace") {
+        void mutate();
+      }
       return response.json();
     } else {
       sendNotification({
@@ -512,6 +612,8 @@ export function useDeleteMCPServerConnection({
       owner,
     });
 
+  const { mutate } = useMutateMCPServersViewsForAdmin(owner);
+
   const sendNotification = useSendNotification();
 
   const deleteMCPServerConnection = useCallback(
@@ -539,6 +641,7 @@ export function useDeleteMCPServerConnection({
         });
         if (connection.connectionType === "workspace") {
           void mutateWorkspaceConnections();
+          void mutate();
         } else if (connection.connectionType === "personal") {
           void mutatePersonalConnections();
         }
@@ -557,6 +660,7 @@ export function useDeleteMCPServerConnection({
       sendNotification,
       mutateWorkspaceConnections,
       mutatePersonalConnections,
+      mutate,
     ]
   );
 
@@ -631,7 +735,7 @@ export function useUpdateMCPServerToolsPermissions({
       description: `The permission for ${toolName} has been updated.`,
     });
 
-    await mutateToolsPermissions();
+    void mutateToolsPermissions();
     return response.json();
   };
 
@@ -855,15 +959,13 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
             sendNotification({
               type: "success",
               title: `Actions added to space ${space.name}`,
-              description:
-                "Your actions have been added to the space successfully.",
+              description: `${getMcpServerDisplayName(server)} has been added to the ${space.name} space successfully.`,
             });
           } else {
             sendNotification({
               type: "error",
               title: `Failed to add actions to space ${space.name}`,
-              description:
-                "Could not add actions to the space. Please try again.",
+              description: `Could not add ${getMcpServerDisplayName(server)} to the ${space.name} space. Please try again.`,
             });
           }
           return getOptimisticDataForCreate(data, server, space);
@@ -906,8 +1008,7 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
                 space.kind === "system"
                   ? "Action removed from workspace"
                   : "Action removed from space",
-              description:
-                "Your actions have been removed from the space successfully.",
+              description: `${getMcpServerDisplayName(serverView.server)} has been removed from the ${space.name} space successfully.`,
             });
           } else {
             const res = await response.json();
@@ -916,7 +1017,7 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
               title: "Failed to remove action",
               description:
                 res.error?.message ||
-                `Could not remove actions from the space ${space.name}. Please try again.`,
+                `Could not remove ${getMcpServerDisplayName(serverView.server)} from the ${space.name} space. Please try again.`,
             });
           }
 
@@ -936,21 +1037,46 @@ export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
   return { removeFromSpace: deleteView };
 }
 
-// this is a post request to get the mcp server views from the spaces
-export function useMCPServerViewsFromSpaces(
+function useMCPServerViewsFromSpacesBase(
   owner: LightWorkspaceType,
-  spaces: SpaceType[]
+  spaces: SpaceType[],
+  availabilities: MCPServerAvailability[]
 ) {
   const configFetcher: Fetcher<GetMCPServerViewsListResponseBody> = fetcher;
-  const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaces.map((s) => s.sId).join(",")}`;
+
+  const spaceIds = spaces.map((s) => s.sId).join(",");
+  const availabilitiesParam = availabilities.join(",");
+
+  const url = `/api/w/${owner.sId}/mcp/views?spaceIds=${spaceIds}&availabilities=${availabilitiesParam}`;
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     disabled: !spaces.length,
   });
 
   return {
-    serverViews: data?.serverViews,
-    isLoading: !error && !data && !spaces.length,
+    serverViews: data?.serverViews ?? emptyArray(),
+    isLoading: !error && !data && spaces.length !== 0,
     isError: error,
     mutateServerViews: mutate,
   };
+}
+
+export function useMCPServerViewsFromSpaces(
+  owner: LightWorkspaceType,
+  spaces: SpaceType[]
+) {
+  return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual", "auto"]);
+}
+
+export function useRemoteMCPServerViewsFromSpaces(
+  owner: LightWorkspaceType,
+  spaces: SpaceType[]
+) {
+  return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual"]);
+}
+
+export function useInternalMCPServerViewsFromSpaces(
+  owner: LightWorkspaceType,
+  spaces: SpaceType[]
+) {
+  return useMCPServerViewsFromSpacesBase(owner, spaces, ["auto"]);
 }

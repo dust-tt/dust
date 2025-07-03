@@ -17,7 +17,7 @@ export type GetMCPServerResponseBody = {
 };
 
 export type PatchMCPServerResponseBody = {
-  success: boolean;
+  success: true;
   server: MCPServerType;
 };
 

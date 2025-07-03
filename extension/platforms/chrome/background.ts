@@ -1,6 +1,7 @@
 import type {
   AuthBackgroundMessage,
-  AuthBackgroundResponse,
+  AuthBackgroundResponseError,
+  AuthBackgroundResponseSuccess,
   CaptureMesssage,
   CaptureResponse,
   GetActiveTabBackgroundMessage,
@@ -9,22 +10,14 @@ import type {
 } from "@app/platforms/chrome/messages";
 import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
 import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
-import {
-  AUTH0_CLIENT_ID,
-  DEFAULT_DUST_API_DOMAIN,
-  DUST_API_AUDIENCE,
-  getAuthorizeURL,
-  getLogoutURL,
-  getOAuthClientID,
-  getTokenURL,
-} from "@app/shared/lib/config";
+import { DUST_API_AUDIENCE, DUST_US_URL } from "@app/shared/lib/config";
 import { extractPage } from "@app/shared/lib/extraction";
 import { generatePKCE } from "@app/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";
 import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
-const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 3600; // 1 hour.
+const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
 
 // Initialize the platform service.
 const platform = new ChromeCorePlatformService();
@@ -32,32 +25,13 @@ const platform = new ChromeCorePlatformService();
 const state: {
   refreshingToken: boolean;
   refreshRequests: ((
-    auth: OAuthAuthorizeResponse | AuthBackgroundResponse
+    auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
   ) => void)[];
   lastHandler: (() => void) | undefined;
-  authPlatform: "auth0" | "workos";
 } = {
   refreshingToken: false,
   refreshRequests: [],
   lastHandler: undefined,
-  authPlatform: "auth0",
-};
-
-/**
- * Fetch the auth platform from the API
- */
-const fetchAuthPlatform = async () => {
-  try {
-    const response = await fetch(`${DEFAULT_DUST_API_DOMAIN}/api/v1/auth`);
-    if (!response.ok) {
-      throw new Error("Failed to fetch auth platform");
-    }
-    const data = await response.json();
-    state.authPlatform = data.auth;
-  } catch (error) {
-    log("Error fetching auth platform:", error);
-    state.authPlatform = "auth0"; // Default to auth0 if there's an error
-  }
 };
 
 /**
@@ -154,9 +128,6 @@ chrome.runtime.onConnect.addListener(async (port) => {
       state.lastHandler = undefined;
     });
   }
-
-  // Fetch and store the auth platform
-  void fetchAuthPlatform();
 });
 
 const getActionHandler = (menuItemId: string | number) => {
@@ -250,7 +221,8 @@ chrome.runtime.onMessage.addListener(
     sendResponse: (
       response:
         | OAuthAuthorizeResponse
-        | AuthBackgroundResponse
+        | AuthBackgroundResponseSuccess
+        | AuthBackgroundResponseError
         | CaptureResponse
         | GetActiveTabBackgroundResponse
     ) => void
@@ -263,7 +235,10 @@ chrome.runtime.onMessage.addListener(
       case "REFRESH_TOKEN":
         if (!message.refreshToken) {
           log("No refresh token provided on REFRESH_TOKEN message.");
-          sendResponse({ success: false });
+          sendResponse({
+            success: false,
+            error: "No refresh token provided on REFRESH_TOKEN message.",
+          });
           return true;
         }
         void refreshToken(message.refreshToken, sendResponse);
@@ -499,70 +474,83 @@ chrome.runtime.onMessageExternal.addListener((request) => {
  */
 const authenticate = async (
   { isForceLogin, connection }: AuthBackgroundMessage,
-  sendResponse: (auth: OAuthAuthorizeResponse | AuthBackgroundResponse) => void
+  sendResponse: (
+    auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
+  ) => void
 ) => {
   // First we call /authorize endpoint to get the authorization code (PKCE flow).
   const redirectUrl = chrome.identity.getRedirectURL();
   const { codeVerifier, codeChallenge } = await generatePKCE();
 
   const options: Record<string, string> = {
-    client_id: getOAuthClientID(state.authPlatform),
     response_type: "code",
     redirect_uri: redirectUrl,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
   };
 
-  if (state.authPlatform === "auth0") {
-    options.audience = DUST_API_AUDIENCE;
-    options.scope =
-      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
-    options.prompt = isForceLogin ? "login" : "";
-  } else if (state.authPlatform === "workos") {
-    options.scope = "openid profile email";
-    if (connection) {
-      options.organization_id = connection;
-    }
-    options.provider = "authkit";
-  }
+  // AUTH0 SPECIFICS
+  options.audience = DUST_API_AUDIENCE;
+  options.prompt = isForceLogin ? "login" : "";
+  // WORKOS SPECIFICS
+  options.organization_id = connection ?? "";
+  options.provider = "authkit";
 
   const queryString = new URLSearchParams(options).toString();
-  const authUrl = getAuthorizeURL({ auth: state.authPlatform, queryString });
+
+  const authUrl = `${DUST_US_URL}/api/v1/auth/authorize?${queryString}`;
 
   chrome.identity.launchWebAuthFlow(
     { url: authUrl, interactive: true },
     async (redirectUrl) => {
       if (chrome.runtime.lastError) {
-        log(`launchWebAuthFlow error: ${chrome.runtime.lastError.message}`);
-        sendResponse({ success: false });
+        log(`WebAuthFlow error: ${chrome.runtime.lastError.message}`);
+        sendResponse({
+          success: false,
+          error: `WebAuthFlow error: ${chrome.runtime.lastError.message}`,
+        });
         return;
       }
       if (!redirectUrl || redirectUrl.includes("error")) {
-        log(`launchWebAuthFlow error in redirect URL: ${redirectUrl}`);
-        sendResponse({ success: false });
+        log(`Error in redirect URL: ${redirectUrl}`);
+        sendResponse({
+          success: false,
+          error: `Error in redirect URL: ${redirectUrl}`,
+        });
         return;
       }
 
       const url = new URL(redirectUrl);
       const queryParams = new URLSearchParams(url.search);
       const authorizationCode = queryParams.get("code");
+      const state = queryParams.get("state");
+      const providerFromState = state ? JSON.parse(state).provider : undefined;
+      const provider = providerFromState === "auth0" ? "auth0" : "workos";
+
       const error = queryParams.get("error");
 
       if (error) {
         log(`Authentication error: ${error}`);
-        sendResponse({ success: false });
+        sendResponse({
+          success: false,
+          error: `Authentication error: ${error}`,
+        });
         return;
       }
 
       if (authorizationCode) {
         const data = await exchangeCodeForTokens(
           authorizationCode,
-          codeVerifier
+          codeVerifier,
+          provider
         );
         sendResponse(data);
       } else {
-        log(`launchWebAuthFlow missing code in redirect URL: ${redirectUrl}`);
-        sendResponse({ success: false });
+        log(`Missing authorization code: ${redirectUrl}`);
+        sendResponse({
+          success: false,
+          error: `Missing authorization code`,
+        });
       }
     }
   );
@@ -573,7 +561,9 @@ const authenticate = async (
  */
 const refreshToken = async (
   refreshToken: string,
-  sendResponse: (auth: OAuthAuthorizeResponse | AuthBackgroundResponse) => void
+  sendResponse: (
+    auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
+  ) => void
 ) => {
   state.refreshRequests.push(sendResponse);
   if (!state.refreshingToken) {
@@ -581,15 +571,33 @@ const refreshToken = async (
     try {
       const tokenParams: Record<string, string> = {
         grant_type: "refresh_token",
-        client_id: getOAuthClientID(state.authPlatform),
         refresh_token: refreshToken,
       };
 
-      const response = await fetch(getTokenURL(state.authPlatform), {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(tokenParams),
-      });
+      const user = await platform.auth.getStoredUser();
+      if (!user) {
+        log("No user found for token refresh.");
+        const handlers = state.refreshRequests;
+        state.refreshRequests = [];
+        handlers.forEach((sendResponse) => {
+          sendResponse({
+            success: false,
+            error: "No user found for token refresh.",
+          });
+        });
+        return;
+      }
+
+      const provider = user.authProvider;
+
+      const response = await fetch(
+        `${user.dustDomain}/api/v1/auth/authenticate?forcedProvider=${provider}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams(tokenParams),
+        }
+      );
 
       if (!response.ok) {
         const data = await response.json();
@@ -599,13 +607,17 @@ const refreshToken = async (
       }
 
       const data = await response.json();
+
       const handlers = state.refreshRequests;
       state.refreshRequests = [];
       handlers.forEach((sendResponse) => {
         sendResponse({
+          success: true,
           accessToken: data.access_token,
           refreshToken: data.refresh_token || refreshToken,
           expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+          authentication_method: data.authentication_method,
+          provider,
         });
       });
     } catch (error) {
@@ -613,7 +625,10 @@ const refreshToken = async (
       const handlers = state.refreshRequests;
       state.refreshRequests = [];
       handlers.forEach((sendResponse) => {
-        sendResponse({ success: false });
+        sendResponse({
+          success: false,
+          error: `Token refresh failed: ${error}`,
+        });
       });
     } finally {
       state.refreshingToken = false;
@@ -626,23 +641,25 @@ const refreshToken = async (
  */
 const exchangeCodeForTokens = async (
   code: string,
-  codeVerifier: string
-): Promise<OAuthAuthorizeResponse | AuthBackgroundResponse> => {
+  codeVerifier: string,
+  provider: "workos" | "auth0"
+): Promise<OAuthAuthorizeResponse | AuthBackgroundResponseError> => {
   try {
     const tokenParams: Record<string, string> = {
       grant_type: "authorization_code",
-      client_id: getOAuthClientID(state.authPlatform),
       code_verifier: codeVerifier,
       code,
       redirect_uri: chrome.identity.getRedirectURL(),
     };
 
-    const tokenURL = getTokenURL(state.authPlatform);
-    const response = await fetch(tokenURL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams(tokenParams),
-    });
+    const response = await fetch(
+      `${DUST_US_URL}/api/v1/auth/authenticate?forcedProvider=${provider}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(tokenParams),
+      }
+    );
 
     if (!response.ok) {
       const data = await response.json();
@@ -652,16 +669,20 @@ const exchangeCodeForTokens = async (
     }
 
     const data = await response.json();
+
     return {
+      success: true,
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
+      provider,
       ...(data.id_token && { idToken: data.id_token }),
+      authentication_method: data.authentication_method,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
     log(`Token exchange failed: ${message}`, error);
-    return { success: false };
+    return { success: false, error: `Token exchange failed: ${message}` };
   }
 };
 
@@ -669,40 +690,47 @@ const exchangeCodeForTokens = async (
  * Logout the user.
  */
 const logout = async (
-  sendResponse: (response: AuthBackgroundResponse) => void
+  sendResponse: (
+    response: AuthBackgroundResponseSuccess | AuthBackgroundResponseError
+  ) => void
 ) => {
   const redirectUri = chrome.identity.getRedirectURL();
   const queryParams: Record<string, string> = {
     returnTo: redirectUri,
   };
-
-  if (state.authPlatform === "auth0") {
-    queryParams.client_id = AUTH0_CLIENT_ID;
-  } else if (state.authPlatform === "workos") {
-    // We need to get the session to log out the user from WorkOS.
-    const accessToken = await platform.auth.getAccessToken();
-    if (accessToken) {
-      const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
-      if (decodedPayload) {
-        queryParams.session_id = decodedPayload.sid || "";
-      }
-    } else {
-      log("No access token found for WorkOS logout.");
-      sendResponse({ success: false });
-      return;
+  // We need to get the session to log out the user from WorkOS.
+  const accessToken = await platform.auth.getAccessToken();
+  if (accessToken) {
+    const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
+    if (decodedPayload) {
+      queryParams.session_id = decodedPayload.sid || "";
     }
+  } else {
+    log("No access token found for WorkOS logout.");
+    sendResponse({ success: false, error: "No access token found." });
+    return;
   }
-  const logoutUrl = getLogoutURL({
-    auth: state.authPlatform,
-    queryString: new URLSearchParams(queryParams).toString(),
-  });
+
+  const user = await platform.auth.getStoredUser();
+  if (!user) {
+    return true;
+  }
+
+  queryParams.forcedProvider = user.authProvider;
+
+  const logoutUrl = `${user.dustDomain}/api/v1/auth/logout?${new URLSearchParams(
+    queryParams
+  )}`;
 
   chrome.identity.launchWebAuthFlow(
-    { url: logoutUrl, interactive: true },
+    { url: logoutUrl, interactive: false },
     () => {
       if (chrome.runtime.lastError) {
         log("Logout failed:", chrome.runtime.lastError.message);
-        sendResponse({ success: false });
+        sendResponse({
+          success: false,
+          error: `Logout failed: ${chrome.runtime.lastError.message}`,
+        });
       } else {
         sendResponse({ success: true });
       }
