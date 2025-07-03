@@ -4,12 +4,18 @@ import type { FC } from "react";
 import React, { useState } from "react";
 
 interface ApprovalOption {
-  id: "approve" | "reject";
+  id: "approve" | "reject" | "approve_and_cache";
   label: string;
 }
 
 const APPROVAL_OPTIONS: ApprovalOption[] = [
   { id: "approve", label: "Approve" },
+  { id: "reject", label: "Reject" },
+];
+
+const LOW_STAKE_APPROVAL_OPTIONS: ApprovalOption[] = [
+  { id: "approve", label: "Approve" },
+  { id: "approve_and_cache", label: "Approve and don't ask again" },
   { id: "reject", label: "Reject" },
 ];
 
@@ -27,7 +33,7 @@ const formatInputs = (inputs: any): string => {
 
 interface ToolApprovalSelectorProps {
   event: AgentActionSpecificEvent & { type: "tool_approve_execution" };
-  onApproval: (approved: boolean) => void;
+  onApproval: (approved: boolean, cacheApproval?: boolean) => void;
 }
 
 export const ToolApprovalSelector: FC<ToolApprovalSelectorProps> = ({
@@ -35,21 +41,27 @@ export const ToolApprovalSelector: FC<ToolApprovalSelectorProps> = ({
   onApproval,
 }) => {
   const [cursor, setCursor] = useState(0);
+  const isLowStake = event.stake === "low";
+  const options = isLowStake ? LOW_STAKE_APPROVAL_OPTIONS : APPROVAL_OPTIONS;
 
   useInput((input, key) => {
     if (key.upArrow) {
-      setCursor((prev) => (prev > 0 ? prev - 1 : APPROVAL_OPTIONS.length - 1));
+      setCursor((prev) => (prev > 0 ? prev - 1 : options.length - 1));
       return;
     }
 
     if (key.downArrow) {
-      setCursor((prev) => (prev < APPROVAL_OPTIONS.length - 1 ? prev + 1 : 0));
+      setCursor((prev) => (prev < options.length - 1 ? prev + 1 : 0));
       return;
     }
 
     if (key.return) {
-      const selectedOption = APPROVAL_OPTIONS[cursor];
-      onApproval(selectedOption.id === "approve");
+      const selectedOption = options[cursor];
+      const approved =
+        selectedOption.id === "approve" ||
+        selectedOption.id === "approve_and_cache";
+      const cacheApproval = selectedOption.id === "approve_and_cache";
+      onApproval(approved, cacheApproval);
       return;
     }
   });
@@ -95,7 +107,7 @@ export const ToolApprovalSelector: FC<ToolApprovalSelectorProps> = ({
       <Box flexDirection="column" paddingX={1}>
         <Text bold>Use ↑/↓ arrows to navigate, Enter to confirm:</Text>
         <Box flexDirection="column" marginTop={1}>
-          {APPROVAL_OPTIONS.map((option, index) => {
+          {options.map((option, index) => {
             const isFocused = index === cursor;
             return (
               <Box key={option.id} marginY={0}>
