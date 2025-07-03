@@ -22,6 +22,7 @@ import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
+import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
@@ -220,6 +221,7 @@ const WorkspacePage = ({
             <DataSourceViewsDataTable owner={owner} />
             <MCPServerViewsDataTable owner={owner} />
             <SpaceDataTable owner={owner} />
+            <GroupDataTable owner={owner} />
             <AssistantsDataTable owner={owner} />
             <AppDataTable owner={owner} />
             <FeatureFlagsDataTable
