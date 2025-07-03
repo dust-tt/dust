@@ -1,0 +1,67 @@
+import { Chip } from "@dust-tt/sparkle";
+
+import {
+  PokeTable,
+  PokeTableBody,
+  PokeTableCell,
+  PokeTableCellWithCopy,
+  PokeTableRow,
+} from "@app/components/poke/shadcn/ui/table";
+import type { GroupType } from "@app/types";
+
+export function ViewGroupTable({ group }: { group: GroupType }) {
+  const getKindChipColor = (kind: string) => {
+    switch (kind) {
+      case "provisioned":
+        return "blue";
+      case "global":
+        return "green";
+      case "system":
+        return "warning";
+      case "agent_editors":
+        return "rose";
+      default:
+        return "primary";
+    }
+  };
+
+  return (
+    <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-md flex-grow pb-4 font-bold">Group Details:</h2>
+      </div>
+      <PokeTable>
+        <PokeTableBody>
+          <PokeTableRow>
+            <PokeTableCell>Id</PokeTableCell>
+            <PokeTableCellWithCopy label={group.id.toString()} />
+          </PokeTableRow>
+          <PokeTableRow>
+            <PokeTableCell>sId</PokeTableCell>
+            <PokeTableCellWithCopy label={group.sId} />
+          </PokeTableRow>
+          <PokeTableRow>
+            <PokeTableCell>Name</PokeTableCell>
+            <PokeTableCell>{group.name}</PokeTableCell>
+          </PokeTableRow>
+          <PokeTableRow>
+            <PokeTableCell>Kind</PokeTableCell>
+            <PokeTableCell>
+              <Chip color={getKindChipColor(group.kind)}>
+                {group.kind}
+              </Chip>
+            </PokeTableCell>
+          </PokeTableRow>
+          <PokeTableRow>
+            <PokeTableCell>Member Count</PokeTableCell>
+            <PokeTableCell>{group.memberCount}</PokeTableCell>
+          </PokeTableRow>
+          <PokeTableRow>
+            <PokeTableCell>Workspace Id</PokeTableCell>
+            <PokeTableCellWithCopy label={group.workspaceId.toString()} />
+          </PokeTableRow>
+        </PokeTableBody>
+      </PokeTable>
+    </div>
+  );
+}
