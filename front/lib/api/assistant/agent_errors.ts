@@ -28,7 +28,7 @@ export const getPublicErrorMessage = (error: {
         return (
           "Anthropic is currently experiencing issues and cannot process requests for " +
           "this model. You can temporarily switch your agent to use a different model " +
-          "(like GPT-4) in the agent settings to continue working."
+          "(like GPT-4.1) in the agent settings to continue working."
         );
       } else if (
         error.message.includes("at least one message is required") ||
