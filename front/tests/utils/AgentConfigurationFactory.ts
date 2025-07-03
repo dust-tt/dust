@@ -3,10 +3,6 @@ import type { Transaction } from "sequelize";
 
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type {
   LightAgentConfigurationType,
   ModelIdType,
