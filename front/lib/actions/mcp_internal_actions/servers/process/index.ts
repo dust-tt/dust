@@ -21,10 +21,6 @@ import {
   makeFindTagsTool,
 } from "@app/lib/actions/mcp_internal_actions/servers/common/find_tags_tool";
 import {
-  applyDataSourceFilters,
-  getExtractFileTitle,
-} from "@app/lib/actions/mcp_internal_actions/servers/process_utils";
-import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
@@ -54,6 +50,8 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { isUserMessageType, timeFrameFromNow } from "@app/types";
+
+import { applyDataSourceFilters, getExtractFileTitle } from "./utils";
 
 // Type definition for process action outputs
 type ProcessActionOutputsType = {

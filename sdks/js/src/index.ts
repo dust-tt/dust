@@ -625,7 +625,14 @@ export class DustAPI {
     contentFragments,
     blocking = false,
     skipToolsValidation = false,
-  }: PublicPostConversationsRequestBody) {
+  }: PublicPostConversationsRequestBody): Promise<
+    Result<
+      {
+        conversation: ConversationPublicType;
+      },
+      { type: string; message: string } | Error
+    >
+  > {
     const res = await this.request({
       method: "POST",
       path: "assistant/conversations",

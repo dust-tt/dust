@@ -1,5 +1,4 @@
-import type { ConversationPublicType } from "@dust-tt/client";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { ConversationPublicType, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
