@@ -1,4 +1,4 @@
-import { Button, SparklesIcon } from "@dust-tt/sparkle";
+import { Button, SparklesIcon, useSendNotification } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -90,16 +90,16 @@ export function TagsSection() {
   const { field } = useController<AgentBuilderFormData, "agentSettings.tags">({
     name: "agentSettings.tags",
   });
+  const sendNotification = useSendNotification();
 
   const selectedTags = field.value;
-
-  const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
 
   const [tagsSuggestions, setTagsSuggestions] =
     useState<BuilderSuggestionsType>({
       status: "unavailable",
       reason: "irrelevant",
     });
+  const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
 
   const filteredTagsSuggestions = useMemo(() => {
     if (tagsSuggestions.status !== "ok") {
@@ -137,7 +137,12 @@ export function TagsSection() {
         setTagsSuggestions(tagsSuggestionsResult.value);
       }
     } catch (err) {
-      // @tood show toast
+      sendNotification({
+        title: "Could not populate any tag suggestions.",
+        type: "error",
+        description:
+          "An error occurred while generating tag suggestions. Please contact us if the error persists.",
+      });
     } finally {
       setTagsSuggestionsLoading(false);
     }
@@ -154,23 +159,21 @@ export function TagsSection() {
             tagsSuggestions={filteredTagsSuggestions}
           />
         )}
-      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-        <TagsSelector
-          owner={owner}
-          tags={selectedTags}
-          onTagsChange={field.onChange}
-          suggestionButton={
-            <Button
-              label="Suggest"
-              size="xs"
-              icon={SparklesIcon}
-              variant="outline"
-              isLoading={isTagsSuggestionLoading}
-              onClick={updateTagsSuggestions}
-            />
-          }
-        />
-      </div>
+      <TagsSelector
+        owner={owner}
+        tags={selectedTags}
+        onTagsChange={field.onChange}
+        suggestionButton={
+          <Button
+            label="Suggest"
+            size="xs"
+            icon={SparklesIcon}
+            variant="outline"
+            isLoading={isTagsSuggestionLoading}
+            onClick={updateTagsSuggestions}
+          />
+        }
+      />
     </div>
   );
 }

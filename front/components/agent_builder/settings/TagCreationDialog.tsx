@@ -37,6 +37,8 @@ const tagSchema = z.object({
 
 type TagForm = z.infer<typeof tagSchema>;
 
+// This will get unmounted when you close the dialog so
+// we don't have to reset the state.
 const TagCreationForm = ({
   onFormSubmit,
 }: {
@@ -63,18 +65,14 @@ const TagCreationForm = ({
       <DialogContainer>
         <div className="space-y-2">
           <Label htmlFor="name">Name</Label>
-          <div className="flex space-x-2">
-            <div className="flex-grow">
-              <Input
-                maxLength={MAX_TAG_LENGTH}
-                id="name"
-                placeholder="Tag name"
-                autoFocus
-                {...register("tag")}
-                message={errors.tag?.message}
-              />
-            </div>
-          </div>
+          <Input
+            maxLength={MAX_TAG_LENGTH}
+            id="name"
+            placeholder="Tag name"
+            autoFocus
+            {...register("tag")}
+            message={errors.tag?.message}
+          />
         </div>
       </DialogContainer>
       <DialogFooter
