@@ -167,22 +167,34 @@ async fn process_one_table(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let unique_table_id = get_table_unique_id(&project, &data_source_id, &table_id);
 
-    println!("**** Unique table id: {}", unique_table_id);
+    println!("**** Process table: {}", unique_table_id);
+
+    let (rows, _count) = db_store.list_table_rows(&unique_table_id, None).await?;
 
     let table_schema: TableSchema;
 
-    let (rows, _count) = db_store.list_table_rows(&unique_table_id, None).await?;
-    if rows.is_empty() && !schema.is_none() {
-        println!(
-            "No rows found for table with id: {}, table_id: {}",
-            id, table_id
-        );
+    if rows.len() > 0 {
+        table_schema = TableSchema::from_rows_async(std::sync::Arc::new(rows.clone())).await?;
 
-        // If there are no rows, we wouldn't be able to get a schema from them,
-        // so we use the existing schema from the database
+        // Make sure that the schema from the rows matches the schema from the DB, if any.
+        if !schema.is_none() {
+            let schema_from_rows = serde_json::to_string(&table_schema)
+                .map_err(|e| anyhow::anyhow!("Failed to serialize table schema: {}", e))?;
+
+            if Some(schema_from_rows.as_str()) != schema.as_deref() {
+                return Err(anyhow::anyhow!(
+                    "Table schema from rows does not match schema from DB for table with id: {}, table_id: {}",
+                    id,
+                    table_id
+                )
+                .into());
+            }
+        }
+    } else if !schema.is_none() {
         table_schema = serde_json::from_str(schema.as_ref().unwrap())?;
     } else {
-        table_schema = TableSchema::from_rows_async(std::sync::Arc::new(rows.clone())).await?;
+        // Create an empty schema, which will cause store_data_source_table_csv not to save a csv
+        table_schema = serde_json::from_str("[]")?;
     }
 
     store
