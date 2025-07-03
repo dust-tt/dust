@@ -9,12 +9,12 @@ import { makeSId } from "@app/lib/resources/string_ids";
 import { setupAgentOwner } from "@app/pages/api/w/[wId]/assistant/agent_configurations/index.test";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 import { fetchTableDataSourceConfigurations, getCoreSearchArgs } from "./utils";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 
 describe("MCP Internal Actions Server Utils", () => {
   describe("fetchAgentTableConfigurations", () => {
