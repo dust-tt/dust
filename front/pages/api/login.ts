@@ -43,6 +43,7 @@ async function handler(
   const { inviteToken, wId } = req.query;
   const { isSSO, workspaceId } = session;
 
+  // Use the workspaceId from the query if it exists, otherwise use the workspaceId from the workos session.
   const targetWorkspaceId = typeof wId === "string" ? wId : workspaceId;
 
   let targetWorkspace: WorkspaceModel | null = null;

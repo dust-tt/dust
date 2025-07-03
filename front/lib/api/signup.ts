@@ -159,15 +159,25 @@ export async function handleEnterpriseSignUpFlow(
   workspace: WorkspaceModel | null;
 }> {
   // Combine queries to optimize database calls.
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      sId: enterpriseConnectionWorkspaceId,
-    },
-  });
+  const [{ total }, workspace] = await Promise.all([
+    MembershipResource.getActiveMemberships({
+      users: [user],
+    }),
+    WorkspaceModel.findOne({
+      where: {
+        sId: enterpriseConnectionWorkspaceId,
+      },
+    }),
+  ]);
 
   // Redirect to login error flow if workspace is not found.
   if (!workspace) {
     return { flow: "unauthorized", workspace: null };
+  }
+
+  // Early return if user is already a member of a workspace.
+  if (total !== 0) {
+    return { flow: null, workspace };
   }
 
   const membership =
@@ -175,11 +185,6 @@ export async function handleEnterpriseSignUpFlow(
       user,
       workspace: renderLightWorkspaceType({ workspace }),
     });
-
-  // User is already a member of the workspace.
-  if (membership && !membership.isRevoked()) {
-    return { flow: null, workspace };
-  }
 
   // Look if there is a pending membership invitation for the user at the workspace.
   const pendingMembershipInvitation =
