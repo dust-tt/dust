@@ -11,6 +11,7 @@ import type {
 } from "@connectors/lib/remote_databases/utils";
 import logger from "@connectors/logger/logger";
 import type { BigQueryCredentialsWithLocation } from "@connectors/types";
+import { isBigqueryPermissionsError } from "@connectors/types/bigquery";
 
 const MAX_TABLES_PER_SCHEMA = 1000;
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
@@ -165,17 +166,12 @@ export const fetchTables = async ({
               };
             } catch (error) {
               // Handle BigQuery permission errors gracefully
-              if (
-                error &&
-                typeof error === "object" &&
-                "code" in error &&
-                error.code === 403 &&
-                "errors" in error &&
-                Array.isArray(error.errors) &&
-                error.errors.some((e) => e?.reason === "accessDenied")
-              ) {
+              if (isBigqueryPermissionsError(error)) {
                 const errorMessage =
-                  "message" in error && typeof error.message === "string"
+                  error &&
+                  typeof error === "object" &&
+                  "message" in error &&
+                  typeof error.message === "string"
                     ? error.message
                     : "Permission denied";
                 logger.warn(
