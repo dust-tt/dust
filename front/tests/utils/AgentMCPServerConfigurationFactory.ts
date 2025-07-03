@@ -20,7 +20,7 @@ export class AgentMCPServerConfigurationFactory {
     const mcpServerView = await MCPServerViewFactory.create(
       owner,
       internalMCPServerNameToSId({
-        name: "data_sources_file_system",
+        name: "search",
         workspaceId: owner.id,
       }),
       space

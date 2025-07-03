@@ -15,6 +15,7 @@ import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 import { fetchTableDataSourceConfigurations, getCoreSearchArgs } from "./utils";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 
 describe("MCP Internal Actions Server Utils", () => {
   describe("fetchAgentTableConfigurations", () => {
@@ -35,6 +36,15 @@ describe("MCP Internal Actions Server Utils", () => {
         const otherFolder = await DataSourceViewFactory.folder(
           otherWorkspace,
           otherSpace,
+          t
+        );
+
+        await InternalMCPServerInMemoryResource.makeNew(
+          auth,
+          {
+            name: "search",
+            useCase: null,
+          },
           t
         );
         const mcpServerConfiguration =
@@ -117,6 +127,14 @@ describe("MCP Internal Actions Server Utils", () => {
         await SpaceFactory.system(workspace, t);
         const space = await SpaceFactory.global(workspace, t);
         const folder = await DataSourceViewFactory.folder(workspace, space, t);
+        await InternalMCPServerInMemoryResource.makeNew(
+          auth,
+          {
+            name: "search",
+            useCase: null,
+          },
+          t
+        );
         const mcpServerConfiguration =
           await AgentMCPServerConfigurationFactory.create(auth, space, t);
 
