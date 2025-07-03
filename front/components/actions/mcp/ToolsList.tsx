@@ -10,12 +10,14 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { CustomRemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
+  CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
-  REMOTE_MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
+import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useMCPServerToolsPermissions,
@@ -59,9 +61,22 @@ export function ToolsList({
     serverId: mcpServerView.server.sId,
   });
 
+  const getAvailableStakeLevelsForTool = (toolName: string) => {
+    if (isRemoteMCPServerType(mcpServerView.server)) {
+      const defaultRemoteServer = getDefaultRemoteMCPServerByURL(
+        mcpServerView.server.url
+      );
+      // We only allow users to set the "never_ask" stake level for tools that are configured with it in the default server.
+      if (defaultRemoteServer?.toolStakes?.[toolName] === "never_ask") {
+        return [...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS, "never_ask"] as const;
+      }
+    }
+    return CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS;
+  };
+
   const handleClick = (
     name: string,
-    permission: RemoteMCPToolStakeLevelType
+    permission: CustomRemoteMCPToolStakeLevelType | "never_ask"
   ) => {
     void updateToolPermission({
       toolName: name,
@@ -69,9 +84,10 @@ export function ToolsList({
     });
   };
 
-  const toolPermissionLabel: Record<RemoteMCPToolStakeLevelType, string> = {
+  const toolPermissionLabel: Record<string, string> = {
     high: "High (update data or send information)",
     low: "Low (retrieve data or generate content)",
+    never_ask: "Never ask (automatic execution)",
   };
 
   return (
@@ -127,7 +143,7 @@ export function ToolsList({
                                 />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent>
-                                {REMOTE_MCP_TOOL_STAKE_LEVELS.map(
+                                {getAvailableStakeLevelsForTool(tool.name).map(
                                   (permission) => (
                                     <DropdownMenuItem
                                       key={permission}

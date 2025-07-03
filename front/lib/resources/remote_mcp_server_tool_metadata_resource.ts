@@ -5,7 +5,7 @@ import type {
   Transaction,
 } from "sequelize";
 
-import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
@@ -132,7 +132,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     }: {
       serverId: number;
       toolName: string;
-      permission: RemoteMCPToolStakeLevelType;
+      permission: MCPToolStakeLevelType;
     }
   ) {
     const canAdministrate =
@@ -191,7 +191,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
   toJSON(): {
     remoteMCPServerId: number;
     toolName: string;
-    permission: RemoteMCPToolStakeLevelType;
+    permission: MCPToolStakeLevelType;
   } {
     return {
       remoteMCPServerId: this.remoteMCPServerId,

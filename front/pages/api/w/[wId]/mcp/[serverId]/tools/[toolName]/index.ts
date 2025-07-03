@@ -1,7 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { RemoteMCPToolStakeLevelType } from "@app/lib/actions/constants";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import { getDefaultRemoteMCPServerById } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
@@ -78,12 +80,25 @@ async function handler(
             });
           }
 
+          if (!CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS.includes(permission)) {
+            const defaultServerConfig = getDefaultRemoteMCPServerById(id);
+            if (defaultServerConfig?.toolStakes?.[toolName] !== permission) {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: `The '${permission}' permission is only allowed for tools pre-configured with this setting in default servers.`,
+                },
+              });
+            }
+          }
+
           await RemoteMCPServerToolMetadataResource.updateOrCreatePermission(
             auth,
             {
               serverId: id,
               toolName,
-              permission: permission as RemoteMCPToolStakeLevelType,
+              permission: permission as MCPToolStakeLevelType,
             }
           );
           return res.status(200).json({ success: true });
