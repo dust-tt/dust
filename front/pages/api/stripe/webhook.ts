@@ -225,7 +225,10 @@ async function handler(
                 });
               }
 
-              if (activeSubscription) {
+              if (
+                activeSubscription &&
+                !activeSubscription.isLegacyFreeNoPlan()
+              ) {
                 await activeSubscription.setEnded(now, t);
               }
               const stripeSubscription =
