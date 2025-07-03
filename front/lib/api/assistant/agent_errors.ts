@@ -25,7 +25,11 @@ export const getPublicErrorMessage = (error: {
         error.message.includes("overloaded_error") ||
         error.message.includes("503 Service Unavailable")
       ) {
-        return "Anthropic (provider of Claude) is currently overloaded. Please try again later.";
+        return (
+          "Anthropic is currently experiencing issues and cannot process requests for " +
+          "this model. You can temporarily switch your agent to use a different model " +
+          "(like GPT-4.1) in the agent settings to continue working."
+        );
       } else if (
         error.message.includes("at least one message is required") ||
         error.message.includes("exceed context limit")
