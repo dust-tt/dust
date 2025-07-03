@@ -210,11 +210,9 @@ export function getAttachmentFromToolOutput({
 export function renderAttachmentXml({
   attachment,
   content = null,
-  fileId = null,
 }: {
   attachment: ConversationAttachmentType;
   content?: string | null;
-  fileId?: string | null;
 }): string {
   const params = [
     `id="${conversationAttachmentId(attachment)}"`,
@@ -225,8 +223,7 @@ export function renderAttachmentXml({
     `isQueryable="${attachment.isQueryable}"`,
     `isSearchable="${attachment.isSearchable}"`,
     `isExtractable="${attachment.isExtractable}"`,
-    fileId ? `fileId=${fileId}` : null,
-  ].filter(Boolean);
+  ];
 
   let tag = `<attachment ${params.join(" ")}`;
 

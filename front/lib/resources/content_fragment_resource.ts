@@ -682,12 +682,6 @@ export async function renderLightContentFragmentForModel(
               content:
                 "[Image content interpreted by a vision-enabled model. " +
                 "Description not available in this context.",
-              fileId: (
-                await getIncludeFileIdsFromContentFragmentResourceId(
-                  auth,
-                  contentFragment.sId
-                )
-              ).fileStringId,
             }),
           },
         ],
@@ -710,12 +704,6 @@ export async function renderLightContentFragmentForModel(
           type: "text",
           text: renderAttachmentXml({
             attachment,
-            fileId: (
-              await getIncludeFileIdsFromContentFragmentResourceId(
-                auth,
-                contentFragment.sId
-              )
-            ).fileStringId,
           }),
         },
       ],
