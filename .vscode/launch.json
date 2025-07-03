@@ -24,6 +24,23 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "Debug sqlite worker",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=sqlite-worker",
+          "--manifest-path=${workspaceFolder}/core/Cargo.toml"
+        ],
+        "filter": {
+          "name": "sqlite-worker",
+          "kind": "bin"
+        }
+      },
+      "args": []
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "Debug migration",
       "cargo": {
         "args": [
