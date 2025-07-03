@@ -91,6 +91,8 @@ const TagCreationForm = ({
   );
 };
 
+// We have to use portal so that we don't render tag creation form inside the
+// agent builder form.
 export const TagCreationDialog = ({
   owner,
   isOpen,
