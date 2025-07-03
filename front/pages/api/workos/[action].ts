@@ -15,6 +15,7 @@ import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types"
 import type { SessionCookie } from "@app/lib/api/workos/user";
 import { setRegionForUser } from "@app/lib/api/workos/user";
 import { getFeatureFlags, getSession } from "@app/lib/auth";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -209,7 +210,27 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     // If user has a region, redirect to the region page.
     const userSessionRegion = sessionCookie.region;
 
-    if (userSessionRegion) {
+    let invite: MembershipInvitationResource | null = null;
+    if (
+      isString(stateObj.returnTo) &&
+      stateObj.returnTo.startsWith("/api/login?inviteToken=")
+    ) {
+      const inviteUrl = new URL(stateObj.returnTo, config.getClientFacingUrl());
+      const inviteToken = inviteUrl.searchParams.get("inviteToken");
+      if (inviteToken) {
+        const inviteRes =
+          await MembershipInvitationResource.getPendingForToken(inviteToken);
+        if (inviteRes.isOk()) {
+          invite = inviteRes.value;
+        }
+      }
+    }
+
+    if (invite) {
+      // User has an invite on the current region - we want to keep the user here.
+      targetRegion = currentRegion;
+      await setRegionForUser(user, targetRegion);
+    } else if (userSessionRegion) {
       targetRegion = userSessionRegion;
     } else {
       // For new users or users without region, perform lookup.
@@ -258,7 +279,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
       let returnTo = "/";
       try {
-        if (stateObj.returnTo) {
+        if (isString(stateObj.returnTo)) {
           const url = new URL(stateObj.returnTo);
           returnTo = url.pathname + url.search;
         }
@@ -280,14 +301,9 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       `sessionType=workos; Path=/; Secure;SameSite=Lax; Max-Age=2592000`,
     ]);
 
-    if (isString(state)) {
-      const stateObj = JSON.parse(
-        Buffer.from(state, "base64").toString("utf-8")
-      );
-      if (isString(stateObj.returnTo)) {
-        res.redirect(stateObj.returnTo);
-        return;
-      }
+    if (isString(stateObj.returnTo)) {
+      res.redirect(stateObj.returnTo);
+      return;
     }
 
     res.redirect("/api/login");
