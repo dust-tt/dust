@@ -336,7 +336,6 @@ impl Table {
     }
 }
 
-#[derive(Debug, Clone)]
 pub struct LocalTable {
     pub table: Table,
 }
