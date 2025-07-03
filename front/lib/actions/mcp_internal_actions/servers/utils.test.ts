@@ -14,6 +14,7 @@ import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 import { fetchTableDataSourceConfigurations, getCoreSearchArgs } from "./utils";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 
 describe("MCP Internal Actions Server Utils", () => {
   describe("fetchAgentTableConfigurations", () => {
@@ -22,6 +23,7 @@ describe("MCP Internal Actions Server Utils", () => {
       async (t: Transaction) => {
         const workspace = await WorkspaceFactory.basic();
         const otherWorkspace = await WorkspaceFactory.basic();
+        await GroupFactory.defaults(workspace);
         const { agentOwnerAuth: auth } = await setupAgentOwner(
           workspace,
           "admin"
@@ -104,6 +106,7 @@ describe("MCP Internal Actions Server Utils", () => {
       "should return table configurations when they belong to the workspace",
       async (t: Transaction) => {
         const workspace = await WorkspaceFactory.basic();
+        await GroupFactory.defaults(workspace);
         const { agentOwnerAuth: auth } = await setupAgentOwner(
           workspace,
           "admin"
