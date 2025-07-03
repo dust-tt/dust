@@ -1,10 +1,5 @@
-import { z } from "zod";
-
-// Define the schema locally since it might be missing from @dust-tt/client
-const GetMCPViewsRequestSchema = z.object({
-  spaceIds: z.array(z.string()),
-  availabilities: z.array(z.string()),
-});
+import type { MCPViewsRequestAvailabilityType } from "@dust-tt/client";
+import { GetMCPViewsRequestSchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -26,7 +21,7 @@ export type GetMCPServerViewsListResponseBody = {
 // We don't allow to fetch "auto_hidden_builder".
 const isAllowedAvailability = (
   availability: string
-): availability is "manual" | "auto" => {
+): availability is MCPViewsRequestAvailabilityType => {
   return availability === "manual" || availability === "auto";
 };
 
