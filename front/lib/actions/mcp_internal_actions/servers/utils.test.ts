@@ -6,6 +6,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
@@ -30,6 +31,8 @@ describe("MCP Internal Actions Server Utils", () => {
           otherSpace,
           t
         );
+        const mcpServerConfiguration =
+          await AgentMCPServerConfigurationFactory.create(auth, t);
 
         // Create a table configuration in a different workspace
         const tableConfig = await AgentTablesQueryConfigurationTable.create(
@@ -38,6 +41,7 @@ describe("MCP Internal Actions Server Utils", () => {
             tableId: "test_table",
             dataSourceId: otherFolder.dataSource.id,
             dataSourceViewId: otherFolder.id,
+            mcpServerConfigurationId: mcpServerConfiguration.id,
           },
           { transaction: t }
         );
@@ -104,6 +108,8 @@ describe("MCP Internal Actions Server Utils", () => {
 
         const space = await SpaceFactory.global(workspace, t);
         const folder = await DataSourceViewFactory.folder(workspace, space, t);
+        const mcpServerConfiguration =
+          await AgentMCPServerConfigurationFactory.create(auth, t);
 
         // Create a table configuration in the workspace
         const tableConfig = await AgentTablesQueryConfigurationTable.create(
@@ -112,6 +118,7 @@ describe("MCP Internal Actions Server Utils", () => {
             tableId: "test_table",
             dataSourceId: folder.dataSource.id,
             dataSourceViewId: folder.id,
+            mcpServerConfigurationId: mcpServerConfiguration.id,
           },
           { transaction: t }
         );
@@ -130,6 +137,7 @@ describe("MCP Internal Actions Server Utils", () => {
             tableId: "test_table",
             dataSourceId: otherFolder.dataSource.id,
             dataSourceViewId: otherFolder.id,
+            mcpServerConfigurationId: mcpServerConfiguration.id,
           },
           { transaction: t }
         );
