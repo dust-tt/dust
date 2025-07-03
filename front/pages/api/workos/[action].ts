@@ -1,3 +1,4 @@
+import { GenericServerException } from "@workos-inc/node";
 import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,6 +11,7 @@ import {
 } from "@app/lib/api/regions/config";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { getWorkOS } from "@app/lib/api/workos/client";
+import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
 import { setRegionForUser } from "@app/lib/api/workos/user";
 import { getFeatureFlags, getSession } from "@app/lib/auth";
@@ -95,6 +97,11 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       };
     }
 
+    const state = {
+      ...(returnTo ? { returnTo } : {}),
+      ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
+    };
+
     const authorizationUrl = getWorkOS().userManagement.getAuthorizationUrl({
       // Specify that we'd like AuthKit to handle the authentication flow
       provider: "authkit",
@@ -102,8 +109,9 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       clientId: config.getWorkOSClientId(),
       ...enterpriseParams,
       state:
-        returnTo &&
-        Buffer.from(JSON.stringify({ returnTo })).toString("base64"),
+        Object.keys(state).length > 0
+          ? Buffer.from(JSON.stringify(state)).toString("base64")
+          : undefined,
       ...(isValidScreenHint(screenHint) ? { screenHint } : {}),
       ...(isString(loginHint) ? { loginHint } : {}),
     });
@@ -116,6 +124,43 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
+async function authenticate(code: string, organizationId?: string) {
+  try {
+    return await getWorkOS().userManagement.authenticateWithCode({
+      code,
+      clientId: config.getWorkOSClientId(),
+      session: {
+        sealSession: true,
+        cookiePassword: config.getWorkOSCookiePassword(),
+      },
+    });
+  } catch (error) {
+    if (error instanceof GenericServerException) {
+      const errorData = error.rawData;
+      // In case we're coming from a login with organizationId, we need to complete the authentication with organization selection
+      if (organizationId && isOrganizationSelectionRequiredError(errorData)) {
+        const result =
+          await getWorkOS().userManagement.authenticateWithOrganizationSelection(
+            {
+              clientId: config.getWorkOSClientId(),
+              pendingAuthenticationToken:
+                errorData.pending_authentication_token,
+              organizationId,
+              session: {
+                sealSession: true,
+                cookiePassword: config.getWorkOSCookiePassword(),
+              },
+            }
+          );
+
+        return result;
+      }
+    }
+
+    throw error; // Re-throw other errors
+  }
+}
+
 async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
   const { code, state } = req.query;
   if (!code || typeof code !== "string") {
@@ -124,6 +169,10 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     );
   }
 
+  const stateObj = isString(state)
+    ? JSON.parse(Buffer.from(state, "base64").toString("utf-8"))
+    : {};
+
   try {
     const {
       user,
@@ -131,14 +180,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       authenticationMethod,
       sealedSession,
       accessToken,
-    } = await getWorkOS().userManagement.authenticateWithCode({
-      code,
-      clientId: config.getWorkOSClientId(),
-      session: {
-        sealSession: true,
-        cookiePassword: config.getWorkOSCookiePassword(),
-      },
-    });
+    } = await authenticate(code, stateObj.organizationId);
 
     if (!sealedSession) {
       throw new Error("Sealed session not found");
@@ -216,9 +258,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
       let returnTo = "/";
       try {
-        const stateObj = JSON.parse(
-          Buffer.from(state as string, "base64").toString("utf-8")
-        );
         if (stateObj.returnTo) {
           const url = new URL(stateObj.returnTo);
           returnTo = url.pathname + url.search;
