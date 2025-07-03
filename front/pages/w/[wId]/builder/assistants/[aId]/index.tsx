@@ -10,6 +10,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   LightAgentConfigurationType,
   PlanType,
@@ -43,11 +44,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    const configuration = await getAgentConfiguration(
-      auth,
-      context.params?.aId as string,
-      "light"
-    );
+    const [configuration] = await Promise.all([
+      getAgentConfiguration(auth, context.params?.aId as string, "light"),
+      MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
+    ]);
 
     if (!configuration) {
       return {

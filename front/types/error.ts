@@ -26,6 +26,7 @@ const API_ERROR_TYPES = [
   "data_source_view_not_found",
   "data_source_auth_error",
   "data_source_quota_error",
+  "workspace_quota_error",
   "data_source_document_not_found",
   "data_source_not_managed",
   "run_error",

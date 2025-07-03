@@ -1,4 +1,3 @@
-import type { BrowseConfigurationType } from "@app/lib/actions/browse";
 import type {
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
@@ -14,38 +13,17 @@ import type {
 } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
-import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
-import type {
-  RetrievalActionType,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/retrieval";
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
 import type {
-  WebsearchActionType,
-  WebsearchConfigurationType,
-} from "@app/lib/actions/websearch";
-import type {
   AgentActionType,
   AgentConfigurationType,
   TemplateAgentConfigurationType,
 } from "@app/types";
-
-export function isTablesQueryConfiguration(
-  arg: unknown
-): arg is TablesQueryConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "tables_query_configuration"
-  );
-}
 
 export function isDustAppRunConfiguration(
   arg: unknown
@@ -56,23 +34,6 @@ export function isDustAppRunConfiguration(
     "type" in arg &&
     arg.type === "dust_app_run_configuration"
   );
-}
-
-export function isRetrievalConfiguration(
-  arg: unknown
-): arg is RetrievalConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "retrieval_configuration"
-  );
-}
-
-export function isRetrievalActionType(
-  arg: AgentActionType
-): arg is RetrievalActionType {
-  return arg.type === "retrieval_action";
 }
 
 export function isProcessConfiguration(
@@ -86,17 +47,6 @@ export function isProcessConfiguration(
   );
 }
 
-export function isWebsearchConfiguration(
-  arg: unknown
-): arg is WebsearchConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "websearch_configuration"
-  );
-}
-
 export function isSearchLabelsConfiguration(
   arg: unknown
 ): arg is SearchLabelsConfigurationType {
@@ -105,17 +55,6 @@ export function isSearchLabelsConfiguration(
     typeof arg === "object" &&
     "type" in arg &&
     arg.type === "search_labels_configuration"
-  );
-}
-
-export function isReasoningConfiguration(
-  arg: unknown
-): arg is ReasoningConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "reasoning_configuration"
   );
 }
 
@@ -274,23 +213,6 @@ export function isClientSideMCPToolConfiguration(
   arg: ActionConfigurationType
 ): arg is ClientSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "clientSideMcpServerId" in arg;
-}
-
-export function isWebsearchActionType(
-  arg: AgentActionType
-): arg is WebsearchActionType {
-  return arg.type === "websearch_action";
-}
-
-export function isBrowseConfiguration(
-  arg: unknown
-): arg is BrowseConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "browse_configuration"
-  );
 }
 
 export function isConversationIncludeFileConfiguration(

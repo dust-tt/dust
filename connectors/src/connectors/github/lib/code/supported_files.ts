@@ -23,6 +23,7 @@ const EXTENSION_WHITELIST = [
   ".neon", // PHP configuration
   ".phtml", // PHP template
   ".twig", // PHP template
+  ".module", // Drupal module
 
   ".xhtml", // XML/HTML
   ".xsd", // XML Schema Definition

@@ -83,7 +83,7 @@ export async function incrementalSync(
 
     let opts: drive_v3.Params$Resource$Changes$List = {
       pageToken: nextPageToken,
-      pageSize: 500,
+      pageSize: 1000,
       fields: "*",
       includeItemsFromAllDrives: true,
       supportsAllDrives: true,

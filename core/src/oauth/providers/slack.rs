@@ -23,6 +23,11 @@ lazy_static! {
         env::var("OAUTH_SLACK_BOT_CLIENT_ID").expect("OAUTH_SLACK_BOT_CLIENT_ID must be set");
     static ref OAUTH_SLACK_BOT_CLIENT_SECRET: String = env::var("OAUTH_SLACK_BOT_CLIENT_SECRET")
         .expect("OAUTH_SLACK_BOT_CLIENT_SECRET must be set");
+    static ref OAUTH_SLACK_TOOLS_CLIENT_ID: String =
+        env::var("OAUTH_SLACK_TOOLS_CLIENT_ID").expect("OAUTH_SLACK_TOOLS_CLIENT_ID must be set");
+    static ref OAUTH_SLACK_TOOLS_CLIENT_SECRET: String =
+        env::var("OAUTH_SLACK_TOOLS_CLIENT_SECRET")
+            .expect("OAUTH_SLACK_TOOLS_CLIENT_SECRET must be set");
 }
 
 /// We support three Slack apps. Our default `connection` app (for data source connections) a
@@ -53,12 +58,10 @@ impl SlackConnectionProvider {
                 "{}:{}",
                 *OAUTH_SLACK_BOT_CLIENT_ID, *OAUTH_SLACK_BOT_CLIENT_SECRET
             )),
-            // TODO(spolu): the tools related use-cases are currently supported by the main app as
-            // connections but this will be migrated soon to a new app.
             SlackUseCase::PlatformActions | SlackUseCase::PersonalActions => {
                 general_purpose::STANDARD.encode(&format!(
                     "{}:{}",
-                    *OAUTH_SLACK_CLIENT_ID, *OAUTH_SLACK_CLIENT_SECRET
+                    *OAUTH_SLACK_TOOLS_CLIENT_ID, *OAUTH_SLACK_TOOLS_CLIENT_SECRET
                 ))
             }
         }
@@ -95,7 +98,7 @@ impl Provider for SlackConnectionProvider {
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header(
                 "Authorization",
-                format!("Basic {}", self.basic_auth(app_type)),
+                format!("Basic {}", self.basic_auth(app_type.clone())),
             )
             // Very important, this will *not* work with JSON body.
             .form(&[("code", code), ("redirect_uri", redirect_uri)]);
@@ -127,15 +130,15 @@ impl Provider for SlackConnectionProvider {
             }
         };
 
-        // Depending on the scopes we can get a bot or user access token.
-        // For simplicity, we only support one of them at a time, the user access token is preferred.
-
-        // Check if the raw_json contains an "authed_user" field.
-        let access_token = match raw_json["authed_user"].is_object() {
-            true => raw_json["authed_user"]["access_token"]
+        // For Bot and Connection we receive a bot token (acces_token). For platform_actions (admin
+        // setting up the MCP server) and personal_actions (personal tools setup) we receive a user
+        // token (authed_user.access_token).
+        let access_token = match app_type {
+            SlackUseCase::Connection | SlackUseCase::Bot => raw_json["access_token"]
                 .as_str()
                 .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?,
-            false => raw_json["access_token"]
+            SlackUseCase::PersonalActions | SlackUseCase::PlatformActions => raw_json
+                ["authed_user"]["access_token"]
                 .as_str()
                 .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?,
         };

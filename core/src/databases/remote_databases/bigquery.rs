@@ -285,7 +285,10 @@ impl BigQueryRemoteDatabase {
                             error: NestedResponseError { message, code, .. },
                         },
                 } => QueryDatabaseError::ExecutionError(
-                    format!("{} (code={})", message, code),
+                    format!(
+                        "Error getting query plan for original query, plan query={}, message={} (code={})",
+                        query, message, code
+                    ),
                     Some(query.to_string()),
                 ),
                 _ => QueryDatabaseError::GenericError(anyhow!("Error inserting job: {}", e)),
@@ -453,7 +456,7 @@ impl BigQueryRemoteDatabase {
                     )))?,
                 };
 
-                let mut view_definitions: Vec<(String, String)> = Vec::new();
+                let mut views_to_check: HashSet<String> = HashSet::new();
 
                 for row in &rows {
                     let mut view_name = None;
@@ -483,20 +486,16 @@ impl BigQueryRemoteDatabase {
                             .iter()
                             .any(|table_name| definition.contains(table_name))
                         {
-                            view_definitions.push((name, definition));
+                            views_to_check.insert(name);
                         }
                     }
                 }
 
-                for (view_name, view_definition) in view_definitions {
-                    // We still leverage the query plan to check if the view is a select query and the affected tables.
-                    let plan = self.get_query_plan(view_definition.as_str()).await?;
-                    if !plan.is_select_query {
-                        Err(QueryDatabaseError::ExecutionError(
-                            format!("Query for view {} is not a SELECT query", view_name),
-                            Some(view_definition),
-                        ))?
-                    }
+                for view_name in views_to_check {
+                    // Do a simple SELECT to check the query plan of the view and get the affected tables.
+                    // Do not use the view definition as if the view is an authorized view, it might use tables unauthorized directly for the service account.
+                    let query = format!("SELECT * FROM `{dataset_key}`.`{view_name}`");
+                    let plan = self.get_query_plan(query.as_str()).await?;
 
                     // Remove all affected tables from the remaining forbidden tables.
                     remaining_forbidden_tables.retain(|table| {

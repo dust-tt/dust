@@ -1,4 +1,5 @@
 import type {
+  AgentActionSpecificEvent,
   CreateConversationResponseType,
   GetAgentConfigurationsResponseType,
 } from "@dust-tt/client";
@@ -25,7 +26,11 @@ import Conversation from "../components/Conversation.js";
 import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
-import { sendNonInteractiveMessage, validateNonInteractiveFlags } from "./chat/nonInteractive.js";
+import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
+import {
+  sendNonInteractiveMessage,
+  validateNonInteractiveFlags,
+} from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -51,19 +56,26 @@ function getLastConversationItem<T extends ConversationItem>(
   return null;
 }
 
-
-const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message, conversationId }) => {
+const CliChat: FC<CliChatProps> = ({
+  sId: requestedSId,
+  agentSearch,
+  message,
+  conversationId,
+}) => {
   const [error, setError] = useState<string | null>(null);
-  
+
   // Validate flags usage
   useEffect(() => {
     validateNonInteractiveFlags(message, agentSearch, conversationId);
   }, [message, agentSearch, conversationId]);
+
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
   );
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
   const [conversationItems, setConversationItems] = useState<
     ConversationItem[]
   >([]);
@@ -76,6 +88,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message, co
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandCursorPosition, setCommandCursorPosition] = useState(0);
   const [isSelectingNewAgent, setIsSelectingNewAgent] = useState(false);
+  const [pendingApproval, setPendingApproval] =
+    useState<AgentActionSpecificEvent | null>(null);
+  const [approvalResolver, setApprovalResolver] = useState<
+    ((approved: boolean) => void) | null
+  >(null);
   const [pendingFiles, setPendingFiles] = useState<FileInfo[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
@@ -108,6 +125,37 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message, co
     await clearTerminal();
     setIsSelectingNewAgent(true);
   }, []);
+
+  const handleApprovalRequest = useCallback(
+    async (event: AgentActionSpecificEvent): Promise<boolean> => {
+      if (event.type !== "tool_approve_execution") {
+        return false;
+      }
+      // Auto-approve if stake is never_ask
+      if (event.stake === "never_ask") {
+        return true;
+      }
+
+      // For low/high stake, prompt user for approval
+      // TODO(adrien): Once cache is merged, allow to never_ask_again the low stake tools
+      return new Promise<boolean>((resolve) => {
+        setPendingApproval(event);
+        setApprovalResolver(() => resolve);
+      });
+    },
+    []
+  );
+
+  const handleApproval = useCallback(
+    (approved: boolean) => {
+      if (approvalResolver && pendingApproval) {
+        approvalResolver(approved);
+        setPendingApproval(null);
+        setApprovalResolver(null);
+      }
+    },
+    [approvalResolver, pendingApproval]
+  );
 
   const clearFiles = useCallback(() => {
     setUploadedFiles([]);
@@ -235,18 +283,20 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message, co
     if (!message || !selectedAgent) {
       return;
     }
-    
+
     // Wait for authentication to load
     if (isMeLoading) {
       return;
     }
-    
+
     // Check for authentication errors
     if (!me || meError) {
-      console.error(JSON.stringify({ 
-        error: "Authentication error",
-        details: meError || "Not authenticated"
-      }));
+      console.error(
+        JSON.stringify({
+          error: "Authentication error",
+          details: meError || "Not authenticated",
+        })
+      );
       process.exit(1);
     }
 
@@ -431,7 +481,9 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message, co
           userMessageId = messageRes.value.sId;
 
           // Get the conversation for streaming
-          const convRes = await dustClient.getConversation({ conversationId: currentConversationId });
+          const convRes = await dustClient.getConversation({
+            conversationId: currentConversationId,
+          });
           if (convRes.isErr()) {
             throw new Error(
               `Error retrieving conversation: ${convRes.error.message}`
@@ -573,6 +625,14 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message, co
             chainOfThoughtRef.current = "";
             contentRef.current = "";
             break;
+          } else if (event.type === "tool_approve_execution") {
+            const approved = await handleApprovalRequest(event);
+            await dustClient.validateAction({
+              conversationId: event.conversationId,
+              messageId: event.messageId,
+              actionId: event.actionId,
+              approved: approved ? "approved" : "rejected",
+            });
           }
         }
       } catch (error) {
@@ -643,7 +703,11 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message, co
 
   // Handle keyboard events.
   useInput((input, key) => {
-    // Skip all input handling when selecting a new agent or showing file selector
+    // Skip input handling when there's a pending approval
+    if (pendingApproval) {
+      return;
+    }
+
     if (!selectedAgent || isSelectingNewAgent || showFileSelector) {
       return;
     }
@@ -1088,6 +1152,24 @@ const CliChat: FC<CliChatProps> = ({ sId: requestedSId, agentSearch, message, co
   }
 
   const mentionPrefix = selectedAgent ? `@${selectedAgent.name} ` : "";
+
+  // Show approval prompt if pending
+  if (pendingApproval) {
+    if (pendingApproval.type !== "tool_approve_execution") {
+      setError(`Unexpected pending approval type: ${pendingApproval.type}`);
+      return null; // Exit early if we encounter an unexpected type
+    }
+
+    return (
+      <ToolApprovalSelector
+        event={pendingApproval}
+        onApproval={(approved) => {
+          handleApproval(approved);
+          void clearTerminal();
+        }}
+      />
+    );
+  }
 
   // Main chat UI
   return (

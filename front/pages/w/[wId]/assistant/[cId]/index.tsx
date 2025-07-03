@@ -2,11 +2,11 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
+import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -82,14 +82,7 @@ export default function AssistantConversation({
       // Force re-render by setting a new key with a random number.
       setConversationKey(`new_${Math.random() * 1000}`);
 
-      // Scroll to the top of the conversation container when clicking on "new".
-      const mainTag = document.getElementById(
-        CONVERSATION_PARENT_SCROLL_DIV_ID["page"]
-      );
-
-      if (mainTag) {
-        mainTag.scrollTo(0, 0);
-      }
+      document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
     }
 
     const agentId = assistant ?? null;

@@ -89,7 +89,7 @@ export async function updateSpacePermissions({
 
     const requestedGroupIds = await getAgentConfigurationGroupIdsFromActions(
       auth,
-      ac.actions
+      { actions: ac.actions }
     );
 
     const requestedGroupIdsToSIds = requestedGroupIds.map((gs) =>

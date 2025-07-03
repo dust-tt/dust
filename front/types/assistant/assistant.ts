@@ -1313,7 +1313,7 @@ export enum GLOBAL_AGENTS_SID {
   DEEPSEEK_R1 = "deepseek-r1",
 }
 
-export function isGlobalAgentId(sId: string): boolean {
+export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
   return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
 }
 

@@ -2,7 +2,10 @@ import fs from "fs";
 import path from "path";
 import { promisify } from "util";
 
-import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
+import {
+  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+  DEFAULT_WEBSEARCH_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
@@ -14,6 +17,7 @@ import {
   SUGGEST_AGENTS_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agent_metadata";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -63,11 +67,16 @@ const readFileAsync = promisify(fs.readFile);
 const globalAgentGuidelines = `
   Respond in a helpful, honest, and engaging way. 
   Unless instructed to be brief, present answers with clear structure and formatting to improve readability: use headings, bullet points, and examples when appropriate.
-  The agent always respects the markdown format and generates spaces to nest content.
+  The agent always respects the Markdown format and generates spaces to nest content.
 
   Only use visualization if it is strictly necessary to visualize data or if it was explicitly requested by the user.
-  Do not use visualization if markdown is sufficient.
+  Do not use visualization if Markdown is sufficient.
   `;
+
+const globalAgentWebSearchGuidelines = `
+  If the user's question requires information that is recent and likely to be found on the public internet, the agent should use the internet to answer the question. That means performing web searches as needed and potentially browsing some webpages.
+  If the user's query requires neither internal company data nor recent public knowledge, the agent can answer without using any tool.
+`;
 
 // Used when returning an agent with status 'disabled_by_admin'
 const dummyModelConfiguration = {
@@ -129,10 +138,10 @@ async function getDataSourcesAndWorkspaceIdForGlobalAgents(
 }
 
 function _getDefaultWebActionsForGlobalAgent({
-  agentSid,
+  agentId,
   webSearchBrowseMCPServerView,
 }: {
-  agentSid: GLOBAL_AGENTS_SID;
+  agentId: GLOBAL_AGENTS_SID;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): ServerSideMCPServerConfigurationType[] {
   if (!webSearchBrowseMCPServerView) {
@@ -142,10 +151,12 @@ function _getDefaultWebActionsForGlobalAgent({
   return [
     {
       id: -1,
-      sId: agentSid + "-websearch-browse-action",
+      sId: agentId + "-websearch-browse-action",
       type: "mcp_server_configuration",
-      name: "web_search_&_browse" satisfies InternalMCPServerNameType,
-      description: null,
+      name: DEFAULT_WEBSEARCH_ACTION_NAME satisfies InternalMCPServerNameType,
+      // Putting a description here is important as it prevents the global agent being detected as
+      // a legacy agent (see isLegacyAgent) and being capped to 1 action.
+      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
       dataSources: null,
@@ -210,7 +221,7 @@ function _getAgentRouterToolsConfiguration(
  * GLOBAL AGENTS CONFIGURATION
  *
  * To add an agent:
- * - Add a unique SID in GLOBAL_AGENTS_SID (lib/assitsant.ts)
+ * - Add a unique SID in GLOBAL_AGENTS_SID (lib/assistant.ts)
  * - Add a case in getGlobalAgent with associated function.
  */
 function _getHelperGlobalAgent({
@@ -284,7 +295,7 @@ function _getHelperGlobalAgent({
 
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
-      agentSid: GLOBAL_AGENTS_SID.HELPER,
+      agentId: GLOBAL_AGENTS_SID.HELPER,
       webSearchBrowseMCPServerView,
     })
   );
@@ -300,16 +311,19 @@ function _getHelperGlobalAgent({
     )
   );
 
+  const sId = GLOBAL_AGENTS_SID.HELPER;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.HELPER,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "help",
-    description: "Help on how to use Dust",
+    name: metadata.name,
+    description: metadata.description,
     instructions: prompt + globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/helper_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status: status,
     userFavorite: false,
     scope: "global",
@@ -333,16 +347,20 @@ function _getGPT35TurboGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "active";
+
+  const sId = GLOBAL_AGENTS_SID.GPT35_TURBO;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.GPT35_TURBO,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "gpt3.5-turbo",
-    description: GPT_3_5_TURBO_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/gpt3_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -353,7 +371,7 @@ function _getGPT35TurboGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.GPT35_TURBO,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -384,16 +402,19 @@ function _getGPT4GlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.GPT4;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.GPT4,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "gpt4",
-    description: GPT_4_1_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/gpt4_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -404,7 +425,7 @@ function _getGPT4GlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.GPT4,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -420,9 +441,11 @@ function _getGPT4GlobalAgent({
 function _getO3MiniGlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -433,16 +456,19 @@ function _getO3MiniGlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.O3_MINI;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.O3_MINI,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o3-mini",
-    description: O3_MINI_HIGH_REASONING_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -451,7 +477,12 @@ function _getO3MiniGlobalAgent({
       modelId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -464,25 +495,30 @@ function _getO3MiniGlobalAgent({
 function _getO1GlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.O1;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.O1,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o1",
-    description: O1_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -491,7 +527,12 @@ function _getO1GlobalAgent({
       modelId: O1_MODEL_CONFIG.modelId,
       temperature: 1, // 1 is forced for O1
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: false,
     templateId: null,
@@ -513,16 +554,19 @@ function _getO1MiniGlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.O1_MINI;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.O1_MINI,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o1-mini",
-    description: O1_MINI_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -545,25 +589,30 @@ function _getO1MiniGlobalAgent({
 function _getO1HighReasoningGlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.O1_HIGH_REASONING;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.O1_HIGH_REASONING,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o1-high-reasoning",
-    description: O1_HIGH_REASONING_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -573,7 +622,12 @@ function _getO1HighReasoningGlobalAgent({
       temperature: 1, // 1 is forced for O1
       reasoningEffort: O1_HIGH_REASONING_MODEL_CONFIG.reasoningEffort,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: false,
     templateId: null,
@@ -587,25 +641,30 @@ function _getO1HighReasoningGlobalAgent({
 function _getO3GlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.O3;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.O3,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "o3",
-    description: O3_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -614,7 +673,12 @@ function _getO3GlobalAgent({
       modelId: O3_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -631,16 +695,18 @@ function _getClaudeInstantGlobalAgent({
   settings: GlobalAgentSettings | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.CLAUDE_INSTANT);
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-instant",
-    description: CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -672,16 +738,18 @@ function _getClaude2GlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.CLAUDE_2);
+
   return {
     id: -1,
     sId: GLOBAL_AGENTS_SID.CLAUDE_2,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-2",
-    description: CLAUDE_2_DEFAULT_MODEL_CONFIG.description,
+    name: metadata.name,
+    description: metadata.description,
     instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -704,21 +772,26 @@ function _getClaude2GlobalAgent({
 
 function _getClaude3HaikuGlobalAgent({
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
 
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-3-haiku",
-    description: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -727,7 +800,12 @@ function _getClaude3HaikuGlobalAgent({
       modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -741,25 +819,30 @@ function _getClaude3HaikuGlobalAgent({
 function _getClaude3OpusGlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_3_OPUS;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-3-opus",
-    description: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -768,7 +851,12 @@ function _getClaude3OpusGlobalAgent({
       modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -782,25 +870,30 @@ function _getClaude3OpusGlobalAgent({
 function _getClaude3GlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_3_SONNET;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-3.5",
-    description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -809,7 +902,12 @@ function _getClaude3GlobalAgent({
       modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -823,25 +921,30 @@ function _getClaude3GlobalAgent({
 function _getClaude4SonnetGlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_4_SONNET;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_4_SONNET,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-4-sonnet",
-    description: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -850,7 +953,12 @@ function _getClaude4SonnetGlobalAgent({
       modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -864,25 +972,30 @@ function _getClaude4SonnetGlobalAgent({
 function _getClaude3_7GlobalAgent({
   auth,
   settings,
+  webSearchBrowseMCPServerView,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettings | null;
+  webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-3.7",
-    description: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -891,7 +1004,12 @@ function _getClaude3_7GlobalAgent({
       modelId: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [],
+    actions: [
+      ..._getDefaultWebActionsForGlobalAgent({
+        agentId: sId,
+        webSearchBrowseMCPServerView,
+      }),
+    ],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
@@ -916,16 +1034,19 @@ function _getMistralLargeGlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.MISTRAL_LARGE;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "mistral",
-    description: MISTRAL_LARGE_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -936,7 +1057,7 @@ function _getMistralLargeGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.MISTRAL_LARGE,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -964,16 +1085,19 @@ function _getMistralMediumGlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.MISTRAL_MEDIUM;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "mistral-medium",
-    description: MISTRAL_MEDIUM_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -984,7 +1108,7 @@ function _getMistralMediumGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.MISTRAL_MEDIUM,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1006,16 +1130,20 @@ function _getMistralSmallGlobalAgent({
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
+
+  const sId = GLOBAL_AGENTS_SID.MISTRAL_SMALL;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "mistral-small",
-    description: MISTRAL_SMALL_MODEL_CONFIG.description,
-    instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/mistral_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -1026,7 +1154,7 @@ function _getMistralSmallGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.MISTRAL_SMALL,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1053,16 +1181,20 @@ function _getGeminiProGlobalAgent({
   if (!auth.isUpgraded()) {
     status = "disabled_free_workspace";
   }
+
+  const sId = GLOBAL_AGENTS_SID.GEMINI_PRO;
+  const metadata = getGlobalAgentMetadata(sId);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.GEMINI_PRO,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "gemini-pro",
-    description: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.description,
-    instructions: "",
-    pictureUrl: "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    instructions: `${globalAgentGuidelines}\n${globalAgentWebSearchGuidelines}`,
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -1073,7 +1205,7 @@ function _getGeminiProGlobalAgent({
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.GEMINI_PRO,
+        agentId: sId,
         webSearchBrowseMCPServerView,
       }),
     ],
@@ -1099,17 +1231,19 @@ function _getDeepSeekR1GlobalAgent({
     status = "disabled_free_workspace";
   }
 
+  const sId = GLOBAL_AGENTS_SID.DEEPSEEK_R1;
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DEEPSEEK_R1);
+
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DEEPSEEK_R1,
+    sId,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "DeepSeek R1",
-    description:
-      "DeepSeek's reasoning model. Served from a US inference provider. Cannot use any tools",
+    name: metadata.name,
+    description: metadata.description,
     instructions: globalAgentGuidelines,
-    pictureUrl: "https://dust.tt/static/systemavatar/deepseek_avatar_full.png",
+    pictureUrl: metadata.pictureUrl,
     status,
     scope: "global",
     userFavorite: false,
@@ -1234,7 +1368,7 @@ function _getManagedDataSourceAgent(
       id: -1,
       sId: agentId + "-search-action",
       type: "mcp_server_configuration",
-      name: DEFAULT_RETRIEVAL_ACTION_NAME,
+      name: "search_data_sources",
       description: `The user's ${connectorProvider} data source.`,
       mcpServerViewId: searchMCPServerView.sId,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
@@ -1273,13 +1407,16 @@ function _getGoogleDriveGlobalAgent(
     searchMCPServerView: MCPServerViewResource | null;
   }
 ): AgentConfigurationType | null {
+  const agentId = GLOBAL_AGENTS_SID.GOOGLE_DRIVE;
+  const metadata = getGlobalAgentMetadata(GLOBAL_AGENTS_SID.GOOGLE_DRIVE);
+
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "google_drive",
-    agentId: GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
-    name: "googledrive",
-    description: "An agent with context on your Google Drives.",
-    pictureUrl: "https://dust.tt/static/systemavatar/drive_avatar_full.png",
+    agentId,
+    name: metadata.name,
+    description: metadata.description,
+    pictureUrl: metadata.pictureUrl,
     instructions:
       "Assist the user based on the retrieved data from their Google Drives." +
       `\n${BREVITY_PROMPT}`,
@@ -1300,13 +1437,16 @@ function _getSlackGlobalAgent(
     searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
+  const agentId = GLOBAL_AGENTS_SID.SLACK;
+  const metadata = getGlobalAgentMetadata(agentId);
+
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "slack",
-    agentId: GLOBAL_AGENTS_SID.SLACK,
-    name: "slack",
-    description: "An agent with context on your Slack Channels.",
-    pictureUrl: "https://dust.tt/static/systemavatar/slack_avatar_full.png",
+    agentId,
+    name: metadata.name,
+    description: metadata.description,
+    pictureUrl: metadata.pictureUrl,
     instructions:
       "Assist the user based on the retrieved data from their Slack channels." +
       `\n${BREVITY_PROMPT}`,
@@ -1327,13 +1467,16 @@ function _getGithubGlobalAgent(
     searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
+  const agentId = GLOBAL_AGENTS_SID.GITHUB;
+  const metadata = getGlobalAgentMetadata(agentId);
+
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "github",
-    agentId: GLOBAL_AGENTS_SID.GITHUB,
-    name: "github",
-    description: "An agent with context on your Github Issues and Discussions.",
-    pictureUrl: "https://dust.tt/static/systemavatar/github_avatar_full.png",
+    agentId,
+    name: metadata.name,
+    description: metadata.description,
+    pictureUrl: metadata.pictureUrl,
     instructions:
       "Assist the user based on the retrieved data from their Github Issues and Discussions." +
       `\n${BREVITY_PROMPT}`,
@@ -1354,13 +1497,16 @@ function _getNotionGlobalAgent(
     searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
+  const agentId = GLOBAL_AGENTS_SID.NOTION;
+  const metadata = getGlobalAgentMetadata(agentId);
+
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "notion",
     agentId: GLOBAL_AGENTS_SID.NOTION,
-    name: "notion",
-    description: "An agent with context on your Notion Spaces.",
-    pictureUrl: "https://dust.tt/static/systemavatar/notion_avatar_full.png",
+    name: metadata.name,
+    description: metadata.description,
+    pictureUrl: metadata.pictureUrl,
     instructions:
       "Assist the user based on the retrieved data from their Notion Spaces." +
       `\n${BREVITY_PROMPT}`,
@@ -1381,13 +1527,16 @@ function _getIntercomGlobalAgent(
     searchMCPServerView: MCPServerViewResource | null;
   }
 ) {
+  const agentId = GLOBAL_AGENTS_SID.INTERCOM;
+  const metadata = getGlobalAgentMetadata(agentId);
+
   return _getManagedDataSourceAgent(auth, {
     settings,
     connectorProvider: "intercom",
-    agentId: GLOBAL_AGENTS_SID.INTERCOM,
-    name: "intercom",
-    description: "An agent with context on your Intercom Help Center data.",
-    pictureUrl: "https://dust.tt/static/systemavatar/intercom_avatar_full.png",
+    agentId,
+    name: metadata.name,
+    description: metadata.description,
+    pictureUrl: metadata.pictureUrl,
     instructions:
       "Assist the user based on the retrieved data from their Intercom Workspace." +
       `\n${BREVITY_PROMPT}`,
@@ -1433,26 +1582,26 @@ function _getDustGlobalAgent(
   const instructions = `${globalAgentGuidelines}
 The agent should not provide additional information or content that the user did not ask for.
 
-# When the user asks a questions to the agent, the agent should analyze the situation as follows:
+# When the user asks a question to the agent, the agent should analyze the situation as follows:
 
 1. If the user's question requires information that is likely private or internal to the company
    (and therefore unlikely to be found on the public internet or within the agent's own knowledge),
    the agent should search in the company's internal data sources to answer the question.
-   Searching in all datasources is the default behavior unless the user has specified the location
+   Searching in all datasources is the default behavior unless the user has specified the location,
    in which case it is better to search only on the specific data source.
    It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
    If no relevant information is found but the user's question seems to be internal to the company,
    the agent should use the ${SUGGEST_AGENTS_TOOL_NAME} tool to suggest an agent that might be able to handle the request.
 
-2. If the users's question requires information that is recent and likely to be found on the public internet,
-   the agent should use the internet to answer the question.
-   That means performing a websearch and potentially browse some webpages.
+2. If the user's question requires information that is recent and likely to be found on the public 
+   internet, the agent should use the internet to answer the question.
+   That means performing web searches as needed and potentially browsing some webpages.
 
 3. If it is not obvious whether the information would be included in the internal company data sources
    or on the public internet, the agent should both search the internal company data sources
    and the public internet before answering the user's question.
 
-4. If the user's query require neither internal company data or recent public knowledge,
+4. If the user's query requires neither internal company data nor recent public knowledge,
    the agent is allowed to answer without using any tool.`;
 
   const dustAgent = {
@@ -1485,7 +1634,7 @@ The agent should not provide additional information or content that the user did
       status: "disabled_by_admin",
       actions: [
         ..._getDefaultWebActionsForGlobalAgent({
-          agentSid: GLOBAL_AGENTS_SID.DUST,
+          agentId: GLOBAL_AGENTS_SID.DUST,
           webSearchBrowseMCPServerView,
         }),
       ],
@@ -1578,7 +1727,7 @@ The agent should not provide additional information or content that the user did
 
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
-      agentSid: GLOBAL_AGENTS_SID.DUST,
+      agentId: GLOBAL_AGENTS_SID.DUST,
       webSearchBrowseMCPServerView,
     }),
     ..._getAgentRouterToolsConfiguration(
@@ -1609,7 +1758,7 @@ function getGlobalAgent({
   sId,
   preFetchedDataSources,
   helperPromptInstance,
-  globaAgentSettings,
+  globalAgentSettings,
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
   searchMCPServerView,
@@ -1618,13 +1767,13 @@ function getGlobalAgent({
   sId: string | number;
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   helperPromptInstance: HelperAssistantPrompt;
-  globaAgentSettings: GlobalAgentSettings[];
+  globalAgentSettings: GlobalAgentSettings[];
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
   searchMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType | null {
   const settings =
-    globaAgentSettings.find((settings) => settings.agentId === sId) ?? null;
+    globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
 
   let agentConfiguration: AgentConfigurationType | null = null;
   switch (sId) {
@@ -1651,44 +1800,71 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.O1:
-      agentConfiguration = _getO1GlobalAgent({ auth, settings });
+      agentConfiguration = _getO1GlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.O1_MINI:
       agentConfiguration = _getO1MiniGlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
-      agentConfiguration = _getO1HighReasoningGlobalAgent({ auth, settings });
+      agentConfiguration = _getO1HighReasoningGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.O3_MINI:
-      agentConfiguration = _getO3MiniGlobalAgent({ auth, settings });
+      agentConfiguration = _getO3MiniGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.O3:
-      agentConfiguration = _getO3GlobalAgent({ auth, settings });
+      agentConfiguration = _getO3GlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_4_SONNET:
-      agentConfiguration = _getClaude4SonnetGlobalAgent({ auth, settings });
+      agentConfiguration = _getClaude4SonnetGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
-      agentConfiguration = _getClaude3OpusGlobalAgent({ auth, settings });
+      agentConfiguration = _getClaude3OpusGlobalAgent({
+        auth,
+        settings,
+        webSearchBrowseMCPServerView,
+      });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
       agentConfiguration = _getClaude3GlobalAgent({
         auth,
         settings,
+        webSearchBrowseMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
       agentConfiguration = _getClaude3HaikuGlobalAgent({
         settings,
+        webSearchBrowseMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
       agentConfiguration = _getClaude3_7GlobalAgent({
         auth,
         settings,
+        webSearchBrowseMCPServerView,
       });
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_2:
@@ -1781,7 +1957,7 @@ function getGlobalAgent({
 
 // This is the list of global agents that we want to support in past conversations but we don't want
 // to be accessible to users moving forward.
-const RETIRED_GLOABL_AGENTS_SID = [
+const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.CLAUDE_2,
   GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
   GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
@@ -1820,7 +1996,7 @@ export async function getGlobalAgents(
 
   const [
     preFetchedDataSources,
-    globaAgentSettings,
+    globalAgentSettings,
     helperPromptInstance,
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
@@ -1859,7 +2035,7 @@ export async function getGlobalAgents(
   let agentsIdsToFetch =
     agentIds ??
     Object.values(GLOBAL_AGENTS_SID).filter(
-      (sId) => !RETIRED_GLOABL_AGENTS_SID.includes(sId)
+      (sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId)
     );
 
   const flags = await getFeatureFlags(owner);
@@ -1896,7 +2072,7 @@ export async function getGlobalAgents(
       sId,
       preFetchedDataSources,
       helperPromptInstance,
-      globaAgentSettings,
+      globalAgentSettings,
       agentRouterMCPServerView,
       webSearchBrowseMCPServerView,
       searchMCPServerView,

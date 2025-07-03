@@ -46,15 +46,9 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspace ? new this(this.model, workspace.get()) : null;
   }
 
-  static async fetchByNameAndId({
-    name,
-    sId: wId,
-  }: {
-    name: string;
-    sId: string;
-  }): Promise<WorkspaceResource | null> {
+  static async fetchByName(name: string): Promise<WorkspaceResource | null> {
     const workspace = await this.model.findOne({
-      where: { name, sId: wId },
+      where: { name },
     });
     return workspace ? new this(this.model, workspace.get()) : null;
   }

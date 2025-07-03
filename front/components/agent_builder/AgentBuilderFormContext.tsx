@@ -1,8 +1,7 @@
-import React from "react";
-import type { FieldValues, UseFormReturn } from "react-hook-form";
-import { FormProvider } from "react-hook-form";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 
+import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
 import { EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 import {
   MODEL_IDS,
@@ -30,13 +29,64 @@ export type AgentBuilderGenerationSettings = z.infer<
   typeof generationSettingsSchema
 >;
 
-const actionSchema = z.object({
+const tagsFilterSchema = z
+  .object({
+    in: z.array(z.string()),
+    not: z.array(z.string()),
+    mode: z.enum(["custom", "auto"]),
+  })
+  .nullable();
+
+const dataSourceViewSelectionConfigurationSchema = z.object({
+  dataSourceView: z.custom<DataSourceViewType>(),
+  selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
+  isSelectAll: z.boolean(),
+  tagsFilter: tagsFilterSchema,
+});
+
+const searchActionConfigurationSchema = z.object({
+  type: z.literal("SEARCH"),
+  dataSourceConfigurations: z.record(
+    z.string(),
+    dataSourceViewSelectionConfigurationSchema
+  ),
+});
+
+const dataVisualizationActionConfigurationSchema = z.object({
+  type: z.literal("DATA_VISUALIZATION"),
+});
+
+const timeFrameSchema = z
+  .object({
+    duration: z.number().min(1),
+    unit: z.enum(["hour", "day", "week", "month", "year"]),
+  })
+  .nullable();
+
+const includeDataActionConfigurationSchema = z.object({
+  type: z.literal("INCLUDE_DATA"),
+  dataSourceConfigurations: z.record(
+    z.string(),
+    dataSourceViewSelectionConfigurationSchema
+  ),
+  timeFrame: timeFrameSchema,
+});
+
+const extractDataActionConfigurationSchema = z.object({
+  type: z.literal("EXTRACT_DATA"),
+  dataSourceConfigurations: z.record(
+    z.string(),
+    dataSourceViewSelectionConfigurationSchema
+  ),
+  timeFrame: timeFrameSchema,
+  jsonSchema: z.custom<JSONSchema>().nullable(),
+});
+
+const baseActionSchema = z.object({
   id: z.string(),
-  type: z.string(),
   name: z.string(),
   description: z.string(),
-  configuration: z.record(z.unknown()),
-  noConfigurationRequired: z.boolean().optional(),
+  noConfigurationRequired: z.boolean(),
 });
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
@@ -46,6 +96,33 @@ const tagSchema = z.object({
   name: z.string(),
   kind: TAG_KINDS,
 });
+
+const searchActionSchema = baseActionSchema.extend({
+  type: z.literal("SEARCH"),
+  configuration: searchActionConfigurationSchema,
+});
+
+const dataVisualizationActionSchema = baseActionSchema.extend({
+  type: z.literal("DATA_VISUALIZATION"),
+  configuration: dataVisualizationActionConfigurationSchema,
+});
+
+const includeDataActionSchema = baseActionSchema.extend({
+  type: z.literal("INCLUDE_DATA"),
+  configuration: includeDataActionConfigurationSchema,
+});
+
+const extractDataActionSchema = baseActionSchema.extend({
+  type: z.literal("EXTRACT_DATA"),
+  configuration: extractDataActionConfigurationSchema,
+});
+
+const actionSchema = z.discriminatedUnion("type", [
+  searchActionSchema,
+  dataVisualizationActionSchema,
+  includeDataActionSchema,
+  extractDataActionSchema,
+]);
 
 const agentSettingsSchema = z.object({
   name: z.string().min(1, "Agent name is required"),

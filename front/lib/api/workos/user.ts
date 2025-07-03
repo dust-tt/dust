@@ -23,7 +23,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, Ok, sha256 } from "@app/types";
+import { Err, normalizeError, Ok, sha256 } from "@app/types";
 
 export type SessionCookie = {
   sessionData: string;
@@ -48,12 +48,12 @@ export async function getWorkOSSession(
     if (result.cookie === "") {
       res.setHeader("Set-Cookie", [
         "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
-        `sessionType=workos; Path=/; Secure; SameSite=Lax`,
+        "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
       ]);
     } else if (result.cookie) {
       res.setHeader("Set-Cookie", [
-        `workos_session=${result.cookie}; Path=/; HttpOnly; Secure; SameSite=Lax`,
-        `sessionType=workos; Path=/; Secure; SameSite=Lax`,
+        `workos_session=${result.cookie}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+        `sessionType=workos; Path=/; Secure; SameSite=Lax; Max-Age=2592000`,
       ]);
     }
 
@@ -315,4 +315,16 @@ export async function fetchOrCreateWorkOSUserWithEmail({
   localLogger.info("Found WorkOS user for webhook event.");
 
   return new Ok(existingUser);
+}
+
+export async function deleteUserFromWorkOS(
+  userId: string
+): Promise<Result<undefined, Error>> {
+  try {
+    await getWorkOS().userManagement.deleteUser(userId);
+    return new Ok(undefined);
+  } catch (error) {
+    logger.error({ error }, "Failed to delete user from WorkOS");
+    return new Err(normalizeError(error));
+  }
 }

@@ -17,16 +17,11 @@ import type {
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isBrowseConfiguration,
   isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
   isMCPToolConfiguration,
   isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
   isSearchLabelsConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
@@ -40,7 +35,8 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
-import { getEmulatedActionsAndJITServers } from "@app/lib/api/assistant/jit_actions";
+import { getJITServers } from "@app/lib/api/assistant/jit_actions";
+import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
@@ -48,9 +44,7 @@ import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
-import type { KillSwitchType } from "@app/lib/poke/types";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
-import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -100,9 +94,8 @@ export async function* runAgent(
   | AgentMessageSuccessEvent,
   void
 > {
-  const [fullConfiguration, killSwitches] = await Promise.all([
+  const [fullConfiguration] = await Promise.all([
     getAgentConfiguration(auth, configuration.sId, "full"),
-    KillSwitchResource.listEnabledKillSwitches(),
   ]);
 
   if (!fullConfiguration) {
@@ -121,8 +114,7 @@ export async function* runAgent(
     fullConfiguration,
     conversation,
     userMessage,
-    agentMessage,
-    killSwitches
+    agentMessage
   );
 
   for await (const event of stream) {
@@ -135,8 +127,7 @@ async function* runMultiActionsAgentLoop(
   configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
-  agentMessage: AgentMessageType,
-  killSwitches: KillSwitchType[]
+  agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
   | AgentActionSpecificEvent
@@ -233,7 +224,6 @@ async function* runMultiActionsAgentLoop(
                 stepActionIndex: index,
                 stepActions: event.actions.map((a) => a.action),
                 citationsRefsOffset,
-                killSwitches,
               });
             }
           );
@@ -398,13 +388,11 @@ async function* runMultiActionsAgent(
     }
   }
 
-  const { emulatedActions, jitServers } = await getEmulatedActionsAndJITServers(
-    auth,
-    {
-      agentMessage,
-      conversation,
-    }
-  );
+  const attachments = listAttachments(conversation);
+  const jitServers = await getJITServers(auth, {
+    conversation,
+    attachments,
+  });
 
   // Get client-side MCP server configurations from user message context.
   const clientSideMCPActionConfigurations =
@@ -533,10 +521,6 @@ async function* runMultiActionsAgent(
     }))
   );
 
-  // Prepend emulated actions to the current agent message before rendering the conversation for the
-  // model.
-  agentMessage.actions = emulatedActions.concat(agentMessage.actions);
-
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
@@ -545,11 +529,6 @@ async function* runMultiActionsAgent(
     tools,
     allowedTokenCount: model.contextSize - model.generationTokensCount,
   });
-
-  // Scrub emulated actions from the agent message after rendering.
-  agentMessage.actions = agentMessage.actions.filter(
-    (a) => !emulatedActions.includes(a)
-  );
 
   if (modelConversationRes.isErr()) {
     logger.error(
@@ -1123,7 +1102,6 @@ async function* runAction(
     stepActionIndex,
     stepActions,
     citationsRefsOffset,
-    killSwitches,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: ActionConfigurationType;
@@ -1137,7 +1115,6 @@ async function* runAction(
     stepActionIndex: number;
     stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
-    killSwitches: KillSwitchType[];
   }
 ): AsyncGenerator<
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
@@ -1145,78 +1122,7 @@ async function* runAction(
 > {
   const now = Date.now();
 
-  if (isRetrievalConfiguration(actionConfiguration)) {
-    if (killSwitches.includes("retrieval_action")) {
-      yield {
-        type: "agent_error",
-        created: now,
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "retrieval_action_disabled",
-          message: "Retrieval action is temporarily disabled",
-          metadata: null,
-        },
-      };
-      return;
-    }
-
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(
-      auth,
-      {
-        agentConfiguration: configuration,
-        conversation,
-        agentMessage,
-        rawInputs: inputs,
-        functionCallId,
-        step,
-      },
-      {
-        stepActionIndex,
-        stepActions,
-        citationsRefsOffset,
-      }
-    );
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "retrieval_params":
-          yield event;
-          break;
-        case "retrieval_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "retrieval_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isDustAppRunConfiguration(actionConfiguration)) {
+  if (isDustAppRunConfiguration(actionConfiguration)) {
     if (!specification) {
       logger.error(
         {
@@ -1296,54 +1202,6 @@ async function* runAction(
           assertNever(event);
       }
     }
-  } else if (isTablesQueryConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "tables_query_started":
-        case "tables_query_model_output":
-          yield event;
-          break;
-        case "tables_query_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "tables_query_output":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-        default:
-          assertNever(event);
-      }
-    }
   } else if (isProcessConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
@@ -1376,110 +1234,6 @@ async function* runAction(
           };
           return;
         case "process_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isWebsearchConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(
-      auth,
-      {
-        agentConfiguration: configuration,
-        conversation,
-        agentMessage,
-        rawInputs: inputs,
-        functionCallId,
-        step,
-      },
-      {
-        stepActionIndex,
-        stepActions,
-        citationsRefsOffset,
-      }
-    );
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "websearch_params":
-          yield event;
-          break;
-        case "websearch_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "websearch_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isBrowseConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "browse_params":
-          yield event;
-          break;
-        case "browse_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "browse_success":
           yield {
             type: "agent_action_success",
             created: event.created,
@@ -1541,52 +1295,6 @@ async function* runAction(
           agentMessage.actions.push(event.action);
           break;
 
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isReasoningConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "reasoning_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "reasoning_started":
-        case "reasoning_thinking":
-        case "reasoning_tokens":
-          yield event;
-          break;
-        case "reasoning_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-          agentMessage.actions.push(event.action);
-          break;
         default:
           assertNever(event);
       }

@@ -32,6 +32,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   disallow_agent_creation_to_users: {
     description: "Restrict agent creation to admins only",
   },
+  enforce_datasource_quota: {
+    description:
+      "Enforce datasource quota limits per seat (cf. pricing plan) for synced content",
+  },
   exploded_tables_query: {
     description: "Enhanced table querying with exploded views",
   },
@@ -79,9 +83,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   show_debug_tools: {
     description: "Display debug tools in the interface",
-  },
-  slack_tool: {
-    description: "Slack integration tool",
   },
   usage_data_api: {
     description: "API for accessing usage data",

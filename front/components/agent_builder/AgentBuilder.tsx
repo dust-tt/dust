@@ -11,6 +11,7 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -23,6 +24,7 @@ import {
 
 export default function AgentBuilder() {
   const { owner } = useAgentBuilderContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
   const router = useRouter();
   const sendNotification = useSendNotification();
 
@@ -63,6 +65,7 @@ export default function AgentBuilder() {
       const result = await submitAgentBuilderForm({
         formData,
         owner,
+        mcpServerViews,
         isDraft: false,
       });
 

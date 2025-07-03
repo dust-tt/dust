@@ -78,7 +78,8 @@ function getTableColumns(
   setAssistantSId: (a: string | null) => void,
   isManaged: boolean,
   isWebsite: boolean,
-  space: SpaceType
+  space: SpaceType,
+  activeSeats: number
 ): TableColumnDef[] {
   const isGlobalOrSystemSpace = ["global", "system"].includes(space.kind);
   const nameColumn: ColumnDef<RowData, string> = {
@@ -154,6 +155,7 @@ function getTableColumns(
               initialState={ds.connector}
               workspaceId={info.row.original.workspaceId}
               dataSource={ds}
+              activeSeats={activeSeats}
             />
           )}
         </DataTable.CellContent>
@@ -241,6 +243,7 @@ interface SpaceResourcesListProps {
   onSelect: (sId: string) => void;
   integrations: DataSourceIntegration[];
   user: UserType;
+  activeSeats: number;
 }
 
 export const SpaceResourcesList = ({
@@ -254,6 +257,7 @@ export const SpaceResourcesList = ({
   onSelect,
   integrations,
   user,
+  activeSeats,
 }: SpaceResourcesListProps) => {
   const { isDark } = useTheme();
   const [assistantSId, setAssistantSId] = useState<string | null>(null);
@@ -535,7 +539,8 @@ export const SpaceResourcesList = ({
             setAssistantSId,
             isManagedCategory,
             isWebsite,
-            space
+            space,
+            activeSeats
           )}
           sorting={sorting}
           setSorting={setSorting}

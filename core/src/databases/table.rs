@@ -96,6 +96,8 @@ pub struct Table {
     schema: Option<TableSchema>,
     schema_stale_at: Option<u64>,
 
+    migrated_to_csv: bool,
+
     remote_database_table_id: Option<String>,
     remote_database_secret_id: Option<String>,
 }
@@ -119,6 +121,7 @@ impl Table {
         source_url: Option<String>,
         schema: Option<TableSchema>,
         schema_stale_at: Option<u64>,
+        migrated_to_csv: bool,
         remote_database_table_id: Option<String>,
         remote_database_secret_id: Option<String>,
     ) -> Self {
@@ -140,6 +143,7 @@ impl Table {
             source_url,
             schema,
             schema_stale_at,
+            migrated_to_csv,
             remote_database_table_id,
             remote_database_secret_id,
         }
@@ -192,6 +196,9 @@ impl Table {
     }
     pub fn unique_id(&self) -> String {
         get_table_unique_id(&self.project, &self.data_source_id, &self.table_id)
+    }
+    pub fn migrated_to_csv(&self) -> bool {
+        self.migrated_to_csv
     }
     pub fn remote_database_table_id(&self) -> Option<&str> {
         self.remote_database_table_id.as_deref()
@@ -334,6 +341,21 @@ pub struct LocalTable {
 }
 
 impl LocalTable {
+    pub fn get_bucket() -> Result<String> {
+        match std::env::var("DUST_TABLES_BUCKET") {
+            Ok(bucket) => Ok(bucket),
+            Err(_) => Err(anyhow!("DUST_TABLES_BUCKET is not set")),
+        }
+    }
+
+    pub fn get_csv_storage_file_path(
+        project_id: &i64,
+        data_source_id: &str,
+        table_id: &str,
+    ) -> String {
+        format!("project-{}/{}/{}.csv", project_id, data_source_id, table_id)
+    }
+
     pub fn from_table(table: Table) -> Result<LocalTable> {
         match table.table_type() {
             Ok(TableType::Local) => Ok(LocalTable { table }),
@@ -360,7 +382,7 @@ impl LocalTable {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         rows: Vec<Row>,
         truncate: bool,
-    ) -> Result<()> {
+    ) -> Result<TableSchema> {
         let rows = Arc::new(rows);
 
         let mut now = utils::now();
@@ -495,7 +517,7 @@ impl LocalTable {
             "DSSTRUCTSTAT [upsert_rows] invalidate dbs"
         );
 
-        Ok(())
+        Ok(new_table_schema)
     }
 
     pub async fn upsert_csv_content(
@@ -507,21 +529,55 @@ impl LocalTable {
         truncate: bool,
     ) -> Result<()> {
         let now = utils::now();
+
         let rows = UpsertQueueCSVContent {
             bucket: bucket.to_string(),
             bucket_csv_path: bucket_csv_path.to_string(),
         }
         .parse()
         .await?;
+
         let csv_parse_duration = utils::now() - now;
 
         let now = utils::now();
-        self.upsert_rows(store, databases_store, rows, truncate)
+        let schema = self
+            .upsert_rows(
+                store.clone(),
+                databases_store.clone(),
+                rows.clone(),
+                truncate,
+            )
             .await?;
         let upsert_duration = utils::now() - now;
 
+        let now = utils::now();
+        if truncate {
+            store
+                .store_data_source_table_csv(
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
+                    &schema,
+                    &rows,
+                )
+                .await?;
+        } else {
+            if self.table.migrated_to_csv() {
+                store
+                    .delete_data_source_table_csv(
+                        &self.table.project,
+                        &self.table.data_source_id,
+                        &self.table.table_id,
+                    )
+                    .await?;
+            }
+        }
+
+        let csv_upload_duration = utils::now() - now;
+
         info!(
             csv_parse_duration = csv_parse_duration,
+            csv_upload_duration = csv_upload_duration,
             upsert_duration = upsert_duration,
             "CSV upsert"
         );
@@ -788,6 +844,39 @@ impl Row {
         Ok(Row::new(row_id, value_map))
     }
 
+    pub fn to_csv_record(&self, headers: &Vec<String>) -> Result<Vec<String>> {
+        let mut record = Vec::new();
+        for header in headers {
+            match self.value().get(header) {
+                Some(Value::Bool(b)) => record.push(b.to_string()),
+                Some(Value::Number(x)) => {
+                    if x.is_i64() {
+                        record.push(x.as_i64().unwrap().to_string())
+                    } else if x.is_u64() {
+                        record.push((x.as_u64().unwrap() as i64).to_string())
+                    } else if x.is_f64() {
+                        record.push(x.as_f64().unwrap().to_string());
+                    } else {
+                        return Err(anyhow!("Number is not an i64 or f64: {}", x));
+                    }
+                }
+                Some(Value::String(s)) => record.push(s.clone()),
+                Some(Value::Object(obj)) => match TableSchema::try_parse_date_object(obj) {
+                    Some(date) => record.push(date),
+                    None => return Err(anyhow!("Unknown object type")),
+                },
+                None | Some(Value::Null) => record.push("".to_string()),
+                _ => {
+                    return Err(anyhow!(
+                        "Cannot convert value {:?} to SqlParam",
+                        self.value()
+                    ))
+                }
+            };
+        }
+        Ok(record)
+    }
+
     pub fn row_id(&self) -> &str {
         &self.row_id
     }
@@ -851,6 +940,7 @@ mod tests {
             None,
             Some(schema),
             None,
+            false,
             None,
             None,
         );
@@ -999,6 +1089,110 @@ mod tests {
         let row = Row::from_csv_record(&headers, record, 0)?;
         assert_eq!(row.content()["a"], Value::Bool(true));
         assert_eq!(row.content()["b"], Value::Bool(false));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_csv_round_trip_bijective() -> anyhow::Result<()> {
+        // Test case 1: Row with data types that should be perfectly bijective
+        let simple_row_data = serde_json::Map::from_iter([
+            ("integer_col".to_string(), 42.into()),
+            ("float_col".to_string(), 3.14.into()),
+            ("string_col".to_string(), "hello world".into()),
+            ("bool_col".to_string(), true.into()),
+            ("null_col".to_string(), Value::Null),
+        ]);
+
+        let simple_row = Row::new("test_row_id".to_string(), simple_row_data);
+
+        // Extract headers and ensure consistent ordering
+        let mut headers: Vec<String> = simple_row.value().keys().cloned().collect();
+        headers.sort();
+
+        // Convert row to CSV record and back
+        let csv_record = simple_row.to_csv_record(&headers)?;
+        let reconstructed_row =
+            Row::from_csv_record(&headers, csv_record.iter().map(|s| s.as_str()).collect(), 0)?;
+
+        // Content should be identical for simple data types
+        assert_eq!(simple_row.content(), reconstructed_row.content());
+
+        // Test case 2: Verify expected transformations for edge cases
+        let edge_case_data = serde_json::Map::from_iter([
+            ("empty_string".to_string(), "".into()),
+            ("non_empty_string".to_string(), "not empty".into()),
+        ]);
+
+        let edge_case_row = Row::new("edge_case_id".to_string(), edge_case_data);
+        let edge_headers: Vec<String> = edge_case_row.value().keys().cloned().collect();
+
+        let edge_csv_record = edge_case_row.to_csv_record(&edge_headers)?;
+        let edge_reconstructed_row = Row::from_csv_record(
+            &edge_headers,
+            edge_csv_record.iter().map(|s| s.as_str()).collect(),
+            0,
+        )?;
+
+        // Empty strings become null when parsed from CSV - this is expected behavior
+        assert_eq!(
+            edge_reconstructed_row.content()["empty_string"],
+            Value::Null
+        );
+        assert_eq!(
+            edge_reconstructed_row.content()["non_empty_string"],
+            Value::String("not empty".to_string())
+        );
+
+        // Test case 3: Test with __dust_id to verify row_id preservation
+        let mut headers_with_id = headers.clone();
+        headers_with_id.insert(0, "__dust_id".to_string());
+
+        let mut csv_record_with_id = csv_record.clone();
+        csv_record_with_id.insert(0, simple_row.row_id().to_string());
+
+        let reconstructed_row_with_id = Row::from_csv_record(
+            &headers_with_id,
+            csv_record_with_id.iter().map(|s| s.as_str()).collect(),
+            0,
+        )?;
+
+        // Row ID should be preserved and content should still match
+        assert_eq!(simple_row.row_id(), "test_row_id");
+        assert_eq!(simple_row.row_id(), reconstructed_row_with_id.row_id());
+        assert_eq!(simple_row.content(), reconstructed_row_with_id.content());
+
+        // Test case 4: Date round trip test (dates may have format changes but should preserve epoch)
+        let date_data = serde_json::Map::from_iter([(
+            "date_col".to_string(),
+            serde_json::Map::from_iter([
+                ("type".to_string(), "datetime".into()),
+                ("epoch".to_string(), 1609459200000_i64.into()),
+                ("string_value".to_string(), "2021-01-01T00:00:00Z".into()),
+            ])
+            .into(),
+        )]);
+
+        let date_row = Row::new("date_test_id".to_string(), date_data);
+        let date_headers: Vec<String> = date_row.value().keys().cloned().collect();
+
+        let date_csv_record = date_row.to_csv_record(&date_headers)?;
+        let date_reconstructed_row = Row::from_csv_record(
+            &date_headers,
+            date_csv_record.iter().map(|s| s.as_str()).collect(),
+            0,
+        )?;
+
+        // The epoch should be preserved even if string format changes
+        assert_eq!(
+            date_row.content()["date_col"]["type"],
+            date_reconstructed_row.content()["date_col"]["type"]
+        );
+        assert_eq!(
+            date_row.content()["date_col"]["epoch"],
+            date_reconstructed_row.content()["date_col"]["epoch"]
+        );
+        // Note: string_value may change format during parsing, so we don't assert equality on it
 
         Ok(())
     }

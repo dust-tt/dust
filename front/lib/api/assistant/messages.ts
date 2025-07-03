@@ -1,16 +1,11 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { browseActionTypesFromAgentMessageIds } from "@app/lib/actions/browse";
 import { conversationIncludeFileTypesFromAgentMessageIds } from "@app/lib/actions/conversation/include_file";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_run";
 import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
 import { processActionTypesFromAgentMessageIds } from "@app/lib/actions/process";
-import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/actions/reasoning";
-import { retrievalActionTypesFromAgentMessageIds } from "@app/lib/actions/retrieval";
 import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
-import { tableQueryTypesFromAgentMessageIds } from "@app/lib/actions/tables_query";
-import { websearchActionTypesFromAgentMessageIds } from "@app/lib/actions/websearch";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -135,14 +130,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   );
   const [
     agentConfigurations,
-    agentRetrievalActions,
     agentDustAppRunActions,
-    agentTablesQueryActions,
     agentProcessActions,
-    agentWebsearchActions,
-    agentBrowseActions,
     agentConversationIncludeFileActions,
-    agentReasoningActions,
     agentSearchLabelsActions,
     agentMCPActions,
   ] = await Promise.all([
@@ -167,23 +157,13 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       return agents as LightAgentConfigurationType[];
     })(),
-    (async () =>
-      retrievalActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
     (async () =>
-      tableQueryTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
       processActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
-      websearchActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
-      browseActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       conversationIncludeFileTypesFromAgentMessageIds(auth, {
         agentMessageIds,
       }))(),
-    (async () =>
-      reasoningActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       searchLabelsActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
@@ -208,15 +188,10 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       const agentMessage = message.agentMessage;
 
       const actions: AgentActionType[] = [
-        agentBrowseActions,
         agentConversationIncludeFileActions,
         agentDustAppRunActions,
         agentProcessActions,
-        agentReasoningActions,
-        agentRetrievalActions,
         agentSearchLabelsActions,
-        agentTablesQueryActions,
-        agentWebsearchActions,
         agentMCPActions,
       ]
         .flat()

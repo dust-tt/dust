@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -5,6 +6,12 @@ import type {
   Transaction,
 } from "sequelize";
 
+import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  conversationAttachmentId,
+  getAttachmentFromContentFragment,
+  renderAttachmentXml,
+} from "@app/lib/api/assistant/conversation/attachments";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -25,18 +32,20 @@ import {
 } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
+  BaseContentFragmentType,
   ContentFragmentMessageTypeModel,
-  ContentFragmentNodeData,
   ContentFragmentType,
   ContentFragmentVersion,
+  ContentNodeContentFragmentType,
   ContentNodeType,
   ConversationType,
+  FileContentFragmentType,
   ModelConfigurationType,
   ModelId,
   Result,
-  SupportedContentFragmentType,
 } from "@app/types";
 import {
+  assertNever,
   CoreAPI,
   Err,
   isSupportedImageContentType,
@@ -62,6 +71,18 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     blob: Attributes<ContentFragmentModel>
   ) {
     super(ContentFragmentModel, blob);
+  }
+
+  getContentFragmentType(): ContentFragmentType["contentFragmentType"] {
+    if (this.fileId) {
+      return "file";
+    }
+
+    if (this.nodeId) {
+      return "content_node";
+    }
+
+    throw new Error(`Invalid content fragment type (sId: ${this.sId})`);
   }
 
   static async makeNew(
@@ -267,44 +288,81 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       );
     }
 
-    const location = fileAttachmentLocation({
-      workspaceId: owner.sId,
-      conversationId,
-      messageId: message.sId,
-      contentFormat: "text",
-    });
+    const contentFragmentType = this.getContentFragmentType();
 
-    let fileStringId: string | null = null;
-    let snippet: string | null = null;
-    let generatedTables: string[] = [];
+    const baseContentFragment: BaseContentFragmentType = {
+      type: "content_fragment",
+      id: message.id,
+      sId: message.sId,
+      created: message.createdAt.getTime(),
+      visibility: message.visibility,
+      version: message.version,
+      sourceUrl: this.sourceUrl,
+      title: this.title,
+      contentType: this.contentType,
+      context: {
+        profilePictureUrl: this.userContextProfilePictureUrl,
+        fullName: this.userContextFullName,
+        email: this.userContextEmail,
+        username: this.userContextUsername,
+      },
+      contentFragmentId: this.sId,
+      contentFragmentVersion: this.version,
+      expiredReason: this.expiredReason,
+    };
 
-    if (this.fileId) {
-      const file = await FileResource.fetchByModelIdWithAuth(auth, this.fileId);
+    if (contentFragmentType === "file") {
+      const location = fileAttachmentLocation({
+        workspaceId: owner.sId,
+        conversationId,
+        messageId: message.sId,
+        contentFormat: "text",
+      });
+      let fileStringId: string | null = null;
+      let snippet: string | null = null;
+      let generatedTables: string[] = [];
+      let file: FileResource | null = null;
+      if (this.fileId) {
+        file = await FileResource.fetchByModelIdWithAuth(auth, this.fileId);
+      }
+      // TODO(durable_agents): make fileId not optional for file content fragments
+
       if (file) {
         fileStringId = file.sId;
         snippet = file.snippet;
         generatedTables = file.useCaseMetadata?.generatedTables ?? [];
       }
-    }
 
-    const nodeId: string | null = this.nodeId || null;
-    const nodeDataSourceViewId: string | null = this.nodeDataSourceViewId
-      ? DataSourceViewResource.modelIdToSId({
-          id: this.nodeDataSourceViewId,
-          workspaceId: owner.id,
-        })
-      : null;
+      return {
+        ...baseContentFragment,
+        contentFragmentType: "file",
+        fileId: fileStringId,
+        snippet,
+        generatedTables,
+        textUrl: location.downloadUrl,
+        textBytes: this.textBytes,
+      } satisfies FileContentFragmentType;
+    } else if (contentFragmentType === "content_node") {
+      assert(
+        this.nodeId,
+        `Invalid content node content fragment (sId: ${this.sId})`
+      );
+      assert(
+        this.nodeDataSourceViewId,
+        `Invalid content node content fragment (sId: ${this.sId})`
+      );
+      assert(
+        this.nodeType,
+        `Invalid content node content fragment (sId: ${this.sId})`
+      );
 
-    const nodeType: ContentNodeType | null = this.nodeType || null;
+      const nodeId: string = this.nodeId;
+      const nodeDataSourceViewId: string = DataSourceViewResource.modelIdToSId({
+        id: this.nodeDataSourceViewId,
+        workspaceId: owner.id,
+      });
+      const nodeType: ContentNodeType = this.nodeType;
 
-    // Add contentNodeData
-    let contentNodeData: ContentFragmentNodeData | null = null;
-    if (
-      nodeId &&
-      nodeDataSourceViewId &&
-      nodeType &&
-      this.nodeDataSourceViewId
-    ) {
       const dsView = await DataSourceViewModel.findByPk(
         this.nodeDataSourceViewId,
         {
@@ -324,50 +382,30 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           ],
         }
       );
+      assert(
+        dsView,
+        `Data source view not found for content node content fragment (sId: ${this.sId})`
+      );
 
-      if (!dsView) {
-        throw new Error(
-          `Content fragment node data not found for node id ${nodeId} and node data source view id ${nodeDataSourceViewId}`
-        );
-      }
-
-      contentNodeData = {
+      const contentNodeData = {
         nodeId,
         nodeDataSourceViewId,
-        nodeType,
+        nodeType: this.nodeType,
         provider: dsView.dataSourceForView.connectorProvider,
         spaceName: dsView.space.name,
       };
+
+      return {
+        ...baseContentFragment,
+        contentFragmentType: "content_node",
+        nodeId,
+        nodeDataSourceViewId,
+        nodeType,
+        contentNodeData,
+      } satisfies ContentNodeContentFragmentType;
+    } else {
+      assertNever(contentFragmentType);
     }
-    return {
-      id: message.id,
-      fileId: fileStringId,
-      snippet,
-      generatedTables,
-      nodeId,
-      nodeDataSourceViewId,
-      nodeType,
-      sId: message.sId,
-      created: message.createdAt.getTime(),
-      type: "content_fragment",
-      visibility: message.visibility,
-      version: message.version,
-      sourceUrl: this.sourceUrl,
-      textUrl: location.downloadUrl,
-      textBytes: this.textBytes,
-      title: this.title,
-      contentType: this.contentType,
-      context: {
-        profilePictureUrl: this.userContextProfilePictureUrl,
-        fullName: this.userContextFullName,
-        email: this.userContextEmail,
-        username: this.userContextUsername,
-      },
-      contentFragmentId: this.sId,
-      contentFragmentVersion: this.version,
-      contentNodeData,
-      expiredReason: this.expiredReason,
-    };
   }
 }
 
@@ -438,27 +476,23 @@ async function getSignedUrlForProcessedContent(
   return getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
 }
 
-export async function renderFromAttachmentId(
+export async function getContentFragmentFromAttachmentFile(
   auth: Authenticator,
   {
-    contentType,
+    attachment,
     excludeImages,
-    conversationAttachmentId,
     model,
-    title,
-    contentFragmentVersion,
   }: {
-    contentType: SupportedContentFragmentType;
+    attachment: ConversationAttachmentType;
     excludeImages: boolean;
-    conversationAttachmentId: string;
     model: ModelConfigurationType;
-    title: string;
-    contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
   // At time of writing, passed resourceId can be either a file or a content fragment.
+  // TODO(durable agents): check if this is actually true (seems false)
+
   const { resourceName } = getResourceNameAndIdFromSId(
-    conversationAttachmentId
+    conversationAttachmentId(attachment)
   ) ?? {
     resourceName: "content_fragment",
   };
@@ -466,32 +500,24 @@ export async function renderFromAttachmentId(
   const { fileStringId, nodeId, nodeDataSourceViewId } =
     resourceName === "file"
       ? {
-          fileStringId: conversationAttachmentId,
+          fileStringId: conversationAttachmentId(attachment),
           nodeId: null,
           nodeDataSourceViewId: null,
         }
       : await getIncludeFileIdsFromContentFragmentResourceId(
           auth,
-          conversationAttachmentId
+          conversationAttachmentId(attachment)
         );
 
-  if (isSupportedImageContentType(contentType)) {
+  if (isSupportedImageContentType(attachment.contentType)) {
     if (excludeImages || !model.supportsVision) {
       return new Ok({
         role: "content_fragment",
-        name: `inject_${contentType}`,
+        name: `inject_${attachment.contentType}`,
         content: [
           {
             type: "text",
-            text: renderContentFragmentXml({
-              contentFragmentId: null,
-              contentType,
-              title,
-              version: contentFragmentVersion,
-              content:
-                "[Image content interpreted by a vision-enabled model. " +
-                "Description not available in this context.]",
-            }),
+            text: renderAttachmentXml({ attachment }),
           },
         ],
       });
@@ -507,7 +533,7 @@ export async function renderFromAttachmentId(
 
     return new Ok({
       role: "content_fragment",
-      name: `inject_${contentType}`,
+      name: `inject_${attachment.contentType}`,
       content: [
         {
           type: "image_url",
@@ -550,15 +576,12 @@ export async function renderFromAttachmentId(
 
     return new Ok({
       role: "content_fragment",
-      name: `inject_${contentType}`,
+      name: `inject_${attachment.contentType}`,
       content: [
         {
           type: "text",
-          text: renderContentFragmentXml({
-            contentFragmentId: conversationAttachmentId,
-            contentType,
-            title,
-            version: contentFragmentVersion,
+          text: renderAttachmentXml({
+            attachment,
             content: document.document.text ?? null,
           }),
         },
@@ -571,7 +594,7 @@ export async function renderFromAttachmentId(
       logger.warn(
         {
           fileId: fileStringId,
-          contentType,
+          contentType: attachment.contentType,
           workspaceId: auth.getNonNullableWorkspace().sId,
         },
         "No content extracted from file processed version, we are retrieving the original file as a fallback."
@@ -581,15 +604,12 @@ export async function renderFromAttachmentId(
 
     return new Ok({
       role: "content_fragment",
-      name: `inject_${contentType}`,
+      name: `inject_${attachment.contentType}`,
       content: [
         {
           type: "text",
-          text: renderContentFragmentXml({
-            contentFragmentId: conversationAttachmentId,
-            contentType,
-            title,
-            version: contentFragmentVersion,
+          text: renderAttachmentXml({
+            attachment,
             content,
           }),
         },
@@ -615,7 +635,7 @@ export async function renderLightContentFragmentForModel(
     excludeImages: boolean;
   }
 ): Promise<ContentFragmentMessageTypeModel> {
-  const { contentType, sId, title, contentFragmentVersion } = message;
+  const { contentType, sId } = message;
 
   const contentFragment = await ContentFragmentResource.fromMessageId(
     auth,
@@ -638,6 +658,8 @@ export async function renderLightContentFragmentForModel(
     };
   }
 
+  const attachment = getAttachmentFromContentFragment(message);
+
   const { fileId: fileModelId } = contentFragment;
 
   const fileStringId = fileModelId
@@ -655,11 +677,8 @@ export async function renderLightContentFragmentForModel(
         content: [
           {
             type: "text",
-            text: renderContentFragmentXml({
-              contentFragmentId: contentFragment.sId,
-              contentType,
-              title,
-              version: contentFragmentVersion,
+            text: renderAttachmentXml({
+              attachment,
               content:
                 "[Image content interpreted by a vision-enabled model. " +
                 "Description not available in this context.]",
@@ -691,40 +710,14 @@ export async function renderLightContentFragmentForModel(
     content: [
       {
         type: "text",
-        text: renderContentFragmentXml({
+        text: renderAttachmentXml({
           // Use fileId as contentFragmentId to provide a consistent identifier for the model
           // to reference content fragments across different actions like include_file.
-          contentFragmentId: fileStringId ?? contentFragment.sId,
-          contentType,
-          title,
-          version: contentFragmentVersion,
-          content: null,
+          attachment,
         }),
       },
     ],
   };
-}
-
-function renderContentFragmentXml({
-  contentFragmentId,
-  contentType,
-  title,
-  version,
-  content,
-}: {
-  contentFragmentId: string | null;
-  contentType: string;
-  title: string;
-  version: ContentFragmentVersion;
-  content: string | null;
-}) {
-  let tag = `<attachment id="${contentFragmentId}" type="${contentType}" title="${title}" version="${version}"`;
-  if (content) {
-    tag += `>\n${content}\n</attachment>`;
-  } else {
-    tag += "/>";
-  }
-  return tag;
 }
 
 async function getIncludeFileIdsFromContentFragmentResourceId(

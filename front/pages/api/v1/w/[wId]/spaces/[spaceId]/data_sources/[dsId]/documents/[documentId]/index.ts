@@ -10,19 +10,25 @@ import { fromError } from "zod-validation-error";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
+import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
+  fileSizeToHumanReadable,
   safeSubstring,
   sectionFullText,
   validateUrl,
@@ -480,7 +486,6 @@ async function handler(
         }
       }
 
-      // Enforce plan limits: DataSource document size.
       if (
         plan.limits.dataSources.documents.sizeMb != -1 &&
         fullText.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
@@ -496,6 +501,50 @@ async function handler(
               `Contact support@dust.tt if you want to increase it.`,
           },
         });
+      }
+
+      const flags = await getFeatureFlags(owner);
+      if (flags.includes("enforce_datasource_quota")) {
+        // Enforce plan limits: Datasource quota
+        try {
+          const [activeSeats, quotaUsed] = await Promise.all([
+            countActiveSeatsInWorkspaceCached(owner.sId),
+            computeWorkspaceOverallSizeCached(auth),
+          ]);
+
+          if (
+            quotaUsed >
+            (activeSeats + 1) * DATASOURCE_QUOTA_PER_SEAT // +1 we allow to go over the limit by one additional seat
+          ) {
+            logger.info(
+              {
+                workspace: owner.sId,
+                datasource_project_id: dataSource.dustAPIProjectId,
+                datasource_id: dataSource.dustAPIDataSourceId,
+                quota_used: quotaUsed,
+                quota_limit: activeSeats * DATASOURCE_QUOTA_PER_SEAT,
+              },
+              "Datasource quota exceeded for upsert document (overrun expected)"
+            );
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_quota_error",
+                message: `You've exceeded your plan limit (${fileSizeToHumanReadable(quotaUsed)} used / ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} allowed)`,
+              },
+            });
+          }
+        } catch (error) {
+          logger.error(
+            {
+              error,
+              workspace: owner.sId,
+              datasource_project_id: dataSource.dustAPIProjectId,
+              datasource_id: dataSource.dustAPIDataSourceId,
+            },
+            "Unable to enforce datasource quota"
+          );
+        }
       }
 
       // Prohibit passing parents when not coming from connectors.
@@ -597,7 +646,7 @@ async function handler(
             tags,
             parentId: r.data.parent_id || null,
             parents: r.data.parents || [documentId],
-            timestamp: r.data.timestamp || null,
+            timestamp: cleanTimestamp(r.data.timestamp),
             sourceUrl,
             section,
             upsertContext: r.data.upsert_context || null,
@@ -638,7 +687,7 @@ async function handler(
           parentId: r.data.parent_id || null,
           parents: r.data.parents || [documentId],
           sourceUrl,
-          timestamp: r.data.timestamp || null,
+          timestamp: cleanTimestamp(r.data.timestamp),
           section,
           credentials,
           lightDocumentOutput: r.data.light_document_output === true,

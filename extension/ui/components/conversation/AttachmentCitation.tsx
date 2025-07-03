@@ -137,7 +137,7 @@ export function AttachmentCitation({
 export function contentFragmentToAttachmentCitation(
   contentFragment: ContentFragmentType
 ): AttachmentCitation {
-  if (contentFragment.contentNodeData) {
+  if (contentFragment.contentFragmentType === "content_node") {
     const { provider, nodeType } = contentFragment.contentNodeData;
     const logo = getConnectorProviderLogoWithFallback({ provider });
 

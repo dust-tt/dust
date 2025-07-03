@@ -8,10 +8,7 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import {
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -297,7 +294,7 @@ export async function getDataSourceViewsUsageByCategory({
           Sequelize.fn(
             "array_agg",
             Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
+              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -306,7 +303,7 @@ export async function getDataSourceViewsUsageByCategory({
           Sequelize.fn(
             "array_agg",
             Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
+              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -331,8 +328,8 @@ export async function getDataSourceViewsUsageByCategory({
           ],
         },
         {
-          model: AgentTablesQueryConfiguration,
-          as: "agent_tables_query_configuration",
+          model: AgentMCPServerConfiguration,
+          as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [
@@ -612,7 +609,7 @@ export async function getDataSourcesUsageByCategory({
           Sequelize.fn(
             "array_agg",
             Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
+              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -621,7 +618,7 @@ export async function getDataSourcesUsageByCategory({
           Sequelize.fn(
             "array_agg",
             Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
+              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -638,8 +635,8 @@ export async function getDataSourcesUsageByCategory({
           },
         },
         {
-          model: AgentTablesQueryConfiguration,
-          as: "agent_tables_query_configuration",
+          model: AgentMCPServerConfiguration,
+          as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [
@@ -870,7 +867,7 @@ export async function getDataSourceUsage({
           Sequelize.fn(
             "array_agg",
             Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
+              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -879,7 +876,7 @@ export async function getDataSourceUsage({
           Sequelize.fn(
             "array_agg",
             Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
+              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -891,8 +888,8 @@ export async function getDataSourceUsage({
       },
       include: [
         {
-          model: AgentTablesQueryConfiguration,
-          as: "agent_tables_query_configuration",
+          model: AgentMCPServerConfiguration,
+          as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [
@@ -1109,7 +1106,7 @@ export async function getDataSourceViewUsage({
           Sequelize.fn(
             "array_agg",
             Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."name" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
+              '"agent_mcp_server_configuration->agent_configuration"."name" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "names",
@@ -1118,7 +1115,7 @@ export async function getDataSourceViewUsage({
           Sequelize.fn(
             "array_agg",
             Sequelize.literal(
-              '"agent_tables_query_configuration->agent_configuration"."sId" ORDER BY "agent_tables_query_configuration->agent_configuration"."name"'
+              '"agent_mcp_server_configuration->agent_configuration"."sId" ORDER BY "agent_mcp_server_configuration->agent_configuration"."name"'
             )
           ),
           "sIds",
@@ -1130,8 +1127,8 @@ export async function getDataSourceViewUsage({
       },
       include: [
         {
-          model: AgentTablesQueryConfiguration,
-          as: "agent_tables_query_configuration",
+          model: AgentMCPServerConfiguration,
+          as: "agent_mcp_server_configuration",
           attributes: [],
           required: true,
           include: [

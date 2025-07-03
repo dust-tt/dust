@@ -13,6 +13,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -389,7 +390,7 @@ async function handler(
         tableId,
         name,
         description,
-        timestamp: timestamp ?? null,
+        timestamp: cleanTimestamp(timestamp),
         tags: tags || [],
         // Table is a parent of itself by default.
         parents: parents || [tableId],
