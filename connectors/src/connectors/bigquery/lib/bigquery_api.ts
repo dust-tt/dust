@@ -172,7 +172,7 @@ export const fetchTables = async ({
                 error.code === 403 &&
                 "errors" in error &&
                 Array.isArray(error.errors) &&
-                error.errors[0]?.reason === "accessDenied"
+                error.errors.some((e) => e?.reason === "accessDenied")
               ) {
                 const errorMessage =
                   "message" in error && typeof error.message === "string"
@@ -185,14 +185,10 @@ export const fetchTables = async ({
                     table: table.id,
                     error: errorMessage,
                   },
-                  "[BigQuery] Permission denied accessing table metadata, continuing without description"
+                  "[BigQuery] Permission denied accessing table metadata, skipping table"
                 );
-                // Return table info without description when we lack permissions
-                return {
-                  name: table.id!,
-                  database_name: credentials.project_id,
-                  schema_name: dataset,
-                };
+                // Skip tables when we lack permissions
+                return null;
               }
               // Re-throw other errors
               throw error;
