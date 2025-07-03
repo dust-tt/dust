@@ -123,8 +123,7 @@ export function isUserMessageType(
  */
 export type ConfigurableAgentActionType = DustAppRunActionType | MCPActionType;
 
-export type ConversationAgentActionType =
-  | ConversationListFilesActionType
+export type ConversationAgentActionType = ConversationListFilesActionType;
 
 export type AgentActionType =
   | ConfigurableAgentActionType
