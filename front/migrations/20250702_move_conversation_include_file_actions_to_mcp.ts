@@ -1,13 +1,11 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { Logger } from "pino";
 import type { CreationAttributes } from "sequelize";
 import { Op } from "sequelize";
 
-import { ConversationIncludeFileActionType } from "@app/lib/actions/conversation/include_file";
 import type { ActionBaseParams } from "@app/lib/actions/mcp";
-import { conversationAttachmentId } from "@app/lib/api/assistant/conversation/attachments";
-import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { getAttachmentFromToolOutput } from "@app/lib/api/assistant/conversation/attachments";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
@@ -19,13 +17,13 @@ import {
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { getContentFragmentFromAttachmentFile } from "@app/lib/resources/content_fragment_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import type { LightWorkspaceType, ModelId } from "@app/types";
-import { GPT_4O_MODEL_CONFIG } from "@app/types";
+import type { LightWorkspaceType, ModelConfigurationType } from "@app/types";
 import { isGlobalAgentId, isImageContent, isTextContent } from "@app/types";
 
 const WORKSPACE_CONCURRENCY = 50;
@@ -41,27 +39,10 @@ type ConversationFileOutputResource = {
 
 function agentConversationIncludeFileActionToAgentMCPAction(
   includeFileAction: AgentConversationIncludeFileAction,
-  agentConfiguration: AgentConfiguration | null,
-  {
-    mcpServerViewForConversationFilesId,
-  }: {
-    mcpServerViewForConversationFilesId: ModelId;
-  },
   logger: Logger
 ): {
   action: ActionBaseParams & CreationAttributes<AgentMCPAction>;
 } {
-  logger.info(
-    { mcpServerViewForConversationFilesId },
-    "Found MCP server view ID for Conversation Files"
-  );
-
-  // Find the MCP server configuration for Conversation Files.
-  const conversationFilesMcpServerConfiguration =
-    agentConfiguration?.mcpServerConfigurations.find(
-      (config) => config.mcpServerViewId === mcpServerViewForConversationFilesId
-    );
-
   // For conversation include file actions, we always use the hardcoded -1 ID
   // since they are primarily JIT actions.
   const mcpServerConfigurationId = "-1";
@@ -114,43 +95,56 @@ function createOutputItem({
 
 // Recreate the output as if it came from the conversation_files MCP server.
 async function getContentForConversationIncludeFileAction(
+  auth: Authenticator,
   includeFileAction: AgentConversationIncludeFileAction,
-  {
-    auth,
-    conversation,
-  }: {
-    auth: Authenticator;
-    conversation: ConversationResource;
-  }
+  model: ModelConfigurationType,
+  logger: Logger
 ): Promise<
   (
     | { type: "text"; text: string }
     | { type: "resource"; resource: ConversationFileOutputResource }
   )[]
 > {
-  // We take 4o because is supports vision.
-  const model = getSupportedModelConfig(GPT_4O_MODEL_CONFIG);
-
-  // Use the same logic as the conversation_files MCP server
-  const fileRes = await ConversationIncludeFileActionType.fileFromConversation(
-    auth,
-    includeFileAction.fileId,
-    conversation,
-    model
-  );
-
-  if (fileRes.isErr()) {
-    // Return empty array for errors - the original action likely failed
+  const file = await FileResource.fetchById(auth, includeFileAction.fileId);
+  if (!file) {
+    logger.error(
+      {
+        includeFileActionId: includeFileAction.id,
+        fileId: includeFileAction.fileId,
+      },
+      "Failed to fetch file"
+    );
     return [];
   }
 
-  const { content, title } = fileRes.value;
+  const { sId, fileName, contentType, snippet } = file;
 
-  // Get the file metadata to extract the actual content type
-  const attachments = listAttachments(conversation);
-  const attachment = attachments.find(
-    (a) => conversationAttachmentId(a) === includeFileAction.fileId
-  );
+  // Copied from `listAttachments`.
+  const attachment = getAttachmentFromToolOutput({
+    fileId: sId,
+    contentType,
+    title: fileName,
+    snippet,
+  });
+
+  // Copied from `fileFromConversation`/the MCP server (both do the same things but get the file from the conversation).
+  const contentResult = await getContentFragmentFromAttachmentFile(auth, {
+    attachment,
+    excludeImages: false,
+    model,
+  });
+  if (contentResult.isErr()) {
+    logger.error(
+      {
+        includeFileActionId: includeFileAction.id,
+        fileId: includeFileAction.fileId,
+      },
+      "Failed to get content fragment"
+    );
+    return [];
+  }
+
+  const content = contentResult.value.content[0];
 
   if (isTextContent(content)) {
     return [
@@ -167,37 +161,29 @@ async function getContentForConversationIncludeFileAction(
         resource: {
           uri: content.image_url.url,
           mimeType: attachment?.contentType || "application/octet-stream",
-          text: `Image: ${title}`,
+          text: `Image: ${attachment.title}`,
         },
       },
     ];
   }
 
-  // Return empty array if no usable content
   return [];
 }
 
 async function migrateSingleConversationIncludeFileAction(
   auth: Authenticator,
   includeFileAction: AgentConversationIncludeFileAction,
-  agentConfiguration: AgentConfiguration | null,
-  conversation: ConversationResource,
+  model: ModelConfigurationType,
   logger: Logger,
   {
     execute,
-    mcpServerViewForConversationFilesId,
   }: {
     execute: boolean;
-    mcpServerViewForConversationFilesId: ModelId;
   }
 ) {
   // Step 1: Convert the legacy Conversation Include File action to an MCP action
   const mcpAction = agentConversationIncludeFileActionToAgentMCPAction(
     includeFileAction,
-    agentConfiguration ?? null,
-    {
-      mcpServerViewForConversationFilesId,
-    },
     logger
   );
 
@@ -208,11 +194,10 @@ async function migrateSingleConversationIncludeFileAction(
 
     // Step 4: Create output items for the action results
     const contentItems = await getContentForConversationIncludeFileAction(
+      auth,
       includeFileAction,
-      {
-        auth,
-        conversation,
-      }
+      model,
+      logger
     );
 
     // Step 5: Create all output items
@@ -299,24 +284,6 @@ async function migrateWorkspaceConversationIncludeFileActions(
       ],
     });
 
-    // Step 3: Find the corresponding Conversations
-    const conversationIds = [
-      ...new Set(
-        agentMessages
-          .map((agentMessage) => agentMessage.message?.conversationId)
-          .filter(Boolean)
-      ),
-    ];
-
-    const conversations = await ConversationResource.fetchByIds(
-      auth,
-      conversationIds
-    );
-
-    const conversationsMap = new Map(
-      conversations.map((conversation) => [conversation.id, conversation])
-    );
-
     // Step 4: Find the corresponding AgentConfigurations
     const agentConfigurationSIds = [
       ...new Set(agentMessages.map((message) => message.agentConfigurationId)),
@@ -357,11 +324,6 @@ async function migrateWorkspaceConversationIncludeFileActions(
         );
         assert(agentMessage, "Agent message must exist");
 
-        const conversation = conversationsMap.get(
-          agentMessage.message?.conversationId
-        );
-        assert(conversation, "Conversation must exist");
-
         const agentConfiguration = agentConfigurationsMap.get(
           `${agentMessage.agentConfigurationId}-${agentMessage.agentConfigurationVersion}`
         );
@@ -371,16 +333,26 @@ async function migrateWorkspaceConversationIncludeFileActions(
           `Agent configuration must exist for agent ${agentMessage.agentConfigurationId}`
         );
 
+        let model: ModelConfigurationType;
+        if (agentConfiguration) {
+          model = getSupportedModelConfig({
+            modelId: agentConfiguration.modelId,
+            providerId: agentConfiguration.providerId,
+          });
+        } else {
+          const [globalAgent] = await getGlobalAgents(auth, [
+            agentMessage.agentConfigurationId,
+          ]);
+          model = getSupportedModelConfig({ ...globalAgent.model });
+        }
+
         await migrateSingleConversationIncludeFileAction(
           auth,
           includeFileAction,
-          agentConfiguration ?? null,
-          conversation,
+          model,
           logger,
           {
             execute,
-            mcpServerViewForConversationFilesId:
-              mcpServerViewForConversationFiles.id,
           }
         );
       },
