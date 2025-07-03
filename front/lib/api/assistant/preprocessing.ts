@@ -98,12 +98,11 @@ export async function renderConversationForModel(
       for (const action of actions) {
         const stepIndex = action.step;
         stepByStepIndex[stepIndex] = stepByStepIndex[stepIndex] || emptyStep();
-        // All these calls (except `conversation_include_files_action` are not async so we're not
-        // doing a Promise.all for now but might need to be reconsiderd in the future.
+        // All these calls are not async, so we're not doing a Promise.all for now but might need to
+        // be reconsidered in the future.
         stepByStepIndex[stepIndex].actions.push({
           call: action.renderForFunctionCall(),
           result: await action.renderForMultiActionsModel(auth, {
-            conversation,
             model,
           }),
         });

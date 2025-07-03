@@ -1,6 +1,5 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-import type { ConversationIncludeFileActionRunningEvents } from "@app/lib/actions/conversation/include_file";
 import type {
   DustAppRunActionRunningEvents,
   DustAppRunConfigurationType,
@@ -149,7 +148,6 @@ export function inputSchemaToDustAppRunInputs(
 
 // Event sent during the execution of an action. These are action-specific.
 export type AgentActionSpecificEvent =
-  | ConversationIncludeFileActionRunningEvents
   | DustAppRunActionRunningEvents
   | SearchLabelsActionRunningEvents
   | MCPActionRunningEvents;

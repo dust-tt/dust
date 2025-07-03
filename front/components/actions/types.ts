@@ -1,4 +1,3 @@
-import { ConversationIncludeFileActionDetails } from "@app/components/actions/conversation/include_file/IncludeFileActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
@@ -34,10 +33,6 @@ const actionsSpecification: ActionSpecifications = {
   conversation_list_files_action: {
     detailsComponent: () => null,
     runningLabel: ACTION_RUNNING_LABELS.conversation_list_files_action,
-  },
-  conversation_include_file_action: {
-    detailsComponent: ConversationIncludeFileActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.conversation_include_file_action,
   },
   search_labels_action: {
     detailsComponent: SearchLabelsActionDetails,

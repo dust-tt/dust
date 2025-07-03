@@ -27,9 +27,7 @@ export type ActionGeneratedFileType = {
   snippet: string | null;
 };
 
-type ConversationBaseActionType =
-  | "conversation_list_files_action"
-  | "conversation_include_file_action";
+type ConversationBaseActionType = "conversation_list_files_action";
 
 export type BaseActionType =
   | "dust_app_run_action"
