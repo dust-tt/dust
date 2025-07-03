@@ -15,8 +15,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
-import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
@@ -529,7 +529,7 @@ async function handler(
             return apiError(req, res, {
               status_code: 403,
               api_error: {
-                type: "data_source_quota_error",
+                type: "workspace_quota_error",
                 message: `You've exceeded your plan limit (${fileSizeToHumanReadable(quotaUsed)} used / ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} allowed)`,
               },
             });
