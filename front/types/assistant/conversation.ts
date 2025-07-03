@@ -127,8 +127,7 @@ export type ConfigurableAgentActionType =
   | ProcessActionType
   | MCPActionType;
 
-export type ConversationAgentActionType =
-  | ConversationListFilesActionType
+export type ConversationAgentActionType = ConversationListFilesActionType;
 
 export type AgentActionType =
   | ConfigurableAgentActionType
