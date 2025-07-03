@@ -164,9 +164,9 @@ export async function constructPromptMultiActions(
 
   guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +
-    "When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding \`<attachment id="\${FILE_ID}" type... name...>\` tag in the conversation history." +
-    "and the image title which will be provided." +
-    "\nEvery image markdown should follow this pattern ![{title}]({fileId}).\n";
+    'When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding `<attachment id="{FILE_ID}" type... title...>` tag in the conversation history.' +
+    'Also always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
+    "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
 
   // INSTRUCTIONS section
   let instructions = "# INSTRUCTIONS\n\n";
