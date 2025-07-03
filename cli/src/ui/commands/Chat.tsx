@@ -139,7 +139,7 @@ const CliChat: FC<CliChatProps> = ({
 
       // For low stake tools, check cache first
       if (event.stake === "low") {
-        const cachedApproval = toolsCache.getCachedApproval(
+        const cachedApproval = await toolsCache.getCachedApproval(
           event.metadata.agentName,
           event.metadata.mcpServerName,
           event.metadata.toolName
@@ -160,7 +160,7 @@ const CliChat: FC<CliChatProps> = ({
   );
 
   const handleApproval = useCallback(
-    (approved: boolean, cacheApproval?: boolean) => {
+    async (approved: boolean, cacheApproval?: boolean) => {
       if (approvalResolver && pendingApproval) {
         if (pendingApproval.type !== "tool_approve_execution") {
           console.error(
@@ -174,7 +174,7 @@ const CliChat: FC<CliChatProps> = ({
         }
         // Cache the approval if requested and it's a low stake tool
         if (cacheApproval && pendingApproval.stake === "low") {
-          toolsCache.setCachedApproval(
+          await toolsCache.setCachedApproval(
             pendingApproval.metadata.agentName,
             pendingApproval.metadata.mcpServerName,
             pendingApproval.metadata.toolName
@@ -1195,9 +1195,9 @@ const CliChat: FC<CliChatProps> = ({
     return (
       <ToolApprovalSelector
         event={pendingApproval}
-        onApproval={(approved, cachedApproval) => {
-          handleApproval(approved, cachedApproval);
-          void clearTerminal();
+        onApproval={async (approved, cachedApproval) => {
+          await clearTerminal();
+          await handleApproval(approved, cachedApproval);
         }}
       />
     );

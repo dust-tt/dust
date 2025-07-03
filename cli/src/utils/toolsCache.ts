@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  writeFileSync,
-  promises as fs,
-} from "fs";
+import { promises as fs } from "fs";
 import { homedir } from "os";
 import path from "path";
 
@@ -19,38 +13,39 @@ export class ToolsCache {
   constructor(options: ToolsCacheOptions = {}) {
     this.cacheDir = options.cacheDir ?? path.join(homedir(), ".dust-cli");
     this.cacheFilePath = path.join(this.cacheDir, "tool-cache.json");
-    this.ensureCacheDir();
   }
 
-  private ensureCacheDir(): void {
-    if (!existsSync(this.cacheDir)) {
-      mkdirSync(this.cacheDir, { recursive: true });
+  private async ensureCacheDir(): Promise<void> {
+    try {
+      await fs.access(this.cacheDir);
+    } catch {
+      await fs.mkdir(this.cacheDir, { recursive: true });
     }
   }
 
-  private loadCache(): string[] {
+  private async loadCache(): Promise<string[]> {
     try {
-      if (!existsSync(this.cacheFilePath)) {
+      await this.ensureCacheDir();
+      try {
+        const data = await fs.readFile(this.cacheFilePath, "utf8");
+        return JSON.parse(data);
+      } catch {
         return [];
       }
-      const data = readFileSync(this.cacheFilePath, "utf8");
-      return JSON.parse(data);
     } catch (error) {
       console.warn("Failed to load tools cache:", error);
       return [];
     }
   }
 
-  private saveCache(cache: string[]): void {
+  private async saveCache(cache: string[]): Promise<void> {
     try {
-      this.ensureCacheDir();
-      writeFileSync(
+      await this.ensureCacheDir();
+      await fs.writeFile(
         this.cacheFilePath,
         JSON.stringify(cache, null, 2),
         "utf-8"
       );
-      console.log("Tools cache saved successfully.");
-      console.log("current cache:", cache);
     } catch (error) {
       console.warn("Failed to save tools cache:", error);
     }
@@ -64,12 +59,12 @@ export class ToolsCache {
     return `${agentName}:${mcpServerName}:${toolName}`;
   }
 
-  public getCachedApproval(
+  public async getCachedApproval(
     agentName: string,
     toolName: string,
     mcpServerName: string
-  ): boolean | null {
-    const cache = this.loadCache();
+  ): Promise<boolean | null> {
+    const cache = await this.loadCache();
     const toolKey = this.createToolKey(agentName, mcpServerName, toolName);
     const cachedEntry = cache.find((entry) => entry === toolKey);
 
@@ -80,14 +75,14 @@ export class ToolsCache {
     return true;
   }
 
-  public setCachedApproval(
+  public async setCachedApproval(
     agentName: string,
     toolName: string,
     mcpServerName: string
-  ): void {
-    const cache = this.loadCache();
+  ): Promise<void> {
+    const cache = await this.loadCache();
     const toolKey = this.createToolKey(agentName, mcpServerName, toolName);
-    this.saveCache([...cache, toolKey]);
+    await this.saveCache([...cache, toolKey]);
   }
 
   async invalidate(): Promise<void> {
