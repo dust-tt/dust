@@ -21,6 +21,7 @@ import {
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
+  AgentChildAgentConfiguration,
   AgentMCPAction,
   AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
@@ -273,6 +274,12 @@ export async function deleteAgentsActivity({
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
         },
+      },
+    });
+    await AgentChildAgentConfiguration.destroy({
+      where: {
+        agentConfigurationId: agent.id,
+        workspaceId: workspace.id,
       },
     });
     await AgentMCPServerConfiguration.destroy({
