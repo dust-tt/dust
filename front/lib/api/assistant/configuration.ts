@@ -503,19 +503,11 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const [
     dustAppRunActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
-    websearchActionsConfigurationsPerAgent,
-    browseActionsConfigurationsPerAgent,
-    tableQueryActionsConfigurationsPerAgent,
-    reasoningActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
     tagsPerAgent,
   ] = await Promise.all([
     fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
-    Promise.resolve(new Map()), // Websearch configurations (removed)
-    Promise.resolve(new Map()), // Browse configurations (not implemented yet)
-    Promise.resolve(new Map()), // Table query configurations (removed)
-    Promise.resolve(new Map()), // Reasoning configurations (removed)
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
@@ -533,26 +525,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
       const dustAppRunActionsConfigurations =
         dustAppRunActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...dustAppRunActionsConfigurations);
-
-      // Websearch configurations.
-      const websearchActionsConfigurations =
-        websearchActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...websearchActionsConfigurations);
-
-      // Browse configurations.
-      const browseActionsConfigurations =
-        browseActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...browseActionsConfigurations);
-
-      // Table query configurations.
-      const tableQueryActionsConfigurations =
-        tableQueryActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...tableQueryActionsConfigurations);
-
-      // Reasoning configurations
-      const reasoningActionsConfigurations =
-        reasoningActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...reasoningActionsConfigurations);
 
       // MCP server configurations
       const mcpServerActionsConfigurations =
