@@ -100,10 +100,11 @@ async function getContentForConversationIncludeFileAction(
   model: ModelConfigurationType,
   logger: Logger
 ): Promise<
-  (
-    | { type: "text"; text: string }
-    | { type: "resource"; resource: ConversationFileOutputResource }
-  )[]
+  | (
+      | { type: "text"; text: string }
+      | { type: "resource"; resource: ConversationFileOutputResource }
+    )
+  | null
 > {
   const file = await FileResource.fetchById(auth, includeFileAction.fileId);
   if (!file) {
@@ -114,7 +115,7 @@ async function getContentForConversationIncludeFileAction(
       },
       "Failed to fetch file"
     );
-    return [];
+    return null;
   }
 
   const { sId, fileName, contentType, snippet } = file;
@@ -141,33 +142,29 @@ async function getContentForConversationIncludeFileAction(
       },
       "Failed to get content fragment"
     );
-    return [];
+    return null;
   }
 
   const content = contentResult.value.content[0];
 
   if (isTextContent(content)) {
-    return [
-      {
-        type: "text",
-        text: content.text,
-      },
-    ];
+    return {
+      type: "text",
+      text: content.text,
+    };
   } else if (isImageContent(content)) {
     // For images, we return the URL as a resource with the correct MIME type
-    return [
-      {
-        type: "resource",
-        resource: {
-          uri: content.image_url.url,
-          mimeType: attachment?.contentType || "application/octet-stream",
-          text: `Image: ${attachment.title}`,
-        },
+    return {
+      type: "resource",
+      resource: {
+        uri: content.image_url.url,
+        mimeType: attachment?.contentType || "application/octet-stream",
+        text: `Image: ${attachment.title}`,
       },
-    ];
+    };
   }
 
-  return [];
+  return null;
 }
 
 async function migrateSingleConversationIncludeFileAction(
@@ -193,7 +190,7 @@ async function migrateSingleConversationIncludeFileAction(
     const mcpActionCreated = await AgentMCPAction.create(mcpAction.action);
 
     // Step 4: Create output items for the action results
-    const contentItems = await getContentForConversationIncludeFileAction(
+    const contentItem = await getContentForConversationIncludeFileAction(
       auth,
       includeFileAction,
       model,
@@ -201,21 +198,21 @@ async function migrateSingleConversationIncludeFileAction(
     );
 
     // Step 5: Create all output items
-    await AgentMCPActionOutputItem.bulkCreate(
-      contentItems.map((content) =>
+    if (contentItem) {
+      await AgentMCPActionOutputItem.create(
         createOutputItem({
-          content,
+          content: contentItem,
           agentMCPAction: mcpActionCreated,
           includeFileAction,
         })
-      )
-    );
+      );
+    }
 
     logger.info(
       {
         includeFileActionId: includeFileAction.id,
         mcpActionId: mcpActionCreated.id,
-        outputItemsCount: contentItems.length,
+        outputItemsCount: contentItem ? 1 : 0,
       },
       "Successfully migrated Conversation Include File action to MCP"
     );
