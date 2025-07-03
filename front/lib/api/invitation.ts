@@ -155,7 +155,6 @@ export function getMembershipInvitationToken(invitationId: number) {
     {
       membershipInvitationId: invitationId,
       exp: Math.floor(Date.now() / 1000) + INVITATION_EXPIRATION_TIME_SEC,
-      region: regionConfig.getCurrentRegion(),
     },
     config.getDustInviteTokenSecret()
   );

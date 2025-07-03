@@ -2,8 +2,6 @@ import { verify } from "jsonwebtoken";
 import type { Attributes, Transaction } from "sequelize";
 
 import config from "@app/lib/api/config";
-import type { RegionType } from "@app/lib/api/regions/config";
-import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
@@ -84,10 +82,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     inviteToken: string | string[] | undefined
   ): Promise<Result<MembershipInvitationResource | null, AuthFlowError>> {
     if (inviteToken && typeof inviteToken === "string") {
-      let decodedToken: {
-        membershipInvitationId: number;
-        region?: RegionType;
-      } | null = null;
+      let decodedToken: { membershipInvitationId: number } | null = null;
       try {
         decodedToken = verify(
           inviteToken,
@@ -109,18 +104,6 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
           new AuthFlowError(
             "invalid_invitation_token",
             "The invite token is invalid, please ask your admin to resend an invitation."
-          )
-        );
-      }
-
-      if (
-        decodedToken.region &&
-        decodedToken.region !== regionConfig.getCurrentRegion()
-      ) {
-        return new Err(
-          new AuthFlowError(
-            "token_invitation_region_mismatch",
-            `The invite token should be used on  ${regionConfig.getRegionUrl(decodedToken.region)}.`
           )
         );
       }
