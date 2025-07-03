@@ -40,11 +40,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   plan: PlanType;
   isAdmin: boolean;
-  spaces: SpaceType[];
-  dataSourceViews: DataSourceViewType[];
-  dustApps: AppType[];
-  mcpServerViews: MCPServerViewType[];
-  actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType

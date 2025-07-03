@@ -8,7 +8,6 @@ import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -16,7 +15,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import type {
   LightAgentConfigurationType,
   PlanType,
-  SpaceType,
   SubscriptionType,
   UserType,
   WorkspaceType,
@@ -31,7 +29,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   plan: PlanType;
   isAdmin: boolean;
-  spaces: SpaceType[];
   subscription: SubscriptionType;
 }>(async (context, auth) => {
   return tracer.trace("getServerSideProps", async () => {
@@ -98,7 +95,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
         plan,
         subscription,
         isAdmin: auth.isAdmin(),
-        spaces: spaces.map((s) => s.toJSON()),
       },
     };
   });

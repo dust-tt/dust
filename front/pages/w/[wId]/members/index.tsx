@@ -291,39 +291,6 @@ function WorkspaceMembersList({
   );
 }
 
-function WorkspaceGroupsList({
-  owner,
-  searchTerm,
-}: {
-  owner: WorkspaceType;
-  searchTerm: string;
-}) {
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: DEFAULT_PAGE_SIZE,
-  });
-
-  const { groups, isGroupsLoading } = useGroups({
-    owner,
-    kinds: ["provisioned"],
-  });
-
-  useEffect(() => {
-    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
-  }, [setPagination]);
-
-  return (
-    <GroupsList
-      searchTerm={searchTerm}
-      isLoading={isGroupsLoading}
-      groups={groups}
-      showColumns={["name", "memberCount"]}
-      pagination={pagination}
-      setPagination={setPagination}
-    />
-  );
-}
-
 WorkspaceAdmin.getLayout = (
   page: React.ReactElement,
   pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
