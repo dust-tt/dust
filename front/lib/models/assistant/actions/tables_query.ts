@@ -17,7 +17,7 @@ export class AgentTablesQueryConfigurationTable extends WorkspaceAwareModel<Agen
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
   declare mcpServerConfigurationId: ForeignKey<
     AgentMCPServerConfiguration["id"]
-  > | null;
+  >;
 
   declare dataSource: NonAttribute<DataSourceModel>;
   declare dataSourceView: NonAttribute<DataSourceViewModel>;
@@ -69,11 +69,11 @@ AgentTablesQueryConfigurationTable.init(
 
 // MCP server config <> Table config
 AgentMCPServerConfiguration.hasMany(AgentTablesQueryConfigurationTable, {
-  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
 AgentTablesQueryConfigurationTable.belongsTo(AgentMCPServerConfiguration, {
-  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
 });
 
