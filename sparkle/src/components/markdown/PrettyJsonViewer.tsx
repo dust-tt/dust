@@ -11,12 +11,7 @@ const EMPTY_CLASSES =
 const INDENT_CLASSES =
   "s-border-structure-200 dark:s-border-structure-200-night s-max-w-full s-border-l s-pl-4 s-ml-4";
 
-interface JsonViewerProps {
-  data: unknown;
-  className?: string;
-}
-
-type JsonValueType =
+export type JsonValueType =
   | string
   | number
   | boolean
@@ -207,6 +202,10 @@ function formatKey(key: string): string {
     .join(" ");
 }
 
+interface JsonViewerProps {
+  data: JsonValueType;
+  className?: string;
+}
 export function PrettyJsonViewer({ data, className }: JsonViewerProps) {
   return (
     <div
@@ -217,7 +216,7 @@ export function PrettyJsonViewer({ data, className }: JsonViewerProps) {
       )}
     >
       <div className="s-max-w-full s-overflow-x-auto">
-        <JsonValue value={data as JsonValueType} />
+        <JsonValue value={data} />
       </div>
     </div>
   );

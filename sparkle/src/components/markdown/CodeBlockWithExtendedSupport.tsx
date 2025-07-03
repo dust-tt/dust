@@ -21,7 +21,10 @@ import {
 } from "@sparkle/components";
 import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
-import { PrettyJsonViewer } from "@sparkle/components/markdown/PrettyJsonViewer";
+import {
+  JsonValueType,
+  PrettyJsonViewer,
+} from "@sparkle/components/markdown/PrettyJsonViewer";
 import { CommandLineIcon, SparklesIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
@@ -287,7 +290,7 @@ export function CodeBlockWithExtendedSupport({
   const [showMermaid, setShowMermaid] = useState<boolean>(false);
   const [isValidMermaid, setIsValidMermaid] = useState<boolean>(false);
   const [showPrettyJson, setShowPrettyJson] = useState<boolean>(false);
-  const [parsedJson, setParsedJson] = useState<unknown>(null);
+  const [parsedJson, setParsedJson] = useState<JsonValueType | null>(null);
   const { isStreaming } = useContext(MarkdownContentContext);
 
   // Detect language from className

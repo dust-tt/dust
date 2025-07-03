@@ -359,6 +359,13 @@ pie title Distribution
 
 \`\`\`json
 {
+  "message": "Invalid JSON should not be pretty printed",
+  "status": "success",
+}
+\`\`\`
+
+\`\`\`json
+{
   "message": "Soupi soupi soupinou ! Youhou !",
   "status": "success",
   "data": null
