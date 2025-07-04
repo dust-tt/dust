@@ -55,10 +55,17 @@ function generateConnectorRelativeMimeTypes<
 // Mime type that represents a datasource.
 export const DATA_SOURCE_MIME_TYPE = "application/vnd.dust.datasource" as const;
 
+export const DATA_SOURCE_WORKBOOK_MIME_TYPE =
+  "application/vnd.dust.workbook" as const;
+export type DataSourceWorkbookMimeType = typeof DATA_SOURCE_WORKBOOK_MIME_TYPE;
+
 type DataSourceMimeType = typeof DATA_SOURCE_MIME_TYPE;
 
 export const CONTENT_NODE_MIME_TYPES = {
-  GENERIC: { DATA_SOURCE: DATA_SOURCE_MIME_TYPE },
+  GENERIC: {
+    DATA_SOURCE: DATA_SOURCE_MIME_TYPE,
+    WORKBOOK: DATA_SOURCE_WORKBOOK_MIME_TYPE,
+  },
   CONFLUENCE: generateConnectorRelativeMimeTypes({
     provider: "confluence",
     resourceTypes: ["SPACE", "PAGE"],
