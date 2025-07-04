@@ -190,8 +190,7 @@ export async function submitAgentBuilderForm({
         modelId: formData.generationSettings.modelSettings.modelId,
         providerId: formData.generationSettings.modelSettings.providerId,
         temperature: formData.generationSettings.temperature,
-        reasoningEffort:
-          formData.generationSettings.modelSettings.reasoningEffort,
+        reasoningEffort: formData.generationSettings.reasoningEffort,
         responseFormat: formData.generationSettings.responseFormat,
       },
       actions: formData.actions.flatMap((action) => {

@@ -14,6 +14,7 @@ import {
 import dynamic from "next/dynamic";
 import React from "react";
 
+import { ReasoningEffortSubmenu } from "@app/components/assistant_builder/instructions/ReasoningEffortSubmenu";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -30,6 +31,7 @@ import {
   GPT_4O_MODEL_ID,
   isSupportingResponseFormat,
   MISTRAL_LARGE_MODEL_ID,
+  REASONING_EFFORT_IDS,
 } from "@app/types";
 
 const CodeEditor = dynamic(
@@ -123,23 +125,41 @@ export function AdvancedSettings({
           <DropdownMenuSubContent className="w-80">
             <DropdownMenuLabel label="Best performing models" />
             <DropdownMenuRadioGroup
-              value={`${generationSettings.modelSettings.modelId}${generationSettings.modelSettings.reasoningEffort ? `-${generationSettings.modelSettings.reasoningEffort}` : ""}`}
+              value={generationSettings.modelSettings.modelId}
             >
               {bestPerformingModelConfigs.map((modelConfig) => (
                 <DropdownMenuRadioItem
-                  key={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
-                  value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                  key={modelConfig.modelId}
+                  value={modelConfig.modelId}
                   icon={getModelProviderLogo(modelConfig.providerId, isDark)}
                   description={modelConfig.shortDescription}
                   label={modelConfig.displayName}
                   onClick={() => {
+                    const currentReasoningEffort =
+                      generationSettings.reasoningEffort;
+                    const reasoningEffortIndex = REASONING_EFFORT_IDS.indexOf(
+                      currentReasoningEffort
+                    );
+                    const minIndex = REASONING_EFFORT_IDS.indexOf(
+                      modelConfig.minimumReasoningEffort
+                    );
+                    const maxIndex = REASONING_EFFORT_IDS.indexOf(
+                      modelConfig.maximumReasoningEffort
+                    );
+
+                    const newReasoningEffort =
+                      reasoningEffortIndex < minIndex ||
+                      reasoningEffortIndex > maxIndex
+                        ? modelConfig.defaultReasoningEffort
+                        : currentReasoningEffort;
+
                     setGenerationSettings({
                       ...generationSettings,
                       modelSettings: {
                         modelId: modelConfig.modelId,
                         providerId: modelConfig.providerId,
-                        reasoningEffort: modelConfig.reasoningEffort,
                       },
+                      reasoningEffort: newReasoningEffort,
                     });
                   }}
                 />
@@ -148,23 +168,41 @@ export function AdvancedSettings({
 
             <DropdownMenuLabel label="Other models" />
             <DropdownMenuRadioGroup
-              value={`${generationSettings.modelSettings.modelId}${generationSettings.modelSettings.reasoningEffort ? `-${generationSettings.modelSettings.reasoningEffort}` : ""}`}
+              value={generationSettings.modelSettings.modelId}
             >
               {otherModelConfigs.map((modelConfig) => (
                 <DropdownMenuRadioItem
-                  key={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
-                  value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+                  key={modelConfig.modelId}
+                  value={modelConfig.modelId}
                   icon={getModelProviderLogo(modelConfig.providerId, isDark)}
                   description={modelConfig.shortDescription}
                   label={modelConfig.displayName}
                   onClick={() => {
+                    const currentReasoningEffort =
+                      generationSettings.reasoningEffort;
+                    const reasoningEffortIndex = REASONING_EFFORT_IDS.indexOf(
+                      currentReasoningEffort
+                    );
+                    const minIndex = REASONING_EFFORT_IDS.indexOf(
+                      modelConfig.minimumReasoningEffort
+                    );
+                    const maxIndex = REASONING_EFFORT_IDS.indexOf(
+                      modelConfig.maximumReasoningEffort
+                    );
+
+                    const newReasoningEffort =
+                      reasoningEffortIndex < minIndex ||
+                      reasoningEffortIndex > maxIndex
+                        ? modelConfig.defaultReasoningEffort
+                        : currentReasoningEffort;
+
                     setGenerationSettings({
                       ...generationSettings,
                       modelSettings: {
                         modelId: modelConfig.modelId,
                         providerId: modelConfig.providerId,
-                        reasoningEffort: modelConfig.reasoningEffort,
                       },
+                      reasoningEffort: newReasoningEffort,
                     });
                   }}
                 />
@@ -196,6 +234,11 @@ export function AdvancedSettings({
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+
+        <ReasoningEffortSubmenu
+          generationSettings={generationSettings}
+          setGenerationSettings={setGenerationSettings}
+        />
 
         {supportsResponseFormat && (
           <DropdownMenuSub>

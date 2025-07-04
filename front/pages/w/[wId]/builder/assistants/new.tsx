@@ -167,6 +167,8 @@ export default function CreateAssistant({
                     modelId: agentConfiguration.model.modelId,
                   },
                   temperature: agentConfiguration.model.temperature,
+                  reasoningEffort:
+                    agentConfiguration.model.reasoningEffort || "none",
                   responseFormat: agentConfiguration.model.responseFormat,
                 },
                 maxStepsPerRun: agentConfiguration.maxStepsPerRun ?? null,
