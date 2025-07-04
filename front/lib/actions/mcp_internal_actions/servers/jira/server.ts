@@ -6,6 +6,8 @@ import {
   addComment,
   createIssue,
   getIssue,
+  getProject,
+  getProjects,
   getTransitions,
   searchIssues,
   transitionIssue,
@@ -63,33 +65,37 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "list_issues",
-    "Lists JIRA issues based on a JQL query. Returns a paginated list of issues.",
+    "get_projects",
+    "Retrieves a list of JIRA projects.",
+    {},
+    async (_, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await getProjects(baseUrl, accessToken);
+          return makeMCPToolJSONSuccess({
+            message: "Projects retrieved successfully",
+            result,
+          });
+        },
+        authInfo,
+        params: {},
+      });
+    }
+  );
+
+  server.tool(
+    "get_issues_by_assignee",
+    "Get issues by assignee.",
     {
-      jql: z
-        .string()
-        .optional()
-        .describe(
-          "JQL query to filter issues (e.g., 'project = PROJ AND status = Open')"
-        ),
-      startAt: z
-        .number()
-        .optional()
-        .describe("Starting index for pagination (default: 0)"),
-      maxResults: z
-        .number()
-        .optional()
-        .describe("Maximum number of results to return (default: 50)"),
+      assigneeAccountId: z.string().describe("The JIRA assignee account ID"),
     },
-    async ({ jql, startAt, maxResults }, { authInfo }) => {
+    async ({ assigneeAccountId }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
           const result = await searchIssues(
             baseUrl,
             accessToken,
-            jql,
-            startAt,
-            maxResults
+            `assignee = ${assigneeAccountId}`
           );
           return makeMCPToolJSONSuccess({
             message: "Issues retrieved successfully",
@@ -97,7 +103,153 @@ const createServer = (): McpServer => {
           });
         },
         authInfo,
-        params: { jql, startAt, maxResults },
+        params: { assigneeAccountId },
+      });
+    }
+  );
+
+  server.tool(
+    "get_issues_by_type",
+    "Get issues by type.",
+    {
+      issueType: z.string().describe("The JIRA issue type"),
+    },
+    async ({ issueType }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await searchIssues(
+            baseUrl,
+            accessToken,
+            `issueType = ${issueType}`
+          );
+          return makeMCPToolJSONSuccess({
+            message: "Issues retrieved successfully",
+            result,
+          });
+        },
+        authInfo,
+        params: { issueType },
+      });
+    }
+  );
+
+  server.tool(
+    "get_issues_by_parent",
+    "Get issues by parent.",
+    {
+      parentIssueKey: z.string().describe("The JIRA parent issue key"),
+    },
+    async ({ parentIssueKey }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await searchIssues(
+            baseUrl,
+            accessToken,
+            `parent = ${parentIssueKey}`
+          );
+          return makeMCPToolJSONSuccess({
+            message: "Issues retrieved successfully",
+            result,
+          });
+        },
+        authInfo,
+        params: { parentIssueKey },
+      });
+    }
+  );
+
+  server.tool(
+    "get_issues_by_status",
+    "Get issues by status.",
+    {
+      status: z.string().describe("The JIRA status name"),
+    },
+    async ({ status }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await searchIssues(
+            baseUrl,
+            accessToken,
+            `status = ${status}`
+          );
+          return makeMCPToolJSONSuccess({
+            message: "Issues retrieved successfully",
+            result,
+          });
+        },
+        authInfo,
+        params: { status },
+      });
+    }
+  );
+
+  server.tool(
+    "get_issues_by_priority",
+    "Get issues by priority.",
+    {
+      priority: z.string().describe("The JIRA priority name"),
+    },
+    async ({ priority }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await searchIssues(
+            baseUrl,
+            accessToken,
+            `priority = ${priority}`
+          );
+          return makeMCPToolJSONSuccess({
+            message: "Issues retrieved successfully",
+            result,
+          });
+        },
+        authInfo,
+        params: { priority },
+      });
+    }
+  );
+
+  server.tool(
+    "get_issues_by_project",
+    "Get issues by project key.",
+    {
+      projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
+    },
+    async ({ projectKey }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await searchIssues(
+            baseUrl,
+            accessToken,
+            `project = ${projectKey}`
+          );
+          return makeMCPToolJSONSuccess({
+            message: "Issues retrieved successfully",
+            result,
+          });
+        },
+        authInfo,
+        params: { projectKey },
+      });
+    }
+  );
+
+  server.tool(
+    "get_project",
+    "Retrieves a single JIRA project by its key (e.g., 'PROJ').",
+    {
+      projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
+    },
+    async ({ projectKey }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await getProject(baseUrl, accessToken, projectKey);
+          return makeMCPToolJSONSuccess({
+            message: "Project retrieved successfully",
+            result,
+          });
+        },
+        authInfo,
+        params: { projectKey },
       });
     }
   );

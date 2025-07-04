@@ -75,7 +75,7 @@ async function getJiraBaseUrl(accessToken: string): Promise<string | null> {
   }
 }
 
-export const logAndReturnError = ({
+function logAndReturnError({
   error,
   params,
   message,
@@ -83,7 +83,7 @@ export const logAndReturnError = ({
   error: any;
   params?: Record<string, any>;
   message: string;
-}): CallToolResult => {
+}): CallToolResult {
   logger.error(
     {
       error,
@@ -94,4 +94,4 @@ export const logAndReturnError = ({
   return makeMCPToolTextError(
     error.response?.body?.message ?? error.message ?? message
   );
-};
+}

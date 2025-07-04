@@ -1,81 +1,173 @@
-import { normalizeError } from "@app/types";
+import { z } from "zod";
 
-export const MAX_LIMIT = 50;
+import logger from "@app/logger/logger";
 
-export interface JiraIssue {
-  id: string;
-  key: string;
-  self: string;
-  fields: {
-    summary: string;
-    description?: string;
-    status: {
-      name: string;
-      statusCategory: {
-        name: string;
-      };
-    };
-    priority?: {
-      name: string;
-    };
-    assignee?: {
-      displayName: string;
-      emailAddress: string;
-    };
-    reporter?: {
-      displayName: string;
-      emailAddress: string;
-    };
-    created: string;
-    updated: string;
-    issuetype: {
-      name: string;
-    };
-    project: {
-      key: string;
-      name: string;
-    };
-  };
-}
+const MAX_LIMIT = 50;
 
-export interface JiraSearchResult {
-  issues: JiraIssue[];
-  total: number;
-  startAt: number;
-  maxResults: number;
-}
-
-export const getIssue = async (
-  baseUrl: string,
+// Generic wrapper for JIRA API calls with validation
+async function jiraApiCall<T>(
+  endpoint: string,
   accessToken: string,
-  issueKey: string
-): Promise<JiraIssue | null> => {
+  schema: z.ZodSchema<T>,
+  options: {
+    method?: "GET" | "POST" | "PUT" | "DELETE";
+    body?: any;
+    baseUrl: string;
+  }
+): Promise<T | { error: string }> {
   try {
-    const response = await fetch(`${baseUrl}/rest/api/3/issue/${issueKey}`, {
-      method: "GET",
+    const response = await fetch(`${options.baseUrl}${endpoint}`, {
+      method: options.method || "GET",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
+      ...(options.body && { body: JSON.stringify(options.body) }),
     });
 
     if (!response.ok) {
-      if (response.status === 404) {
-        return null;
-      }
-      const error = new Error(
-        `Failed to fetch issue ${baseUrl} ${issueKey}: ${response.status} ${response.statusText}`
-      );
-      throw normalizeError(error);
+      const errorBody = await response.text();
+      const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
+      logger.error(msg);
+      return { error: msg };
     }
 
-    const issue = await response.json();
-    return issue as JiraIssue;
-  } catch (error) {
-    console.error(`${baseUrl} Error fetching JIRA issue ${issueKey}:`, error);
-    throw normalizeError(error);
+    const rawData = await response.json();
+    const parseResult = schema.safeParse(rawData);
+
+    if (!parseResult.success) {
+      const msg = `Invalid JIRA response format: ${parseResult.error.message}`;
+      logger.error(msg, { rawData });
+      return { error: msg };
+    }
+
+    return parseResult.data;
+  } catch (error: any) {
+    logger.error(`JIRA API call failed for ${endpoint}:`, error);
+    return { error: error?.message || "Unknown JIRA API error" };
   }
+}
+
+// Zod schemas for JIRA API responses
+const JiraIssueSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  self: z.string(),
+  fields: z.object({
+    summary: z.string(),
+    description: z.union([z.string(), z.object({}).passthrough()]).optional(),
+    status: z.object({
+      name: z.string(),
+      statusCategory: z.object({
+        name: z.string(),
+      }),
+    }),
+    priority: z
+      .object({
+        name: z.string(),
+      })
+      .optional(),
+    assignee: z
+      .object({
+        displayName: z.string(),
+        emailAddress: z.string(),
+      })
+      .nullable()
+      .optional(),
+    reporter: z
+      .object({
+        displayName: z.string(),
+        emailAddress: z.string(),
+      })
+      .nullable()
+      .optional(),
+    created: z.string(),
+    updated: z.string(),
+    issuetype: z.object({
+      name: z.string(),
+    }),
+    project: z.object({
+      key: z.string(),
+      name: z.string(),
+    }),
+  }),
+});
+
+const JiraSearchResultSchema = z.object({
+  issues: z.array(JiraIssueSchema),
+  total: z.number(),
+  startAt: z.number(),
+  maxResults: z.number(),
+});
+
+const JiraProjectSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  name: z.string(),
+});
+
+const JiraCommentSchema = z.object({
+  id: z.string(),
+  body: z.string(),
+  author: z.object({
+    displayName: z.string(),
+    emailAddress: z.string(),
+  }),
+  created: z.string(),
+  updated: z.string(),
+});
+
+const JiraTransitionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  to: z.object({
+    id: z.string(),
+    name: z.string(),
+  }),
+});
+
+const JiraTransitionsResponseSchema = z.object({
+  transitions: z.array(JiraTransitionSchema),
+});
+
+// Extract TypeScript types from schemas
+type JiraIssue = z.infer<typeof JiraIssueSchema>;
+type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
+type JiraComment = z.infer<typeof JiraCommentSchema>;
+type JiraTransitionsResponse = z.infer<typeof JiraTransitionsResponseSchema>;
+type JiraProject = z.infer<typeof JiraProjectSchema>;
+
+type JiraErrorResult = { error: string };
+
+type GetIssueResult = JiraIssue | null | JiraErrorResult;
+type SearchIssuesResult = JiraSearchResult | JiraErrorResult;
+type CreateIssueResult = JiraIssue | JiraErrorResult;
+type UpdateIssueResult = void | JiraErrorResult;
+type AddCommentResult = JiraComment | JiraErrorResult;
+type GetTransitionsResult = JiraTransitionsResponse | JiraErrorResult;
+type TransitionIssueResult = void | JiraErrorResult;
+type GetProjectsResult = JiraProject[] | JiraErrorResult;
+type GetProjectResult = JiraProject | JiraErrorResult;
+
+export const getIssue = async (
+  baseUrl: string,
+  accessToken: string,
+  issueKey: string
+): Promise<GetIssueResult> => {
+  const result = await jiraApiCall(
+    `/rest/api/3/issue/${issueKey}`,
+    accessToken,
+    JiraIssueSchema,
+    { baseUrl }
+  );
+
+  // Handle 404 case specifically
+  if ("error" in result && result.error.includes("404")) {
+    return null;
+  }
+
+  return result;
 };
 
 export const searchIssues = async (
@@ -84,33 +176,13 @@ export const searchIssues = async (
   jql: string = "*",
   startAt: number = 0,
   maxResults: number = MAX_LIMIT
-): Promise<JiraSearchResult> => {
-  try {
-    const response = await fetch(
-      `${baseUrl}/rest/api/3/search?jql=${encodeURIComponent(jql)}&startAt=${startAt}&maxResults=${maxResults}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = new Error(
-        `Failed to search issues: ${response.status} ${response.statusText}`
-      );
-      throw normalizeError(error);
-    }
-
-    const result = await response.json();
-    return result as JiraSearchResult;
-  } catch (error) {
-    console.error("Error searching JIRA issues:", error);
-    throw normalizeError(error);
-  }
+): Promise<SearchIssuesResult> => {
+  return jiraApiCall(
+    `/rest/api/3/search?jql=${encodeURIComponent(jql)}&startAt=${startAt}&maxResults=${maxResults}`,
+    accessToken,
+    JiraSearchResultSchema,
+    { baseUrl }
+  );
 };
 
 export interface CreateIssueRequest {
@@ -135,34 +207,12 @@ export const createIssue = async (
   baseUrl: string,
   accessToken: string,
   issueData: CreateIssueRequest
-): Promise<JiraIssue> => {
-  try {
-    const response = await fetch(`${baseUrl}/rest/api/3/issue`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        fields: issueData,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      const error = new Error(
-        `Failed to create issue: ${response.status} ${response.statusText} - ${errorBody}`
-      );
-      throw normalizeError(error);
-    }
-
-    const result = await response.json();
-    return result as JiraIssue;
-  } catch (error) {
-    console.error("Error creating JIRA issue:", error);
-    throw normalizeError(error);
-  }
+): Promise<CreateIssueResult> => {
+  return jiraApiCall("/rest/api/3/issue", accessToken, JiraIssueSchema, {
+    method: "POST",
+    body: { fields: issueData },
+    baseUrl,
+  });
 };
 
 export const updateIssue = async (
@@ -170,43 +220,20 @@ export const updateIssue = async (
   accessToken: string,
   issueKey: string,
   updateData: Partial<CreateIssueRequest>
-): Promise<void> => {
-  try {
-    const response = await fetch(`${baseUrl}/rest/api/3/issue/${issueKey}`, {
+): Promise<UpdateIssueResult> => {
+  const result = await jiraApiCall(
+    `/rest/api/3/issue/${issueKey}`,
+    accessToken,
+    z.void(),
+    {
       method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        fields: updateData,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      const error = new Error(
-        `Failed to update issue ${issueKey}: ${response.status} ${response.statusText} - ${errorBody}`
-      );
-      throw normalizeError(error);
+      body: { fields: updateData },
+      baseUrl,
     }
-  } catch (error) {
-    console.error(`Error updating JIRA issue ${issueKey}:`, error);
-    throw normalizeError(error);
-  }
-};
+  );
 
-export interface JiraComment {
-  id: string;
-  body: string;
-  author: {
-    displayName: string;
-    emailAddress: string;
-  };
-  created: string;
-  updated: string;
-}
+  return result;
+};
 
 export const addComment = async (
   baseUrl: string,
@@ -217,93 +244,62 @@ export const addComment = async (
     type: "group" | "role";
     value: string;
   }
-): Promise<JiraComment> => {
-  try {
-    const requestBody: any = {
-      body: commentBody,
-    };
-
-    if (visibility) {
-      requestBody.visibility = visibility;
-    }
-
-    const response = await fetch(
-      `${baseUrl}/rest/api/3/issue/${issueKey}/comment`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      }
-    );
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      const error = new Error(
-        `Failed to add comment to issue ${issueKey}: ${response.status} ${response.statusText} - ${errorBody}`
-      );
-      throw normalizeError(error);
-    }
-
-    const result = await response.json();
-    return result as JiraComment;
-  } catch (error) {
-    console.error(`Error adding comment to JIRA issue ${issueKey}:`, error);
-    throw normalizeError(error);
+): Promise<AddCommentResult> => {
+  const requestBody: any = { body: commentBody };
+  if (visibility) {
+    requestBody.visibility = visibility;
   }
+
+  return jiraApiCall(
+    `/rest/api/3/issue/${issueKey}/comment`,
+    accessToken,
+    JiraCommentSchema,
+    {
+      method: "POST",
+      body: requestBody,
+      baseUrl,
+    }
+  );
 };
-
-export interface JiraTransition {
-  id: string;
-  name: string;
-  to: {
-    id: string;
-    name: string;
-  };
-}
-
-export interface JiraTransitionsResponse {
-  transitions: JiraTransition[];
-}
 
 export const getTransitions = async (
   baseUrl: string,
   accessToken: string,
   issueKey: string
-): Promise<JiraTransitionsResponse> => {
-  try {
-    const response = await fetch(
-      `${baseUrl}/rest/api/3/issue/${issueKey}/transitions`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      }
-    );
+): Promise<GetTransitionsResult> => {
+  return jiraApiCall(
+    `/rest/api/3/issue/${issueKey}/transitions`,
+    accessToken,
+    JiraTransitionsResponseSchema,
+    { baseUrl }
+  );
+};
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      const error = new Error(
-        `Failed to get transitions for issue ${issueKey}: ${response.status} ${response.statusText} - ${errorBody}`
-      );
-      throw normalizeError(error);
+export const getProjects = async (
+  baseUrl: string,
+  accessToken: string
+): Promise<GetProjectsResult> => {
+  return jiraApiCall(
+    "/rest/api/3/project",
+    accessToken,
+    z.array(JiraProjectSchema),
+    {
+      baseUrl,
     }
+  );
+};
 
-    const result = await response.json();
-    return result as JiraTransitionsResponse;
-  } catch (error) {
-    console.error(
-      `Error getting transitions for JIRA issue ${issueKey}:`,
-      error
-    );
-    throw normalizeError(error);
-  }
+export const getProject = async (
+  baseUrl: string,
+  accessToken: string,
+  projectKey: string
+): Promise<GetProjectResult> => {
+  return jiraApiCall(
+    `/rest/api/3/project/${projectKey}`,
+    accessToken,
+    JiraProjectSchema,
+    { baseUrl }
+  );
 };
 
 export const transitionIssue = async (
@@ -312,48 +308,25 @@ export const transitionIssue = async (
   issueKey: string,
   transitionId: string,
   comment?: string
-): Promise<void> => {
-  try {
-    const requestBody: any = {
-      transition: {
-        id: transitionId,
-      },
+): Promise<TransitionIssueResult> => {
+  const requestBody: any = {
+    transition: { id: transitionId },
+  };
+
+  if (comment) {
+    requestBody.update = {
+      comment: [{ add: { body: comment } }],
     };
-
-    if (comment) {
-      requestBody.update = {
-        comment: [
-          {
-            add: {
-              body: comment,
-            },
-          },
-        ],
-      };
-    }
-
-    const response = await fetch(
-      `${baseUrl}/rest/api/3/issue/${issueKey}/transitions`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      }
-    );
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      const error = new Error(
-        `Failed to transition issue ${issueKey}: ${response.status} ${response.statusText} - ${errorBody}`
-      );
-      throw normalizeError(error);
-    }
-  } catch (error) {
-    console.error(`Error transitioning JIRA issue ${issueKey}:`, error);
-    throw normalizeError(error);
   }
+
+  return jiraApiCall(
+    `/rest/api/3/issue/${issueKey}/transitions`,
+    accessToken,
+    z.void(),
+    {
+      method: "POST",
+      body: requestBody,
+      baseUrl,
+    }
+  );
 };
