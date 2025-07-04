@@ -171,7 +171,9 @@ async function migrateSingleDustAppRunAction({
   // Find the MCP server configuration for Dust App Run.
   const dustAppRunMcpServerConfiguration =
     agentConfiguration?.mcpServerConfigurations.find(
-      (config) => config.mcpServerViewId === mcpServerViewForDustAppRun.id
+      (config) =>
+        config.mcpServerViewId === mcpServerViewForDustAppRun.id &&
+        config.appId === dustAppRunAction.appId
     );
 
   const mcpServerConfigurationId =
@@ -208,6 +210,9 @@ async function migrateSingleDustAppRunAction({
     parentLogger.info(
       {
         dustAppRunActionId: dustAppRunAction.id,
+        agentConfigurationId: agentConfiguration?.sId ?? "unknown",
+        appId: dustAppRunAction.appId,
+        mcpServerConfigurationId,
         mcpActionId: mcpAction.id,
         outputItemsCount: 1,
       },
@@ -217,8 +222,11 @@ async function migrateSingleDustAppRunAction({
     parentLogger.info(
       {
         dustAppRunActionId: dustAppRunAction.id,
+        mcpServerConfigurationId,
+        agentConfigurationId: agentConfiguration?.sId ?? "unknown",
+        appId: dustAppRunAction.appId,
       },
-      "Skipping Dust App Run action migration (dry run)"
+      "Would migrate Dust App Run action to MCP (dry run)"
     );
   }
 }
