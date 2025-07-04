@@ -15,6 +15,7 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 export function WorkspaceInfoTable({
   owner,
@@ -136,7 +137,7 @@ export function WorkspaceInfoTable({
                     dsyncStatus?.status || "not_configured"
                   )}
                 >
-                  {dsyncStatus?.status || "not_configured"}
+                  {asDisplayName(dsyncStatus?.status || "not_configured")}
                 </Chip>
               </PokeTableCell>
             </PokeTableRow>
