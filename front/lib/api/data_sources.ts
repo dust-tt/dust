@@ -1,4 +1,5 @@
 import type {
+  DataSourceFolderSpreadsheetMimeType,
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
