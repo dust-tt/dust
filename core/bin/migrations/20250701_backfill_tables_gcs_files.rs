@@ -1,7 +1,7 @@
 use clap::Parser;
 use dust::{
     databases::{table::get_table_unique_id, table_schema::TableSchema},
-    databases_store::store::{DatabasesStore, PostgresDatabasesStore},
+    databases_store::{postgres::PostgresDatabasesStore, store::DatabasesStore},
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
 };
