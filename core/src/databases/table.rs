@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
+use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
 use crate::search_stores::search_store::NodeItem;
 use crate::{
     data_sources::node::ProviderVisibility,
@@ -263,6 +264,10 @@ impl Table {
 
             // Delete the table rows.
             databases_store.delete_table_rows(&self).await?;
+
+            // Do the same delete operation on the GCS store.
+            let gcs_store = GoogleCloudStorageDatabasesStore::new();
+            gcs_store.delete_table_rows(&self).await?;
         }
 
         store
@@ -342,21 +347,6 @@ pub struct LocalTable {
 }
 
 impl LocalTable {
-    pub fn get_bucket() -> Result<String> {
-        match std::env::var("DUST_TABLES_BUCKET") {
-            Ok(bucket) => Ok(bucket),
-            Err(_) => Err(anyhow!("DUST_TABLES_BUCKET is not set")),
-        }
-    }
-
-    pub fn get_csv_storage_file_path(
-        project_id: &i64,
-        data_source_id: &str,
-        table_id: &str,
-    ) -> String {
-        format!("project-{}/{}/{}.csv", project_id, data_source_id, table_id)
-    }
-
     pub fn from_table(table: Table) -> Result<LocalTable> {
         match table.table_type() {
             Ok(TableType::Local) => Ok(LocalTable { table }),
@@ -492,33 +482,26 @@ impl LocalTable {
         );
 
         now = utils::now();
-        // Upload the CSV file to the bucket.
-        if truncate {
-            store
-                .store_data_source_table_csv(
-                    &self.table.project,
-                    &self.table.data_source_id,
-                    &self.table.table_id,
-                    &new_table_schema,
-                    &rows,
-                )
-                .await?;
-        } else {
-            if self.table.migrated_to_csv() {
-                store
-                    .delete_data_source_table_csv(
-                        &self.table.project,
-                        &self.table.data_source_id,
-                        &self.table.table_id,
-                    )
-                    .await?;
-            }
-        }
+
+        // Do the same write operation on the GCS store.
+        let gcs_store = GoogleCloudStorageDatabasesStore::new();
+        gcs_store
+            .batch_upsert_table_rows(&self.table, &rows, truncate)
+            .await?;
+
+        store
+            .set_data_source_table_migrated_to_csv(
+                &self.table.project,
+                &self.table.data_source_id,
+                &self.table.table_id,
+                true,
+            )
+            .await?;
 
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            "DSSTRUCTSTAT [upsert_rows] csv upload"
+            "DSSTRUCTSTAT [upsert_rows] csv upsert"
         );
 
         now = utils::now();
@@ -602,7 +585,15 @@ impl LocalTable {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         row_id: &str,
     ) -> Result<()> {
-        databases_store.delete_table_row(&self.table, row_id).await
+        databases_store
+            .delete_table_row(&self.table, row_id)
+            .await?;
+
+        // Do the same delete operation on the GCS store.
+        let gcs_store = GoogleCloudStorageDatabasesStore::new();
+        gcs_store.delete_table_row(&self.table, row_id).await?;
+
+        Ok(())
     }
 
     pub async fn list_rows(
