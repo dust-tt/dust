@@ -121,6 +121,14 @@ export function WorkspaceInfoTable({
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
+              <PokeTableCell className="max-w-48">
+                WorkOS organization
+              </PokeTableCell>
+              <PokeTableCell>
+                {owner.workOSOrganizationId ?? "None"}
+              </PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
               <PokeTableCell>Directory Sync</PokeTableCell>
               <PokeTableCell>
                 <Chip
