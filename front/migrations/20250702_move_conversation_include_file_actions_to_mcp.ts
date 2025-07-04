@@ -23,11 +23,8 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import {
-  LightWorkspaceType,
-  ModelConfigurationType,
-  stripNullBytes,
-} from "@app/types";
+import type { LightWorkspaceType, ModelConfigurationType } from "@app/types";
+import { stripNullBytes } from "@app/types";
 import { isGlobalAgentId, isImageContent, isTextContent } from "@app/types";
 
 const WORKSPACE_CONCURRENCY = 50;
@@ -63,7 +60,7 @@ function agentConversationIncludeFileActionToAgentMCPAction(
     action: {
       agentMessageId: includeFileAction.agentMessageId,
       functionCallId: includeFileAction.functionCallId,
-      functionCallName: includeFileAction.functionCallName,
+      functionCallName: "conversation_files__include_file",
       createdAt: includeFileAction.createdAt,
       updatedAt: includeFileAction.updatedAt,
       generatedFiles: [],
