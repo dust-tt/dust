@@ -3,6 +3,7 @@ import * as t from "io-ts";
 
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import logger from "@app/logger/logger";
 import { isOAuthProvider, isOAuthUseCase, safeParseJSON } from "@app/types";
 
 export const ExtraConfigTypeSchema = t.record(t.string, t.string);
@@ -19,11 +20,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
     const { provider, useCase, extraConfig } = context.query;
 
     if (!isOAuthProvider(provider)) {
+      logger.info({ provider }, "Invalid OAuth provider");
       return {
         notFound: true,
       };
     }
     if (!isOAuthUseCase(useCase)) {
+      logger.info({ useCase }, "Invalid OAuth use case");
       return {
         notFound: true,
       };
@@ -32,12 +35,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<object>(
     let parsedExtraConfig: ExtraConfigType = {};
     const parseRes = safeParseJSON(extraConfig as string);
     if (parseRes.isErr()) {
+      logger.info({ parseRes }, "Invalid extra config 2");
       return {
         notFound: true,
       };
     }
     const bodyValidation = ExtraConfigTypeSchema.decode(parseRes.value);
     if (isLeft(bodyValidation)) {
+      logger.info({ bodyValidation }, "Invalid extra config bodyvalidation");
       return {
         notFound: true,
       };

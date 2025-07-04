@@ -6,24 +6,15 @@ import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
-import type { Authenticator } from "@app/lib/auth";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import logger from "@app/logger/logger";
+//import type { Authenticator } from "@app/lib/auth";
+//import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+//import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { OAuthAPI } from "@app/types";
+//import { OAuthAPI } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
-  setupUri({
-    connection,
-    extraConfig,
-  }: {
-    connection: OAuthConnectionType;
-    extraConfig?: ExtraConfigType;
-  }) {
-    if (extraConfig && Object.keys(extraConfig).length > 0) {
-      throw new Error("extraConfig is not supported for JIRA OAuth");
-    }
+  setupUri({ connection }: { connection: OAuthConnectionType }) {
     const scopes = [
       // Read permissions
       "read:jira-work",
@@ -61,13 +52,11 @@ export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
       if (extraConfig.mcp_server_id) {
         return true;
       }
-    } else if (useCase === "platform_actions") {
-      return !!(extraConfig.client_id && extraConfig.client_secret);
     }
     return Object.keys(extraConfig).length === 0;
   }
 
-  async getRelatedCredential(
+  /*async getRelatedCredential(
     auth: Authenticator,
     extraConfig: ExtraConfigType,
     workspaceId: string,
@@ -134,5 +123,5 @@ export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
       },
       cleanedConfig: restConfig,
     };
-  }
+  }*/
 }
