@@ -12,6 +12,7 @@ import {
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
@@ -204,6 +205,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           "Unreachable: agent configuration must be found for agent message"
         );
       }
+      const model = getSupportedModelConfig(agentConfiguration.model);
 
       let error: {
         code: string;
@@ -263,7 +265,11 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           const contentParser = new AgentMessageContentParser(
             agentConfiguration,
             message.sId,
-            getDelimitersConfiguration({ agentConfiguration })
+            getDelimitersConfiguration({
+              reasoningEffort:
+                agentConfiguration.model.reasoningEffort ??
+                model.defaultReasoningEffort,
+            })
           );
           const parsedContent = await contentParser.parseContents(
             textContents.map((r) => r.content.value)

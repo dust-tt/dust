@@ -81,6 +81,7 @@ const dummyModelConfiguration = {
   providerId: GPT_4_1_MODEL_CONFIG.providerId,
   modelId: GPT_4_1_MODEL_CONFIG.modelId,
   temperature: 0,
+  reasoningEffort: GPT_4_1_MODEL_CONFIG.defaultReasoningEffort,
 };
 
 type PrefetchedDataSourcesType = {
@@ -259,6 +260,7 @@ function _getHelperGlobalAgent({
         providerId: modelConfiguration?.providerId,
         modelId: modelConfiguration?.modelId,
         temperature: 0.2,
+        reasoningEffort: modelConfiguration?.defaultReasoningEffort,
       }
     : dummyModelConfiguration;
   const status = modelConfiguration ? "active" : "disabled_by_admin";
