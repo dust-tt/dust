@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-explicit-any */
 // @ts-nocheck
 // Test script that imports actual functions from the codebase
 
@@ -5,13 +6,14 @@ import {
   getDriveItemInternalId,
   getParentReferenceInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
-import {
-  typeAndPathFromInternalId,
-} from "@connectors/connectors/microsoft/lib/utils";
 import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
+import { typeAndPathFromInternalId } from "@connectors/connectors/microsoft/lib/utils";
 
 // OLD VERSION of sortForIncrementalUpdate (before the fix)
-function sortForIncrementalUpdateOld(changedList: DriveItem[], rootId?: string) {
+function sortForIncrementalUpdateOld(
+  changedList: DriveItem[],
+  rootId?: string
+) {
   if (changedList.length === 0) {
     return [];
   }
@@ -37,7 +39,9 @@ function sortForIncrementalUpdateOld(changedList: DriveItem[], rootId?: string) 
         return true;
       }
 
-      const parentInternalId = getParentReferenceInternalId(item.parentReference);
+      const parentInternalId = getParentReferenceInternalId(
+        item.parentReference
+      );
 
       if (
         typeAndPathFromInternalId(parentInternalId).nodeType === "drive" &&
@@ -61,7 +65,10 @@ function sortForIncrementalUpdateOld(changedList: DriveItem[], rootId?: string) 
 }
 
 // NEW VERSION of sortForIncrementalUpdate (with the fix)
-function sortForIncrementalUpdateNew(changedList: DriveItem[], rootId?: string) {
+function sortForIncrementalUpdateNew(
+  changedList: DriveItem[],
+  rootId?: string
+) {
   if (changedList.length === 0) {
     return [];
   }
@@ -90,7 +97,9 @@ function sortForIncrementalUpdateNew(changedList: DriveItem[], rootId?: string) 
         return true;
       }
 
-      const parentInternalId = getParentReferenceInternalId(item.parentReference);
+      const parentInternalId = getParentReferenceInternalId(
+        item.parentReference
+      );
 
       if (
         typeAndPathFromInternalId(parentInternalId).nodeType === "drive" &&
@@ -206,18 +215,20 @@ function createMockHierarchy(): DriveItem[] {
 function runTests() {
   console.log("Creating mock hierarchy...");
   const mockItems = createMockHierarchy();
-  
+
   console.log("\nMock items (shuffled):");
-  mockItems.forEach(item => {
-    console.log(`- ${item.name} (id: ${item.id}, parent: ${item.parentReference?.id || 'none'})`);
+  mockItems.forEach((item) => {
+    console.log(
+      `- ${item.name} (id: ${item.id}, parent: ${item.parentReference?.id || "none"})`
+    );
   });
 
   console.log("\n=== Testing without rootId ===");
-  
+
   console.time("Old version");
   const resultOld = sortForIncrementalUpdateOld([...mockItems]);
   console.timeEnd("Old version");
-  
+
   console.time("New version");
   const resultNew = sortForIncrementalUpdateNew([...mockItems]);
   console.timeEnd("New version");
@@ -234,13 +245,17 @@ function runTests() {
 
   // Compare results
   const sameLength = resultOld.length === resultNew.length;
-  const sameOrder = resultOld.every((item, idx) => item.id === resultNew[idx].id);
-  const sameItems = resultOld.every(oldItem => 
-    resultNew.some(newItem => newItem.id === oldItem.id)
+  const sameOrder = resultOld.every(
+    (item, idx) => item.id === resultNew[idx].id
+  );
+  const sameItems = resultOld.every((oldItem) =>
+    resultNew.some((newItem) => newItem.id === oldItem.id)
   );
 
   console.log("\n=== Comparison Results ===");
-  console.log(`Same length: ${sameLength} (old: ${resultOld.length}, new: ${resultNew.length})`);
+  console.log(
+    `Same length: ${sameLength} (old: ${resultOld.length}, new: ${resultNew.length})`
+  );
   console.log(`Same order: ${sameOrder}`);
   console.log(`Same items: ${sameItems}`);
 
@@ -250,34 +265,45 @@ function runTests() {
       const oldItem = resultOld[i];
       const newItem = resultNew[i];
       if (!oldItem || !newItem || oldItem.id !== newItem.id) {
-        console.log(`Position ${i + 1}: old="${oldItem?.name || 'none'}" vs new="${newItem?.name || 'none'}"`);
+        console.log(
+          `Position ${i + 1}: old="${oldItem?.name || "none"}" vs new="${newItem?.name || "none"}"`
+        );
       }
     }
   }
 
   // Test with a specific rootId
   console.log("\n\n=== Testing with rootId='folder2' ===");
-  
+
   console.time("Old version with rootId");
-  const resultOldWithRoot = sortForIncrementalUpdateOld([...mockItems], "folder2");
+  const resultOldWithRoot = sortForIncrementalUpdateOld(
+    [...mockItems],
+    "folder2"
+  );
   console.timeEnd("Old version with rootId");
-  
+
   console.time("New version with rootId");
-  const resultNewWithRoot = sortForIncrementalUpdateNew([...mockItems], "folder2");
+  const resultNewWithRoot = sortForIncrementalUpdateNew(
+    [...mockItems],
+    "folder2"
+  );
   console.timeEnd("New version with rootId");
 
-  console.log("\nWith rootId - Same order:", 
-    resultOldWithRoot.every((item, idx) => item.id === resultNewWithRoot[idx].id)
+  console.log(
+    "\nWith rootId - Same order:",
+    resultOldWithRoot.every(
+      (item, idx) => item.id === resultNewWithRoot[idx].id
+    )
   );
 
   // Performance test with larger dataset
   console.log("\n\n=== Performance Test with 1000 items ===");
   const largeDataset = createLargeDataset(1000);
-  
+
   console.time("Old version (1000 items)");
   sortForIncrementalUpdateOld([...largeDataset]);
   console.timeEnd("Old version (1000 items)");
-  
+
   console.time("New version (1000 items)");
   sortForIncrementalUpdateNew([...largeDataset]);
   console.timeEnd("New version (1000 items)");
@@ -304,7 +330,7 @@ function createLargeDataset(size: number): DriveItem[] {
   for (let i = 1; i < size; i++) {
     const parentIdx = Math.floor((i - 1) / 3); // Each parent has ~3 children
     const parentId = items[parentIdx].id;
-    
+
     items.push({
       id: `item${i}`,
       name: `Item ${i}`,
