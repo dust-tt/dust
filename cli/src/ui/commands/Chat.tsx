@@ -33,6 +33,8 @@ import {
   validateNonInteractiveFlags,
 } from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
+import FileAccessSelector from "../components/FileAccessSelector.js";
+import { useFileSystemServer } from "../../utils/servers/fsServer.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];
@@ -98,6 +100,10 @@ const CliChat: FC<CliChatProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [showFileSelector, setShowFileSelector] = useState(false);
+  const [chosenFileSystemUsage, setChosenFileSystemUsage] = useState(false);
+  const [fileSystemServerId, setFileSystemServerId] = useState<string | null>(
+    null
+  );
 
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
@@ -460,6 +466,9 @@ const CliChat: FC<CliChatProps> = ({
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
               context: {
+                clientSideMCPServerIds: fileSystemServerId
+                  ? [fileSystemServerId]
+                  : null,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 username: me.username,
                 fullName: me.fullName,
@@ -495,6 +504,9 @@ const CliChat: FC<CliChatProps> = ({
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
               context: {
+                clientSideMCPServerIds: fileSystemServerId
+                  ? [fileSystemServerId]
+                  : null,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 username: me.username,
                 fullName: me.fullName,
@@ -706,7 +718,15 @@ const CliChat: FC<CliChatProps> = ({
         setAbortController(null);
       }
     },
-    [selectedAgent, conversationId, me, meError, isMeLoading, uploadedFiles]
+    [
+      selectedAgent,
+      conversationId,
+      me,
+      meError,
+      isMeLoading,
+      uploadedFiles,
+      fileSystemServerId,
+    ]
   );
 
   // Handle file upload completion
@@ -1178,6 +1198,26 @@ const CliChat: FC<CliChatProps> = ({
             // Clear terminal and force re-render.
             await clearTerminal();
           }
+        }}
+      />
+    );
+  }
+
+  if ((selectedAgent || !isSelectingNewAgent) && !chosenFileSystemUsage) {
+    return (
+      <FileAccessSelector
+        selectMultiple={false}
+        onConfirm={async (selectedModelFileAccess) => {
+          if (selectedModelFileAccess[0].id === "y") {
+            const dustClient = await getDustClient();
+            if (!dustClient) {
+              throw new Error("No Dust API set.");
+            }
+            await useFileSystemServer(dustClient, (serverId) => {
+              setFileSystemServerId(serverId);
+            });
+          }
+          setChosenFileSystemUsage(true);
         }}
       />
     );
