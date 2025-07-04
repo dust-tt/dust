@@ -9,7 +9,6 @@ use tracing::info;
 
 use crate::{
     databases::table::{Row, Table},
-    databases::table_schema::TableSchema,
     databases_store::store::DatabasesStore,
     utils,
 };
@@ -128,7 +127,6 @@ impl DatabasesStore for PostgresDatabasesStore {
     async fn batch_upsert_table_rows(
         &self,
         table: &Table,
-        _schema: &TableSchema,
         rows: &Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
@@ -259,7 +257,7 @@ impl DatabasesStore for PostgresDatabasesStore {
         Ok(())
     }
 
-    async fn delete_table_data(&self, table: &Table) -> Result<()> {
+    async fn delete_table_rows(&self, table: &Table) -> Result<()> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
