@@ -215,6 +215,9 @@ async fn process_one_table(
             .await?;
     }
 
+    // Set the migrated flag. We pass in the current timestamp, to make sure the bit is only
+    // set if the time has not changed. If it changed, we still would have saved the data, but
+    // since the bit is not updated, we'll do it again next time (i.e. the csv is a dead file).
     store
         .set_data_source_table_migrated_to_csv(
             &table.project(),
