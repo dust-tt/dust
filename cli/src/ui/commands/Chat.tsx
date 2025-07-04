@@ -28,11 +28,6 @@ import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
 import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
-import {
-  fetchAgentMessageFromConversation,
-  sendNonInteractiveMessage,
-  validateNonInteractiveFlags,
-} from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -41,10 +36,7 @@ type AgentConfiguration =
 interface CliChatProps {
   sId?: string;
   agentSearch?: string;
-  message?: string;
   conversationId?: string;
-  messageId?: string;
-  details?: boolean;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -63,24 +55,10 @@ function getLastConversationItem<T extends ConversationItem>(
 const CliChat: FC<CliChatProps> = ({
   sId: requestedSId,
   agentSearch,
-  message,
   conversationId,
-  messageId,
-  details,
 }) => {
   const [error, setError] = useState<string | null>(null);
 
-  // Validate flags usage
-  useEffect(() => {
-    validateNonInteractiveFlags(message, agentSearch, conversationId, messageId, details);
-  }, [message, agentSearch, conversationId, messageId, details]);
-  
-  // Handle messageId mode - fetch agent message from conversation
-  useEffect(() => {
-    if (messageId && conversationId) {
-      void fetchAgentMessageFromConversation(conversationId, messageId);
-    }
-  }, [messageId, conversationId]);
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
   );
@@ -321,32 +299,6 @@ const CliChat: FC<CliChatProps> = ({
     ]);
   }, [agentSearch, allAgents, selectedAgent]);
 
-  // Handle non-interactive mode when message is provided
-  useEffect(() => {
-    if (!message || !selectedAgent) {
-      return;
-    }
-
-    // Wait for authentication to load
-    if (isMeLoading) {
-      return;
-    }
-
-    // Check for authentication errors
-    if (!me || meError) {
-      console.error(
-        JSON.stringify({
-          error: "Authentication error",
-          details: meError || "Not authenticated",
-        })
-      );
-      process.exit(1);
-    }
-
-    // Call the standalone function
-    setIsProcessingQuestion(true);
-    void sendNonInteractiveMessage(message, selectedAgent, me, conversationId, details);
-  }, [message, selectedAgent, me, meError, isMeLoading, conversationId, details]);
 
   const canSubmit =
     me &&
@@ -1108,12 +1060,6 @@ const CliChat: FC<CliChatProps> = ({
     }
   });
 
-  // In non-interactive mode, show minimal UI
-  if (message || messageId) {
-    // Don't show any UI in non-interactive mode
-    // All output is handled via console.log/console.error in the useEffect
-    return null;
-  }
 
   // Show loading state while searching for agent
   if (agentSearch && agentsIsLoading) {
