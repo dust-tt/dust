@@ -57,6 +57,10 @@ const whitelistedCommands = [
     majorCommand: "webcrawler",
     command: "update-frequency",
   },
+  {
+    majorCommand: "confluence",
+    command: "check-page-exists",
+  },
 ];
 
 const _adminAPIHandler = async (

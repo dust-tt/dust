@@ -46,6 +46,7 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("check-space-access"),
     t.literal("resolve-space-from-url"),
     t.literal("sync-space"),
+    t.literal("check-page-exists"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -98,6 +99,30 @@ export const ConfluenceResolveSpaceFromUrlResponseSchema = t.intersection([
 export type ConfluenceResolveSpaceFromUrlResponseType = t.TypeOf<
   typeof ConfluenceResolveSpaceFromUrlResponseSchema
 >;
+
+const ConfluenceAncestorSchema = t.type({
+  id: t.string,
+  type: t.string,
+  title: t.union([t.undefined, t.string]),
+});
+
+export const ConfluenceCheckPageExistsResponseSchema = t.union([
+  t.type({
+    exists: t.literal(false),
+  }),
+  t.type({
+    exists: t.literal(true),
+    ancestors: t.array(ConfluenceAncestorSchema),
+    hasChildren: t.boolean,
+    hasReadRestrictions: t.boolean,
+    title: t.string,
+  }),
+]);
+
+export type ConfluenceCheckPageExistsResponseType = t.TypeOf<
+  typeof ConfluenceCheckPageExistsResponseSchema
+>;
+
 /**
  * </Confluence>
  */
@@ -728,6 +753,7 @@ export const AdminResponseSchema = t.union([
   AdminSuccessResponseSchema,
   BatchAllResponseSchema,
   CheckFileGenericResponseSchema,
+  ConfluenceCheckPageExistsResponseSchema,
   ConfluenceCheckSpaceAccessResponseSchema,
   ConfluenceMeResponseSchema,
   ConfluenceResolveSpaceFromUrlResponseSchema,
