@@ -262,7 +262,7 @@ impl Table {
             .await?;
 
             // Delete the table rows.
-            databases_store.delete_table_rows(&self.unique_id()).await?;
+            databases_store.delete_table_rows(&self).await?;
         }
 
         store
@@ -482,7 +482,7 @@ impl LocalTable {
         // backward-compatible with the previous one. The other way around would not be true -- old
         // schema doesn't necessarily work with the new rows. This is why we cannot `try_join_all`.
         databases_store
-            .batch_upsert_table_rows(&self.table.unique_id(), &rows, truncate)
+            .batch_upsert_table_rows(&self.table, &rows, truncate)
             .await?;
         info!(
             duration = utils::now() - now,
@@ -594,9 +594,7 @@ impl LocalTable {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         row_id: &str,
     ) -> Result<Option<Row>> {
-        databases_store
-            .load_table_row(&self.table.unique_id(), row_id)
-            .await
+        databases_store.load_table_row(&self.table, row_id).await
     }
 
     pub async fn delete_row(
@@ -604,9 +602,7 @@ impl LocalTable {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         row_id: &str,
     ) -> Result<()> {
-        databases_store
-            .delete_table_row(&self.table.unique_id(), row_id)
-            .await
+        databases_store.delete_table_row(&self.table, row_id).await
     }
 
     pub async fn list_rows(
@@ -615,7 +611,7 @@ impl LocalTable {
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Row>, usize)> {
         databases_store
-            .list_table_rows(&self.table.unique_id(), limit_offset)
+            .list_table_rows(&self.table, limit_offset)
             .await
     }
 
