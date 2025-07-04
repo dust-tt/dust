@@ -1,7 +1,7 @@
 import { escapeRegExp } from "lodash";
 
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type {
-  AgentReasoningEffort,
   GenerationTokensEvent,
   LightAgentConfigurationType,
 } from "@app/types";
@@ -275,10 +275,13 @@ export class AgentMessageContentParser {
 }
 
 export function getDelimitersConfiguration({
-  reasoningEffort,
+  agentConfiguration,
 }: {
-  reasoningEffort: AgentReasoningEffort;
+  agentConfiguration: LightAgentConfigurationType;
 }): DelimitersConfiguration {
+  const model = getSupportedModelConfig(agentConfiguration.model);
+  const reasoningEffort =
+    agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
   if (reasoningEffort !== "light") {
     return {
       delimiters: [],

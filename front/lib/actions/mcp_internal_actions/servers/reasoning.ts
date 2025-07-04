@@ -274,10 +274,7 @@ async function* runReasoning(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({
-      reasoningEffort:
-        reasoningModel.reasoningEffort ?? supportedModel.defaultReasoningEffort,
-    })
+    getDelimitersConfiguration({ agentConfiguration })
   );
 
   const redis = await getRedisClient({ origin: "reasoning_generation" });

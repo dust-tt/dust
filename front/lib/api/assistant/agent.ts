@@ -662,11 +662,7 @@ async function* runMultiActionsAgent(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    getDelimitersConfiguration({
-      reasoningEffort:
-        agentConfiguration.model.reasoningEffort ??
-        model.defaultReasoningEffort,
-    })
+    getDelimitersConfiguration({ agentConfiguration })
   );
 
   const _checkCancellation = async () => {
