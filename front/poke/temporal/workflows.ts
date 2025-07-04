@@ -83,5 +83,5 @@ export async function deleteWorkspaceWorkflow({
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });
   await deleteWorkspaceActivity({ workspaceId });
-  await deleteWorkOSOrganization({ workspaceId });
+  await deleteWorkOSOrganization({ workspaceId, workspaceHasBeenRelocated });
 }

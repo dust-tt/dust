@@ -750,9 +750,20 @@ export async function deleteTagsActivity({
 }
 
 export async function deleteWorkOSOrganization({
+  workspaceHasBeenRelocated = false,
   workspaceId,
 }: {
+  workspaceHasBeenRelocated?: boolean;
   workspaceId: string;
 }) {
+  if (workspaceHasBeenRelocated) {
+    logger.info(
+      { workspaceId },
+      "Skipping WorkOS organization deletion for workspace that has been relocated."
+    );
+
+    return;
+  }
+
   await deleteWorksOSOrganizationWithWorkspace(workspaceId);
 }
