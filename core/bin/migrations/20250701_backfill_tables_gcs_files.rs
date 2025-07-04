@@ -1,7 +1,10 @@
 use clap::Parser;
 use dust::{
     databases::{table::Table, table_schema::TableSchema},
-    databases_store::{postgres::PostgresDatabasesStore, store::DatabasesStore},
+    databases_store::{
+        gcs::GoogleCloudStorageDatabasesStore, postgres::PostgresDatabasesStore,
+        store::DatabasesStore,
+    },
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
 };
@@ -57,6 +60,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let pool = store.raw_pool();
 
     let db_store = PostgresDatabasesStore::new(&db_store_uri).await?;
+    let gcs_store = GoogleCloudStorageDatabasesStore::new();
 
     // Loop on all tables in batches
     let mut next_cursor = start_cursor;
@@ -73,8 +77,14 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             "Processing up to {} tables, starting at id {}. ",
             batch_size, next_cursor
         );
-        let next_id_cursor =
-            process_tables_batch(&store, &db_store, next_cursor, batch_size as i64).await?;
+        let next_id_cursor = process_tables_batch(
+            &store,
+            &db_store,
+            &gcs_store,
+            next_cursor,
+            batch_size as i64,
+        )
+        .await?;
 
         next_cursor = match next_id_cursor {
             Some(cursor) => cursor,
@@ -95,6 +105,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 async fn process_tables_batch(
     store: &PostgresStore,
     db_store: &PostgresDatabasesStore,
+    gcs_store: &GoogleCloudStorageDatabasesStore,
     id_cursor: i64,
     batch_size: i64,
 ) -> Result<Option<i64>, Box<dyn std::error::Error>> {
@@ -161,10 +172,9 @@ async fn process_tables_batch(
     }
 
     let futures = tables.into_iter().map(|(id, table)| {
-        let store = store.clone();
         let db_store = db_store.clone();
         async move {
-            match process_one_table(&store, &db_store, table).await {
+            match process_one_table(&store, &db_store, &gcs_store, table).await {
                 Ok(_) => Ok(id),
                 Err(e) => Err(e),
             }
@@ -180,6 +190,7 @@ async fn process_tables_batch(
 async fn process_one_table(
     store: &PostgresStore,
     db_store: &PostgresDatabasesStore,
+    gcs_store: &GoogleCloudStorageDatabasesStore,
     table: Table,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // let unique_table_id = get_table_unique_id(&project, &data_source_id, &table_id);
@@ -188,28 +199,29 @@ async fn process_one_table(
 
     let (rows, _count) = db_store.list_table_rows(&table, None).await?;
 
-    let table_schema: TableSchema;
+    let mut table_schema: Option<TableSchema> = None;
 
     if rows.len() > 0 {
         // If there are rows, we can create a schema from them
-        table_schema = TableSchema::from_rows_async(std::sync::Arc::new(rows.clone())).await?;
+        table_schema = Some(TableSchema::from_rows_async(std::sync::Arc::new(rows.clone())).await?);
     } else if !table.schema_cached().is_none() {
         // If there are no rows, but the DB has a cached schema, use that
-        table_schema = table.schema_cached().unwrap().clone();
-    } else {
-        // Create an empty schema, which will cause store_data_source_table_csv not to save a csv
-        table_schema = serde_json::from_str("[]")?;
+        table_schema = Some(table.schema_cached().unwrap().clone());
+    }
+
+    if let Some(ref schema) = table_schema {
+        gcs_store
+            .batch_upsert_table_rows(&table, schema, &rows, true)
+            .await?;
     }
 
     store
-        .store_data_source_table_csv(
-            table.project(),
-            table.data_source_id(),
-            table.table_id(),
-            &table_schema,
-            &rows,
+        .set_data_source_table_migrated_to_csv(
+            &table.project(),
+            &table.data_source_id(),
+            &table.table_id(),
+            true,
         )
         .await?;
-
     Ok(())
 }
