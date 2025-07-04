@@ -11,7 +11,7 @@ use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
 use crate::search_stores::search_store::NodeItem;
 use crate::{
     data_sources::node::ProviderVisibility,
-    databases::{csv::UpsertQueueCSVContent, database::HasValue, table_schema::TableSchema},
+    databases::{csv::GoogleCloudStorageCSVContent, database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
     search_filter::{Filterable, SearchFilter},
@@ -263,11 +263,11 @@ impl Table {
             .await?;
 
             // Delete the table rows.
-            databases_store.delete_table_rows(&self).await?;
+            databases_store.delete_table_data(&self).await?;
 
             // Do the same delete operation on the GCS store.
             let gcs_store = GoogleCloudStorageDatabasesStore::new();
-            gcs_store.delete_table_rows(&self).await?;
+            gcs_store.delete_table_data(&self).await?;
         }
 
         store
@@ -472,7 +472,7 @@ impl LocalTable {
         // backward-compatible with the previous one. The other way around would not be true -- old
         // schema doesn't necessarily work with the new rows. This is why we cannot `try_join_all`.
         databases_store
-            .batch_upsert_table_rows(&self.table, &rows, truncate)
+            .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
             .await?;
         info!(
             duration = utils::now() - now,
@@ -484,19 +484,22 @@ impl LocalTable {
         now = utils::now();
 
         // Do the same write operation on the GCS store.
-        let gcs_store = GoogleCloudStorageDatabasesStore::new();
-        gcs_store
-            .batch_upsert_table_rows(&self.table, &rows, truncate)
-            .await?;
+        // Only do it if we are truncating or if the table is already migrated to CSV.
+        if truncate || self.table.migrated_to_csv() {
+            let gcs_store = GoogleCloudStorageDatabasesStore::new();
+            gcs_store
+                .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                .await?;
 
-        store
-            .set_data_source_table_migrated_to_csv(
-                &self.table.project,
-                &self.table.data_source_id,
-                &self.table.table_id,
-                true,
-            )
-            .await?;
+            store
+                .set_data_source_table_migrated_to_csv(
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
+                    true,
+                )
+                .await?;
+        }
 
         info!(
             duration = utils::now() - now,
@@ -544,7 +547,7 @@ impl LocalTable {
     ) -> Result<()> {
         let now = utils::now();
 
-        let rows = UpsertQueueCSVContent {
+        let rows = GoogleCloudStorageCSVContent {
             bucket: bucket.to_string(),
             bucket_csv_path: bucket_csv_path.to_string(),
         }
@@ -662,7 +665,7 @@ impl LocalTable {
     pub async fn validate_csv_content(bucket: &str, bucket_csv_path: &str) -> Result<TableSchema> {
         let now = utils::now();
         let rows = Arc::new(
-            UpsertQueueCSVContent {
+            GoogleCloudStorageCSVContent {
                 bucket: bucket.to_string(),
                 bucket_csv_path: bucket_csv_path.to_string(),
             }

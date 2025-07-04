@@ -8,7 +8,7 @@ use tracing::info;
 
 use crate::{
     databases::{
-        csv::UpsertQueueCSVContent,
+        csv::GoogleCloudStorageCSVContent,
         table::{Row, Table},
         table_schema::TableSchema,
     },
@@ -42,7 +42,7 @@ impl GoogleCloudStorageDatabasesStore {
     }
 
     pub async fn get_rows_from_csv(table: &Table) -> Result<Vec<Row>> {
-        let csv = UpsertQueueCSVContent {
+        let csv = GoogleCloudStorageCSVContent {
             bucket: Self::get_bucket()?,
             bucket_csv_path: Self::get_csv_storage_file_path(table),
         };
@@ -113,6 +113,7 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
     async fn batch_upsert_table_rows(
         &self,
         table: &Table,
+        schema: &TableSchema,
         rows: &Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
@@ -122,6 +123,12 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
 
         // We need to merge the existing rows with the new rows based on the row_id.
         if !truncate {
+            if !table.migrated_to_csv() {
+                return Err(anyhow!(
+                    "Table is not migrated to CSV so we cannot merge with existing data. It should be migrated before upserting."
+                ));
+            }
+
             // We download all the rows from the CSV and merge them with the new rows.
             // This is not super efficient if we get rows one by one but it's simple and works.
             // Non-truncate upserts are < 4% of our total upserts.
@@ -140,6 +147,7 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
                 .collect::<HashMap<_, _>>();
 
             // Merge the two maps to get the final rows.
+            // New ones take precedence.
             let merged_rows_map = previous_rows_map
                 .into_iter()
                 .chain(new_rows_map.into_iter())
@@ -151,14 +159,6 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
             now = utils::now();
         }
 
-        let rows = Arc::new(new_rows.clone());
-
-        // Compute the schema from the rows.
-        let schema = TableSchema::from_rows_async(rows).await?;
-
-        let schema_duration = utils::now() - now;
-        now = utils::now();
-
         // Write the rows to the CSV file.
         Self::write_rows_to_csv(table, &schema, &new_rows).await?;
         let write_rows_to_csv_duration = utils::now() - now;
@@ -166,9 +166,8 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
         info!(
             truncate,
             rows_count = new_rows.len(),
-            duration = merge_rows_duration + schema_duration + write_rows_to_csv_duration,
+            duration = merge_rows_duration + write_rows_to_csv_duration,
             merge_rows_duration,
-            schema_duration,
             write_rows_to_csv_duration,
             table_id = table.unique_id(),
             "DSSTRUCTSTAT [upsert_rows CSV] operation completed"
@@ -177,7 +176,7 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
         Ok(())
     }
 
-    async fn delete_table_rows(&self, table: &Table) -> Result<()> {
+    async fn delete_table_data(&self, table: &Table) -> Result<()> {
         if table.migrated_to_csv() {
             Object::delete(
                 &Self::get_bucket()?,
