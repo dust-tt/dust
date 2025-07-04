@@ -630,6 +630,13 @@ export async function syncDeltaForRootNodesInDrive({
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
 
+  logger.info(
+    {
+      uniqueChangedItems: uniqueChangedItems.length,
+    },
+    "Changes to process"
+  );
+
   const sortedChangedItems: DriveItem[] = [];
   const containWholeDrive = rootNodeIds.some(
     (nodeId) => typeAndPathFromInternalId(nodeId).nodeType === "drive"
@@ -662,7 +669,6 @@ export async function syncDeltaForRootNodesInDrive({
       sortedChangedItems,
     });
   }
-
   for (const driveItem of sortedChangedItems) {
     await heartbeat();
     if (!driveItem.parentReference) {
@@ -847,10 +853,15 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
     return false;
   });
 
+  // As we will iterate on both sortedItemList and changedList, we need to
+  // keep track of the items we have already seen in sortedItemList to avoid
+  // O(n^2) complexity.
+  const sortedItemSet = new Set(sortedItemList.map(getDriveItemInternalId));
+
   for (;;) {
     const nextLevel = changedList.filter((item) => {
       // Already in the list - skip
-      if (sortedItemList.includes(item)) {
+      if (sortedItemSet.has(getDriveItemInternalId(item))) {
         return false;
       }
 
@@ -874,9 +885,7 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
         return true;
       }
 
-      return sortedItemList.some(
-        (sortedItem) => getDriveItemInternalId(sortedItem) === parentInternalId
-      );
+      return sortedItemSet.has(parentInternalId);
     });
 
     if (nextLevel.length === 0) {
@@ -884,6 +893,11 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
     }
 
     sortedItemList.push(...nextLevel);
+
+    // Mark nodes as seen for the next iterations.
+    nextLevel.forEach((item) => {
+      sortedItemSet.add(getDriveItemInternalId(item));
+    });
   }
 }
 
