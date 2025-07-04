@@ -118,7 +118,6 @@ pub mod deno {
 }
 
 pub mod databases_store {
-    pub mod gcs;
     pub mod postgres;
     pub mod store;
 }
