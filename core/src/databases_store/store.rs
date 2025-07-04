@@ -1,24 +1,24 @@
 use anyhow::Result;
 use async_trait::async_trait;
 
-use crate::databases::table::Row;
+use crate::databases::table::{Row, Table};
 
 #[async_trait]
 pub trait DatabasesStore {
-    async fn load_table_row(&self, table_id: &str, row_id: &str) -> Result<Option<Row>>;
+    async fn load_table_row(&self, table: &Table, row_id: &str) -> Result<Option<Row>>;
     async fn list_table_rows(
         &self,
-        table_id: &str,
+        table: &Table,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Row>, usize)>;
     async fn batch_upsert_table_rows(
         &self,
-        table_id: &str,
+        table: &Table,
         rows: &Vec<Row>,
         truncate: bool,
     ) -> Result<()>;
-    async fn delete_table_rows(&self, table_id: &str) -> Result<()>;
-    async fn delete_table_row(&self, table_id: &str, row_id: &str) -> Result<()>;
+    async fn delete_table_rows(&self, table: &Table) -> Result<()>;
+    async fn delete_table_row(&self, table: &Table, row_id: &str) -> Result<()>;
 
     fn clone_box(&self) -> Box<dyn DatabasesStore + Sync + Send>;
 }

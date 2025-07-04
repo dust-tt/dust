@@ -338,9 +338,7 @@ async fn create_in_memory_sqlite_db_without_csv(
     let tables_with_rows: Vec<(Table, Vec<Row>)> = try_join_all(tables.iter().map(|lt| {
         let databases_store = databases_store.clone();
         async move {
-            let (rows, _) = databases_store
-                .list_table_rows(&lt.table.unique_id(), None)
-                .await?;
+            let (rows, _) = databases_store.list_table_rows(&lt.table, None).await?;
             Ok::<_, anyhow::Error>((lt.table.clone(), rows))
         }
     }))
