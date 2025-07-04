@@ -75,7 +75,7 @@ export const relocateUserPlugin = createPlugin({
       });
 
       return new Ok({
-        display: "textWithLink",
+        display: "text",
         value: `User ${user.email} (${userId}) successfully relocated to region ${newRegion}.`,
       });
     } catch (error) {
