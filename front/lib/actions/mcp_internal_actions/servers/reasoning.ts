@@ -185,10 +185,6 @@ function createServer(
   return server;
 }
 
-/**
- * Shared function to run reasoning that can be used by both the streaming action and the MCP server.
- * It returns an async generator that yields tokens and results.
- */
 async function* runReasoning(
   auth: Authenticator,
   {
