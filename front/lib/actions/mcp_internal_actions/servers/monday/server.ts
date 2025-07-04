@@ -637,9 +637,12 @@ All operations require proper Monday.com authentication and permissions.`,
       }
 
       const user = await findUserByName(accessToken, name);
+      if (!user) {
+        return makeMCPToolTextError("User not found");
+      }
       return makeMCPToolJSONSuccess({
-        message: user ? "User found successfully" : "User not found",
-        result: user || null,
+        message: "User found successfully",
+        result: user,
       });
     }
   );
@@ -686,9 +689,12 @@ All operations require proper Monday.com authentication and permissions.`,
         itemId,
         columnId
       );
+      if (!columnValue) {
+        return makeMCPToolTextError("Column value not found");
+      }
       return makeMCPToolJSONSuccess({
         message: "Column values retrieved successfully",
-        result: columnValue || null,
+        result: columnValue,
       });
     }
   );
@@ -736,9 +742,12 @@ All operations require proper Monday.com authentication and permissions.`,
       }
 
       const group = await getGroupDetails(accessToken, boardId, groupId);
+      if (!group) {
+        return makeMCPToolTextError("Group not found");
+      }
       return makeMCPToolJSONSuccess({
         message: "Group details retrieved successfully",
-        result: group || null,
+        result: group,
       });
     }
   );
@@ -778,9 +787,12 @@ All operations require proper Monday.com authentication and permissions.`,
       }
 
       const user = await getUserDetails(accessToken, userId);
+      if (!user) {
+        return makeMCPToolTextError("User not found");
+      }
       return makeMCPToolJSONSuccess({
         message: "User details retrieved successfully",
-        result: user || null,
+        result: user,
       });
     }
   );

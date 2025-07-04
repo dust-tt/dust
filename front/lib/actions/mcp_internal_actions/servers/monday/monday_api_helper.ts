@@ -37,7 +37,9 @@ export interface MondayItem {
 
 export interface MondayColumnValue {
   id: string;
-  title: string;
+  column: {
+    title: string;
+  };
   type: string;
   value?: string;
   text?: string;
@@ -72,6 +74,7 @@ const makeGraphQLRequest = async (
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
+        "API-Version": "2024-01", // Add API version header
       },
       body: JSON.stringify({
         query,
@@ -79,25 +82,75 @@ const makeGraphQLRequest = async (
       }),
     });
 
+    // Capture response text for better error reporting
+    const responseText = await response.text();
+    
     if (!response.ok) {
-      const error = new Error(
-        `Monday API request failed: ${response.status} ${response.statusText}`
-      );
+      localLogger.error("Monday API HTTP error", {
+        status: response.status,
+        statusText: response.statusText,
+        responseBody: responseText,
+        query: query.substring(0, 200), // Log first 200 chars of query
+        variables,
+      });
+      
+      // Special handling for authentication errors
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(`Authentication failed: ${response.status} - Token may be expired or invalid`);
+      }
+      
+      // Include response body in error message for better debugging
+      let errorMessage = `Monday API request failed: ${response.status} ${response.statusText}`;
+      if (responseText) {
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.error_message) {
+            errorMessage += ` - ${errorData.error_message}`;
+          } else if (errorData.errors) {
+            errorMessage += ` - ${JSON.stringify(errorData.errors)}`;
+          }
+        } catch {
+          // If not JSON, include raw text (truncated)
+          errorMessage += ` - ${responseText.substring(0, 200)}`;
+        }
+      }
+      
+      const error = new Error(errorMessage);
       throw normalizeError(error);
     }
 
-    const result = await response.json();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      localLogger.error("Failed to parse Monday API response", {
+        responseText,
+        parseError,
+      });
+      throw new Error("Invalid JSON response from Monday API");
+    }
 
     if (result.errors) {
-      const error = new Error(
-        `Monday GraphQL error: ${result.errors.map((e: any) => e.message).join(", ")}`
-      );
+      localLogger.error("Monday GraphQL error", {
+        errors: result.errors,
+        query: query.substring(0, 200),
+        variables,
+      });
+      
+      const errorDetails = result.errors.map((e: any) => 
+        e.extensions ? `${e.message} (${JSON.stringify(e.extensions)})` : e.message
+      ).join(", ");
+      
+      const error = new Error(`Monday GraphQL error: ${errorDetails}`);
       throw normalizeError(error);
     }
 
     return result.data;
   } catch (error) {
-    localLogger.error("Error making Monday API request:", error);
+    localLogger.error("Error making Monday API request:", {
+      error,
+      query: query.substring(0, 200),
+    });
     throw normalizeError(error);
   }
 };
@@ -129,9 +182,15 @@ export const getBoardItems = async (
   accessToken: string,
   boardId: string
 ): Promise<MondayItem[]> => {
+  // Convert boardId to integer to ensure proper format
+  const boardIdInt = parseInt(boardId, 10);
+  if (isNaN(boardIdInt)) {
+    throw new Error(`Invalid board ID: ${boardId}`);
+  }
+  
   const query = `
-    query GetBoardItems($boardId: ID!, $limit: Int!) {
-      boards(ids: [$boardId]) {
+    query GetBoardItems($boardIds: [ID!], $limit: Int!) {
+      boards(ids: $boardIds) {
         items_page(limit: $limit) {
           items {
             id
@@ -147,7 +206,9 @@ export const getBoardItems = async (
             }
             column_values {
               id
-              title
+              column {
+                title
+              }
               type
               value
               text
@@ -166,7 +227,7 @@ export const getBoardItems = async (
   `;
 
   const data = await makeGraphQLRequest(accessToken, query, {
-    boardId,
+    boardIds: [boardIdInt],
     limit: RETRIEVAL_LIMIT,
   });
   return data.boards[0]?.items_page?.items || [];
@@ -236,9 +297,15 @@ export const searchItems = async (
 
   if (filters.boardId) {
     // Search within a specific board
+    // Convert boardId to integer
+    const boardIdInt = parseInt(filters.boardId, 10);
+    if (isNaN(boardIdInt)) {
+      throw new Error(`Invalid board ID: ${filters.boardId}`);
+    }
+    
     query = `
-      query SearchBoardItems($boardId: ID!, $limit: Int!) {
-        boards(ids: [$boardId]) {
+      query SearchBoardItems($boardIds: [ID!], $limit: Int!) {
+        boards(ids: $boardIds) {
           items_page(limit: $limit) {
             items {
               id
@@ -254,7 +321,9 @@ export const searchItems = async (
               }
               column_values {
                 id
-                title
+                column {
+                  title
+                }
                 type
                 value
                 text
@@ -271,14 +340,15 @@ export const searchItems = async (
         }
       }
     `;
-    variables.boardId = filters.boardId;
+    variables.boardIds = [boardIdInt];
   } else {
+    // For global search, first get all boards, then search items
     query = `
-      query SearchAllItems($limit: Int!) {
-        boards {
+      query SearchAllItems($boardLimit: Int!) {
+        boards(limit: $boardLimit) {
           id
           name
-          items_page(limit: $limit) {
+          items_page(limit: 25) {
             items {
               id
               name
@@ -293,7 +363,9 @@ export const searchItems = async (
               }
               column_values {
                 id
-                title
+                column {
+                  title
+                }
                 type
                 value
                 text
@@ -310,14 +382,21 @@ export const searchItems = async (
         }
       }
     `;
+    variables.boardLimit = 10; // Limit boards to avoid timeout
   }
 
   const data = await makeGraphQLRequest(accessToken, query, variables);
 
   // Get all items
-  let allItems: MondayItem[] = filters.boardId
-    ? data.boards[0]?.items_page?.items || []
-    : data.boards.flatMap((board: any) => board.items_page?.items || []);
+  let allItems: MondayItem[] = [];
+  if (filters.boardId) {
+    allItems = data.boards[0]?.items_page?.items || [];
+  } else {
+    // For global search, collect items from all boards
+    if (data.boards && Array.isArray(data.boards)) {
+      allItems = data.boards.flatMap((board: any) => board.items_page?.items || []);
+    }
+  }
 
   // Apply client-side filters
   if (filters.query) {
@@ -336,7 +415,7 @@ export const searchItems = async (
     allItems = allItems.filter((item: MondayItem) => {
       const statusColumn = item.column_values.find(
         (col) =>
-          col.type === "status" || col.title.toLowerCase().includes("status")
+          col.type === "status" || col.column.title.toLowerCase().includes("status")
       );
       return (
         statusColumn?.text?.toLowerCase() === filters.status?.toLowerCase()
@@ -412,7 +491,7 @@ export const searchItems = async (
   }
 
   // Return limited results
-  return allItems.slice(0, limit);
+  return allItems.slice(0, RETRIEVAL_LIMIT);
 };
 
 export const createItem = async (
@@ -559,11 +638,17 @@ export const updateItemName = async (
   itemId: string,
   name: string
 ): Promise<MondayItem> => {
+  // First get the item to find its board ID
+  const itemDetails = await getItemDetails(accessToken, itemId);
+  if (!itemDetails) {
+    throw new Error("Item not found");
+  }
+  
   const query = `
-    mutation UpdateItemName($itemId: ID!, $name: String!) {
+    mutation UpdateItemName($boardId: ID!, $itemId: ID!, $name: String!) {
       change_simple_column_value(
         item_id: $itemId
-        board_id: ""
+        board_id: $boardId
         column_id: "name"
         value: $name
       ) {
@@ -596,7 +681,11 @@ export const updateItemName = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { itemId, name });
+  const data = await makeGraphQLRequest(accessToken, query, { 
+    boardId: itemDetails.board.id,
+    itemId, 
+    name 
+  });
   return data.change_simple_column_value;
 };
 
@@ -999,9 +1088,15 @@ export const getBoardValues = async (
   accessToken: string,
   boardId: string
 ): Promise<any> => {
+  // Convert boardId to integer
+  const boardIdInt = parseInt(boardId, 10);
+  if (isNaN(boardIdInt)) {
+    throw new Error(`Invalid board ID: ${boardId}`);
+  }
+  
   const query = `
-    query GetBoardValues($boardId: ID!) {
-      boards(ids: [$boardId]) {
+    query GetBoardValues($boardIds: [ID!]) {
+      boards(ids: $boardIds) {
         id
         name
         description
@@ -1023,7 +1118,7 @@ export const getBoardValues = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { boardId });
+  const data = await makeGraphQLRequest(accessToken, query, { boardIds: [boardIdInt] });
   return data.boards[0] || null;
 };
 
@@ -1109,9 +1204,15 @@ export const getGroupDetails = async (
   boardId: string,
   groupId: string
 ): Promise<{ id: string; title: string; position: string } | null> => {
+  // Convert boardId to integer
+  const boardIdInt = parseInt(boardId, 10);
+  if (isNaN(boardIdInt)) {
+    throw new Error(`Invalid board ID: ${boardId}`);
+  }
+  
   const query = `
-    query GetGroupDetails($boardId: ID!) {
-      boards(ids: [$boardId]) {
+    query GetGroupDetails($boardIds: [ID!], $groupId: String!) {
+      boards(ids: $boardIds) {
         groups(ids: [$groupId]) {
           id
           title
@@ -1122,7 +1223,7 @@ export const getGroupDetails = async (
   `;
 
   const data = await makeGraphQLRequest(accessToken, query, {
-    boardId,
+    boardIds: [boardIdInt],
     groupId,
   });
   const board = data.boards?.[0];
