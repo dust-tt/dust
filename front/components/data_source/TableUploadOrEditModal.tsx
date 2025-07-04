@@ -399,8 +399,11 @@ export const TableUploadOrEditModal = ({
 
                   <div>
                     <Page.SectionHeader
-                      title="CSV File"
-                      description={`Select the CSV file for data extraction. The maximum file size allowed is ${fileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`}
+                      title="Data File"
+                      description={
+                        `Select your data file for extraction. Supported formats: CSV, ` +
+                        `XLSX. Maximum file size: ${fileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`
+                      }
                       action={{
                         label: fileUploaderService.isProcessingFiles
                           ? "Uploading..."
