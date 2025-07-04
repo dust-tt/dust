@@ -469,6 +469,7 @@ export async function syncFiles({
         file: child,
         parentInternalId,
         startSyncTs,
+        heartbeat,
       }),
     { concurrency: FILES_SYNC_CONCURRENCY }
   );
@@ -683,6 +684,7 @@ export async function syncDeltaForRootNodesInDrive({
             driveItem.parentReference
           ),
           startSyncTs,
+          heartbeat,
         });
       }
     } else if (driveItem.folder) {

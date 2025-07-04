@@ -58,6 +58,7 @@ export async function syncOneFile({
   parentInternalId,
   startSyncTs,
   isBatchSync = false,
+  heartbeat,
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
@@ -66,6 +67,7 @@ export async function syncOneFile({
   parentInternalId: string;
   startSyncTs: number;
   isBatchSync?: boolean;
+  heartbeat: () => Promise<void>;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -286,6 +288,7 @@ export async function syncOneFile({
       parentInternalId,
       localLogger,
       startSyncTs,
+      heartbeat,
     });
 
     if (result.isErr()) {
