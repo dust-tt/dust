@@ -135,6 +135,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
   function onSuccess(ds: DataSourceType) {
     setCredentials("");
     _onSuccess(ds);
+    setError(null);
   }
 
   const createBigQueryConnection = async () => {
@@ -386,7 +387,9 @@ export function CreateOrUpdateConnectionBigQueryModal({
                 : await createBigQueryConnection();
 
               setIsLoading(false);
-              onClose();
+              if (!error) {
+                onClose();
+              }
             },
             isLoading: isLoading || isLocationsLoading,
             disabled:
