@@ -217,9 +217,9 @@ async fn process_one_table(
     if rows.len() > 0 {
         // If there are rows, we can create a schema from them
         table_schema = Some(TableSchema::from_rows_async(std::sync::Arc::new(rows.clone())).await?);
-    } else if !table.schema_cached().is_none() {
+    } else if let Some(cached_schema) = table.schema_cached() {
         // If there are no rows, but the DB has a cached schema, use that
-        table_schema = Some(table.schema_cached().unwrap().clone());
+        table_schema = Some(cached_schema.clone());
     }
 
     // If we got neither rows nor schema, we don't create any CSV (but we still set the migrated flag)
