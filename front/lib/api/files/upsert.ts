@@ -232,6 +232,11 @@ const upsertTableToDatasource: ProcessingFunction = async (
   return new Ok(undefined);
 };
 
+// Append the workbook name to the worksheet name to make it unique.
+function makeWorksheetName(file: FileResource, worksheetName: string) {
+  return `${file.fileName} - ${worksheetName}`;
+}
+
 // Excel files are processed in a special way, we need to extract the content of each worksheet and
 // upsert it as a separate table. This means we pull the whole content of the file (this is not
 // great if the spreadhsheet is massive but we don't really have a choice here) and then split in
@@ -264,14 +269,15 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     worksheetContent: string;
     workbookFolderId?: string;
   }) => {
-    const title = `${file.fileName} ${worksheetName}`;
+    const title = makeWorksheetName(file, worksheetName);
+    const slugifiedName = slugify(title);
     const tableId = `${file.sId}-${slugify(worksheetName)}`;
 
     const worksheetFile = await FileResource.makeNew({
       workspaceId: file.workspaceId,
       userId: file.userId,
       contentType: "text/csv",
-      fileName: slugify(`${file.fileName} ${worksheetName}`) + ".csv",
+      fileName: `${slugifiedName}.csv`,
       fileSize: Buffer.byteLength(worksheetContent),
       useCase: file.useCase,
       useCaseMetadata: file.useCaseMetadata,
@@ -283,7 +289,7 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     const upsertTableArgs: UpsertTableArgs = {
       ...upsertArgs,
       title,
-      name: slugify(title),
+      name: slugifiedName,
       tableId,
       parentId,
       parents,
