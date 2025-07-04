@@ -14,7 +14,8 @@
     "tsc": "tsc",
     "cli": "npx tsx src/admin/cli.ts",
     "initdb": "./admin/init_db.sh",
-    "create-db-migration": "./create_db_migration_file.sh"
+    "migration:create": "./create_db_migration_file.sh",
+    "migration:apply": "./apply_db_migrations.sh"
   },
   "dependencies": {
     "@dust-tt/client": "file:../sdks/js",
