@@ -63,7 +63,7 @@ function agentConversationIncludeFileActionToAgentMCPAction(
     action: {
       agentMessageId: includeFileAction.agentMessageId,
       functionCallId: includeFileAction.functionCallId,
-      functionCallName: includeFileAction.functionCallName,
+      functionCallName: "conversation_files__include_file",
       createdAt: includeFileAction.createdAt,
       updatedAt: includeFileAction.updatedAt,
       generatedFiles: [],
