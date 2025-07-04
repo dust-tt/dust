@@ -147,7 +147,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "count_objects_by_properties",
-    `Count objects in Hubspot with matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Returns exact count by paginating through results if needed. For date filtering, use properties like 'createdate' or 'lastmodifieddate' with operators like GTE/LTE (timestamps in milliseconds or ISO format).`,
+    `Count objects in Hubspot with matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
     {
       objectType: z.enum(SIMPLE_OBJECTS),
       filters: z
@@ -196,7 +196,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_latest_objects",
-    `Get latest objects from Hubspot with optional filtering. Supports ${SIMPLE_OBJECTS.join(", ")}. Returns objects sorted by creation date (newest first). Handles pagination automatically.`,
+    `Get latest objects from Hubspot with optional filtering. Supports ${SIMPLE_OBJECTS.join(", ")}. Returns objects sorted by creation date (newest first).`,
     {
       objectType: z.enum(SIMPLE_OBJECTS),
       limit: z
