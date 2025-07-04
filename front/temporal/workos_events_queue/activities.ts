@@ -649,6 +649,16 @@ async function handleDeleteWorkOSUser(
   });
 
   if (membershipRevokeResult.isErr()) {
+    if (membershipRevokeResult.error.type === "already_revoked") {
+      logger.info(
+        {
+          userId: user.sId,
+          workspaceId: workspace.sId,
+        },
+        "User membership already revoked, skipping"
+      );
+      return;
+    }
     throw membershipRevokeResult.error;
   }
 
