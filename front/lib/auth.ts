@@ -1017,7 +1017,7 @@ export class Authenticator {
 
     return new Ok({
       user: user.toJSON(),
-      owner: renderLightWorkspaceType({ workspace: owner }),
+      owner,
       subscription: subscription.toJSON(),
       plan: this.plan(),
       isAdmin: this.isAdmin(),
