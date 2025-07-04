@@ -147,7 +147,9 @@ async function getMCPServerActionConfiguration(
         modelId,
         providerId,
         temperature: null,
-        reasoningEffort: reasoningModel.reasoningEffort ?? null,
+        reasoningEffort:
+          reasoningModel.reasoningEffort ??
+          supportedReasoningModel.defaultReasoningEffort,
       };
     }
   }

@@ -39,6 +39,7 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -65,7 +66,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { assertNever, removeNulls } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -355,11 +356,7 @@ async function* runMultiActionsAgent(
   | AgentContentEvent
   | AgentStepContentEvent
 > {
-  const model = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === agentConfiguration.model.modelId &&
-      m.providerId === agentConfiguration.model.providerId
-  );
+  const model = getSupportedModelConfig(agentConfiguration.model);
 
   if (!model) {
     yield {
@@ -588,9 +585,10 @@ async function* runMultiActionsAgent(
   runConfig.MODEL.provider_id = model.providerId;
   runConfig.MODEL.model_id = model.modelId;
   runConfig.MODEL.temperature = agentConfiguration.model.temperature;
-  if (agentConfiguration.model.reasoningEffort) {
-    runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
-  }
+
+  runConfig.MODEL.reasoning_effort =
+    agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
+
   if (agentConfiguration.model.responseFormat) {
     runConfig.MODEL.response_format = JSON.parse(
       agentConfiguration.model.responseFormat
@@ -665,7 +663,9 @@ async function* runMultiActionsAgent(
     agentConfiguration,
     agentMessage.sId,
     getDelimitersConfiguration({
-      reasoningEffort: agentConfiguration.reasoningEffort ?? "none",
+      reasoningEffort:
+        agentConfiguration.model.reasoningEffort ??
+        model.defaultReasoningEffort,
     })
   );
 

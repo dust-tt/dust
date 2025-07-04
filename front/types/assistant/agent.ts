@@ -145,8 +145,6 @@ export type LightAgentConfigurationType = {
   // Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
   requestedGroupIds: string[][];
 
-  reasoningEffort?: AgentReasoningEffort;
-
   canRead: boolean;
   canEdit: boolean;
 };
