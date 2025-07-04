@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
+use crate::databases_store;
 use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
-use crate::databases_store::postgres::PostgresDatabasesStore;
 use crate::databases_store::store::{DatabasesStoreStrategy, CURRENT_STRATEGY};
 use crate::search_stores::search_store::NodeItem;
 use crate::{
@@ -280,13 +280,8 @@ impl Table {
                 DatabasesStoreStrategy::GCSAndWriteToPostgres => {
                     databases_store.delete_table_data(&self).await?;
 
-                    match std::env::var("DATABASES_STORE_DATABASE_URI") {
-                        Ok(db_uri) => {
-                            let postgres_store = PostgresDatabasesStore::new(&db_uri).await?;
-                            postgres_store.delete_table_data(&self).await?;
-                        }
-                        Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
-                    };
+                    let postgres_store = databases_store::postgres::get_postgres_store().await?;
+                    postgres_store.delete_table_data(&self).await?;
                 }
             }
         }
@@ -563,20 +558,10 @@ impl LocalTable {
                 upsert_csv_duration = utils::now() - now;
                 now = utils::now();
 
-                match std::env::var("DATABASES_STORE_DATABASE_URI") {
-                    Ok(db_uri) => {
-                        let postgres_store = PostgresDatabasesStore::new(&db_uri).await?;
-                        postgres_store
-                            .batch_upsert_table_rows(
-                                &self.table,
-                                &new_table_schema,
-                                &rows,
-                                truncate,
-                            )
-                            .await?;
-                    }
-                    Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
-                };
+                let postgres_store = databases_store::postgres::get_postgres_store().await?;
+                postgres_store
+                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                    .await?;
 
                 upsert_rows_duration = utils::now() - now;
             }
@@ -694,13 +679,8 @@ impl LocalTable {
                     .delete_table_row(&self.table, row_id)
                     .await?;
 
-                match std::env::var("DATABASES_STORE_DATABASE_URI") {
-                    Ok(db_uri) => {
-                        let postgres_store = PostgresDatabasesStore::new(&db_uri).await?;
-                        postgres_store.delete_table_row(&self.table, row_id).await?;
-                    }
-                    Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
-                };
+                let postgres_store = databases_store::postgres::get_postgres_store().await?;
+                postgres_store.delete_table_row(&self.table, row_id).await?;
             }
         }
 
