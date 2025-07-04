@@ -11,7 +11,6 @@ import {
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type {
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
@@ -55,6 +54,7 @@ import type {
   AgentStatus,
   LightAgentConfigurationType,
   ModelId,
+  ReasoningModelConfigurationType,
   Result,
   TagsFilter,
   UserType,
@@ -1340,7 +1340,7 @@ async function createReasoningConfiguration(
     mcpConfig,
     agentConfiguration,
   }: {
-    reasoningModel: ReasoningModelConfiguration;
+    reasoningModel: ReasoningModelConfigurationType;
     mcpConfig: AgentMCPServerConfiguration;
     agentConfiguration: LightAgentConfigurationType;
   }

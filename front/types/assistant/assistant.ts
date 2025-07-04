@@ -1277,6 +1277,13 @@ export function isSupportingResponseFormat(modelId: ModelIdType) {
   return model?.supportsResponseFormat;
 }
 
+export type ReasoningModelConfigurationType = {
+  modelId: ModelIdType;
+  providerId: ModelProviderIdType;
+  reasoningEffort: ReasoningEffortIdType | null;
+  temperature: number | null;
+};
+
 /**
  * Global agent list (stored here to be imported from client-side)
  */
