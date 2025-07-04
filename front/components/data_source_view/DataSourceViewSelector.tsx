@@ -376,7 +376,7 @@ export function DataSourceViewsSelector({
           search: debouncedSearch,
           searchSourceUrls: isUrlCandidate(nodeOrUrlCandidate),
           includeDataSources: true,
-          viewType: viewType,
+          viewType,
         }
   );
 

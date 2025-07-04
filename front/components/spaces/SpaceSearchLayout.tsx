@@ -24,6 +24,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import {
+  getViewTypeForURLNodeCandidateAccountingForNotion,
   isNodeCandidate,
   isUrlCandidate,
   nodeCandidateFromUrl,
@@ -269,7 +270,7 @@ function BackendSearch({
           ...commonSearchParams,
           nodeIds: [nodeOrUrlCandidate.node],
           includeDataSources: false,
-          viewType: getViewTypeForNodeCandidateAccountingForNotion(
+          viewType: getViewTypeForURLNodeCandidateAccountingForNotion(
             viewType,
             nodeOrUrlCandidate.node
           ),
@@ -661,10 +662,4 @@ function SearchResultsTable({
       isLoading={isLoading}
     />
   );
-}
-function getViewTypeForNodeCandidateAccountingForNotion(
-  viewType: string,
-  node: string
-): "table" | "document" | "all" {
-  throw new Error("Function not implemented.");
 }
