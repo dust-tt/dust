@@ -184,12 +184,11 @@ async function migrateSingleConversationIncludeFileAction(
     logger
   );
 
-  // Step 2: Prepare output items from the Conversation Include File action
   if (execute) {
     // Step 3: Create the MCP action
     const mcpActionCreated = await AgentMCPAction.create(mcpAction.action);
 
-    // Step 4: Create output items for the action results
+    // Step 4: Create all output items
     const contentItem = await getContentForConversationIncludeFileAction(
       auth,
       includeFileAction,
@@ -197,7 +196,6 @@ async function migrateSingleConversationIncludeFileAction(
       logger
     );
 
-    // Step 5: Create all output items
     let outputItem = null;
     if (contentItem) {
       outputItem = await AgentMCPActionOutputItem.create(
