@@ -1,4 +1,6 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
+import type { CreationAttributes } from "sequelize";
 import { Op } from "sequelize";
 
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
@@ -11,6 +13,7 @@ import {
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -70,7 +73,7 @@ async function migrateWorkspaceDustAppRunActions({
     }
     parentLogger.info(`Found ${dustAppRunActions.length} Dust App Run actions`);
 
-    // Step 2: Find the corresponding AgentMessages
+    // Step 2: Find the corresponding AgentMessages.
     const agentMessages = await AgentMessage.findAll({
       where: {
         id: {
@@ -109,7 +112,7 @@ async function migrateWorkspaceDustAppRunActions({
       agentMessages.map((message) => [message.id, message])
     );
 
-    // Step 4: Create the MCP actions with their output items
+    // Step 4: Create the MCP actions with their output items.
     await concurrentExecutor(
       dustAppRunActions,
       async (dustAppRunAction) => {
@@ -123,6 +126,7 @@ async function migrateWorkspaceDustAppRunActions({
         );
 
         await migrateSingleDustAppRunAction({
+          auth,
           agentConfiguration: agentConfiguration ?? null,
           dustAppRunAction,
           mcpServerViewForDustAppRun,
@@ -135,7 +139,7 @@ async function migrateWorkspaceDustAppRunActions({
       }
     );
 
-    // Step 5: Delete the legacy Dust App Run actions
+    // Step 5: Delete the legacy Dust App Run actions.
     if (execute) {
       await AgentDustAppRunAction.destroy({
         where: {
@@ -156,12 +160,14 @@ async function migrateWorkspaceDustAppRunActions({
  * Migrates a single Dust App Run action from non-MCP to MCP version.
  */
 async function migrateSingleDustAppRunAction({
+  auth,
   agentConfiguration,
   dustAppRunAction,
   mcpServerViewForDustAppRun,
   parentLogger,
   execute,
 }: {
+  auth: Authenticator;
   agentConfiguration: AgentConfiguration | null;
   dustAppRunAction: AgentDustAppRunAction;
   execute: boolean;
@@ -195,17 +201,62 @@ async function migrateSingleDustAppRunAction({
       executionState: "allowed_implicitly",
     });
 
-    await AgentMCPActionOutputItem.create({
+    // Create output items based on the presence of a file.
+    const outputItems: CreationAttributes<AgentMCPActionOutputItem>[] = [];
+
+    // If there's a file, create a file resource output item.
+    if (dustAppRunAction.resultsFileId) {
+      // Fetch the file to get its actual properties.
+      const file = await FileResource.fetchByModelIdWithAuth(
+        auth,
+        dustAppRunAction.resultsFileId
+      );
+
+      if (file) {
+        outputItems.push({
+          workspaceId: dustAppRunAction.workspaceId,
+          createdAt: dustAppRunAction.createdAt,
+          updatedAt: dustAppRunAction.updatedAt,
+          agentMCPActionId: mcpAction.id,
+          content: {
+            type: "resource" as const,
+            resource: {
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              uri: `file://${file.id}`,
+              fileId: file.sId,
+              title: file.fileName,
+              contentType: file.contentType,
+              snippet: dustAppRunAction.resultsFileSnippet,
+              text: `Generated ${file.contentType === "text/csv" ? "CSV" : "text"} file: ${file.fileName}`,
+            },
+          },
+          fileId: dustAppRunAction.resultsFileId,
+        });
+      } else {
+        parentLogger.warn(
+          {
+            dustAppRunActionId: dustAppRunAction.id,
+            resultsFileId: dustAppRunAction.resultsFileId,
+          },
+          "File not found for Dust App Run action"
+        );
+      }
+    }
+
+    // Always create a text output item with the JSON output.
+    outputItems.push({
       workspaceId: dustAppRunAction.workspaceId,
       createdAt: dustAppRunAction.createdAt,
       updatedAt: dustAppRunAction.updatedAt,
       agentMCPActionId: mcpAction.id,
       content: {
-        type: "text",
-        text: dustAppRunAction.params.output.toString(),
+        type: "text" as const,
+        text: JSON.stringify(dustAppRunAction.output, null, 2),
       },
-      fileId: dustAppRunAction.resultsFileId ?? null,
+      fileId: null,
     });
+
+    await AgentMCPActionOutputItem.bulkCreate(outputItems);
 
     parentLogger.info(
       {
@@ -214,7 +265,8 @@ async function migrateSingleDustAppRunAction({
         appId: dustAppRunAction.appId,
         mcpServerConfigurationId,
         mcpActionId: mcpAction.id,
-        outputItemsCount: 1,
+        outputItemsCount: outputItems.length,
+        hasFile: !!dustAppRunAction.resultsFileId,
       },
       "Successfully migrated Dust App Run action to MCP"
     );
