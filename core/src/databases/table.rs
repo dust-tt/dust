@@ -8,6 +8,8 @@ use serde_json::Value;
 use tracing::info;
 
 use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
+use crate::databases_store::postgres::PostgresDatabasesStore;
+use crate::databases_store::store::{DatabasesStoreStrategy, CURRENT_STRATEGY};
 use crate::search_stores::search_store::NodeItem;
 use crate::{
     data_sources::node::ProviderVisibility,
@@ -263,11 +265,30 @@ impl Table {
             .await?;
 
             // Delete the table rows.
-            databases_store.delete_table_data(&self).await?;
+            // If we are only using one of the stores, the right store is passed in the parameters.
+            // If we are using both, we need to do the operation on the other store manually.
+            match CURRENT_STRATEGY {
+                DatabasesStoreStrategy::PostgresOnly | DatabasesStoreStrategy::GCSOnly => {
+                    databases_store.delete_table_data(&self).await?;
+                }
+                DatabasesStoreStrategy::PostgresAndWriteToGCS => {
+                    databases_store.delete_table_data(&self).await?;
 
-            // Do the same delete operation on the GCS store.
-            let gcs_store = GoogleCloudStorageDatabasesStore::new();
-            gcs_store.delete_table_data(&self).await?;
+                    let gcs_store = GoogleCloudStorageDatabasesStore::new();
+                    gcs_store.delete_table_data(&self).await?;
+                }
+                DatabasesStoreStrategy::GCSAndWriteToPostgres => {
+                    databases_store.delete_table_data(&self).await?;
+
+                    match std::env::var("DATABASES_STORE_DATABASE_URI") {
+                        Ok(db_uri) => {
+                            let postgres_store = PostgresDatabasesStore::new(&db_uri).await?;
+                            postgres_store.delete_table_data(&self).await?;
+                        }
+                        Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
+                    };
+                }
+            }
         }
 
         store
@@ -471,40 +492,103 @@ impl LocalTable {
         // be updated. This isn't too bad, because the merged schema is necessarily
         // backward-compatible with the previous one. The other way around would not be true -- old
         // schema doesn't necessarily work with the new rows. This is why we cannot `try_join_all`.
-        databases_store
-            .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
-            .await?;
+
+        let mut upsert_rows_duration: u64 = 0;
+        let mut upsert_csv_duration: u64 = 0;
+        match CURRENT_STRATEGY {
+            DatabasesStoreStrategy::PostgresOnly => {
+                databases_store
+                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                    .await?;
+
+                upsert_rows_duration = utils::now() - now;
+            }
+            DatabasesStoreStrategy::GCSOnly => {
+                databases_store
+                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                    .await?;
+
+                store
+                    .set_data_source_table_migrated_to_csv(
+                        &self.table.project,
+                        &self.table.data_source_id,
+                        &self.table.table_id,
+                        true,
+                    )
+                    .await?;
+
+                upsert_csv_duration = utils::now() - now;
+            }
+            DatabasesStoreStrategy::PostgresAndWriteToGCS => {
+                databases_store
+                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                    .await?;
+
+                upsert_rows_duration = utils::now() - now;
+                now = utils::now();
+
+                // Do the same write operation on the GCS store.
+                // Only do it if we are truncating or if the table is already migrated to CSV.
+                if truncate || self.table.migrated_to_csv() {
+                    let gcs_store = GoogleCloudStorageDatabasesStore::new();
+                    gcs_store
+                        .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                        .await?;
+
+                    store
+                        .set_data_source_table_migrated_to_csv(
+                            &self.table.project,
+                            &self.table.data_source_id,
+                            &self.table.table_id,
+                            true,
+                        )
+                        .await?;
+                }
+                upsert_csv_duration = utils::now() - now;
+            }
+            DatabasesStoreStrategy::GCSAndWriteToPostgres => {
+                databases_store
+                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                    .await?;
+
+                store
+                    .set_data_source_table_migrated_to_csv(
+                        &self.table.project,
+                        &self.table.data_source_id,
+                        &self.table.table_id,
+                        true,
+                    )
+                    .await?;
+
+                upsert_csv_duration = utils::now() - now;
+                now = utils::now();
+
+                match std::env::var("DATABASES_STORE_DATABASE_URI") {
+                    Ok(db_uri) => {
+                        let postgres_store = PostgresDatabasesStore::new(&db_uri).await?;
+                        postgres_store
+                            .batch_upsert_table_rows(
+                                &self.table,
+                                &new_table_schema,
+                                &rows,
+                                truncate,
+                            )
+                            .await?;
+                    }
+                    Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
+                };
+
+                upsert_rows_duration = utils::now() - now;
+            }
+        }
         info!(
-            duration = utils::now() - now,
+            strategy = format!("{:?}", CURRENT_STRATEGY),
+            duration = upsert_rows_duration + upsert_csv_duration,
             table_id = self.table.table_id(),
             rows_count = rows.len(),
+            upsert_rows_duration,
+            upsert_csv_duration,
             "DSSTRUCTSTAT [upsert_rows] rows upsert"
-        );
-
-        now = utils::now();
-
-        // Do the same write operation on the GCS store.
-        // Only do it if we are truncating or if the table is already migrated to CSV.
-        if truncate || self.table.migrated_to_csv() {
-            let gcs_store = GoogleCloudStorageDatabasesStore::new();
-            gcs_store
-                .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
-                .await?;
-
-            store
-                .set_data_source_table_migrated_to_csv(
-                    &self.table.project,
-                    &self.table.data_source_id,
-                    &self.table.table_id,
-                    true,
-                )
-                .await?;
-        }
-
-        info!(
-            duration = utils::now() - now,
-            table_id = self.table.table_id(),
-            "DSSTRUCTSTAT [upsert_rows] csv upsert"
         );
 
         now = utils::now();
@@ -588,13 +672,37 @@ impl LocalTable {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         row_id: &str,
     ) -> Result<()> {
-        databases_store
-            .delete_table_row(&self.table, row_id)
-            .await?;
+        // Delete the table row.
+        // If we are only using one of the stores, the right store is passed in the parameters.
+        // If we are using both, we need to do the operation on the other store manually.
+        match CURRENT_STRATEGY {
+            DatabasesStoreStrategy::PostgresOnly | DatabasesStoreStrategy::GCSOnly => {
+                databases_store
+                    .delete_table_row(&self.table, row_id)
+                    .await?;
+            }
+            DatabasesStoreStrategy::PostgresAndWriteToGCS => {
+                databases_store
+                    .delete_table_row(&self.table, row_id)
+                    .await?;
 
-        // Do the same delete operation on the GCS store.
-        let gcs_store = GoogleCloudStorageDatabasesStore::new();
-        gcs_store.delete_table_row(&self.table, row_id).await?;
+                let gcs_store = GoogleCloudStorageDatabasesStore::new();
+                gcs_store.delete_table_row(&self.table, row_id).await?;
+            }
+            DatabasesStoreStrategy::GCSAndWriteToPostgres => {
+                databases_store
+                    .delete_table_row(&self.table, row_id)
+                    .await?;
+
+                match std::env::var("DATABASES_STORE_DATABASE_URI") {
+                    Ok(db_uri) => {
+                        let postgres_store = PostgresDatabasesStore::new(&db_uri).await?;
+                        postgres_store.delete_table_row(&self.table, row_id).await?;
+                    }
+                    Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
+                };
+            }
+        }
 
         Ok(())
     }
