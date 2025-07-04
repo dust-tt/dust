@@ -29,6 +29,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
   launchRetrieveTranscriptsWorkflow,
+  pauseRetrieveTranscriptsWorkflow,
+  resumeRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/transcripts/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
@@ -440,7 +442,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         {
           transcriptsConfiguration,
         },
-        "Transcript retrieval workflow stopped."
+        "Transcript retrieval schedule stopped."
       );
 
       return;
@@ -465,15 +467,63 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         {
           transcriptsConfiguration,
         },
-        "Transcript retrieval workflow started."
+        "Transcript retrieval schedule started."
       );
+      return;
+    }
+    case "pause": {
+      if (!args.cId) {
+        throw new Error("Missing --cId argument");
+      }
+      const transcriptsConfiguration =
+        await LabsTranscriptsConfigurationResource.fetchById(args.cId);
+
+      if (!transcriptsConfiguration) {
+        throw new Error(
+          `Transcripts configuration not found: cId='${args.cId}'`
+        );
+      }
+
+      await pauseRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+
+      logger.info(
+        {
+          transcriptsConfiguration,
+        },
+        "Transcript retrieval schedule paused."
+      );
+
+      return;
+    }
+    case "resume": {
+      if (!args.cId) {
+        throw new Error("Missing --cId argument");
+      }
+      const transcriptsConfiguration =
+        await LabsTranscriptsConfigurationResource.fetchById(args.cId);
+
+      if (!transcriptsConfiguration) {
+        throw new Error(
+          `Transcripts configuration not found: cId='${args.cId}'`
+        );
+      }
+
+      await resumeRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+
+      logger.info(
+        {
+          transcriptsConfiguration,
+        },
+        "Transcript retrieval schedule resumed."
+      );
+
       return;
     }
     case "pause-all": {
       const execute = !!args.execute;
       const activeIdsFile = getActiveIdsFile(args);
       logger.info(
-        `Pausing all LabsTranscripts workflows and recording active ones... (activeIdsFile: ${activeIdsFile})`
+        `Pausing all LabsTranscripts schedules and recording active ones... (activeIdsFile: ${activeIdsFile})`
       );
       const allWorkspaces = await WorkspaceResource.listAll();
       const activeConfigSIds: string[] = [];
@@ -487,7 +537,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
               await stopRetrieveTranscriptsWorkflow(config);
             } else {
               logger.info(
-                `[DRY RUN] Would stop workflow for config sId=${config.sId}`
+                `[DRY RUN] Would stop schedule for config sId=${config.sId}`
               );
             }
           }
@@ -498,7 +548,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
         JSON.stringify(activeConfigSIds, null, 2)
       );
       logger.info(
-        `Paused all workflows. Active workflow sIds recorded: ${activeConfigSIds.length}`
+        `Paused all schedules. Active schedule sIds recorded: ${activeConfigSIds.length}`
       );
       return;
     }
@@ -506,7 +556,7 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
       const execute = !!args.execute;
       const activeIdsFile = getActiveIdsFile(args);
       logger.info(
-        `Restarting only previously active LabsTranscripts workflows... (activeIdsFile: ${activeIdsFile})`
+        `Restarting only previously active LabsTranscripts schedules... (activeIdsFile: ${activeIdsFile})`
       );
       let activeConfigSIds: string[] = [];
       try {
@@ -527,11 +577,11 @@ const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
           await launchRetrieveTranscriptsWorkflow(config);
         } else {
           logger.info(
-            `[DRY RUN] Would restart workflow for config sId=${config.sId}`
+            `[DRY RUN] Would restart schedule for config sId=${config.sId}`
           );
         }
       }
-      logger.info(`Restarted ${activeConfigSIds.length} workflows.`);
+      logger.info(`Restarted ${activeConfigSIds.length} schedules.`);
       return;
     }
   }

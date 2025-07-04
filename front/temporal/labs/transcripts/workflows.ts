@@ -14,13 +14,18 @@ const { retrieveNewTranscriptsActivity, processTranscriptActivity } =
 
 export async function retrieveNewTranscriptsWorkflow(
   transcriptsConfigurationId: string
-) {
+): Promise<void> {
   const filesToProcess = await retrieveNewTranscriptsActivity(
     transcriptsConfigurationId
   );
 
+  if (filesToProcess.length === 0) {
+    return;
+  }
+
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
+  // Process all transcripts found
   for (const fileId of filesToProcess) {
     const workflowId = makeProcessTranscriptWorkflowId({
       transcriptsConfigurationId,
