@@ -3,7 +3,7 @@ import type { RegionType } from "@app/lib/api/regions/config";
 import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { Err, mapToEnumValues, Ok } from "@app/types";
+import { Err, mapToEnumValues, normalizeError, Ok } from "@app/types";
 
 export const relocateUserPlugin = createPlugin({
   manifest: {
@@ -77,13 +77,11 @@ export const relocateUserPlugin = createPlugin({
       return new Ok({
         display: "textWithLink",
         value: `User ${user.email} (${userId}) successfully relocated to region ${newRegion}.`,
-        link: `poke/user/${userId}`,
-        linkText: "View User",
       });
     } catch (error) {
       return new Err(
         new Error(
-          `Failed to update user region in WorkOS: ${error instanceof Error ? error.message : String(error)}`
+          `Failed to update user region in WorkOS: ${normalizeError(error).message}`
         )
       );
     }
