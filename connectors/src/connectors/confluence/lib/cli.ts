@@ -218,7 +218,7 @@ export const confluence = async ({
       }
 
       const ancestors =
-        page?.ancestors.map((a) => ({
+        page.ancestors.map((a) => ({
           id: a.id,
           type: a.type,
           title: a.title,
