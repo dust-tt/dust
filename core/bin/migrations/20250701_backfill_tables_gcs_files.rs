@@ -1,6 +1,6 @@
 use clap::Parser;
 use dust::{
-    databases::{table::get_table_unique_id, table_schema::TableSchema},
+    databases::{table::Table, table_schema::TableSchema},
     databases_store::{postgres::PostgresDatabasesStore, store::DatabasesStore},
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
@@ -103,7 +103,7 @@ async fn process_tables_batch(
     let rows = c
         .query(
             "
-            SELECT t.id, t.table_id, t.schema, ds.project, ds.data_source_id
+            SELECT t.id, t.table_id, t.schema, t.timestamp, ds.project, ds.data_source_id
                 FROM tables t
                 INNER JOIN data_sources ds ON ds.id = t.data_source
                 WHERE NOT migrated_to_csv AND remote_database_table_id IS NULL
@@ -117,19 +117,41 @@ async fn process_tables_batch(
 
     let tables = rows
         .iter()
-        .map(|table| {
+        .map(|table| -> (i64, Table) {
             let id: i64 = table.get("id");
             let table_id: String = table.get("table_id");
             let schema: Option<String> = table.get("schema");
+            let timestamp: i64 = table.get("timestamp");
             let project: i64 = table.get("project");
             let data_source_id: String = table.get("data_source_id");
 
+            let table_schema = schema.as_ref().and_then(|s| serde_json::from_str(s).ok());
+
             (
                 id,
-                table_id,
-                schema,
-                Project::new_from_id(project),
-                data_source_id,
+                // We need to Table instance, but only care about a few specific fields
+                Table::new(
+                    Project::new_from_id(project),
+                    data_source_id,
+                    "".to_owned(),
+                    0,
+                    table_id,
+                    "".to_owned(),
+                    "".to_owned(),
+                    timestamp as u64,
+                    "".to_owned(),
+                    "".to_owned(),
+                    None,
+                    vec![],
+                    None,
+                    vec![],
+                    None,
+                    table_schema,
+                    None,
+                    false,
+                    None,
+                    None,
+                ),
             )
         })
         .collect::<Vec<_>>();
@@ -138,28 +160,16 @@ async fn process_tables_batch(
         return Ok(None);
     }
 
-    let futures = tables
-        .into_iter()
-        .map(|(id, table_id, schema, project, data_source_id)| {
-            let store = store.clone();
-            let db_store = db_store.clone();
-            async move {
-                match process_one_table(
-                    &store,
-                    &db_store,
-                    id,
-                    &table_id,
-                    &schema,
-                    &project,
-                    &data_source_id,
-                )
-                .await
-                {
-                    Ok(_) => Ok(id),
-                    Err(e) => Err(e),
-                }
+    let futures = tables.into_iter().map(|(id, table)| {
+        let store = store.clone();
+        let db_store = db_store.clone();
+        async move {
+            match process_one_table(&store, &db_store, table).await {
+                Ok(_) => Ok(id),
+                Err(e) => Err(e),
             }
-        });
+        }
+    });
 
     let results = try_join_all(futures).await?;
 
@@ -170,48 +180,35 @@ async fn process_tables_batch(
 async fn process_one_table(
     store: &PostgresStore,
     db_store: &PostgresDatabasesStore,
-    id: i64,
-    table_id: &str,
-    schema: &Option<String>,
-    project: &Project,
-    data_source_id: &str,
+    table: Table,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let unique_table_id = get_table_unique_id(&project, &data_source_id, &table_id);
+    // let unique_table_id = get_table_unique_id(&project, &data_source_id, &table_id);
 
-    println!("**** Process table: {}", unique_table_id);
+    println!("**** Process table: {}", table.unique_id());
 
-    let (rows, _count) = db_store.list_table_rows(&unique_table_id, None).await?;
+    let (rows, _count) = db_store.list_table_rows(&table, None).await?;
 
     let table_schema: TableSchema;
 
     if rows.len() > 0 {
+        // If there are rows, we can create a schema from them
         table_schema = TableSchema::from_rows_async(std::sync::Arc::new(rows.clone())).await?;
-
-        // Make sure that the schema from the rows matches the schema from the DB, if any.
-        if !schema.is_none() {
-            let schema_from_rows = serde_json::to_string(&table_schema)
-                .map_err(|e| anyhow::anyhow!("Failed to serialize table schema: {}", e))?;
-
-            if Some(schema_from_rows.as_str()) != schema.as_deref() {
-                println!(
-                    "Warning: Table schema from rows does not match schema from DB for table with id: {}, table_id: {}. From rows: {}, from DB: {}",
-                    id,
-                    table_id,
-                    schema_from_rows,
-                    schema.as_deref().unwrap_or("null")
-                );
-                return Ok(());
-            }
-        }
-    } else if !schema.is_none() {
-        table_schema = serde_json::from_str(schema.as_ref().unwrap())?;
+    } else if !table.schema_cached().is_none() {
+        // If there are no rows, but the DB has a cached schema, use that
+        table_schema = table.schema_cached().unwrap().clone();
     } else {
         // Create an empty schema, which will cause store_data_source_table_csv not to save a csv
         table_schema = serde_json::from_str("[]")?;
     }
 
     store
-        .store_data_source_table_csv(&project, &data_source_id, &table_id, &table_schema, &rows)
+        .store_data_source_table_csv(
+            table.project(),
+            table.data_source_id(),
+            table.table_id(),
+            &table_schema,
+            &rows,
+        )
         .await?;
 
     Ok(())
