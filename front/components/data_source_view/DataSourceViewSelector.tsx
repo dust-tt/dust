@@ -340,7 +340,7 @@ export function DataSourceViewsSelector({
     } else {
       setNodeOrUrlCandidate(null);
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, viewType]);
 
   const commonSearchParams = {
     owner,

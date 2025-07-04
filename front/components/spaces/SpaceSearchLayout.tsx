@@ -222,7 +222,7 @@ function BackendSearch({
     } else {
       setNodeOrUrlCandidate(null);
     }
-  }, [debouncedSearch]);
+  }, [debouncedSearch, viewType]);
 
   const shouldShowSearchResults = debouncedSearch.length > 0;
 
