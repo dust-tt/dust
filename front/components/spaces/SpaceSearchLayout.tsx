@@ -217,7 +217,7 @@ function BackendSearch({
   // Check if the search term is a URL
   React.useEffect(() => {
     if (debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE) {
-      const candidate = nodeCandidateFromUrl(debouncedSearch.trim());
+      const candidate = nodeCandidateFromUrl(debouncedSearch.trim(), viewType);
       setNodeOrUrlCandidate(candidate);
     } else {
       setNodeOrUrlCandidate(null);

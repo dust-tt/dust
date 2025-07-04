@@ -1,5 +1,5 @@
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { ConnectorProvider } from "@app/types";
+import type { ConnectorProvider, ContentNodesViewType } from "@app/types";
 
 function getConnectorOrder() {
   return Object.keys(CONNECTOR_CONFIGURATIONS)
@@ -113,7 +113,7 @@ type ProviderWithNormalizer = BaseProvider & {
 };
 
 type ProviderWithExtractor = BaseProvider & {
-  extractor: (url: URL) => NodeCandidate;
+  extractor: (url: URL, viewType?: ContentNodesViewType) => NodeCandidate;
   urlNormalizer?: never;
 };
 
@@ -188,7 +188,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     matcher: (url: URL): boolean => {
       return url.hostname.includes("notion.so");
     },
-    extractor: (url: URL): NodeCandidate => {
+    extractor: (url: URL, viewType?: ContentNodesViewType): NodeCandidate => {
       // Get the last part of the path, which contains the ID
       const pathParts = url.pathname.split("/");
       const lastPart = pathParts[pathParts.length - 1];
@@ -201,7 +201,12 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
         if (candidate && candidate.length === 32) {
           // If we have a 32-character ID (without hyphen) we are good to reconstrcut the ID.
           const id =
-            "notion-" +
+            // Notion databases have 2 entries in core:
+            // - one of type "table" starting with "notion-";
+            // - one of type "document" starting with "notion-database-".
+            // We need to pick the right one depending on the view type.
+            // For view type "all", we return the "table" one.
+            (viewType === "document" ? "notion-database-" : "notion-") +
             candidate.slice(0, 8) +
             "-" +
             candidate.slice(8, 12) +
@@ -335,7 +340,8 @@ function extractThreadNodeId(url: URL): string | null {
 
 // Extracts a nodeId from a given url
 export function nodeCandidateFromUrl(
-  url: string
+  url: string,
+  viewType?: ContentNodesViewType
 ): UrlCandidate | NodeCandidate | null {
   try {
     const urlObj = new URL(url);
@@ -352,7 +358,7 @@ export function nodeCandidateFromUrl(
             return provider.urlNormalizer(urlObj);
           }
         } else if (provider.extractor) {
-          return provider.extractor(urlObj);
+          return provider.extractor(urlObj, viewType);
         } else {
           return provider.urlNormalizer(urlObj);
         }

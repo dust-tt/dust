@@ -335,7 +335,7 @@ export function DataSourceViewsSelector({
   // Check if the search term is a URL
   useEffect(() => {
     if (debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE) {
-      const candidate = nodeCandidateFromUrl(debouncedSearch.trim());
+      const candidate = nodeCandidateFromUrl(debouncedSearch.trim(), viewType);
       setNodeOrUrlCandidate(candidate);
     } else {
       setNodeOrUrlCandidate(null);
