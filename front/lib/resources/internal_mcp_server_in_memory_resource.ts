@@ -66,7 +66,9 @@ const getCachedMetadata = cacheWithRedis(
     return metadata;
   },
   (_auth: Authenticator, id: string) => `internal-mcp-server-metadata-${id}`,
-  isDevelopment() ? 1000 : METADATA_CACHE_TTL_MS
+  {
+    ttlMs: isDevelopment() ? 1000 : METADATA_CACHE_TTL_MS,
+  }
 );
 
 export class InternalMCPServerInMemoryResource {
