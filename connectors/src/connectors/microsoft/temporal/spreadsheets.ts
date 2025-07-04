@@ -275,12 +275,14 @@ export async function handleSpreadSheet({
   parentInternalId,
   localLogger,
   startSyncTs,
+  heartbeat,
 }: {
   connectorId: number;
   file: DriveItem;
   parentInternalId: string;
   localLogger: Logger;
   startSyncTs: number;
+  heartbeat: () => void;
 }): Promise<Result<null, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
@@ -340,6 +342,7 @@ export async function handleSpreadSheet({
 
   const successfulSheetIdImports: string[] = [];
   for (const worksheet of worksheetsRes.value) {
+    await heartbeat();
     if (worksheet.id) {
       const worksheetInternalId = getWorksheetInternalId(worksheet, documentId);
       const importResult = await processSheet({
