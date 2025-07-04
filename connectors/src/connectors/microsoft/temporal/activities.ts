@@ -469,6 +469,7 @@ export async function syncFiles({
         file: child,
         parentInternalId,
         startSyncTs,
+        heartbeat,
       }),
     { concurrency: FILES_SYNC_CONCURRENCY }
   );
@@ -625,6 +626,7 @@ export async function syncDeltaForRootNodesInDrive({
     logger,
     client,
     node,
+    heartbeat,
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
 
@@ -682,13 +684,21 @@ export async function syncDeltaForRootNodesInDrive({
             driveItem.parentReference
           ),
           startSyncTs,
+          heartbeat,
         });
       }
     } else if (driveItem.folder) {
       if (driveItem.deleted) {
         // no need to delete children here since they will all be listed
         // in the delta with the 'deleted' field set
-        await deleteFolder({ connectorId, dataSourceConfig, internalId });
+        // we can delete, even if it is not a root node, because microsoft
+        // tells us the client has already deleted the folder
+        await deleteFolder({
+          connectorId,
+          dataSourceConfig,
+          internalId,
+          deleteRootNode: true,
+        });
       } else {
         const isMoved = await isFolderMovedInSameRoot({
           connectorId,
@@ -718,6 +728,10 @@ export async function syncDeltaForRootNodesInDrive({
           blob
         );
 
+        if (isAlreadySeenItem({ driveItemResource: resource, startSyncTs })) {
+          continue;
+        }
+
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
         // todo check filter
@@ -729,7 +743,6 @@ export async function syncDeltaForRootNodesInDrive({
 
         await resource.update({
           parentInternalId,
-          lastSeenTs: new Date(),
         });
 
         const parents = await getParents({
@@ -760,6 +773,10 @@ export async function syncDeltaForRootNodesInDrive({
             startSyncTs,
           });
         }
+
+        await resource.update({
+          lastSeenTs: new Date(),
+        });
       }
     } else {
       throw new Error(`Unexpected: driveItem is neither file nor folder`);
@@ -874,10 +891,12 @@ async function getDeltaData({
   logger,
   client,
   node,
+  heartbeat,
 }: {
   logger: LoggerInterface;
   client: Client;
   node: MicrosoftNodeResource;
+  heartbeat: () => void;
 }) {
   if (!node.deltaLink) {
     throw new Error(`No delta link for root node ${node.internalId}`);
@@ -889,17 +908,23 @@ async function getDeltaData({
   );
 
   try {
-    return await getFullDeltaResults(
+    return await getFullDeltaResults({
       logger,
       client,
-      node.internalId,
-      node.deltaLink
-    );
+      parentInternalId: node.internalId,
+      initialDeltaLink: node.deltaLink,
+      heartbeatFunction: heartbeat,
+    });
   } catch (e) {
     if (e instanceof GraphError && e.statusCode === 410) {
       // API is answering 'resync required'
       // we repopulate the delta from scratch
-      return await getFullDeltaResults(logger, client, node.internalId);
+      return await getFullDeltaResults({
+        logger,
+        client,
+        parentInternalId: node.internalId,
+        heartbeatFunction: heartbeat,
+      });
     }
     throw e;
   }
@@ -1037,14 +1062,14 @@ export async function microsoftDeletionActivity({
 export async function microsoftGarbageCollectionActivity({
   connectorId,
   idCursor,
-  rootNodeIds,
   startGarbageCollectionTs,
 }: {
   connectorId: ModelId;
   idCursor: ModelId;
-  rootNodeIds: string[];
   startGarbageCollectionTs: number;
 }) {
+  const rootNodeIds = await getRootNodesToSync(connectorId);
+
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -1060,7 +1085,7 @@ export async function microsoftGarbageCollectionActivity({
 
   const nodes = await MicrosoftNodeResource.fetchByPaginatedIds({
     connectorId,
-    pageSize: 500,
+    pageSize: 1000,
     idCursor,
   });
 

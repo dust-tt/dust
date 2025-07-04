@@ -13,9 +13,11 @@ const LOGO_SETS = {
     { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
     { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
     { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+    { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
   ],
   landing: [
     { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+    { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
     { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
     { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
     { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
@@ -25,6 +27,7 @@ const LOGO_SETS = {
     { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
     { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
     { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+    { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
   ],
   b2bSaas: [
     { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
@@ -34,7 +37,7 @@ const LOGO_SETS = {
     },
     { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
     { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
-    { name: "gitguardian", src: "/static/landing/logos/gray/gitguardian.svg" },
+    { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
     { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
   ],
   marketplace: [
@@ -89,11 +92,11 @@ export default function TrustedBy({
       </H4>
 
       <div className="w-full">
-        <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 md:gap-10 lg:gap-12">
+        <div className="flex flex-wrap justify-center gap-6 sm:gap-8 lg:gap-10 xl:gap-12">
           {logos.map((logo, index) => (
             <div
               key={`${logo.name}-${index}`}
-              className="flex h-20 items-center justify-center sm:h-24"
+              className="flex h-20 w-36 items-center justify-center sm:h-24 sm:w-48 lg:w-44 xl:w-40"
             >
               <Image
                 alt={logo.name}

@@ -13,6 +13,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   CombinedResourcePermissions,
   ContentFragmentInputWithContentNode,
@@ -47,45 +48,27 @@ export function getDataSourceViewIdsFromActions(
   actions: UnsavedAgentActionConfigurationType[]
 ): string[] {
   const relevantActions = actions.filter(
-    (action) =>
-      action.type === "retrieval_configuration" ||
-      action.type === "process_configuration" ||
-      action.type === "tables_query_configuration" ||
-      (action.type === "mcp_server_configuration" &&
-        isServerSideMCPServerConfiguration(action))
+    (action): action is ServerSideMCPServerConfigurationType =>
+      action.type === "mcp_server_configuration" &&
+      isServerSideMCPServerConfiguration(action)
   );
 
   return removeNulls(
     relevantActions.flatMap((action) => {
-      if (
-        action.type === "retrieval_configuration" ||
-        action.type === "process_configuration"
-      ) {
+      if (action.dataSources) {
         return action.dataSources.map(
           (dataSource) => dataSource.dataSourceViewId
         );
-      } else if (action.type === "tables_query_configuration") {
+      } else if (action.tables) {
         return action.tables.map((table) => table.dataSourceViewId);
-      } else if (
-        action.type === "mcp_server_configuration" &&
-        isServerSideMCPServerConfiguration(action)
-      ) {
-        if (action.dataSources) {
-          return action.dataSources.map(
-            (dataSource) => dataSource.dataSourceViewId
-          );
-        } else if (action.tables) {
-          return action.tables.map((table) => table.dataSourceViewId);
-        } else {
-          return [];
-        }
+      } else {
+        return [];
       }
-      return [];
     })
   );
 }
 
-function groupsFromRequestedPermissions(
+export function groupsFromRequestedPermissions(
   requestedPermissions: CombinedResourcePermissions[]
 ) {
   return (
@@ -98,8 +81,14 @@ function groupsFromRequestedPermissions(
 
 export async function getAgentConfigurationGroupIdsFromActions(
   auth: Authenticator,
-  actions: UnsavedAgentActionConfigurationType[]
+  params: {
+    actions: UnsavedAgentActionConfigurationType[];
+    ignoreSpaces?: SpaceResource[];
+  }
 ): Promise<ModelId[][]> {
+  const { actions, ignoreSpaces } = params;
+  const ignoreSpaceIds = new Set(ignoreSpaces?.map((space) => space.sId));
+
   const dsViews = await DataSourceViewResource.fetchByIds(
     auth,
     getDataSourceViewIdsFromActions(actions)
@@ -117,6 +106,10 @@ export async function getAgentConfigurationGroupIdsFromActions(
   // Collect DataSourceView permissions by space.
   for (const view of dsViews) {
     const { sId: spaceId } = view.space;
+    if (ignoreSpaceIds?.has(spaceId)) {
+      continue;
+    }
+
     if (!spacePermissions.has(spaceId)) {
       spacePermissions.set(spaceId, new Set());
     }
@@ -127,6 +120,10 @@ export async function getAgentConfigurationGroupIdsFromActions(
   // Collect DustApp permissions by space.
   for (const app of dustApps) {
     const { sId: spaceId } = app.space;
+    if (ignoreSpaceIds?.has(spaceId)) {
+      continue;
+    }
+
     if (!spacePermissions.has(spaceId)) {
       spacePermissions.set(spaceId, new Set());
     }
@@ -147,6 +144,9 @@ export async function getAgentConfigurationGroupIdsFromActions(
 
   for (const view of mcpServerViews) {
     const { sId: spaceId } = view.space;
+    if (ignoreSpaceIds?.has(spaceId)) {
+      continue;
+    }
     if (!spacePermissions.has(spaceId)) {
       spacePermissions.set(spaceId, new Set());
     }

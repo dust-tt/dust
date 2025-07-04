@@ -4,17 +4,16 @@ use crate::oauth::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
         gmail::GmailConnectionProvider, gong::GongConnectionProvider,
         google_drive::GoogleDriveConnectionProvider, hubspot::HubspotConnectionProvider,
-        intercom::IntercomConnectionProvider, jira::JiraConnectionProvider,
-        mcp::MCPConnectionProvider, microsoft::MicrosoftConnectionProvider,
-        mock::MockConnectionProvider, notion::NotionConnectionProvider,
-        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
-        slack_bot::SlackBotConnectionProvider, zendesk::ZendeskConnectionProvider,
+        intercom::IntercomConnectionProvider, jira::JiraConnectionProvider, mcp::MCPConnectionProvider,
+        microsoft::MicrosoftConnectionProvider, mock::MockConnectionProvider,
+        notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
+        slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
 use crate::utils;
 use crate::utils::ParseError;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use rslock::LockManager;
@@ -99,7 +98,6 @@ pub enum ConnectionProvider {
     Microsoft,
     Notion,
     Slack,
-    SlackBot,
     Mock,
     Zendesk,
     Salesforce,
@@ -135,6 +133,7 @@ pub struct FinalizeResult {
     pub access_token_expiry: Option<u64>,
     pub refresh_token: Option<String>,
     pub raw_json: serde_json::Value,
+    pub extra_metadata: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize)]
@@ -236,7 +235,6 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
-        ConnectionProvider::SlackBot => Box::new(SlackBotConnectionProvider::new()),
         ConnectionProvider::Mock => Box::new(MockConnectionProvider::new()),
         ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
         ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
@@ -646,6 +644,19 @@ impl Connection {
         };
         self.encrypted_raw_json = Some(seal_str(&serde_json::to_string(&finalize.raw_json)?)?);
         store.update_connection_secrets(self).await?;
+
+        // If the provider has extra metadata, merge it with the connection metadata.
+        if let Some(extra_metadata) = finalize.extra_metadata {
+            let mut merged_metadata = match self.metadata.clone() {
+                serde_json::Value::Object(map) => map,
+                _ => Err(anyhow!("Invalid `metadata` stored on connection."))?,
+            };
+            for (key, value) in extra_metadata {
+                merged_metadata.insert(key.clone(), value.clone());
+            }
+            self.metadata = serde_json::Value::Object(merged_metadata);
+            store.update_connection_metadata(self).await?;
+        }
 
         info!(
             connection_id = self.connection_id(),

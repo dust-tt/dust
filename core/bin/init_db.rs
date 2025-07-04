@@ -1,6 +1,6 @@
 use anyhow::Result;
 use dust::{
-    databases_store::store::PostgresDatabasesStore, oauth::store::PostgresOAuthStore,
+    databases_store::postgres::PostgresDatabasesStore, oauth::store::PostgresOAuthStore,
     stores::postgres::PostgresStore,
 };
 use tokio;

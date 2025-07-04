@@ -24,6 +24,7 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
+import { CallToolResultSchemaWithoutBase64Validation } from "@app/lib/actions/mcp_call_tool_result_schema";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   getInternalMCPServerAvailability,
@@ -275,7 +276,8 @@ export async function* tryCallMCPTool(
           progressToken,
         },
       },
-      undefined,
+      // Use custom schema to avoid Zod base64 validation stack overflow with large images
+      CallToolResultSchemaWithoutBase64Validation,
       {
         timeout:
           agentLoopRunContext.actionConfiguration.timeoutMs ??
@@ -320,10 +322,11 @@ export async function* tryCallMCPTool(
     if (toolCallResult.isError) {
       logger.error(
         {
-          workspaceId: auth.getNonNullableWorkspace().sId,
           conversationId,
-          messageId,
           error: toolCallResult.content,
+          messageId,
+          toolName: agentLoopRunContext.actionConfiguration.originalName,
+          workspaceId: auth.getNonNullableWorkspace().sId,
         },
         `Error calling MCP tool in tryCallMCPTool().`
       );
@@ -447,6 +450,17 @@ export async function* tryCallMCPTool(
       result: new Ok(content),
     };
   } catch (error) {
+    logger.error(
+      {
+        conversationId,
+        error,
+        messageId,
+        toolName: agentLoopRunContext.actionConfiguration.originalName,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Exception calling MCP tool in tryCallMCPTool()."
+    );
+
     yield {
       type: "result",
       result: new Err(normalizeError(error)),
@@ -568,7 +582,7 @@ export async function tryListMCPTools(
       if (toolsAndInstructionsRes.isErr()) {
         logger.error(
           {
-            workspaceId: owner.id,
+            workspaceId: owner.sId,
             conversationId: agentLoopListToolsContext.conversation.sId,
             messageId: agentLoopListToolsContext.agentMessage.sId,
             error: toolsAndInstructionsRes.error,
@@ -864,7 +878,7 @@ async function listMCPServerToolsAndServerInstructions(
 
     logger.debug(
       {
-        workspaceId: owner.id,
+        workspaceId: owner.sId,
         conversationId: agentLoopListToolsContext.conversation.sId,
         messageId: agentLoopListToolsContext.agentMessage.sId,
         toolCount: toolsFromServer.length,
@@ -877,7 +891,7 @@ async function listMCPServerToolsAndServerInstructions(
   } catch (error) {
     logger.error(
       {
-        workspaceId: owner.id,
+        workspaceId: owner.sId,
         conversationId: agentLoopListToolsContext.conversation.sId,
         messageId: agentLoopListToolsContext.agentMessage.sId,
         error,
@@ -893,7 +907,7 @@ async function listMCPServerToolsAndServerInstructions(
       } catch (closeError) {
         logger.warn(
           {
-            workspaceId: owner.id,
+            workspaceId: owner.sId,
             conversationId: agentLoopListToolsContext.conversation.sId,
             messageId: agentLoopListToolsContext.agentMessage.sId,
             error: closeError,

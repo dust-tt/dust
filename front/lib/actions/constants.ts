@@ -1,6 +1,6 @@
 import type {
+  CustomServerIconType,
   InternalAllowedIconType,
-  RemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 
 // Stored in a separate file to prevent a circular dependency issue.
@@ -9,21 +9,16 @@ import type {
 // future based on user feedback.
 export const PROCESS_ACTION_TOP_K = 768;
 
-export const DEFAULT_BROWSE_ACTION_NAME = "browse";
-export const DEFAULT_BROWSE_ACTION_DESCRIPTION =
-  "Browse the content of a web page";
-
 export const DEFAULT_PROCESS_ACTION_NAME =
   "extract_structured_data_from_data_sources";
 
-export const DEFAULT_RETRIEVAL_ACTION_NAME = "search_data_sources";
+// If we have actions that are used in global agents, we define the name and description of the action
+// (<=> of the internal MCP server) here and use it from here in both the internal MCP server
+// and `global_agents.ts`.
 
-export const DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME = "include_data_sources";
-
-export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search";
-export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION = "Perform a web search";
-
-export const DEFAULT_TABLES_QUERY_ACTION_NAME = "query_tables";
+export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search_&_browse";
+export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION =
+  "Agent can search (Google) and retrieve information from specific websites.";
 
 export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME =
   "list_conversation_files";
@@ -40,7 +35,6 @@ export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION = `The ta
 
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
-export const DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION = `Search within the 'searchable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;
 
 export const DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME =
   "extract_conversation_files";
@@ -48,10 +42,6 @@ export const DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION = `Extract str
 
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";
-
-export const DEFAULT_REASONING_ACTION_NAME = "advanced_reasoning";
-export const DEFAULT_REASONING_ACTION_DESCRIPTION =
-  "Offload a reasoning-heavy task to to a powerful reasoning model. The reasoning model does not have access to any tools.";
 
 export const DEFAULT_DATA_VISUALIZATION_NAME = "data_visualization";
 export const DEFAULT_DATA_VISUALIZATION_DESCRIPTION =
@@ -62,11 +52,11 @@ export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
   "Call a tool to answer a question.";
 
-export const REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
-export type RemoteMCPToolStakeLevelType =
-  (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
+export const CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
+export type CustomRemoteMCPToolStakeLevelType =
+  (typeof CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
 export const MCP_TOOL_STAKE_LEVELS = [
-  ...REMOTE_MCP_TOOL_STAKE_LEVELS,
+  ...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
   "never_ask",
 ] as const;
 export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
@@ -89,5 +79,5 @@ export type MCPValidationMetadataType = {
   mcpServerName: string;
   agentName: string;
   pubsubMessageId?: string;
-  icon?: InternalAllowedIconType | RemoteAllowedIconType;
+  icon?: InternalAllowedIconType | CustomServerIconType;
 };

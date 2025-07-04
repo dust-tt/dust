@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
@@ -10,6 +11,30 @@ import type {
   WhitelistableFeature,
   WorkspaceEnterpriseConnection,
 } from "@app/types";
+
+export function useWorkspace({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const workspaceFetcher: Fetcher<GetWorkspaceResponseBody> = fetcher;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    `/api/w/${owner.sId}`,
+    workspaceFetcher,
+    { disabled }
+  );
+
+  return {
+    workspace: data?.workspace,
+    isWorkspaceLoading: !error && !data && !disabled,
+    isWorkspaceValidating: isValidating,
+    isWorkspaceError: error,
+    mutateWorkspace: mutate,
+  };
+}
 
 export function useWorkspaceSubscriptions({
   owner,

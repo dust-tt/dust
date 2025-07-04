@@ -2,7 +2,10 @@ import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
 import config from "@app/lib/api/config";
-import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
+import type {
+  BaseOAuthStrategyProvider,
+  RelatedCredential,
+} from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
@@ -65,26 +68,42 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       )
     );
   }
-
   async getRelatedCredential(
     auth: Authenticator,
-    extraConfig: ExtraConfigType,
-    workspaceId: string,
-    userId: string
-  ) {
-    const { client_id, client_secret, ...restConfig } = extraConfig;
+    {
+      extraConfig,
+      workspaceId,
+      userId,
+    }: {
+      extraConfig: ExtraConfigType;
+      workspaceId: string;
+      userId: string;
+    }
+  ): Promise<RelatedCredential | undefined> {
+    const { client_id, client_secret } = extraConfig;
     if (!client_id || !client_secret) {
-      return null;
+      return undefined;
     }
     return {
-      credential: {
-        content: {
-          client_id,
-          client_secret,
-        },
-        metadata: { workspace_id: workspaceId, user_id: userId },
+      content: {
+        client_id,
+        client_secret,
       },
-      cleanedConfig: restConfig,
+      metadata: { workspace_id: workspaceId, user_id: userId },
     };
+  }
+
+  async getUpdatedExtraConfig(
+    auth: Authenticator,
+    {
+      extraConfig,
+    }: {
+      extraConfig: ExtraConfigType;
+    }
+  ): Promise<ExtraConfigType> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
+    const { client_secret, ...restConfig } = extraConfig;
+
+    return restConfig;
   }
 }

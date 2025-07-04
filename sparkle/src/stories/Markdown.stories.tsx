@@ -345,3 +345,82 @@ export const ExtendedMarkdownStory: Story = {
     content: example,
   },
 };
+
+const mermaidAndJSON = `
+\`\`\`mermaid pie chart
+pie title Distribution
+    "Category A" : 30
+    "Category B" : 20
+    "Category C" : 15
+    "Category D" : 10
+    "Category E" : 25
+\`\`\`
+
+
+\`\`\`json
+{
+  "message": "Invalid JSON should not be pretty printed",
+  "status": "success",
+}
+\`\`\`
+
+\`\`\`json
+{
+  "message": "Soupi soupi soupinou ! Youhou !",
+  "status": "success",
+  "data": null
+}
+\`\`\`
+
+\`\`\`json
+{
+  "query": "SELECT COUNT() FROM Account"
+}
+\`\`\`
+
+\`\`\`json
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Account",
+        "url": "/services/data/v57.0/sobjects/Account/001Qy00000ccRXcIAM"
+      },
+      "Name": "Awesome Company",
+      "Type": "Customer - Direct",
+      "Industry": "Apparel",
+      "BillingCountry": "USA"
+    },
+    {
+      "attributes": {
+        "type": "Account",
+        "url": "/services/data/v57.0/sobjects/Account/001Qy00000ccRXeIAM"
+      },
+      "Name": "Awesomest Company",
+      "Type": "Customer - Channel",
+      "Industry": "Consulting",
+      "BillingCountry": "USA"
+    },
+    {
+      "attributes": {
+        "type": "Account",
+        "url": "/services/data/v57.0/sobjects/Account/001Qy00000ccRXbIAM"
+      },
+      "Name": "Awesomer Company",
+      "Type": "Customer - Direct",
+      "Industry": "Electronics",
+      "BillingCountry": null
+    }
+  ],
+  "totalSize": 18,
+  "done": true
+}
+\`\`\`
+
+`;
+
+export const JSONMarkdownStory: Story = {
+  args: {
+    content: mermaidAndJSON,
+  },
+};

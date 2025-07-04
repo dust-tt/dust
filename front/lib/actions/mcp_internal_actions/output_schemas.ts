@@ -8,12 +8,12 @@ import { z } from "zod";
 
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type {
+  CustomServerIconType,
   InternalAllowedIconType,
-  RemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import {
+  CUSTOM_SERVER_ALLOWED,
   INTERNAL_ALLOWED_ICONS,
-  REMOTE_ALLOWED_ICONS,
 } from "@app/lib/actions/mcp_icons";
 import type { SupportedFileContentType } from "@app/types";
 import { CONNECTOR_PROVIDERS } from "@app/types";
@@ -195,53 +195,56 @@ export const isExampleRowsResourceType = (
   );
 };
 
-export const GetDatabaseSchemaMarkerResourceSchema = z.object({
-  mimeType: z.literal(
-    INTERNAL_MIME_TYPES.TOOL_OUTPUT.GET_DATABASE_SCHEMA_MARKER
-  ),
+export const ToolMarkerResourceSchema = z.object({
+  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER),
   text: z.string(),
   uri: z.literal(""),
 });
 
-export type GetDatabaseSchemaMarkerResourceType = z.infer<
-  typeof GetDatabaseSchemaMarkerResourceSchema
->;
+export type ToolMarkerResourceType = z.infer<typeof ToolMarkerResourceSchema>;
+
+export function isToolMarkerResourceType(
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: ToolMarkerResourceType;
+} {
+  return (
+    outputBlock.type === "resource" &&
+    ToolMarkerResourceSchema.safeParse(outputBlock.resource).success
+  );
+}
+
+export const GET_DATABASE_SCHEMA_MARKER = "get_database_schema_marker" as const;
 
 export function isGetDatabaseSchemaMarkerResourceType(
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
   type: "resource";
-  resource: GetDatabaseSchemaMarkerResourceType;
+  resource: ToolMarkerResourceType & {
+    text: typeof GET_DATABASE_SCHEMA_MARKER;
+  };
 } {
   return (
-    outputBlock.type === "resource" &&
-    GetDatabaseSchemaMarkerResourceSchema.safeParse(outputBlock.resource)
-      .success
+    isToolMarkerResourceType(outputBlock) &&
+    outputBlock.resource.text === GET_DATABASE_SCHEMA_MARKER
   );
 }
 
-export const ExecuteTablesQueryMarkerResourceSchema = z.object({
-  mimeType: z.literal(
-    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_MARKER
-  ),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type ExecuteTablesQueryMarkerResourceType = z.infer<
-  typeof ExecuteTablesQueryMarkerResourceSchema
->;
+export const EXECUTE_TABLES_QUERY_MARKER =
+  "execute_tables_query_marker" as const;
 
 export function isExecuteTablesQueryMarkerResourceType(
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
   type: "resource";
-  resource: ExecuteTablesQueryMarkerResourceType;
+  resource: ToolMarkerResourceType & {
+    text: typeof EXECUTE_TABLES_QUERY_MARKER;
+  };
 } {
   return (
-    outputBlock.type === "resource" &&
-    ExecuteTablesQueryMarkerResourceSchema.safeParse(outputBlock.resource)
-      .success
+    isToolMarkerResourceType(outputBlock) &&
+    outputBlock.resource.text === EXECUTE_TABLES_QUERY_MARKER
   );
 }
 
@@ -671,8 +674,8 @@ const InternalAllowedIconSchema = z.enum(
   ]
 );
 
-const RemoteAllowedIconSchema = z.enum(
-  REMOTE_ALLOWED_ICONS as [RemoteAllowedIconType, ...RemoteAllowedIconType[]]
+const CustomServerIconSchema = z.enum(
+  CUSTOM_SERVER_ALLOWED as [CustomServerIconType, ...CustomServerIconType[]]
 );
 
 // Schema for the resource of a notification where the tool is asking for tool approval.
@@ -691,7 +694,7 @@ const NotificationToolApproveBubbleUpContentSchema = z.object({
     toolName: z.string(),
     agentName: z.string(),
     icon: z
-      .union([InternalAllowedIconSchema, RemoteAllowedIconSchema])
+      .union([InternalAllowedIconSchema, CustomServerIconSchema])
       .optional(),
   }),
 });
@@ -780,4 +783,10 @@ export function isMCPProgressNotificationType(
   notification: Notification
 ): notification is MCPProgressNotificationType {
   return MCPProgressNotificationSchema.safeParse(notification).success;
+}
+
+export function isTextContent(
+  content: CallToolResult["content"][number]
+): content is { type: "text"; text: string } {
+  return content.type === "text";
 }

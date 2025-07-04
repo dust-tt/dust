@@ -1,3 +1,4 @@
+import { GenericServerException } from "@workos-inc/node";
 import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,9 +11,11 @@ import {
 } from "@app/lib/api/regions/config";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { getWorkOS } from "@app/lib/api/workos/client";
+import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
 import { setRegionForUser } from "@app/lib/api/workos/user";
 import { getFeatureFlags, getSession } from "@app/lib/auth";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -95,6 +98,11 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       };
     }
 
+    const state = {
+      ...(returnTo ? { returnTo } : {}),
+      ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
+    };
+
     const authorizationUrl = getWorkOS().userManagement.getAuthorizationUrl({
       // Specify that we'd like AuthKit to handle the authentication flow
       provider: "authkit",
@@ -102,8 +110,9 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       clientId: config.getWorkOSClientId(),
       ...enterpriseParams,
       state:
-        returnTo &&
-        Buffer.from(JSON.stringify({ returnTo })).toString("base64"),
+        Object.keys(state).length > 0
+          ? Buffer.from(JSON.stringify(state)).toString("base64")
+          : undefined,
       ...(isValidScreenHint(screenHint) ? { screenHint } : {}),
       ...(isString(loginHint) ? { loginHint } : {}),
     });
@@ -116,6 +125,43 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
   }
 }
 
+async function authenticate(code: string, organizationId?: string) {
+  try {
+    return await getWorkOS().userManagement.authenticateWithCode({
+      code,
+      clientId: config.getWorkOSClientId(),
+      session: {
+        sealSession: true,
+        cookiePassword: config.getWorkOSCookiePassword(),
+      },
+    });
+  } catch (error) {
+    if (error instanceof GenericServerException) {
+      const errorData = error.rawData;
+      // In case we're coming from a login with organizationId, we need to complete the authentication with organization selection
+      if (organizationId && isOrganizationSelectionRequiredError(errorData)) {
+        const result =
+          await getWorkOS().userManagement.authenticateWithOrganizationSelection(
+            {
+              clientId: config.getWorkOSClientId(),
+              pendingAuthenticationToken:
+                errorData.pending_authentication_token,
+              organizationId,
+              session: {
+                sealSession: true,
+                cookiePassword: config.getWorkOSCookiePassword(),
+              },
+            }
+          );
+
+        return result;
+      }
+    }
+
+    throw error; // Re-throw other errors
+  }
+}
+
 async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
   const { code, state } = req.query;
   if (!code || typeof code !== "string") {
@@ -124,6 +170,10 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     );
   }
 
+  const stateObj = isString(state)
+    ? JSON.parse(Buffer.from(state, "base64").toString("utf-8"))
+    : {};
+
   try {
     const {
       user,
@@ -131,14 +181,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       authenticationMethod,
       sealedSession,
       accessToken,
-    } = await getWorkOS().userManagement.authenticateWithCode({
-      code,
-      clientId: config.getWorkOSClientId(),
-      session: {
-        sealSession: true,
-        cookiePassword: config.getWorkOSCookiePassword(),
-      },
-    });
+    } = await authenticate(code, stateObj.organizationId);
 
     if (!sealedSession) {
       throw new Error("Sealed session not found");
@@ -161,18 +204,33 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       password: config.getWorkOSCookiePassword(),
     });
 
-    logger.info(
-      { user, organizationId, authenticationMethod },
-      "WorkOS callback"
-    );
-
     const currentRegion = multiRegionsConfig.getCurrentRegion();
     let targetRegion: RegionType | null = "us-central1";
 
     // If user has a region, redirect to the region page.
     const userSessionRegion = sessionCookie.region;
 
-    if (userSessionRegion) {
+    let invite: MembershipInvitationResource | null = null;
+    if (
+      isString(stateObj.returnTo) &&
+      stateObj.returnTo.startsWith("/api/login?inviteToken=")
+    ) {
+      const inviteUrl = new URL(stateObj.returnTo, config.getClientFacingUrl());
+      const inviteToken = inviteUrl.searchParams.get("inviteToken");
+      if (inviteToken) {
+        const inviteRes =
+          await MembershipInvitationResource.getPendingForToken(inviteToken);
+        if (inviteRes.isOk()) {
+          invite = inviteRes.value;
+        }
+      }
+    }
+
+    if (invite) {
+      // User has an invite on the current region - we want to keep the user here.
+      targetRegion = currentRegion;
+      await setRegionForUser(user, targetRegion);
+    } else if (userSessionRegion) {
       targetRegion = userSessionRegion;
     } else {
       // For new users or users without region, perform lookup.
@@ -221,10 +279,7 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
       let returnTo = "/";
       try {
-        const stateObj = JSON.parse(
-          Buffer.from(state as string, "base64").toString("utf-8")
-        );
-        if (stateObj.returnTo) {
+        if (isString(stateObj.returnTo)) {
           const url = new URL(stateObj.returnTo);
           returnTo = url.pathname + url.search;
         }
@@ -242,18 +297,13 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     // Set session cookie and redirect to returnTo URL
 
     res.setHeader("Set-Cookie", [
-      `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax`,
-      `sessionType=workos; Path=/; Secure;SameSite=Lax`,
+      `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure;SameSite=Lax; Max-Age=2592000`,
+      `sessionType=workos; Path=/; Secure;SameSite=Lax; Max-Age=2592000`,
     ]);
 
-    if (isString(state)) {
-      const stateObj = JSON.parse(
-        Buffer.from(state, "base64").toString("utf-8")
-      );
-      if (isString(stateObj.returnTo)) {
-        res.redirect(stateObj.returnTo);
-        return;
-      }
+    if (isString(stateObj.returnTo)) {
+      res.redirect(stateObj.returnTo);
+      return;
     }
 
     res.redirect("/api/login");

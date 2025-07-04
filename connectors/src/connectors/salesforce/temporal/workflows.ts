@@ -1,7 +1,6 @@
-import { proxyActivities, setHandler } from "@temporalio/workflow";
+import { proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/salesforce/temporal/activities";
-import { resyncSignal } from "@connectors/connectors/salesforce/temporal/signals";
 // import type * as sync_status from "@connectors/lib/sync_status";
 import type { ModelId } from "@connectors/types";
 
@@ -9,38 +8,14 @@ import type { ModelId } from "@connectors/types";
 //   startToCloseTimeout: "10 minutes",
 // });
 
-const {
-  syncSalesforceConnection,
-  upsertSyncedQueryRootNode,
-  updateSyncedQueryLastSeenModifiedDate,
-} = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minute",
-});
+const { upsertSyncedQueryRootNode, updateSyncedQueryLastSeenModifiedDate } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minute",
+  });
 
 const { processSyncedQueryPage } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minute",
 });
-
-export function makeSalesforceSyncWorkflowId(connectorId: ModelId): string {
-  return `salesforce-sync-${connectorId}`;
-}
-
-export async function salesforceSyncWorkflow({
-  connectorId,
-}: {
-  connectorId: ModelId;
-}) {
-  let signaled = false;
-
-  setHandler(resyncSignal, () => {
-    signaled = true;
-  });
-
-  do {
-    signaled = false;
-    await syncSalesforceConnection(connectorId);
-  } while (signaled);
-}
 
 // Future version once query full/incremental syncing works.
 
@@ -108,9 +83,9 @@ const SALESFORCE_SYNC_QUERY_PAGE_LIMIT = 256;
 export function makeSalesforceSyncQueryWorkflowId(
   connectorId: ModelId,
   queryId: ModelId,
-  upToLastModifiedDate: Date | null
+  upToLastModifiedDateTs: number | null
 ): string {
-  if (upToLastModifiedDate) {
+  if (upToLastModifiedDateTs) {
     return `salesforce-sync-${connectorId}-query-${queryId}`;
   } else {
     return `salesforce-sync-${connectorId}-query-${queryId}-full`;
@@ -120,19 +95,16 @@ export function makeSalesforceSyncQueryWorkflowId(
 export async function salesforceSyncQueryWorkflow({
   connectorId,
   queryId,
-  upToLastModifiedDate,
+  upToLastModifiedDateTs,
 }: {
   connectorId: ModelId;
   queryId: ModelId;
-  upToLastModifiedDate: Date | null;
+  upToLastModifiedDateTs: number | null;
 }) {
   await upsertSyncedQueryRootNode(connectorId, { queryId });
 
   let lastSeenModifiedDateTs: number | null = null;
   let lastModifiedDateCursorTs: number | null = null;
-  const upToLastModifiedDateTs: number | null = upToLastModifiedDate
-    ? upToLastModifiedDate.getTime()
-    : null;
   let hasMore = true;
 
   while (hasMore) {

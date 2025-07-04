@@ -190,7 +190,7 @@ export const salesforce = async ({
       const workflowRes = await launchSalesforceSyncQueryWorkflow(
         connector.id,
         query.id,
-        args.full ? null : query.lastSeenModifiedDate
+        args.full ? null : query.lastSeenModifiedDate?.getTime() || null
       );
 
       if (workflowRes.isErr()) {

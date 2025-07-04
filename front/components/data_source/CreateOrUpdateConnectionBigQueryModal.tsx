@@ -344,19 +344,22 @@ export function CreateOrUpdateConnectionBigQueryModal({
                       customItem={
                         <Tooltip
                           label={
-                            <Label htmlFor={location}>
+                            <>
                               This location contains {tables.length} tables that
                               can be connected :{" "}
                               <span className="text-xs text-gray-500">
                                 {tables.join(", ")}
                               </span>
-                            </Label>
+                            </>
                           }
                           trigger={
-                            <div className="flex items-center gap-1">
-                              <b>{location}</b> - {tables.length} tables{" "}
-                              <InformationCircleIcon />
-                            </div>
+                            <Label
+                              htmlFor={location}
+                              className="flex cursor-pointer items-center gap-1"
+                            >
+                              <span className="font-semibold">{location}</span>{" "}
+                              - {tables.length} tables <InformationCircleIcon />
+                            </Label>
                           }
                         />
                       }
@@ -374,12 +377,18 @@ export function CreateOrUpdateConnectionBigQueryModal({
           }}
           rightButtonProps={{
             label: isLoading ? "Saving..." : "Save",
-            onClick: () => {
+            onClick: async (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
               setIsLoading(true);
               dataSourceToUpdate
-                ? void updateBigQueryConnection()
-                : void createBigQueryConnection();
+                ? await updateBigQueryConnection()
+                : await createBigQueryConnection();
+
+              setIsLoading(false);
+              onClose();
             },
+            isLoading: isLoading || isLocationsLoading,
             disabled:
               isLoading ||
               isLocationsLoading ||

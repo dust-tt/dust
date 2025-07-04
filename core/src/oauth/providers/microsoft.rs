@@ -135,6 +135,7 @@ impl Provider for MicrosoftConnectionProvider {
             ),
             refresh_token: refresh_token.map(|s| s.to_string()),
             raw_json,
+            extra_metadata: None,
         })
     }
 

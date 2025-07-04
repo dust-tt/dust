@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
+use tracing::info;
 
 use super::{
     chat_messages::{
@@ -65,8 +66,6 @@ pub struct OpenAIResponseReasoningConfig {
     pub effort: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub encrypted_content: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -216,53 +215,53 @@ fn responses_api_input_from_chat_messages(
                 }
             }
             ChatMessage::Assistant(assistant_msg) => {
-                // Check if we have reasoning content in the contents field
-                if let Some(contents) = &assistant_msg.contents {
-                    for item in contents {
-                        match item {
-                            AssistantContentItem::Reasoning { value } => {
-                                input_items.push(OpenAIResponseInputItem::Reasoning {
-                                    id: format!("rs_{}", utils::new_id()[0..9].to_string()),
-                                    encrypted_content: value.metadata.clone(),
-                                    summary: vec![OpenAIResponseSummaryItem {
-                                        r#type: "summary_text".to_string(),
-                                        text: value.reasoning.clone().unwrap_or_default(),
-                                    }],
-                                });
-                            }
-                            AssistantContentItem::FunctionCall { value } => {
-                                input_items.push(OpenAIResponseInputItem::FunctionCall {
-                                    id: format!("fc_{}", utils::new_id()[0..9].to_string()),
-                                    status: "completed".to_string(),
-                                    name: value.name.clone(),
-                                    arguments: value.arguments.clone(),
-                                    call_id: value.id.clone(),
-                                });
-                            }
-                            AssistantContentItem::TextContent { value } => {
-                                input_items.push(OpenAIResponseInputItem::Message {
-                                    role: OpenAIChatMessageRole::Assistant,
-                                    content: value.clone(),
-                                });
-                            }
+                for item in assistant_msg.contents.as_ref().unwrap_or(&vec![]) {
+                    match item {
+                        AssistantContentItem::Reasoning { value } => {
+                            // Parse metadata JSON to extract ID and encrypted content
+                            let metadata: Value =
+                                serde_json::from_str(&value.metadata).map_err(|e| {
+                                    anyhow!("Failed to parse reasoning metadata JSON: {}", e)
+                                })?;
+
+                            let id = metadata
+                                .get("id")
+                                .and_then(|v| v.as_str())
+                                .ok_or_else(|| anyhow!("Missing 'id' field in reasoning metadata"))?
+                                .to_string();
+
+                            let encrypted_content = metadata
+                                .get("encrypted_content")
+                                .and_then(|v| v.as_str())
+                                .ok_or_else(|| {
+                                    anyhow!(
+                                        "Missing 'encrypted_content' field in reasoning metadata"
+                                    )
+                                })?
+                                .to_string();
+
+                            input_items.push(OpenAIResponseInputItem::Reasoning {
+                                id,
+                                encrypted_content,
+                                summary: vec![OpenAIResponseSummaryItem {
+                                    r#type: "summary_text".to_string(),
+                                    text: value.reasoning.clone().unwrap_or_default(),
+                                }],
+                            });
                         }
-                    }
-                } else {
-                    // Fall back to legacy fields
-                    if let Some(content) = &assistant_msg.content {
-                        input_items.push(OpenAIResponseInputItem::Message {
-                            role: OpenAIChatMessageRole::Assistant,
-                            content: content.clone(),
-                        });
-                    }
-                    if let Some(function_calls) = &assistant_msg.function_calls {
-                        for fc in function_calls {
+                        AssistantContentItem::FunctionCall { value } => {
                             input_items.push(OpenAIResponseInputItem::FunctionCall {
                                 id: format!("fc_{}", utils::new_id()[0..9].to_string()),
                                 status: "completed".to_string(),
-                                name: fc.name.clone(),
-                                arguments: fc.arguments.clone(),
-                                call_id: fc.id.clone(),
+                                name: value.name.clone(),
+                                arguments: value.arguments.clone(),
+                                call_id: value.id.clone(),
+                            });
+                        }
+                        AssistantContentItem::TextContent { value } => {
+                            input_items.push(OpenAIResponseInputItem::Message {
+                                role: OpenAIChatMessageRole::Assistant,
+                                content: value.clone(),
                             });
                         }
                     }
@@ -301,7 +300,7 @@ fn assistant_chat_message_from_responses_api_output(
     for item in output {
         match item {
             OpenAIResponseOutputItem::Reasoning {
-                id: _,
+                id,
                 encrypted_content,
                 summary,
             } => {
@@ -310,10 +309,15 @@ fn assistant_chat_message_from_responses_api_output(
                     .and_then(|s| s.first())
                     .map(|s| s.text.clone());
 
+                let metadata = json!({
+                    "id": id,
+                    "encrypted_content": encrypted_content.unwrap_or_default()
+                });
+
                 contents.push(AssistantContentItem::Reasoning {
                     value: ReasoningContent {
                         reasoning,
-                        metadata: encrypted_content.unwrap_or_default(),
+                        metadata: metadata.to_string(),
                     },
                 });
             }
@@ -384,8 +388,11 @@ pub async fn openai_responses_api_completion(
     transform_system_messages: TransformSystemMessages,
     provider_name: String,
 ) -> Result<LLMChatGeneration> {
-    let (openai_org_id, instructions, reasoning_effort, include_encrypted, store) = match &extras {
-        None => (None, None, None, false, true),
+    let is_reasoning_model =
+        model_id.starts_with("o3") || model_id.starts_with("o1") || model_id.starts_with("o4");
+
+    let (openai_org_id, instructions, reasoning_effort, store) = match &extras {
+        None => (None, None, None, true),
         Some(v) => (
             match v.get("openai_organization_id") {
                 Some(Value::String(o)) => Some(o.to_string()),
@@ -397,11 +404,13 @@ pub async fn openai_responses_api_completion(
             },
             match v.get("reasoning_effort") {
                 Some(Value::String(r)) => Some(r.to_string()),
-                _ => None,
-            },
-            match v.get("include_encrypted_reasoning") {
-                Some(Value::Bool(b)) => *b,
-                _ => false,
+                _ => {
+                    if is_reasoning_model {
+                        Some("medium".to_string())
+                    } else {
+                        None
+                    }
+                }
             },
             match v.get("store") {
                 Some(Value::Bool(b)) => *b,
@@ -422,19 +431,16 @@ pub async fn openai_responses_api_completion(
         })
         .collect();
 
-    let mut include = Vec::new();
-    if include_encrypted {
-        include.push("reasoning.encrypted_content".to_string());
-    }
-
-    let reasoning_config = if reasoning_effort.is_some() || include_encrypted {
-        Some(OpenAIResponseReasoningConfig {
-            effort: reasoning_effort,
-            summary: Some("auto".to_string()),
-            encrypted_content: Some(include_encrypted),
-        })
+    let (reasoning_config, include) = if reasoning_effort.is_some() {
+        (
+            Some(OpenAIResponseReasoningConfig {
+                effort: reasoning_effort,
+                summary: Some("auto".to_string()),
+            }),
+            Some(vec!["reasoning.encrypted_content".to_string()]),
+        )
     } else {
-        None
+        (None, None)
     };
 
     let request = OpenAIResponsesRequest {
@@ -447,11 +453,7 @@ pub async fn openai_responses_api_completion(
         max_output_tokens: max_tokens,
         stream: Some(event_sender.is_some()),
         store: Some(store),
-        include: if include.is_empty() {
-            None
-        } else {
-            Some(include)
-        },
+        include,
         previous_response_id: None,
     };
 
@@ -726,12 +728,6 @@ async fn streamed_responses_api_completion(
                         "response.output_item.done" => {
                             handle_output_item_done(&mut state, event_data, &event_sender)?;
                         }
-                        "response.function_call_arguments.delta" => {
-                            // handle_function_call_arguments_delta(&mut state, event_data)?;
-                        }
-                        "response.function_call_arguments.done" => {
-                            // handle_function_call_arguments_done(&mut state, event_data)?;
-                        }
                         "response.output_text.delta" => {
                             if let Some(delta) = event_data.delta {
                                 if let Some(sender) = &event_sender {
@@ -744,17 +740,29 @@ async fn streamed_responses_api_completion(
                                 }
                             }
                         }
-                        "response.content_part.added" => {
-                            // Content part added events are informational.
-                            // The actual content will be streamed via delta events.
+                        "response.reasoning_summary.delta" => {
+                            if let Some(delta) = event_data.delta {
+                                if let Some(sender) = &event_sender {
+                                    let _ = sender.send(json!({
+                                        "type": "reasoning_tokens",
+                                        "content": {
+                                            "text": delta
+                                        }
+                                    }));
+                                }
+                            }
                         }
-                        "response.output_text.done" => {
-                            // Text output completion event.
-                            // We already handle text accumulation through deltas and item completion.
-                        }
-                        "response.content_part.done" => {
-                            // Content part completion event.
-                            // We already handle completion at the item level.
+                        "response.reasoning_summary_text.delta" => {
+                            if let Some(delta) = event_data.delta {
+                                if let Some(sender) = &event_sender {
+                                    let _ = sender.send(json!({
+                                        "type": "reasoning_tokens",
+                                        "content": {
+                                            "text": delta
+                                        }
+                                    }));
+                                }
+                            }
                         }
                         "response.completed" => {
                             handle_response_completed(&mut state, event_data, &event_sender)?;
@@ -764,8 +772,21 @@ async fn streamed_responses_api_completion(
                             handle_response_error(event_data, &provider_name, &request_id)?;
                             break 'stream;
                         }
+                        "response.reasoning.delta"
+                        | "response.reasoning.done"
+                        | "response.reasoning_summary.done"
+                        | "response.reasoning_summary_part.added"
+                        | "response.reasoning_summary_part.done"
+                        | "response.reasoning_summary_text.done"
+                        | "response.content_part.added"
+                        | "response.output_text.done"
+                        | "response.content_part.done"
+                        | "response.function_call_arguments.delta"
+                        | "response.function_call_arguments.done" => {
+                            // Ignore these events.
+                        }
                         _ => {
-                            println!("Unknown event: {:?}", e);
+                            info!("OPENAIRESPONSESAPI: unknown event: {:?}", e.event_type);
                         }
                     }
                 }
@@ -910,38 +931,24 @@ fn handle_output_item_done(
                             serde_json::from_value::<OpenAIResponseOutputItem>(item)
                         {
                             if let OpenAIResponseOutputItem::Reasoning {
-                                id: _,
+                                id,
                                 encrypted_content,
-                                summary,
+                                summary: _,
                             } = &reasoning_item
                             {
-                                // Stream reasoning_tokens event with summary.
-                                if let Some(summary_vec) = summary {
-                                    let summary_text = summary_vec
-                                        .iter()
-                                        .map(|s| s.text.clone())
-                                        .collect::<Vec<_>>()
-                                        .join("\n");
+                                // Don't send reasoning_tokens here - they're already streamed via delta events
 
-                                    if !summary_text.is_empty() {
-                                        if let Some(sender) = event_sender {
-                                            let _ = sender.send(json!({
-                                                "type": "reasoning_tokens",
-                                                "content": {
-                                                    "text": summary_text
-                                                }
-                                            }));
-                                        }
-                                    }
-                                }
-
-                                // Stream reasoning_item event with encrypted content.
+                                // Stream reasoning_item event with both ID and encrypted content.
                                 if let Some(content) = encrypted_content {
                                     if let Some(sender) = event_sender {
+                                        let metadata = json!({
+                                            "id": id,
+                                            "encrypted_content": content
+                                        });
                                         let _ = sender.send(json!({
                                             "type": "reasoning_item",
                                             "content": {
-                                                "encrypted_content": content
+                                                "metadata": metadata.to_string()
                                             }
                                         }));
                                     }

@@ -7,6 +7,7 @@ export const OAUTH_USE_CASES = [
   "labs_transcripts",
   "platform_actions",
   "personal_actions",
+  "bot",
 ] as const;
 
 export type OAuthUseCase = (typeof OAUTH_USE_CASES)[number];
@@ -29,7 +30,6 @@ export const OAUTH_PROVIDERS = [
   "jira",
   "notion",
   "slack",
-  "slack_bot",
   "gong",
   "microsoft",
   "zendesk",
@@ -47,7 +47,6 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   jira: "Jira",
   notion: "Notion",
   slack: "Slack",
-  slack_bot: "Slack (Bot)",
   gong: "Gong",
   microsoft: "Microsoft",
   zendesk: "Zendesk",
@@ -147,7 +146,6 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "hubspot":
     case "zendesk":
     case "slack":
-    case "slack_bot":
     case "gong":
     case "microsoft":
     case "notion":

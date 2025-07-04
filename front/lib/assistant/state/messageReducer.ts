@@ -158,20 +158,10 @@ export function messageReducer(
       return newState;
     }
 
-    case "browse_params":
     case "conversation_include_file_params":
     case "dust_app_run_block":
     case "dust_app_run_params":
-    case "process_params":
-    case "reasoning_started":
-    case "reasoning_thinking":
-    case "reasoning_tokens":
-    case "retrieval_params":
     case "search_labels_params":
-    case "tables_query_model_output":
-    case "tables_query_output":
-    case "tables_query_started":
-    case "websearch_params":
     case "tool_params":
       return {
         ...state,

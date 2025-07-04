@@ -1,13 +1,13 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { TemplateActionType } from "@app/components/assistant_builder/types";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type {
   AssistantCreativityLevel,
   ModelIdType,
   ModelProviderIdType,
+  TemplateActionPreset,
   TemplateTagCodeType,
   TemplateVisibility,
   TimeframeUnit,
@@ -30,7 +30,7 @@ export class TemplateModel extends BaseModel<TemplateModel> {
   declare presetTemperature: AssistantCreativityLevel;
   declare presetProviderId: ModelProviderIdType;
   declare presetModelId: ModelIdType;
-  declare presetActions: TemplateActionType[];
+  declare presetActions: TemplateActionPreset[];
 
   declare timeFrameDuration: number | null;
   declare timeFrameUnit: TimeframeUnit | null;

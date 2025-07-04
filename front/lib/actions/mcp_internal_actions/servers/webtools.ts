@@ -2,6 +2,10 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import {
+  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+  DEFAULT_WEBSEARCH_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
@@ -16,14 +20,11 @@ import {
   isBrowseScrapeSuccessResponse,
 } from "@app/lib/utils/webbrowse";
 import { webSearch } from "@app/lib/utils/websearch";
-import type { OAuthProvider } from "@app/types";
 
-export const provider: OAuthProvider = "google_drive" as const;
 export const serverInfo: InternalMCPServerDefinitionType = {
-  name: "web_search_&_browse",
+  name: DEFAULT_WEBSEARCH_ACTION_NAME,
   version: "1.0.0",
-  description:
-    "Agent can search (Google) and retrieve information from specific websites.",
+  description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   icon: "ActionGlobeAltIcon",
   authorization: null,
   documentationUrl: null,

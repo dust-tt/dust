@@ -21,12 +21,12 @@ import { useMemo } from "react";
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import { useModels } from "@app/lib/swr/models";
 import type {
   LightWorkspaceType,
   ModelConfigurationType,
   ModelProviderIdType,
+  ReasoningModelConfigurationType,
 } from "@app/types";
 import {
   GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
@@ -37,8 +37,8 @@ import {
 
 interface ReasoningModelConfigurationSectionProps {
   owner: LightWorkspaceType;
-  selectedReasoningModel: ReasoningModelConfiguration | null;
-  onModelSelect: (modelConfig: ReasoningModelConfiguration) => void;
+  selectedReasoningModel: ReasoningModelConfigurationType | null;
+  onModelSelect: (modelConfig: ReasoningModelConfigurationType) => void;
 }
 
 const BEST_PERFORMING_REASONING_MODELS_ID = [
@@ -209,7 +209,7 @@ function ReasoningModelDropdownMenuItem({
   isDark,
 }: {
   model: ModelConfigurationType;
-  onClick: (model: ReasoningModelConfiguration) => void;
+  onClick: (model: ReasoningModelConfigurationType) => void;
   isDark: boolean;
 }) {
   return (

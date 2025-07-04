@@ -8,7 +8,7 @@ import type {
   AssistantBuilderActionAndDataVisualizationConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type {
   AgentConfigurationType,

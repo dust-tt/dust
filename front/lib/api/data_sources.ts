@@ -29,6 +29,8 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis } from "@app/lib/utils/cache";
+import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import type {
@@ -532,9 +534,7 @@ export async function upsertDocument({
     parentId: documentParentId,
     parents: documentParents,
     sourceUrl,
-    // TEMPORARY -- need to unstuck a specific entry
-    // TODO(FONTANIERH): remove this once the entry is unstuck
-    timestamp: timestamp ? Math.floor(timestamp) : null,
+    timestamp: cleanTimestamp(timestamp),
     section: generatedSection,
     credentials,
     lightDocumentOutput: light_document_output === true,
@@ -1281,12 +1281,38 @@ export async function unpauseAllManagedDataSources(
 }
 
 export async function computeDataSourceStatistics(
-  dataSource: DataSourceResource
+  dataSources: DataSourceResource[]
 ) {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  return coreAPI.getDataSourceStats({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-  });
+  return coreAPI.getDataSourceStats(
+    dataSources.map(({ dustAPIProjectId, dustAPIDataSourceId }) => ({
+      project_id: parseInt(dustAPIProjectId),
+      data_source_id: dustAPIDataSourceId,
+    }))
+  );
 }
+
+export const computeWorkspaceOverallSizeCached = cacheWithRedis(
+  async (auth: Authenticator) => {
+    const dataSources = await DataSourceResource.listByWorkspace(
+      auth,
+      // TODO(DATASOURCE_SID): Clean-up
+      { origin: "v1_data_sources_documents_document_get_or_upsert" }
+    );
+    const result = await computeDataSourceStatistics(dataSources);
+
+    if (result.isErr()) {
+      throw new Error(
+        `Failed to get data source stats: ${result.error.message}`
+      );
+    }
+
+    return result.value.overall_total_size;
+  },
+  (auth: Authenticator) => {
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+    return `compute-datasource-stats:${workspaceId}`;
+  },
+  60 * 10 * 1000 // 10 minutes
+);

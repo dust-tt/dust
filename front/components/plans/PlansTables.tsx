@@ -169,7 +169,7 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "Up to 1Gb/user of data sources",
+      label: "Up to 1GB/user of data sources",
       variant: "dash",
       display: ["landing", "subscribe"],
     },

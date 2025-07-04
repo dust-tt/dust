@@ -1,19 +1,22 @@
 import { Chip, Tooltip } from "@dust-tt/sparkle";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { useConnector } from "@app/lib/swr/connectors";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConnectorType, DataSourceType } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, fileSizeToHumanReadable } from "@app/types";
 
 export default function ConnectorSyncingChip({
   workspaceId,
   dataSource,
   initialState,
+  activeSeats,
 }: {
   workspaceId: string;
   dataSource: DataSourceType;
   initialState: ConnectorType;
+  activeSeats: number;
 }) {
   const {
     connector: refreshedConnector,
@@ -121,6 +124,13 @@ export default function ConnectorSyncingChip({
               "Please check your network connection and try again."
             }
             trigger={<Chip color="warning">Synchronization failed</Chip>}
+          />
+        );
+      case "workspace_quota_exceeded":
+        return (
+          <Tooltip
+            label={`You've exceeded the total storage quota of ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} for your workspace. Contact support@dust.tt to upgrade your plan.`}
+            trigger={<Chip color="warning">Quota exceeded</Chip>}
           />
         );
       default:

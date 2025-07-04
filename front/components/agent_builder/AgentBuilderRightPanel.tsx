@@ -12,6 +12,7 @@ import { ScrollArea } from "@dust-tt/sparkle";
 import React, { useContext, useState } from "react";
 
 import { AgentBuilderContext } from "./AgentBuilderContext";
+import { AgentBuilderPreview } from "./AgentBuilderPreview";
 
 type AgentBuilderRightPanelTabType = "testing" | "performance";
 
@@ -106,13 +107,17 @@ interface ExpandedContentProps {
 
 function ExpandedContent({ selectedTab }: ExpandedContentProps) {
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="flex-1 p-4">
-        {selectedTab === "testing" && <div className="space-y-4">Testing</div>}
-        {selectedTab === "performance" && (
+    <div className="flex min-h-0 flex-1 flex-col">
+      {selectedTab === "testing" && (
+        <div className="min-h-0 flex-1">
+          <AgentBuilderPreview />
+        </div>
+      )}
+      {selectedTab === "performance" && (
+        <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-4">Performance</div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

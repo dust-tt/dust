@@ -39,7 +39,7 @@ vi.mock("@app/lib/api/redis", () => ({
     ),
 }));
 
-async function setupAgentOwner(
+export async function setupAgentOwner(
   workspace: LightWorkspaceType,
   agentOwnerRole: "admin" | "builder" | "user"
 ) {

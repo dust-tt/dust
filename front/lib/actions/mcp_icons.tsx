@@ -24,6 +24,7 @@ import {
   NotionLogo,
   SalesforceLogo,
   SlackLogo,
+  StripeLogo,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
@@ -32,7 +33,7 @@ import type { MCPServerType } from "@app/lib/api/mcp";
 
 export const DEFAULT_MCP_SERVER_ICON = "ActionCommand1Icon" as const;
 
-export const REMOTE_ALLOWED_ICONS = Object.keys(ActionIcons);
+export const CUSTOM_SERVER_ALLOWED = Object.keys(ActionIcons);
 
 export const InternalActionIcons = {
   ActionBrainIcon,
@@ -58,16 +59,17 @@ export const InternalActionIcons = {
   GmailLogo,
   GcalLogo,
   SlackLogo,
+  StripeLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
 
-export type RemoteAllowedIconType = keyof typeof ActionIcons;
+export type CustomServerIconType = keyof typeof ActionIcons;
 
-export const isRemoteAllowedIconType = (
+export const isCustomServerIconType = (
   icon: string
-): icon is RemoteAllowedIconType =>
-  REMOTE_ALLOWED_ICONS.includes(icon as RemoteAllowedIconType);
+): icon is CustomServerIconType =>
+  CUSTOM_SERVER_ALLOWED.includes(icon as CustomServerIconType);
 
 export type InternalAllowedIconType = keyof typeof InternalActionIcons;
 
@@ -84,10 +86,10 @@ export const getAvatar = (
 };
 
 export const getAvatarFromIcon = (
-  icon: InternalAllowedIconType | RemoteAllowedIconType,
+  icon: InternalAllowedIconType | CustomServerIconType,
   size: ComponentProps<typeof Avatar>["size"] = "sm"
 ): React.ReactNode => {
-  if (isRemoteAllowedIconType(icon)) {
+  if (isCustomServerIconType(icon)) {
     return <Avatar icon={ActionIcons[icon]} size={size} />;
   }
 

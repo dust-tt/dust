@@ -497,6 +497,31 @@ async function handleUserAddedToGroup(
 
   // Handle role assignment for special groups.
   await handleRoleAssignmentForGroup({ workspace, user, group, action: "add" });
+
+  // Update membership origin to "provisioned" when syncing from WorkOS groups.
+  const currentMembership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+
+  if (currentMembership && currentMembership.origin !== "provisioned") {
+    const { previousOrigin, newOrigin } = await currentMembership.updateOrigin({
+      user,
+      workspace,
+      newOrigin: "provisioned",
+    });
+
+    logger.info(
+      {
+        userId: user.sId,
+        previousOrigin,
+        newOrigin,
+        groupName: group.name,
+      },
+      "Updated membership origin to provisioned based on group sync"
+    );
+  }
 }
 
 async function handleUserRemovedFromGroup(
@@ -580,8 +605,13 @@ async function handleCreateOrUpdateWorkOSUser(
     });
   if (membership) {
     logger.info(
-      `User ${createdOrUpdatedUser.sId} already have a membership associated to workspace "${workspace.sId}", skipping`
+      `User ${createdOrUpdatedUser.sId} already have a membership associated to workspace "${workspace.sId}"`
     );
+    await membership.updateOrigin({
+      user: createdOrUpdatedUser,
+      workspace,
+      newOrigin: "provisioned",
+    });
     return;
   }
 
@@ -589,6 +619,7 @@ async function handleCreateOrUpdateWorkOSUser(
     user: createdOrUpdatedUser,
     workspace,
     role: "user",
+    origin: "provisioned",
   });
 }
 
@@ -639,8 +670,20 @@ async function handleGroupDelete(
   );
 
   if (!group) {
-    throw new Error("Group to delete not found");
+    // Group already deleted, log and return success to avoid blocking the workflow
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        directoryId: event.directoryId,
+        groupId: event.id,
+      },
+      "Group to delete not found, likely already deleted"
+    );
+    return;
   }
 
-  await group.delete(auth);
+  const deleteResult = await group.delete(auth);
+  if (deleteResult.isErr()) {
+    throw deleteResult.error;
+  }
 }

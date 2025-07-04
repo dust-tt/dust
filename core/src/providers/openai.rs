@@ -50,7 +50,7 @@ lazy_static! {
     static ref RATE_LIMITS: RwLock<HashMap<String, RateLimitDetails>> = RwLock::new(HashMap::new());
 }
 
-static RESPONSES_API_ENABLED: bool = false;
+static RESPONSES_API_ENABLED: bool = true;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -1055,11 +1055,7 @@ impl LLM for OpenAILLM {
         };
 
         // Use response API only when function_call is not forced and when n == 1.
-        if RESPONSES_API_ENABLED
-            && is_auto_function_call
-            && n == 1
-            && (self.id.as_str().starts_with("o3") || self.id.as_str().starts_with("o4"))
-        {
+        if RESPONSES_API_ENABLED && is_auto_function_call && n == 1 && is_reasoning_model {
             openai_responses_api_completion(
                 self.responses_uri()?,
                 self.id.clone(),

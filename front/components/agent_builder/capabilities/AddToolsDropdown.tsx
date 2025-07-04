@@ -8,31 +8,45 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { uniqueId } from "lodash";
+import type { FieldArray, FieldArrayWithId } from "react-hook-form";
 
-import { useAgentBuilderCapabilitiesContext } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import { getDataVisualizationActionConfiguration } from "@app/components/assistant_builder/types";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 
-export function AddToolsDropdown() {
-  const { actions, setActions } = useAgentBuilderCapabilitiesContext();
+interface AddToolsDropdownProps {
+  tools: FieldArrayWithId<AgentBuilderFormData, "actions">[];
+  addTools: (
+    value:
+      | FieldArray<AgentBuilderFormData, "actions">
+      | FieldArray<AgentBuilderFormData, "actions">[]
+  ) => void;
+}
 
+export function AddToolsDropdown({ tools, addTools }: AddToolsDropdownProps) {
   function onClickDataVisualization() {
     const dataVisualizationConfig = getDataVisualizationActionConfiguration();
     if (!dataVisualizationConfig) {
       return;
     }
 
-    const newAction = {
-      ...dataVisualizationConfig,
-      id: uniqueId(),
+    // Convert to the agent builder action format
+    const newAction: AgentBuilderAction = {
+      id: dataVisualizationConfig.id,
+      type: "DATA_VISUALIZATION",
+      name: dataVisualizationConfig.name,
+      description: dataVisualizationConfig.description,
+      noConfigurationRequired: dataVisualizationConfig.noConfigurationRequired,
+      configuration: {
+        type: "DATA_VISUALIZATION",
+      },
     };
-
-    setActions((prevActions) => [...prevActions, newAction]);
+    addTools(newAction);
   }
 
-  const hasDataVisualization = actions.some(
-    (action) => action.type === "DATA_VISUALIZATION"
+  const hasDataVisualization = tools.some(
+    (action: AgentBuilderAction) => action.type === "DATA_VISUALIZATION"
   );
 
   return (

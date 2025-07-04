@@ -1902,24 +1902,14 @@ async function* streamRunAgentEvents(
 
       // All other events that won't impact the database and are related to actions or tokens
       // generation.
-      case "browse_params":
       case "conversation_include_file_params":
       case "dust_app_run_block":
       case "dust_app_run_params":
       case "generation_tokens":
-      case "process_params":
-      case "reasoning_started":
-      case "reasoning_thinking":
-      case "reasoning_tokens":
-      case "retrieval_params":
       case "search_labels_params":
-      case "tables_query_model_output":
-      case "tables_query_output":
-      case "tables_query_started":
       case "tool_approve_execution":
       case "tool_notification":
       case "tool_params":
-      case "websearch_params":
         yield event;
         break;
 

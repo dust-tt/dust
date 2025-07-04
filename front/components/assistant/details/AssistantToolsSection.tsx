@@ -1,11 +1,4 @@
-import {
-  Avatar,
-  BarChartIcon,
-  ChatBubbleThoughtIcon,
-  CommandIcon,
-  GlobeAltIcon,
-  ScanIcon,
-} from "@dust-tt/sparkle";
+import { Avatar, BarChartIcon, CommandIcon } from "@dust-tt/sparkle";
 import _ from "lodash";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
@@ -17,15 +10,9 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isBrowseConfiguration,
   isDustAppRunConfiguration,
   isMCPServerConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
   isServerSideMCPServerConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
@@ -81,18 +68,9 @@ export function AssistantToolsSection({
         m.providerId === agentConfiguration.model.providerId
     ),
   ];
-  const reasoningAction = agentConfiguration.actions.find(
-    isReasoningConfiguration
-  );
-  if (reasoningAction) {
-    models.push(
-      SUPPORTED_MODEL_CONFIGS.find(
-        (m) =>
-          m.modelId === reasoningAction.modelId &&
-          m.providerId === reasoningAction.providerId
-      )
-    );
-  }
+
+  // TODO(20250626, aubin): Add model used for reasoning in details following
+  // regression when moving reasoning to MCP.
 
   const filteredModels = removeNulls(models);
   return (
@@ -150,24 +128,6 @@ function renderOtherAction(
       avatar: <Avatar icon={CommandIcon} size="xs" />,
       order: 2,
     };
-  } else if (isProcessConfiguration(action)) {
-    return {
-      title: "Extract from documents",
-      avatar: <Avatar icon={ScanIcon} size="xs" />,
-      order: 0,
-    };
-  } else if (isWebsearchConfiguration(action)) {
-    return {
-      title: "Web Search & Navigation",
-      avatar: <Avatar icon={GlobeAltIcon} size="xs" />,
-      order: 0,
-    };
-  } else if (isReasoningConfiguration(action)) {
-    return {
-      title: "Reasoning",
-      avatar: <Avatar icon={ChatBubbleThoughtIcon} size="xs" />,
-      order: 0,
-    };
   } else if (isServerSideMCPServerConfiguration(action)) {
     const mcpServer = mcpServers.find((s) =>
       s.views.some((v) => v.sId === action.mcpServerViewId)
@@ -188,12 +148,6 @@ function renderOtherAction(
       avatar: <Avatar icon={CommandIcon} size="xs" />,
       order: 3,
     };
-  } else if (isBrowseConfiguration(action)) {
-    return null;
-  } else if (isRetrievalConfiguration(action)) {
-    return null;
-  } else if (isTablesQueryConfiguration(action)) {
-    return null;
   } else {
     return assertNever(action);
   }

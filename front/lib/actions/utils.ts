@@ -1,19 +1,12 @@
 import {
+  ActionIncludeIcon,
+  ActionScanIcon,
   BarChartIcon,
   BoltIcon,
-  ChatBubbleThoughtIcon,
-  CommandLineIcon,
   MagnifyingGlassIcon,
-  PlanetIcon,
-  ScanIcon,
-  TableIcon,
-  TimeIcon,
 } from "@dust-tt/sparkle";
 
-import type {
-  ActionSpecification,
-  AssistantBuilderActionConfiguration,
-} from "@app/components/assistant_builder/types";
+import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -24,10 +17,7 @@ import {
   isMCPInternalSearch,
   isMCPInternalSlack,
   isMCPInternalWebsearch,
-  isRetrievalConfiguration,
-  isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentConfigurationType, AgentMessageType } from "@app/types";
@@ -37,67 +27,12 @@ export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
 
-export const ACTION_SPECIFICATIONS: Record<
-  AssistantBuilderActionConfiguration["type"],
-  ActionSpecification
-> = {
-  RETRIEVAL_EXHAUSTIVE: {
-    label: "Include data",
-    description: "Include data exhaustively",
-    cardIcon: TimeIcon,
-    dropDownIcon: TimeIcon,
-    flag: null,
-  },
-  RETRIEVAL_SEARCH: {
-    label: "Search",
-    description: "Search through selected Data sources",
-    cardIcon: MagnifyingGlassIcon,
-    dropDownIcon: MagnifyingGlassIcon,
-    flag: null,
-  },
-  PROCESS: {
-    label: "Extract data",
-    description: "Structured extraction",
-    cardIcon: ScanIcon,
-    dropDownIcon: ScanIcon,
-    flag: null,
-  },
-  DUST_APP_RUN: {
-    label: "Run a Dust App",
-    description: "Run a Dust app, then reply",
-    cardIcon: CommandLineIcon,
-    dropDownIcon: CommandLineIcon,
-    flag: null,
-  },
-  TABLES_QUERY: {
-    label: "Query Tables",
-    description: "Tables, Spreadsheets, Notion DBs (quantitative)",
-    cardIcon: TableIcon,
-    dropDownIcon: TableIcon,
-    flag: null,
-  },
-  WEB_NAVIGATION: {
-    label: "Web navigation",
-    description:
-      "Navigate the web (browse any provided links, make a google search, etc.)",
-    cardIcon: PlanetIcon,
-    dropDownIcon: PlanetIcon,
-    flag: null,
-  },
-  REASONING: {
-    label: "Reasoning",
-    description: "Complex step by step reasoning",
-    cardIcon: ChatBubbleThoughtIcon,
-    dropDownIcon: ChatBubbleThoughtIcon,
-    flag: null,
-  },
-  MCP: {
-    label: "More...",
-    description: "Add additional sets of tools",
-    cardIcon: BoltIcon,
-    dropDownIcon: BoltIcon,
-    flag: null,
-  },
+export const MCP_SPECIFICATION: ActionSpecification = {
+  label: "More...",
+  description: "Add additional sets of tools",
+  cardIcon: BoltIcon,
+  dropDownIcon: BoltIcon,
+  flag: null,
 };
 
 export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
@@ -107,6 +42,48 @@ export const DATA_VISUALIZATION_SPECIFICATION: ActionSpecification = {
   dropDownIcon: BarChartIcon,
   flag: null,
 };
+
+export const SEARCH_SPECIFICATION: ActionSpecification = {
+  label: "Search",
+  description: "Search across selected data sources",
+  cardIcon: MagnifyingGlassIcon,
+  dropDownIcon: MagnifyingGlassIcon,
+  flag: null,
+};
+
+export const INCLUDE_DATA_SPECIFICATION: ActionSpecification = {
+  label: "Include Data",
+  description: "Include recent documents from selected data sources",
+  cardIcon: ActionIncludeIcon,
+  dropDownIcon: ActionIncludeIcon,
+  flag: null,
+};
+
+export const EXTRACT_DATA_SPECIFICATION: ActionSpecification = {
+  label: "Extract Data",
+  description: "Extract structured data from selected data sources",
+  cardIcon: ActionScanIcon,
+  dropDownIcon: ActionScanIcon,
+  flag: null,
+};
+
+// Mapping for action types to their specifications
+export const ACTION_SPECIFICATIONS_MAP = {
+  DATA_VISUALIZATION: DATA_VISUALIZATION_SPECIFICATION,
+  SEARCH: SEARCH_SPECIFICATION,
+  INCLUDE_DATA: INCLUDE_DATA_SPECIFICATION,
+  EXTRACT_DATA: EXTRACT_DATA_SPECIFICATION,
+} as const;
+
+export function getActionSpecification(
+  actionType: string
+): ActionSpecification | null {
+  return (
+    ACTION_SPECIFICATIONS_MAP[
+      actionType as keyof typeof ACTION_SPECIFICATIONS_MAP
+    ] || null
+  );
+}
 
 /**
  * This function computes the topK for retrieval actions. This is used by both the action (to
@@ -125,38 +102,21 @@ export function getRetrievalTopK({
 }): number {
   const model = getSupportedModelConfig(agentConfiguration.model);
 
-  const retrievalActions = stepActions.filter(isRetrievalConfiguration);
   const searchActions = stepActions.filter(isMCPInternalSearch);
   const includeActions = stepActions.filter(isMCPInternalInclude);
   const dsFsActions = stepActions.filter(isMCPInternalDataSourceFileSystem);
 
   const actionsCount =
-    retrievalActions.length +
-    searchActions.length +
-    includeActions.length +
-    dsFsActions.length;
+    searchActions.length + includeActions.length + dsFsActions.length;
 
   if (actionsCount === 0) {
     return 0;
   }
 
-  const topKs = retrievalActions
-    .map((action) => {
-      if (action.topK === "auto") {
-        if (action.query === "none") {
-          return model.recommendedExhaustiveTopK;
-        } else {
-          return model.recommendedTopK;
-        }
-      } else {
-        return action.topK;
-      }
+  const topKs = searchActions
+    .map(() => {
+      return model.recommendedTopK;
     })
-    .concat(
-      searchActions.map(() => {
-        return model.recommendedTopK;
-      })
-    )
     .concat(
       includeActions.map(() => {
         return model.recommendedExhaustiveTopK;
@@ -185,29 +145,14 @@ export function getWebsearchNumResults({
 }: {
   stepActions: ActionConfigurationType[];
 }): number {
-  const websearchActions: WebsearchConfigurationType[] = stepActions.filter(
-    isWebsearchConfiguration
-  );
-
-  const websearchV2Actions = stepActions.filter(isMCPInternalWebsearch);
-
-  const numResults = websearchActions
-    .map(() => {
-      return WEBSEARCH_ACTION_NUM_RESULTS;
-    })
-    .concat(
-      websearchV2Actions.map(() => {
-        return WEBSEARCH_ACTION_NUM_RESULTS;
-      })
-    );
-
-  const totalActions = websearchActions.length + websearchV2Actions.length;
+  const websearchActions = stepActions.filter(isMCPInternalWebsearch);
+  const totalActions = websearchActions.length;
 
   if (totalActions === 0) {
     return 0;
   }
 
-  return Math.ceil(Math.max(...numResults) / totalActions);
+  return Math.ceil(WEBSEARCH_ACTION_NUM_RESULTS / totalActions);
 }
 
 /**
@@ -231,22 +176,9 @@ export function getCitationsCount({
   const action = stepActions[stepActionIndex];
 
   switch (action.type) {
-    case "retrieval_configuration":
-      return getRetrievalTopK({
-        agentConfiguration,
-        stepActions,
-      });
-    case "websearch_configuration":
-      return getWebsearchNumResults({
-        stepActions,
-      });
-    case "tables_query_configuration":
     case "dust_app_run_configuration":
-    case "process_configuration":
-    case "browse_configuration":
     case "conversation_include_file_configuration":
     case "search_labels_configuration":
-    case "reasoning_configuration":
       return 0;
     case "mcp_configuration":
       if (isMCPInternalWebsearch(action)) {

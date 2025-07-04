@@ -4,6 +4,7 @@ import type {
   EmbeddingProviderIdType,
   ModelProviderIdType,
 } from "./assistant/assistant";
+import type { MembershipOriginType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import { assertNever } from "./shared/utils/assert_never";
 
@@ -100,10 +101,12 @@ export type UserType = {
 
 export type UserTypeWithWorkspace = UserType & {
   workspace: WorkspaceType;
+  origin?: MembershipOriginType;
 };
 
 export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
+  origin?: MembershipOriginType;
 };
 
 export type UserTypeWithExtensionWorkspaces = UserType & {

@@ -112,13 +112,13 @@ export function useConnectorConfig({
 }
 
 export function useConnector({
+  workspaceId,
   dataSource,
   disabled,
-  workspaceId,
 }: {
+  workspaceId: string;
   dataSource: DataSourceType;
   disabled?: boolean;
-  workspaceId: string;
 }) {
   const configFetcher: Fetcher<GetConnectorResponseBody> = fetcher;
 

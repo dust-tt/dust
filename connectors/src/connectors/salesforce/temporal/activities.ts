@@ -1,9 +1,6 @@
 import type { Record } from "jsforce";
 
-import {
-  fetchTree,
-  runSOQL,
-} from "@connectors/connectors/salesforce/lib/salesforce_api";
+import { runSOQL } from "@connectors/connectors/salesforce/lib/salesforce_api";
 import {
   getConnectorAndCredentials,
   syncQueryTemplateInterpolate,
@@ -15,42 +12,10 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import { sync } from "@connectors/lib/remote_databases/activities";
-import { parseInternalId } from "@connectors/lib/remote_databases/utils";
-import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-
-export async function syncSalesforceConnection(connectorId: ModelId) {
-  const connAndCredsRes = await getConnectorAndCredentials(connectorId);
-  if (connAndCredsRes.isErr()) {
-    throw connAndCredsRes.error;
-  }
-
-  await syncStarted(connectorId);
-
-  const { credentials, connector } = connAndCredsRes.value;
-
-  const treeRes = await fetchTree({ credentials });
-  if (treeRes.isErr()) {
-    throw treeRes.error;
-  }
-  const tree = treeRes.value;
-
-  await sync({
-    remoteDBTree: tree,
-    mimeTypes: INTERNAL_MIME_TYPES.SALESFORCE,
-    connector,
-    // Only keep the table name in the remote table id.
-    internalTableIdToRemoteTableId: (internalTableId: string) =>
-      parseInternalId(internalTableId).tableName ?? internalTableId,
-    tags: [],
-  });
-
-  await syncSucceeded(connectorId);
-}
 
 // Discover all Salesforce synced queries for a given connector.
 export async function discoverSalesforceSyncedQueries(

@@ -1,3 +1,4 @@
+import { Chip } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import {
@@ -7,6 +8,8 @@ import {
   PokeTableCellWithCopy,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { useWorkOSDSyncStatus } from "@app/lib/swr/workos";
+import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type {
   ExtensionConfigurationType,
   WorkspaceDomain,
@@ -16,14 +19,45 @@ import type {
 export function WorkspaceInfoTable({
   owner,
   workspaceVerifiedDomains,
-  worspaceCreationDay,
+  workspaceCreationDay,
   extensionConfig,
 }: {
   owner: WorkspaceType;
   workspaceVerifiedDomains: WorkspaceDomain[];
-  worspaceCreationDay: string;
+  workspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
 }) {
+  const { dsyncStatus } = useWorkOSDSyncStatus({ owner });
+
+  const getStatusChipColor = (status: WorkOSConnectionSyncStatus["status"]) => {
+    switch (status) {
+      case "configured":
+        return "green";
+      case "configuring":
+        return "warning";
+      case "not_configured":
+        return "primary";
+      default:
+        return "primary";
+    }
+  };
+
+  const getConnectionStateChipColor = (state: string) => {
+    switch (state) {
+      case "active":
+        return "green";
+      case "inactive":
+      case "deleting":
+      case "invalid_credentials":
+        return "rose";
+      case "validating":
+        return "warning";
+      case "draft":
+        return "blue";
+      default:
+        return "primary";
+    }
+  };
   return (
     <div className="flex justify-between gap-3">
       <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
@@ -54,7 +88,7 @@ export function WorkspaceInfoTable({
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Creation</PokeTableCell>
-              <PokeTableCell>{worspaceCreationDay}</PokeTableCell>
+              <PokeTableCell>{workspaceCreationDay}</PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>SSO Enforced</PokeTableCell>
@@ -63,7 +97,8 @@ export function WorkspaceInfoTable({
             <PokeTableRow>
               <PokeTableCell>Auto Join</PokeTableCell>
               <PokeTableCell>
-                {workspaceVerifiedDomains.every((d) => d.domainAutoJoinEnabled)
+                {workspaceVerifiedDomains.length > 0 &&
+                workspaceVerifiedDomains.every((d) => d.domainAutoJoinEnabled)
                   ? "✅"
                   : workspaceVerifiedDomains.some(
                         (d) => d.domainAutoJoinEnabled
@@ -85,6 +120,32 @@ export function WorkspaceInfoTable({
                   : "None"}
               </PokeTableCell>
             </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>Directory Sync</PokeTableCell>
+              <PokeTableCell>
+                <Chip
+                  color={getStatusChipColor(
+                    dsyncStatus?.status || "not_configured"
+                  )}
+                >
+                  {dsyncStatus?.status || "not_configured"}
+                </Chip>
+              </PokeTableCell>
+            </PokeTableRow>
+            {dsyncStatus?.connection && (
+              <PokeTableRow>
+                <PokeTableCell>Directory Sync State</PokeTableCell>
+                <PokeTableCell>
+                  <Chip
+                    color={getConnectionStateChipColor(
+                      dsyncStatus.connection.state
+                    )}
+                  >
+                    {dsyncStatus.connection.state}
+                  </Chip>
+                </PokeTableCell>
+              </PokeTableRow>
+            )}
           </PokeTableBody>
         </PokeTable>
       </div>

@@ -11,8 +11,8 @@ import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run"
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import type {
+  CustomServerIconType,
   InternalAllowedIconType,
-  RemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -25,12 +25,12 @@ import {
   isMCPProgressNotificationType,
   isResourceWithName,
   isSearchQueryResourceType,
+  isTextContent,
   isToolApproveBubbleUpNotificationType,
   isToolGeneratedFile,
+  isToolMarkerResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
-import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type {
   AgentLoopRunContextType,
   BaseActionRunParams,
@@ -45,7 +45,12 @@ import type {
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  getAttachmentFromToolOutput,
+  renderAttachmentXml,
+} from "@app/lib/api/assistant/conversation/attachments";
 import {
   processAndStoreFromUrl,
   uploadBase64DataToFileStorage,
@@ -72,6 +77,7 @@ import type {
   LightWorkspaceType,
   ModelConfigurationType,
   ModelId,
+  ReasoningModelConfigurationType,
   Result,
   SupportedFileContentType,
   SupportedImageContentType,
@@ -98,7 +104,7 @@ export type BaseMCPServerConfigurationType = {
 
   name: string;
   description: string | null;
-  icon?: RemoteAllowedIconType | InternalAllowedIconType;
+  icon?: CustomServerIconType | InternalAllowedIconType;
 };
 
 // Server-side MCP server = Remote MCP Server OR our own MCP server.
@@ -107,7 +113,7 @@ export type ServerSideMCPServerConfigurationType =
     dataSources: DataSourceConfiguration[] | null;
     tables: TableDataSourceConfiguration[] | null;
     childAgentId: string | null;
-    reasoningModel: ReasoningModelConfiguration | null;
+    reasoningModel: ReasoningModelConfigurationType | null;
     timeFrame: TimeFrame | null;
     jsonSchema: JSONSchema | null;
     additionalConfiguration: Record<string, boolean | number | string>;
@@ -224,7 +230,7 @@ export type ToolNotificationEvent = {
   notification: ProgressNotificationContentType;
 };
 
-type ActionBaseParams = Omit<
+export type ActionBaseParams = Omit<
   MCPActionBlob,
   "id" | "type" | "executionState" | "output" | "isError"
 >;
@@ -264,11 +270,33 @@ function hideFileFromActionOutput({
   };
 }
 
-function shouldHideContentForModel(
+function rewriteContentForModel(
   content: CallToolResult["content"][number]
-): boolean {
-  // Hide certain types of content from the model: those are only used for display.
-  return isSearchQueryResourceType(content);
+): CallToolResult["content"][number] | null {
+  if (isToolGeneratedFile(content)) {
+    const attachment = getAttachmentFromToolOutput({
+      fileId: content.resource.fileId,
+      contentType: content.resource.contentType,
+      title: content.resource.title,
+      snippet: content.resource.snippet,
+    });
+    const xml = renderAttachmentXml({ attachment });
+    let text = content.resource.text;
+    if (text) {
+      text += `\n`;
+    }
+    text += xml;
+    return {
+      type: "text",
+      text,
+    };
+  }
+
+  if (isSearchQueryResourceType(content) || isToolMarkerResourceType(content)) {
+    return null;
+  }
+
+  return content;
 }
 
 export type MCPActionRunningEvents =
@@ -359,15 +387,27 @@ export class MCPActionType extends BaseAction {
       };
     }
 
+    const outputItems = removeNulls(
+      this.output?.map(rewriteContentForModel) ?? []
+    );
+
+    const output = (() => {
+      if (outputItems.length === 0) {
+        return "Successfully executed action, no output.";
+      }
+
+      if (outputItems.every((item) => isTextContent(item))) {
+        return outputItems.map((item) => item.text).join("\n");
+      }
+
+      return JSON.stringify(outputItems);
+    })();
+
     return {
       role: "function" as const,
       name: this.functionCallName,
       function_call_id: this.functionCallId,
-      content: this.output
-        ? JSON.stringify(
-            this.output.filter((o) => !shouldHideContentForModel(o))
-          )
-        : "Successfully executed action, no output.",
+      content: output,
     };
   }
 

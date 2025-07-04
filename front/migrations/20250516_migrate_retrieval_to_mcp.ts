@@ -1,10 +1,6 @@
 import fs from "fs";
 import { Op } from "sequelize";
 
-import {
-  DEFAULT_RETRIEVAL_ACTION_NAME,
-  DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -153,8 +149,10 @@ async function migrateWorkspaceRetrievalActions(
           name:
             !retrievalConfig.name ||
             [
-              DEFAULT_RETRIEVAL_ACTION_NAME,
-              DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
+              // "search_data_sources" is the value we used to have in DEFAULT_RETRIEVAL_ACTION_NAME
+              "search_data_sources",
+              // "include_data_sources" is the value we used to have in DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME
+              "include_data_sources",
             ].includes(retrievalConfig.name)
               ? null
               : retrievalConfig.name,

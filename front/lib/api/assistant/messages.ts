@@ -1,16 +1,10 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { browseActionTypesFromAgentMessageIds } from "@app/lib/actions/browse";
 import { conversationIncludeFileTypesFromAgentMessageIds } from "@app/lib/actions/conversation/include_file";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_run";
 import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
-import { processActionTypesFromAgentMessageIds } from "@app/lib/actions/process";
-import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/actions/reasoning";
-import { retrievalActionTypesFromAgentMessageIds } from "@app/lib/actions/retrieval";
 import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
-import { tableQueryTypesFromAgentMessageIds } from "@app/lib/actions/tables_query";
-import { websearchActionTypesFromAgentMessageIds } from "@app/lib/actions/websearch";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -45,7 +39,10 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
-import type { TextContentType } from "@app/types/assistant/agent_message_content";
+import type {
+  ReasoningContentType,
+  TextContentType,
+} from "@app/types/assistant/agent_message_content";
 
 async function batchRenderUserMessages(
   auth: Authenticator,
@@ -135,14 +132,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   );
   const [
     agentConfigurations,
-    agentRetrievalActions,
     agentDustAppRunActions,
-    agentTablesQueryActions,
-    agentProcessActions,
-    agentWebsearchActions,
-    agentBrowseActions,
     agentConversationIncludeFileActions,
-    agentReasoningActions,
     agentSearchLabelsActions,
     agentMCPActions,
   ] = await Promise.all([
@@ -167,23 +158,11 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       return agents as LightAgentConfigurationType[];
     })(),
-    (async () =>
-      retrievalActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    (async () =>
-      tableQueryTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
-      processActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
-      websearchActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
-      browseActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       conversationIncludeFileTypesFromAgentMessageIds(auth, {
         agentMessageIds,
       }))(),
-    (async () =>
-      reasoningActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       searchLabelsActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
@@ -208,15 +187,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       const agentMessage = message.agentMessage;
 
       const actions: AgentActionType[] = [
-        agentBrowseActions,
         agentConversationIncludeFileActions,
         agentDustAppRunActions,
-        agentProcessActions,
-        agentReasoningActions,
-        agentRetrievalActions,
         agentSearchLabelsActions,
-        agentTablesQueryActions,
-        agentWebsearchActions,
         agentMCPActions,
       ]
         .flat()
@@ -263,14 +236,44 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           textContents.push({ step: content.step, content: content.content });
         }
       }
-      const contentParser = new AgentMessageContentParser(
-        agentConfiguration,
-        message.sId,
-        getDelimitersConfiguration({ agentConfiguration })
-      );
-      const parsedContent = await contentParser.parseContents(
-        textContents.map((r) => r.content.value)
-      );
+      const reasoningContents: Array<{
+        step: number;
+        content: ReasoningContentType;
+      }> = [];
+      for (const content of agentStepContents) {
+        if (content.content.type === "reasoning") {
+          reasoningContents.push({
+            step: content.step,
+            content: content.content,
+          });
+        }
+      }
+
+      const { content, chainOfThought } = await (async () => {
+        if (reasoningContents.length > 0) {
+          // don't use the content parser, we just use raw contents and native CoT
+          return {
+            content: textContents.map((c) => c.content.value).join(""),
+            chainOfThought: reasoningContents
+              .map((sc) => sc.content.value.reasoning)
+              .filter((r) => !!r)
+              .join("\n\n"),
+          };
+        } else {
+          const contentParser = new AgentMessageContentParser(
+            agentConfiguration,
+            message.sId,
+            getDelimitersConfiguration({ agentConfiguration })
+          );
+          const parsedContent = await contentParser.parseContents(
+            textContents.map((r) => r.content.value)
+          );
+          return {
+            content: parsedContent.content,
+            chainOfThought: parsedContent.chainOfThought,
+          };
+        }
+      })();
 
       const m = {
         id: message.id,
@@ -284,8 +287,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           messages.find((m) => m.id === message.parentId)?.sId ?? null,
         status: agentMessage.status,
         actions,
-        content: parsedContent.content,
-        chainOfThought: parsedContent.chainOfThought,
+        content,
+        chainOfThought,
         rawContents: textContents.map((c) => ({
           step: c.step,
           content: c.content.value,

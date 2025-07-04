@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { usePlatform } from "@app/shared/context/PlatformContext";
-import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import { retryMessage } from "@app/shared/lib/conversation";
 import type { StoredUser } from "@app/shared/services/auth";
 import type {
@@ -28,16 +27,8 @@ import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import { useEventSource } from "@app/ui/hooks/useEventSource";
 import { useTheme } from "@app/ui/hooks/useTheme";
 import type {
-  AgentActionPublicType,
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
   AgentMessagePublicType,
-  AgentMessageSuccessEvent,
-  GenerationTokensEvent,
   LightWorkspaceType,
-  RetrievalActionPublicType,
   RetrievalDocumentPublicType,
   SearchResultResourceType,
   WebsearchActionPublicType,
@@ -50,9 +41,7 @@ import {
   getProviderFromRetrievedDocument,
   getTitleFromRetrievedDocument,
   isMCPActionType,
-  isRetrievalActionType,
   isSearchResultResourceType,
-  isWebsearchActionType,
   isWebsearchResultResourceType,
   removeNulls,
 } from "@dust-tt/client";
@@ -136,17 +125,6 @@ export function makeDocumentCitation(
     href: document.sourceUrl ?? undefined,
     title: getTitleFromRetrievedDocument(document),
     icon: <IconComponent />,
-  };
-}
-
-export function makeWebsearchResultsCitation(
-  result: WebsearchResultPublicType
-): MarkdownCitation {
-  return {
-    description: result.snippet,
-    href: result.link,
-    title: result.title,
-    icon: <DocumentTextIcon />,
   };
 }
 
@@ -392,34 +370,6 @@ export function AgentMessage({
   ]);
 
   useEffect(() => {
-    // Retrieval actions
-    const retrievalActionsWithDocs = agentMessageToRender.actions
-      .filter((a) => isRetrievalActionType(a) && a.documents)
-      .sort((a, b) => a.id - b.id) as RetrievalActionPublicType[];
-    const allDocs = removeNulls(
-      retrievalActionsWithDocs.map((a) => a.documents).flat()
-    );
-    const allDocsReferences = allDocs.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, d) => {
-      acc[d.reference] = makeDocumentCitation(d, theme === "dark");
-      return acc;
-    }, {});
-
-    // Websearch actions
-    const websearchActionsWithResults = agentMessageToRender.actions
-      .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
-      .sort((a, b) => a.id - b.id) as WebsearchActionPublicType[];
-    const allWebResults = removeNulls(
-      websearchActionsWithResults.map((a) => a.output?.results).flat()
-    );
-    const allWebReferences = allWebResults.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, l) => {
-      acc[l.reference] = makeWebsearchResultsCitation(l);
-      return acc;
-    }, {});
-
     // MCP search actions
     const allMCPSearchResources = agentMessageToRender.actions
       .filter((a) => isMCPActionType(a))
@@ -454,7 +404,6 @@ export function AgentMessage({
 
     // Merge all references
     setReferences({
-      ...allDocsReferences,
       ...allWebReferences,
       ...allMCPSearchReferences,
       ...allMCPWebSearchReferences,

@@ -1,5 +1,4 @@
 import {
-  Avatar,
   BookOpenIcon,
   Button,
   DropdownMenu,
@@ -7,54 +6,48 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import React from "react";
 
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
-const DATA_SOURCES_ACTION_CATEGORIES = [
-  "RETRIEVAL_SEARCH",
-  "RETRIEVAL_EXHAUSTIVE",
-  "PROCESS",
-  "TABLES_QUERY",
-] as const;
-
 interface AddKnowledgeDropdownProps {
-  mcpServerViewsWithKnowledge?: (MCPServerViewType & { label: string })[];
+  mcpServerViewsWithKnowledge: (MCPServerViewType & { label: string })[];
+  onItemClick: (serverName: string) => void;
 }
 
 export function AddKnowledgeDropdown({
   mcpServerViewsWithKnowledge = [],
+  onItemClick,
 }: AddKnowledgeDropdownProps) {
-  return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button label="Add knowledge" size="sm" icon={BookOpenIcon} isSelect />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
-          const spec = ACTION_SPECIFICATIONS[key];
+  const handleDropdownItemClick = (view: MCPServerViewType) => {
+    onItemClick(view.server.name);
+  };
 
-          return (
+  return (
+    <>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label="Add knowledge"
+            size="sm"
+            icon={BookOpenIcon}
+            isSelect
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {mcpServerViewsWithKnowledge.map((view) => (
             <DropdownMenuItem
               truncateText
-              key={key}
-              icon={<Avatar icon={spec.dropDownIcon} size="sm" />}
-              label={spec.label}
-              description={spec.description}
+              key={view.id}
+              icon={getAvatar(view.server, "sm")}
+              label={view.label}
+              description={view.server.description}
+              onClick={() => handleDropdownItemClick(view)}
             />
-          );
-        })}
-        {mcpServerViewsWithKnowledge.map((view) => (
-          <DropdownMenuItem
-            truncateText
-            key={view.id}
-            icon={getAvatar(view.server)}
-            label={view.label}
-            description={view.server.description}
-          />
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }

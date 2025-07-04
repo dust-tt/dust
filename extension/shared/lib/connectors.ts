@@ -171,7 +171,11 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       const path = url.pathname.endsWith("/")
         ? url.pathname.slice(0, -1)
         : url.pathname;
-      return { url: `${url.origin}${path}`, provider: "zendesk" };
+      // Zendesk ticket URL can contain /agent/ in the path if viewed from the agent page.
+      return {
+        url: `${url.origin}${path.replace("/agent", "")}`,
+        provider: "zendesk",
+      };
     },
   },
   intercom: {

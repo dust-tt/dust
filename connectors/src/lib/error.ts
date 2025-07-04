@@ -83,6 +83,13 @@ export class ExternalOAuthTokenError extends Error {
   }
 }
 
+export class WorkspaceQuotaExceededError extends Error {
+  constructor(readonly innerError?: Error) {
+    super(innerError?.message);
+    this.name = "WorkspaceQuotaExceededError";
+  }
+}
+
 export function isNotFoundError(err: unknown): err is NotFoundError {
   return err instanceof HTTPError && err.statusCode === 404;
 }

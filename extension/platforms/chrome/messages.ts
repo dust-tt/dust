@@ -4,8 +4,13 @@ import type {
 } from "@app/shared/services/auth";
 import type { CaptureOptions } from "@app/shared/services/capture";
 
-export type AuthBackgroundResponse = {
-  success: boolean;
+export type AuthBackgroundResponseError = {
+  success: false;
+  error: string;
+};
+
+export type AuthBackgroundResponseSuccess = {
+  success: true;
 };
 
 export type AuthBackgroundMessage = {
@@ -75,7 +80,7 @@ const sendMessage = <T, U>(message: T): Promise<U> => {
 export const sendAuthMessage = (
   isForceLogin?: boolean,
   connection?: string
-): Promise<OAuthAuthorizeResponse> => {
+): Promise<OAuthAuthorizeResponse | AuthBackgroundResponseError> => {
   return new Promise((resolve, reject) => {
     const message: AuthBackgroundMessage = {
       type: "AUTHENTICATE",
@@ -84,7 +89,12 @@ export const sendAuthMessage = (
     };
     chrome.runtime.sendMessage(
       message,
-      (response: OAuthAuthorizeResponse | undefined) => {
+      (
+        response:
+          | OAuthAuthorizeResponse
+          | AuthBackgroundResponseError
+          | undefined
+      ) => {
         const error = chrome.runtime.lastError;
         if (error) {
           if (error.message?.includes("Could not establish connection")) {
@@ -119,7 +129,7 @@ export const sendAuthMessage = (
 export const sendRefreshTokenMessage = (
   authService: AuthService,
   refreshToken: string
-): Promise<OAuthAuthorizeResponse> => {
+): Promise<OAuthAuthorizeResponse | AuthBackgroundResponseError> => {
   return new Promise((resolve, reject) => {
     const message: AuthBackgroundMessage = {
       type: "REFRESH_TOKEN",
@@ -148,8 +158,13 @@ export const sendRefreshTokenMessage = (
   });
 };
 
-export const sentLogoutMessage = (): Promise<AuthBackgroundResponse> => {
-  return sendMessage<AuthBackgroundMessage, AuthBackgroundResponse>({
+export const sentLogoutMessage = (): Promise<
+  AuthBackgroundResponseSuccess | AuthBackgroundResponseError
+> => {
+  return sendMessage<
+    AuthBackgroundMessage,
+    AuthBackgroundResponseSuccess | AuthBackgroundResponseError
+  >({
     type: "LOGOUT",
   });
 };

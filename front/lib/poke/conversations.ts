@@ -1,13 +1,7 @@
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
-import { getDustProdAction } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   ConversationError,
@@ -53,93 +47,6 @@ export async function getPokeConversation(
             {
               for (const a of m.actions) {
                 switch (a.type) {
-                  case "browse_action": {
-                    a.runId = (
-                      await AgentBrowseAction.findOne({
-                        where: {
-                          id: a.id,
-                          workspaceId: owner.id,
-                        },
-                        attributes: ["runId"],
-                        raw: true,
-                      })
-                    )?.runId;
-                    const { app } = getDustProdAction("assistant-v2-browse");
-                    a.appId = app.appId;
-                    a.appSpaceId = app.appSpaceId;
-                    a.appWorkspaceId = app.workspaceId;
-                    break;
-                  }
-                  case "process_action": {
-                    a.runId = (
-                      await AgentProcessAction.findOne({
-                        where: {
-                          id: a.id,
-                          workspaceId: owner.id,
-                        },
-                        attributes: ["runId"],
-                        raw: true,
-                      })
-                    )?.runId;
-                    const { app } = getDustProdAction("assistant-v2-process");
-                    a.appId = app.appId;
-                    a.appSpaceId = app.appSpaceId;
-                    a.appWorkspaceId = app.workspaceId;
-                    break;
-                  }
-                  case "retrieval_action": {
-                    a.runId = (
-                      await AgentRetrievalAction.findOne({
-                        where: {
-                          id: a.id,
-                          workspaceId: owner.id,
-                        },
-                        attributes: ["runId"],
-                        raw: true,
-                      })
-                    )?.runId;
-                    const { app } = getDustProdAction("assistant-v2-retrieval");
-                    a.appId = app.appId;
-                    a.appSpaceId = app.appSpaceId;
-                    a.appWorkspaceId = app.workspaceId;
-                    break;
-                  }
-                  case "tables_query_action": {
-                    a.runId = (
-                      await AgentTablesQueryAction.findOne({
-                        where: {
-                          id: a.id,
-                          workspaceId: owner.id,
-                        },
-                        attributes: ["runId"],
-                        raw: true,
-                      })
-                    )?.runId;
-                    const { app } = getDustProdAction(
-                      "assistant-v2-query-tables"
-                    );
-                    a.appId = app.appId;
-                    a.appSpaceId = app.appSpaceId;
-                    a.appWorkspaceId = app.workspaceId;
-                    break;
-                  }
-                  case "websearch_action": {
-                    a.runId = (
-                      await AgentWebsearchAction.findOne({
-                        where: {
-                          id: a.id,
-                          workspaceId: owner.id,
-                        },
-                        attributes: ["runId"],
-                        raw: true,
-                      })
-                    )?.runId;
-                    const { app } = getDustProdAction("assistant-v2-websearch");
-                    a.appId = app.appId;
-                    a.appSpaceId = app.appSpaceId;
-                    a.appWorkspaceId = app.workspaceId;
-                    break;
-                  }
                   case "dust_app_run_action": {
                     const runAction = await AgentDustAppRunAction.findOne({
                       where: {
@@ -170,7 +77,6 @@ export async function getPokeConversation(
 
                   case "conversation_include_file_action":
                   case "conversation_list_files_action":
-                  case "reasoning_action":
                   case "search_labels_action":
                     // TODO(REASONING TOOL): reasoning_action
                     // Theses actions do not call a dust app

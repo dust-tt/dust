@@ -85,6 +85,7 @@ impl Provider for ZendeskConnectionProvider {
             access_token_expiry: None,
             refresh_token: None,
             raw_json,
+            extra_metadata: None,
         })
     }
 

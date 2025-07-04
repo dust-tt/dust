@@ -2,6 +2,8 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
+use cloud_storage::Object;
+use csv::Writer;
 use futures::future::try_join_all;
 use serde_json::Value;
 use std::collections::hash_map::DefaultHasher;
@@ -11,9 +13,11 @@ use std::hash::Hasher;
 use std::str::FromStr;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
+use tracing::info;
 
 use crate::data_sources::data_source::DocumentStatus;
 use crate::data_sources::node::{Node, NodeESDocument, NodeType, ProviderVisibility};
+use crate::databases::table::LocalTable;
 use crate::search_filter::Filterable;
 use crate::{
     blocks::block::BlockType,
@@ -22,7 +26,7 @@ use crate::{
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
     data_sources::folder::Folder,
     databases::{
-        table::{get_table_unique_id, Table},
+        table::{get_table_unique_id, Row, Table},
         table_schema::TableSchema,
         transient_database::TransientDatabase,
     },
@@ -1262,6 +1266,61 @@ impl Store for PostgresStore {
                 )))
             }
         }
+    }
+
+    async fn load_data_sources(
+        &self,
+        project_data_sources: Vec<(i64, String)>,
+    ) -> Result<Vec<DataSource>> {
+        if project_data_sources.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Build the query dynamically based on the number of project_data_sources
+        let placeholders: Vec<String> = (0..project_data_sources.len())
+            .map(|i| format!("(${}, ${})", i * 2 + 1, i * 2 + 2))
+            .collect();
+        let query = format!(
+            "SELECT project, id, created, internal_id, config_json, name, data_source_id FROM data_sources 
+             WHERE (project, data_source_id) IN ({})",
+            placeholders.join(", ")
+        );
+        info!(query);
+
+        // Prepare parameters: alternating project_id and data_source_id
+        let mut params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = vec![];
+        for (project_id, data_source_id) in &project_data_sources {
+            params.push(project_id);
+            params.push(data_source_id);
+        }
+
+        let r = c.query(&query, &params[..]).await?;
+
+        let mut data_sources = Vec::new();
+        for row in r {
+            let project_id: i64 = row.get(0);
+            let created: i64 = row.get(2);
+            let internal_id: String = row.get(3);
+            let config_data: String = row.get(4);
+            let name: Option<String> = row.get(5);
+            let data_source_id: String = row.get(6);
+
+            let data_source_config: DataSourceConfig = serde_json::from_str(&config_data)?;
+            data_sources.push(DataSource::new_from_store(
+                &Project::new_from_id(project_id),
+                created as u64,
+                &data_source_id,
+                &internal_id,
+                &data_source_config,
+                // TODO(keyword-search) Remove this once name has been backfilled.
+                &name.unwrap_or("".to_string()),
+            ));
+        }
+
+        Ok(data_sources)
     }
 
     async fn load_data_source_by_internal_id(
@@ -2717,7 +2776,7 @@ impl Store for PostgresStore {
                    timestamp = EXCLUDED.timestamp, \
                      remote_database_table_id = EXCLUDED.remote_database_table_id, \
                      remote_database_secret_id = EXCLUDED.remote_database_secret_id \
-                   RETURNING id, created, schema, schema_stale_at",
+                   RETURNING id, created, schema, schema_stale_at, migrated_to_csv",
             )
             .await?;
 
@@ -2741,6 +2800,7 @@ impl Store for PostgresStore {
         let table_created = table_row.get::<usize, i64>(1) as u64;
         let raw_schema = table_row.get::<usize, Option<String>>(2);
         let table_schema_stale_at = table_row.get::<usize, Option<i64>>(3);
+        let migrated_to_csv = table_row.get::<usize, bool>(4);
 
         let parsed_schema: Option<TableSchema> = match raw_schema {
             None => None,
@@ -2773,6 +2833,7 @@ impl Store for PostgresStore {
             upsert_params.source_url,
             parsed_schema,
             table_schema_stale_at.map(|t| t as u64),
+            migrated_to_csv,
             upsert_params.remote_database_table_id,
             upsert_params.remote_database_secret_id,
         );
@@ -2887,6 +2948,132 @@ impl Store for PostgresStore {
         Ok(())
     }
 
+    async fn store_data_source_table_csv(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+        schema: &TableSchema,
+        rows: &Vec<Row>,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let table_id = table_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Get the data source row id.
+        let stmt = c
+            .prepare(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+            )
+            .await?;
+        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        let now = utils::now();
+
+        let field_names = schema
+            .columns()
+            .iter()
+            .map(|c| c.name.clone())
+            .collect::<Vec<_>>();
+
+        // Read all rows and upload to GCS
+        let mut wtr = Writer::from_writer(vec![]);
+        // Write the header row.
+        wtr.write_record(field_names.as_slice())?;
+        for row in rows {
+            wtr.write_record(row.to_csv_record(&field_names)?.as_slice())?;
+        }
+        let content_duration = utils::now() - now;
+        let now = utils::now();
+
+        let csv = wtr.into_inner()?;
+
+        Object::create(
+            &LocalTable::get_bucket()?,
+            csv,
+            &LocalTable::get_csv_storage_file_path(&project_id, &data_source_id, &table_id),
+            "text/csv",
+        )
+        .await?;
+
+        // Update migration flag.
+        let stmt = c
+            .prepare(
+                "UPDATE tables SET migrated_to_csv = true WHERE data_source = $1 AND table_id = $2",
+            )
+            .await?;
+        c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
+
+        let upload_duration = utils::now() - now;
+
+        info!(
+            content_duration = content_duration,
+            upload_duration = upload_duration,
+            "CSV upload"
+        );
+
+        Ok(())
+    }
+
+    async fn delete_data_source_table_csv(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let table_id = table_id.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        // Get the data source row id.
+        let stmt = c
+            .prepare(
+                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
+            )
+            .await?;
+        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
+        let data_source_row_id: i64 = match r.len() {
+            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
+            1 => r[0].get(0),
+            _ => unreachable!(),
+        };
+
+        // Remove from GCS.
+        match Object::delete(
+            LocalTable::get_bucket()?.as_str(),
+            &LocalTable::get_csv_storage_file_path(&project_id, &data_source_id, &table_id),
+        )
+        .await
+        {
+            Ok(_) => {
+                // Clear the migration flag.
+                let stmt = c.prepare(
+                    "UPDATE tables SET migrated_to_csv = false WHERE data_source = $1 AND table_id = $2",
+                ).await?;
+                c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
+            }
+            Err(e) => {
+                info!(
+                    "Error deleting CSV file from GCS: {}. It's safe to continue.",
+                    e.to_string()
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     async fn load_data_source_table(
         &self,
         project: &Project,
@@ -2918,6 +3105,7 @@ impl Store for PostgresStore {
                 "SELECT t.created, t.table_id, t.name, t.description, \
                         t.timestamp, dsn.tags_array, dsn.parents, dsn.source_url, \
                         t.schema, t.schema_stale_at, \
+                        t.migrated_to_csv, \
                         t.remote_database_table_id, t.remote_database_secret_id, \
                         dsn.title, dsn.mime_type, dsn.provider_visibility \
                         FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
@@ -2937,6 +3125,7 @@ impl Store for PostgresStore {
             Option<String>,
             Option<String>,
             Option<i64>,
+            bool,
             Option<String>,
             Option<String>,
             String,
@@ -2960,6 +3149,7 @@ impl Store for PostgresStore {
                 r[0].get(12),
                 r[0].get(13),
                 r[0].get(14),
+                r[0].get(15),
             )),
             _ => unreachable!(),
         };
@@ -2977,6 +3167,7 @@ impl Store for PostgresStore {
                 source_url,
                 schema,
                 schema_stale_at,
+                migrated_to_csv,
                 remote_database_table_id,
                 remote_database_secret_id,
                 title,
@@ -3012,6 +3203,7 @@ impl Store for PostgresStore {
                     source_url,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
+                    migrated_to_csv,
                     remote_database_table_id,
                     remote_database_secret_id,
                 )))
@@ -3083,6 +3275,7 @@ impl Store for PostgresStore {
             "SELECT t.created, t.table_id, t.name, t.description, \
                     t.timestamp, dsn.tags_array, dsn.parents, \
                     t.schema, t.schema_stale_at, \
+                    t.migrated_to_csv, \
                     t.remote_database_table_id, t.remote_database_secret_id, \
                     dsn.title, dsn.mime_type, dsn.source_url, dsn.provider_visibility \
                 FROM tables t INNER JOIN data_sources_nodes dsn ON dsn.table=t.id \
@@ -3122,12 +3315,13 @@ impl Store for PostgresStore {
                 let parents: Vec<String> = r.get(6);
                 let schema: Option<String> = r.get(7);
                 let schema_stale_at: Option<i64> = r.get(8);
-                let remote_database_table_id: Option<String> = r.get(9);
-                let remote_database_secret_id: Option<String> = r.get(10);
-                let title: String = r.get(11);
-                let mime_type: String = r.get(12);
-                let source_url: Option<String> = r.get(13);
-                let provider_visibility: Option<ProviderVisibility> = r.get(14);
+                let migrated_to_csv: bool = r.get(9);
+                let remote_database_table_id: Option<String> = r.get(10);
+                let remote_database_secret_id: Option<String> = r.get(11);
+                let title: String = r.get(12);
+                let mime_type: String = r.get(13);
+                let source_url: Option<String> = r.get(14);
+                let provider_visibility: Option<ProviderVisibility> = r.get(15);
 
                 let parsed_schema: Option<TableSchema> = match schema {
                     None => None,
@@ -3158,6 +3352,7 @@ impl Store for PostgresStore {
                     source_url,
                     parsed_schema,
                     schema_stale_at.map(|t| t as u64),
+                    migrated_to_csv,
                     remote_database_table_id,
                     remote_database_secret_id,
                 ))
