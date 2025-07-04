@@ -339,7 +339,8 @@ export type DustMimeType =
   | ZendeskMimeType
   | SalesforceMimeType
   | GongMimeType
-  | DataSourceMimeType;
+  | DataSourceMimeType
+  | DataSourceWorkbookMimeType;
 
 export function isDustMimeType(mimeType: string): mimeType is DustMimeType {
   return (INTERNAL_MIME_TYPES_VALUES as string[]).includes(mimeType);
