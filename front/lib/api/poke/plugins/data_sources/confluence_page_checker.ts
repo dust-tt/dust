@@ -84,7 +84,7 @@ export const confluencePageCheckerPlugin = createPlugin({
 
       return new Ok({
         display: "markdown",
-        value: `Title: ${response.title}\n\n### Hierarchy\n\n${markdownTree}`,
+        value: `Title: ${response.title}\n\nStatus: ${response.status}\n\nExists in Dust: ${response.existsInDust}\n\nHierarchy:\n${markdownTree}`,
       });
     } catch (error) {
       return new Err(new Error(`Failed to check page: ${error}`));

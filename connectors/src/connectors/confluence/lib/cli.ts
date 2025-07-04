@@ -229,12 +229,20 @@ export const confluence = async ({
       const hasReadRestrictions =
         page.restrictions.read.restrictions.group.results.length > 0 ||
         page.restrictions.read.restrictions.user.results.length > 0;
+      const confluencePage = await ConfluencePage.findOne({
+        where: {
+          connectorId,
+          pageId,
+        },
+      });
 
       return {
         exists: true,
         ancestors,
+        existsInDust: !!confluencePage,
         hasChildren,
         hasReadRestrictions,
+        status: page.status,
         title: page.title,
       };
     }
