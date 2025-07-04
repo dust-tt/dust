@@ -69,35 +69,7 @@ export const LoginPage = () => {
             </Link>
             <Page.SectionHeader title="Get more done, faster, with the power of your agents at your fingertips." />
           </div>
-          {authError && authError.code === "user_not_found" && (
-            <>
-              <div className="text-center">
-                Please sign up to start using Dust extension.
-              </div>
-            </>
-          )}
-          {authError && authError.code !== "user_not_found" && (
-            <div className="text-center">{authError.message}</div>
-          )}
-
           <div className="text-center gap-2 flex">
-            {authError && authError.code === "user_not_found" && (
-              <Link to="https://dust.tt/home">
-                <Button
-                  icon={LoginIcon}
-                  variant="primary"
-                  label="Sign up"
-                  onClick={() => {
-                    window.open(
-                      "https://dust.tt/api/auth/login?returnTo=/api/login&prompt=login&screen_hint=signup",
-                      "_blank"
-                    );
-                  }}
-                  size="md"
-                />
-              </Link>
-            )}
-
             <Button
               icon={LoginIcon}
               variant="primary"
