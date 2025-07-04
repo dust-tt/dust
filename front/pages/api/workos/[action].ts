@@ -38,6 +38,8 @@ export default async function handler(
   switch (action) {
     case "login":
       return handleLogin(req, res);
+    case "signup":
+      return handleSignup(req, res);
     case "callback":
       return handleCallback(req, res);
     case "logout":
@@ -122,6 +124,55 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
     logger.error({ error }, "Error during WorkOS login");
     statsDClient.increment("login.error", 1);
     res.redirect("/login-error?type=workos-login");
+  }
+}
+
+async function handleSignup(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    const { organizationId, loginHint, returnTo } = req.query;
+
+    let organizationIdToUse;
+
+    if (organizationId && typeof organizationId === "string") {
+      organizationIdToUse = organizationId;
+    }
+
+    let enterpriseParams: { organizationId?: string; connectionId?: string } =
+      {};
+    if (organizationIdToUse) {
+      const connections = await getWorkOS().sso.listConnections({
+        organizationId: organizationIdToUse,
+      });
+      enterpriseParams = {
+        organizationId: organizationIdToUse,
+        connectionId:
+          connections.data.length > 0 ? connections.data[0]?.id : undefined,
+      };
+    }
+
+    const state = {
+      ...(returnTo ? { returnTo } : {}),
+      ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
+    };
+
+    const authorizationUrl = getWorkOS().userManagement.getAuthorizationUrl({
+      provider: "authkit",
+      redirectUri: `${config.getClientFacingUrl()}/api/workos/callback`,
+      clientId: config.getWorkOSClientId(),
+      ...enterpriseParams,
+      state:
+        Object.keys(state).length > 0
+          ? Buffer.from(JSON.stringify(state)).toString("base64")
+          : undefined,
+      screenHint: "sign-up",
+      ...(isString(loginHint) ? { loginHint } : {}),
+    });
+
+    res.redirect(authorizationUrl);
+  } catch (error) {
+    logger.error({ error }, "Error during WorkOS signup");
+    statsDClient.increment("signup.error", 1);
+    res.redirect("/login-error?type=workos-signup");
   }
 }
 
