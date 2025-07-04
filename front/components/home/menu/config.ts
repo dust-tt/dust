@@ -412,6 +412,10 @@ export const menuConfig: DocsConfig = {
           href: "/home/product",
         },
         {
+          title: "Chrome Extension",
+          href: "/home/chrome-extension",
+        },
+        {
           title: "Pricing",
           href: "/home/pricing",
         },
@@ -430,20 +434,76 @@ export const menuConfig: DocsConfig = {
       items: DevelopersMenuConfig.items,
     },
     {
-      title: ConnectMenuConfig.title,
-      items: ConnectMenuConfig.items,
+      title: "Company",
+      items: [
+        {
+          title: "About Us",
+          href: "/home/about",
+        },
+        {
+          title: "Jobs",
+          href: "/jobs",
+          isExternal: true,
+        },
+        {
+          title: "Support",
+          href: "/home/support",
+        },
+        {
+          title: "Become a Partner",
+          href: "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3",
+          isExternal: true,
+        },
+      ],
     },
     {
-      title: CareersMenuConfig.title,
-      items: CareersMenuConfig.items,
+      title: "Connect",
+      items: [
+        {
+          title: "Slack Community",
+          href: "https://dust-community.tightknit.community/join",
+          isExternal: true,
+        },
+        {
+          title: "X",
+          href: "https://x.com/DustHQ",
+          isExternal: true,
+        },
+        {
+          title: "LinkedIn",
+          href: "https://www.linkedin.com/company/dust-tt/",
+          isExternal: true,
+        },
+        {
+          title: "YouTube",
+          href: "https://www.youtube.com/@dust-tt",
+          isExternal: true,
+        },
+      ],
     },
     {
-      title: SocialMenuConfig.title,
-      items: SocialMenuConfig.items,
-    },
-    {
-      title: LegalMenuConfig.title,
-      items: LegalMenuConfig.items,
+      title: "Legal",
+      items: [
+        {
+          title: "Terms & Policies",
+          href: "/terms",
+          isExternal: true,
+        },
+        {
+          title: "Privacy Policy",
+          href: "/platform-privacy",
+          isExternal: true,
+        },
+        {
+          title: "Trust Center",
+          href: "https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto",
+          isExternal: true,
+        },
+        {
+          title: "Vulnerability Disclosure",
+          href: "/home/vulnerability",
+        },
+      ],
     },
   ],
 };
