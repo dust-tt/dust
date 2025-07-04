@@ -37,7 +37,7 @@ impl GoogleCloudStorageDatabasesStore {
             "project-{}/{}/{}.csv",
             table.project().project_id(),
             table.data_source_id(),
-            table.unique_id()
+            table.table_id()
         )
     }
 
