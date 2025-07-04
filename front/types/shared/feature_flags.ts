@@ -1,46 +1,3 @@
-<<<<<<< HEAD
-export const WHITELISTABLE_FEATURES = [
-  "advanced_notion_management",
-  "advanced_search",
-  "agent_builder_v2",
-  "agent_discovery",
-  "claude_3_7_reasoning",
-  "claude_4_opus_feature",
-  "co_edition",
-  "custom_webcrawler",
-  "deepseek_feature",
-  "deepseek_r1_global_agent_feature",
-  "dev_mcp_actions",
-  "disable_run_logs",
-  "disallow_agent_creation_to_users",
-  "document_tracker",
-  "exploded_tables_query",
-  "extended_max_steps_per_run",
-  "google_ai_studio_experimental_models_feature",
-  "index_private_slack_channel",
-  "jira_tool",
-  "labs_mcp_actions_dashboard",
-  "labs_trackers",
-  "labs_transcripts",
-  "okta_enterprise_connection",
-  "openai_o1_custom_assistants_feature",
-  "openai_o1_feature",
-  "openai_o1_high_reasoning_custom_assistants_feature",
-  "openai_o1_high_reasoning_feature",
-  "openai_o1_mini_feature",
-  "salesforce_synced_queries",
-  "salesforce_tool",
-  "search_knowledge_builder",
-  "show_debug_tools",
-  "slack_tool",
-  "snowflake_connector_feature",
-  "usage_data_api",
-  "workos",
-  "workos_user_provisioning",
-  "xai_feature",
-] as const;
-export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
-=======
 export const WHITELISTABLE_FEATURES_CONFIG = {
   advanced_notion_management: {
     description: "Advanced features for Notion workspace management",
@@ -147,7 +104,6 @@ export const WHITELISTABLE_FEATURES = Object.keys(
 
 export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 
->>>>>>> main
 export function isWhitelistableFeature(
   feature: unknown
 ): feature is WhitelistableFeature {
