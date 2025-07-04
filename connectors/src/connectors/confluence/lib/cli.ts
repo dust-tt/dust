@@ -206,7 +206,6 @@ export const confluence = async ({
         return { exists: false };
       }
 
-      console.log("ids", ids);
       const { pageId, spaceKey } = ids;
       const pages = await confluenceClient.getPagesByIdsInSpace({
         spaceKey,
