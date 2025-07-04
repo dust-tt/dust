@@ -209,6 +209,7 @@ async fn process_one_table(
         table_schema = Some(table.schema_cached().unwrap().clone());
     }
 
+    // If we got neither rows nor schema, we don't create any CSV (but we still set the migrated flag)
     if let Some(ref schema) = table_schema {
         gcs_store
             .batch_upsert_table_rows(&table, schema, &rows, true)
