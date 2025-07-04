@@ -122,6 +122,7 @@ async function handler(
         logger.info(
           {
             transcriptsConfigurationId: transcriptsConfiguration.id,
+            transcriptsConfigurationSid: transcriptsConfiguration.sId,
             isActive,
           },
           "Setting transcript configuration active status."
@@ -188,6 +189,7 @@ async function handler(
         logger.info(
           {
             transcriptsConfigurationId: updatedTranscriptsConfiguration.id,
+            transcriptsConfigurationSid: updatedTranscriptsConfiguration.sId,
           },
           "Starting transcript retrieval workflow."
         );
