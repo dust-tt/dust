@@ -7,8 +7,8 @@ import AgentsMCP from "./commands/AgentsMCP.js";
 import Auth from "./commands/Auth.js";
 import Cache from "./commands/Cache.js";
 import Chat from "./commands/Chat.js";
-import NonInteractiveChat from "./commands/NonInteractiveChat.js";
 import Logout from "./commands/Logout.js";
+import NonInteractiveChat from "./commands/NonInteractiveChat.js";
 import Status from "./commands/Status.js";
 import Help from "./Help.js";
 

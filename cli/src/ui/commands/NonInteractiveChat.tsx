@@ -1,13 +1,13 @@
 import type { FC } from "react";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 
+import { useAgents } from "../../utils/hooks/use_agents.js";
+import { useMe } from "../../utils/hooks/use_me.js";
 import {
   fetchAgentMessageFromConversation,
   sendNonInteractiveMessage,
   validateNonInteractiveFlags,
 } from "./chat/nonInteractive.js";
-import { useAgents } from "../../utils/hooks/use_agents.js";
-import { useMe } from "../../utils/hooks/use_me.js";
 
 interface NonInteractiveChatProps {
   agentSearch?: string;
