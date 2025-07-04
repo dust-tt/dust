@@ -121,7 +121,7 @@ async function handler(
       if (isActive !== undefined) {
         logger.info(
           {
-            configurationId: transcriptsConfiguration.sId,
+            transcriptsConfigurationId: transcriptsConfiguration.id,
             isActive,
           },
           "Setting transcript configuration active status."
@@ -187,7 +187,7 @@ async function handler(
       if (shouldStartWorkflow) {
         logger.info(
           {
-            configurationId: updatedTranscriptsConfiguration.sId,
+            transcriptsConfigurationId: updatedTranscriptsConfiguration.id,
           },
           "Starting transcript retrieval workflow."
         );
