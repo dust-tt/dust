@@ -1,7 +1,6 @@
 import type {
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
-  DataSourceWorkbookMimeType,
 } from "@dust-tt/client";
 import assert from "assert";
 import type { Transaction } from "sequelize";
@@ -913,7 +912,7 @@ export async function createDataSourceFolder(
     title,
   }: {
     folderId: string;
-    mimeType: DataSourceWorkbookMimeType;
+    mimeType: DataSourceFolderSpreadsheetMimeType;
     parentId?: string | null;
     parents?: string[] | null;
     sourceUrl?: string | null;

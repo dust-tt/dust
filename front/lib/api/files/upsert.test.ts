@@ -375,7 +375,7 @@ id,category,description
       expect(createDataSourceFolderCall[0]).toBe(dataSourceView.dataSource);
       expect(createDataSourceFolderCall[1].title).toBe(file.fileName);
       expect(createDataSourceFolderCall[1].mimeType).toBe(
-        INTERNAL_MIME_TYPES.GENERIC.WORKBOOK
+        INTERNAL_MIME_TYPES.FOLDER.SPREADSHEET
       );
 
       // Check the first upsertTable call

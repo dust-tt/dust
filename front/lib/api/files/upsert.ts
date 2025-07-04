@@ -1,5 +1,5 @@
 import {
-  DATA_SOURCE_WORKBOOK_MIME_TYPE,
+  DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
   isDustMimeType,
   isSupportedPlainTextContentType,
 } from "@dust-tt/client";
@@ -164,7 +164,7 @@ async function upsertWorkbookToDatasource(
 
   const folderRes = await createDataSourceFolder(dataSource, {
     folderId,
-    mimeType: DATA_SOURCE_WORKBOOK_MIME_TYPE,
+    mimeType: DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
     title: file.fileName,
   });
 
