@@ -37,7 +37,7 @@ const CANCELLATION_CHECK_INTERVAL = 500;
 
 const REASONING_GENERATION_TOKENS = 20480;
 
-export type ReasoningConfigurationType = {
+type ReasoningConfigurationType = {
   description: string | null;
   id: ModelId;
   modelId: ModelIdType;
@@ -49,7 +49,7 @@ export type ReasoningConfigurationType = {
   type: "reasoning_configuration";
 };
 
-export type ReasoningModelConfiguration = Pick<
+type ReasoningModelConfiguration = Pick<
   ReasoningConfigurationType,
   "modelId" | "providerId" | "reasoningEffort" | "temperature"
 >;
@@ -189,7 +189,7 @@ function createServer(
  * Shared function to run reasoning that can be used by both the streaming action and the MCP server.
  * It returns an async generator that yields tokens and results.
  */
-export async function* runReasoning(
+async function* runReasoning(
   auth: Authenticator,
   {
     reasoningModel,
