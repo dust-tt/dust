@@ -24,6 +24,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType, ModelConfigurationType } from "@app/types";
+import { stripNullBytes } from "@app/types";
 import { isGlobalAgentId, isImageContent, isTextContent } from "@app/types";
 
 const WORKSPACE_CONCURRENCY = 50;
@@ -59,7 +60,7 @@ function agentConversationIncludeFileActionToAgentMCPAction(
     action: {
       agentMessageId: includeFileAction.agentMessageId,
       functionCallId: includeFileAction.functionCallId,
-      functionCallName: includeFileAction.functionCallName,
+      functionCallName: "conversation_files__include_file",
       createdAt: includeFileAction.createdAt,
       updatedAt: includeFileAction.updatedAt,
       generatedFiles: [],
@@ -150,7 +151,7 @@ async function getContentForConversationIncludeFileAction(
   if (isTextContent(content)) {
     return {
       type: "text",
-      text: content.text,
+      text: stripNullBytes(content.text),
     };
   } else if (isImageContent(content)) {
     // For images, we return the URL as a resource with the correct MIME type
@@ -159,7 +160,7 @@ async function getContentForConversationIncludeFileAction(
       resource: {
         uri: content.image_url.url,
         mimeType: attachment?.contentType || "application/octet-stream",
-        text: `Image: ${attachment.title}`,
+        text: `Image: ${stripNullBytes(attachment.title)}`,
       },
     };
   }
@@ -320,6 +321,18 @@ async function migrateWorkspaceConversationIncludeFileActions(
           includeFileAction.agentMessageId
         );
         assert(agentMessage, "Agent message must exist");
+
+        if (agentMessage.agentConfigurationId === "deepseek") {
+          logger.error(
+            {
+              agentMessageId: agentMessage.id,
+              agentConfigurationId: agentMessage.agentConfigurationId,
+              agentConfigurationVersion: agentMessage.agentConfigurationVersion,
+            },
+            "Agent configuration deepseek does not exist anymore"
+          );
+          return;
+        }
 
         const agentConfiguration = agentConfigurationsMap.get(
           `${agentMessage.agentConfigurationId}-${agentMessage.agentConfigurationVersion}`

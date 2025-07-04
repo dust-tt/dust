@@ -100,6 +100,9 @@ const EXTENSION_WHITELIST = [
   ".liquid",
   ".mustache",
   ".handlebars",
+
+  // Miscellaneous
+  ".authors",
 ];
 
 const SUFFIX_BLACKLIST = [".min.js", ".min.css"];

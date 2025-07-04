@@ -471,6 +471,10 @@ export async function deleteMembersActivity({
   const workspace = auth.getNonNullableWorkspace();
   const auth0Client = getAuth0ManagemementClient();
 
+  const childLogger = hardDeleteLogger.child({
+    workspaceId: workspace.id,
+  });
+
   // Critical: we should never delete an Auth0 sub for a workspace that was relocated/is being relocated.
   // The Auth0 sub is kept during the relocation, deleting it would affect the relocated users.
   const workspaceRelocated =
@@ -497,7 +501,7 @@ export async function deleteMembersActivity({
 
       // If the user we're removing the membership of only has one membership, we delete the user.
       if (membershipsOfUser.length === 1) {
-        hardDeleteLogger.info(
+        childLogger.info(
           {
             membershipId: membership.id,
             userId: user.sId,
@@ -506,7 +510,7 @@ export async function deleteMembersActivity({
         );
 
         // Delete the user's files.
-        await FileResource.deleteAllForUser(user.toJSON());
+        await FileResource.deleteAllForUser(auth, user.toJSON());
         await membership.delete(auth, {});
 
         // Delete the user from Auth0 if they have an Auth0 ID
@@ -517,29 +521,29 @@ export async function deleteMembersActivity({
           );
 
           try {
-            hardDeleteLogger.info(
+            childLogger.info(
               {
-                userId: user.sId,
                 auth0Sub: user.auth0Sub,
+                userId: user.sId,
               },
               "Deleting user from Auth0"
             );
             await auth0Client.users.delete({
               id: user.auth0Sub,
             });
-            hardDeleteLogger.info(
+            childLogger.info(
               {
-                userId: user.sId,
                 auth0Sub: user.auth0Sub,
+                userId: user.sId,
               },
               "Successfully deleted user from Auth0"
             );
           } catch (error) {
-            hardDeleteLogger.error(
+            childLogger.error(
               {
-                userId: user.sId,
                 auth0Sub: user.auth0Sub,
                 error,
+                userId: user.sId,
               },
               "Failed to delete user from Auth0"
             );
@@ -547,8 +551,13 @@ export async function deleteMembersActivity({
           }
         }
 
-        // Delete the user from WorkOS
+        // Delete the user from WorkOS.
         if (deleteFromAuth0 && user.workOSUserId) {
+          assert(
+            !workspaceRelocated,
+            "Trying to delete a WorkOS user for a workspace that was relocated/is being relocated."
+          );
+
           // Ignore errors, as the user might not exist in WorkOS.
           await deleteUserFromWorkOS(user.workOSUserId);
         }

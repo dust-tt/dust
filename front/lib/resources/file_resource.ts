@@ -121,13 +121,18 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
-  static async deleteAllForUser(user: UserType, transaction?: Transaction) {
+  static async deleteAllForUser(
+    auth: Authenticator,
+    user: UserType,
+    transaction?: Transaction
+  ) {
     // We don't actually delete, instead we set the userId field to null.
     return this.model.update(
       { userId: null },
       {
         where: {
           userId: user.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         transaction,
       }
