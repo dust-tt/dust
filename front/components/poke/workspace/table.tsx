@@ -10,12 +10,12 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { useWorkOSDSyncStatus } from "@app/lib/swr/workos";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
-import {
-  asDisplayName,
+import type {
   ExtensionConfigurationType,
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 export function WorkspaceInfoTable({
   owner,
