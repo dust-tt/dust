@@ -2951,6 +2951,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         table_id: &str,
         migrated_to_csv: bool,
+        timestamp: Option<i64>,
     ) -> Result<()> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -2973,13 +2974,30 @@ impl Store for PostgresStore {
         };
 
         // Update migration flag.
-        let stmt = c
-            .prepare(
+        // If timestamp is provided, only update if it matches the existing timestamp,
+        // to prevent race conditions
+        let stmt = if let Some(_) = timestamp {
+            c.prepare(
+                "UPDATE tables SET migrated_to_csv = $1 WHERE data_source = $2 AND table_id = $3 AND timestamp = $4",
+            )
+            .await?
+        } else {
+            c.prepare(
                 "UPDATE tables SET migrated_to_csv = $1 WHERE data_source = $2 AND table_id = $3",
             )
+            .await?
+        };
+
+        if let Some(ts) = timestamp {
+            c.query(
+                &stmt,
+                &[&migrated_to_csv, &data_source_row_id, &table_id, &ts],
+            )
             .await?;
-        c.query(&stmt, &[&migrated_to_csv, &data_source_row_id, &table_id])
-            .await?;
+        } else {
+            c.query(&stmt, &[&migrated_to_csv, &data_source_row_id, &table_id])
+                .await?;
+        }
 
         Ok(())
     }

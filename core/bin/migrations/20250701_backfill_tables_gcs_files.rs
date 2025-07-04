@@ -140,7 +140,7 @@ async fn process_tables_batch(
 
             (
                 id,
-                // We need to Table instance, but only care about a few specific fields
+                // We need a Table instance, but only care about a few specific fields
                 Table::new(
                     Project::new_from_id(project),
                     data_source_id,
@@ -221,6 +221,7 @@ async fn process_one_table(
             &table.data_source_id(),
             &table.table_id(),
             true,
+            Some(table.timestamp() as i64),
         )
         .await?;
     Ok(())
