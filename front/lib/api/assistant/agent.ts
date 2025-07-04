@@ -894,7 +894,7 @@ async function* runMultiActionsAgent(
     }
 
     const chainOfThought =
-      nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
+      (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
     yield {
       type: "agent_message_content",
@@ -1074,7 +1074,7 @@ async function* runMultiActionsAgent(
   yield* contentParser.flushTokens();
 
   const chainOfThought =
-    nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
+    (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
   if (chainOfThought?.length) {
     yield {
