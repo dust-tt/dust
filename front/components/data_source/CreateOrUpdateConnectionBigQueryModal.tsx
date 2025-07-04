@@ -138,7 +138,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
     setError(null);
   }
 
-  const createBigQueryConnection = async () => {
+  const createBigQueryConnection = async (): Promise<boolean> => {
     if (!onSuccess || !createDatasource) {
       // Should never happen.
       throw new Error("onCreated and createDatasource are required");
@@ -167,7 +167,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
     if (!createCredentialsRes.ok) {
       setError("Failed to create connection: cannot verify those credentials.");
       setIsLoading(false);
-      return;
+      return false;
     }
 
     // Then we can try to create the connector.
@@ -194,7 +194,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
       }
 
       setIsLoading(false);
-      return;
+      return false;
     }
 
     const createdManagedDataSource: {
@@ -204,9 +204,10 @@ export function CreateOrUpdateConnectionBigQueryModal({
 
     onSuccess(createdManagedDataSource.dataSource);
     setIsLoading(false);
+    return true;
   };
 
-  const updateBigQueryConnection = async () => {
+  const updateBigQueryConnection = async (): Promise<boolean> => {
     if (!dataSourceToUpdate) {
       // Should never happen.
       throw new Error("dataSourceToUpdate is required");
@@ -237,7 +238,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
     if (!credentialsRes.ok) {
       setError("Failed to update connection: cannot verify those credentials.");
       setIsLoading(false);
-      return;
+      return false;
     }
 
     const data = await credentialsRes.json();
@@ -272,10 +273,11 @@ export function CreateOrUpdateConnectionBigQueryModal({
         setError(`Failed to update BigQuery connection: ${err.error.message}`);
       }
 
-      return;
+      return false;
     }
 
     onSuccess(dataSourceToUpdate);
+    return true;
   };
 
   return (
@@ -382,12 +384,12 @@ export function CreateOrUpdateConnectionBigQueryModal({
               e.preventDefault();
               e.stopPropagation();
               setIsLoading(true);
-              dataSourceToUpdate
+              const success = dataSourceToUpdate
                 ? await updateBigQueryConnection()
                 : await createBigQueryConnection();
-
               setIsLoading(false);
-              if (!error) {
+
+              if (success) {
                 onClose();
               }
             },
