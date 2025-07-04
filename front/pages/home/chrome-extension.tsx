@@ -40,7 +40,7 @@ const INSTALLATION_STEPS: InstallationStep[] = [
   {
     number: "1.",
     title: "Install",
-    description: "Install the Dust Chrome Extension from the Chrome Web Store",
+    description: "Install the Dust Chrome Extension from the Chrome Web Store.",
     image: {
       src: "/static/landing/chrome_ext/Step1.png",
       alt: "Chrome Web Store installation",
@@ -49,7 +49,7 @@ const INSTALLATION_STEPS: InstallationStep[] = [
   {
     number: "2.",
     title: "Configure",
-    description: "Pin the Dust extension to keep it at your fingertips",
+    description: "Pin the Dust extension to keep it at your fingertips.",
     image: {
       src: "/static/landing/chrome_ext/Step2.png",
       alt: "Extension configuration interface",
@@ -59,7 +59,7 @@ const INSTALLATION_STEPS: InstallationStep[] = [
     number: "3.",
     title: "Start using",
     description:
-      "Access Dust AI assistance directly from any web page with a simple click",
+      "Access Dust AI assistance directly from any web page with a simple click.",
     image: {
       src: "/static/landing/chrome_ext/Step3.png",
       alt: "Chrome extension in action",
@@ -171,7 +171,7 @@ function ChromeExtensionInAction() {
                   <div>
                     <P size="sm" className="font-medium">
                       Pull insights from multiple platforms to write custom
-                      follow-ups
+                      follow-ups.
                     </P>
                   </div>
                 </div>
@@ -180,7 +180,7 @@ function ChromeExtensionInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-bl-full bg-yellow-400"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Craft personalized outreach without leaving your CRM
+                      Craft personalized outreach without leaving your CRM.
                     </P>
                   </div>
                 </div>
@@ -189,7 +189,7 @@ function ChromeExtensionInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-tl-full bg-blue-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Access company knowledge while browsing prospect websites
+                      Access company knowledge while browsing prospect websites.
                     </P>
                   </div>
                 </div>
@@ -205,7 +205,7 @@ function ChromeExtensionInAction() {
                   <div className="h-6 w-6 flex-shrink-0 bg-pink-400"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Respond to customer tickets from any web-based solution
+                      Respond to customer tickets from any web-based solution.
                     </P>
                   </div>
                 </div>
@@ -215,7 +215,7 @@ function ChromeExtensionInAction() {
                   <div>
                     <P size="sm" className="font-medium">
                       Analyze dashboards with AI assistance right where you need
-                      it
+                      it.
                     </P>
                   </div>
                 </div>
@@ -225,7 +225,7 @@ function ChromeExtensionInAction() {
                   <div>
                     <P size="sm" className="font-medium">
                       Get instant access to knowledge base without switching
-                      apps
+                      apps.
                     </P>
                   </div>
                 </div>
@@ -263,7 +263,7 @@ function ChromeExtensionInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-br-full bg-pink-400"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Leverage code review assistants directly from PRs
+                      Leverage code review assistants directly from PRs.
                     </P>
                   </div>
                 </div>
@@ -272,7 +272,7 @@ function ChromeExtensionInAction() {
                   <div className="h-6 w-6 flex-shrink-0 bg-red-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Get intelligent suggestions while browsing documentation
+                      Get intelligent suggestions while browsing documentation.
                     </P>
                   </div>
                 </div>
@@ -281,7 +281,7 @@ function ChromeExtensionInAction() {
                   <div className="h-6 w-6 flex-shrink-0 rounded-tr-full bg-yellow-500"></div>
                   <div>
                     <P size="sm" className="font-medium">
-                      Share better PR comments faster on the go
+                      Share better PR comments faster on the go.
                     </P>
                   </div>
                 </div>
