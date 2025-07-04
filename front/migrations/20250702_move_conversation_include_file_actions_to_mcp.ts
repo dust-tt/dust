@@ -321,6 +321,18 @@ async function migrateWorkspaceConversationIncludeFileActions(
         );
         assert(agentMessage, "Agent message must exist");
 
+        if (agentMessage.agentConfigurationId === "deepseek") {
+          logger.error(
+            {
+              agentMessageId: agentMessage.id,
+              agentConfigurationId: agentMessage.agentConfigurationId,
+              agentConfigurationVersion: agentMessage.agentConfigurationVersion,
+            },
+            "Agent configuration deepseek does not exist anymore"
+          );
+          return;
+        }
+
         const agentConfiguration = agentConfigurationsMap.get(
           `${agentMessage.agentConfigurationId}-${agentMessage.agentConfigurationVersion}`
         );
