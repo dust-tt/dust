@@ -44,7 +44,7 @@ function agentConversationIncludeFileActionToAgentMCPAction(
   action: ActionBaseParams & CreationAttributes<AgentMCPAction>;
 } {
   // For conversation include file actions, we always use the hardcoded -1 ID
-  // since they are primarily JIT actions.
+  // since they are always JIT actions.
   const mcpServerConfigurationId = "-1";
 
   logger.info(
