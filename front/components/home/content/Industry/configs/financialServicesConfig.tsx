@@ -169,7 +169,7 @@ export const financialServicesConfig: IndustryPageConfig = {
             icon: "bg-green-500",
             title: "AI ticket deflection & smart routing",
             description:
-              "Launch campaigns globally, keeping brand and technical consistency",
+              "Automatically resolve common inquiries and route complex issues to the right specialists",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
@@ -287,7 +287,7 @@ export const financialServicesConfig: IndustryPageConfig = {
         title: "Pennylane’s journey to deploy Dust for Customer Care teams",
         content:
           "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
-        href: "https://blog.dust.tt/pennylane-dust-customer-support-journey/",
+        href: "https://blog.dust.tt/pennylane-customer-support-journey/",
         src: "https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png",
       },
     ],
