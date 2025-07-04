@@ -88,7 +88,7 @@ export type AgentUsageType = {
 
 export type AgentRecentAuthors = readonly string[];
 
-export type AgentReasoningEffort = "low" | "medium" | "high";
+export type AgentReasoningEffort = "none" | "light" | "medium" | "high";
 
 export type AgentModelConfigurationType = {
   providerId: ModelProviderIdType;

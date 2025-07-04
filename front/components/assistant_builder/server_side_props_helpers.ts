@@ -139,16 +139,15 @@ async function getMCPServerActionConfiguration(
     const supportedReasoningModel = REASONING_MODEL_CONFIGS.find(
       (m) =>
         m.modelId === reasoningModel.modelId &&
-        m.providerId === reasoningModel.providerId &&
-        (m.reasoningEffort ?? null) === (reasoningModel.reasoningEffort ?? null)
+        m.providerId === reasoningModel.providerId
     );
     if (supportedReasoningModel) {
-      const { modelId, providerId, reasoningEffort } = supportedReasoningModel;
+      const { modelId, providerId } = supportedReasoningModel;
       builderAction.configuration.reasoningModel = {
         modelId,
         providerId,
         temperature: null,
-        reasoningEffort: reasoningEffort ?? null,
+        reasoningEffort: reasoningModel.reasoningEffort ?? null,
       };
     }
   }

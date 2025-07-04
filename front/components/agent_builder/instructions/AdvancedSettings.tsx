@@ -11,6 +11,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { CreativityLevelSubmenu } from "@app/components/agent_builder/instructions/CreativityLevelSubmenu";
 import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
+import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
 import { ResponseFormatSubmenu } from "@app/components/agent_builder/instructions/ResponseFormatSubmenu";
 import { useModels } from "@app/lib/swr/models";
 import { isSupportingResponseFormat } from "@app/types";
@@ -45,6 +46,8 @@ export function AdvancedSettings() {
         <ModelSelectionSubmenu models={models} />
 
         <CreativityLevelSubmenu />
+
+        <ReasoningEffortSubmenu />
 
         {supportsResponseFormat && <ResponseFormatSubmenu />}
       </DropdownMenuContent>
