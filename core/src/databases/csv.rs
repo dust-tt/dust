@@ -12,7 +12,7 @@ use unicode_normalization::UnicodeNormalization;
 
 use crate::{databases::table::Row, utils};
 
-pub struct UpsertQueueCSVContent {
+pub struct GoogleCloudStorageCSVContent {
     pub bucket: String,
     pub bucket_csv_path: String,
 }
@@ -21,7 +21,7 @@ const MAX_TABLE_COLUMNS: usize = 512;
 const MAX_COLUMN_NAME_LENGTH: usize = 1024;
 const MAX_TABLE_ROWS: usize = 500_000;
 
-impl UpsertQueueCSVContent {
+impl GoogleCloudStorageCSVContent {
     pub async fn parse(&self) -> Result<Vec<Row>> {
         let now = utils::now();
         let bucket = &self.bucket;
@@ -186,9 +186,7 @@ impl UpsertQueueCSVContent {
             .flexible(true)
             .create_reader(TokioAsyncReadCompatExt::compat(rdr));
 
-        let headers = UpsertQueueCSVContent::sanitize_headers(
-            csv.headers().await?.iter().collect::<Vec<&str>>(),
-        )?;
+        let headers = Self::sanitize_headers(csv.headers().await?.iter().collect::<Vec<&str>>())?;
 
         if headers.len() > MAX_TABLE_COLUMNS {
             Err(anyhow!("Too many columns in CSV file"))?;
@@ -227,12 +225,12 @@ mod tests {
     async fn test_find_delimiter() -> anyhow::Result<()> {
         let csv = "a,b,c\n1,2,3\n4,5,6";
         let (delimiter, _) =
-            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
         assert_eq!(delimiter, b',');
 
         let csv = "a;b;c\n1;2;3\n4;5;6";
         let (delimiter, mut rdr) =
-            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
         assert_eq!(delimiter, b';');
 
         // read content of rdr to a string
@@ -244,7 +242,7 @@ mod tests {
 FOO,swap\tblocked\tstyle-src-elem\ttheme.js:2\n\
 BAR,acme";
         let (delimiter, _) =
-            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
         assert_eq!(delimiter, b',');
 
         Ok(())
@@ -275,7 +273,7 @@ BAR,acme";
             "旧_Offered price per video(2024.7)",
             "🦄 IG User ID",
         ];
-        let sanitized = UpsertQueueCSVContent::sanitize_headers(headers)?;
+        let sanitized = GoogleCloudStorageCSVContent::sanitize_headers(headers)?;
         assert_eq!(
             sanitized,
             vec![
@@ -308,8 +306,8 @@ BAR,acme";
                    1,2.23,3,2025-02-14T15:06:52.380Z\n\
                    4,hello world,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
-            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = UpsertQueueCSVContent::csv_to_rows(rdr, delimiter).await?;
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
 
         assert_eq!(rows.len(), 2);
 
@@ -337,8 +335,8 @@ BAR,acme";
                    MYID1,2.23,3,2025-02-14T15:06:52.380Z\n\
                    MYID2,hello world,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
-            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = UpsertQueueCSVContent::csv_to_rows(rdr, delimiter).await?;
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
 
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].row_id, "MYID1");
@@ -353,8 +351,8 @@ BAR,acme";
                    1,2.23,foo0,3,2025-02-14T15:06:52.380Z\n\
                    4,hello world,foo1,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
-            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = UpsertQueueCSVContent::csv_to_rows(rdr, delimiter).await?;
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
 
         assert_eq!(rows.len(), 2);
 
@@ -381,16 +379,16 @@ BAR,acme";
         // Test empty CSV
         let csv = "";
         let (delimiter, rdr) =
-            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        assert!(UpsertQueueCSVContent::csv_to_rows(rdr, delimiter)
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        assert!(GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter)
             .await
             .is_err());
 
         // Test CSV with only headers
         let csv = "header1,header2";
         let (delimiter, rdr) =
-            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = UpsertQueueCSVContent::csv_to_rows(rdr, delimiter).await?;
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
         assert_eq!(rows.len(), 0);
 
         // Test CSV with too many columns (if MAX_TABLE_COLUMNS is defined)
@@ -402,8 +400,8 @@ BAR,acme";
             csv.push_str(&format!("header{}", i));
         }
         let (delimiter, rdr) =
-            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        assert!(UpsertQueueCSVContent::csv_to_rows(rdr, delimiter)
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        assert!(GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter)
             .await
             .is_err());
 
@@ -421,8 +419,8 @@ BAR,acme";
                     , , ,t , \n\
                    bar,0,23123.0,false,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
-            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = Arc::new(UpsertQueueCSVContent::csv_to_rows(rdr, delimiter).await?);
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        let rows = Arc::new(GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?);
         let schema = TableSchema::from_rows_async(rows).await?;
 
         assert_eq!(schema.columns()[0].value_type, TableSchemaFieldType::Text);
