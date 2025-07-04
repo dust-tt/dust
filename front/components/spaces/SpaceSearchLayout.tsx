@@ -24,6 +24,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import {
+  getViewTypeForURLNodeCandidateAccountingForNotion,
   isNodeCandidate,
   isUrlCandidate,
   nodeCandidateFromUrl,
@@ -244,7 +245,6 @@ function BackendSearch({
 
   const commonSearchParams = {
     owner,
-    viewType,
     spaceIds: [space.sId],
     pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
     // Required by search API to allow admins to search the system space
@@ -270,12 +270,17 @@ function BackendSearch({
           ...commonSearchParams,
           nodeIds: [nodeOrUrlCandidate.node],
           includeDataSources: false,
+          viewType: getViewTypeForURLNodeCandidateAccountingForNotion(
+            viewType,
+            nodeOrUrlCandidate.node
+          ),
         }
       : {
           ...commonSearchParams,
           search: debouncedSearch,
           searchSourceUrls: isUrlCandidate(nodeOrUrlCandidate),
           includeDataSources: true,
+          viewType,
         }
   );
 
