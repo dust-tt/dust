@@ -153,6 +153,27 @@ function createServer(
       config.MODEL.provider_id = model.providerId;
       config.MODEL.model_id = model.modelId;
 
+      const conversation = renderedConversation.modelConversation.messages;
+
+      // We remove the last tool call from the conversation, as this tool call is simply triggering the
+      // tables query dust app.
+      const lastMessage = conversation[conversation.length - 1];
+      if (lastMessage.role === "assistant") {
+        // Only keep the message if it has some chain of thought.
+        if (lastMessage.content?.length) {
+          if ("function_calls" in lastMessage) {
+            lastMessage.function_calls = [];
+          }
+          lastMessage.contents = lastMessage.contents?.filter(
+            (c) => c.type !== "function_call"
+          );
+          conversation[conversation.length - 1] = lastMessage;
+        } else {
+          // Otherwise we simply remove the message.
+          conversation.pop();
+        }
+      }
+
       // Running the app
       const res = await runActionStreamed(
         auth,
@@ -160,7 +181,7 @@ function createServer(
         config,
         [
           {
-            conversation: renderedConversation.modelConversation.messages,
+            conversation,
             instructions: agentLoopRunContext.agentConfiguration.instructions,
           },
         ],
