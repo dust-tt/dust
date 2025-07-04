@@ -19,10 +19,7 @@ import type {
   AgentMessageType,
   ConversationType,
   GenerationTokensEvent,
-  ModelId,
-  ModelIdType,
-  ModelProviderIdType,
-  ReasoningEffortIdType,
+  ReasoningModelConfigurationType,
 } from "@app/types";
 import {
   CLAUDE_3_7_SONNET_20250219_MODEL_ID,
@@ -36,23 +33,6 @@ import {
 const CANCELLATION_CHECK_INTERVAL = 500;
 
 const REASONING_GENERATION_TOKENS = 20480;
-
-type ReasoningConfigurationType = {
-  description: string | null;
-  id: ModelId;
-  modelId: ModelIdType;
-  name: string;
-  providerId: ModelProviderIdType;
-  reasoningEffort: ReasoningEffortIdType | null;
-  sId: string;
-  temperature: number | null;
-  type: "reasoning_configuration";
-};
-
-type ReasoningModelConfiguration = Pick<
-  ReasoningConfigurationType,
-  "modelId" | "providerId" | "reasoningEffort" | "temperature"
->;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "reasoning",
@@ -193,7 +173,7 @@ async function* runReasoning(
     agentConfiguration,
     agentMessage,
   }: {
-    reasoningModel: ReasoningModelConfiguration;
+    reasoningModel: ReasoningModelConfigurationType;
     conversation: ConversationType;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
