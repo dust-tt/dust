@@ -4,7 +4,7 @@ use crate::{
         table::{LocalTable, Row, Table},
         transient_database::get_transient_database_unique_table_names,
     },
-    databases_store::store::DatabasesStore,
+    databases_store::{gcs::GoogleCloudStorageDatabasesStore, store::DatabasesStore},
     utils,
 };
 use anyhow::{anyhow, Result};
@@ -263,12 +263,8 @@ async fn create_in_memory_sqlite_db_with_csv(
 
             async move {
                 let mut stream = Object::download_streamed(
-                    &LocalTable::get_bucket()?,
-                    &LocalTable::get_csv_storage_file_path(
-                        &table.table.project().project_id(),
-                        &table.table.data_source_id(),
-                        &table.table.table_id(),
-                    ),
+                    &GoogleCloudStorageDatabasesStore::get_bucket()?,
+                    &GoogleCloudStorageDatabasesStore::get_csv_storage_file_path(&table.table),
                 )
                 .await?;
                 let mut temp_file = NamedTempFile::new()?;
