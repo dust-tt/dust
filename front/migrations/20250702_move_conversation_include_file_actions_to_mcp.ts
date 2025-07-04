@@ -188,7 +188,7 @@ async function migrateSingleConversationIncludeFileAction(
     // Step 2: Create the MCP action
     const mcpActionCreated = await AgentMCPAction.create(mcpAction.action);
 
-    // Step 3: Create all output items
+    // Step 3: Create all output items (there's only 1)
     const contentItem = await getContentForConversationIncludeFileAction(
       auth,
       includeFileAction,
