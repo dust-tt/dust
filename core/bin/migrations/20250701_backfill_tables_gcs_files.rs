@@ -20,6 +20,9 @@ struct Args {
 
     #[arg(long, help = "The batch size", default_value = "100")]
     batch_size: usize,
+
+    #[arg(long, help = "The project to filter by (optional)")]
+    project: Option<i64>,
 }
 
 /*
@@ -72,6 +75,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let last_id: i64 = last_id.get(0);
     println!("Last id in tables: {}", last_id);
 
+    let project_filter = args.project;
+
     while next_cursor <= last_id {
         println!(
             "Processing up to {} tables, starting at id {}. ",
@@ -83,6 +88,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             &gcs_store,
             next_cursor,
             batch_size as i64,
+            project_filter,
         )
         .await?;
 
@@ -108,23 +114,30 @@ async fn process_tables_batch(
     gcs_store: &GoogleCloudStorageDatabasesStore,
     id_cursor: i64,
     batch_size: i64,
+    project_filter: Option<i64>,
 ) -> Result<Option<i64>, Box<dyn std::error::Error>> {
     let c = store.raw_pool().get().await?;
 
-    let rows = c
-        .query(
-            "
-            SELECT t.id, t.table_id, t.schema, t.timestamp, ds.project, ds.data_source_id
-                FROM tables t
-                INNER JOIN data_sources ds ON ds.id = t.data_source
-                WHERE NOT migrated_to_csv AND remote_database_table_id IS NULL
-                    AND t.id > $1
-                ORDER BY t.id ASC
-                LIMIT $2
-            ",
-            &[&id_cursor, &batch_size],
-        )
-        .await?;
+    let query = "
+        SELECT t.id, t.table_id, t.schema, t.timestamp, ds.project, ds.data_source_id
+            FROM tables t
+            INNER JOIN data_sources ds ON ds.id = t.data_source
+            WHERE NOT migrated_to_csv AND remote_database_table_id IS NULL
+                AND t.id > $1
+                ";
+
+    let query = if let Some(_) = project_filter {
+        format!("{} AND ds.project = $3 ORDER BY t.id ASC LIMIT $2", query)
+    } else {
+        format!("{} ORDER BY t.id ASC LIMIT $2", query)
+    };
+
+    let rows = if let Some(project) = project_filter {
+        c.query(&query, &[&id_cursor, &batch_size, &project])
+            .await?
+    } else {
+        c.query(&query, &[&id_cursor, &batch_size]).await?
+    };
 
     let tables = rows
         .iter()
