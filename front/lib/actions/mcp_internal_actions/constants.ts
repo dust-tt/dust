@@ -123,6 +123,11 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_meeting: "never_ask",
       get_file_public_url: "never_ask",
       get_associated_meetings: "never_ask",
+      get_hubspot_link: "never_ask",
+      get_hubspot_portal_id: "never_ask",
+
+      count_objects_by_properties: "never_ask",
+      search_crm_objects: "never_ask",
 
       // Create operations.
       create_contact: "high",
@@ -139,10 +144,6 @@ export const INTERNAL_MCP_SERVERS: Record<
       update_contact: "high",
       update_company: "high",
       update_deal: "high",
-
-      // Other operations.
-      count_objects_by_properties: "never_ask",
-      search_crm_objects: "never_ask",
     },
   },
   agent_router: {

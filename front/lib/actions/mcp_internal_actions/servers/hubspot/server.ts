@@ -24,6 +24,7 @@ import {
   getObjectByEmail,
   getObjectProperties,
   getUserDetails,
+  MAX_COUNT_LIMIT,
   MAX_LIMIT,
   searchCrmObjects,
   SIMPLE_OBJECTS,
@@ -31,6 +32,14 @@ import {
   updateContact,
   updateDeal,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
+import {
+  formatHubSpotCreateSuccess,
+  formatHubSpotGetSuccess,
+  formatHubSpotObjectsAsText,
+  formatHubSpotSearchResults,
+  formatHubSpotUpdateSuccess,
+  formatTransformedPropertiesAsText,
+} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_response_helpers";
 import { HUBSPOT_ID_TO_OBJECT_TYPE } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
   ERROR_MESSAGES,
@@ -76,9 +85,14 @@ const createServer = (): McpServer => {
             objectType,
             creatableOnly,
           });
-          return makeMCPToolJSONSuccess({
-            message: "Operation completed successfully",
+          const formattedText = formatTransformedPropertiesAsText(
             result,
+            objectType,
+            creatableOnly
+          );
+          return makeMCPToolTextSuccess({
+            message: "Properties retrieved successfully",
+            result: formattedText,
           });
         },
         authInfo,
@@ -111,10 +125,8 @@ const createServer = (): McpServer => {
             properties,
             associations,
           });
-          return makeMCPToolJSONSuccess({
-            message: "Contact created successfully.",
-            result,
-          });
+          const formatted = formatHubSpotCreateSuccess(result, "contacts");
+          return makeMCPToolJSONSuccess(formatted);
         },
         authInfo,
       });
@@ -135,10 +147,27 @@ const createServer = (): McpServer => {
           if (!object) {
             return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Operation completed successfully",
-            result: object,
-          });
+          // Handle different object types properly
+          if ("email" in object) {
+            // This is a SimplePublicObject
+            const formatted = formatHubSpotGetSuccess(
+              object as any,
+              objectType
+            );
+            return makeMCPToolJSONSuccess(formatted);
+          } else {
+            // This is a PublicOwner - return simpler format
+            const owner = object as any;
+            return makeMCPToolJSONSuccess({
+              message: `${objectType.slice(0, -1)} retrieved successfully`,
+              result: {
+                id: owner.id,
+                email: owner.email,
+                firstName: owner.firstName,
+                lastName: owner.lastName,
+              },
+            });
+          }
         },
         authInfo,
       });
@@ -147,7 +176,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "count_objects_by_properties",
-    `Count objects in Hubspot with matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}.`,
+    `Count objects in Hubspot with matching properties. Supports ${SIMPLE_OBJECTS.join(", ")}. Max limit is ${MAX_COUNT_LIMIT} objects.`,
     {
       objectType: z.enum(SIMPLE_OBJECTS),
       filters: z
@@ -184,8 +213,14 @@ const createServer = (): McpServer => {
           if (!count) {
             return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
           }
+          if (count >= MAX_COUNT_LIMIT) {
+            return makeMCPToolTextSuccess({
+              message: `Found ${MAX_COUNT_LIMIT}+ ${objectType} matching the filters (exact count unavailable due to API limits)`,
+              result: `${MAX_COUNT_LIMIT}+`,
+            });
+          }
           return makeMCPToolTextSuccess({
-            message: "Operation completed successfully",
+            message: `Found ${count} ${objectType} matching the specified filters`,
             result: count.toString(),
           });
         },
@@ -196,52 +231,26 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_latest_objects",
-    `Get latest objects from Hubspot with optional filtering. Supports ${SIMPLE_OBJECTS.join(", ")}. Returns objects sorted by creation date (newest first).`,
+    `Get latest objects from Hubspot. Supports ${SIMPLE_OBJECTS.join(", ")}. Limit is ${MAX_LIMIT}.`,
     {
       objectType: z.enum(SIMPLE_OBJECTS),
-      limit: z
-        .number()
-        .optional()
-        .describe("Maximum number of objects to return"),
-      filters: z
-        .array(
-          z.object({
-            propertyName: z
-              .string()
-              .describe(
-                "The property to filter by (e.g., 'createdate', 'lastmodifieddate')"
-              ),
-            operator: z
-              .nativeEnum(FilterOperatorEnum)
-              .describe("The operator for comparison"),
-            value: z
-              .string()
-              .optional()
-              .describe("The value to compare against"),
-            values: z
-              .array(z.string())
-              .optional()
-              .describe("Values for IN/NOT_IN operators"),
-          })
-        )
-        .optional()
-        .describe("Optional filters to apply (e.g., date ranges)"),
+      limit: z.number().optional(),
     },
-    async ({ objectType, limit = MAX_LIMIT, filters }, { authInfo }) => {
+    async ({ objectType, limit = MAX_LIMIT }, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
           const objects = await getLatestObjects(
             accessToken,
             objectType,
-            limit,
-            filters
+            limit
           );
           if (!objects.length) {
             return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Operation completed successfully",
-            result: objects,
+          const formattedText = formatHubSpotObjectsAsText(objects, objectType);
+          return makeMCPToolTextSuccess({
+            message: "Latest objects retrieved successfully",
+            result: formattedText,
           });
         },
         authInfo,
@@ -274,10 +283,8 @@ const createServer = (): McpServer => {
             properties,
             associations,
           });
-          return makeMCPToolJSONSuccess({
-            message: "Company created successfully.",
-            result,
-          });
+          const formatted = formatHubSpotCreateSuccess(result, "companies");
+          return makeMCPToolJSONSuccess(formatted);
         },
         authInfo,
       });
@@ -562,10 +569,8 @@ const createServer = (): McpServer => {
           if (!result) {
             return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Contact retrieved successfully.",
-            result,
-          });
+          const formatted = formatHubSpotGetSuccess(result, "contacts");
+          return makeMCPToolJSONSuccess(formatted);
         },
         authInfo,
       });
@@ -586,10 +591,8 @@ const createServer = (): McpServer => {
           if (!result) {
             return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Company retrieved successfully.",
-            result,
-          });
+          const formatted = formatHubSpotGetSuccess(result, "companies");
+          return makeMCPToolJSONSuccess(formatted);
         },
         authInfo,
       });
@@ -738,9 +741,8 @@ const createServer = (): McpServer => {
             contactId,
             properties,
           });
-          return makeMCPToolJSONSuccess({
-            result,
-          });
+          const formatted = formatHubSpotUpdateSuccess(result, "contacts");
+          return makeMCPToolJSONSuccess(formatted);
         },
         authInfo,
       });
@@ -805,7 +807,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search_crm_objects",
-    "Searches CRM objects with advanced filtering, free-text search, and automatic pagination. Returns all matching results up to the specified limit.",
+    "Searches CRM objects of a specific type based on filters, query, and properties.",
     {
       objectType: searchableObjectTypes,
       filters: z
@@ -824,72 +826,42 @@ const createServer = (): McpServer => {
         .array(z.string())
         .optional()
         .describe("Specific properties to return."),
-      limit: z
-        .number()
-        .optional()
-        .describe("Maximum total results to return (default: 200)"),
-      getAllResults: z
-        .boolean()
-        .optional()
-        .describe(
-          "If true, retrieves all matching results regardless of limit"
-        ),
+      limit: z.number().optional().default(MAX_LIMIT),
+      after: z.string().optional().describe("Pagination cursor."),
     },
     async (input, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
-          const { limit = MAX_LIMIT, getAllResults = false } = input;
-          const allResults: any[] = [];
-          let after: string | undefined = undefined;
-          let hasMore = true;
-
-          while (hasMore && (getAllResults || allResults.length < limit)) {
-            const result = await searchCrmObjects({
-              accessToken,
-              objectType: input.objectType,
-              filters: input.filters,
-              query: input.query,
-              propertiesToReturn: input.propertiesToReturn,
-              limit: getAllResults
-                ? MAX_LIMIT
-                : Math.min(MAX_LIMIT, limit - allResults.length),
-              after,
-            });
-
-            if (!result) {
-              break;
-            }
-
-            allResults.push(...result.results);
-
-            if (result.paging?.next?.after) {
-              after = result.paging.next.after;
-            } else {
-              hasMore = false;
-            }
-
-            // Stop if we've reached the desired limit (unless getAllResults is true)
-            if (!getAllResults && allResults.length >= limit) {
-              hasMore = false;
-            }
-          }
-
-          if (!allResults.length) {
-            return makeMCPToolTextError("Search returned no results.");
-          }
-
-          // Trim results to exact limit if needed
-          const finalResults = getAllResults
-            ? allResults
-            : allResults.slice(0, limit);
-
-          return makeMCPToolJSONSuccess({
-            message: `Found ${finalResults.length} objects${getAllResults && finalResults.length > limit ? ` (showing all ${finalResults.length} results)` : ""}.`,
-            result: {
-              results: finalResults,
-              total: finalResults.length,
-            },
+          const result = await searchCrmObjects({
+            accessToken,
+            objectType: input.objectType,
+            filters: input.filters,
+            query: input.query,
+            propertiesToReturn: input.propertiesToReturn,
+            limit: input.limit,
+            after: input.after,
           });
+          if (!result || result.results.length === 0) {
+            return makeMCPToolTextError(
+              "Search failed or returned no results."
+            );
+          }
+
+          const searchResults = formatHubSpotSearchResults(
+            result.results,
+            input.objectType,
+            input.query || "search"
+          );
+
+          return {
+            isError: false,
+            content: [
+              ...searchResults.map((searchResult) => ({
+                type: "resource" as const,
+                resource: searchResult,
+              })),
+            ],
+          };
         },
         authInfo,
       });
@@ -897,15 +869,15 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "hubspot-get-link",
-    `🎯 Purpose:
+    "get_hubspot_link",
+    `Purpose:
       1. Generates HubSpot UI links for different pages based on object types and IDs.
       2. Supports both index pages (lists of objects) and record pages (specific object details).
 
-    📋 Prerequisites:
+    Prerequisites:
       1. Use the hubspot-get-portal-id tool to get the PortalId and UiDomain.
 
-    🧭 Usage Guidance:
+    Usage Guidance:
       1. Use to generate links to HubSpot UI pages when users need to reference specific HubSpot records.
       2. Validates that object type IDs exist in the HubSpot system.
   `,
@@ -954,16 +926,16 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "hubspot-get-portal-id",
-    "Gets the current user's portal ID. To use before calling hubspot-get-link",
+    "get_hubspot_portal_id",
+    "Gets the current user's portal ID. To use before calling get_hubspot_link",
     {},
     async (_, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
           const result = await getUserDetails(accessToken);
-          return makeMCPToolJSONSuccess({
-            message: "Portal ID retrieved successfully.",
-            result: result.hub_id,
+          return makeMCPToolTextSuccess({
+            message: "Portal information retrieved successfully",
+            result: `Portal ID: ${result.hub_id}\nUI Domain: app.hubspot.com`,
           });
         },
         authInfo,
