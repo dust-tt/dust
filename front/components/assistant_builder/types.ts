@@ -12,7 +12,6 @@ import {
 } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import type { ReasoningModelConfiguration } from "@app/lib/actions/reasoning";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
@@ -21,6 +20,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   LightAgentConfigurationType,
   PlanType,
+  ReasoningModelConfigurationType,
   SubscriptionType,
   SupportedModel,
   TimeFrame,
@@ -65,7 +65,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;
   childAgentId: string | null;
-  reasoningModel: ReasoningModelConfiguration | null;
+  reasoningModel: ReasoningModelConfigurationType | null;
   timeFrame: TimeFrame | null;
   additionalConfiguration: Record<string, boolean | number | string>;
   dustAppConfiguration: DustAppRunConfigurationType | null;
