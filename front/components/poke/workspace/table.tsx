@@ -10,7 +10,8 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { useWorkOSDSyncStatus } from "@app/lib/swr/workos";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
-import type {
+import {
+  asDisplayName,
   ExtensionConfigurationType,
   WorkspaceDomain,
   WorkspaceType,
@@ -136,7 +137,7 @@ export function WorkspaceInfoTable({
                     dsyncStatus?.status || "not_configured"
                   )}
                 >
-                  {dsyncStatus?.status || "not_configured"}
+                  {asDisplayName(dsyncStatus?.status || "not_configured")}
                 </Chip>
               </PokeTableCell>
             </PokeTableRow>
