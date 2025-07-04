@@ -244,7 +244,6 @@ function BackendSearch({
 
   const commonSearchParams = {
     owner,
-    viewType,
     spaceIds: [space.sId],
     pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
     // Required by search API to allow admins to search the system space
@@ -270,12 +269,17 @@ function BackendSearch({
           ...commonSearchParams,
           nodeIds: [nodeOrUrlCandidate.node],
           includeDataSources: false,
+          viewType: getViewTypeForNodeCandidateAccountingForNotion(
+            viewType,
+            nodeOrUrlCandidate.node
+          ),
         }
       : {
           ...commonSearchParams,
           search: debouncedSearch,
           searchSourceUrls: isUrlCandidate(nodeOrUrlCandidate),
           includeDataSources: true,
+          viewType,
         }
   );
 
@@ -657,4 +661,10 @@ function SearchResultsTable({
       isLoading={isLoading}
     />
   );
+}
+function getViewTypeForNodeCandidateAccountingForNotion(
+  viewType: string,
+  node: string
+): "table" | "document" | "all" {
+  throw new Error("Function not implemented.");
 }

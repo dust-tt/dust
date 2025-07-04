@@ -25,6 +25,7 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import {
+  getViewTypeForURLNodeCandidateAccountingForNotion,
   isNodeCandidate,
   isUrlCandidate,
   nodeCandidateFromUrl,
@@ -344,7 +345,6 @@ export function DataSourceViewsSelector({
 
   const commonSearchParams = {
     owner,
-    viewType,
     spaceIds: [space.sId],
     disabled: !debouncedSearch,
     dataSourceViewIdsBySpaceId:
@@ -366,12 +366,17 @@ export function DataSourceViewsSelector({
           ...commonSearchParams,
           nodeIds: [nodeOrUrlCandidate.node],
           includeDataSources: false,
+          viewType: getViewTypeForURLNodeCandidateAccountingForNotion(
+            viewType,
+            nodeOrUrlCandidate.node
+          ),
         }
       : {
           ...commonSearchParams,
           search: debouncedSearch,
           searchSourceUrls: isUrlCandidate(nodeOrUrlCandidate),
           includeDataSources: true,
+          viewType: viewType,
         }
   );
 
