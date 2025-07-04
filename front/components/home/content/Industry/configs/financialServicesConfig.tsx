@@ -169,7 +169,7 @@ export const financialServicesConfig: IndustryPageConfig = {
             icon: "bg-green-500",
             title: "AI ticket deflection & smart routing",
             description:
-              "Launch campaigns globally, keeping brand and technical consistency",
+              "Automatically resolve common inquiries and route complex issues to the right specialists",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
