@@ -1,7 +1,6 @@
 import type { Stripe } from "stripe";
 import { beforeEach, describe, expect, vi } from "vitest";
 
-import { upsertProPlans } from "@app/lib/plans/pro_plans";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { itInTransaction } from "@app/tests/utils/utils";
 
@@ -56,9 +55,6 @@ describe("POST /api/w/[wId]/subscriptions", () => {
         billingPeriod: "monthly",
       };
 
-      // Seed plans in the database
-      await upsertProPlans();
-
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
@@ -88,9 +84,6 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     req.body = {
       billingPeriod: "yearly",
     };
-
-    // Seed plans in the database
-    await upsertProPlans();
 
     await handler(req, res);
 
