@@ -1,4 +1,5 @@
 import type { ConnectorProvider } from "@dust-tt/client";
+import { Runtime } from "@temporalio/worker/lib/runtime";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -9,6 +10,7 @@ import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/wo
 import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
+import { closeRedisClient } from "@connectors/lib/redis";
 import { setupGlobalErrorHandler } from "@connectors/types";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
@@ -49,11 +51,23 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];
 
 async function runWorkers(workers: WorkerType[]) {
-  for (const worker of workers) {
-    workerFunctions[worker]().catch((err) =>
-      logger.error(errorFromAny(err), `Error running ${worker} worker.`)
-    );
-  }
+  // Start all workers in parallel
+  const promises = workers.map(async (worker) => {
+    try {
+      await workerFunctions[worker]();
+    } catch (err) {
+      logger.error(errorFromAny(err), `Error running ${worker} worker.`);
+    }
+  });
+
+  // Wait for all workers to complete
+  await Promise.all(promises);
+
+  // Shutdown Temporal native runtime *once*
+  await Runtime.instance().shutdown();
+
+  // Shutdown potential Redis client
+  await closeRedisClient();
 }
 
 yargs(hideBin(process.argv))
