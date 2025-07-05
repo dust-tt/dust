@@ -5,6 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { updateWorkOSOrganizationName } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
@@ -107,6 +108,17 @@ async function handler(
           name: escape(body.name),
         });
         owner.name = body.name;
+
+        const updateRes = await updateWorkOSOrganizationName(owner);
+        if (updateRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `Failed to update WorkOS organization name: ${updateRes.error.message}`,
+            },
+          });
+        }
       } else if ("ssoEnforced" in body) {
         await w.update({
           ssoEnforced: body.ssoEnforced,
