@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use cloud_storage::Object;
+use cloud_storage::{ErrorList, GoogleErrorResponse, Object};
 use csv::Writer;
 use tracing::info;
 
@@ -192,13 +192,16 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
             .await
             {
                 Ok(_) => {}
-                Err(e) => {
-                    info!(
-                        "Failed to delete CSV file for table {}. {:#?}",
-                        table.unique_id(),
-                        e
-                    );
-                }
+                Err(e) => match e {
+                    cloud_storage::Error::Google(GoogleErrorResponse {
+                        error: ErrorList { code: 404, .. },
+                        ..
+                    }) => {
+                        // Silently ignore 404 errors which means the object does not exist
+                        // anymore.
+                    }
+                    e => Err(e)?,
+                },
             }
         }
         Ok(())
