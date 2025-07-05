@@ -25,7 +25,9 @@ describe("GET /api/w/[wId]/members", () => {
     ]);
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, { role: "user" }))
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
     );
 
     await handler(req, res);
@@ -143,7 +145,9 @@ describe("GET /api/w/[wId]/members", () => {
     );
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, { role: "user" }))
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
     );
 
     await handler(req, res);
