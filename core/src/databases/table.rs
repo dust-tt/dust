@@ -841,6 +841,12 @@ impl Row {
     pub fn to_csv_record(&self, headers: &Vec<String>) -> Result<Vec<String>> {
         let mut record = Vec::new();
         for header in headers {
+            // We need to set the row_id in a __dust_id field
+            if header == "__dust_id" {
+                record.push(self.row_id().to_string());
+                continue;
+            }
+
             match self.value().get(header) {
                 Some(Value::Bool(b)) => record.push(b.to_string()),
                 Some(Value::Number(x)) => {
@@ -1187,6 +1193,18 @@ mod tests {
             date_reconstructed_row.content()["date_col"]["epoch"]
         );
         // Note: string_value may change format during parsing, so we don't assert equality on it
+
+        // Test case 5: Test that the __dust_id field is present in the CSV record at the position of the field in the headers
+        let dust_id_row = Row::new(
+            "dust_id_test_id".to_string(),
+            serde_json::Map::from_iter([("property".to_string(), "value".into())]),
+        );
+        let headers = vec!["property".to_string(), "__dust_id".to_string()];
+        let dust_id_csv_record = dust_id_row.to_csv_record(&headers)?;
+        assert_eq!(
+            dust_id_csv_record[dust_id_csv_record.len() - 1],
+            dust_id_row.row_id()
+        );
 
         Ok(())
     }
