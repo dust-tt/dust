@@ -32,6 +32,14 @@ import {
   updateContact,
   updateDeal,
 } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_api_helper";
+import {
+  formatHubSpotCreateSuccess,
+  formatHubSpotGetSuccess,
+  formatHubSpotObjectsAsText,
+  formatHubSpotSearchResults,
+  formatHubSpotUpdateSuccess,
+  formatTransformedPropertiesAsText,
+} from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_response_helpers";
 import { HUBSPOT_ID_TO_OBJECT_TYPE } from "@app/lib/actions/mcp_internal_actions/servers/hubspot/hubspot_utils";
 import {
   ERROR_MESSAGES,
@@ -77,9 +85,14 @@ const createServer = (): McpServer => {
             objectType,
             creatableOnly,
           });
-          return makeMCPToolJSONSuccess({
-            message: "Operation completed successfully",
+          const formattedText = formatTransformedPropertiesAsText(
             result,
+            objectType,
+            creatableOnly
+          );
+          return makeMCPToolTextSuccess({
+            message: "Properties retrieved successfully",
+            result: formattedText,
           });
         },
         authInfo,
@@ -112,10 +125,8 @@ const createServer = (): McpServer => {
             properties,
             associations,
           });
-          return makeMCPToolJSONSuccess({
-            message: "Contact created successfully.",
-            result,
-          });
+          const formatted = formatHubSpotCreateSuccess(result, "contacts");
+          return makeMCPToolJSONSuccess(formatted);
         },
         authInfo,
       });
@@ -136,10 +147,27 @@ const createServer = (): McpServer => {
           if (!object) {
             return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Operation completed successfully",
-            result: object,
-          });
+          // Handle different object types properly
+          if ("email" in object) {
+            // This is a SimplePublicObject
+            const formatted = formatHubSpotGetSuccess(
+              object as any,
+              objectType
+            );
+            return makeMCPToolJSONSuccess(formatted);
+          } else {
+            // This is a PublicOwner - return simpler format
+            const owner = object as any;
+            return makeMCPToolJSONSuccess({
+              message: `${objectType.slice(0, -1)} retrieved successfully`,
+              result: {
+                id: owner.id,
+                email: owner.email,
+                firstName: owner.firstName,
+                lastName: owner.lastName,
+              },
+            });
+          }
         },
         authInfo,
       });
@@ -185,13 +213,14 @@ const createServer = (): McpServer => {
           if (!count) {
             return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
           }
-          if (count === MAX_COUNT_LIMIT) {
-            return makeMCPToolTextError(
-              `Can't retrieve the exact number of objects matching the filters (hit Hubspot API limit of max ${MAX_COUNT_LIMIT} total objects).`
-            );
+          if (count >= MAX_COUNT_LIMIT) {
+            return makeMCPToolTextSuccess({
+              message: `Found ${MAX_COUNT_LIMIT}+ ${objectType} matching the filters (exact count unavailable due to API limits)`,
+              result: `${MAX_COUNT_LIMIT}+`,
+            });
           }
           return makeMCPToolTextSuccess({
-            message: "Operation completed successfully",
+            message: `Found ${count} ${objectType} matching the specified filters`,
             result: count.toString(),
           });
         },
@@ -218,9 +247,10 @@ const createServer = (): McpServer => {
           if (!objects.length) {
             return makeMCPToolTextError(ERROR_MESSAGES.NO_OBJECTS_FOUND);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Operation completed successfully",
-            result: objects,
+          const formattedText = formatHubSpotObjectsAsText(objects, objectType);
+          return makeMCPToolTextSuccess({
+            message: "Latest objects retrieved successfully",
+            result: formattedText,
           });
         },
         authInfo,
@@ -253,10 +283,8 @@ const createServer = (): McpServer => {
             properties,
             associations,
           });
-          return makeMCPToolJSONSuccess({
-            message: "Company created successfully.",
-            result,
-          });
+          const formatted = formatHubSpotCreateSuccess(result, "companies");
+          return makeMCPToolJSONSuccess(formatted);
         },
         authInfo,
       });
@@ -541,10 +569,8 @@ const createServer = (): McpServer => {
           if (!result) {
             return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Contact retrieved successfully.",
-            result,
-          });
+          const formatted = formatHubSpotGetSuccess(result, "contacts");
+          return makeMCPToolJSONSuccess(formatted);
         },
         authInfo,
       });
@@ -565,10 +591,8 @@ const createServer = (): McpServer => {
           if (!result) {
             return makeMCPToolTextError(ERROR_MESSAGES.OBJECT_NOT_FOUND);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Company retrieved successfully.",
-            result,
-          });
+          const formatted = formatHubSpotGetSuccess(result, "companies");
+          return makeMCPToolJSONSuccess(formatted);
         },
         authInfo,
       });
@@ -717,9 +741,8 @@ const createServer = (): McpServer => {
             contactId,
             properties,
           });
-          return makeMCPToolJSONSuccess({
-            result,
-          });
+          const formatted = formatHubSpotUpdateSuccess(result, "contacts");
+          return makeMCPToolJSONSuccess(formatted);
         },
         authInfo,
       });
@@ -818,15 +841,27 @@ const createServer = (): McpServer => {
             limit: input.limit,
             after: input.after,
           });
-          if (!result) {
+          if (!result || result.results.length === 0) {
             return makeMCPToolTextError(
               "Search failed or returned no results."
             );
           }
-          return makeMCPToolJSONSuccess({
-            message: "CRM objects searched successfully.",
-            result,
-          });
+
+          const searchResults = formatHubSpotSearchResults(
+            result.results,
+            input.objectType,
+            input.query || "search"
+          );
+
+          return {
+            isError: false,
+            content: [
+              ...searchResults.map((searchResult) => ({
+                type: "resource" as const,
+                resource: searchResult,
+              })),
+            ],
+          };
         },
         authInfo,
       });
@@ -834,15 +869,15 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "hubspot-get-link",
-    `🎯 Purpose:
+    "get_hubspot_link",
+    `Purpose:
       1. Generates HubSpot UI links for different pages based on object types and IDs.
       2. Supports both index pages (lists of objects) and record pages (specific object details).
 
-    📋 Prerequisites:
+    Prerequisites:
       1. Use the hubspot-get-portal-id tool to get the PortalId and UiDomain.
 
-    🧭 Usage Guidance:
+    Usage Guidance:
       1. Use to generate links to HubSpot UI pages when users need to reference specific HubSpot records.
       2. Validates that object type IDs exist in the HubSpot system.
   `,
@@ -891,16 +926,16 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "hubspot-get-portal-id",
-    "Gets the current user's portal ID. To use before calling hubspot-get-link",
+    "get_hubspot_portal_id",
+    "Gets the current user's portal ID. To use before calling get_hubspot_link",
     {},
     async (_, { authInfo }) => {
       return withAuth({
         action: async (accessToken) => {
           const result = await getUserDetails(accessToken);
-          return makeMCPToolJSONSuccess({
-            message: "Portal ID retrieved successfully.",
-            result: result.hub_id,
+          return makeMCPToolTextSuccess({
+            message: "Portal information retrieved successfully",
+            result: `Portal ID: ${result.hub_id}\nUI Domain: app.hubspot.com`,
           });
         },
         authInfo,

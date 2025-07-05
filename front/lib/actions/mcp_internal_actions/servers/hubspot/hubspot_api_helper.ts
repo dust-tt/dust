@@ -13,7 +13,7 @@ import { normalizeError } from "@app/types";
 const localLogger = logger.child({ module: "hubspot_api_helper" });
 
 const MAX_ENUM_OPTIONS_DISPLAYED = 50;
-export const MAX_LIMIT = 50; // Hubspot API results are capped at 200, but this limit is set lower for internal use.
+export const MAX_LIMIT = 200; // Hubspot API results are capped at 200, but this limit is set lower for internal use.
 export const MAX_COUNT_LIMIT = 10000; // This is the Hubspot API limit for total count.
 
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
@@ -169,25 +169,70 @@ export const countObjectsByProperties = async (
   }>
 ): Promise<number> => {
   const hubspotClient = new Client({ accessToken });
-  const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
+
+  // First, get the total count with a minimal request
+  const initialSearch = await hubspotClient.crm[objectType].searchApi.doSearch({
     filterGroups: [
       {
         filters: buildHubspotFilters(filters),
       },
     ],
-    limit: 1, // We only need to know if there are any objects matching the filters, so 1 is sufficient.
+    limit: 1,
+    properties: ["id"], // Request minimal properties for performance
   });
 
-  return objects.total;
+  // If the total is at the API limit, we need to paginate to get the actual count
+  if (initialSearch.total === MAX_COUNT_LIMIT) {
+    // Count by paginating through all results
+    let actualCount = 0;
+    let after: string | undefined = undefined;
+    let hasMoreResults = true;
+
+    while (hasMoreResults) {
+      const searchRequest: any = {
+        filterGroups: [
+          {
+            filters: buildHubspotFilters(filters),
+          },
+        ],
+        limit: MAX_LIMIT,
+        properties: ["id"], // Request minimal properties for performance
+      };
+
+      if (after) {
+        searchRequest.after = after;
+      }
+
+      const response =
+        await hubspotClient.crm[objectType].searchApi.doSearch(searchRequest);
+      actualCount += response.results.length;
+
+      if (!response.paging?.next?.after) {
+        hasMoreResults = false;
+      } else {
+        after = response.paging.next.after;
+      }
+    }
+
+    return actualCount;
+  }
+
+  return initialSearch.total;
 };
 
 /**
- * Get latest objects from Hubspot by lastmodifieddate.
+ * Get latest objects from Hubspot, optionally filtered by date range.
  */
 export const getLatestObjects = async (
   accessToken: string,
   objectType: SimpleObjectType,
-  limit: number
+  limit: number,
+  filters?: Array<{
+    propertyName: string;
+    operator: FilterOperatorEnum;
+    value?: string;
+    values?: string[];
+  }>
 ): Promise<SimplePublicObject[]> => {
   const hubspotClient = new Client({ accessToken });
 
@@ -195,14 +240,41 @@ export const getLatestObjects = async (
     await hubspotClient.crm.properties.coreApi.getAll(objectType);
   const propertyNames = availableProperties.results.map((p) => p.name);
 
-  const objects = await hubspotClient.crm[objectType].searchApi.doSearch({
-    filterGroups: [],
-    properties: propertyNames,
-    sorts: ["createdate:desc"],
-    limit: Math.min(limit, MAX_LIMIT),
-  });
+  const allResults: SimplePublicObject[] = [];
+  let after: string | undefined = undefined;
 
-  return objects.results;
+  // Build filter groups if filters are provided
+  const filterGroups =
+    filters && filters.length > 0
+      ? [{ filters: buildHubspotFilters(filters) }]
+      : [];
+
+  while (allResults.length < limit) {
+    const searchRequest: any = {
+      filterGroups,
+      properties: propertyNames,
+      sorts: [{ propertyName: "createdate", direction: "DESCENDING" }],
+      limit: Math.min(limit - allResults.length, MAX_LIMIT),
+    };
+
+    if (after) {
+      searchRequest.after = after;
+    }
+
+    const response =
+      await hubspotClient.crm[objectType].searchApi.doSearch(searchRequest);
+    allResults.push(...response.results);
+
+    // If we've retrieved enough results or there are no more pages, stop
+    if (allResults.length >= limit || !response.paging?.next?.after) {
+      break;
+    }
+
+    after = response.paging.next.after;
+  }
+
+  // Return only the requested number of results
+  return allResults.slice(0, limit);
 };
 
 /**
