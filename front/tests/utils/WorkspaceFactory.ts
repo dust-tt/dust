@@ -10,7 +10,14 @@ import type { WorkspaceType } from "@app/types";
 
 export class WorkspaceFactory {
   static async basic(): Promise<WorkspaceType> {
-    await upsertProPlans();
+    try {
+      await upsertProPlans();
+    } catch (error: any) {
+      if (error.name === "SequelizeUniqueConstraintError") {
+        console.error("Pro Plans already exist in test database:", error);
+      }
+    }
+
     const workspace = await WorkspaceModel.create({
       sId: generateRandomModelSId(),
       name: faker.company.name(),
