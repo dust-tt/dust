@@ -10,49 +10,47 @@ import {
   DropdownMenuTrigger,
   PlusIcon,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { TagCreationDialog } from "@app/components/agent_builder/settings/TagCreationDialog";
-import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { useTags } from "@app/lib/swr/tags";
 import { tagsSorter } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
+import { TagCreationDialog } from "./TagCreationDialog";
+
+interface TagsSelectorProps {
+  owner: WorkspaceType;
+  tags: TagType[];
+  onTagsChange: (tags: TagType[]) => void;
+  suggestionButton?: JSX.Element;
+}
+
 export const TagsSelector = ({
   owner,
-  builderState,
-  setBuilderState,
-  setEdited,
+  tags,
+  onTagsChange,
   suggestionButton,
-}: {
-  owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  setBuilderState: (
-    stateFn: (state: AssistantBuilderState) => AssistantBuilderState
-  ) => void;
-  setEdited: (edited: boolean) => void;
-  suggestionButton: JSX.Element;
-}) => {
+}: TagsSelectorProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
 
-  const { tags } = useTags({
+  const { tags: allTags } = useTags({
     owner,
   });
 
-  const onMenuOpenChange = useCallback((open: boolean) => {
+  const onMenuOpenChange = (open: boolean) => {
     setIsMenuOpen(open);
     if (open) {
       setSearchText("");
     }
-  }, []);
+  };
 
   const filteredTags = useMemo(() => {
-    const currentTagIds = new Set(builderState.tags.map((t) => t.sId));
-    return tags
+    const currentTagIds = new Set(tags.map((t) => t.sId));
+    return allTags
       .filter(
         (t) =>
           !currentTagIds.has(t.sId) &&
@@ -60,16 +58,16 @@ export const TagsSelector = ({
       )
       .filter((t) => isBuilder(owner) || t.kind !== "protected")
       .sort(tagsSorter);
-  }, [tags, builderState.tags, searchText, owner]);
+  }, [allTags, tags, searchText, owner]);
 
-  const assistantTags = [...(builderState.tags || [])].sort(tagsSorter);
+  const sortedTags = tags.toSorted(tagsSorter);
 
-  const onTagCreated = (tag: TagType) => {
-    setBuilderState((state) => ({
-      ...state,
-      tags: [...state.tags, tag],
-    }));
-    setEdited(true);
+  const addTag = (tag: TagType) => {
+    onTagsChange([...tags, tag]);
+  };
+
+  const removeTag = (tagId: string) => {
+    onTagsChange(tags.filter((t) => t.sId !== tagId));
   };
 
   return (
@@ -78,22 +76,16 @@ export const TagsSelector = ({
         owner={owner}
         isOpen={isDialogOpen}
         setIsOpen={setIsDialogOpen}
-        addTag={onTagCreated}
+        addTag={addTag}
       />
       <div className="mb-2 flex flex-wrap gap-2">
-        {assistantTags.map((tag) => (
+        {sortedTags.map((tag) => (
           <Chip
             key={tag.sId}
             onRemove={
               tag.kind === "protected" && !isBuilder(owner)
                 ? undefined
-                : () => {
-                    setBuilderState((state) => ({
-                      ...state,
-                      tags: state.tags.filter((t) => t.sId !== tag.sId),
-                    }));
-                    setEdited(true);
-                  }
+                : () => removeTag(tag.sId)
             }
             size="xs"
             color="golden"
@@ -127,11 +119,7 @@ export const TagsSelector = ({
                   onChange={setSearchText}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && filteredTags.length > 0) {
-                      setBuilderState((state) => ({
-                        ...state,
-                        tags: [...state.tags, filteredTags[0]],
-                      }));
-                      setEdited(true);
+                      addTag(filteredTags[0]);
                       onMenuOpenChange(false);
                     }
                   }}
@@ -160,11 +148,7 @@ export const TagsSelector = ({
                   key={tag.sId}
                   label={tag.name}
                   onClick={() => {
-                    setBuilderState((state) => ({
-                      ...state,
-                      tags: [...state.tags, tag],
-                    }));
-                    setEdited(true);
+                    addTag(tag);
                   }}
                 />
               ))}
