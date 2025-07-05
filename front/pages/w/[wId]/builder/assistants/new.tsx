@@ -11,6 +11,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
@@ -19,6 +20,7 @@ import type {
   PlanType,
   SubscriptionType,
   TemplateAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
@@ -33,9 +35,11 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 }
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
+  isAdmin: boolean;
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -48,7 +52,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const owner = auth.workspace();
   const plan = auth.plan();
   const subscription = auth.subscription();
-  if (!owner || !plan || !auth.isUser() || !subscription) {
+  const user = auth.user();
+  if (!owner || !plan || !auth.isUser() || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -107,9 +112,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
       flow,
+      user: user.toJSON(),
       owner,
       plan,
       subscription,
+      isAdmin: auth.isAdmin(),
       templateId,
       duplicateAgentId: duplicate,
     },
@@ -189,6 +196,13 @@ export default function CreateAssistant({
   );
 }
 
-CreateAssistant.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+CreateAssistant.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };

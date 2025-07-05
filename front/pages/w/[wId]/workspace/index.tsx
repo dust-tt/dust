@@ -26,6 +26,7 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -36,8 +37,10 @@ import {
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   DataSourceType,
+  PlanType,
   SpaceType,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
@@ -46,10 +49,16 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   subscription: SubscriptionType;
   slackBotDataSource: DataSourceType | null;
   systemSpace: SpaceType;
+  user: UserType;
+  plan: PlanType | null;
+  isAdmin: boolean;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  if (!owner || !auth.isAdmin() || !subscription) {
+  const plan = auth.plan();
+  const user = auth.user();
+
+  if (!owner || !auth.isAdmin() || !subscription || !user) {
     return {
       notFound: true,
     };
@@ -67,6 +76,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       subscription,
       slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
       systemSpace: systemSpace.toJSON(),
+      user: user.toJSON(),
+      plan,
+      isAdmin: auth.isAdmin(),
     },
   };
 });
@@ -378,6 +390,13 @@ function SlackBotToggle({
   );
 }
 
-WorkspaceAdmin.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+WorkspaceAdmin.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };
