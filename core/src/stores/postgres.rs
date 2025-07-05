@@ -2974,30 +2974,27 @@ impl Store for PostgresStore {
         };
 
         // Update migration flag.
-        // If timestamp is provided, only update if it matches the existing timestamp,
-        // to prevent race conditions
-        let stmt = if let Some(_) = timestamp {
-            c.prepare(
-                "UPDATE tables SET migrated_to_csv = $1 WHERE data_source = $2 AND table_id = $3 AND timestamp = $4",
-            )
-            .await?
-        } else {
-            c.prepare(
-                "UPDATE tables SET migrated_to_csv = $1 WHERE data_source = $2 AND table_id = $3",
-            )
-            .await?
+        match timestamp {
+            // If timestamp is provided, only update if it matches the existing timestamp,
+            // to prevent race conditions
+            Some(ts) => {
+                let stmt = c.prepare(
+                        "UPDATE tables SET migrated_to_csv = $1 WHERE data_source = $2 AND table_id = $3 AND timestamp = $4",
+                    ).await?;
+                c.query(
+                    &stmt,
+                    &[&migrated_to_csv, &data_source_row_id, &table_id, &ts],
+                )
+                .await?
+            }
+            None => {
+                let stmt = c.prepare(
+                        "UPDATE tables SET migrated_to_csv = $1 WHERE data_source = $2 AND table_id = $3",
+                    ).await?;
+                c.query(&stmt, &[&migrated_to_csv, &data_source_row_id, &table_id])
+                    .await?
+            }
         };
-
-        if let Some(ts) = timestamp {
-            c.query(
-                &stmt,
-                &[&migrated_to_csv, &data_source_row_id, &table_id, &ts],
-            )
-            .await?;
-        } else {
-            c.query(&stmt, &[&migrated_to_csv, &data_source_row_id, &table_id])
-                .await?;
-        }
 
         Ok(())
     }
