@@ -63,10 +63,15 @@ impl GoogleCloudStorageDatabasesStore {
         // Read all rows and upload to GCS
         let mut wtr = Writer::from_writer(vec![]);
 
-        // Write the header row.
-        wtr.write_record(field_names.as_slice())?;
-        for row in rows.iter() {
-            wtr.write_record(row.to_csv_record(&field_names)?.as_slice())?;
+        // Write the header row and the data
+        // We need to prepend the row_id in a __dust_id column
+        wtr.write_record(
+            std::iter::once("__dust_id").chain(field_names.iter().map(String::as_str)),
+        )?;
+        for row in rows {
+            let mut record = vec![row.row_id().to_owned()];
+            record.extend(row.to_csv_record(&field_names)?);
+            wtr.write_record(record)?;
         }
 
         let csv = wtr.into_inner()?;
