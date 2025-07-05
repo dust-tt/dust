@@ -305,6 +305,7 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
         migrated_to_csv: bool,
+        timestamp: Option<i64>,
     ) -> Result<()>;
     async fn load_data_source_table(
         &self,

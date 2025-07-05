@@ -497,6 +497,7 @@ impl LocalTable {
                     &self.table.data_source_id,
                     &self.table.table_id,
                     true,
+                    None,
                 )
                 .await?;
         }
