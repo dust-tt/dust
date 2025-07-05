@@ -25,7 +25,7 @@ describe("GET /api/w/[wId]/members", () => {
     ]);
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
+      users.map((user) => MembershipFactory.associate(workspace, user, { role: "user" }))
     );
 
     await handler(req, res);
@@ -89,9 +89,9 @@ describe("GET /api/w/[wId]/members", () => {
       ]);
 
       await Promise.all([
-        MembershipFactory.associate(workspace, users[0], "admin"),
-        MembershipFactory.associate(workspace, users[1], "admin"),
-        MembershipFactory.associate(workspace, users[2], "user"),
+        MembershipFactory.associate(workspace, users[0], { role: "admin" }),
+        MembershipFactory.associate(workspace, users[1], { role: "admin" }),
+        MembershipFactory.associate(workspace, users[2], { role: "user" }),
       ]);
 
       // Add admin role query parameter
@@ -143,7 +143,7 @@ describe("GET /api/w/[wId]/members", () => {
     );
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
+      users.map((user) => MembershipFactory.associate(workspace, user, { role: "user" }))
     );
 
     await handler(req, res);
@@ -172,7 +172,7 @@ describe("GET /api/w/[wId]/members", () => {
 
       await Promise.all(
         users.map((user) =>
-          MembershipFactory.associate(workspace, user, "user")
+          MembershipFactory.associate(workspace, user, { role: "user" })
         )
       );
 
@@ -204,7 +204,7 @@ describe("GET /api/w/[wId]/members", () => {
 
       vi.useFakeTimers();
       vi.setSystemTime(createdAt);
-      await MembershipFactory.associate(workspace, user, "user");
+      await MembershipFactory.associate(workspace, user, { role: "user" });
       vi.useRealTimers();
 
       users.push(user);
@@ -246,7 +246,7 @@ describe("GET /api/w/[wId]/members", () => {
       const user = await UserFactory.withCreatedAt(createdAt);
       vi.useFakeTimers();
       vi.setSystemTime(createdAt);
-      await MembershipFactory.associate(workspace, user, "user");
+      await MembershipFactory.associate(workspace, user, { role: "user" });
       vi.useRealTimers();
 
       users.push(user);
