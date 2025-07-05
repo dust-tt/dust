@@ -25,6 +25,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "hubspot",
   "image_generation",
   "include_data",
+  "jira",
   "missing_action_catcher",
   "notion",
   "primitive_types_debugger",
@@ -227,8 +228,27 @@ export const INTERNAL_MCP_SERVERS: Record<
       check_availability: "never_ask",
     },
   },
-  conversation_files: {
+  jira: {
     id: 17,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("jira_tool");
+    },
+    tools_stakes: {
+      // Read operations - low friction
+      get_tickets: "never_ask",
+      list_tickets: "never_ask",
+      get_transitions: "never_ask",
+
+      // Write operations - require confirmation
+      create_issue: "low",
+      update_issue: "low",
+      add_comment: "low",
+      transition_issue: "low",
+    },
+  },
+  conversation_files: {
+    id: 19,
     availability: "auto_hidden_builder",
   },
   slack: {
