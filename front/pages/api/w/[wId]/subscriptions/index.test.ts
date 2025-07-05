@@ -1,7 +1,6 @@
 import type { Stripe } from "stripe";
 import { beforeEach, describe, expect, vi } from "vitest";
 
-import { upsertProPlans } from "@app/lib/plans/pro_plans";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { itInTransaction } from "@app/tests/utils/utils";
 
