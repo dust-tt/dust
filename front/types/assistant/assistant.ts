@@ -686,25 +686,6 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
-export const CLAUDE_3_7_SONNET_REASONING_MODEL_CONFIG: ModelConfigurationType =
-  {
-    providerId: "anthropic",
-    modelId: CLAUDE_3_7_SONNET_20250219_MODEL_ID,
-    displayName: "Claude 3.7 Sonnet",
-    contextSize: 200_000,
-    recommendedTopK: 16,
-    recommendedExhaustiveTopK: 128, // 65_536
-    largeModel: true,
-    description: "Anthropic's latest Claude 3.7 Sonnet model (200k context).",
-    shortDescription: "Anthropic's best model.",
-    isLegacy: false,
-    delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
-    generationTokensCount: 64_000,
-    supportsVision: true,
-    toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
-    tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
-    featureFlag: "claude_3_7_reasoning",
-  };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_5_HAIKU_20241022_MODEL_ID,

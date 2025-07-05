@@ -8,9 +8,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   agent_builder_v2: {
     description: "Version 2 of the agent builder interface",
   },
-  claude_3_7_reasoning: {
-    description: "Claude 3.7 reasoning capabilities",
-  },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model",
   },
