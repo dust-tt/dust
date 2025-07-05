@@ -64,7 +64,7 @@ impl GoogleCloudStorageDatabasesStore {
         let mut wtr = Writer::from_writer(vec![]);
 
         // Write the header row and the data
-        // We need to prepend the row_id in a __dust_id column
+        // We need to prepend the row_id in a __dust_id field
         wtr.write_record(
             std::iter::once("__dust_id").chain(field_names.iter().map(String::as_str)),
         )?;
