@@ -97,6 +97,8 @@ const SearchConfluencePageCodec = t.intersection([
     ancestors: t.array(
       t.type({
         id: t.string,
+        type: t.string,
+        title: t.union([t.undefined, t.string]),
       })
     ),
   }),
