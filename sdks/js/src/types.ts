@@ -735,7 +735,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "advanced_search"
   | "agent_builder_v2"
-  | "claude_3_7_reasoning"
   | "claude_4_opus_feature"
   | "co_edition"
   | "deepseek_feature"
