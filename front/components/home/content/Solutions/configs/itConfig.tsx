@@ -31,10 +31,10 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Answer employee IT questions instantly",
-    "Guide system administrators through troubleshooting",
-    "Streamline procurement processes",
-    "Surface IT trends for proactive improvements",
+    "Answer employee IT questions instantly.",
+    "Guide system administrators through troubleshooting.",
+    "Streamline procurement processes.",
+    "Surface IT trends for proactive improvements.",
   ],
   image: "/static/landing/it/itHelpdesk.png",
 };
@@ -191,7 +191,7 @@ export const Stories: CustomerStory[] = [
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
   },
   {
-    title: "Kyriba’s RFP Agent for improving pre-sales efficiency",
+    title: "Kyriba's RFP Agent for improving pre-sales efficiency",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",

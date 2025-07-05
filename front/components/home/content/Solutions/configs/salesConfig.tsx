@@ -36,10 +36,10 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Generate instant account snapshots to prepare for meetings",
-    "Auto-complete RFPs and forms",
-    "Create personalized outreach and follow-ups",
-    "Coach sales reps with call insights",
+    "Generate instant account snapshots to prepare for meetings.",
+    "Auto-complete RFPs and forms.",
+    "Create personalized outreach and follow-ups.",
+    "Coach sales reps with call insights.",
   ],
   image: "/static/landing/sales/accountSnapshot.png",
 };
@@ -156,7 +156,7 @@ export const UseCases: UseCaseProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "Dust is the most impactful software we’ve adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
+    "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
   name: "Everett Berry ",
   title: "Head of GTM Engineering at Clay",
   logo: "/static/landing/logos/color/clay.png",
@@ -184,7 +184,7 @@ export const Stories: CustomerStory[] = [
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
   },
   {
-    title: "Kyriba’s RFP Agent for improving pre-sales efficiency",
+    title: "Kyriba's RFP Agent for improving pre-sales efficiency",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",

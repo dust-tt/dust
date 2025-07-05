@@ -75,7 +75,7 @@ const SUPPORT_OPTIONS: SupportOption[] = [
 const DOCUMENTATION_RESOURCES: DocumentationResource[] = [
   {
     title: "User Documentation",
-    description: "All you need to create and use your first AI agents",
+    description: "All you need to create and use your first AI agents.",
     button: {
       label: "Visit documentation",
       href: "https://docs.dust.tt",
@@ -84,7 +84,7 @@ const DOCUMENTATION_RESOURCES: DocumentationResource[] = [
   {
     title: "Use Cases & Guides",
     description:
-      "See how you can leverage the power of AI to your specific needs",
+      "See how you can leverage the power of AI to your specific needs.",
     button: {
       label: "Explore solutions",
       href: "/home/",
@@ -92,7 +92,7 @@ const DOCUMENTATION_RESOURCES: DocumentationResource[] = [
   },
   {
     title: "Developer Platform",
-    description: "API Reference and technical documentation",
+    description: "API Reference and technical documentation.",
     button: {
       label: "Access platform",
       href: "https://docs.dust.tt/developers",
