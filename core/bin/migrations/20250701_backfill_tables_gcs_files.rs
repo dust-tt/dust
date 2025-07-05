@@ -21,8 +21,8 @@ struct Args {
     #[arg(long, help = "The batch size", default_value = "100")]
     batch_size: usize,
 
-    #[arg(long, help = "The project to filter by (optional)")]
-    project: Option<i64>,
+    #[arg(long, help = "The projects to filter by (comma-separated, optional)")]
+    projects: Option<String>,
 }
 
 /*
@@ -75,7 +75,11 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let last_id: i64 = last_id.get(0);
     println!("Last id in tables: {}", last_id);
 
-    let project_filter = args.project;
+    let project_filter = args.projects.map(|p| {
+        p.split(',')
+            .filter_map(|s| s.trim().parse::<i64>().ok())
+            .collect::<Vec<_>>()
+    });
 
     while next_cursor <= last_id {
         println!(
@@ -88,7 +92,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             &gcs_store,
             next_cursor,
             batch_size as i64,
-            project_filter,
+            project_filter.clone(),
         )
         .await?;
 
@@ -114,7 +118,7 @@ async fn process_tables_batch(
     gcs_store: &GoogleCloudStorageDatabasesStore,
     id_cursor: i64,
     batch_size: i64,
-    project_filter: Option<i64>,
+    project_filter: Option<Vec<i64>>,
 ) -> Result<Option<i64>, Box<dyn std::error::Error>> {
     let c = store.raw_pool().get().await?;
 
@@ -127,13 +131,16 @@ async fn process_tables_batch(
                 ";
 
     let query = if let Some(_) = project_filter {
-        format!("{} AND ds.project = $3 ORDER BY t.id ASC LIMIT $2", query)
+        format!(
+            "{} AND ds.project = ANY($3) ORDER BY t.id ASC LIMIT $2",
+            query
+        )
     } else {
         format!("{} ORDER BY t.id ASC LIMIT $2", query)
     };
 
-    let rows = if let Some(project) = project_filter {
-        c.query(&query, &[&id_cursor, &batch_size, &project])
+    let rows = if let Some(projects) = project_filter {
+        c.query(&query, &[&id_cursor, &batch_size, &projects])
             .await?
     } else {
         c.query(&query, &[&id_cursor, &batch_size]).await?
