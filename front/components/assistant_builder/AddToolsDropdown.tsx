@@ -148,9 +148,7 @@ export function AddToolsDropdown({
         // Use o4-mini (high reasoning effort) as default reasoning model, if it's not available use the first one in the list.
         const defaultReasoningModel =
           reasoningModels.find(
-            (model) =>
-              model.modelId === DEFAULT_REASONING_MODEL_ID &&
-              model.reasoningEffort === "high"
+            (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
           ) ?? reasoningModels[0];
 
         setAction({
@@ -163,8 +161,8 @@ export function AddToolsDropdown({
               reasoningModel: {
                 modelId: defaultReasoningModel.modelId,
                 providerId: defaultReasoningModel.providerId,
-                reasoningEffort: defaultReasoningModel.reasoningEffort ?? null,
                 temperature: null,
+                reasoningEffort: null,
               },
             },
           },

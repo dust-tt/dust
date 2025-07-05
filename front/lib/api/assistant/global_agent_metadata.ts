@@ -14,10 +14,8 @@ import {
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
-  O3_MINI_HIGH_REASONING_MODEL_CONFIG,
   O3_MODEL_CONFIG,
 } from "@app/types";
 
@@ -70,14 +68,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.O1_HIGH_REASONING,
         name: "o1-high-reasoning",
-        description: O1_HIGH_REASONING_MODEL_CONFIG.description,
+        description: O1_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O3_MINI:
       return {
         sId: GLOBAL_AGENTS_SID.O3_MINI,
         name: "o3-mini",
-        description: O3_MINI_HIGH_REASONING_MODEL_CONFIG.description,
+        description: O3_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O3:

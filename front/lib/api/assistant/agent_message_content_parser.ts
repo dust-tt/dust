@@ -4,11 +4,26 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type {
   GenerationTokensEvent,
   LightAgentConfigurationType,
-  ModelConfigurationType,
 } from "@app/types";
 import { assertNever } from "@app/types";
+import { CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION } from "@app/types/assistant/chain_of_thought_meta_prompt";
 
 type AgentMessageTokenClassification = GenerationTokensEvent["classification"];
+
+type DelimitersConfiguration = {
+  delimiters: Array<{
+    openingPattern: string;
+    closingPattern: string;
+    classification: Exclude<
+      GenerationTokensEvent["classification"],
+      "opening_delimiter" | "closing_delimiter"
+    >;
+    swallow: boolean;
+  }>;
+  // If one of these patterns is found at the end of a model event, we'll wait for the
+  // the next event before emitting tokens.
+  incompleteDelimiterPatterns: RegExp[];
+};
 
 export class AgentMessageContentParser {
   private buffer: string = "";
@@ -37,7 +52,7 @@ export class AgentMessageContentParser {
   constructor(
     private agentConfiguration: LightAgentConfigurationType,
     private messageId: string,
-    delimitersConfiguration: ModelConfigurationType["delimitersConfiguration"]
+    delimitersConfiguration: DelimitersConfiguration
   ) {
     this.buffer = "";
     this.content = "";
@@ -263,19 +278,19 @@ export function getDelimitersConfiguration({
   agentConfiguration,
 }: {
   agentConfiguration: LightAgentConfigurationType;
-}): ModelConfigurationType["delimitersConfiguration"] {
+}): DelimitersConfiguration {
   const model = getSupportedModelConfig(agentConfiguration.model);
-  const delimitersConfig = model.delimitersConfiguration
-    ? {
-        delimiters: [...model.delimitersConfiguration.delimiters],
-        incompleteDelimiterPatterns: [
-          ...model.delimitersConfiguration.incompleteDelimiterPatterns,
-        ],
-      }
-    : {
-        delimiters: [],
-        incompleteDelimiterPatterns: [],
-      };
-
-  return delimitersConfig;
+  const reasoningEffort =
+    agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
+  if (reasoningEffort !== "light") {
+    return {
+      delimiters: [],
+      incompleteDelimiterPatterns: [],
+    };
+  }
+  return {
+    delimiters: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
+    incompleteDelimiterPatterns:
+      CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.incompleteDelimiterPatterns,
+  };
 }

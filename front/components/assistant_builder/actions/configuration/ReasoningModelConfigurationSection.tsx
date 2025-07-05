@@ -53,9 +53,6 @@ function groupReasoningModelsByPerformance(
   const [performingModels, nonPerfomingModels] = partition(
     reasoningModels,
     (model) => {
-      if (model.modelId === O4_MINI_MODEL_ID) {
-        return model.reasoningEffort === "high";
-      }
       return BEST_PERFORMING_REASONING_MODELS_ID.includes(model.modelId);
     }
   );
@@ -157,7 +154,7 @@ export function ReasoningModelConfigurationSection({
                   </DropdownMenuLabel>
                   {performingModels.map((model) => (
                     <ReasoningModelDropdownMenuItem
-                      key={`${model.modelId}-${model.reasoningEffort ?? ""}`}
+                      key={model.modelId}
                       model={model}
                       onClick={onModelSelect}
                       isDark={isDark}
@@ -179,7 +176,7 @@ export function ReasoningModelConfigurationSection({
                           <DropdownMenuSubContent>
                             {models.map((model) => (
                               <ReasoningModelDropdownMenuItem
-                                key={`${model.modelId}-${model.reasoningEffort ?? ""}`}
+                                key={model.modelId}
                                 model={model}
                                 onClick={onModelSelect}
                                 isDark={isDark}
@@ -220,8 +217,8 @@ function ReasoningModelDropdownMenuItem({
         onClick({
           modelId: model.modelId,
           providerId: model.providerId,
-          reasoningEffort: model.reasoningEffort ?? null,
           temperature: null,
+          reasoningEffort: null,
         })
       }
     />

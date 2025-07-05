@@ -14,17 +14,17 @@ import {
 
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
-const reasoningEffortSchema = z.enum(REASONING_EFFORT_IDS).optional();
+const reasoningEffortSchema = z.enum(REASONING_EFFORT_IDS);
 
 const supportedModelSchema = z.object({
   modelId: modelIdSchema,
   providerId: providerIdSchema,
-  reasoningEffort: reasoningEffortSchema,
 });
 
 export const generationSettingsSchema = z.object({
   modelSettings: supportedModelSchema,
   temperature: z.number().min(0).max(1),
+  reasoningEffort: reasoningEffortSchema,
   responseFormat: z.string().optional(),
 });
 

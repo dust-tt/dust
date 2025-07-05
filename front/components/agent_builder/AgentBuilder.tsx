@@ -20,7 +20,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
-  GPT_4O_MODEL_ID,
+  GPT_4O_MODEL_CONFIG,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
@@ -50,11 +50,11 @@ export default function AgentBuilder() {
       instructions: "",
       generationSettings: {
         modelSettings: {
-          modelId: GPT_4O_MODEL_ID,
+          modelId: GPT_4O_MODEL_CONFIG.modelId,
           providerId: "openai",
-          reasoningEffort: undefined,
         },
         temperature: 0.7,
+        reasoningEffort: GPT_4O_MODEL_CONFIG.defaultReasoningEffort,
       },
       actions: [],
       maxStepsPerRun: defaultMaxSteps,
