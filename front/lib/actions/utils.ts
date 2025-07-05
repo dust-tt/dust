@@ -177,7 +177,6 @@ export function getCitationsCount({
 
   switch (action.type) {
     case "dust_app_run_configuration":
-    case "conversation_include_file_configuration":
     case "search_labels_configuration":
       return 0;
     case "mcp_configuration":
