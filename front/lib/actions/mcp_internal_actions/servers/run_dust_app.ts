@@ -31,7 +31,11 @@ import { extractConfig } from "@app/lib/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import type { BlockRunConfig, DatasetSchema } from "@app/types";
+import type {
+  BlockRunConfig,
+  ConversationType,
+  DatasetSchema,
+} from "@app/types";
 import type { SpecificationBlockType } from "@app/types";
 import {
   getHeaderFromGroupIds,
@@ -134,7 +138,7 @@ async function prepareAppContext(
 async function processDustFileOutput(
   auth: Authenticator,
   sanitizedOutput: DustFileOutput,
-  conversation: any,
+  conversation: ConversationType,
   appName: string
 ): Promise<{ type: "resource"; resource: ToolGeneratedFileType }[]> {
   const content: { type: "resource"; resource: ToolGeneratedFileType }[] = [];
@@ -235,7 +239,7 @@ async function processDustFileOutput(
 }
 
 async function prepareParamsWithHistory(
-  params: any,
+  params: { [p: string]: any },
   schema: DatasetSchema | null,
   agentLoopRunContext: AgentLoopRunContextType,
   auth: Authenticator
