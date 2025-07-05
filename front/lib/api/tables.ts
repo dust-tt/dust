@@ -205,7 +205,8 @@ export async function upsertTableFromCsv({
       const errorDetails = {
         type: "internal_server_error" as const,
         coreAPIError: csvRes.error,
-        message: "Failed to upsert CSV.",
+        truncate,
+        message: `Failed to upsert CSV.`,
       };
       logger.error(
         {
