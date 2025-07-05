@@ -41,6 +41,7 @@ export const FILE_INTERNAL_MIME_TYPES = [
 export const SPREADSHEET_INTERNAL_MIME_TYPES = [
   INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
   INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET,
+  INTERNAL_MIME_TYPES.FOLDER.SPREADSHEET,
 ] as readonly string[];
 
 function getVisualForFileContentNode(node: ContentNode & { type: "document" }) {
