@@ -50,6 +50,9 @@ impl From<anyhow::Error> for SqliteDatabaseError {
 
 const MAX_ROWS: usize = 2048;
 
+// Switch to false to use the in-memory database without CSV files.
+const ALLOW_USAGE_OF_CSV_FILES: bool = true;
+
 impl SqliteDatabase {
     pub fn new() -> Self {
         Self {
@@ -228,6 +231,10 @@ async fn create_in_memory_sqlite_db_with_csv(
     tables: Vec<LocalTable>,
     unique_table_names: HashMap<String, String>,
 ) -> Result<Option<Vec<NamedTempFile>>> {
+    if !ALLOW_USAGE_OF_CSV_FILES {
+        return Ok(None);
+    }
+
     let tables_with_csv = tables
         .iter()
         .filter(|lt| lt.table.migrated_to_csv())
@@ -320,11 +327,14 @@ async fn create_in_memory_sqlite_db_without_csv(
     tables: Vec<LocalTable>,
     unique_table_names: HashMap<String, String>,
 ) -> Result<()> {
-    let tables_without_csv = tables
-        .iter()
-        .filter(|lt| !lt.table.migrated_to_csv())
-        .map(|lt| lt.clone())
-        .collect::<Vec<_>>();
+    let tables_without_csv = match ALLOW_USAGE_OF_CSV_FILES {
+        true => tables
+            .iter()
+            .filter(|lt| !lt.table.migrated_to_csv())
+            .map(|lt| lt.clone())
+            .collect::<Vec<_>>(),
+        false => tables.clone(),
+    };
 
     if tables_without_csv.is_empty() {
         return Ok(());
