@@ -22,7 +22,6 @@ import type {
   ReasoningModelConfigurationType,
 } from "@app/types";
 import {
-  CLAUDE_3_7_SONNET_20250219_MODEL_ID,
   isModelId,
   isModelProviderId,
   isProviderWhitelisted,
@@ -239,16 +238,6 @@ async function* runReasoning(
   }
   if (reasoningModel.reasoningEffort) {
     config.MODEL.reasoning_effort = reasoningModel.reasoningEffort;
-  }
-
-  if (supportedModel.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID) {
-    // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
-    config.MODEL.anthropic_beta_thinking = {
-      type: "enabled",
-      budget_tokens: 6400,
-    };
-    // Add the beta flag for larger outputs.
-    config.MODEL.anthropic_beta_flags = ["output-128k-2025-02-19"];
   }
 
   // Run the app.
