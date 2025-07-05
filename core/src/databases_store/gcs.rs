@@ -178,29 +178,48 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
 
     async fn delete_table_data(&self, table: &Table) -> Result<()> {
         if table.migrated_to_csv() {
-            Object::delete(
+            match Object::delete(
                 &Self::get_bucket()?,
                 &Self::get_csv_storage_file_path(table),
             )
-            .await?;
+            .await
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    info!(
+                        "Failed to delete CSV file for table {}. {:#?}",
+                        table.unique_id(),
+                        e
+                    );
+                }
+            }
         }
         Ok(())
     }
-
     async fn delete_table_row(&self, table: &Table, row_id: &str) -> Result<()> {
         if table.migrated_to_csv() {
-            let rows = Self::get_rows_from_csv(table).await?;
-            let previous_rows_count = rows.len();
-            let new_rows = rows
-                .iter()
-                .filter(|r| r.row_id != row_id)
-                .cloned()
-                .collect::<Vec<_>>();
+            match Self::get_rows_from_csv(table).await {
+                Ok(rows) => {
+                    let previous_rows_count = rows.len();
+                    let new_rows = rows
+                        .iter()
+                        .filter(|r| r.row_id != row_id)
+                        .cloned()
+                        .collect::<Vec<_>>();
 
-            if previous_rows_count != new_rows.len() {
-                let rows = Arc::new(new_rows.clone());
-                let schema = TableSchema::from_rows_async(rows).await?;
-                Self::write_rows_to_csv(table, &schema, &new_rows).await?;
+                    if previous_rows_count != new_rows.len() {
+                        let rows = Arc::new(new_rows.clone());
+                        let schema = TableSchema::from_rows_async(rows).await?;
+                        Self::write_rows_to_csv(table, &schema, &new_rows).await?;
+                    }
+                }
+                Err(e) => {
+                    info!(
+                        "Failed to update CSV file after row deletion for table {}. {:#?}",
+                        table.unique_id(),
+                        e
+                    );
+                }
             }
         }
 
