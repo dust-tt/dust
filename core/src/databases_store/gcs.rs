@@ -54,7 +54,7 @@ impl GoogleCloudStorageDatabasesStore {
         schema: &TableSchema,
         rows: &Vec<Row>,
     ) -> Result<(), anyhow::Error> {
-        let field_names = schema
+        let mut field_names = schema
             .columns()
             .iter()
             .map(|c| c.name.clone())
@@ -63,15 +63,17 @@ impl GoogleCloudStorageDatabasesStore {
         // Read all rows and upload to GCS
         let mut wtr = Writer::from_writer(vec![]);
 
-        // Write the header row and the data
-        // We need to prepend the row_id in a __dust_id field
-        wtr.write_record(
-            std::iter::once("__dust_id").chain(field_names.iter().map(String::as_str)),
-        )?;
+        // We need to append the row_id in a __dust_id field
+        // It's important to have it LAST in the headers as the table schema do not show it
+        // and when the csv will be used as-is for the sqlite database, the dust_id will be completely ignored (as it should).
+        field_names.push("__dust_id".to_string());
+
+        // Write the header.
+        wtr.write_record(field_names.iter().map(String::as_str))?;
+
+        // Write the rows.
         for row in rows {
-            let mut record = vec![row.row_id().to_owned()];
-            record.extend(row.to_csv_record(&field_names)?);
-            wtr.write_record(record)?;
+            wtr.write_record(row.to_csv_record(&field_names)?)?;
         }
 
         let csv = wtr.into_inner()?;
