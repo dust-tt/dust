@@ -23,7 +23,8 @@ export class AgentMCPServerConfigurationFactory {
         name: "search",
         workspaceId: owner.id,
       }),
-      space
+      space,
+      t
     );
 
     return AgentMCPServerConfiguration.create(
