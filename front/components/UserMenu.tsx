@@ -22,7 +22,7 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
@@ -50,6 +50,25 @@ export function UserMenu({
 
   const sendNotification = useSendNotification();
   const { setNavigationSelection } = usePersistedNavigationSelection();
+
+  const [shouldShowChromeExtension, setShouldShowChromeExtension] =
+    useState(false);
+
+  useEffect(() => {
+    const isChrome = () => {
+      if (typeof window === "undefined") return false;
+      const userAgent = navigator.userAgent.toLowerCase();
+      return userAgent.includes("chrome") && !userAgent.includes("edg");
+    };
+
+    const checkChromeExtension = async () => {
+      if (isChrome()) {
+        setShouldShowChromeExtension(true);
+      }
+    };
+
+    checkChromeExtension();
+  }, []);
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -160,6 +179,15 @@ export function UserMenu({
             label="Profile"
             icon={UserIcon}
             href={`/w/${owner.sId}/me`}
+          />
+        )}
+
+        {shouldShowChromeExtension && (
+          <DropdownMenuItem
+            label="Install Chrome Extension"
+            icon={StarIcon}
+            href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
+            target="_blank"
           />
         )}
 
