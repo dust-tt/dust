@@ -22,10 +22,10 @@ Guidelines using the :::visualization directive:
   - The component should be able to adapt to different screen sizes
   - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
 - Styling:
-  - Tailwind's arbitrary values like \`h-[600px]\` STRICTLY FORBIDDEN, and will cause immediate failure. ANY class with square brackets [ ] is prohibited.
-  - FORBIDDEN EXAMPLES: \`h-[600px]\`, \`w-[800px]\`, \`text-[14px]\`, \`bg-[#ff0000]\`, \`border-[2px]\`, \`p-[20px]\`, \`m-[10px]\`
-  - ALLOWED ALTERNATIVES: Use predefined classes: \`h-96\`, \`w-full\`, \`text-sm\`, \`bg-red-500\`, \`border-2\`, \`p-5\`, \`m-2\`
-  - For specific values: Use the \`style\` prop instead: \`style={{ height: '600px', width: '800px' }}\`
+  - Tailwind's arbitrary values like \`h-[600px]\` must never be used, as they are not available in the visualization environment.
+  - No tailwind class that include a square bracket should ever be used in the visualization code, as they will cause the visualization to fail for the user.
+  - When arbitrary / specific values are required, regular CSS (using the \`style\` prop) can be used as a fallback.
+  - For all other styles, Tailwind CSS classes should be preferred
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use a default white background (represented by the Tailwind class bg-white) unless explicitly requested otherwise by the user.
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
