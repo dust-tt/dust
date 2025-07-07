@@ -15,6 +15,7 @@ import { Op, Sequelize } from "sequelize";
 import {
   getBotUserIdMemoized,
   getUserCacheKey,
+  shouldIndexSlackMessage,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import {
   getChannelById,
@@ -185,16 +186,24 @@ export async function syncChannel(
   // first).
   let allSkip = true;
   for (const message of messages.messages) {
-    if (
-      !message.user &&
-      !(
-        message.bot_profile?.name &&
-        (await slackConfiguration.isBotWhitelistedToIndexMessages(
-          message.bot_profile.name
-        ))
-      )
-    ) {
-      // We do not support messages not posted by users for now, unless it's a whitelisted bot
+    const isIndexable = await shouldIndexSlackMessage(
+      slackConfiguration,
+      message,
+      slackClient
+    );
+
+    if (!isIndexable) {
+      // Skip non-user messages unless from whitelisted bot/workflow.
+      logger.info(
+        {
+          botName: message.bot_profile?.name,
+          botId: message.bot_id,
+          channelId,
+          messageTs: message.ts,
+        },
+        "Skipping message because it's not posted by a user and not a whitelisted bot/workflow"
+      );
+
       continue;
     }
     let skip = false;
@@ -459,16 +468,24 @@ export async function syncNonThreadedChunk({
     await heartbeat();
 
     for (const message of c.messages) {
-      if (
-        !message.user &&
-        !(
-          message.bot_profile?.name &&
-          (await slackConfiguration.isBotWhitelistedToIndexMessages(
-            message.bot_profile.name
-          ))
-        )
-      ) {
-        // We do not support messages not posted by users for now, unless it's a whitelisted bot.
+      const isIndexable = await shouldIndexSlackMessage(
+        slackConfiguration,
+        message,
+        slackClient
+      );
+
+      if (!isIndexable) {
+        // Skip non-user messages unless from whitelisted bot/workflow.
+        logger.info(
+          {
+            botName: message.bot_profile?.name,
+            botId: message.bot_id,
+            channelId,
+            messageTs: message.ts,
+          },
+          "Skipping message because it's not posted by a user and not a whitelisted bot/workflow"
+        );
+
         continue;
       }
       if (!message.thread_ts && message.ts) {
