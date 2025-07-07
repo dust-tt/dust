@@ -1,7 +1,6 @@
 import { Op } from "sequelize";
 
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Mention } from "@app/lib/models/assistant/conversation";
@@ -39,28 +38,6 @@ async function deleteRetrievalConfigurationForAgent(
     where: {
       agentConfigurationId: agent.id,
       workspaceId: workspace.id,
-    },
-  });
-}
-
-async function deleteDustAppRunConfigurationForAgent(
-  agent: AgentConfiguration
-) {
-  const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll({
-    where: {
-      agentConfigurationId: agent.id,
-      workspaceId: agent.workspaceId,
-    },
-  });
-
-  if (dustAppRunConfigurations.length === 0) {
-    return;
-  }
-
-  await AgentDustAppRunConfiguration.destroy({
-    where: {
-      agentConfigurationId: agent.id,
-      workspaceId: agent.workspaceId,
     },
   });
 }
@@ -103,9 +80,6 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
 
   // Delete the retrieval configurations.
   await deleteRetrievalConfigurationForAgent(workspace, agent);
-
-  // Delete the dust app run configurations.
-  await deleteDustAppRunConfigurationForAgent(agent);
 
   // Finally delete the agent configuration.
   await AgentConfiguration.destroy({

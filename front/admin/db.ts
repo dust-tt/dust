@@ -1,9 +1,5 @@
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
-  AgentDustAppRunAction,
-  AgentDustAppRunConfiguration,
-} from "@app/lib/models/assistant/actions/dust_app_run";
-import {
   AgentChildAgentConfiguration,
   AgentMCPAction,
   AgentMCPActionOutputItem,
@@ -141,7 +137,6 @@ async function main() {
 
   await AgentMCPServerConfiguration.sync({ alter: true });
   await AgentRetrievalConfiguration.sync({ alter: true });
-  await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
   await AgentReasoningConfiguration.sync({ alter: true });
 
@@ -156,7 +151,6 @@ async function main() {
   await Mention.sync({ alter: true });
 
   await AgentDataRetentionModel.sync({ alter: true });
-  await AgentDustAppRunAction.sync({ alter: true });
   await AgentStepContentModel.sync({ alter: true });
   await AgentSearchLabelsAction.sync({ alter: true });
   await AgentMCPAction.sync({ alter: true });

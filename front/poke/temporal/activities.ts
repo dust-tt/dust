@@ -17,10 +17,6 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
-  AgentDustAppRunAction,
-  AgentDustAppRunConfiguration,
-} from "@app/lib/models/assistant/actions/dust_app_run";
-import {
   AgentChildAgentConfiguration,
   AgentMCPAction,
   AgentMCPActionOutputItem,
@@ -301,28 +297,6 @@ export async function deleteAgentsActivity({
       },
     });
     await AgentRetrievalConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll(
-      {
-        where: {
-          agentConfigurationId: agent.id,
-          workspaceId: workspace.id,
-        },
-      }
-    );
-    await AgentDustAppRunAction.destroy({
-      where: {
-        dustAppRunConfigurationId: {
-          [Op.in]: dustAppRunConfigurations.map((r) => r.sId),
-        },
-      },
-    });
-    await AgentDustAppRunConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,
