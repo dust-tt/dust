@@ -23,7 +23,7 @@ const providers: Record<string, Provider> = {
     authorizeUri: "api.workos.com/user_management/authorize",
     authenticateUri: "api.workos.com/user_management/authenticate",
     logoutUri: "api.workos.com/user_management/sessions/logout",
-    clientId: config.getWorkOSClientId(),
+    clientId: config.getWorkOSExtensionClientId(),
     scopes: "openid profile email",
   },
   auth0: {

@@ -8,7 +8,6 @@ export const AUTH0_PROFILE_ROUTE = `https://${AUTH0_CLIENT_DOMAIN}/userinfo`;
 export const AUTH0_CLAIM_NAMESPACE = process.env.AUTH0_CLAIM_NAMESPACE ?? "";
 
 // WorkOS config.
-export const WORKOS_CLIENT_ID = process.env.WORKOS_CLIENT_ID ?? "";
 export const WORKOS_DOMAIN =
   process.env.WORKOS_DOMAIN ?? "https://api.workos.com";
 

@@ -214,6 +214,9 @@ const config = {
   getWorkOSClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_CLIENT_ID");
   },
+  getWorkOSExtensionClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_EXTENSION_CLIENT_ID");
+  },
   getWorkOSCookiePassword: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_COOKIE_PASSWORD");
   },
