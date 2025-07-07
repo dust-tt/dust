@@ -214,10 +214,10 @@ async function processDustFileOutput(
     let fileTitle = "";
     let file: FileResource | null = null;
 
-    const jsonOutput = safeParseJSON(
+    const jsonOutputRes = safeParseJSON(
       sanitizedOutput.__dust_file?.content ?? ""
     );
-    if (jsonOutput.isOk()) {
+    if (jsonOutputRes.isOk()) {
       // If the output is a valid json object, generate a json file.
       fileTitle = getDustAppRunResultsFileTitle({
         appName,
@@ -226,7 +226,7 @@ async function processDustFileOutput(
       const { jsonFile } = await generateJSONFileAndSnippet(auth, {
         title: fileTitle,
         conversationId: conversation.sId,
-        data: jsonOutput.value,
+        data: jsonOutputRes.value,
       });
       file = jsonFile;
     } else {
