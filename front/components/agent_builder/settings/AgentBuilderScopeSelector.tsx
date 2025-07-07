@@ -19,8 +19,7 @@ export function AgentBuilderScopeSelector() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          icon={EyeSlashIcon}
-          className="text-muted-foreground dark:text-muted-foreground-night"
+          icon={field.value === "hidden" ? EyeSlashIcon : EyeIcon}
           variant="outline"
           isSelect
           size="sm"
@@ -31,11 +30,13 @@ export function AgentBuilderScopeSelector() {
         <DropdownMenuItem
           icon={EyeSlashIcon}
           label="Unpublished"
+          description="Visible and usable by editors only"
           onClick={() => field.onChange("hidden")}
         />
         <DropdownMenuItem
           icon={EyeIcon}
           label="Published"
+          description="Visible and usable by all members of the workspace"
           onClick={() => field.onChange("visible")}
         />
       </DropdownMenuContent>

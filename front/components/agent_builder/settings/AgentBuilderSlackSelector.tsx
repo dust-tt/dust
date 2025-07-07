@@ -110,6 +110,7 @@ export function AgentBuilderSlackSelector() {
       />
 
       <PopoverRoot>
+        {/* Prevent the PopoverTrigger to validate the form by stopping the event from bubbling up */}
         <div
           onClick={(e: React.MouseEvent<HTMLDivElement>) => {
             e.preventDefault();

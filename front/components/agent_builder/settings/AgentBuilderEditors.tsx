@@ -29,8 +29,10 @@ export function AgentBuilderEditors() {
     pageSize: DEFAULT_PAGE_SIZE,
   });
   useEffect(() => {
-    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
-  }, [setPagination]);
+    if (isOpen) {
+      setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+    }
+  }, [setPagination, isOpen]);
   const { user } = useUser();
 
   const {
