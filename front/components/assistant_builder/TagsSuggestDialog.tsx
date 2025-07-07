@@ -114,7 +114,7 @@ export const TagsSuggestDialog = ({
             </div>
           )}
           {suggestions.length > 0 && (
-            <div className="max-h-125 -mt-4">
+            <div className="-mt-4 max-h-125">
               <ScrollArea>
                 <ContextItem.List>
                   {suggestions.map((suggestion) => (
