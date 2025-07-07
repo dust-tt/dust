@@ -21,6 +21,7 @@ import type { ComponentType } from "react";
 import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
+import { GoogleDrivePdfEnabled } from "@app/components/data_source/GoogleDrivePdfEnabled";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
 import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
@@ -188,6 +189,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return DriveLogo;
     },
+    optionsComponent: GoogleDrivePdfEnabled,
     isNested: true,
     permissions: {
       selected: "read",
