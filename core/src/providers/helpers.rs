@@ -64,13 +64,12 @@ pub fn strip_tools_from_chat_history(messages: &Vec<ChatMessage>) -> Vec<ChatMes
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct EncodedImageContent {
-    pub r#type: String,
+pub struct Base64EncodedImageContent {
     pub media_type: String,
     pub data: String,
 }
 
-async fn fetch_image_base64(image_url: &str) -> Result<(String, EncodedImageContent)> {
+async fn fetch_image_base64(image_url: &str) -> Result<(String, Base64EncodedImageContent)> {
     let response = reqwest::get(image_url)
         .await
         .map_err(|e| anyhow!("Invalid image: {}", e))?;
@@ -89,8 +88,7 @@ async fn fetch_image_base64(image_url: &str) -> Result<(String, EncodedImageCont
 
     Ok((
         image_url.to_string(),
-        EncodedImageContent {
-            r#type: "base64".to_string(),
+        Base64EncodedImageContent {
             media_type: mime_type,
             data: general_purpose::STANDARD.encode(&bytes),
         },
@@ -99,7 +97,7 @@ async fn fetch_image_base64(image_url: &str) -> Result<(String, EncodedImageCont
 
 pub async fn fetch_and_encode_images_from_messages(
     messages: &Vec<ChatMessage>,
-) -> Result<HashMap<String, EncodedImageContent>, anyhow::Error> {
+) -> Result<HashMap<String, Base64EncodedImageContent>, anyhow::Error> {
     let futures = messages
         .into_iter()
         .filter_map(|message| {
@@ -135,7 +133,6 @@ pub async fn fetch_and_encode_images_from_messages(
     let base64_pairs = futures::future::try_join_all(futures)
         .await?
         .into_iter()
-        //.map(|(image_url, img_content)| (image_url.clone(), img_content))
         .collect::<HashMap<_, _>>();
 
     Ok(base64_pairs)
@@ -143,7 +140,7 @@ pub async fn fetch_and_encode_images_from_messages(
 
 pub fn convert_content_block_images_to_base64(
     content: ContentBlock,
-    base64_map: &HashMap<String, EncodedImageContent>,
+    base64_map: &HashMap<String, Base64EncodedImageContent>,
 ) -> Result<ContentBlock> {
     match content {
         ContentBlock::Text(t) => Ok(ContentBlock::Text(t)),
@@ -160,8 +157,8 @@ pub fn convert_content_block_images_to_base64(
                             r#type: ic.r#type,
                             image_url: ImageUrlContent {
                                 url: format!(
-                                    "data:{};{},{}",
-                                    base64_data.media_type, base64_data.r#type, base64_data.data
+                                    "data:{};base64,{}",
+                                    base64_data.media_type, base64_data.data
                                 ),
                             },
                         }))
@@ -175,7 +172,7 @@ pub fn convert_content_block_images_to_base64(
 
 pub fn convert_message_images_to_base64(
     message: ChatMessage,
-    base64_map: &HashMap<String, EncodedImageContent>,
+    base64_map: &HashMap<String, Base64EncodedImageContent>,
 ) -> Result<ChatMessage> {
     match message {
         ChatMessage::System(system_msg) => Ok(ChatMessage::System(system_msg)),

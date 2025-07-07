@@ -5,7 +5,7 @@ use super::types::{
 };
 use crate::providers::{
     chat_messages::{AssistantContentItem, ChatMessage, ContentBlock, MixedContent},
-    helpers::{fetch_and_encode_images_from_messages, EncodedImageContent},
+    helpers::{fetch_and_encode_images_from_messages, Base64EncodedImageContent},
 };
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
@@ -46,7 +46,7 @@ pub async fn get_anthropic_chat_messages(
 
 fn convert_chat_message_to_anthropic_chat_message(
     chat_message: &ChatMessage,
-    base64_map: &HashMap<String, EncodedImageContent>,
+    base64_map: &HashMap<String, Base64EncodedImageContent>,
 ) -> Result<AnthropicChatMessage> {
     match chat_message {
         ChatMessage::System(system_msg) => Ok(AnthropicChatMessage {

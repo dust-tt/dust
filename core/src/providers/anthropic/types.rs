@@ -1,6 +1,6 @@
 use crate::providers::{
     chat_messages::{AssistantChatMessage, AssistantContentItem},
-    helpers::EncodedImageContent,
+    helpers::Base64EncodedImageContent,
     llm::{ChatFunctionCall, ChatMessageRole},
 };
 use crate::utils::ParseError;
@@ -151,10 +151,10 @@ pub struct AnthropicImageContent {
     pub data: String,
 }
 
-impl From<EncodedImageContent> for AnthropicImageContent {
-    fn from(encoded: EncodedImageContent) -> Self {
+impl From<Base64EncodedImageContent> for AnthropicImageContent {
+    fn from(encoded: Base64EncodedImageContent) -> Self {
         AnthropicImageContent {
-            r#type: encoded.r#type,
+            r#type: "base64".to_string(),
             media_type: encoded.media_type,
             data: encoded.data,
         }
