@@ -213,9 +213,7 @@ export async function updateWorkOSOrganizationName(
       workspaceId: workspace.id,
       organizationId: organization.id,
     });
-    return new Err(
-      new Error(`Failed to update WorkOS organization name: ${e.message}`)
-    );
+    return new Ok(undefined);
   }
 
   return new Ok(undefined);
