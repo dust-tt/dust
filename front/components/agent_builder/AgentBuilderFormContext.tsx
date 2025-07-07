@@ -139,8 +139,9 @@ const agentSettingsSchema = z.object({
   name: z.string().min(1, "Agent name is required"),
   description: z.string().min(1, "Agent description is required"),
   pictureUrl: z.string().optional(),
-  scope: z.enum(["hidden", "public"]),
+  scope: z.enum(["hidden", "visible"]),
   editors: z.array(userSchema),
+  slackProvider: z.enum(["slack", "slack_bot"]).nullable(),
   slackChannels: z.array(
     z.object({
       slackChannelId: z.string(),

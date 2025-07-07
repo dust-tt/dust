@@ -36,7 +36,7 @@ export function AgentBuilderScopeSelector() {
         <DropdownMenuItem
           icon={EyeIcon}
           label="Published"
-          onClick={() => field.onChange("public")}
+          onClick={() => field.onChange("visible")}
         />
       </DropdownMenuContent>
     </DropdownMenu>

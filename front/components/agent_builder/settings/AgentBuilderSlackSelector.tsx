@@ -70,14 +70,25 @@ export function AgentBuilderSlackSelector() {
     name: "agentSettings.slackChannels",
   });
 
+  const slackProvider = useWatch<
+    AgentBuilderFormData,
+    "agentSettings.slackProvider"
+  >({
+    name: "agentSettings.slackProvider",
+  });
+
   const {
     field: { onChange },
   } = useController<AgentBuilderFormData, "agentSettings.slackChannels">({
     name: "agentSettings.slackChannels",
   });
 
+  if (!slackProvider) {
+    return null;
+  }
+
   const slackDataSource = supportedDataSourceViews.find(
-    (dsv) => dsv.dataSource.connectorProvider === "slack"
+    (dsv) => dsv.dataSource.connectorProvider === slackProvider
   )?.dataSource;
 
   if (!slackDataSource) {

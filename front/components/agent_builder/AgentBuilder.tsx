@@ -1,6 +1,7 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -24,7 +25,7 @@ import {
 } from "@app/types";
 
 export default function AgentBuilder() {
-  const { owner, user } = useAgentBuilderContext();
+  const { owner, user, supportedDataSourceViews } = useAgentBuilderContext();
   const { mcpServerViews } = useMCPServerViewsContext();
   const router = useRouter();
   const sendNotification = useSendNotification();
@@ -47,6 +48,7 @@ export default function AgentBuilder() {
         pictureUrl: "",
         scope: "hidden",
         editors: [user],
+        slackProvider: null,
         slackChannels: [],
       },
       instructions: "",
@@ -62,6 +64,22 @@ export default function AgentBuilder() {
       maxStepsPerRun: defaultMaxSteps,
     },
   });
+
+  useEffect(() => {
+    if (
+      supportedDataSourceViews.find(
+        (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
+      )
+    ) {
+      form.setValue("agentSettings.slackProvider", "slack_bot");
+    } else if (
+      supportedDataSourceViews.find(
+        (dsv) => dsv.dataSource.connectorProvider === "slack"
+      )
+    ) {
+      form.setValue("agentSettings.slackProvider", "slack");
+    }
+  }, [supportedDataSourceViews, form]);
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {

@@ -185,7 +185,7 @@ export async function submitAgentBuilderForm({
         formData.agentSettings.pictureUrl ||
         "https://dust.tt/static/assistants/logo.svg",
       status: isDraft ? "draft" : "active",
-      scope: "visible", // Default to visible
+      scope: formData.agentSettings.scope,
       model: {
         modelId: formData.generationSettings.modelSettings.modelId,
         providerId: formData.generationSettings.modelSettings.providerId,
@@ -242,7 +242,9 @@ export async function submitAgentBuilderForm({
       ),
       templateId: null,
       tags: [],
-      editors: [],
+      editors: formData.agentSettings.editors.map((editor) => ({
+        sId: editor.sId,
+      })),
     },
   };
 
@@ -276,7 +278,39 @@ export async function submitAgentBuilderForm({
       agentConfiguration: LightAgentConfigurationType | AgentConfigurationType;
     } = await response.json();
 
-    return new Ok(result.agentConfiguration);
+    const agentConfiguration = result.agentConfiguration;
+
+    const { slackChannels, slackProvider } = formData.agentSettings;
+    // PATCH the linked Slack channels if either:
+    // - there were already linked channels
+    // - there are newly selected channels
+    // If the user selected channels that were already routed to a different agent, the current behavior is to
+    // unlink them from the previous agent and link them to this one.
+    if (slackChannels.length) {
+      const slackLinkRes = await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/linked_slack_channels`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            provider: slackProvider,
+            slack_channel_internal_ids: slackChannels.map(
+              ({ slackChannelId }) => slackChannelId
+            ),
+          }),
+        }
+      );
+
+      if (!slackLinkRes.ok) {
+        return new Err(
+          new Error("An error occurred while linking Slack channels.")
+        );
+      }
+    }
+
+    return new Ok(agentConfiguration);
   } catch (error) {
     return new Err(normalizeError(error));
   }
