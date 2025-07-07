@@ -85,7 +85,7 @@ import {
   assertNever,
   ConversationError,
   Err,
-  getSmallWhitelistedModel,
+  getLargeWhitelistedModel,
   isAgentMention,
   isAgentMessageType,
   isContentFragmentInputWithContentNode,
@@ -355,7 +355,7 @@ export async function generateConversationTitle(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getSmallWhitelistedModel(owner);
+  const model = getLargeWhitelistedModel(owner);
   if (!model) {
     return new Err(
       new Error(`Failed to find a whitelisted model to generate title`)
