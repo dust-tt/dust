@@ -681,7 +681,7 @@ export async function renderLightContentFragmentForModel(
               attachment,
               content:
                 "[Image content interpreted by a vision-enabled model. " +
-                "Description not available in this context.]",
+                "Description not available in this context.",
             }),
           },
         ],
@@ -699,6 +699,12 @@ export async function renderLightContentFragmentForModel(
           image_url: {
             url: signedUrl,
           },
+        },
+        {
+          type: "text",
+          text: renderAttachmentXml({
+            attachment,
+          }),
         },
       ],
     };

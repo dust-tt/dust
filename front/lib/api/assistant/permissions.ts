@@ -48,33 +48,22 @@ export function getDataSourceViewIdsFromActions(
   actions: UnsavedAgentActionConfigurationType[]
 ): string[] {
   const relevantActions = actions.filter(
-    (action) =>
-      action.type === "process_configuration" ||
-      (action.type === "mcp_server_configuration" &&
-        isServerSideMCPServerConfiguration(action))
+    (action): action is ServerSideMCPServerConfigurationType =>
+      action.type === "mcp_server_configuration" &&
+      isServerSideMCPServerConfiguration(action)
   );
 
   return removeNulls(
     relevantActions.flatMap((action) => {
-      if (action.type === "process_configuration") {
+      if (action.dataSources) {
         return action.dataSources.map(
           (dataSource) => dataSource.dataSourceViewId
         );
-      } else if (
-        action.type === "mcp_server_configuration" &&
-        isServerSideMCPServerConfiguration(action)
-      ) {
-        if (action.dataSources) {
-          return action.dataSources.map(
-            (dataSource) => dataSource.dataSourceViewId
-          );
-        } else if (action.tables) {
-          return action.tables.map((table) => table.dataSourceViewId);
-        } else {
-          return [];
-        }
+      } else if (action.tables) {
+        return action.tables.map((table) => table.dataSourceViewId);
+      } else {
+        return [];
       }
-      return [];
     })
   );
 }

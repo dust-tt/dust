@@ -1906,7 +1906,6 @@ async function* streamRunAgentEvents(
       case "dust_app_run_block":
       case "dust_app_run_params":
       case "generation_tokens":
-      case "process_params":
       case "search_labels_params":
       case "tool_approve_execution":
       case "tool_notification":

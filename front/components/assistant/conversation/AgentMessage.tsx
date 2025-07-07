@@ -35,6 +35,7 @@ import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
+import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
 import {
@@ -451,12 +452,18 @@ export function AgentMessage({
       ),
       sup: CiteBlock,
       mention: getMentionPlugin(owner),
+      dustimg: getImgPlugin(owner),
     }),
     [owner, conversationId, message.sId, agentConfiguration.sId]
   );
 
   const additionalMarkdownPlugins: PluggableList = React.useMemo(
-    () => [mentionDirective, getCiteDirective(), visualizationDirective],
+    () => [
+      mentionDirective,
+      getCiteDirective(),
+      visualizationDirective,
+      imgDirective,
+    ],
     []
   );
 

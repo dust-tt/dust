@@ -81,6 +81,10 @@ path = "bin/migrations/20250205_backfill_document_tags_index.rs"
 name = "backfill_elasticsearch_text_size"
 path = "bin/migrations/20250226_backfill_elasticsearch_text_size.rs"
 
+[[bin]]
+name = "backfill_tables_gcs_files"
+path = "bin/migrations/20250701_backfill_tables_gcs_files.rs"
+
 [[test]]
 name = "oauth_connections_test"
 path = "src/oauth/tests/functional_connections.rs"
@@ -137,7 +141,7 @@ reqwest = { version = "0.12", features = ["json"] }
 ring = "0.17.14"
 rsa = { version = "0.9.4", features = ["pem"] }
 rslock = { version = "0.4.0", default-features = false, features = ["tokio-comp"] }
-rusqlite = { version = "0.31", features = ["bundled"] }
+rusqlite = { version = "0.31", features = ["bundled", "csvtab"] }
 rustc-hash = "1.1"
 sentencepiece = { version = "0.11", features = ["static"] }
 serde = { version = "1.0", features = ["rc", "derive"] }
@@ -145,6 +149,7 @@ serde_json = "1.0"
 sha2 = "0.10.8"
 shellexpand = "2.1"
 sqids = "0.4.1"
+tempfile = "3.20.0"
 tera = "1.20"
 thiserror = "1.0.57"
 tikv-jemallocator = "0.6"

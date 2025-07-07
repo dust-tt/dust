@@ -8,12 +8,12 @@ import { z } from "zod";
 
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type {
+  CustomServerIconType,
   InternalAllowedIconType,
-  RemoteAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
 import {
+  CUSTOM_SERVER_ALLOWED,
   INTERNAL_ALLOWED_ICONS,
-  REMOTE_ALLOWED_ICONS,
 } from "@app/lib/actions/mcp_icons";
 import type { SupportedFileContentType } from "@app/types";
 import { CONNECTOR_PROVIDERS } from "@app/types";
@@ -674,8 +674,8 @@ const InternalAllowedIconSchema = z.enum(
   ]
 );
 
-const RemoteAllowedIconSchema = z.enum(
-  REMOTE_ALLOWED_ICONS as [RemoteAllowedIconType, ...RemoteAllowedIconType[]]
+const CustomServerIconSchema = z.enum(
+  CUSTOM_SERVER_ALLOWED as [CustomServerIconType, ...CustomServerIconType[]]
 );
 
 // Schema for the resource of a notification where the tool is asking for tool approval.
@@ -694,7 +694,7 @@ const NotificationToolApproveBubbleUpContentSchema = z.object({
     toolName: z.string(),
     agentName: z.string(),
     icon: z
-      .union([InternalAllowedIconSchema, RemoteAllowedIconSchema])
+      .union([InternalAllowedIconSchema, CustomServerIconSchema])
       .optional(),
   }),
 });

@@ -15,11 +15,13 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getInsertSQL } from "@app/lib/utils/sql_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { ModelId } from "@app/types";
+import type { AgentStatus, ModelId } from "@app/types";
 
-async function findWorkspacesWithDustAppRunConfigurations(): Promise<
-  ModelId[]
-> {
+async function findWorkspacesWithDustAppRunConfigurations({
+  agentStatus,
+}: {
+  agentStatus: AgentStatus;
+}): Promise<ModelId[]> {
   const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll({
     attributes: ["workspaceId"],
     include: [
@@ -28,7 +30,7 @@ async function findWorkspacesWithDustAppRunConfigurations(): Promise<
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -43,9 +45,11 @@ async function migrateWorkspaceDustAppRunActions(
   {
     execute,
     parentLogger,
+    agentStatus,
   }: {
     execute: boolean;
     parentLogger: typeof Logger;
+    agentStatus: AgentStatus;
   }
 ): Promise<string> {
   const logger = parentLogger.child({
@@ -64,7 +68,7 @@ async function migrateWorkspaceDustAppRunActions(
         model: AgentConfiguration,
         required: true,
         where: {
-          status: "active",
+          status: agentStatus,
         },
       },
     ],
@@ -199,8 +203,16 @@ makeScript(
       description: "Migrate all workspaces with dust app run configurations",
       required: false,
     },
+    agentStatus: {
+      type: "string",
+      description: "Agent status to migrate",
+      required: false,
+    },
   },
-  async ({ execute, workspaceId, allWorkspaces }, parentLogger) => {
+  async (
+    { execute, workspaceId, allWorkspaces, agentStatus },
+    parentLogger
+  ) => {
     const now = new Date().toISOString().slice(0, 16).replace(/-/g, "");
 
     if (workspaceId && allWorkspaces) {
@@ -221,7 +233,9 @@ makeScript(
       }
       workspaces = [workspace];
     } else if (allWorkspaces) {
-      const workspaceIds = await findWorkspacesWithDustAppRunConfigurations();
+      const workspaceIds = await findWorkspacesWithDustAppRunConfigurations({
+        agentStatus: agentStatus as AgentStatus,
+      });
       workspaces = await WorkspaceModel.findAll({
         where: {
           id: { [Op.in]: workspaceIds },
@@ -246,6 +260,7 @@ makeScript(
       const workspaceRevertSql = await migrateWorkspaceDustAppRunActions(auth, {
         execute,
         parentLogger,
+        agentStatus: agentStatus as AgentStatus,
       });
 
       if (execute) {

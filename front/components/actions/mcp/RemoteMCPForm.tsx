@@ -20,6 +20,7 @@ import { z } from "zod";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import { isDefaultRemoteMcpServerURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   useSyncRemoteMCPServer,
@@ -44,6 +45,9 @@ export type MCPFormType = z.infer<typeof MCPFormSchema>;
 export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  // Check if this is a default server (should be read-only for name/description)
+  const isDefaultServer = isDefaultRemoteMcpServerURL(mcpServer.url);
 
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
@@ -130,6 +134,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
               <Input
                 {...field}
                 label="Name"
+                disabled={isDefaultServer}
                 isError={!!form.formState.errors.name}
                 message={form.formState.errors.name?.message}
                 placeholder={mcpServer.cachedName}
@@ -155,6 +160,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                     icon={CurrentIconComponent}
                     onClick={() => setIsPopoverOpen(true)}
                     isSelect
+                    disabled={isDefaultServer}
                   />
                 </PopoverTrigger>
                 <PopoverContent
@@ -186,6 +192,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
               <Input
                 {...field}
                 label="Description"
+                disabled={isDefaultServer}
                 isError={!!form.formState.errors.description?.message}
                 message={form.formState.errors.description?.message}
                 placeholder={

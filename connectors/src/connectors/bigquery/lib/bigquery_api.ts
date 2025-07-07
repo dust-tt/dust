@@ -11,6 +11,7 @@ import type {
 } from "@connectors/lib/remote_databases/utils";
 import logger from "@connectors/logger/logger";
 import type { BigQueryCredentialsWithLocation } from "@connectors/types";
+import { isBigqueryPermissionsError } from "@connectors/types/bigquery";
 
 const MAX_TABLES_PER_SCHEMA = 1000;
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
@@ -155,13 +156,39 @@ export const fetchTables = async ({
             return null;
           }
           if (fetchTablesDescription) {
-            const metadata = await table.getMetadata();
-            return {
-              name: table.id!,
-              database_name: credentials.project_id,
-              schema_name: dataset,
-              description: metadata[0].description,
-            };
+            try {
+              const metadata = await table.getMetadata();
+              return {
+                name: table.id!,
+                database_name: credentials.project_id,
+                schema_name: dataset,
+                description: metadata[0].description,
+              };
+            } catch (error) {
+              // Handle BigQuery permission errors gracefully
+              if (isBigqueryPermissionsError(error)) {
+                const errorMessage =
+                  error &&
+                  typeof error === "object" &&
+                  "message" in error &&
+                  typeof error.message === "string"
+                    ? error.message
+                    : "Permission denied";
+                logger.warn(
+                  {
+                    projectId: credentials.project_id,
+                    dataset,
+                    table: table.id,
+                    error: errorMessage,
+                  },
+                  "[BigQuery] Permission denied accessing table metadata, skipping table"
+                );
+                // Skip tables when we lack permissions
+                return null;
+              }
+              // Re-throw other errors
+              throw error;
+            }
           } else {
             return {
               name: table.id!,

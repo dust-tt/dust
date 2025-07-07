@@ -1,3 +1,5 @@
+// @ts-nocheck
+// This migration file references deleted process modules but has already been run in production
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { Logger } from "pino";

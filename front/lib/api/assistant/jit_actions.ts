@@ -121,11 +121,23 @@ export async function getJITServers(
 
   if (filesUsableAsTableQuery.length > 0) {
     // Get the query_tables MCP server view
-    const queryTablesView =
+
+    // Try to get the new query_tables_v2 server.
+    // Will only be available for users with the "exploded_tables_query" feature flag.
+    let queryTablesView =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
-        "query_tables"
+        "query_tables_v2"
       );
+
+    // Fallback to the old query_tables server.
+    if (!queryTablesView) {
+      queryTablesView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "query_tables"
+        );
+    }
 
     assert(
       queryTablesView,

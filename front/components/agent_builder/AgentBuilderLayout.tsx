@@ -53,18 +53,18 @@ export function AgentBuilderLayout({
   };
 
   return (
-    <div className="flex h-full flex-row">
+    <div className="flex h-screen flex-row">
       <Head>
         <title>{`Dust - ${owner.name}`}</title>
       </Head>
       <div
         className={cn(
-          "relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden",
+          "relative h-full w-full flex-1 flex-col overflow-hidden",
           "bg-background text-foreground",
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <main className="flex h-full w-full flex-col items-center overflow-y-auto">
+        <main className="flex h-full w-full flex-col items-center">
           {loaded && (
             <div className="flex h-full w-full">
               <ResizablePanelGroup

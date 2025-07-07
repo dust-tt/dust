@@ -60,7 +60,9 @@ describe("GET /api/w/[wId]/members/search", () => {
     ]);
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
     );
 
     req.query.searchTerm = users[0].email;
@@ -87,7 +89,9 @@ describe("GET /api/w/[wId]/members/search", () => {
     ]);
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
     );
 
     req.query.searchEmails = users[0].email + "," + users[1].email;
@@ -141,7 +145,9 @@ describe("GET /api/w/[wId]/members/search", () => {
     );
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
     );
 
     req.query.limit = "20";

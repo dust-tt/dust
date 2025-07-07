@@ -9,7 +9,6 @@ import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
-import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
@@ -33,9 +32,6 @@ async function destroyActionsRelatedResources(
   agentMessageIds: Array<ModelId>
 ) {
   await AgentDustAppRunAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentProcessAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
   await AgentSearchLabelsAction.destroy({

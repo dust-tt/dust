@@ -155,7 +155,10 @@ export async function createConnectionAndGetSetupUrl(
     relatedCredential,
   });
   if (cRes.isErr()) {
-    logger.error({ provider, useCase }, "OAuth: Failed to create connection");
+    logger.error(
+      { workspaceId, userId, provider, useCase, error: cRes.error },
+      "OAuth: Failed to create connection"
+    );
     return new Err({
       code: "connection_creation_failed",
       message: "Failed to create new OAuth connection",

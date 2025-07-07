@@ -5,8 +5,12 @@ import { describe, expect } from "vitest";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { setupAgentOwner } from "@app/pages/api/w/[wId]/assistant/agent_configurations/index.test";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -20,8 +24,13 @@ describe("MCP Internal Actions Server Utils", () => {
       async (t: Transaction) => {
         const workspace = await WorkspaceFactory.basic();
         const otherWorkspace = await WorkspaceFactory.basic();
-        const auth = await Authenticator.internalAdminForWorkspace(
-          workspace.sId
+        await SpaceFactory.system(workspace, t);
+        const globalSpace = await SpaceFactory.global(workspace, t);
+        await GroupFactory.defaults(workspace);
+        const { agentOwnerAuth: auth } = await setupAgentOwner(
+          workspace,
+          "admin",
+          t
         );
 
         const otherSpace = await SpaceFactory.global(otherWorkspace, t);
@@ -31,6 +40,17 @@ describe("MCP Internal Actions Server Utils", () => {
           t
         );
 
+        await InternalMCPServerInMemoryResource.makeNew(
+          auth,
+          {
+            name: "search",
+            useCase: null,
+          },
+          t
+        );
+        const mcpServerConfiguration =
+          await AgentMCPServerConfigurationFactory.create(auth, globalSpace, t);
+
         // Create a table configuration in a different workspace
         const tableConfig = await AgentTablesQueryConfigurationTable.create(
           {
@@ -38,6 +58,7 @@ describe("MCP Internal Actions Server Utils", () => {
             tableId: "test_table",
             dataSourceId: otherFolder.dataSource.id,
             dataSourceViewId: otherFolder.id,
+            mcpServerConfigurationId: mcpServerConfiguration.id,
           },
           { transaction: t }
         );
@@ -98,12 +119,26 @@ describe("MCP Internal Actions Server Utils", () => {
       "should return table configurations when they belong to the workspace",
       async (t: Transaction) => {
         const workspace = await WorkspaceFactory.basic();
-        const auth = await Authenticator.internalAdminForWorkspace(
-          workspace.sId
+        await GroupFactory.defaults(workspace);
+        const { agentOwnerAuth: auth } = await setupAgentOwner(
+          workspace,
+          "admin",
+          t
         );
 
+        await SpaceFactory.system(workspace, t);
         const space = await SpaceFactory.global(workspace, t);
         const folder = await DataSourceViewFactory.folder(workspace, space, t);
+        await InternalMCPServerInMemoryResource.makeNew(
+          auth,
+          {
+            name: "search",
+            useCase: null,
+          },
+          t
+        );
+        const mcpServerConfiguration =
+          await AgentMCPServerConfigurationFactory.create(auth, space, t);
 
         // Create a table configuration in the workspace
         const tableConfig = await AgentTablesQueryConfigurationTable.create(
@@ -112,6 +147,7 @@ describe("MCP Internal Actions Server Utils", () => {
             tableId: "test_table",
             dataSourceId: folder.dataSource.id,
             dataSourceViewId: folder.id,
+            mcpServerConfigurationId: mcpServerConfiguration.id,
           },
           { transaction: t }
         );
@@ -130,6 +166,7 @@ describe("MCP Internal Actions Server Utils", () => {
             tableId: "test_table",
             dataSourceId: otherFolder.dataSource.id,
             dataSourceViewId: otherFolder.id,
+            mcpServerConfigurationId: mcpServerConfiguration.id,
           },
           { transaction: t }
         );

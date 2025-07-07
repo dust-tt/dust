@@ -37,15 +37,16 @@ export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
 export const ConfluenceCommandSchema = t.type({
   majorCommand: t.literal("confluence"),
   command: t.union([
-    t.literal("me"),
-    t.literal("upsert-page"),
-    t.literal("upsert-pages"),
-    t.literal("update-parents"),
-    t.literal("ignore-near-rate-limit"),
-    t.literal("unignore-near-rate-limit"),
+    t.literal("check-page-exists"),
     t.literal("check-space-access"),
+    t.literal("ignore-near-rate-limit"),
+    t.literal("me"),
     t.literal("resolve-space-from-url"),
     t.literal("sync-space"),
+    t.literal("unignore-near-rate-limit"),
+    t.literal("update-parents"),
+    t.literal("upsert-page"),
+    t.literal("upsert-pages"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -97,6 +98,32 @@ export const ConfluenceResolveSpaceFromUrlResponseSchema = t.intersection([
 ]);
 export type ConfluenceResolveSpaceFromUrlResponseType = t.TypeOf<
   typeof ConfluenceResolveSpaceFromUrlResponseSchema
+>;
+
+const ConfluenceAncestorSchema = t.type({
+  id: t.string,
+  type: t.string,
+  title: t.union([t.undefined, t.string]),
+});
+export type ConfluenceAncestorType = t.TypeOf<typeof ConfluenceAncestorSchema>;
+
+export const ConfluenceCheckPageExistsResponseSchema = t.union([
+  t.type({
+    exists: t.literal(false),
+  }),
+  t.type({
+    exists: t.literal(true),
+    ancestors: t.array(ConfluenceAncestorSchema),
+    existsInDust: t.boolean,
+    status: t.string,
+    hasChildren: t.boolean,
+    hasReadRestrictions: t.boolean,
+    title: t.string,
+  }),
+]);
+
+export type ConfluenceCheckPageExistsResponseType = t.TypeOf<
+  typeof ConfluenceCheckPageExistsResponseSchema
 >;
 /**
  * </Confluence>
@@ -730,6 +757,7 @@ export const AdminResponseSchema = t.union([
   ConfluenceMeResponseSchema,
   ConfluenceResolveSpaceFromUrlResponseSchema,
   ConfluenceUpsertPageResponseSchema,
+  ConfluenceCheckPageExistsResponseSchema,
   GongForceResyncResponseSchema,
   IntercomCheckConversationResponseSchema,
   IntercomCheckMissingConversationsResponseSchema,

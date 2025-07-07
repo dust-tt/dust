@@ -1,7 +1,3 @@
-import type {
-  ConversationIncludeFileActionType,
-  ConversationIncludeFileConfigurationType,
-} from "@app/lib/actions/conversation/include_file";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type {
   ClientSideMCPToolConfigurationType,
@@ -12,7 +8,6 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
 import type {
   ActionConfigurationType,
@@ -33,17 +28,6 @@ export function isDustAppRunConfiguration(
     typeof arg === "object" &&
     "type" in arg &&
     arg.type === "dust_app_run_configuration"
-  );
-}
-
-export function isProcessConfiguration(
-  arg: unknown
-): arg is ProcessConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "process_configuration"
   );
 }
 
@@ -213,23 +197,6 @@ export function isClientSideMCPToolConfiguration(
   arg: ActionConfigurationType
 ): arg is ClientSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "clientSideMcpServerId" in arg;
-}
-
-export function isConversationIncludeFileConfiguration(
-  arg: unknown
-): arg is ConversationIncludeFileConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "conversation_include_file_configuration"
-  );
-}
-
-export function isConversationIncludeFileConfigurationActionType(
-  arg: AgentActionType
-): arg is ConversationIncludeFileActionType {
-  return arg.type === "conversation_include_file_action";
 }
 
 export function throwIfInvalidAgentConfiguration(

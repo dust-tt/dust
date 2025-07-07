@@ -31,7 +31,7 @@ import {
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/transcripts/utils/modjo";
-import type { AgentMessageType, ModelId } from "@app/types";
+import type { AgentMessageType } from "@app/types";
 import {
   assertNever,
   dustManagedCredentials,
@@ -44,22 +44,25 @@ import { CoreAPI } from "@app/types";
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: string
 ): Promise<string[]> {
-  const localLogger = mainLogger.child({
-    transcriptsConfigurationId: transcriptsConfigurationId,
-  });
-
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
       transcriptsConfigurationId
     );
 
   if (!transcriptsConfiguration) {
-    localLogger.error(
-      {},
+    mainLogger.error(
+      {
+        transcriptsConfigurationId,
+      },
       "[retrieveNewTranscripts] Transcript configuration not found. Skipping."
     );
     return [];
   }
+
+  const localLogger = mainLogger.child({
+    transcriptsConfigurationId,
+    transcriptsConfigurationSid: transcriptsConfiguration.sId,
+  });
 
   const workspace = await WorkspaceModel.findOne({
     where: {

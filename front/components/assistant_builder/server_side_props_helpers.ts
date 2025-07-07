@@ -5,10 +5,11 @@ import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant
 import { getDefaultMCPServerActionConfiguration } from "@app/components/assistant_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -164,9 +165,9 @@ async function getMCPServerActionConfiguration(
 }
 
 async function renderDataSourcesConfigurations(
-  action:
-    | ProcessConfigurationType
-    | (MCPServerConfigurationType & { dataSources: DataSourceConfiguration[] }),
+  action: MCPServerConfigurationType & {
+    dataSources: DataSourceConfiguration[];
+  },
   dataSourceViews: DataSourceViewResource[]
 ): Promise<DataSourceViewSelectionConfigurations> {
   const selectedResources = action.dataSources.map((ds) => ({

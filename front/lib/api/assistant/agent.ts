@@ -17,10 +17,8 @@ import type {
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
   isMCPToolConfiguration,
-  isProcessConfiguration,
   isSearchLabelsConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
@@ -215,7 +213,6 @@ async function* runMultiActionsAgentLoop(
                 configuration,
                 actionConfiguration: action,
                 conversation,
-                userMessage,
                 agentMessage,
                 inputs,
                 specification,
@@ -692,6 +689,7 @@ async function* runMultiActionsAgent(
   };
 
   let rawContent = "";
+  let nativeChainOfThought = "";
   for await (const event of eventStream) {
     if (event.type === "function_call") {
       isGeneration = false;
@@ -736,6 +734,30 @@ async function* runMultiActionsAgent(
     if (event.type === "tokens" && isGeneration) {
       rawContent += event.content.tokens.text;
       yield* contentParser.emitTokens(event.content.tokens.text);
+    }
+
+    if (event.type === "reasoning_tokens") {
+      yield {
+        type: "generation_tokens",
+        classification: "chain_of_thought",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        text: event.content.tokens.text,
+      } satisfies GenerationTokensEvent;
+      nativeChainOfThought += event.content.tokens.text;
+    }
+
+    if (event.type === "reasoning_item") {
+      yield {
+        type: "generation_tokens",
+        classification: "chain_of_thought",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        text: "\n\n",
+      } satisfies GenerationTokensEvent;
+      nativeChainOfThought += "\n\n";
     }
 
     if (event.type === "block_execution") {
@@ -872,7 +894,8 @@ async function* runMultiActionsAgent(
       );
     }
 
-    const chainOfThought = contentParser.getChainOfThought() ?? "";
+    const chainOfThought =
+      nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
 
     yield {
       type: "agent_message_content",
@@ -1051,7 +1074,8 @@ async function* runMultiActionsAgent(
 
   yield* contentParser.flushTokens();
 
-  const chainOfThought = contentParser.getChainOfThought();
+  const chainOfThought =
+    nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
 
   if (chainOfThought?.length) {
     yield {
@@ -1093,7 +1117,6 @@ async function* runAction(
     configuration,
     actionConfiguration,
     conversation,
-    userMessage,
     agentMessage,
     inputs,
     specification,
@@ -1106,7 +1129,6 @@ async function* runAction(
     configuration: AgentConfigurationType;
     actionConfiguration: ActionConfigurationType;
     conversation: ConversationType;
-    userMessage: UserMessageType;
     agentMessage: AgentMessageType;
     inputs: Record<string, string | boolean | number>;
     specification: AgentActionSpecification | null;
@@ -1185,103 +1207,6 @@ async function* runAction(
           yield event;
           break;
         case "dust_app_run_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isProcessConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      userMessage,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "process_params":
-          yield event;
-          break;
-        case "process_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "process_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isConversationIncludeFileConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "conversation_include_file_params":
-          yield event;
-          break;
-        case "conversation_include_file_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "conversation_include_file_success":
           yield {
             type: "agent_action_success",
             created: event.created,

@@ -18,6 +18,7 @@ import {
 import {
   findWorkspaceByWorkOSOrganizationId,
   getWorkspaceInfos,
+  isWorkspaceRelocationDone,
 } from "@app/lib/api/workspace";
 import {
   deleteWorkspaceDomain,
@@ -68,6 +69,16 @@ async function verifyWorkOSWorkspace<E extends object, R>(
     // This is expected in a multi-region setup. DataDog monitors these warnings
     // and will alert if they occur across all regions.
     return;
+  }
+  if (workspace) {
+    const workspaceHasBeenRelocated = isWorkspaceRelocationDone(workspace);
+    if (workspaceHasBeenRelocated) {
+      logger.info(
+        { workspaceId: workspace.sId },
+        "Workspace has been relocated, skipping event"
+      );
+      return;
+    }
   }
 
   return handler(workspace, event);
@@ -649,6 +660,16 @@ async function handleDeleteWorkOSUser(
   });
 
   if (membershipRevokeResult.isErr()) {
+    if (membershipRevokeResult.error.type === "already_revoked") {
+      logger.info(
+        {
+          userId: user.sId,
+          workspaceId: workspace.sId,
+        },
+        "User membership already revoked, skipping"
+      );
+      return;
+    }
     throw membershipRevokeResult.error;
   }
 
@@ -682,5 +703,8 @@ async function handleGroupDelete(
     return;
   }
 
-  await group.delete(auth);
+  const deleteResult = await group.delete(auth);
+  if (deleteResult.isErr()) {
+    throw deleteResult.error;
+  }
 }
