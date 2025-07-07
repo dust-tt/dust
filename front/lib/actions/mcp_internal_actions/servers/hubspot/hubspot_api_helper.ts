@@ -153,6 +153,7 @@ interface HubspotFilter {
   operator: FilterOperatorEnum;
   value?: string;
   values?: string[];
+  highValue?: string;
 }
 
 /**
@@ -169,7 +170,7 @@ interface HubspotFilter {
  * - NOT_IN: Value is not in the provided list
  * 
  * RANGE OPERATOR (special handling):
- * - BETWEEN: Value is between two values (semicolon-separated or values array with 2 elements)
+ * - BETWEEN: Value is between two values (uses value and highValue fields)
  * 
  * SINGLE VALUE OPERATORS (use value):
  * - EQ: Equal to
@@ -243,14 +244,22 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
           throw new Error(`Values array is required for ${operator} operator`);
         }
       } else if (operator === FilterOperatorEnum.Between) {
-        // BETWEEN operator needs a semicolon-separated value, not an array
+        // BETWEEN operator needs separate value and highValue fields
         if (values?.length === 2) {
           const cleanValues = values.filter(v => v !== undefined && v !== null).map(v => String(v));
-          filter.value = cleanValues.join(';');
+          filter.value = cleanValues[0];
+          filter.highValue = cleanValues[1];
         } else if (value !== undefined && value !== null) {
-          filter.value = String(value);
+          // If single value provided, assume it's semicolon-separated
+          const parts = String(value).split(';');
+          if (parts.length === 2) {
+            filter.value = parts[0];
+            filter.highValue = parts[1];
+          } else {
+            throw new Error(`BETWEEN operator with single value requires semicolon-separated format (e.g., "100;200")`);
+          }
         } else {
-          throw new Error(`BETWEEN operator requires either a value with semicolon-separated range or values array with 2 elements`);
+          throw new Error(`BETWEEN operator requires either a values array with 2 elements or a semicolon-separated value string`);
         }
       } else {
         // Handle all single-value operators: EQ, NEQ, LT, LTE, GT, GTE, CONTAINS_TOKEN, NOT_CONTAINS_TOKEN
