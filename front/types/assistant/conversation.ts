@@ -1,4 +1,3 @@
-import type { ConversationListFilesActionType } from "@app/lib/actions/conversation/list_files";
 import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
@@ -123,11 +122,8 @@ export function isUserMessageType(
  */
 export type ConfigurableAgentActionType = DustAppRunActionType | MCPActionType;
 
-export type ConversationAgentActionType = ConversationListFilesActionType;
-
 export type AgentActionType =
   | ConfigurableAgentActionType
-  | ConversationAgentActionType
   | SearchLabelsActionType;
 
 export type AgentMessageStatus =
@@ -137,7 +133,6 @@ export type AgentMessageStatus =
   | "cancelled";
 
 export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
-  conversation_list_files_action: "Listing files",
   dust_app_run_action: "Running App",
   search_labels_action: "Searching labels",
   tool_action: "Using a tool",

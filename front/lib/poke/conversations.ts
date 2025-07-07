@@ -75,7 +75,6 @@ export async function getPokeConversation(
                     };
                     break;
 
-                  case "conversation_list_files_action":
                   case "search_labels_action":
                     // TODO(REASONING TOOL): reasoning_action
                     // Theses actions do not call a dust app

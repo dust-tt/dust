@@ -27,13 +27,10 @@ export type ActionGeneratedFileType = {
   snippet: string | null;
 };
 
-type ConversationBaseActionType = "conversation_list_files_action";
-
 export type BaseActionType =
   | "dust_app_run_action"
   | "search_labels_action"
-  | "tool_action"
-  | ConversationBaseActionType;
+  | "tool_action";
 
 export interface BaseAgentActionType {
   type: BaseActionType;
