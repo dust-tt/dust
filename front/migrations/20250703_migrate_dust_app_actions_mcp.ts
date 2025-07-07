@@ -17,7 +17,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type Logger from "@app/logger/logger";
+import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
 
@@ -35,7 +35,7 @@ async function migrateWorkspaceDustAppRunActions({
 }: {
   workspaceModelId: ModelId;
   execute: boolean;
-  parentLogger: typeof Logger;
+  parentLogger: Logger;
 }) {
   const workspace = await WorkspaceModel.findByPk(workspaceModelId);
 
@@ -93,6 +93,7 @@ async function migrateWorkspaceDustAppRunActions({
         sId: {
           [Op.in]: agentConfigurationSIds,
         },
+        workspaceId: workspaceModelId,
       },
       include: [
         {
@@ -172,7 +173,7 @@ async function migrateSingleDustAppRunAction({
   dustAppRunAction: AgentDustAppRunAction;
   execute: boolean;
   mcpServerViewForDustAppRun: MCPServerViewResource;
-  parentLogger: typeof Logger;
+  parentLogger: Logger;
 }) {
   // Find the MCP server configuration for Dust App Run.
   const dustAppRunMcpServerConfiguration =
@@ -250,7 +251,7 @@ async function migrateSingleDustAppRunAction({
       updatedAt: dustAppRunAction.updatedAt,
       agentMCPActionId: mcpAction.id,
       content: {
-        type: "text" as const,
+        type: "text",
         text: JSON.stringify(dustAppRunAction.output, null, 2),
       },
       fileId: null,
