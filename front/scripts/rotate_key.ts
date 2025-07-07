@@ -44,12 +44,15 @@ makeScript(
       return;
     }
 
-    await keyToRotate.updateSecret();
-
     if (execute) {
-      logger.info({ keyId }, "rotated key");
+      const result = await keyToRotate.updateSecret();
+      if (result[0] === 1) {
+        logger.info({ keyId }, "rotated key");
+      } else {
+        logger.error({ keyId }, "failed to rotate key");
+      }
     } else {
-      logger.warn("Not executing");
+      console.log("Would rotate key.");
     }
   }
 );
