@@ -81,10 +81,17 @@ export const confluencePageCheckerPlugin = createPlugin({
       }
 
       const markdownTree = generateMarkdownTree(response.ancestors || []);
+      const hasFolderAncestors = response.ancestors.some(
+        (a) => a.type === "folder"
+      );
 
       return new Ok({
         display: "markdown",
-        value: `Title: ${response.title}\n\nStatus: ${response.status}\n\nExists in Dust: ${response.existsInDust}\n\nHierarchy:\n${markdownTree}`,
+        value: `Title: ${response.title}\nStatus: ${response.status}\nExists in Dust: ${
+          response.existsInDust
+        }\nhasReadRestrictions: ${response.hasReadRestrictions}\nhasChildren: ${
+          response.hasChildren
+        }\nIndexable: ${!hasFolderAncestors}\nHierarchy:\n${markdownTree}`,
       });
     } catch (error) {
       return new Err(new Error(`Failed to check page: ${error}`));
