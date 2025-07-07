@@ -27,7 +27,6 @@ export const DEFAULT_SEARCH_LABELS_ACTION_NAME = "search_labels";
 
 export const DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME =
   "include_conversation_file";
-export const DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION = `Retrieve and read an 'includable' conversation file as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;
 
 export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
   "query_conversation_tables";

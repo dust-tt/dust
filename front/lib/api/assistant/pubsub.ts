@@ -213,7 +213,6 @@ async function handleUserMessageEvents(
             case "agent_error":
             case "agent_generation_cancelled":
             case "agent_message_success":
-            case "conversation_include_file_params":
             case "dust_app_run_block":
             case "dust_app_run_params":
             case "generation_tokens":
@@ -377,7 +376,6 @@ export async function retryAgentMessageWithPubSub(
               case "agent_error":
               case "agent_generation_cancelled":
               case "agent_message_success":
-              case "conversation_include_file_params":
               case "dust_app_run_block":
               case "dust_app_run_params":
               case "generation_tokens":
