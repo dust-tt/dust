@@ -1,6 +1,6 @@
 import {
-  AUTH0_CLAIM_NAMESPACE,
   DEFAULT_DUST_API_DOMAIN,
+  DUST_CLAIM_NAMESPACE,
   DUST_EU_URL,
   DUST_US_URL,
 } from "@app/shared/lib/config";
@@ -142,9 +142,9 @@ export abstract class AuthService {
   }
 }
 
-const REGION_CLAIM = `${AUTH0_CLAIM_NAMESPACE}region`;
-const CONNECTION_STRATEGY_CLAIM = `${AUTH0_CLAIM_NAMESPACE}connection.strategy`;
-const WORKSPACE_ID_CLAIM = `${AUTH0_CLAIM_NAMESPACE}workspaceId`;
+const REGION_CLAIM = `${DUST_CLAIM_NAMESPACE}region`;
+const CONNECTION_STRATEGY_CLAIM = `${DUST_CLAIM_NAMESPACE}connection.strategy`;
+const WORKSPACE_ID_CLAIM = `${DUST_CLAIM_NAMESPACE}workspaceId`;
 
 export function getDustDomain(claims: Record<string, string>) {
   const region = claims[REGION_CLAIM];
