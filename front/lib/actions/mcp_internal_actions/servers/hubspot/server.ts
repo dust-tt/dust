@@ -64,7 +64,9 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "hubspot",
   version: "1.0.0",
   description:
-    "Supports creating, retrieving, and searching CRM objects (contacts, companies, deals, etc.), managing engagements, and accessing object properties, etc.",
+    "Comprehensive HubSpot CRM integration supporting all object types (contacts, companies, deals, tickets) and ALL engagement types (tasks, notes, meetings, calls, emails). " +
+    "Features advanced user activity tracking, association management, and enhanced search capabilities with owner filtering. " +
+    "Perfect for CRM data management and user activity analysis.",
   authorization: {
     provider: "hubspot" as const,
     supported_use_cases: ["platform_actions"] as const,
@@ -182,7 +184,9 @@ const createServer = (): McpServer => {
 
   server.tool(
     "list_owners",
-    "Lists all owners (users) in the HubSpot account.",
+    "Lists all owners (users) in the HubSpot account with their IDs, names, and email addresses. " +
+    "Use this to find owner IDs for get_user_activity calls when you want to get activity for other users. " +
+    "For your own activity, use get_current_user_id instead.",
     {},
     async (_, { authInfo }) => {
       return withAuth({
@@ -839,7 +843,10 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search_crm_objects",
-    "Searches CRM objects of a specific type based on filters, query, and properties.",
+    "Comprehensive search tool for ALL HubSpot object types including contacts, companies, deals, tickets, " +
+    "and ALL engagement types (tasks, notes, meetings, calls, emails). Supports advanced filtering by properties, " +
+    "date ranges, owners, and free-text queries. Enhanced to support owner filtering across all engagement types. " +
+    "Use this for specific searches, or use get_user_activity for comprehensive user activity across all types.",
     {
       objectType: searchableObjectTypes,
       filters: z
@@ -1151,7 +1158,9 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_current_user_id",
-    "Gets the current user's HubSpot owner ID and basic information. Useful for getting your own user ID to use with other tools.",
+    "Gets the current authenticated user's HubSpot owner ID and profile information. " +
+    "Essential first step for getting your own activity data. Returns user_id (needed for get_user_activity), " +
+    "user details, and hub_id. Use this before calling get_user_activity with your own data.",
     {},
     async (_, { authInfo }) => {
       return withAuth({
@@ -1169,12 +1178,17 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_user_activity",
-    "Gets user activity across all engagement types (tasks, notes, meetings, calls, emails) for a specific time period. Perfect for getting a user's activity for the last week, month, etc.",
+    "Comprehensively retrieves user activity across ALL HubSpot engagement types (tasks, notes, meetings, calls, emails) " +
+    "for any time period. Solves the problem of getting complete user activity data by automatically trying multiple " +
+    "owner property variations and gracefully handling object types that don't support owner filtering. " +
+    "Perfect for queries like 'show my activity for the last week' or 'what did I do this month'. " +
+    "Returns both detailed activity list and summary statistics by activity type. " +
+    "For your own activity: first call get_current_user_id to get your ownerId.",
     {
-      ownerId: z.string().describe("The HubSpot owner ID (user ID) to get activity for. Use get_current_user_id to get your own ID."),
-      startDate: z.string().describe("Start date for the activity period (ISO date string or timestamp)"),
-      endDate: z.string().describe("End date for the activity period (ISO date string or timestamp)"),
-      limit: z.number().optional().default(MAX_LIMIT).describe("Maximum number of activities to return"),
+      ownerId: z.string().describe("The HubSpot owner/user ID to get activity for. Get your own ID with get_current_user_id, or use another user's ID from list_owners."),
+      startDate: z.string().describe("Start date for the activity period. Accepts ISO date strings (e.g., '2024-01-01') or timestamps. For 'last week', calculate 7 days ago."),
+      endDate: z.string().describe("End date for the activity period. Accepts ISO date strings (e.g., '2024-01-08') or timestamps. For current time, use new Date().toISOString()."),
+      limit: z.number().optional().default(MAX_LIMIT).describe("Maximum number of activities to return across all engagement types (default: 200)"),
     },
     async ({ ownerId, startDate, endDate, limit }, { authInfo }) => {
       return withAuth({
