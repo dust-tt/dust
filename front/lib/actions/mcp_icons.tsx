@@ -19,13 +19,13 @@ import {
   GcalLogo,
   GithubLogo,
   GmailLogo,
+  GoogleSpreadsheetLogo,
   HubspotLogo,
   LinearLogo,
   NotionLogo,
   SalesforceLogo,
   SlackLogo,
   StripeLogo,
-  GoogleSpreadsheetLogo,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
