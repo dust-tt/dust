@@ -19,12 +19,11 @@ import {
 import type { ComponentType } from "react";
 
 import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
+import { createConnectorOptionsPdfEnabled } from "@app/components/data_source/ConnectorOptionsPdfEnabled";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
-import { GoogleDrivePdfEnabled } from "@app/components/data_source/GoogleDrivePdfEnabled";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
-import { MicrosoftPdfEnabled } from "@app/components/data_source/MicrosoftPdfEnabled";
 import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
@@ -190,7 +189,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return DriveLogo;
     },
-    optionsComponent: GoogleDrivePdfEnabled,
+    optionsComponent: createConnectorOptionsPdfEnabled(
+      "When enabled, PDF documents from your Google Drive will be synced and processed by Dust."
+    ),
     isNested: true,
     permissions: {
       selected: "read",
@@ -313,7 +314,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return MicrosoftLogo;
     },
-    optionsComponent: MicrosoftPdfEnabled,
+    optionsComponent: createConnectorOptionsPdfEnabled(
+      "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
+    ),
     isNested: true,
     oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
     permissions: {
