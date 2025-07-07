@@ -66,38 +66,40 @@ describe("POST /api/w/[wId]", () => {
   });
 
   itInTransaction("updates workspace name", async () => {
+    const getOrganizationByExternalIdSpy = vi.fn().mockResolvedValue({
+      id: "org_123",
+      name: "Old Workspace Name - sId123",
+      object: "organization",
+      allowProfilesOutsideOrganization: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      domains: [],
+      externalId: "sId123",
+      metadata: {},
+      connectionCount: 0,
+      state: "active",
+    } as Organization);
+
+    const updateOrganizationSpy = vi.fn().mockResolvedValue({
+      id: "org_123",
+      name: "New Workspace Name - sId123",
+      object: "organization",
+      allowProfilesOutsideOrganization: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      domains: [],
+      externalId: "sId123",
+      metadata: {},
+      connectionCount: 0,
+      state: "active",
+    } as Organization);
+
     vi.spyOn(workosClient, "getWorkOS").mockImplementation(
       () =>
         ({
           organizations: {
-            getOrganizationByExternalId: async () =>
-              ({
-                id: "org_123",
-                name: "Old Workspace Name - sId123",
-                object: "organization",
-                allowProfilesOutsideOrganization: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                domains: [],
-                externalId: "sId123",
-                metadata: {},
-                connectionCount: 0,
-                state: "active",
-              }) as Organization,
-            updateOrganization: async () =>
-              ({
-                id: "org_123",
-                name: "New Workspace Name - sId123",
-                object: "organization",
-                allowProfilesOutsideOrganization: false,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                domains: [],
-                externalId: "sId123",
-                metadata: {},
-                connectionCount: 0,
-                state: "active",
-              }) as Organization,
+            getOrganizationByExternalId: getOrganizationByExternalIdSpy,
+            updateOrganization: updateOrganizationSpy,
           },
         }) as any
     );
@@ -120,6 +122,8 @@ describe("POST /api/w/[wId]", () => {
         name: "New Workspace Name",
       }),
     });
+
+    expect(updateOrganizationSpy).toHaveBeenCalled();
   });
 
   itInTransaction("updates SSO enforcement", async () => {
