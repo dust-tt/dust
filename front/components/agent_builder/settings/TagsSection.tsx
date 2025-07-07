@@ -122,6 +122,8 @@ export function TagsSection() {
     setTagsSuggestionsLoading(true);
 
     try {
+      // We don't need to subscribe to the values change,
+      // so we should use getValues instead of useWatch.
       const instructions = getValues("instructions");
       const description = getValues("agentSettings.description");
 
