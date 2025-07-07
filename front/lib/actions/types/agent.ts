@@ -1,10 +1,6 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type {
-  DustAppRunActionRunningEvents,
-  DustAppRunConfigurationType,
-} from "@app/lib/actions/dust_app_run";
-import type {
   ClientSideMCPServerConfigurationType,
   MCPActionRunningEvents,
   MCPServerConfigurationType,
@@ -19,9 +15,7 @@ import type {
 /**
  * Agent Action configuration when setting up the agent.
  */
-export type AgentActionConfigurationType =
-  | DustAppRunConfigurationType
-  | MCPServerConfigurationType;
+export type AgentActionConfigurationType = MCPServerConfigurationType;
 
 /**
  * Action configuration type that can be used to run the action.
@@ -38,7 +32,6 @@ export function isActionConfigurationType(
   value: AgentActionConfigurationType | ActionConfigurationType
 ): value is ActionConfigurationType {
   switch (value.type) {
-    case "dust_app_run_configuration":
     case "mcp_configuration":
     case "search_labels_configuration":
       return true;
@@ -148,6 +141,5 @@ export function inputSchemaToDustAppRunInputs(
 
 // Event sent during the execution of an action. These are action-specific.
 export type AgentActionSpecificEvent =
-  | DustAppRunActionRunningEvents
   | SearchLabelsActionRunningEvents
   | MCPActionRunningEvents;

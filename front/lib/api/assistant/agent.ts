@@ -17,7 +17,6 @@ import type {
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isDustAppRunConfiguration,
   isMCPToolConfiguration,
   isSearchLabelsConfiguration,
 } from "@app/lib/actions/types/guards";
@@ -209,14 +208,13 @@ async function* runMultiActionsAgentLoop(
           event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
           const eventStreamGenerators = event.actions.map(
-            ({ action, inputs, functionCallId, specification }, index) => {
+            ({ action, inputs, functionCallId }, index) => {
               return runAction(auth, {
                 configuration,
                 actionConfiguration: action,
                 conversation,
                 agentMessage,
                 inputs,
-                specification,
                 functionCallId,
                 step: i,
                 stepActionIndex: index,
@@ -1120,7 +1118,6 @@ async function* runAction(
     conversation,
     agentMessage,
     inputs,
-    specification,
     functionCallId,
     step,
     stepActionIndex,
@@ -1132,7 +1129,6 @@ async function* runAction(
     conversation: ConversationType;
     agentMessage: AgentMessageType;
     inputs: Record<string, string | boolean | number>;
-    specification: AgentActionSpecification | null;
     functionCallId: string | null;
     step: number;
     stepActionIndex: number;
@@ -1143,89 +1139,7 @@ async function* runAction(
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
   void
 > {
-  const now = Date.now();
-
-  if (isDustAppRunConfiguration(actionConfiguration)) {
-    if (!specification) {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          elapsedTime: Date.now() - now,
-        },
-        "No specification found for Dust app run action."
-      );
-      yield {
-        type: "agent_error",
-        created: now,
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "parameters_generation_error",
-          message: "No specification found for Dust app run action.",
-          metadata: null,
-        },
-      };
-      return;
-    }
-
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(
-      auth,
-      {
-        agentConfiguration: configuration,
-        conversation,
-        agentMessage,
-        rawInputs: inputs,
-        functionCallId,
-        step,
-      },
-      {
-        spec: specification,
-      }
-    );
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "dust_app_run_params":
-          yield event;
-          break;
-        case "dust_app_run_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "dust_app_run_block":
-          yield event;
-          break;
-        case "dust_app_run_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isSearchLabelsConfiguration(actionConfiguration)) {
+  if (isSearchLabelsConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(auth, {

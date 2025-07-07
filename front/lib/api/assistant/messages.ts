@@ -1,7 +1,6 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_run";
 import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
 import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
 import {
@@ -129,39 +128,36 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   const agentMessageIds = removeNulls(
     agentMessages.map((m) => m.agentMessageId || null)
   );
-  const [
-    agentConfigurations,
-    agentDustAppRunActions,
-    agentSearchLabelsActions,
-    agentMCPActions,
-  ] = await Promise.all([
-    (async () => {
-      const agentConfigurationIds: Set<string> = agentMessages.reduce(
-        (acc: Set<string>, m) => {
-          const agentId = m.agentMessage?.agentConfigurationId;
-          if (agentId) {
-            acc.add(agentId);
-          }
-          return acc;
-        },
-        new Set<string>()
-      );
-      const agents = await getAgentConfigurations({
-        auth,
-        agentsGetView: { agentIds: [...agentConfigurationIds] },
-        variant: "extra_light",
-      });
-      if (agents.some((a) => !a)) {
-        return null;
-      }
-      return agents as LightAgentConfigurationType[];
-    })(),
-    (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    (async () =>
-      searchLabelsActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-    (async () =>
-      mcpActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
-  ]);
+  const [agentConfigurations, agentSearchLabelsActions, agentMCPActions] =
+    await Promise.all([
+      (async () => {
+        const agentConfigurationIds: Set<string> = agentMessages.reduce(
+          (acc: Set<string>, m) => {
+            const agentId = m.agentMessage?.agentConfigurationId;
+            if (agentId) {
+              acc.add(agentId);
+            }
+            return acc;
+          },
+          new Set<string>()
+        );
+        const agents = await getAgentConfigurations({
+          auth,
+          agentsGetView: { agentIds: [...agentConfigurationIds] },
+          variant: "extra_light",
+        });
+        if (agents.some((a) => !a)) {
+          return null;
+        }
+        return agents as LightAgentConfigurationType[];
+      })(),
+      (async () =>
+        searchLabelsActionTypesFromAgentMessageIds(auth, {
+          agentMessageIds,
+        }))(),
+      (async () =>
+        mcpActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
+    ]);
 
   if (!agentConfigurations) {
     return new Err(
@@ -181,7 +177,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       const agentMessage = message.agentMessage;
 
       const actions: AgentActionType[] = [
-        agentDustAppRunActions,
         agentSearchLabelsActions,
         agentMCPActions,
       ]

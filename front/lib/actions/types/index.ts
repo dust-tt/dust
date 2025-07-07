@@ -27,10 +27,7 @@ export type ActionGeneratedFileType = {
   snippet: string | null;
 };
 
-export type BaseActionType =
-  | "dust_app_run_action"
-  | "search_labels_action"
-  | "tool_action";
+export type BaseActionType = "search_labels_action" | "tool_action";
 
 export interface BaseAgentActionType {
   type: BaseActionType;

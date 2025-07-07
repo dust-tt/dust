@@ -8,7 +8,6 @@ import {
   ValidationError,
 } from "sequelize";
 
-import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type {
@@ -502,12 +501,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const configurationSIds = agentConfigurations.map((a) => a.sId);
 
   const [
-    dustAppRunActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
     tagsPerAgent,
   ] = await Promise.all([
-    fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
@@ -522,11 +519,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     const actions: AgentActionConfigurationType[] = [];
 
     if (variant === "full") {
-      // Dust app run configurations.
-      const dustAppRunActionsConfigurations =
-        dustAppRunActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...dustAppRunActionsConfigurations);
-
       // MCP server configurations
       const mcpServerActionsConfigurations =
         mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? [];

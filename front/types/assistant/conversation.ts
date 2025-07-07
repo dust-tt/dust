@@ -1,4 +1,3 @@
-import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
 import type {
@@ -120,7 +119,7 @@ export function isUserMessageType(
 /**
  * Agent messages
  */
-export type ConfigurableAgentActionType = DustAppRunActionType | MCPActionType;
+export type ConfigurableAgentActionType = MCPActionType;
 
 export type AgentActionType =
   | ConfigurableAgentActionType
@@ -133,7 +132,6 @@ export type AgentMessageStatus =
   | "cancelled";
 
 export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
-  dust_app_run_action: "Running App",
   search_labels_action: "Searching labels",
   tool_action: "Using a tool",
 };

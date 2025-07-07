@@ -1,4 +1,4 @@
-import type { SupportedFileContentType } from "@app/types";
+import type { ModelId, SupportedFileContentType } from "@app/types";
 import { extensionsForContentType } from "@app/types/files";
 
 export function getDustAppRunResultsFileTitle({
@@ -15,3 +15,17 @@ export function getDustAppRunResultsFileTitle({
   }
   return title;
 }
+
+// TODO Daph refactor this we could simplify this.
+export type DustAppRunConfigurationType = {
+  id: ModelId;
+  sId: string;
+
+  type: "dust_app_run_configuration";
+
+  appWorkspaceId: string;
+  appId: string;
+
+  name: string;
+  description: string | null;
+};
