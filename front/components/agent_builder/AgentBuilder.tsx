@@ -6,16 +6,14 @@ import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  AgentBuilderFormProvider,
-  agentBuilderFormSchema,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import {
@@ -46,6 +44,7 @@ export default function AgentBuilder() {
         name: "",
         description: "",
         pictureUrl: "",
+        tags: [],
       },
       instructions: "",
       generationSettings: {
@@ -89,7 +88,7 @@ export default function AgentBuilder() {
   };
 
   return (
-    <AgentBuilderFormProvider form={form} onSubmit={handleSubmit}>
+    <FormProvider form={form} onSubmit={handleSubmit}>
       <AgentBuilderLayout
         leftPanel={
           <AgentBuilderLeftPanel
@@ -103,6 +102,6 @@ export default function AgentBuilder() {
         }
         rightPanel={<AgentBuilderRightPanel />}
       />
-    </AgentBuilderFormProvider>
+    </FormProvider>
   );
 }
