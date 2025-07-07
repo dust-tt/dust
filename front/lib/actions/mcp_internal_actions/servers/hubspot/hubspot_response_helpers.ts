@@ -150,11 +150,9 @@ export function formatHubSpotSearchResults(
         ...(formatted.updated_at ? [`updated: ${formatted.updated_at}`] : []),
       ],
       ref: `[${index + 1}]`,
-      chunks: [
-        Object.entries(formatted.properties)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join(", "),
-      ],
+      chunks: Object.entries(formatted.properties).map(
+        ([key, value]) => `${key}: ${value}`
+      ),
       source: {
         provider: "hubspot",
       },
