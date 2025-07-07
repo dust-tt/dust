@@ -27,7 +27,7 @@ export function AgentBuilderScopeSelector() {
           label={field.value === "hidden" ? "Unpublished" : "Published"}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="min-w-[300px]" align="end" side="bottom">
+      <DropdownMenuContent className="min-w-[300px]" side="bottom">
         <DropdownMenuItem
           icon={EyeSlashIcon}
           label="Unpublished"

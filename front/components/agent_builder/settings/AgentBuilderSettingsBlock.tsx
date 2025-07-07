@@ -4,32 +4,14 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  EyeIcon,
-  EyeSlashIcon,
   Input,
   Page,
   PencilSquareIcon,
-  PlusIcon,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-  Sheet,
-  SheetContainer,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SlackLogo,
   SparklesIcon,
   TextArea,
-  UserIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { PaginationState } from "@tanstack/react-table";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -51,20 +33,12 @@ import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
-import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
-import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
-import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
-import { MembersList } from "@app/components/members/MembersList";
-import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
-import { useUser } from "@app/lib/swr/user";
 import type {
   APIError,
   BuilderEmojiSuggestionsType,
   Result,
-  UserType,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder } from "@app/types";
 
 const MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION = 30;
 
