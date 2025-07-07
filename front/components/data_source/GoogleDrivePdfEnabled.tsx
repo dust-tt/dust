@@ -1,13 +1,10 @@
-import {
-  ContextItem,
-  GooglePdfLogo,
-  SliderToggle,
-  useSendNotification,
-} from "@dust-tt/sparkle";
-import { useState } from "react";
+import { ContextItem, GooglePdfLogo, SliderToggle } from "@dust-tt/sparkle";
 
-import { useConnectorConfig } from "@app/lib/swr/connectors";
-import type { APIError, DataSourceType, WorkspaceType } from "@app/types";
+import {
+  useConnectorConfig,
+  useTogglePdfEnabled,
+} from "@app/lib/swr/connectors";
+import type { DataSourceType, WorkspaceType } from "@app/types";
 
 export function GoogleDrivePdfEnabled({
   owner,
@@ -20,41 +17,18 @@ export function GoogleDrivePdfEnabled({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
-  const { configValue, mutateConfig } = useConnectorConfig({
+  const { configValue } = useConnectorConfig({
     owner,
     dataSource,
     configKey: "pdfEnabled",
   });
   const pdfEnabled = configValue === "true";
 
-  const sendNotification = useSendNotification();
-  const [loading, setLoading] = useState(false);
+  const { doToggle: togglePdfEnabled, isLoading: loading } =
+    useTogglePdfEnabled({ dataSource, owner });
 
   const handleSetPdfEnabled = async (pdfEnabled: boolean) => {
-    setLoading(true);
-    const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/pdfEnabled`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({ configValue: pdfEnabled.toString() }),
-      }
-    );
-    if (res.ok) {
-      await mutateConfig();
-      setLoading(false);
-    } else {
-      setLoading(false);
-      const err = (await res.json()) as { error: APIError };
-      sendNotification({
-        type: "error",
-        title: "Failed to update PDF sync setting",
-        description: err.error.message,
-      });
-    }
-    return true;
+    await togglePdfEnabled(pdfEnabled);
   };
 
   return (
