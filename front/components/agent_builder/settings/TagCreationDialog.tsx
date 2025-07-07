@@ -57,7 +57,7 @@ const TagCreationForm = ({
   } = form;
 
   return (
-    <FormProvider<TagForm> form={form} onSubmit={onFormSubmit}>
+    <FormProvider form={form} onSubmit={onFormSubmit}>
       <DialogHeader>
         <DialogTitle>Add tag</DialogTitle>
         <DialogDescription>Create a new tag for your agent</DialogDescription>

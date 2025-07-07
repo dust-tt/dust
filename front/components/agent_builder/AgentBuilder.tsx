@@ -88,7 +88,7 @@ export default function AgentBuilder() {
   };
 
   return (
-    <FormProvider<AgentBuilderFormData> form={form} onSubmit={handleSubmit}>
+    <FormProvider form={form} onSubmit={handleSubmit}>
       <AgentBuilderLayout
         leftPanel={
           <AgentBuilderLeftPanel
