@@ -1277,6 +1277,11 @@ export const searchCrmObjects = async ({
   objectType:
     | SimpleObjectType
     | "tickets"
+    | "tasks"
+    | "notes"
+    | "meetings"
+    | "calls"
+    | "emails"
     | "line_items"
     | "quotes"
     | "feedback_submissions"
@@ -1506,3 +1511,144 @@ type HubspotSearchRequest = {
   sorts?: string[];
   query?: string;
 };
+
+/**
+ * Creates an association between two HubSpot objects
+ */
+export const createAssociation = async ({
+  accessToken,
+  fromObjectType,
+  fromObjectId,
+  toObjectType,
+  toObjectId,
+}: {
+  accessToken: string;
+  fromObjectType: string;
+  fromObjectId: string;
+  toObjectType: string;
+  toObjectId: string;
+}) => {
+  try {
+    const hubspotClient = new Client({ accessToken });
+    
+    const result = await hubspotClient.crm.associations.v4.basicApi.create(
+      fromObjectType,
+      fromObjectId,
+      toObjectType,
+      toObjectId,
+      [
+        {
+          associationCategory: AssociationSpecAssociationCategoryEnum.HubspotDefined,
+          associationTypeId: 1, // Primary association
+        },
+      ]
+    );
+
+    return result;
+  } catch (error) {
+    localLogger.error(
+      { error, fromObjectType, fromObjectId, toObjectType, toObjectId },
+      `Error creating association between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+/**
+ * Lists all associations for a given object
+ */
+export const listAssociations = async ({
+  accessToken,
+  objectType,
+  objectId,
+  toObjectType,
+}: {
+  accessToken: string;
+  objectType: string;
+  objectId: string;
+  toObjectType?: string;
+}) => {
+  try {
+    const hubspotClient = new Client({ accessToken });
+    
+    if (toObjectType) {
+      // Get associations to a specific object type
+      const result = await hubspotClient.crm.associations.v4.basicApi.getPage(
+        objectType,
+        objectId,
+        toObjectType
+      );
+      return result;
+    } else {
+      // Get all associations for the object
+      const associationTypes = ["contacts", "companies", "deals", "tickets", "tasks", "notes"];
+      const allAssociations = [];
+      
+      for (const targetType of associationTypes) {
+        if (targetType !== objectType) {
+          try {
+            const result = await hubspotClient.crm.associations.v4.basicApi.getPage(
+              objectType,
+              objectId,
+              targetType
+            );
+            if (result.results && result.results.length > 0) {
+              allAssociations.push({
+                toObjectType: targetType,
+                associations: result.results,
+              });
+            }
+          } catch (error) {
+            // Continue if this association type doesn't exist
+            continue;
+          }
+        }
+      }
+      
+      return { results: allAssociations };
+    }
+  } catch (error) {
+    localLogger.error(
+      { error, objectType, objectId, toObjectType },
+      `Error listing associations for ${objectType}:${objectId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+/**
+ * Removes an association between two HubSpot objects
+ */
+export const removeAssociation = async ({
+  accessToken,
+  fromObjectType,
+  fromObjectId,
+  toObjectType,
+  toObjectId,
+}: {
+  accessToken: string;
+  fromObjectType: string;
+  fromObjectId: string;
+  toObjectType: string;
+  toObjectId: string;
+}) => {
+  try {
+    const hubspotClient = new Client({ accessToken });
+    
+    const result = await hubspotClient.crm.associations.v4.basicApi.archive(
+      fromObjectType,
+      fromObjectId,
+      toObjectType,
+      toObjectId
+    );
+
+    return result;
+  } catch (error) {
+    localLogger.error(
+      { error, fromObjectType, fromObjectId, toObjectType, toObjectId },
+      `Error removing association between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+

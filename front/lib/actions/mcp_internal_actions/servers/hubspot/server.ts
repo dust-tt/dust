@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   ALL_OBJECTS,
   countObjectsByProperties,
+  createAssociation,
   createCommunication,
   createCompany,
   createContact,
@@ -24,9 +25,11 @@ import {
   getObjectByEmail,
   getObjectProperties,
   getUserDetails,
+  listAssociations,
   listOwners,
   MAX_COUNT_LIMIT,
   MAX_LIMIT,
+  removeAssociation,
   searchCrmObjects,
   SIMPLE_OBJECTS,
   updateCompany,
@@ -738,6 +741,11 @@ const createServer = (): McpServer => {
     "companies",
     "deals",
     "tickets",
+    "tasks",
+    "notes",
+    "meetings",
+    "calls",
+    "emails",
     "products",
     "line_items",
     "quotes",
@@ -916,7 +924,7 @@ const createServer = (): McpServer => {
         .default(2000)
         .describe("Maximum number of rows to export (hard limit: 2000)."),
     },
-    async (input, { authInfo, agentLoopContext }) => {
+    async (input, { authInfo }) => {
       // Hard cap for safety
       const HARD_ROW_LIMIT = 2000;
       const maxRows = Math.min(input.maxRows ?? HARD_ROW_LIMIT, HARD_ROW_LIMIT);
@@ -969,40 +977,19 @@ const createServer = (): McpServer => {
         }
         return row;
       });
-      // Use established helpers for file creation and upload
-      const auth = agentLoopContext?.auth;
-      if (!auth) {
-        return makeMCPToolTextError(
-          "Internal error: missing auth context for file upload."
-        );
-      }
-      const fileTitle = `HubSpot ${input.objectType} export (${new Date().toISOString().split("T")[0]})`;
-      const { generateCSVFileAndSnippet, uploadFileToConversationDataSource } =
-        await import("@app/lib/actions/action_file_helpers");
-      const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
-        title: fileTitle,
-        conversationId: agentLoopContext.conversation.sId,
-        results: csvRows,
+      // Return CSV data as text
+      const csvHeader = input.propertiesToExport.join(",");
+      const csvContent = csvRows.map(row => 
+        input.propertiesToExport.map(prop => 
+          `"${String(row[prop] || "").replace(/"/g, '""')}"`
+        ).join(",")
+      ).join("\n");
+      const fullCsv = `${csvHeader}\n${csvContent}`;
+      
+      return makeMCPToolTextSuccess({
+        message: `Exported ${csvRows.length} ${input.objectType} to CSV`,
+        result: fullCsv,
       });
-      await uploadFileToConversationDataSource({ auth, file: csvFile });
-      // Return a resource object for downstream table queries
-      return {
-        isError: false,
-        content: [
-          {
-            type: "resource",
-            resource: {
-              text: `Exported ${csvRows.length} ${input.objectType} to CSV. File is available for table queries.`,
-              uri: csvFile.getPublicUrl(auth),
-              mimeType: "text/csv",
-              fileId: csvFile.sId,
-              title: fileTitle,
-              contentType: csvFile.contentType,
-              snippet: csvSnippet,
-            },
-          },
-        ],
-      };
     }
   );
 
@@ -1074,6 +1061,92 @@ const createServer = (): McpServer => {
       });
     }
   );
+
+  server.tool(
+    "create_association",
+    "Creates an association between two existing HubSpot objects (e.g., associate a contact with a company).",
+    {
+      fromObjectType: z.enum(["contacts", "companies", "deals", "tickets"]).describe("The type of the source object"),
+      fromObjectId: z.string().describe("The ID of the source object"),
+      toObjectType: z.enum(["contacts", "companies", "deals", "tickets"]).describe("The type of the target object"),
+      toObjectId: z.string().describe("The ID of the target object"),
+    },
+    async ({ fromObjectType, fromObjectId, toObjectType, toObjectId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await createAssociation({
+            accessToken,
+            fromObjectType,
+            fromObjectId,
+            toObjectType,
+            toObjectId,
+          });
+          return makeMCPToolJSONSuccess({
+            message: `Association created successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`,
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "list_associations",
+    "Lists all associations for a given HubSpot object (e.g., list all contacts associated with a company).",
+    {
+      objectType: z.enum(["contacts", "companies", "deals", "tickets"]).describe("The type of the object"),
+      objectId: z.string().describe("The ID of the object"),
+      toObjectType: z.enum(["contacts", "companies", "deals", "tickets"]).optional().describe("Optional: specific object type to filter associations"),
+    },
+    async ({ objectType, objectId, toObjectType }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await listAssociations({
+            accessToken,
+            objectType,
+            objectId,
+            toObjectType,
+          });
+          return makeMCPToolJSONSuccess({
+            message: `Associations retrieved successfully for ${objectType}:${objectId}`,
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "remove_association",
+    "Removes an association between two HubSpot objects.",
+    {
+      fromObjectType: z.enum(["contacts", "companies", "deals", "tickets"]).describe("The type of the source object"),
+      fromObjectId: z.string().describe("The ID of the source object"),
+      toObjectType: z.enum(["contacts", "companies", "deals", "tickets"]).describe("The type of the target object"),
+      toObjectId: z.string().describe("The ID of the target object"),
+    },
+    async ({ fromObjectType, fromObjectId, toObjectType, toObjectId }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          await removeAssociation({
+            accessToken,
+            fromObjectType,
+            fromObjectId,
+            toObjectType,
+            toObjectId,
+          });
+          return makeMCPToolJSONSuccess({
+            message: `Association removed successfully between ${fromObjectType}:${fromObjectId} and ${toObjectType}:${toObjectId}`,
+            result: { success: true },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
 
   return server;
 };
