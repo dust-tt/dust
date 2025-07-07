@@ -194,16 +194,6 @@ export async function syncChannel(
 
     if (!isIndexable) {
       // Skip non-user messages unless from whitelisted bot/workflow.
-      logger.info(
-        {
-          botName: message.bot_profile?.name,
-          botId: message.bot_id,
-          channelId,
-          messageTs: message.ts,
-        },
-        "Skipping message because it's not posted by a user and not a whitelisted bot/workflow"
-      );
-
       continue;
     }
     let skip = false;
@@ -475,17 +465,6 @@ export async function syncNonThreadedChunk({
       );
 
       if (!isIndexable) {
-        // Skip non-user messages unless from whitelisted bot/workflow.
-        logger.info(
-          {
-            botName: message.bot_profile?.name,
-            botId: message.bot_id,
-            channelId,
-            messageTs: message.ts,
-          },
-          "Skipping message because it's not posted by a user and not a whitelisted bot/workflow"
-        );
-
         continue;
       }
       if (!message.thread_ts && message.ts) {
