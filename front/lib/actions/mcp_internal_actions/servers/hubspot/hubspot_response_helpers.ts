@@ -1,8 +1,5 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { SimplePublicObject } from "@hubspot/api-client/lib/codegen/crm/objects/models/SimplePublicObject";
 import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/models/Property";
-
-import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
 export interface HubSpotObjectSummary {
   id: string;

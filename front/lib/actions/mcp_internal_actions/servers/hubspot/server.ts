@@ -972,11 +972,15 @@ const createServer = (): McpServer => {
       let totalFetched = 0;
       const allResults: any[] = [];
       try {
+        // Guard clause for access token
+        if (!authInfo?.token) {
+          throw new Error("Missing HubSpot access token");
+        }
         // Paginate through results
         while (totalFetched < maxRows) {
           const pageLimit = Math.min(100, maxRows - totalFetched); // HubSpot API max page size is 100
           const result = await searchCrmObjects({
-            accessToken: authInfo?.token!,
+            accessToken: authInfo.token,
             objectType: input.objectType,
             filters: input.filters,
             query: input.query,
