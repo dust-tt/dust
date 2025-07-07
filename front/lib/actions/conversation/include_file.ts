@@ -1,27 +1,18 @@
 import {
-  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
-import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { conversationAttachmentId } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-import config from "@app/lib/api/config";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import {
   CONTENT_OUTDATED_MSG,
   getContentFragmentFromAttachmentFile,
 } from "@app/lib/resources/content_fragment_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import logger from "@app/logger/logger";
 import type {
   ConversationType,
   FunctionCallType,
@@ -34,7 +25,6 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  CoreAPI,
   Err,
   isImageContent,
   isTextContent,
@@ -43,14 +33,6 @@ import {
 
 const CONTEXT_SIZE_DIVISOR_FOR_INCLUDE = 4;
 
-export type ConversationIncludeFileConfigurationType = {
-  id: ModelId;
-  sId: string;
-  type: "conversation_include_file_configuration";
-  name: string;
-  description: string | null;
-};
-
 // Event sent before running the action with the finalized params to be used.
 type ConversationIncludeFileParamsEvent = {
   type: "conversation_include_file_params";
@@ -58,25 +40,6 @@ type ConversationIncludeFileParamsEvent = {
   configurationId: string;
   messageId: string;
   action: ConversationIncludeFileActionType;
-};
-
-type ConversationIncludeFileSuccessEvent = {
-  type: "conversation_include_file_success";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  action: ConversationIncludeFileActionType;
-};
-
-type ConversationIncludeFileErrorEvent = {
-  type: "conversation_include_file_error";
-  created: number;
-  configurationId: string;
-  messageId: string;
-  error: {
-    code: string;
-    message: string;
-  };
 };
 
 export type ConversationIncludeFileActionRunningEvents =
@@ -246,206 +209,6 @@ export class ConversationIncludeFileActionType extends BaseAction {
 }
 
 /**
- * Params generation.
- */
-export class ConversationIncludeFileConfigurationServerRunner extends BaseActionConfigurationServerRunner<ConversationIncludeFileConfigurationType> {
-  // Generates the action specification for generation of rawInputs passed to `run`.
-  async buildSpecification(
-    auth: Authenticator,
-    { name, description }: { name: string; description: string | null }
-  ): Promise<Result<AgentActionSpecification, Error>> {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error(
-        "Unexpected unauthenticated call to `runConversationIncludeFileAction`"
-      );
-    }
-
-    const inputs = [
-      {
-        name: "fileId",
-        description:
-          "The fileId of the attachment to include in the conversation as returned by the `conversation_list_files_action`",
-        type: "string" as const,
-      },
-    ];
-
-    return new Ok({
-      name,
-      description:
-        description ?? DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
-      inputs: inputs,
-      inputSchema: dustAppRunInputsToInputSchema(inputs),
-    });
-  }
-
-  // This method is mostly a no-op it validates that we did get a fileId as part of the rawInputs
-  // and creates the action and return. The inclusion of the fileId content is done in the rendering
-  // of the action for the model above.
-  async *run(
-    auth: Authenticator,
-    {
-      agentConfiguration,
-      conversation,
-      agentMessage,
-      rawInputs,
-      functionCallId,
-      step,
-    }: BaseActionRunParams
-  ): AsyncGenerator<
-    | ConversationIncludeFileParamsEvent
-    | ConversationIncludeFileSuccessEvent
-    | ConversationIncludeFileErrorEvent,
-    void
-  > {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `run`");
-    }
-
-    const { actionConfiguration } = this;
-
-    if (!rawInputs.fileId || typeof rawInputs.fileId !== "string") {
-      yield {
-        type: "conversation_include_file_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "conversation_include_file_parameters_generation_error",
-          message: `Error generating parameters for converstaion file inclusion: failed to generate a valid fileId.`,
-        },
-      };
-      return;
-    }
-
-    const fileId = rawInputs.fileId;
-
-    // Create the AgentConversationIncludeFileAction object in the database and yield an event for
-    // the generation of the params. We store the action here as the params have been generated, if
-    // an error occurs later on, the error will be stored on the parent agent message.
-    const action = await AgentConversationIncludeFileAction.create({
-      fileId,
-      functionCallId,
-      functionCallName: actionConfiguration.name,
-      agentMessageId: agentMessage.agentMessageId,
-      step,
-      workspaceId: owner.id,
-    });
-
-    yield {
-      type: "conversation_include_file_params",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      action: new ConversationIncludeFileActionType({
-        id: action.id,
-        params: {
-          fileId,
-        },
-        tokensCount: null,
-        fileTitle: null,
-        functionCallId,
-        functionCallName: actionConfiguration.name,
-        agentMessageId: agentMessage.agentMessageId,
-        step,
-        type: "conversation_include_file_action",
-        generatedFiles: [],
-        contentFragments: [],
-      }),
-    };
-
-    const model = getSupportedModelConfig(agentConfiguration.model);
-    const fileRes =
-      await ConversationIncludeFileActionType.fileFromConversation(
-        auth,
-        fileId,
-        conversation,
-        model
-      );
-    if (fileRes.isErr()) {
-      // We error here if the file was not found which will interrupt the agent loop. We might want
-      // to consider letting this error go through here in the future if it happens non trivially
-      // frequently so that we can present the failure in the action result instead (to give a
-      // chance to the model to recover).
-      yield {
-        type: "conversation_include_file_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "conversation_include_file_error",
-          message: `Error including conversation file: ${fileRes.error}`,
-        },
-      };
-      return;
-    }
-
-    let tokensCount: number | null = null;
-    if (isTextContent(fileRes.value.content)) {
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-      const tokensRes = await coreAPI.tokenize({
-        text: fileRes.value.content.text,
-        providerId: model.providerId,
-        modelId: model.modelId,
-      });
-
-      if (tokensRes.isErr()) {
-        yield {
-          type: "conversation_include_file_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "conversation_include_file_error",
-            message: `Error including conversation file: ${tokensRes.error}`,
-          },
-        };
-        return;
-      }
-
-      tokensCount = tokensRes.value.tokens.length;
-    } else if (isImageContent(fileRes.value.content)) {
-      tokensCount = 0;
-    } else {
-      assertNever(fileRes.value.content);
-    }
-
-    // Store the tokens count and file title on the action model for use in the rendering of the
-    // action for the model (token count) and the rendering of the action details (file title).
-    await action.update({
-      tokensCount,
-      fileTitle:
-        fileRes.value.title?.length > 255
-          ? `...${fileRes.value.title?.slice(-252)}`
-          : fileRes.value.title,
-    });
-
-    yield {
-      type: "conversation_include_file_success",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      action: new ConversationIncludeFileActionType({
-        id: action.id,
-        params: {
-          fileId,
-        },
-        tokensCount,
-        fileTitle: fileRes.value.title,
-        functionCallId,
-        functionCallName: actionConfiguration.name,
-        agentMessageId: agentMessage.agentMessageId,
-        step,
-        type: "conversation_include_file_action",
-        generatedFiles: [],
-        contentFragments: [],
-      }),
-    };
-  }
-}
-
-/**
  * Action rendering.
  */
 
@@ -479,18 +242,4 @@ export async function conversationIncludeFileTypesFromAgentMessageIds(
       contentFragments: [],
     });
   });
-}
-
-/**
- * JIT action configration construction
- */
-
-export function makeConversationIncludeFileConfiguration(): ConversationIncludeFileConfigurationType {
-  return {
-    id: -1,
-    sId: generateRandomModelSId(),
-    type: "conversation_include_file_configuration",
-    name: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
-    description: DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
-  };
 }
