@@ -24,11 +24,6 @@ type SpecialObjectType = (typeof SPECIAL_OBJECTS)[number];
 
 export const ALL_OBJECTS = [...SIMPLE_OBJECTS, ...SPECIAL_OBJECTS] as const;
 
-/**
- * Get all createable properties for an object.
- * creatableOnly = true: filter out properties that are not createable, hidden, calculated, read-only or file uploads.
- * creatableOnly = false: return all properties.
- */
 export const getObjectProperties = async ({
   accessToken,
   objectType,
@@ -74,10 +69,6 @@ export const getObjectProperties = async ({
   });
 };
 
-/**
- * Get an object by email.
- * An email is unique, so there will only be zero or one object with a given email.
- */
 export const getObjectByEmail = async (
   accessToken: string,
   objectType: SimpleObjectType | SpecialObjectType,
@@ -121,9 +112,6 @@ export const getObjectByEmail = async (
   return objects.results[0];
 };
 
-/**
- * List all owners (users) in the HubSpot account.
- */
 export const listOwners = async (
   accessToken: string
 ): Promise<
@@ -156,38 +144,6 @@ interface HubspotFilter {
   highValue?: string;
 }
 
-/**
- * Builds HubSpot-compatible filters from an array of filter objects.
- * 
- * Supports all standard HubSpot FilterOperatorEnum values:
- * 
- * PROPERTY EXISTENCE OPERATORS (no value/values needed):
- * - HAS_PROPERTY: Property exists
- * - NOT_HAS_PROPERTY: Property does not exist
- * 
- * ARRAY OPERATORS (use values array):
- * - IN: Value is in the provided list
- * - NOT_IN: Value is not in the provided list
- * 
- * RANGE OPERATOR (special handling):
- * - BETWEEN: Value is between two values (uses value and highValue fields)
- * 
- * SINGLE VALUE OPERATORS (use value):
- * - EQ: Equal to
- * - NEQ: Not equal to
- * - LT: Less than
- * - LTE: Less than or equal to
- * - GT: Greater than
- * - GTE: Greater than or equal to
- * - CONTAINS_TOKEN: Contains token (string search)
- * - NOT_CONTAINS_TOKEN: Does not contain token (string search)
- * 
- * Special handling:
- * - Date properties preserve original case/formatting
- * - Non-date string properties are lowercased for consistency
- * - Null/undefined values are filtered out
- * - All values are converted to strings
- */
 function buildHubspotFilters(filters: Array<HubspotFilter>) {
   // Define supported operators for validation
   const supportedOperators = [
@@ -209,14 +165,16 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
   return filters.map(({ propertyName, operator, value, values }) => {
     // Validate operator is supported
     if (!supportedOperators.includes(operator)) {
-      throw new Error(`Unsupported filter operator: ${operator}. Supported operators: ${supportedOperators.join(', ')}`);
+      throw new Error(
+        `Unsupported filter operator: ${operator}. Supported operators: ${supportedOperators.join(", ")}`
+      );
     }
 
     const filter: HubspotFilter = {
       propertyName,
       operator,
     };
-    
+
     // Only include value/values if it's not a HAS_PROPERTY or NOT_HAS_PROPERTY operator
     if (
       operator !== FilterOperatorEnum.HasProperty &&
@@ -230,56 +188,69 @@ function buildHubspotFilters(filters: Array<HubspotFilter>) {
         // For string properties, values must be lowercase, but not for date properties
         if (values?.length) {
           // Check if this is a date property to avoid lowercasing dates
-          const isDateProperty = propertyName.includes('date') || 
-                                propertyName.includes('time') || 
-                                propertyName.includes('timestamp') ||
-                                propertyName === 'createdate' ||
-                                propertyName === 'lastmodifieddate' ||
-                                propertyName === 'hs_lastmodifieddate';
-          
+          const isDateProperty =
+            propertyName.includes("date") ||
+            propertyName.includes("time") ||
+            propertyName.includes("timestamp") ||
+            propertyName === "createdate" ||
+            propertyName === "lastmodifieddate" ||
+            propertyName === "hs_lastmodifieddate";
+
           // Filter out any undefined/null values and ensure all values are strings
-          const cleanValues = values.filter(v => v !== undefined && v !== null).map(v => String(v));
-          filter.values = isDateProperty ? cleanValues : cleanValues.map((v) => v.toLowerCase());
+          const cleanValues = values
+            .filter((v) => v !== undefined && v !== null)
+            .map((v) => String(v));
+          filter.values = isDateProperty
+            ? cleanValues
+            : cleanValues.map((v) => v.toLowerCase());
         } else {
           throw new Error(`Values array is required for ${operator} operator`);
         }
       } else if (operator === FilterOperatorEnum.Between) {
         // BETWEEN operator needs separate value and highValue fields
         if (values?.length === 2) {
-          const cleanValues = values.filter(v => v !== undefined && v !== null).map(v => String(v));
+          const cleanValues = values
+            .filter((v) => v !== undefined && v !== null)
+            .map((v) => String(v));
           filter.value = cleanValues[0];
           filter.highValue = cleanValues[1];
         } else if (value !== undefined && value !== null) {
           // If single value provided, assume it's semicolon-separated
-          const parts = String(value).split(';');
+          const parts = String(value).split(";");
           if (parts.length === 2) {
             filter.value = parts[0];
             filter.highValue = parts[1];
           } else {
-            throw new Error(`BETWEEN operator with single value requires semicolon-separated format (e.g., "100;200")`);
+            throw new Error(
+              `BETWEEN operator with single value requires semicolon-separated format (e.g., "100;200")`
+            );
           }
         } else {
-          throw new Error(`BETWEEN operator requires either a values array with 2 elements or a semicolon-separated value string`);
+          throw new Error(
+            `BETWEEN operator requires either a values array with 2 elements or a semicolon-separated value string`
+          );
         }
       } else {
         // Handle all single-value operators: EQ, NEQ, LT, LTE, GT, GTE, CONTAINS_TOKEN, NOT_CONTAINS_TOKEN
         if (value !== undefined && value !== null) {
           // Check if this is a date property to preserve proper formatting
-          const isDateProperty = propertyName.includes('date') || 
-                                propertyName.includes('time') || 
-                                propertyName.includes('timestamp') ||
-                                propertyName === 'createdate' ||
-                                propertyName === 'lastmodifieddate' ||
-                                propertyName === 'hs_lastmodifieddate';
-          
+          const isDateProperty =
+            propertyName.includes("date") ||
+            propertyName.includes("time") ||
+            propertyName.includes("timestamp") ||
+            propertyName === "createdate" ||
+            propertyName === "lastmodifieddate" ||
+            propertyName === "hs_lastmodifieddate";
+
           const stringValue = String(value);
           // For string comparison operators, lowercase non-date values for consistency
-          if (!isDateProperty && (
-            operator === FilterOperatorEnum.Eq ||
-            operator === FilterOperatorEnum.Neq ||
-            operator === FilterOperatorEnum.ContainsToken ||
-            operator === FilterOperatorEnum.NotContainsToken
-          )) {
+          if (
+            !isDateProperty &&
+            (operator === FilterOperatorEnum.Eq ||
+              operator === FilterOperatorEnum.Neq ||
+              operator === FilterOperatorEnum.ContainsToken ||
+              operator === FilterOperatorEnum.NotContainsToken)
+          ) {
             filter.value = stringValue.toLowerCase();
           } else {
             filter.value = stringValue;
@@ -313,7 +284,7 @@ export const countObjectsByProperties = async (
       },
     ],
     limit: 1,
-    properties: ["id"], // Request minimal properties for performance
+    properties: ["id"],
   });
 
   // If the total is at the API limit, we need to paginate to get the actual count
@@ -331,7 +302,7 @@ export const countObjectsByProperties = async (
           },
         ],
         limit: MAX_LIMIT,
-        properties: ["id"], // Request minimal properties for performance
+        properties: ["id"],
       };
 
       if (after) {
@@ -355,9 +326,6 @@ export const countObjectsByProperties = async (
   return initialSearch.total;
 };
 
-/**
- * Get latest objects from Hubspot, optionally filtered by date range.
- */
 export const getLatestObjects = async (
   accessToken: string,
   objectType: SimpleObjectType,
@@ -412,9 +380,6 @@ export const getLatestObjects = async (
   return allResults.slice(0, limit);
 };
 
-/**
- * Create a contact in Hubspot.
- */
 export const createContact = async ({
   accessToken,
   properties,
@@ -462,9 +427,6 @@ export const createContact = async ({
   return hubspotClient.crm.contacts.basicApi.create(contactData);
 };
 
-/**
- * Create a company in Hubspot.
- */
 export const createCompany = async ({
   accessToken,
   properties,
@@ -512,9 +474,6 @@ export const createCompany = async ({
   return hubspotClient.crm.companies.basicApi.create(companyData);
 };
 
-/**
- * Create a deal in Hubspot.
- */
 export const createDeal = async ({
   accessToken,
   properties,
@@ -562,9 +521,6 @@ export const createDeal = async ({
   return hubspotClient.crm.deals.basicApi.create(dealData);
 };
 
-/**
- * Create a note in Hubspot.
- */
 export const createNote = async ({
   accessToken,
   properties,
@@ -658,12 +614,6 @@ export const createNote = async ({
   }
 };
 
-/**
- * Create a lead in Hubspot.
- * Note: Leads are typically represented as Deals with specific pipeline/stage properties, or as custom objects.
- * This function will create a Deal, assuming leads are managed within the Deals object.
- * Ensure your `properties` include necessary fields to identify this deal as a lead (e.g., deal stage, lead status custom property).
- */
 export const createLead = async ({
   accessToken,
   properties,
@@ -714,10 +664,6 @@ export const createLead = async ({
   return hubspotClient.crm.deals.basicApi.create(leadData);
 };
 
-/**
- * Create a task in Hubspot.
- * Standard task properties include: hs_task_subject, hs_task_body, hs_timestamp (due date), hs_task_status, hs_task_priority.
- */
 export const createTask = async ({
   accessToken,
   properties,
@@ -761,9 +707,6 @@ export const createTask = async ({
   return hubspotClient.crm.objects.basicApi.create("tasks", taskData);
 };
 
-/**
- * Create a ticket in Hubspot.
- */
 export const createTicket = async ({
   accessToken,
   properties,
@@ -807,12 +750,6 @@ export const createTicket = async ({
   return hubspotClient.crm.objects.basicApi.create("tickets", ticketData);
 };
 
-/**
- * Create a communication (WhatsApp, LinkedIn, or SMS message) in Hubspot.
- * This will create an Engagement object. Specific properties are needed to define the type and content.
- * For example, `hs_communication_channel_type` (e.g., "WHATSAPP", "LINKEDIN_MESSAGE", "SMS")
- * and `hs_communication_body` for the message content.
- */
 export const createCommunication = async ({
   accessToken,
   properties, // Must include hs_engagement_type (e.g. 'COMMUNICATION'), hs_communication_channel_type, hs_communication_body
@@ -896,10 +833,6 @@ export const createCommunication = async ({
   }
 };
 
-/**
- * Create a meeting in Hubspot.
- * Meetings are a type of Engagement. Properties will be needed for meeting details (e.g., hs_meeting_title, hs_meeting_start_time, hs_meeting_end_time, hs_meeting_body).
- */
 export const createMeeting = async ({
   accessToken,
   properties, // Must include hs_engagement_type="MEETING" and meeting details (e.g. hs_meeting_title, hs_meeting_start_time etc).
@@ -978,13 +911,6 @@ export const createMeeting = async ({
   }
 };
 
-/**
- * Get the correct association type ID for associating an object.
- * @param accessToken HubSpot API access token.
- * @param fromObjectType The type of object being associated (e.g., "tasks", "notes").
- * @param toObjectType The type of object being associated to (e.g., "deals", "contacts").
- * @returns The association type ID.
- */
 const getAssociationTypeId = async (
   accessToken: string,
   fromObjectType: string,
@@ -1023,9 +949,6 @@ const getAssociationTypeId = async (
   return data.results[0].typeId;
 };
 
-/**
- * Get a contact by ID.
- */
 export const getContact = async (
   accessToken: string,
   contactId: string
@@ -1052,9 +975,6 @@ export const getContact = async (
   }
 };
 
-/**
- * Get a company by ID.
- */
 export const getCompany = async (
   accessToken: string,
   companyId: string
@@ -1076,9 +996,6 @@ export const getCompany = async (
   }
 };
 
-/**
- * Get a deal by ID.
- */
 export const getDeal = async (
   accessToken: string,
   dealId: string
@@ -1096,10 +1013,6 @@ export const getDeal = async (
   }
 };
 
-/**
- * Get a meeting by ID.
- * Meetings are a type of engagement.
- */
 export const getMeeting = async (
   accessToken: string,
   meetingId: string
@@ -1129,12 +1042,6 @@ export const getMeeting = async (
   }
 };
 
-/**
- * Get a publicly available URL for a file that was uploaded using a HubSpot form or API.
- * @param accessToken HubSpot API access token.
- * @param fileId The ID of the file in HubSpot.
- * @returns The public URL of the file, or null if not found or an error occurs.
- */
 export const getFilePublicUrl = async (
   accessToken: string,
   fileId: string
@@ -1190,13 +1097,6 @@ export const getFilePublicUrl = async (
   }
 };
 
-/**
- * Retrieves meetings associated with a specific object (contact, company, or deal).
- * @param accessToken HubSpot API access token.
- * @param objectType The type of the primary object (e.g., "contacts", "companies", "deals").
- * @param objectId The ID of the primary object.
- * @returns A promise that resolves to an array of meeting objects, or null if an error occurs.
- */
 export const getAssociatedMeetings = async (
   accessToken: string,
   fromObjectType: "contacts" | "companies" | "deals",
@@ -1253,17 +1153,6 @@ export const getAssociatedMeetings = async (
   }
 };
 
-/**
- * Search CRM objects of a specific type based on filters, a query string, and other parameters.
- * @param accessToken HubSpot API access token.
- * @param objectType The type of object to search (e.g., "contacts", "companies", "deals", "tickets", etc.).
- * @param filters Array of filters to apply (propertyName, operator, value/values).
- * @param query Optional free-text query string. HubSpot searches default fields.
- * @param propertiesToReturn Array of property names to include in the results.
- * @param limit The maximum number of results to return.
- * @param after The cursor for pagination to get the next set of results.
- * @returns A promise that resolves to an object containing results and paging information.
- */
 export const searchCrmObjects = async ({
   accessToken,
   objectType,
@@ -1355,25 +1244,34 @@ export const searchCrmObjects = async ({
         break;
       case "tasks":
         searchResponse =
-          await hubspotClient.crm.objects.tasks.searchApi.doSearch(searchRequest);
+          await hubspotClient.crm.objects.tasks.searchApi.doSearch(
+            searchRequest
+          );
         break;
       case "notes":
         searchResponse =
-          await hubspotClient.crm.objects.notes.searchApi.doSearch(searchRequest);
+          await hubspotClient.crm.objects.notes.searchApi.doSearch(
+            searchRequest
+          );
         break;
       case "meetings":
         searchResponse =
-          await hubspotClient.crm.objects.meetings.searchApi.doSearch(searchRequest);
+          await hubspotClient.crm.objects.meetings.searchApi.doSearch(
+            searchRequest
+          );
         break;
       case "calls":
         searchResponse =
-          await hubspotClient.crm.objects.calls.searchApi.doSearch(searchRequest);
+          await hubspotClient.crm.objects.calls.searchApi.doSearch(
+            searchRequest
+          );
         break;
       case "emails":
         searchResponse =
-          await hubspotClient.crm.objects.emails.searchApi.doSearch(searchRequest);
+          await hubspotClient.crm.objects.emails.searchApi.doSearch(
+            searchRequest
+          );
         break;
-      // For other object types like products, line_items, quotes, feedback_submissions, a similar pattern would apply.
       case "products":
         searchResponse =
           await hubspotClient.crm.products.searchApi.doSearch(searchRequest);
@@ -1388,7 +1286,9 @@ export const searchCrmObjects = async ({
         break;
       case "feedback_submissions":
         searchResponse =
-          await hubspotClient.crm.objects.feedbackSubmissions.searchApi.doSearch(searchRequest);
+          await hubspotClient.crm.objects.feedbackSubmissions.searchApi.doSearch(
+            searchRequest
+          );
         break;
       default:
         throw new Error(
@@ -1406,9 +1306,6 @@ export const searchCrmObjects = async ({
   }
 };
 
-/**
- * Gets user activity across all engagement types for a specific time period
- */
 export const getUserActivity = async ({
   accessToken,
   ownerId,
@@ -1419,21 +1316,26 @@ export const getUserActivity = async ({
   accessToken: string;
   ownerId: string;
   startDate: string; // ISO date string or timestamp
-  endDate: string; // ISO date string or timestamp  
+  endDate: string; // ISO date string or timestamp
   limit?: number;
 }) => {
   try {
     const engagementTypes = ["tasks", "notes", "meetings", "calls", "emails"];
-    const allActivities: Array<SimplePublicObject & { objectType: string }> = [];
-    
+    const allActivities: Array<SimplePublicObject & { objectType: string }> =
+      [];
+
     const dateFilters = createDateRangeFilters(startDate, endDate);
-    
+
     for (const objectType of engagementTypes) {
       try {
         // Different engagement types may use different owner property names
-        const ownerPropertyNames = ["hubspot_owner_id", "hs_created_by", "hs_created_by_user_id"];
+        const ownerPropertyNames = [
+          "hubspot_owner_id",
+          "hs_created_by",
+          "hs_created_by_user_id",
+        ];
         let result = null;
-        
+
         // Try different owner property names until one works
         for (const ownerProperty of ownerPropertyNames) {
           try {
@@ -1452,12 +1354,14 @@ export const getUserActivity = async ({
             continue;
           }
         }
-        
+
         if (result?.results) {
-          allActivities.push(...result.results.map(activity => ({
-            ...activity,
-            objectType,
-          })));
+          allActivities.push(
+            ...result.results.map((activity) => ({
+              ...activity,
+              objectType,
+            }))
+          );
         }
       } catch (error) {
         // Continue if this object type fails completely
@@ -1468,22 +1372,31 @@ export const getUserActivity = async ({
         continue;
       }
     }
-    
+
     // Sort by creation date (most recent first)
     allActivities.sort((a, b) => {
-      const aDate = new Date(a.createdAt || a.properties?.createdate || 0).getTime();
-      const bDate = new Date(b.createdAt || b.properties?.createdate || 0).getTime();
+      const aDate = new Date(
+        a.createdAt || a.properties?.createdate || 0
+      ).getTime();
+      const bDate = new Date(
+        b.createdAt || b.properties?.createdate || 0
+      ).getTime();
       return bDate - aDate;
     });
-    
+
     return {
       results: allActivities.slice(0, limit),
       summary: {
         totalActivities: allActivities.length,
-        byType: engagementTypes.reduce((acc, type) => {
-          acc[type] = allActivities.filter(a => a.objectType === type).length;
-          return acc;
-        }, {} as Record<string, number>),
+        byType: engagementTypes.reduce(
+          (acc, type) => {
+            acc[type] = allActivities.filter(
+              (a) => a.objectType === type
+            ).length;
+            return acc;
+          },
+          {} as Record<string, number>
+        ),
         dateRange: {
           start: startDate,
           end: endDate,
@@ -1499,9 +1412,6 @@ export const getUserActivity = async ({
   }
 };
 
-/**
- * Gets the current user's owner ID from HubSpot
- */
 export const getCurrentUserId = async (accessToken: string) => {
   try {
     const userDetails = await getUserDetails(accessToken);
@@ -1511,10 +1421,7 @@ export const getCurrentUserId = async (accessToken: string) => {
       hubId: userDetails.hub_id,
     };
   } catch (error) {
-    localLogger.error(
-      { error },
-      "Error getting current user ID:"
-    );
+    localLogger.error({ error }, "Error getting current user ID:");
     throw normalizeError(error);
   }
 };
@@ -1655,13 +1562,18 @@ type HubspotSearchRequest = {
   query?: string;
 };
 
-/**
- * Helper function to create date range filters
- */
-function createDateRangeFilters(startDate: string, endDate: string, dateProperty = "createdate"): HubspotFilter[] {
-  const startTimestamp = isNaN(Number(startDate)) ? new Date(startDate).getTime() : Number(startDate);
-  const endTimestamp = isNaN(Number(endDate)) ? new Date(endDate).getTime() : Number(endDate);
-  
+function createDateRangeFilters(
+  startDate: string,
+  endDate: string,
+  dateProperty = "createdate"
+): HubspotFilter[] {
+  const startTimestamp = isNaN(Number(startDate))
+    ? new Date(startDate).getTime()
+    : Number(startDate);
+  const endTimestamp = isNaN(Number(endDate))
+    ? new Date(endDate).getTime()
+    : Number(endDate);
+
   return [
     {
       propertyName: dateProperty,
@@ -1676,10 +1588,10 @@ function createDateRangeFilters(startDate: string, endDate: string, dateProperty
   ];
 }
 
-/**
- * Helper function to create owner filters with fallback property names
- */
-function createOwnerFilter(ownerId: string, ownerProperty = "hubspot_owner_id"): HubspotFilter {
+function createOwnerFilter(
+  ownerId: string,
+  ownerProperty = "hubspot_owner_id"
+): HubspotFilter {
   return {
     propertyName: ownerProperty,
     operator: FilterOperatorEnum.Eq,
@@ -1687,9 +1599,6 @@ function createOwnerFilter(ownerId: string, ownerProperty = "hubspot_owner_id"):
   };
 }
 
-/**
- * Creates an association between two HubSpot objects
- */
 export const createAssociation = async ({
   accessToken,
   fromObjectType,
@@ -1705,7 +1614,7 @@ export const createAssociation = async ({
 }) => {
   try {
     const hubspotClient = new Client({ accessToken });
-    
+
     const result = await hubspotClient.crm.associations.v4.basicApi.create(
       fromObjectType,
       fromObjectId,
@@ -1713,7 +1622,8 @@ export const createAssociation = async ({
       toObjectId,
       [
         {
-          associationCategory: AssociationSpecAssociationCategoryEnum.HubspotDefined,
+          associationCategory:
+            AssociationSpecAssociationCategoryEnum.HubspotDefined,
           associationTypeId: 1, // Primary association
         },
       ]
@@ -1729,9 +1639,6 @@ export const createAssociation = async ({
   }
 };
 
-/**
- * Lists all associations for a given object
- */
 export const listAssociations = async ({
   accessToken,
   objectType,
@@ -1745,7 +1652,7 @@ export const listAssociations = async ({
 }) => {
   try {
     const hubspotClient = new Client({ accessToken });
-    
+
     if (toObjectType) {
       // Get associations to a specific object type
       const result = await hubspotClient.crm.associations.v4.basicApi.getPage(
@@ -1756,17 +1663,25 @@ export const listAssociations = async ({
       return result;
     } else {
       // Get all associations for the object
-      const associationTypes = ["contacts", "companies", "deals", "tickets", "tasks", "notes"];
+      const associationTypes = [
+        "contacts",
+        "companies",
+        "deals",
+        "tickets",
+        "tasks",
+        "notes",
+      ];
       const allAssociations = [];
-      
+
       for (const targetType of associationTypes) {
         if (targetType !== objectType) {
           try {
-            const result = await hubspotClient.crm.associations.v4.basicApi.getPage(
-              objectType,
-              objectId,
-              targetType
-            );
+            const result =
+              await hubspotClient.crm.associations.v4.basicApi.getPage(
+                objectType,
+                objectId,
+                targetType
+              );
             if (result.results && result.results.length > 0) {
               allAssociations.push({
                 toObjectType: targetType,
@@ -1779,7 +1694,7 @@ export const listAssociations = async ({
           }
         }
       }
-      
+
       return { results: allAssociations };
     }
   } catch (error) {
@@ -1791,9 +1706,6 @@ export const listAssociations = async ({
   }
 };
 
-/**
- * Removes an association between two HubSpot objects
- */
 export const removeAssociation = async ({
   accessToken,
   fromObjectType,
@@ -1809,7 +1721,7 @@ export const removeAssociation = async ({
 }) => {
   try {
     const hubspotClient = new Client({ accessToken });
-    
+
     const result = await hubspotClient.crm.associations.v4.basicApi.archive(
       fromObjectType,
       fromObjectId,
@@ -1826,4 +1738,3 @@ export const removeAssociation = async ({
     throw normalizeError(error);
   }
 };
-

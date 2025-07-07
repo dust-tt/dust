@@ -888,8 +888,7 @@ const createServer = (): McpServer => {
 
           const searchResults = formatHubSpotSearchResults(
             result.results,
-            input.objectType,
-            input.query || "search"
+            input.objectType
           );
 
           return {

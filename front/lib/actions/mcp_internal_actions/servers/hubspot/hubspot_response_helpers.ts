@@ -4,7 +4,6 @@ import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/mo
 
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 
-// HubSpot-specific resource types
 export interface HubSpotObjectSummary {
   id: string;
   type: string;
@@ -24,9 +23,6 @@ export interface HubSpotPropertySummary {
   options?: Array<{ label: string; value: string }>;
 }
 
-/**
- * Important date fields to always include for each object type
- */
 const IMPORTANT_DATE_FIELDS: Record<string, string[]> = {
   contacts: ["createdate", "lastmodifieddate"],
   companies: ["createdate", "lastmodifieddate"],
@@ -34,9 +30,6 @@ const IMPORTANT_DATE_FIELDS: Record<string, string[]> = {
   tickets: ["createdate", "lastmodifieddate", "closedate"],
 };
 
-/**
- * Transform a raw HubSpot SimplePublicObject into a clean summary
- */
 export function formatHubSpotObject(
   object: SimplePublicObject,
   objectType: string,
@@ -82,7 +75,7 @@ export function formatHubSpotObject(
         !key.includes("_id") &&
         key !== "hubspot_owner_id" &&
         ((!key.includes("_date") && !key.includes("_timestamp")) ||
-          allowlist.includes(key)) // Only filter out _date/_timestamp if not in allowlist
+          allowlist.includes(key))
     )
     .reduce(
       (acc, [key, value]) => {
@@ -107,9 +100,6 @@ export function formatHubSpotObject(
   };
 }
 
-/**
- * Transform a raw HubSpot Property into a clean summary
- */
 export function formatHubSpotProperty(
   property: Property
 ): HubSpotPropertySummary {
@@ -118,7 +108,7 @@ export function formatHubSpotProperty(
     label: property.label || property.name,
     type: property.type,
     description: property.description || undefined,
-    required: false, // HubSpot API doesn't provide required info directly
+    required: false,
     options:
       property.options?.slice(0, 20).map((option) => ({
         label: option.label,
@@ -127,13 +117,9 @@ export function formatHubSpotProperty(
   };
 }
 
-/**
- * Transform HubSpot objects into SearchResultResourceType format
- */
 export function formatHubSpotSearchResults(
   objects: SimplePublicObject[],
   objectType: string,
-  query: string,
   portalId?: string
 ): SearchResultResourceType[] {
   return objects.map((object, index) => {
@@ -160,9 +146,6 @@ export function formatHubSpotSearchResults(
   });
 }
 
-/**
- * Create a formatted text summary of HubSpot objects
- */
 export function formatHubSpotObjectsAsText(
   objects: SimplePublicObject[],
   objectType: string,
@@ -186,9 +169,6 @@ export function formatHubSpotObjectsAsText(
   return `Found ${objects.length} ${objectType}:\n\n${formatted}`;
 }
 
-/**
- * Format properties list as clean text
- */
 export function formatHubSpotPropertiesAsText(
   properties: Property[],
   objectType: string,
@@ -220,9 +200,6 @@ export function formatHubSpotPropertiesAsText(
   return `Found ${properties.length} ${typeText} for ${objectType}:\n\n${formatted}`;
 }
 
-/**
- * Format transformed properties list (from getObjectProperties) as clean text
- */
 export function formatTransformedPropertiesAsText(
   properties: Array<{
     name: string;
@@ -256,9 +233,6 @@ export function formatTransformedPropertiesAsText(
   return `Found ${properties.length} ${typeText} for ${objectType}:\n\n${formatted}`;
 }
 
-/**
- * Create a simple creation success message
- */
 export function formatHubSpotCreateSuccess(
   object: SimplePublicObject,
   objectType: string,
@@ -272,9 +246,6 @@ export function formatHubSpotCreateSuccess(
   };
 }
 
-/**
- * Create a simple update success message
- */
 export function formatHubSpotUpdateSuccess(
   object: SimplePublicObject,
   objectType: string,
@@ -288,9 +259,6 @@ export function formatHubSpotUpdateSuccess(
   };
 }
 
-/**
- * Create a simple get success message
- */
 export function formatHubSpotGetSuccess(
   object: SimplePublicObject,
   objectType: string,
