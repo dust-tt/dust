@@ -1,18 +1,17 @@
-use std::{
-    fmt::{self, Display},
-    str::FromStr,
-};
-
 use crate::providers::{
     chat_messages::{AssistantChatMessage, AssistantContentItem},
+    helpers::EncodedImageContent,
     llm::{ChatFunctionCall, ChatMessageRole},
 };
 use crate::utils::ParseError;
 use anyhow::Result;
-
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::{
+    fmt::{self, Display},
+    str::FromStr,
+};
 
 /*
 ** COMMON TYPES
@@ -150,6 +149,16 @@ pub struct AnthropicImageContent {
     pub r#type: String,
     pub media_type: String,
     pub data: String,
+}
+
+impl From<EncodedImageContent> for AnthropicImageContent {
+    fn from(encoded: EncodedImageContent) -> Self {
+        AnthropicImageContent {
+            r#type: encoded.r#type,
+            media_type: encoded.media_type,
+            data: encoded.data,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
