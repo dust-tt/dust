@@ -21,7 +21,8 @@ import type { WorkspaceType } from "@app/types";
 
 type AddActionMenuProps = {
   owner: WorkspaceType;
-  enabledMCPServers: string[];
+  enabledMCPServerIds: string[];
+  enabledMCPServerNames: string[];
   buttonVariant?: "primary" | "outline";
   createInternalMCPServer: (mcpServer: MCPServerType) => void;
   createRemoteMCPServer: (
@@ -32,7 +33,8 @@ type AddActionMenuProps = {
 
 export const AddActionMenu = ({
   owner,
-  enabledMCPServers,
+  enabledMCPServerIds: enabledMCPServers,
+  enabledMCPServerNames: enabledMCPServerNames,
   createInternalMCPServer,
   createRemoteMCPServer,
   buttonVariant = "primary",
@@ -77,6 +79,10 @@ export const AddActionMenu = ({
         )}
         {availableMCPServers
           .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.sId))
+          // ID is auto-incremented, so we need to filter out default servers with matching names
+          .filter(
+            (mcpServer) => !enabledMCPServerNames.includes(mcpServer.name)
+          )
           .filter((mcpServer) => filterMCPServer(mcpServer, searchText))
           .map((mcpServer) => (
             <DropdownMenuItem

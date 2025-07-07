@@ -16,7 +16,6 @@ import type {
   CustomServerIconType,
   InternalAllowedIconType,
 } from "@app/lib/actions/mcp_icons";
-import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -76,12 +75,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastSyncAt: new Date(),
       authorization: blob.authorization,
     };
-
-    // If this is a default server, use its predefined ID
-    const defaultConfig = getDefaultRemoteMCPServerByURL(blob.url);
-    if (defaultConfig) {
-      serverData.id = defaultConfig.id;
-    }
 
     const server = await RemoteMCPServerModel.create(serverData, {
       transaction,
