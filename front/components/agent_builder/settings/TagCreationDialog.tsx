@@ -12,14 +12,12 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useCreateTag } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
-import type { TagType } from "@app/types/tag";
-
-export const MAX_TAG_LENGTH = 100;
+import type { TagForm, TagType } from "@app/types/tag";
+import { MAX_TAG_LENGTH, tagSchema } from "@app/types/tag";
 
 interface TagCreationDialogProps {
   owner: WorkspaceType;
@@ -27,15 +25,6 @@ interface TagCreationDialogProps {
   setIsOpen: (isOpen: boolean) => void;
   addTag: (tag: TagType) => void;
 }
-
-const tagSchema = z.object({
-  tag: z
-    .string()
-    .min(1, "Tag name is required")
-    .max(MAX_TAG_LENGTH, `Tag name cannot exceed ${MAX_TAG_LENGTH} characters`),
-});
-
-type TagForm = z.infer<typeof tagSchema>;
 
 // This will get unmounted when you close the dialog so
 // we don't have to reset the state.
