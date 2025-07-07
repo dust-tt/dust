@@ -1,8 +1,8 @@
 import { removeNulls } from "@dust-tt/client";
 import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
-import type { GaxiosError, GaxiosResponse } from "googleapis-common";
-import { OAuth2Client } from "googleapis-common";
+import type { GaxiosResponse } from "googleapis-common";
+import { GaxiosError, OAuth2Client } from "googleapis-common";
 
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
@@ -319,4 +319,26 @@ export async function _getLabels(
     );
   }
   return [];
+}
+
+export function isSharedDriveNotFoundError(error: unknown): boolean {
+  if (!(error instanceof GaxiosError)) {
+    return false;
+  }
+
+  if (error.response?.status !== 404) {
+    return false;
+  }
+
+  const errorData = error.response?.data?.error;
+  if (!errorData) {
+    return false;
+  }
+
+  const errors = errorData.errors;
+  if (Array.isArray(errors)) {
+    return errors.some((err) => err.reason === "notFound");
+  }
+
+  return false;
 }
