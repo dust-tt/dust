@@ -1902,8 +1902,6 @@ async function* streamRunAgentEvents(
 
       // All other events that won't impact the database and are related to actions or tokens
       // generation.
-      case "dust_app_run_block":
-      case "dust_app_run_params":
       case "generation_tokens":
       case "search_labels_params":
       case "tool_approve_execution":

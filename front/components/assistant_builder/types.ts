@@ -5,12 +5,12 @@ import { uniqueId } from "lodash";
 import type React from "react";
 import type { SVGProps } from "react";
 
+import type { DustAppRunConfigurationType } from "@app/components/actions/dust_app_run/utils";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
   DEFAULT_MCP_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";

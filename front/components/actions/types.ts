@@ -1,4 +1,3 @@
-import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -26,10 +25,6 @@ type ActionSpecifications = {
 };
 
 const actionsSpecification: ActionSpecifications = {
-  dust_app_run_action: {
-    detailsComponent: DustAppRunActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.dust_app_run_action,
-  },
   search_labels_action: {
     detailsComponent: SearchLabelsActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.search_labels_action,

@@ -157,9 +157,6 @@ export function messageReducer(
       newState.agentState = "thinking";
       return newState;
     }
-
-    case "dust_app_run_block":
-    case "dust_app_run_params":
     case "search_labels_params":
     case "tool_params":
       return {

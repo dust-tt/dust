@@ -213,8 +213,6 @@ async function handleUserMessageEvents(
             case "agent_error":
             case "agent_generation_cancelled":
             case "agent_message_success":
-            case "dust_app_run_block":
-            case "dust_app_run_params":
             case "generation_tokens":
             case "search_labels_params":
             case "tool_approve_execution":
@@ -376,8 +374,6 @@ export async function retryAgentMessageWithPubSub(
               case "agent_error":
               case "agent_generation_cancelled":
               case "agent_message_success":
-              case "dust_app_run_block":
-              case "dust_app_run_params":
               case "generation_tokens":
               case "search_labels_params":
               case "tool_approve_execution":
