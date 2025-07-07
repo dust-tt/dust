@@ -49,7 +49,7 @@ import { isEmailValid, normalizeArrays } from "@app/lib/utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import type {
+import {
   AgentActionSuccessEvent,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
@@ -85,7 +85,7 @@ import {
   assertNever,
   ConversationError,
   Err,
-  getLargeWhitelistedModel,
+  getLargeNonAnthropicWhitelistedModel,
   isAgentMention,
   isAgentMessageType,
   isContentFragmentInputWithContentNode,
@@ -355,7 +355,7 @@ export async function generateConversationTitle(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getLargeWhitelistedModel(owner);
+  const model = getLargeNonAnthropicWhitelistedModel(owner);
   if (!model) {
     return new Err(
       new Error(`Failed to find a whitelisted model to generate title`)

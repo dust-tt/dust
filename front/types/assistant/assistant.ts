@@ -109,6 +109,24 @@ export function getSmallWhitelistedModel(
   return null;
 }
 
+export function getLargeNonAnthropicWhitelistedModel(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_4_1_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "mistral")) {
+    return MISTRAL_LARGE_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "xai")) {
+    return GROK_3_MODEL_CONFIG;
+  }
+  return null;
+}
+
 export function getLargeWhitelistedModel(
   owner: WorkspaceType
 ): ModelConfigurationType | null {
