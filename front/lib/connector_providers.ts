@@ -39,7 +39,7 @@ import type {
 } from "@app/types";
 import { assertNever } from "@app/types";
 
-interface ConnectorOptionsProps {
+export interface ConnectorOptionsProps {
   owner: WorkspaceType;
   readOnly: boolean;
   isAdmin: boolean;

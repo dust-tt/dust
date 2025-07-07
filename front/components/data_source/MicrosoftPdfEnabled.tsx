@@ -1,22 +1,17 @@
 import { ContextItem, MicrosoftLogo, SliderToggle } from "@dust-tt/sparkle";
 
+import type { ConnectorOptionsProps } from "@app/lib/connector_providers";
 import {
   useConnectorConfig,
   useTogglePdfEnabled,
 } from "@app/lib/swr/connectors";
-import type { DataSourceType, WorkspaceType } from "@app/types";
 
 export function MicrosoftPdfEnabled({
   owner,
   readOnly,
   isAdmin,
   dataSource,
-}: {
-  owner: WorkspaceType;
-  readOnly: boolean;
-  isAdmin: boolean;
-  dataSource: DataSourceType;
-}) {
+}: ConnectorOptionsProps) {
   const { configValue } = useConnectorConfig({
     owner,
     dataSource,
