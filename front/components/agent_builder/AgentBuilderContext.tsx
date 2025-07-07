@@ -6,10 +6,11 @@ import { SpacesProvider } from "@app/components/assistant_builder/contexts/Space
 import { supportsDocumentsData } from "@app/lib/data_sources";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { DataSourceViewType, WorkspaceType } from "@app/types";
+import type { DataSourceViewType, UserType, WorkspaceType } from "@app/types";
 
 type AgentBuilderContextType = {
   owner: WorkspaceType;
+  user: UserType;
   supportedDataSourceViews: DataSourceViewType[];
   isPreviewPanelOpen: boolean;
   setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -17,6 +18,7 @@ type AgentBuilderContextType = {
 
 export const AgentBuilderContext = createContext<AgentBuilderContextType>({
   owner: {} as WorkspaceType,
+  user: {} as UserType,
   supportedDataSourceViews: [],
   isPreviewPanelOpen: true,
   setIsPreviewPanelOpen: () => {},
@@ -32,6 +34,7 @@ interface AgentBuilderContextProps
 
 export function AgentBuilderProvider({
   owner,
+  user,
   children,
 }: AgentBuilderContextProps) {
   const [isPreviewPanelOpen, setIsPreviewPanelOpen] = useState(false);
@@ -66,6 +69,7 @@ export function AgentBuilderProvider({
     <AgentBuilderContext.Provider
       value={{
         owner,
+        user,
         supportedDataSourceViews,
         isPreviewPanelOpen,
         setIsPreviewPanelOpen,

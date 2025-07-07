@@ -4,23 +4,44 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  EyeIcon,
+  EyeSlashIcon,
   Input,
   Page,
   PencilSquareIcon,
+  PlusIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SlackLogo,
   SparklesIcon,
   TextArea,
+  UserIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useState } from "react";
+import type { PaginationState } from "@tanstack/react-table";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
+import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
+import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
 import {
+  fetchWithErr,
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
-import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
 import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   buildSelectedEmojiType,
@@ -30,12 +51,20 @@ import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
+import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
+import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
+import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
+import { MembersList } from "@app/components/members/MembersList";
+import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
+import { useUser } from "@app/lib/swr/user";
 import type {
   APIError,
   BuilderEmojiSuggestionsType,
   Result,
+  UserType,
   WorkspaceType,
 } from "@app/types";
+import { isBuilder } from "@app/types";
 
 const MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION = 30;
 
@@ -310,6 +339,21 @@ function AgentPictureInput() {
   );
 }
 
+function AgentAccessAndPublication() {
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+        Access and Publication
+      </label>
+      <div className="flex items-center gap-2">
+        <AgentBuilderEditors />
+        <AgentBuilderScopeSelector />
+        <AgentBuilderSlackSelector />
+      </div>
+    </div>
+  );
+}
+
 export function AgentBuilderSettingsBlock() {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -336,6 +380,9 @@ export function AgentBuilderSettingsBlock() {
                   <AgentDescriptionInput />
                 </div>
                 <AgentPictureInput />
+              </div>
+              <div className="flex gap-8">
+                <AgentAccessAndPublication />
               </div>
             </div>
           </div>

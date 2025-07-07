@@ -1,7 +1,6 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
-import React from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -25,7 +24,7 @@ import {
 } from "@app/types";
 
 export default function AgentBuilder() {
-  const { owner } = useAgentBuilderContext();
+  const { owner, user } = useAgentBuilderContext();
   const { mcpServerViews } = useMCPServerViewsContext();
   const router = useRouter();
   const sendNotification = useSendNotification();
@@ -46,6 +45,9 @@ export default function AgentBuilder() {
         name: "",
         description: "",
         pictureUrl: "",
+        scope: "hidden",
+        editors: [user],
+        slackChannels: [],
       },
       instructions: "",
       generationSettings: {
