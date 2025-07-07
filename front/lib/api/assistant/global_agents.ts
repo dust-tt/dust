@@ -55,10 +55,8 @@ import {
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
-  O3_MINI_HIGH_REASONING_MODEL_CONFIG,
   O3_MODEL_CONFIG,
 } from "@app/types";
 
@@ -83,6 +81,7 @@ const dummyModelConfiguration = {
   providerId: GPT_4_1_MODEL_CONFIG.providerId,
   modelId: GPT_4_1_MODEL_CONFIG.modelId,
   temperature: 0,
+  reasoningEffort: GPT_4_1_MODEL_CONFIG.defaultReasoningEffort,
 };
 
 type PrefetchedDataSourcesType = {
@@ -261,6 +260,7 @@ function _getHelperGlobalAgent({
         providerId: modelConfiguration?.providerId,
         modelId: modelConfiguration?.modelId,
         temperature: 0.2,
+        reasoningEffort: modelConfiguration?.defaultReasoningEffort,
       }
     : dummyModelConfiguration;
   const status = modelConfiguration ? "active" : "disabled_by_admin";
@@ -473,9 +473,10 @@ function _getO3MiniGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.providerId,
-      modelId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.modelId,
+      providerId: O3_MODEL_CONFIG.providerId,
+      modelId: O3_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort: "high" as const,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -617,10 +618,10 @@ function _getO1HighReasoningGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: O1_HIGH_REASONING_MODEL_CONFIG.providerId,
-      modelId: O1_HIGH_REASONING_MODEL_CONFIG.modelId,
-      temperature: 1, // 1 is forced for O1
-      reasoningEffort: O1_HIGH_REASONING_MODEL_CONFIG.reasoningEffort,
+      providerId: O1_MODEL_CONFIG.providerId,
+      modelId: O1_MODEL_CONFIG.modelId,
+      temperature: 1,
+      reasoningEffort: "high" as const,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
