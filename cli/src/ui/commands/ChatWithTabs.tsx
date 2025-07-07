@@ -1,4 +1,4 @@
-import type { ConversationWithoutContentType } from "@dust-tt/client";
+import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import { Box, Text, useInput } from "ink";
 import type { FC } from "react";
 import React, { useCallback, useState } from "react";
@@ -19,14 +19,10 @@ interface ChatWithTabsProps {
 }
 
 const ChatWithTabsInner: FC<ChatWithTabsProps> = (props) => {
-  const {
-    activeTab,
-    createTab,
-    closeTab,
-    updateTab,
-  } = useTabManager();
+  const { activeTab, createTab, closeTab, updateTab } = useTabManager();
 
-  const [showConversationSelector, setShowConversationSelector] = useState(false);
+  const [showConversationSelector, setShowConversationSelector] =
+    useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleOpenConversation = useCallback(async () => {
@@ -39,35 +35,37 @@ const ChatWithTabsInner: FC<ChatWithTabsProps> = (props) => {
     createTab("New Chat");
   }, [createTab]);
 
-  const handleConversationSelect = useCallback(async (conversation: ConversationWithoutContentType) => {
-    setShowConversationSelector(false);
-    
-    try {
-      // Load the full conversation content
-      const dustClient = await getDustClient();
-      if (!dustClient) {
-        setError("Authentication required. Run `dust login` first.");
-        return;
-      }
-      
-      const result = await dustClient.getConversation({
-        conversationId: conversation.sId,
-      });
-      
-      if (result.isErr()) {
-        setError(`Failed to load conversation: ${result.error.message}`);
-        return;
-      }
+  const handleConversationSelect = useCallback(
+    async (conversation: ConversationWithoutContentPublicType) => {
+      setShowConversationSelector(false);
 
-      const title = conversation.title || `Conversation ${conversation.sId}`;
-      
-      // Create a new tab with the loaded conversation
-      createTab(title, conversation.sId);
-      
-    } catch (err) {
-      setError(`Failed to load conversation: ${normalizeError(err)}`);
-    }
-  }, [createTab]);
+      try {
+        // Load the full conversation content
+        const dustClient = await getDustClient();
+        if (!dustClient) {
+          setError("Authentication required. Run `dust login` first.");
+          return;
+        }
+
+        const result = await dustClient.getConversation({
+          conversationId: conversation.sId,
+        });
+
+        if (result.isErr()) {
+          setError(`Failed to load conversation: ${result.error.message}`);
+          return;
+        }
+
+        const title = conversation.title || `Conversation ${conversation.sId}`;
+
+        // Create a new tab with the loaded conversation
+        createTab(title, conversation.sId);
+      } catch (err) {
+        setError(`Failed to load conversation: ${normalizeError(err)}`);
+      }
+    },
+    [createTab]
+  );
 
   const handleConversationSelectorCancel = useCallback(async () => {
     setShowConversationSelector(false);

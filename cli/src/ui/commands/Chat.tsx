@@ -74,11 +74,6 @@ const CliChat: FC<CliChatProps> = ({
 }) => {
   const [error, setError] = useState<string | null>(null);
 
-  // Validate flags usage
-  useEffect(() => {
-    validateNonInteractiveFlags(message, agentSearch, conversationId);
-  }, [message, agentSearch, conversationId]);
-
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     tabData?.selectedAgent || null
   );
@@ -131,7 +126,7 @@ const CliChat: FC<CliChatProps> = ({
 
   // Sync state changes back to tab with ref to prevent infinite loops
   const lastTabUpdateRef = useRef<string>("");
-  
+
   useEffect(() => {
     if (onTabUpdate) {
       const updateKey = JSON.stringify({
@@ -143,7 +138,7 @@ const CliChat: FC<CliChatProps> = ({
         uploadedFilesLength: uploadedFiles.length,
         isProcessingQuestion,
       });
-      
+
       if (lastTabUpdateRef.current !== updateKey) {
         lastTabUpdateRef.current = updateKey;
         onTabUpdate({
