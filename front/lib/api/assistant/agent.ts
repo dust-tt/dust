@@ -586,8 +586,11 @@ async function* runMultiActionsAgent(
   runConfig.MODEL.model_id = model.modelId;
   runConfig.MODEL.temperature = agentConfiguration.model.temperature;
 
-  runConfig.MODEL.reasoning_effort =
+  const reasoningEffort =
     agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
+  if (reasoningEffort !== "none" && reasoningEffort !== "light") {
+    runConfig.MODEL.reasoning_effort = reasoningEffort;
+  }
 
   if (agentConfiguration.model.responseFormat) {
     runConfig.MODEL.response_format = JSON.parse(
