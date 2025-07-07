@@ -1,15 +1,17 @@
-import { z } from "zod";
 import { execSync } from "child_process";
+import { z } from "zod";
+
 import { normalizeError } from "../errors.js";
-import { McpTool } from "../types/tool.js";
+import type { McpTool } from "../types/tool.js";
 
 export class SearchContentTool implements McpTool {
   name = "search_content";
   description = "Search for content within files";
 
+  // is there a reason for the difference between using the word path and directory?
   inputSchema = z.object({
-    query: z.string().describe("The text to search for"),
-    directory: z
+    pattern: z.string().describe("The text to search for"),
+    path: z
       .string()
       .optional()
       .describe("Directory to search in (default: current directory)"),
@@ -17,28 +19,24 @@ export class SearchContentTool implements McpTool {
       .string()
       .optional()
       .describe("File pattern to search within (default: all files)"),
-    case_sensitive: z
-      .boolean()
-      .optional()
-      .describe("Case sensitive search (default: false)"),
   });
 
+  // API gotten from google's Gemini
   async execute({
-    query,
-    directory = ".",
+    pattern,
+    path = ".",
     file_pattern = "*",
-    case_sensitive = false,
   }: z.infer<typeof this.inputSchema>) {
+    // include fall backs in case system doesn't have grep
     try {
-      const flags = case_sensitive ? "" : "-i";
-      const cmd = `grep -r ${flags} --include="${file_pattern}" "${query}" "${directory}"`;
+      const cmd = `grep -r --include="${file_pattern}" "${pattern}" "${path}"`;
       const output = execSync(cmd, { encoding: "utf8" });
 
       return {
         content: [
           {
             type: "text" as const,
-            text: output.trim() || `No matches found for: ${query}`,
+            text: output.trim() || `No matches found for: ${pattern}`,
           },
         ],
       };
@@ -54,7 +52,7 @@ export class SearchContentTool implements McpTool {
           content: [
             {
               type: "text" as const,
-              text: `No matches found for: ${query}`,
+              text: `No matches found for: ${pattern}`,
             },
           ],
         };

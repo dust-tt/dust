@@ -19,11 +19,13 @@ import {
 } from "../../utils/fileHandling.js";
 import { useAgents } from "../../utils/hooks/use_agents.js";
 import { useMe } from "../../utils/hooks/use_me.js";
+import { useFileSystemServer } from "../../utils/servers/fsServer.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import { toolsCache } from "../../utils/toolsCache.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
+import FileAccessSelector from "../components/FileAccessSelector.js";
 import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
@@ -33,8 +35,6 @@ import {
   validateNonInteractiveFlags,
 } from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
-import FileAccessSelector from "../components/FileAccessSelector.js";
-import { useFileSystemServer } from "../../utils/servers/fsServer.js";
 
 type AgentConfiguration =
   GetAgentConfigurationsResponseType["agentConfigurations"][number];

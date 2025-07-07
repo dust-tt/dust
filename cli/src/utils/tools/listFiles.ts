@@ -1,8 +1,9 @@
-import { z } from "zod";
 import fs from "fs/promises";
 import path from "path";
+import { z } from "zod";
+
 import { normalizeError } from "../errors.js";
-import { McpTool } from "../types/tool.js";
+import type { McpTool } from "../types/tool.js";
 
 export class ListFilesTool implements McpTool {
   name = "list_files";

@@ -1,7 +1,8 @@
-import { z } from "zod";
 import fs from "fs/promises";
+import { z } from "zod";
+
 import { normalizeError } from "../errors.js";
-import { McpTool } from "../types/tool.js";
+import type { McpTool } from "../types/tool.js";
 
 export class DeleteFileTool implements McpTool {
   name = "delete_file";

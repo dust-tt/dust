@@ -1,7 +1,8 @@
-import { z } from "zod";
 import { execSync } from "child_process";
+import { z } from "zod";
+
 import { normalizeError } from "../errors.js";
-import { McpTool } from "../types/tool.js";
+import type { McpTool } from "../types/tool.js";
 
 export class ExecuteCommandTool implements McpTool {
   name = "execute_command";

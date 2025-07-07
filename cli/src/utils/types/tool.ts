@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { z } from "zod";
 
 export interface McpToolResult {
   content: Array<{
