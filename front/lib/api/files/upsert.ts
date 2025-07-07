@@ -1,4 +1,5 @@
 import {
+  DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
   isDustMimeType,
   isSupportedPlainTextContentType,
 } from "@dust-tt/client";
@@ -8,6 +9,7 @@ import type {
   UpsertTableArgs,
 } from "@app/lib/api/data_sources";
 import {
+  createDataSourceFolder,
   isUpsertDocumentArgs,
   isUpsertTableArgs,
   upsertDocument,
@@ -17,7 +19,7 @@ import { generateSnippet } from "@app/lib/api/files/snippet";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -153,6 +155,26 @@ const updateUseCaseMetadata = async (
   }
 };
 
+async function upsertWorkbookToDatasource(
+  auth: Authenticator,
+  dataSource: DataSourceResource,
+  file: FileResource
+): Promise<Result<{ folderId: string }, DustError>> {
+  const folderId = file.sId;
+
+  const folderRes = await createDataSourceFolder(dataSource, {
+    folderId,
+    mimeType: DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
+    title: file.fileName,
+  });
+
+  if (folderRes.isErr()) {
+    return new Err(new DustError("internal_error", folderRes.error.message));
+  }
+
+  return new Ok({ folderId: folderRes.value.folder.folder_id });
+}
+
 const upsertTableToDatasource: ProcessingFunction = async (
   auth,
   { file, dataSource, upsertArgs }
@@ -161,7 +183,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
   let tableId = file.sId;
 
   if (upsertArgs && !isUpsertTableArgs(upsertArgs)) {
-    return new Err<DustError>({
+    return new Err({
       name: "dust_error",
       code: "internal_error",
       message:
@@ -202,13 +224,18 @@ const upsertTableToDatasource: ProcessingFunction = async (
   });
 
   if (upsertTableRes.isErr()) {
-    return new Err<DustError>(upsertTableRes.error);
+    return new Err(upsertTableRes.error);
   }
 
   await updateUseCaseMetadata(file, [tableId]);
 
   return new Ok(undefined);
 };
+
+// Append the workbook name to the worksheet name to make it unique.
+function makeWorksheetName(file: FileResource, worksheetName: string) {
+  return `${file.fileName} - ${worksheetName}`;
+}
 
 // Excel files are processed in a special way, we need to extract the content of each worksheet and
 // upsert it as a separate table. This means we pull the whole content of the file (this is not
@@ -233,30 +260,39 @@ const upsertExcelToDatasource: ProcessingFunction = async (
 
   const tableIds: string[] = [];
 
-  const upsertWorksheet = async (
-    worksheetName: string,
-    worksheetContent: string
-  ) => {
-    const title = `${file.fileName} ${worksheetName}`;
+  const upsertWorksheet = async ({
+    worksheetName,
+    worksheetContent,
+    workbookFolderId,
+  }: {
+    worksheetName: string;
+    worksheetContent: string;
+    workbookFolderId?: string;
+  }) => {
+    const title = makeWorksheetName(file, worksheetName);
+    const slugifiedName = slugify(title);
     const tableId = `${file.sId}-${slugify(worksheetName)}`;
 
     const worksheetFile = await FileResource.makeNew({
       workspaceId: file.workspaceId,
       userId: file.userId,
       contentType: "text/csv",
-      fileName: slugify(`${file.fileName} ${worksheetName}`) + ".csv",
+      fileName: `${slugifiedName}.csv`,
       fileSize: Buffer.byteLength(worksheetContent),
       useCase: file.useCase,
       useCaseMetadata: file.useCaseMetadata,
     });
 
+    const parentId = workbookFolderId ?? file.sId;
+    const parents = workbookFolderId ? [tableId, workbookFolderId] : [tableId];
+
     const upsertTableArgs: UpsertTableArgs = {
       ...upsertArgs,
       title,
-      name: slugify(title),
+      name: slugifiedName,
       tableId,
-      parentId: file.sId,
-      parents: [tableId, file.sId],
+      parentId,
+      parents,
       description: "Table uploaded from excel file",
       truncate: true,
       mimeType: "text/csv",
@@ -293,11 +329,31 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     });
   }
 
+  // For Excel workbooks uploaded in a folder, we create a folder to store the worksheets.
+  let workbookFolderId: string | undefined;
+  if (file.useCase === "upsert_table") {
+    const workbookFolderRes = await upsertWorkbookToDatasource(
+      auth,
+      dataSource,
+      file
+    );
+
+    if (workbookFolderRes.isErr()) {
+      return new Err(workbookFolderRes.error);
+    }
+
+    workbookFolderId = workbookFolderRes.value.folderId;
+  }
+
   for (const line of content.split("\n")) {
     if (line.startsWith(TABLE_PREFIX)) {
       if (worksheetName && worksheetContent) {
         // Create a file for each worksheet
-        await upsertWorksheet(worksheetName, worksheetContent);
+        await upsertWorksheet({
+          workbookFolderId,
+          worksheetContent,
+          worksheetName,
+        });
       }
       worksheetName = line.slice(TABLE_PREFIX.length);
       worksheetContent = "";
@@ -323,7 +379,11 @@ const upsertExcelToDatasource: ProcessingFunction = async (
         "Please make sure your worksheets contain data and try again.",
     });
   } else {
-    await upsertWorksheet(worksheetName, worksheetContent);
+    await upsertWorksheet({
+      workbookFolderId,
+      worksheetContent,
+      worksheetName,
+    });
   }
 
   await updateUseCaseMetadata(file, tableIds);
