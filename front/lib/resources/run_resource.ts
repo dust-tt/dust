@@ -46,7 +46,7 @@ export class RunResource extends BaseResource<RunModel> {
 
   static async listByWorkspace<T extends boolean>(
     workspace: LightWorkspaceType,
-    { includeApp }: { includeApp: T }
+    { includeApp, skipCutoffDate }: { includeApp: T; skipCutoffDate?: T }
   ): Promise<T extends true ? RunResourceWithApp[] : RunResource[]> {
     const include = includeApp
       ? [
@@ -59,9 +59,11 @@ export class RunResource extends BaseResource<RunModel> {
       : [];
 
     const runs = await this.model.findAll({
-      where: addCreatedAtClause({
-        workspaceId: workspace.id,
-      }),
+      where: skipCutoffDate
+        ? { workspaceId: workspace.id }
+        : addCreatedAtClause({
+            workspaceId: workspace.id,
+          }),
       include,
     });
 

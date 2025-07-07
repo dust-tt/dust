@@ -399,6 +399,8 @@ export async function deleteRunOnDustAppsActivity({
 
   const runs = await RunResource.listByWorkspace(workspace, {
     includeApp: true,
+    // We want to fetch ALL runs, not just the one created after the cutoff date
+    skipCutoffDate: true,
   });
 
   await concurrentExecutor(
