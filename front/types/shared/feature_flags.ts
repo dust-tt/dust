@@ -29,10 +29,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   disallow_agent_creation_to_users: {
     description: "Restrict agent creation to admins only",
   },
-  enforce_datasource_quota: {
-    description:
-      "Enforce datasource quota limits per seat (cf. pricing plan) for synced content",
-  },
   exploded_tables_query: {
     description: "Enhanced table querying with exploded views",
   },
