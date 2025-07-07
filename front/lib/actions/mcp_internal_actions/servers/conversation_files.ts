@@ -3,7 +3,10 @@ import { z } from "zod";
 
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { conversationAttachmentId } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  conversationAttachmentId,
+  renderAttachmentXml,
+} from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -114,6 +117,50 @@ function createServer(
       return makeMCPToolTextError(
         `File ${attachment?.title || fileId} of type ${attachment?.contentType || "unknown"} has no text or image content`
       );
+    }
+  );
+
+  server.tool(
+    "list_files",
+    "List all files attached to the conversation.",
+    {},
+    async () => {
+      if (!agentLoopContext?.runContext) {
+        return makeMCPToolTextError("No conversation context available");
+      }
+
+      const conversation = agentLoopContext.runContext.conversation;
+      const attachments = listAttachments(conversation);
+
+      if (attachments.length === 0) {
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text: "No files are currently attached to the conversation.",
+            },
+          ],
+        };
+      }
+
+      let content = `The following files are currently attached to the conversation:\n`;
+      for (const [i, attachment] of attachments.entries()) {
+        if (i > 0) {
+          content += "\n";
+        }
+        content += renderAttachmentXml({ attachment });
+      }
+
+      return {
+        isError: false,
+        content: [
+          {
+            type: "text",
+            text: content,
+          },
+        ],
+      };
     }
   );
 
