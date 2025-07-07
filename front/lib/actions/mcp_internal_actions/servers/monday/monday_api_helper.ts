@@ -51,7 +51,6 @@ export interface MondayUser {
   email: string;
   title?: string;
   phone?: string;
-  photo_url?: string;
 }
 
 export interface MondayWorkspace {
@@ -1069,7 +1068,6 @@ export const findUserByName = async (
         email
         title
         phone
-        photo_url
       }
     }
   `;
@@ -1285,7 +1283,6 @@ export const getUserDetails = async (
         email
         title
         phone
-        photo_url
       }
     }
   `;
