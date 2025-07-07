@@ -698,6 +698,9 @@ export type ZendeskFetchBrandResponseType = t.TypeOf<
 export const ZendeskGetRetentionPeriodResponseSchema = t.type({
   retentionPeriodDays: t.number,
 });
+export type ZendeskGetRetentionPeriodResponseType = t.TypeOf<
+  typeof ZendeskGetRetentionPeriodResponseSchema
+>;
 /**
  * </Zendesk>
  */

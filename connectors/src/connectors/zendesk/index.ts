@@ -58,7 +58,7 @@ import type { DataSourceConfig } from "@connectors/types";
 const SYNC_UNRESOLVED_TICKETS_CONFIG_KEY =
   "zendeskSyncUnresolvedTicketsEnabled";
 const HIDE_CUSTOMER_DETAILS_CONFIG_KEY = "zendeskHideCustomerDetails";
-const RETENTION_PERIOD_CONFIG_KEY = "zendeskRetentionPeriodDays";
+export const RETENTION_PERIOD_CONFIG_KEY = "zendeskRetentionPeriodDays";
 const MAX_RETENTION_DAYS = 365;
 const DEFAULT_RETENTION_DAYS = 180;
 
@@ -561,7 +561,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         if (result.isErr()) {
           return result;
         }
-        break;
+        return new Ok(undefined);
       }
       case HIDE_CUSTOMER_DETAILS_CONFIG_KEY: {
         await zendeskConfiguration.update({
@@ -572,7 +572,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         if (result.isErr()) {
           return result;
         }
-        break;
+        return new Ok(undefined);
       }
       case RETENTION_PERIOD_CONFIG_KEY: {
         const retentionDays = parseInt(configValue.trim(), 10);
@@ -602,7 +602,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           "[Zendesk] Setting retention period"
         );
 
-        const currentRetentionDays = zendeskConfiguration.retentionPeriodDays;
+        const { retentionPeriodDays: currentRetentionDays } =
+          zendeskConfiguration;
 
         await zendeskConfiguration.update({
           retentionPeriodDays: finalRetentionDays,
@@ -617,26 +618,24 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
             }
           );
 
-          if (syncResult instanceof Err) {
+          if (syncResult.isErr()) {
             logger.error(
               { connectorId, error: syncResult.error },
               "[Zendesk] Failed to execute ticket sync"
             );
-          } else {
-            logger.info(
-              { connectorId, workflowId: syncResult.value },
-              "[Zendesk] Successfully executed ticket sync"
-            );
+            return syncResult;
           }
+          logger.info(
+            { connectorId, workflowId: syncResult.value },
+            "[Zendesk] Successfully executed ticket sync"
+          );
         }
-        break;
+        return new Ok(undefined);
       }
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
     }
-
-    return new Ok(undefined);
   }
 
   async getConfigurationKey({
