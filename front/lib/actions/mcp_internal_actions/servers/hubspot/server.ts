@@ -17,8 +17,8 @@ import {
   createTicket,
   getAssociatedMeetings,
   getCompany,
-  getCurrentUserId,
   getContact,
+  getCurrentUserId,
   getDeal,
   getFilePublicUrl,
   getLatestObjects,
@@ -33,6 +33,7 @@ import {
   MAX_LIMIT,
   removeAssociation,
   searchCrmObjects,
+  searchOwners,
   SIMPLE_OBJECTS,
   updateCompany,
   updateContact,
@@ -65,7 +66,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description:
     "Comprehensive HubSpot CRM integration supporting all object types (contacts, companies, deals, tickets) and ALL engagement types (tasks, notes, meetings, calls, emails). " +
-    "Features advanced user activity tracking, association management, and enhanced search capabilities with owner filtering. " +
+    "Features advanced user activity tracking, owner search and listing, association management, and enhanced search capabilities with owner filtering. " +
     "Perfect for CRM data management and user activity analysis.",
   authorization: {
     provider: "hubspot" as const,
@@ -185,8 +186,8 @@ const createServer = (): McpServer => {
   server.tool(
     "list_owners",
     "Lists all owners (users) in the HubSpot account with their IDs, names, and email addresses. " +
-    "Use this to find owner IDs for get_user_activity calls when you want to get activity for other users. " +
-    "For your own activity, use get_current_user_id instead.",
+      "Use this to find owner IDs for get_user_activity calls when you want to get activity for other users. " +
+      "For your own activity, use get_current_user_id instead.",
     {},
     async (_, { authInfo }) => {
       return withAuth({
@@ -197,6 +198,37 @@ const createServer = (): McpServer => {
           }
           return makeMCPToolJSONSuccess({
             message: "Owners retrieved successfully.",
+            result: owners,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "search_owners",
+    "Searches for specific owners (users) in the HubSpot account by email, name, ID, or user ID. " +
+      "Supports partial matching for names and emails, and exact matching for IDs. " +
+      "Use this to find owner information when you have partial details about a user.",
+    {
+      searchQuery: z
+        .string()
+        .describe(
+          "The search query - can be email, first name, last name, full name, owner ID, or user ID"
+        ),
+    },
+    async ({ searchQuery }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const owners = await searchOwners(accessToken, searchQuery);
+          if (!owners.length) {
+            return makeMCPToolTextError(
+              `No owners found matching "${searchQuery}".`
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: `Found ${owners.length} owner(s) matching "${searchQuery}".`,
             result: owners,
           });
         },
@@ -844,9 +876,9 @@ const createServer = (): McpServer => {
   server.tool(
     "search_crm_objects",
     "Comprehensive search tool for ALL HubSpot object types including contacts, companies, deals, tickets, " +
-    "and ALL engagement types (tasks, notes, meetings, calls, emails). Supports advanced filtering by properties, " +
-    "date ranges, owners, and free-text queries. Enhanced to support owner filtering across all engagement types. " +
-    "Use this for specific searches, or use get_user_activity for comprehensive user activity across all types.",
+      "and ALL engagement types (tasks, notes, meetings, calls, emails). Supports advanced filtering by properties, " +
+      "date ranges, owners, and free-text queries. Enhanced to support owner filtering across all engagement types. " +
+      "Use this for specific searches, or use get_user_activity for comprehensive user activity across all types.",
     {
       objectType: searchableObjectTypes,
       filters: z
@@ -894,10 +926,10 @@ const createServer = (): McpServer => {
           return {
             isError: false,
             content: [
-              ...searchResults.map((searchResult) => ({
-                type: "resource" as const,
-                resource: searchResult,
-              })),
+              {
+                type: "text",
+                text: JSON.stringify(searchResults, null, 2),
+              },
             ],
           };
         },
@@ -987,13 +1019,15 @@ const createServer = (): McpServer => {
       });
       // Return CSV data as text
       const csvHeader = input.propertiesToExport.join(",");
-      const csvContent = csvRows.map(row => 
-        input.propertiesToExport.map(prop => 
-          `"${String(row[prop] || "").replace(/"/g, '""')}"`
-        ).join(",")
-      ).join("\n");
+      const csvContent = csvRows
+        .map((row) =>
+          input.propertiesToExport
+            .map((prop) => `"${String(row[prop] || "").replace(/"/g, '""')}"`)
+            .join(",")
+        )
+        .join("\n");
       const fullCsv = `${csvHeader}\n${csvContent}`;
-      
+
       return makeMCPToolTextSuccess({
         message: `Exported ${csvRows.length} ${input.objectType} to CSV`,
         result: fullCsv,
@@ -1074,12 +1108,19 @@ const createServer = (): McpServer => {
     "create_association",
     "Creates an association between two existing HubSpot objects (e.g., associate a contact with a company).",
     {
-      fromObjectType: z.enum(["contacts", "companies", "deals", "tickets"]).describe("The type of the source object"),
+      fromObjectType: z
+        .enum(["contacts", "companies", "deals", "tickets"])
+        .describe("The type of the source object"),
       fromObjectId: z.string().describe("The ID of the source object"),
-      toObjectType: z.enum(["contacts", "companies", "deals", "tickets"]).describe("The type of the target object"),
+      toObjectType: z
+        .enum(["contacts", "companies", "deals", "tickets"])
+        .describe("The type of the target object"),
       toObjectId: z.string().describe("The ID of the target object"),
     },
-    async ({ fromObjectType, fromObjectId, toObjectType, toObjectId }, { authInfo }) => {
+    async (
+      { fromObjectType, fromObjectId, toObjectType, toObjectId },
+      { authInfo }
+    ) => {
       return withAuth({
         action: async (accessToken) => {
           const result = await createAssociation({
@@ -1103,9 +1144,14 @@ const createServer = (): McpServer => {
     "list_associations",
     "Lists all associations for a given HubSpot object (e.g., list all contacts associated with a company).",
     {
-      objectType: z.enum(["contacts", "companies", "deals", "tickets"]).describe("The type of the object"),
+      objectType: z
+        .enum(["contacts", "companies", "deals", "tickets"])
+        .describe("The type of the object"),
       objectId: z.string().describe("The ID of the object"),
-      toObjectType: z.enum(["contacts", "companies", "deals", "tickets"]).optional().describe("Optional: specific object type to filter associations"),
+      toObjectType: z
+        .enum(["contacts", "companies", "deals", "tickets"])
+        .optional()
+        .describe("Optional: specific object type to filter associations"),
     },
     async ({ objectType, objectId, toObjectType }, { authInfo }) => {
       return withAuth({
@@ -1130,12 +1176,19 @@ const createServer = (): McpServer => {
     "remove_association",
     "Removes an association between two HubSpot objects.",
     {
-      fromObjectType: z.enum(["contacts", "companies", "deals", "tickets"]).describe("The type of the source object"),
+      fromObjectType: z
+        .enum(["contacts", "companies", "deals", "tickets"])
+        .describe("The type of the source object"),
       fromObjectId: z.string().describe("The ID of the source object"),
-      toObjectType: z.enum(["contacts", "companies", "deals", "tickets"]).describe("The type of the target object"),
+      toObjectType: z
+        .enum(["contacts", "companies", "deals", "tickets"])
+        .describe("The type of the target object"),
       toObjectId: z.string().describe("The ID of the target object"),
     },
-    async ({ fromObjectType, fromObjectId, toObjectType, toObjectId }, { authInfo }) => {
+    async (
+      { fromObjectType, fromObjectId, toObjectType, toObjectId },
+      { authInfo }
+    ) => {
       return withAuth({
         action: async (accessToken) => {
           await removeAssociation({
@@ -1158,8 +1211,8 @@ const createServer = (): McpServer => {
   server.tool(
     "get_current_user_id",
     "Gets the current authenticated user's HubSpot owner ID and profile information. " +
-    "Essential first step for getting your own activity data. Returns user_id (needed for get_user_activity), " +
-    "user details, and hub_id. Use this before calling get_user_activity with your own data.",
+      "Essential first step for getting your own activity data. Returns user_id (needed for get_user_activity), " +
+      "user details, and hub_id. Use this before calling get_user_activity with your own data.",
     {},
     async (_, { authInfo }) => {
       return withAuth({
@@ -1178,16 +1231,34 @@ const createServer = (): McpServer => {
   server.tool(
     "get_user_activity",
     "Comprehensively retrieves user activity across ALL HubSpot engagement types (tasks, notes, meetings, calls, emails) " +
-    "for any time period. Solves the problem of getting complete user activity data by automatically trying multiple " +
-    "owner property variations and gracefully handling object types that don't support owner filtering. " +
-    "Perfect for queries like 'show my activity for the last week' or 'what did I do this month'. " +
-    "Returns both detailed activity list and summary statistics by activity type. " +
-    "For your own activity: first call get_current_user_id to get your ownerId.",
+      "for any time period. Solves the problem of getting complete user activity data by automatically trying multiple " +
+      "owner property variations and gracefully handling object types that don't support owner filtering. " +
+      "Perfect for queries like 'show my activity for the last week' or 'what did I do this month'. " +
+      "Returns both detailed activity list and summary statistics by activity type. " +
+      "For your own activity: first call get_current_user_id to get your ownerId.",
     {
-      ownerId: z.string().describe("The HubSpot owner/user ID to get activity for. Get your own ID with get_current_user_id, or use another user's ID from list_owners."),
-      startDate: z.string().describe("Start date for the activity period. Accepts ISO date strings (e.g., '2024-01-01') or timestamps. For 'last week', calculate 7 days ago."),
-      endDate: z.string().describe("End date for the activity period. Accepts ISO date strings (e.g., '2024-01-08') or timestamps. For current time, use new Date().toISOString()."),
-      limit: z.number().optional().default(MAX_LIMIT).describe("Maximum number of activities to return across all engagement types (default: 200)"),
+      ownerId: z
+        .string()
+        .describe(
+          "The HubSpot owner/user ID to get activity for. Get your own ID with get_current_user_id, or use another user's ID from list_owners."
+        ),
+      startDate: z
+        .string()
+        .describe(
+          "Start date for the activity period. Accepts ISO date strings (e.g., '2024-01-01') or timestamps. For 'last week', calculate 7 days ago."
+        ),
+      endDate: z
+        .string()
+        .describe(
+          "End date for the activity period. Accepts ISO date strings (e.g., '2024-01-08') or timestamps. For current time, use new Date().toISOString()."
+        ),
+      limit: z
+        .number()
+        .optional()
+        .default(MAX_LIMIT)
+        .describe(
+          "Maximum number of activities to return across all engagement types (default: 200)"
+        ),
     },
     async ({ ownerId, startDate, endDate, limit }, { authInfo }) => {
       return withAuth({
@@ -1199,14 +1270,14 @@ const createServer = (): McpServer => {
             endDate,
             limit,
           });
-          
+
           if (!result.results || result.results.length === 0) {
             return makeMCPToolTextSuccess({
               message: `No activities found for owner ${ownerId} between ${startDate} and ${endDate}`,
               result: `No activities found for the specified period. Summary: ${JSON.stringify(result.summary, null, 2)}`,
             });
           }
-          
+
           return makeMCPToolJSONSuccess({
             message: `Found ${result.results.length} activities for owner ${ownerId} between ${startDate} and ${endDate}`,
             result: {

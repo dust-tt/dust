@@ -121,28 +121,9 @@ export function formatHubSpotSearchResults(
   objects: SimplePublicObject[],
   objectType: string,
   portalId?: string
-): SearchResultResourceType[] {
-  return objects.map((object, index) => {
-    const formatted = formatHubSpotObject(object, objectType, portalId);
-
-    return {
-      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-      uri: formatted.url || "",
-      text: formatted.title,
-      id: formatted.id,
-      tags: [
-        objectType,
-        ...(formatted.created_at ? [`created: ${formatted.created_at}`] : []),
-        ...(formatted.updated_at ? [`updated: ${formatted.updated_at}`] : []),
-      ],
-      ref: `[${index + 1}]`,
-      chunks: Object.entries(formatted.properties).map(
-        ([key, value]) => `${key}: ${value}`
-      ),
-      source: {
-        provider: "hubspot",
-      },
-    };
+): HubSpotObjectSummary[] {
+  return objects.map((object) => {
+    return formatHubSpotObject(object, objectType, portalId);
   });
 }
 

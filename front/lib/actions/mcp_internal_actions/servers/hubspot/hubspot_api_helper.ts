@@ -136,6 +136,56 @@ export const listOwners = async (
   }));
 };
 
+export const searchOwners = async (
+  accessToken: string,
+  searchQuery: string
+): Promise<
+  {
+    id: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    userId: number | null;
+    archived: boolean;
+  }[]
+> => {
+  const hubspotClient = new Client({ accessToken });
+  const owners = await hubspotClient.crm.owners.ownersApi.getPage();
+
+  const query = searchQuery.toLowerCase();
+
+  const filteredOwners = owners.results.filter((owner) => {
+    const emailMatch = owner.email?.toLowerCase().includes(query) || false;
+    const firstNameMatch =
+      owner.firstName?.toLowerCase().includes(query) || false;
+    const lastNameMatch =
+      owner.lastName?.toLowerCase().includes(query) || false;
+    const fullNameMatch = `${owner.firstName || ""} ${owner.lastName || ""}`
+      .toLowerCase()
+      .includes(query);
+    const idMatch = owner.id === searchQuery; // Exact match for ID
+    const userIdMatch = owner.userId?.toString() === searchQuery; // Exact match for userId
+
+    return (
+      emailMatch ||
+      firstNameMatch ||
+      lastNameMatch ||
+      fullNameMatch ||
+      idMatch ||
+      userIdMatch
+    );
+  });
+
+  return filteredOwners.map((owner) => ({
+    id: owner.id,
+    email: owner.email ?? null,
+    firstName: owner.firstName ?? null,
+    lastName: owner.lastName ?? null,
+    userId: owner.userId ?? null,
+    archived: owner.archived ?? false,
+  }));
+};
+
 interface HubspotFilter {
   propertyName: string;
   operator: FilterOperatorEnum;
