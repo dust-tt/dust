@@ -166,7 +166,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
-  async updateSecret() {
+  async rotateSecret() {
     const newSecret = KeyResource.createNewSecret();
     return this.model.update(
       { secret: newSecret },
