@@ -155,30 +155,129 @@ interface HubspotFilter {
   values?: string[];
 }
 
+/**
+ * Builds HubSpot-compatible filters from an array of filter objects.
+ * 
+ * Supports all standard HubSpot FilterOperatorEnum values:
+ * 
+ * PROPERTY EXISTENCE OPERATORS (no value/values needed):
+ * - HAS_PROPERTY: Property exists
+ * - NOT_HAS_PROPERTY: Property does not exist
+ * 
+ * ARRAY OPERATORS (use values array):
+ * - IN: Value is in the provided list
+ * - NOT_IN: Value is not in the provided list
+ * 
+ * RANGE OPERATOR (special handling):
+ * - BETWEEN: Value is between two values (semicolon-separated or values array with 2 elements)
+ * 
+ * SINGLE VALUE OPERATORS (use value):
+ * - EQ: Equal to
+ * - NEQ: Not equal to
+ * - LT: Less than
+ * - LTE: Less than or equal to
+ * - GT: Greater than
+ * - GTE: Greater than or equal to
+ * - CONTAINS_TOKEN: Contains token (string search)
+ * - NOT_CONTAINS_TOKEN: Does not contain token (string search)
+ * 
+ * Special handling:
+ * - Date properties preserve original case/formatting
+ * - Non-date string properties are lowercased for consistency
+ * - Null/undefined values are filtered out
+ * - All values are converted to strings
+ */
 function buildHubspotFilters(filters: Array<HubspotFilter>) {
+  // Define supported operators for validation
+  const supportedOperators = [
+    FilterOperatorEnum.Eq,
+    FilterOperatorEnum.Neq,
+    FilterOperatorEnum.Lt,
+    FilterOperatorEnum.Lte,
+    FilterOperatorEnum.Gt,
+    FilterOperatorEnum.Gte,
+    FilterOperatorEnum.Between,
+    FilterOperatorEnum.In,
+    FilterOperatorEnum.NotIn,
+    FilterOperatorEnum.HasProperty,
+    FilterOperatorEnum.NotHasProperty,
+    FilterOperatorEnum.ContainsToken,
+    FilterOperatorEnum.NotContainsToken,
+  ];
+
   return filters.map(({ propertyName, operator, value, values }) => {
+    // Validate operator is supported
+    if (!supportedOperators.includes(operator)) {
+      throw new Error(`Unsupported filter operator: ${operator}. Supported operators: ${supportedOperators.join(', ')}`);
+    }
+
     const filter: HubspotFilter = {
       propertyName,
       operator,
     };
+    
     // Only include value/values if it's not a HAS_PROPERTY or NOT_HAS_PROPERTY operator
     if (
       operator !== FilterOperatorEnum.HasProperty &&
       operator !== FilterOperatorEnum.NotHasProperty
     ) {
-      // For IN/NOT_IN, the 'values' array must be included, not the value string.
+      // Handle operators that require values array
       if (
         operator === FilterOperatorEnum.In ||
         operator === FilterOperatorEnum.NotIn
       ) {
-        // For string properties, values must be lowercase
+        // For string properties, values must be lowercase, but not for date properties
         if (values?.length) {
-          filter.values = values?.map((v) => v.toLowerCase());
+          // Check if this is a date property to avoid lowercasing dates
+          const isDateProperty = propertyName.includes('date') || 
+                                propertyName.includes('time') || 
+                                propertyName.includes('timestamp') ||
+                                propertyName === 'createdate' ||
+                                propertyName === 'lastmodifieddate' ||
+                                propertyName === 'hs_lastmodifieddate';
+          
+          // Filter out any undefined/null values and ensure all values are strings
+          const cleanValues = values.filter(v => v !== undefined && v !== null).map(v => String(v));
+          filter.values = isDateProperty ? cleanValues : cleanValues.map((v) => v.toLowerCase());
         } else {
           throw new Error(`Values array is required for ${operator} operator`);
         }
+      } else if (operator === FilterOperatorEnum.Between) {
+        // BETWEEN operator needs a semicolon-separated value, not an array
+        if (values?.length === 2) {
+          const cleanValues = values.filter(v => v !== undefined && v !== null).map(v => String(v));
+          filter.value = cleanValues.join(';');
+        } else if (value !== undefined && value !== null) {
+          filter.value = String(value);
+        } else {
+          throw new Error(`BETWEEN operator requires either a value with semicolon-separated range or values array with 2 elements`);
+        }
       } else {
-        filter.value = value;
+        // Handle all single-value operators: EQ, NEQ, LT, LTE, GT, GTE, CONTAINS_TOKEN, NOT_CONTAINS_TOKEN
+        if (value !== undefined && value !== null) {
+          // Check if this is a date property to preserve proper formatting
+          const isDateProperty = propertyName.includes('date') || 
+                                propertyName.includes('time') || 
+                                propertyName.includes('timestamp') ||
+                                propertyName === 'createdate' ||
+                                propertyName === 'lastmodifieddate' ||
+                                propertyName === 'hs_lastmodifieddate';
+          
+          const stringValue = String(value);
+          // For string comparison operators, lowercase non-date values for consistency
+          if (!isDateProperty && (
+            operator === FilterOperatorEnum.Eq ||
+            operator === FilterOperatorEnum.Neq ||
+            operator === FilterOperatorEnum.ContainsToken ||
+            operator === FilterOperatorEnum.NotContainsToken
+          )) {
+            filter.value = stringValue.toLowerCase();
+          } else {
+            filter.value = stringValue;
+          }
+        } else {
+          throw new Error(`Value is required for ${operator} operator`);
+        }
       }
     }
     return filter;
