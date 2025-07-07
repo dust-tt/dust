@@ -24,6 +24,7 @@ import { GongOptionComponent } from "@app/components/data_source/gong/GongOption
 import { GoogleDrivePdfEnabled } from "@app/components/data_source/GoogleDrivePdfEnabled";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
+import { MicrosoftPdfEnabled } from "@app/components/data_source/MicrosoftPdfEnabled";
 import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
@@ -312,6 +313,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return MicrosoftLogo;
     },
+    optionsComponent: MicrosoftPdfEnabled,
     isNested: true,
     oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
     permissions: {
