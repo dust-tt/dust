@@ -30,10 +30,6 @@ const actionsSpecification: ActionSpecifications = {
     detailsComponent: DustAppRunActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.dust_app_run_action,
   },
-  conversation_list_files_action: {
-    detailsComponent: () => null,
-    runningLabel: ACTION_RUNNING_LABELS.conversation_list_files_action,
-  },
   search_labels_action: {
     detailsComponent: SearchLabelsActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.search_labels_action,
