@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use cloud_storage::Object;
+use cloud_storage::{ErrorList, GoogleErrorResponse, Object};
 use csv::Writer;
 use tracing::info;
 
@@ -54,7 +54,7 @@ impl GoogleCloudStorageDatabasesStore {
         schema: &TableSchema,
         rows: &Vec<Row>,
     ) -> Result<(), anyhow::Error> {
-        let field_names = schema
+        let mut field_names = schema
             .columns()
             .iter()
             .map(|c| c.name.clone())
@@ -63,10 +63,17 @@ impl GoogleCloudStorageDatabasesStore {
         // Read all rows and upload to GCS
         let mut wtr = Writer::from_writer(vec![]);
 
-        // Write the header row.
-        wtr.write_record(field_names.as_slice())?;
-        for row in rows.iter() {
-            wtr.write_record(row.to_csv_record(&field_names)?.as_slice())?;
+        // We need to append the row_id in a __dust_id field
+        // It's important to have it LAST in the headers as the table schema do not show it
+        // and when the csv will be used as-is for the sqlite database, the dust_id will be completely ignored (as it should).
+        field_names.push("__dust_id".to_string());
+
+        // Write the header.
+        wtr.write_record(field_names.iter().map(String::as_str))?;
+
+        // Write the rows.
+        for row in rows {
+            wtr.write_record(row.to_csv_record(&field_names)?)?;
         }
 
         let csv = wtr.into_inner()?;
@@ -178,29 +185,51 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
 
     async fn delete_table_data(&self, table: &Table) -> Result<()> {
         if table.migrated_to_csv() {
-            Object::delete(
+            match Object::delete(
                 &Self::get_bucket()?,
                 &Self::get_csv_storage_file_path(table),
             )
-            .await?;
+            .await
+            {
+                Ok(_) => {}
+                Err(e) => match e {
+                    cloud_storage::Error::Google(GoogleErrorResponse {
+                        error: ErrorList { code: 404, .. },
+                        ..
+                    }) => {
+                        // Silently ignore 404 errors which means the object does not exist
+                        // anymore.
+                    }
+                    e => Err(e)?,
+                },
+            }
         }
         Ok(())
     }
-
     async fn delete_table_row(&self, table: &Table, row_id: &str) -> Result<()> {
         if table.migrated_to_csv() {
-            let rows = Self::get_rows_from_csv(table).await?;
-            let previous_rows_count = rows.len();
-            let new_rows = rows
-                .iter()
-                .filter(|r| r.row_id != row_id)
-                .cloned()
-                .collect::<Vec<_>>();
+            match Self::get_rows_from_csv(table).await {
+                Ok(rows) => {
+                    let previous_rows_count = rows.len();
+                    let new_rows = rows
+                        .iter()
+                        .filter(|r| r.row_id != row_id)
+                        .cloned()
+                        .collect::<Vec<_>>();
 
-            if previous_rows_count != new_rows.len() {
-                let rows = Arc::new(new_rows.clone());
-                let schema = TableSchema::from_rows_async(rows).await?;
-                Self::write_rows_to_csv(table, &schema, &new_rows).await?;
+                    if previous_rows_count != new_rows.len() {
+                        let rows = Arc::new(new_rows.clone());
+                        let schema = TableSchema::from_rows_async(rows).await?;
+                        Self::write_rows_to_csv(table, &schema, &new_rows).await?;
+                    }
+                }
+                Err(e) => {
+                    info!(
+                        "Failed to update CSV file after row deletion for table {}. {:#?}",
+                        table.unique_id(),
+                        e
+                    );
+                }
             }
         }
 

@@ -41,10 +41,16 @@ vi.mock("@app/lib/api/redis", () => ({
 
 export async function setupAgentOwner(
   workspace: LightWorkspaceType,
-  agentOwnerRole: "admin" | "builder" | "user"
+  agentOwnerRole: "admin" | "builder" | "user",
+  t: Transaction
 ) {
   const agentOwner = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, agentOwner, agentOwnerRole);
+  await MembershipFactory.associate(
+    workspace,
+    agentOwner,
+    { role: agentOwnerRole },
+    t
+  );
   const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     agentOwner.sId,
     workspace.sId
@@ -107,7 +113,7 @@ describe("GET /api/w/[wId]/assistant/agent_configurations", () => {
       const { req, res, workspace } = await createPrivateApiMockRequest({
         method: "GET",
       });
-      const { agentOwner } = await setupAgentOwner(workspace, "admin");
+      const { agentOwner } = await setupAgentOwner(workspace, "admin", t);
       await setupTestAgents(workspace, agentOwner, t);
       req.query.view = "list";
       await handler(req, res);

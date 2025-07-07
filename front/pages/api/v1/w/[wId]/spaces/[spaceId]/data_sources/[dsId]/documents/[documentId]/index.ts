@@ -12,7 +12,6 @@ import apiConfig from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
@@ -524,16 +523,13 @@ async function handler(
             },
             "Datasource quota exceeded for upsert document (overrun expected)"
           );
-          const flags = await getFeatureFlags(owner);
-          if (flags.includes("enforce_datasource_quota")) {
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "workspace_quota_error",
-                message: `You've exceeded your plan limit (${fileSizeToHumanReadable(quotaUsed)} used / ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} allowed)`,
-              },
-            });
-          }
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_quota_error",
+              message: `You've exceeded your plan limit (${fileSizeToHumanReadable(quotaUsed)} used / ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} allowed)`,
+            },
+          });
         }
       } catch (error) {
         logger.error(

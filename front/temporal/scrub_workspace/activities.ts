@@ -34,6 +34,7 @@ import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/serve
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI, isGlobalAgentId, removeNulls } from "@app/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 export async function sendDataDeletionEmail({
   remainingDays,
@@ -131,15 +132,17 @@ export async function deleteAllConversations(auth: Authenticator) {
     { workspaceId: workspace.sId, conversationsCount: conversations.length },
     "Deleting all conversations for workspace."
   );
-
-  const conversationChunks = _.chunk(conversations, 4);
-  for (const conversationChunk of conversationChunks) {
-    await Promise.all(
-      conversationChunk.map(async (c) => {
-        await destroyConversation(auth, { conversationId: c.sId });
-      })
-    );
-  }
+  // unique conversations
+  const uniqueConversations = _.uniqBy(conversations, (c) => c.sId);
+  await concurrentExecutor(
+    uniqueConversations,
+    async (conversation) => {
+      await destroyConversation(auth, { conversationId: conversation.sId });
+    },
+    {
+      concurrency: 16,
+    }
+  );
 }
 
 async function archiveAssistants(auth: Authenticator) {

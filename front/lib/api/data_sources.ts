@@ -1,4 +1,5 @@
 import type {
+  DataSourceFolderSpreadsheetMimeType,
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
@@ -899,6 +900,47 @@ export async function upsertTable({
   }
 
   return new Ok(tableRes.value);
+}
+
+export async function createDataSourceFolder(
+  dataSource: DataSourceResource,
+  {
+    folderId,
+    mimeType,
+    parentId,
+    parents,
+    sourceUrl,
+    title,
+  }: {
+    folderId: string;
+    mimeType: DataSourceFolderSpreadsheetMimeType;
+    parentId?: string | null;
+    parents?: string[] | null;
+    sourceUrl?: string | null;
+    title: string;
+  }
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  // Create folder with the Dust internal API.
+  const upsertRes = await coreAPI.upsertDataSourceFolder({
+    dataSourceId: dataSource.dustAPIDataSourceId,
+    folderId,
+    mimeType,
+    parentId: parentId || null,
+    parents: parents || [folderId],
+    projectId: dataSource.dustAPIProjectId,
+    providerVisibility: "public",
+    sourceUrl,
+    timestamp: Date.now(),
+    title: title.trim() || "Untitled Folder",
+  });
+
+  if (upsertRes.isErr()) {
+    return upsertRes;
+  }
+
+  return new Ok(upsertRes.value);
 }
 
 type DataSourceCreationError = Omit<DustError, "code"> & {

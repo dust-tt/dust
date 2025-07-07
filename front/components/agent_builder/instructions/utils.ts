@@ -46,5 +46,5 @@ export function categorizeModels(models: ModelConfigurationType[]): {
 }
 
 export function getModelKey(modelConfig: ModelConfigurationType): string {
-  return `${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`;
+  return modelConfig.modelId;
 }

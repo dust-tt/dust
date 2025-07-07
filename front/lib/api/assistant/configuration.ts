@@ -19,6 +19,7 @@ import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guard
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
@@ -542,8 +543,18 @@ async function fetchWorkspaceAgentConfigurationsForView(
       model.responseFormat = agent.responseFormat;
     }
 
+    // Always set reasoning effort, using model default if null/undefined
     if (agent.reasoningEffort) {
       model.reasoningEffort = agent.reasoningEffort;
+    } else {
+      // Get the model configuration to use default reasoning effort
+      const modelConfig = getSupportedModelConfig({
+        providerId: agent.providerId,
+        modelId: agent.modelId,
+      });
+      if (modelConfig) {
+        model.reasoningEffort = modelConfig.defaultReasoningEffort;
+      }
     }
 
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];

@@ -56,7 +56,14 @@ async function setupTest(
     agentOwnerAuth = requestUserAuth;
   } else {
     agentOwner = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, agentOwner, agentOwnerRole);
+    await MembershipFactory.associate(
+      workspace,
+      agentOwner,
+      {
+        role: agentOwnerRole,
+      },
+      t
+    );
     agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       agentOwner.sId,
       workspace.sId
@@ -157,7 +164,9 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     });
 
     const newEditor = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, newEditor, "builder");
+    await MembershipFactory.associate(workspace, newEditor, {
+      role: "builder",
+    });
 
     req.body = { addEditorIds: [newEditor.sId] };
 
@@ -178,7 +187,9 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
 
     // Add another editor first
     const editorToRemove = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, editorToRemove, "builder");
+    await MembershipFactory.associate(workspace, editorToRemove, {
+      role: "builder",
+    });
     const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       agentOwner.sId,
       workspace.sId
@@ -210,7 +221,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     });
 
     const newEditor = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, newEditor, "user");
+    await MembershipFactory.associate(workspace, newEditor, { role: "user" });
 
     req.body = { addEditorIds: [newEditor.sId] };
 
@@ -233,7 +244,9 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
 
     // Add another editor first
     const editorToRemove = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, editorToRemove, "admin");
+    await MembershipFactory.associate(workspace, editorToRemove, {
+      role: "admin",
+    });
     const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       requestUser.sId,
       workspace.sId
@@ -305,7 +318,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     });
 
     const nonEditor = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, nonEditor, "user");
+    await MembershipFactory.associate(workspace, nonEditor, { role: "user" });
 
     req.body = { removeEditorIds: [nonEditor.sId] };
 
@@ -418,7 +431,9 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/editors", () =
     });
 
     const editorToAdd = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, editorToAdd, "builder");
+    await MembershipFactory.associate(workspace, editorToAdd, {
+      role: "builder",
+    });
 
     // Remove owner, add new editor
     req.body = {

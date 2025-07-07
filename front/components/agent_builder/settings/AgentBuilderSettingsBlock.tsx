@@ -16,6 +16,7 @@ import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 import {
   getDescriptionSuggestion,
   getNameSuggestions,
@@ -337,6 +338,7 @@ export function AgentBuilderSettingsBlock() {
                 </div>
                 <AgentPictureInput />
               </div>
+              <TagsSection />
             </div>
           </div>
         </CollapsibleContent>

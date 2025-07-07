@@ -29,7 +29,8 @@ describe("MCP Internal Actions Server Utils", () => {
         await GroupFactory.defaults(workspace);
         const { agentOwnerAuth: auth } = await setupAgentOwner(
           workspace,
-          "admin"
+          "admin",
+          t
         );
 
         const otherSpace = await SpaceFactory.global(otherWorkspace, t);
@@ -121,7 +122,8 @@ describe("MCP Internal Actions Server Utils", () => {
         await GroupFactory.defaults(workspace);
         const { agentOwnerAuth: auth } = await setupAgentOwner(
           workspace,
-          "admin"
+          "admin",
+          t
         );
 
         await SpaceFactory.system(workspace, t);

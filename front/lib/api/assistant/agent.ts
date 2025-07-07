@@ -17,7 +17,6 @@ import type {
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
   isMCPToolConfiguration,
   isSearchLabelsConfiguration,
@@ -40,6 +39,7 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -66,7 +66,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { assertNever, removeNulls } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -356,11 +356,7 @@ async function* runMultiActionsAgent(
   | AgentContentEvent
   | AgentStepContentEvent
 > {
-  const model = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === agentConfiguration.model.modelId &&
-      m.providerId === agentConfiguration.model.providerId
-  );
+  const model = getSupportedModelConfig(agentConfiguration.model);
 
   if (!model) {
     yield {
@@ -589,9 +585,13 @@ async function* runMultiActionsAgent(
   runConfig.MODEL.provider_id = model.providerId;
   runConfig.MODEL.model_id = model.modelId;
   runConfig.MODEL.temperature = agentConfiguration.model.temperature;
-  if (agentConfiguration.model.reasoningEffort) {
-    runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
+
+  const reasoningEffort =
+    agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
+  if (reasoningEffort !== "none" && reasoningEffort !== "light") {
+    runConfig.MODEL.reasoning_effort = reasoningEffort;
   }
+
   if (agentConfiguration.model.responseFormat) {
     runConfig.MODEL.response_format = JSON.parse(
       agentConfiguration.model.responseFormat
@@ -896,7 +896,7 @@ async function* runMultiActionsAgent(
     }
 
     const chainOfThought =
-      nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
+      (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
     yield {
       type: "agent_message_content",
@@ -1076,7 +1076,7 @@ async function* runMultiActionsAgent(
   yield* contentParser.flushTokens();
 
   const chainOfThought =
-    nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
+    (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
   if (chainOfThought?.length) {
     yield {
@@ -1208,54 +1208,6 @@ async function* runAction(
           yield event;
           break;
         case "dust_app_run_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isConversationIncludeFileConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "conversation_include_file_params":
-          yield event;
-          break;
-        case "conversation_include_file_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "conversation_include_file_success":
           yield {
             type: "agent_action_success",
             created: event.created,
