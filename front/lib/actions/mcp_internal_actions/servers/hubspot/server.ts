@@ -17,6 +17,7 @@ import {
   createTicket,
   getAssociatedMeetings,
   getCompany,
+  getCurrentUserId,
   getContact,
   getDeal,
   getFilePublicUrl,
@@ -24,6 +25,7 @@ import {
   getMeeting,
   getObjectByEmail,
   getObjectProperties,
+  getUserActivity,
   getUserDetails,
   listAssociations,
   listOwners,
@@ -1147,6 +1149,63 @@ const createServer = (): McpServer => {
     }
   );
 
+  server.tool(
+    "get_current_user_id",
+    "Gets the current user's HubSpot owner ID and basic information. Useful for getting your own user ID to use with other tools.",
+    {},
+    async (_, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getCurrentUserId(accessToken);
+          return makeMCPToolJSONSuccess({
+            message: "Current user information retrieved successfully",
+            result,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_user_activity",
+    "Gets user activity across all engagement types (tasks, notes, meetings, calls, emails) for a specific time period. Perfect for getting a user's activity for the last week, month, etc.",
+    {
+      ownerId: z.string().describe("The HubSpot owner ID (user ID) to get activity for. Use get_current_user_id to get your own ID."),
+      startDate: z.string().describe("Start date for the activity period (ISO date string or timestamp)"),
+      endDate: z.string().describe("End date for the activity period (ISO date string or timestamp)"),
+      limit: z.number().optional().default(MAX_LIMIT).describe("Maximum number of activities to return"),
+    },
+    async ({ ownerId, startDate, endDate, limit }, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const result = await getUserActivity({
+            accessToken,
+            ownerId,
+            startDate,
+            endDate,
+            limit,
+          });
+          
+          if (!result.results || result.results.length === 0) {
+            return makeMCPToolTextSuccess({
+              message: `No activities found for owner ${ownerId} between ${startDate} and ${endDate}`,
+              result: `No activities found for the specified period. Summary: ${JSON.stringify(result.summary, null, 2)}`,
+            });
+          }
+          
+          return makeMCPToolJSONSuccess({
+            message: `Found ${result.results.length} activities for owner ${ownerId} between ${startDate} and ${endDate}`,
+            result: {
+              activities: result.results,
+              summary: result.summary,
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
 
   return server;
 };

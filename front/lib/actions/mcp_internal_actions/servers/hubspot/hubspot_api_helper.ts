@@ -1353,14 +1353,44 @@ export const searchCrmObjects = async ({
         searchResponse =
           await hubspotClient.crm.tickets.searchApi.doSearch(searchRequest);
         break;
+      case "tasks":
+        searchResponse =
+          await hubspotClient.crm.objects.tasks.searchApi.doSearch(searchRequest);
+        break;
+      case "notes":
+        searchResponse =
+          await hubspotClient.crm.objects.notes.searchApi.doSearch(searchRequest);
+        break;
+      case "meetings":
+        searchResponse =
+          await hubspotClient.crm.objects.meetings.searchApi.doSearch(searchRequest);
+        break;
+      case "calls":
+        searchResponse =
+          await hubspotClient.crm.objects.calls.searchApi.doSearch(searchRequest);
+        break;
+      case "emails":
+        searchResponse =
+          await hubspotClient.crm.objects.emails.searchApi.doSearch(searchRequest);
+        break;
       // For other object types like products, line_items, quotes, feedback_submissions, a similar pattern would apply.
-      // These might be under crm.objects.ObjectTypeApi.doSearch or require their own client sections if they exist (e.g., hubspotClient.crm.products.searchApi.doSearch(searchRequest)).
-      // For now, an error will be thrown for unhandled types to make it explicit.
+      case "products":
+        searchResponse =
+          await hubspotClient.crm.products.searchApi.doSearch(searchRequest);
+        break;
+      case "line_items":
+        searchResponse =
+          await hubspotClient.crm.lineItems.searchApi.doSearch(searchRequest);
+        break;
+      case "quotes":
+        searchResponse =
+          await hubspotClient.crm.quotes.searchApi.doSearch(searchRequest);
+        break;
+      case "feedback_submissions":
+        searchResponse =
+          await hubspotClient.crm.objects.feedbackSubmissions.searchApi.doSearch(searchRequest);
+        break;
       default:
-        // An attempt with generic crm.objects.basicApi.search (if it exists and objectType is a string) is speculative.
-        // The structure client.crm.objects.basicApi.search(objectType, publicObjectSearchRequest) also seems unlikely.
-        // The most reliable way is to use individual object type search APIs as shown above.
-        // It is assumed for now that objectType will be one of the handled ones, or an error will be thrown.
         throw new Error(
           `Search for object type "${objectType}" is not explicitly implemented. Add to switch.`
         );
@@ -1372,6 +1402,119 @@ export const searchCrmObjects = async ({
     };
   } catch (error: any) {
     localLogger.error({ error }, `Error searching ${objectType}:`);
+    throw normalizeError(error);
+  }
+};
+
+/**
+ * Gets user activity across all engagement types for a specific time period
+ */
+export const getUserActivity = async ({
+  accessToken,
+  ownerId,
+  startDate,
+  endDate,
+  limit = MAX_LIMIT,
+}: {
+  accessToken: string;
+  ownerId: string;
+  startDate: string; // ISO date string or timestamp
+  endDate: string; // ISO date string or timestamp  
+  limit?: number;
+}) => {
+  try {
+    const engagementTypes = ["tasks", "notes", "meetings", "calls", "emails"];
+    const allActivities: Array<SimplePublicObject & { objectType: string }> = [];
+    
+    const dateFilters = createDateRangeFilters(startDate, endDate);
+    
+    for (const objectType of engagementTypes) {
+      try {
+        // Different engagement types may use different owner property names
+        const ownerPropertyNames = ["hubspot_owner_id", "hs_created_by", "hs_created_by_user_id"];
+        let result = null;
+        
+        // Try different owner property names until one works
+        for (const ownerProperty of ownerPropertyNames) {
+          try {
+            const ownerFilter = createOwnerFilter(ownerId, ownerProperty);
+            result = await searchCrmObjects({
+              accessToken,
+              objectType: objectType as any,
+              filters: [ownerFilter, ...dateFilters],
+              limit,
+            });
+            if (result?.results && result.results.length > 0) {
+              break; // Found results with this property name
+            }
+          } catch (propertyError) {
+            // Try next property name
+            continue;
+          }
+        }
+        
+        if (result?.results) {
+          allActivities.push(...result.results.map(activity => ({
+            ...activity,
+            objectType,
+          })));
+        }
+      } catch (error) {
+        // Continue if this object type fails completely
+        localLogger.warn(
+          { error, objectType, ownerId },
+          `Failed to get ${objectType} for owner ${ownerId}, continuing with other types`
+        );
+        continue;
+      }
+    }
+    
+    // Sort by creation date (most recent first)
+    allActivities.sort((a, b) => {
+      const aDate = new Date(a.createdAt || a.properties?.createdate || 0).getTime();
+      const bDate = new Date(b.createdAt || b.properties?.createdate || 0).getTime();
+      return bDate - aDate;
+    });
+    
+    return {
+      results: allActivities.slice(0, limit),
+      summary: {
+        totalActivities: allActivities.length,
+        byType: engagementTypes.reduce((acc, type) => {
+          acc[type] = allActivities.filter(a => a.objectType === type).length;
+          return acc;
+        }, {} as Record<string, number>),
+        dateRange: {
+          start: startDate,
+          end: endDate,
+        },
+      },
+    };
+  } catch (error) {
+    localLogger.error(
+      { error, ownerId, startDate, endDate },
+      `Error getting user activity for owner ${ownerId}:`
+    );
+    throw normalizeError(error);
+  }
+};
+
+/**
+ * Gets the current user's owner ID from HubSpot
+ */
+export const getCurrentUserId = async (accessToken: string) => {
+  try {
+    const userDetails = await getUserDetails(accessToken);
+    return {
+      userId: userDetails.user_id,
+      user: userDetails.user,
+      hubId: userDetails.hub_id,
+    };
+  } catch (error) {
+    localLogger.error(
+      { error },
+      "Error getting current user ID:"
+    );
     throw normalizeError(error);
   }
 };
@@ -1511,6 +1654,38 @@ type HubspotSearchRequest = {
   sorts?: string[];
   query?: string;
 };
+
+/**
+ * Helper function to create date range filters
+ */
+function createDateRangeFilters(startDate: string, endDate: string, dateProperty = "createdate"): HubspotFilter[] {
+  const startTimestamp = isNaN(Number(startDate)) ? new Date(startDate).getTime() : Number(startDate);
+  const endTimestamp = isNaN(Number(endDate)) ? new Date(endDate).getTime() : Number(endDate);
+  
+  return [
+    {
+      propertyName: dateProperty,
+      operator: FilterOperatorEnum.Gte,
+      value: startTimestamp.toString(),
+    },
+    {
+      propertyName: dateProperty,
+      operator: FilterOperatorEnum.Lte,
+      value: endTimestamp.toString(),
+    },
+  ];
+}
+
+/**
+ * Helper function to create owner filters with fallback property names
+ */
+function createOwnerFilter(ownerId: string, ownerProperty = "hubspot_owner_id"): HubspotFilter {
+  return {
+    propertyName: ownerProperty,
+    operator: FilterOperatorEnum.Eq,
+    value: ownerId,
+  };
+}
 
 /**
  * Creates an association between two HubSpot objects
