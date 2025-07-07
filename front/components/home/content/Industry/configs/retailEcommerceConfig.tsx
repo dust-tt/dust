@@ -314,7 +314,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     ctaButtons: {
       primary: {
         label: "Start Free Trial",
-        href: "/api/auth/login",
+        href: "/api/workos/login",
       },
       secondary: {
         label: "Contact Sales",

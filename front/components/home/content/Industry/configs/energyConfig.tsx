@@ -222,7 +222,7 @@ export const energyConfig: IndustryPageConfig = {
     ctaButtons: {
       primary: {
         label: "Start free trial",
-        href: "/api/auth/login",
+        href: "/api/workos/login",
       },
       secondary: {
         label: "Contact sales",
