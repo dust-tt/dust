@@ -751,6 +751,7 @@ export const AdminCommandSchema = t.union([
   TemporalCommandSchema,
   WebcrawlerCommandSchema,
   ZendeskCommandSchema,
+  ZendeskGetRetentionPeriodResponseSchema,
 ]);
 export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;
 
