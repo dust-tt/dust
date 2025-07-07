@@ -1,5 +1,4 @@
 import assert from "assert";
-import { chunk } from "lodash";
 import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
@@ -64,6 +63,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/works
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
@@ -401,31 +401,20 @@ export async function deleteRunOnDustAppsActivity({
     includeApp: true,
   });
 
-  const chunkSize = 8;
-  const chunks = chunk(runs, chunkSize);
-
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    if (!chunk) {
-      continue;
-    }
-    await Promise.all(
-      chunk.map((run) => {
-        return (async () => {
-          const res = await coreAPI.deleteRun({
-            projectId: run.app.dustAPIProjectId,
-            runId: run.dustRunId,
-          });
-          if (res.isErr()) {
-            throw new Error(
-              `Error deleting Run from Core: ${res.error.message}`
-            );
-          }
-          await run.delete(auth);
-        })();
-      })
-    );
-  }
+  await concurrentExecutor(
+    runs,
+    async (run) => {
+      const res = await coreAPI.deleteRun({
+        projectId: run.app.dustAPIProjectId,
+        runId: run.dustRunId,
+      });
+      if (res.isErr()) {
+        throw new Error(`Error deleting Run from Core: ${res.error.message}`);
+      }
+      await run.delete(auth);
+    },
+    { concurrency: 8 }
+  );
 }
 
 export const deleteRemoteMCPServersActivity = async ({
