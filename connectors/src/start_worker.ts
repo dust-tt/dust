@@ -52,16 +52,20 @@ const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];
 
 async function runWorkers(workers: WorkerType[]) {
   // Start all workers in parallel
-  const promises = workers.map(async (worker) => {
-    try {
-      await workerFunctions[worker]();
-    } catch (err) {
-      logger.error(errorFromAny(err), `Error running ${worker} worker.`);
-    }
-  });
+  try {
+    const promises = workers.map((worker) =>
+      Promise.resolve()
+        .then(() => workerFunctions[worker]())
+        .catch((err) => {
+          logger.error(errorFromAny(err), `Error running ${worker} worker.`);
+        })
+    );
 
-  // Wait for all workers to complete
-  await Promise.all(promises);
+    // Wait for all workers to complete
+    await Promise.all(promises);
+  } catch (e) {
+    logger.error(errorFromAny(e), "Unexpected error during worker startup.");
+  }
 
   // Shutdown Temporal native runtime *once*
   await Runtime.instance().shutdown();
