@@ -22,6 +22,7 @@ import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { AddExtractSheet } from "@app/components/agent_builder/capabilities/knowledge/AddExtractSheet";
 import { AddIncludeDataSheet } from "@app/components/agent_builder/capabilities/knowledge/AddIncludeDataSheet";
+import { AddQueryTablesSheet } from "@app/components/agent_builder/capabilities/knowledge/AddQueryTablesSheet";
 import { AddSearchSheet } from "@app/components/agent_builder/capabilities/knowledge/AddSearchSheet";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { KnowledgeServerName } from "@app/components/agent_builder/types";
@@ -163,7 +164,11 @@ export function AgentBuilderCapabilitiesBlock() {
 
     switch (action.type) {
       case "SEARCH":
-        setOpenSheet("search");
+        if (action.name === "Query Tables") {
+          setOpenSheet("query_tables");
+        } else {
+          setOpenSheet("search");
+        }
         break;
       case "INCLUDE_DATA":
         setOpenSheet("include_data");
@@ -266,6 +271,17 @@ export function AgentBuilderCapabilitiesBlock() {
         onSave={handleEditSave}
         action={
           editingAction?.action.type === "EXTRACT_DATA"
+            ? editingAction.action
+            : undefined
+        }
+      />
+
+      <AddQueryTablesSheet
+        isOpen={openSheet === "query_tables"}
+        onClose={handleCloseSheet}
+        onSave={handleEditSave}
+        action={
+          editingAction?.action.type === "SEARCH" && editingAction.action.name === "Query Tables"
             ? editingAction.action
             : undefined
         }
