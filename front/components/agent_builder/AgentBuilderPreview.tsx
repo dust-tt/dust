@@ -96,7 +96,7 @@ export function AgentBuilderPreview() {
     return (
       <div className="flex h-full flex-col">
         <div className="flex-1 overflow-y-auto">
-          {conversation && user ? (
+          {conversation && user && (
             <ConversationViewer
               owner={owner}
               user={user}
@@ -105,14 +105,9 @@ export function AgentBuilderPreview() {
               isInModal
               key={conversation.sId}
             />
-          ) : (
-            <EmptyState
-              message="Start a conversation"
-              description="Send a message below to test your agent and see how it responds."
-            />
           )}
         </div>
-        <div className="flex-shrink-0 border-t border-border">
+        <div className="flex-shrink-0 p-4">
           <AssistantInputBar
             disableButton={isSavingDraftAgent}
             owner={owner}
@@ -130,11 +125,7 @@ export function AgentBuilderPreview() {
   };
 
   return (
-    <div
-      className="flex h-full w-full flex-col"
-      role="main"
-      aria-label="Agent preview"
-    >
+    <div className="flex h-full w-full flex-col" aria-label="Agent preview">
       <ActionValidationProvider owner={owner}>
         <GenerationContextProvider>{renderContent()}</GenerationContextProvider>
       </ActionValidationProvider>
