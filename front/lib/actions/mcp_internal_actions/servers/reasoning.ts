@@ -236,8 +236,11 @@ async function* runReasoning(
     config.MODEL.temperature = reasoningModel.temperature;
   }
 
-  config.MODEL.reasoning_effort =
+  const reasoningEffort =
     reasoningModel.reasoningEffort ?? supportedModel.defaultReasoningEffort;
+  if (reasoningEffort !== "none" && reasoningEffort !== "light") {
+    config.MODEL.reasoning_effort = reasoningEffort;
+  }
 
   // Run the app.
   const inputs = [
