@@ -2,8 +2,8 @@ import type { WorkspaceType } from "@dust-tt/client";
 import { Box, Text } from "ink";
 import SelectInput from "ink-select-input";
 import Spinner from "ink-spinner";
-import type { FC} from "react";
-import React, { useCallback,useEffect, useState } from "react";
+import type { FC } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { getDustClient } from "../../utils/dustClient.js";
 import TokenStorage from "../../utils/tokenStorage.js";

@@ -39,17 +39,19 @@ export async function sendNonInteractiveMessage(
 ): Promise<void> {
   const dustClient = await getDustClient();
   if (!dustClient) {
-    console.error(JSON.stringify({ 
-      error: "Authentication required",
-      details: "Run `dust login` first"
-    }));
+    console.error(
+      JSON.stringify({
+        error: "Authentication required",
+        details: "Run `dust login` first",
+      })
+    );
     process.exit(1);
   }
 
   try {
     let conversation: CreateConversationResponseType["conversation"];
     let userMessageId: string;
-    
+
     if (existingConversationId) {
       // Add message to existing conversation
       const messageRes = await dustClient.postUserMessage({
@@ -68,24 +70,28 @@ export async function sendNonInteractiveMessage(
       });
 
       if (messageRes.isErr()) {
-        console.error(JSON.stringify({ 
-          error: "Error adding message to conversation",
-          details: messageRes.error.message
-        }));
+        console.error(
+          JSON.stringify({
+            error: "Error adding message to conversation",
+            details: messageRes.error.message,
+          })
+        );
         process.exit(1);
       }
 
       userMessageId = messageRes.value.sId;
 
       // Get the conversation for streaming
-      const convRes = await dustClient.getConversation({ 
-        conversationId: existingConversationId 
+      const convRes = await dustClient.getConversation({
+        conversationId: existingConversationId,
       });
       if (convRes.isErr()) {
-        console.error(JSON.stringify({ 
-          error: "Error retrieving conversation",
-          details: convRes.error.message
-        }));
+        console.error(
+          JSON.stringify({
+            error: "Error retrieving conversation",
+            details: convRes.error.message,
+          })
+        );
         process.exit(1);
       }
       conversation = convRes.value;
@@ -109,23 +115,27 @@ export async function sendNonInteractiveMessage(
       });
 
       if (convRes.isErr()) {
-        console.error(JSON.stringify({ 
-          error: "Failed to create conversation",
-          details: convRes.error.message
-        }));
+        console.error(
+          JSON.stringify({
+            error: "Failed to create conversation",
+            details: convRes.error.message,
+          })
+        );
         process.exit(1);
       }
 
       conversation = convRes.value.conversation;
       const messageId = convRes.value.message?.sId;
-      
+
       if (!messageId) {
-        console.error(JSON.stringify({ 
-          error: "No message created"
-        }));
+        console.error(
+          JSON.stringify({
+            error: "No message created",
+          })
+        );
         process.exit(1);
       }
-      
+
       userMessageId = messageId;
     }
 
@@ -136,40 +146,46 @@ export async function sendNonInteractiveMessage(
     });
 
     if (streamRes.isErr()) {
-      console.error(JSON.stringify({ 
-        error: "Failed to stream agent answer",
-        details: streamRes.error.message
-      }));
+      console.error(
+        JSON.stringify({
+          error: "Failed to stream agent answer",
+          details: streamRes.error.message,
+        })
+      );
       process.exit(1);
     }
 
     let fullResponse = "";
     const eventDetails: EventDetail[] = [];
-    
+
     for await (const event of streamRes.value.eventStream) {
       // If details flag is set, collect all events
       if (showDetails) {
         eventDetails.push({
           ...(event as BaseEvent),
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }
-      
+
       if (event.type === "generation_tokens") {
         if (event.classification === "tokens") {
           fullResponse += event.text;
         }
       } else if (event.type === "agent_error") {
-        console.error(JSON.stringify({ 
-          error: "Agent error",
-          details: event.error.message
-        }));
+        console.error(
+          JSON.stringify({
+            error: "Agent error",
+            details: event.error.message,
+          })
+        );
         process.exit(1);
       } else if (event.type === "user_message_error") {
-        console.error(JSON.stringify({ 
-          error: "User message error",
-          details: event.error.message
-        }));
+        console.error(
+          JSON.stringify({
+            error: "User message error",
+            details: event.error.message,
+          })
+        );
         process.exit(1);
       } else if (event.type === "agent_message_success") {
         // Success - output the result
@@ -177,24 +193,26 @@ export async function sendNonInteractiveMessage(
           agentId: selectedAgent.sId,
           agentAnswer: fullResponse.trim(),
           conversationId: conversation.sId,
-          messageId: event.message.sId
+          messageId: event.message.sId,
         };
-        
+
         // Add detailed event history if requested
         if (showDetails) {
           output.events = eventDetails;
           output.agentMessage = event.message;
         }
-        
+
         console.log(JSON.stringify(output));
         process.exit(0);
       }
     }
   } catch (error) {
-    console.error(JSON.stringify({ 
-      error: "Unexpected error",
-      details: normalizeError(error).message
-    }));
+    console.error(
+      JSON.stringify({
+        error: "Unexpected error",
+        details: normalizeError(error).message,
+      })
+    );
     process.exit(1);
   }
 }
@@ -208,44 +226,56 @@ export function validateNonInteractiveFlags(
 ): void {
   // Check --messageId requirements
   if (messageId && !conversationId) {
-    console.error(JSON.stringify({ 
-      error: "Invalid usage",
-      details: "--messageId requires --conversationId to be specified"
-    }));
+    console.error(
+      JSON.stringify({
+        error: "Invalid usage",
+        details: "--messageId requires --conversationId to be specified",
+      })
+    );
     process.exit(1);
   }
-  
+
   // Check --messageId exclusivity with other flags
   if (messageId && (agentSearch || message)) {
-    console.error(JSON.stringify({ 
-      error: "Invalid usage",
-      details: "--messageId cannot be used with --agent or --message"
-    }));
+    console.error(
+      JSON.stringify({
+        error: "Invalid usage",
+        details: "--messageId cannot be used with --agent or --message",
+      })
+    );
     process.exit(1);
   }
-  
+
   // Check --details requirements
   if (details && (!agentSearch || !message)) {
-    console.error(JSON.stringify({ 
-      error: "Invalid usage",
-      details: "--details requires both --agent and --message to be specified"
-    }));
+    console.error(
+      JSON.stringify({
+        error: "Invalid usage",
+        details:
+          "--details requires both --agent and --message to be specified",
+      })
+    );
     process.exit(1);
   }
-  
+
   // Existing validations
   if (message && !agentSearch) {
-    console.error(JSON.stringify({ 
-      error: "Invalid usage",
-      details: "--message requires --agent to be specified"
-    }));
+    console.error(
+      JSON.stringify({
+        error: "Invalid usage",
+        details: "--message requires --agent to be specified",
+      })
+    );
     process.exit(1);
   }
   if (conversationId && !messageId && (!agentSearch || !message)) {
-    console.error(JSON.stringify({ 
-      error: "Invalid usage",
-      details: "--conversationId requires both --agent and --message to be specified (or --messageId)"
-    }));
+    console.error(
+      JSON.stringify({
+        error: "Invalid usage",
+        details:
+          "--conversationId requires both --agent and --message to be specified (or --messageId)",
+      })
+    );
     process.exit(1);
   }
 }
@@ -256,29 +286,33 @@ export async function fetchAgentMessageFromConversation(
 ): Promise<void> {
   const dustClient = await getDustClient();
   if (!dustClient) {
-    console.error(JSON.stringify({ 
-      error: "Authentication required",
-      details: "Run `dust login` first"
-    }));
+    console.error(
+      JSON.stringify({
+        error: "Authentication required",
+        details: "Run `dust login` first",
+      })
+    );
     process.exit(1);
   }
 
   try {
     // Get conversation with messages
-    const convRes = await dustClient.getConversation({ 
-      conversationId: conversationId 
+    const convRes = await dustClient.getConversation({
+      conversationId: conversationId,
     });
-    
+
     if (convRes.isErr()) {
-      console.error(JSON.stringify({ 
-        error: "Failed to fetch conversation",
-        details: convRes.error.message
-      }));
+      console.error(
+        JSON.stringify({
+          error: "Failed to fetch conversation",
+          details: convRes.error.message,
+        })
+      );
       process.exit(1);
     }
 
     const conversation = convRes.value;
-    
+
     // Find the agent message with the specified sId
     let agentMessage = null;
     for (const contentGroup of conversation.content) {
@@ -294,10 +328,12 @@ export async function fetchAgentMessageFromConversation(
     }
 
     if (!agentMessage) {
-      console.error(JSON.stringify({ 
-        error: "Message not found",
-        details: `Agent message with ID ${messageId} not found in conversation ${conversationId}`
-      }));
+      console.error(
+        JSON.stringify({
+          error: "Message not found",
+          details: `Agent message with ID ${messageId} not found in conversation ${conversationId}`,
+        })
+      );
       process.exit(1);
     }
 
@@ -305,11 +341,12 @@ export async function fetchAgentMessageFromConversation(
     console.log(JSON.stringify(agentMessage));
     process.exit(0);
   } catch (error) {
-    console.error(JSON.stringify({ 
-      error: "Unexpected error",
-      details: normalizeError(error).message
-    }));
+    console.error(
+      JSON.stringify({
+        error: "Unexpected error",
+        details: normalizeError(error).message,
+      })
+    );
     process.exit(1);
   }
 }
-

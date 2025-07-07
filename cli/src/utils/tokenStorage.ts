@@ -44,7 +44,9 @@ export const TokenStorage = {
    */
   async hasValidAccessToken(): Promise<boolean> {
     const accessToken = await this.getAccessToken();
-    if (!accessToken) {return false;}
+    if (!accessToken) {
+      return false;
+    }
 
     const decoded = jwtDecode<JWTPayload>(accessToken);
     const currentTime = Math.floor(Date.now() / 1000);

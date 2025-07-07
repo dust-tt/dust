@@ -93,7 +93,13 @@ const App: FC<AppProps> = ({ cli }) => {
         );
       }
       // Interactive chat
-      return <Chat sId={flags.sId?.[0]} agentSearch={flags.agent} conversationId={flags.conversationId} />;
+      return (
+        <Chat
+          sId={flags.sId?.[0]}
+          agentSearch={flags.agent}
+          conversationId={flags.conversationId}
+        />
+      );
     case "cache:clear":
       return <Cache />;
     case "help":

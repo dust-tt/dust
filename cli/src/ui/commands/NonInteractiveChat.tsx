@@ -26,7 +26,13 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
 }) => {
   // Validate flags usage
   useEffect(() => {
-    validateNonInteractiveFlags(message, agentSearch, conversationId, messageId, details);
+    validateNonInteractiveFlags(
+      message,
+      agentSearch,
+      conversationId,
+      messageId,
+      details
+    );
   }, [message, agentSearch, conversationId, messageId, details]);
 
   // Handle all non-interactive operations
@@ -47,20 +53,24 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
         // Get dust client
         const dustClient = await getDustClient();
         if (!dustClient) {
-          console.error(JSON.stringify({
-            error: "Authentication required",
-            details: "Run `dust login` first"
-          }));
+          console.error(
+            JSON.stringify({
+              error: "Authentication required",
+              details: "Run `dust login` first",
+            })
+          );
           process.exit(1);
         }
 
         // Get current user info
         const meRes = await dustClient.me();
         if (meRes.isErr()) {
-          console.error(JSON.stringify({
-            error: "Authentication error",
-            details: meRes.error.message
-          }));
+          console.error(
+            JSON.stringify({
+              error: "Authentication error",
+              details: meRes.error.message,
+            })
+          );
           process.exit(1);
         }
         const me = meRes.value;
@@ -68,19 +78,23 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
         // Get all agents
         const agentsRes = await dustClient.getAgentConfigurations({});
         if (agentsRes.isErr()) {
-          console.error(JSON.stringify({
-            error: "Failed to load agents",
-            details: agentsRes.error.message
-          }));
+          console.error(
+            JSON.stringify({
+              error: "Failed to load agents",
+              details: agentsRes.error.message,
+            })
+          );
           process.exit(1);
         }
 
         const allAgents = agentsRes.value;
         if (!allAgents || allAgents.length === 0) {
-          console.error(JSON.stringify({
-            error: "No agents available",
-            details: "No agents found for the current user"
-          }));
+          console.error(
+            JSON.stringify({
+              error: "No agents available",
+              details: "No agents found for the current user",
+            })
+          );
           process.exit(1);
         }
 
@@ -91,30 +105,42 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
         );
 
         if (matchingAgents.length === 0) {
-          console.error(JSON.stringify({
-            error: "Agent not found",
-            details: `No agent found matching "${agentSearch}"`
-          }));
+          console.error(
+            JSON.stringify({
+              error: "Agent not found",
+              details: `No agent found matching "${agentSearch}"`,
+            })
+          );
           process.exit(1);
         }
 
         if (matchingAgents.length > 1) {
-          console.error(JSON.stringify({
-            error: "Multiple agents found",
-            details: `Multiple agents match "${agentSearch}": ${matchingAgents.map(a => a.name).join(", ")}`
-          }));
+          console.error(
+            JSON.stringify({
+              error: "Multiple agents found",
+              details: `Multiple agents match "${agentSearch}": ${matchingAgents.map((a) => a.name).join(", ")}`,
+            })
+          );
           process.exit(1);
         }
 
         const selectedAgent = matchingAgents[0];
 
         // Call the standalone function
-        await sendNonInteractiveMessage(message, selectedAgent, me, conversationId, details);
+        await sendNonInteractiveMessage(
+          message,
+          selectedAgent,
+          me,
+          conversationId,
+          details
+        );
       } catch (error) {
-        console.error(JSON.stringify({
-          error: "Unexpected error",
-          details: normalizeError(error).message
-        }));
+        console.error(
+          JSON.stringify({
+            error: "Unexpected error",
+            details: normalizeError(error).message,
+          })
+        );
         process.exit(1);
       }
     }
@@ -127,3 +153,4 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
 };
 
 export default NonInteractiveChat;
+

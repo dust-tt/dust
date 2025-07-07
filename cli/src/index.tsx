@@ -6,7 +6,7 @@ import React from "react";
 import updateNotifier from "update-notifier";
 
 import pkg from "../package.json" with { type: "json" };
-import App from "./ui/App.js"; 
+import App from "./ui/App.js";
 
 updateNotifier({
   pkg,
@@ -56,16 +56,19 @@ const cli = meow({
     conversationId: {
       type: "string",
       shortFlag: "c",
-      description: "Conversation ID (use with --agent and --message, or with --messageId)",
+      description:
+        "Conversation ID (use with --agent and --message, or with --messageId)",
     },
     messageId: {
       type: "string",
-      description: "Display details of a specific message (requires --conversationId)",
+      description:
+        "Display details of a specific message (requires --conversationId)",
     },
     details: {
       type: "boolean",
       shortFlag: "d",
-      description: "Show detailed message information (requires --agent and --message)",
+      description:
+        "Show detailed message information (requires --agent and --message)",
     },
   },
 });

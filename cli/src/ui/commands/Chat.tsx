@@ -299,7 +299,6 @@ const CliChat: FC<CliChatProps> = ({
     ]);
   }, [agentSearch, allAgents, selectedAgent]);
 
-
   const canSubmit =
     me &&
     !meError &&
@@ -536,9 +535,9 @@ const CliChat: FC<CliChatProps> = ({
                     type: "agent_message_content_line",
                     text: line || " ",
                     index,
-                  } satisfies ConversationItem & {
+                  }) satisfies ConversationItem & {
                     type: "agent_message_content_line";
-                  })
+                  }
               )
               .filter((item) => !prevIds.has(item.key))
               .slice(0, isStreaming ? -1 : undefined);
@@ -560,9 +559,9 @@ const CliChat: FC<CliChatProps> = ({
                       type: "agent_message_cot_line",
                       text: line,
                       index,
-                    } satisfies ConversationItem & {
+                    }) satisfies ConversationItem & {
                       type: "agent_message_cot_line";
-                    })
+                    }
                 )
                 .filter((item) => !prevIds.has(item.key))
                 .slice(0, isStreaming && !contentItems.length ? -1 : undefined);
@@ -1059,7 +1058,6 @@ const CliChat: FC<CliChatProps> = ({
       }
     }
   });
-
 
   // Show loading state while searching for agent
   if (agentSearch && agentsIsLoading) {
