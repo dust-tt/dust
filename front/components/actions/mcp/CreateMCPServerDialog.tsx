@@ -318,10 +318,12 @@ export function CreateMCPServerDialog({
                   </div>
                 </div>
               )}
-              {defaultServerConfig?.authMethod === "bearer" && (
+              {defaultServerConfig?.authMethod !== "oauth" && (
                 <div className="space-y-2">
                   <Label htmlFor="requiresBearerToken">
-                    {`${defaultServerConfig.name} API Key`}
+                    {defaultServerConfig?.authMethod === "bearer"
+                      ? `${defaultServerConfig.name} API Key`
+                      : "Authentication"}
                   </Label>
                   <div className="flex items-center space-x-2">
                     {!defaultServerConfig && (
