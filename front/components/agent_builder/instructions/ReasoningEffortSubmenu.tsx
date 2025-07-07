@@ -12,13 +12,7 @@ import { useController, useWatch } from "react-hook-form";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { AgentReasoningEffort } from "@app/types";
-
-const REASONING_EFFORT_LABELS: Record<AgentReasoningEffort, string> = {
-  none: "None",
-  light: "Light",
-  medium: "Medium",
-  high: "High",
-};
+import { asDisplayName } from "@app/types";
 
 const REASONING_EFFORT_DESCRIPTIONS: Record<AgentReasoningEffort, string> = {
   none: "No additional reasoning",
@@ -87,7 +81,7 @@ export function ReasoningEffortSubmenu() {
             <DropdownMenuRadioItem
               key={effort}
               value={effort}
-              label={REASONING_EFFORT_LABELS[effort]}
+              label={asDisplayName(effort)}
               description={REASONING_EFFORT_DESCRIPTIONS[effort]}
               onClick={() => field.onChange(effort)}
             />

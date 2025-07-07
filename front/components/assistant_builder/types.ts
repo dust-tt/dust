@@ -216,7 +216,8 @@ export function getDefaultAssistantState() {
         providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       },
       temperature: 0.7,
-      reasoningEffort: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+      reasoningEffort:
+        CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,

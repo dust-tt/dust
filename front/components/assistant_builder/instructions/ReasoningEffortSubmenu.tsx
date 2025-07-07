@@ -9,15 +9,7 @@ import { useEffect, useMemo } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import type { AgentReasoningEffort } from "@app/types";
-import { REASONING_EFFORT_IDS } from "@app/types";
-
-const REASONING_EFFORT_LABELS: Record<AgentReasoningEffort, string> = {
-  none: "None",
-  light: "Light",
-  medium: "Medium",
-  high: "High",
-};
+import { asDisplayName, REASONING_EFFORT_IDS } from "@app/types";
 
 interface ReasoningEffortSubmenuProps {
   generationSettings: AssistantBuilderState["generationSettings"];
@@ -84,7 +76,7 @@ export function ReasoningEffortSubmenu({
             <DropdownMenuRadioItem
               key={effort}
               value={effort}
-              label={REASONING_EFFORT_LABELS[effort]}
+              label={asDisplayName(effort)}
               onClick={() => {
                 setGenerationSettings({
                   ...generationSettings,
