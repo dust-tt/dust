@@ -13,8 +13,6 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
-import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
-import { isBuilder } from "@app/types";
 
 function SlackPopoverContent({
   setSlackDrawerOpened,
@@ -61,7 +59,8 @@ function SlackPopoverContent({
 }
 
 export function AgentBuilderSlackSelector() {
-  const { owner } = useAgentBuilderContext();
+  const { owner, supportedDataSourceViews } = useAgentBuilderContext();
+
   const [slackDrawerOpened, setSlackDrawerOpened] = useState(false);
 
   const slackChannels = useWatch<
@@ -77,11 +76,9 @@ export function AgentBuilderSlackSelector() {
     name: "agentSettings.slackChannels",
   });
 
-  const { slackChannels: slackChannelsLinkedWithAgent, slackDataSource } =
-    useSlackChannelsLinkedWithAgent({
-      workspaceId: owner.sId,
-      disabled: !isBuilder,
-    });
+  const slackDataSource = supportedDataSourceViews.find(
+    (dsv) => dsv.dataSource.connectorProvider === "slack"
+  )?.dataSource;
 
   if (!slackDataSource) {
     return null;
