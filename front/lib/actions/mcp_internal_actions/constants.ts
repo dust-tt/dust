@@ -125,6 +125,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_associated_meetings: "never_ask",
       get_hubspot_link: "never_ask",
       get_hubspot_portal_id: "never_ask",
+      list_owners: "never_ask",
 
       count_objects_by_properties: "never_ask",
       search_crm_objects: "never_ask",

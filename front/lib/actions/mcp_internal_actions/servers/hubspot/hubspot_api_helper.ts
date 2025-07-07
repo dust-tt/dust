@@ -121,6 +121,33 @@ export const getObjectByEmail = async (
   return objects.results[0];
 };
 
+/**
+ * List all owners (users) in the HubSpot account.
+ */
+export const listOwners = async (
+  accessToken: string
+): Promise<
+  {
+    id: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    userId: number | null;
+    archived: boolean;
+  }[]
+> => {
+  const hubspotClient = new Client({ accessToken });
+  const owners = await hubspotClient.crm.owners.ownersApi.getPage();
+  return owners.results.map((owner) => ({
+    id: owner.id,
+    email: owner.email ?? null,
+    firstName: owner.firstName ?? null,
+    lastName: owner.lastName ?? null,
+    userId: owner.userId ?? null,
+    archived: owner.archived ?? false,
+  }));
+};
+
 interface HubspotFilter {
   propertyName: string;
   operator: FilterOperatorEnum;
@@ -189,7 +216,7 @@ export const countObjectsByProperties = async (
     let hasMoreResults = true;
 
     while (hasMoreResults) {
-      const searchRequest: any = {
+      const searchRequest: HubspotSearchRequest = {
         filterGroups: [
           {
             filters: buildHubspotFilters(filters),
@@ -250,10 +277,10 @@ export const getLatestObjects = async (
       : [];
 
   while (allResults.length < limit) {
-    const searchRequest: any = {
+    const searchRequest: HubspotSearchRequest = {
       filterGroups,
       properties: propertyNames,
-      sorts: [{ propertyName: "createdate", direction: "DESCENDING" }],
+      sorts: ["-createdate"],
       limit: Math.min(limit - allResults.length, MAX_LIMIT),
     };
 
@@ -1175,9 +1202,9 @@ export const searchCrmObjects = async ({
     }
   }
 
-  const searchRequest: any = {
+  const searchRequest: HubspotSearchRequest = {
     filterGroups: filters ? [{ filters: buildHubspotFilters(filters) }] : [],
-    sorts: [{ propertyName: "createdate", direction: "DESCENDING" }], // Default sort order.
+    sorts: ["-createdate"], // Default sort order.
     properties: finalPropertiesToReturn,
     limit: Math.min(limit, MAX_LIMIT), // Ensure the limit doesn't exceed MAX_LIMIT.
     after: after,
@@ -1358,4 +1385,16 @@ export const getUserDetails = async (accessToken: string) => {
     console.error("Error getting user details:", error);
     throw normalizeError(error);
   }
+};
+
+// Add this interface near the other local interfaces, e.g. after HubspotFilter
+type HubspotSearchRequest = {
+  filterGroups: Array<{
+    filters: HubspotFilter[];
+  }>;
+  limit: number;
+  properties: string[];
+  after?: string;
+  sorts?: string[];
+  query?: string;
 };

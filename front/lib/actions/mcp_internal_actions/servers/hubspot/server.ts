@@ -24,6 +24,7 @@ import {
   getObjectByEmail,
   getObjectProperties,
   getUserDetails,
+  listOwners,
   MAX_COUNT_LIMIT,
   MAX_LIMIT,
   searchCrmObjects,
@@ -168,6 +169,27 @@ const createServer = (): McpServer => {
               },
             });
           }
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "list_owners",
+    "Lists all owners (users) in the HubSpot account.",
+    {},
+    async (_, { authInfo }) => {
+      return withAuth({
+        action: async (accessToken) => {
+          const owners = await listOwners(accessToken);
+          if (!owners.length) {
+            return makeMCPToolTextError("No owners found.");
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Owners retrieved successfully.",
+            result: owners,
+          });
         },
         authInfo,
       });
@@ -869,18 +891,128 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
+    "export_crm_objects_csv",
+    "Exports CRM objects of a given type to CSV, with filters, property selection, and row limits. The resulting file is available for table queries.",
+    {
+      objectType: searchableObjectTypes,
+      propertiesToExport: z
+        .array(z.string())
+        .min(1)
+        .describe("Properties to include in the CSV."),
+      filters: z
+        .array(
+          z.object({
+            propertyName: z.string(),
+            operator: z.nativeEnum(FilterOperatorEnum),
+            value: z.string().optional(),
+            values: z.array(z.string()).optional(),
+          })
+        )
+        .optional(),
+      query: z.string().optional().describe("Free-text query string."),
+      maxRows: z
+        .number()
+        .optional()
+        .default(2000)
+        .describe("Maximum number of rows to export (hard limit: 2000)."),
+    },
+    async (input, { authInfo, agentLoopContext }) => {
+      // Hard cap for safety
+      const HARD_ROW_LIMIT = 2000;
+      const maxRows = Math.min(input.maxRows ?? HARD_ROW_LIMIT, HARD_ROW_LIMIT);
+      let after: string | undefined = undefined;
+      let totalFetched = 0;
+      const allResults: any[] = [];
+      try {
+        // Paginate through results
+        while (totalFetched < maxRows) {
+          const pageLimit = Math.min(100, maxRows - totalFetched); // HubSpot API max page size is 100
+          const result = await searchCrmObjects({
+            accessToken: authInfo?.token!,
+            objectType: input.objectType,
+            filters: input.filters,
+            query: input.query,
+            propertiesToReturn: input.propertiesToExport,
+            limit: pageLimit,
+            after,
+          });
+          if (!result || !result.results.length) {
+            break;
+          }
+          allResults.push(...result.results);
+          totalFetched += result.results.length;
+          after = result.paging?.next?.after;
+          if (!after) {
+            break;
+          }
+        }
+      } catch (err) {
+        return makeMCPToolTextError(
+          `Failed to fetch objects from HubSpot: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+      if (!allResults.length) {
+        return makeMCPToolTextError("No objects found for export.");
+      }
+      // Convert to CSVRecord[]
+      const csvRows = allResults.map((obj) => {
+        const row: Record<
+          string,
+          string | number | boolean | null | undefined
+        > = {};
+        for (const prop of input.propertiesToExport) {
+          row[prop] = obj.properties?.[prop] ?? obj[prop] ?? null;
+        }
+        // Always include id if present
+        if (obj.id && !row.id) {
+          row.id = obj.id;
+        }
+        return row;
+      });
+      // Use established helpers for file creation and upload
+      const auth = agentLoopContext?.auth;
+      if (!auth) {
+        return makeMCPToolTextError(
+          "Internal error: missing auth context for file upload."
+        );
+      }
+      const fileTitle = `HubSpot ${input.objectType} export (${new Date().toISOString().split("T")[0]})`;
+      const { generateCSVFileAndSnippet, uploadFileToConversationDataSource } =
+        await import("@app/lib/actions/action_file_helpers");
+      const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
+        title: fileTitle,
+        conversationId: agentLoopContext.conversation.sId,
+        results: csvRows,
+      });
+      await uploadFileToConversationDataSource({ auth, file: csvFile });
+      // Return a resource object for downstream table queries
+      return {
+        isError: false,
+        content: [
+          {
+            type: "resource",
+            resource: {
+              text: `Exported ${csvRows.length} ${input.objectType} to CSV. File is available for table queries.`,
+              uri: csvFile.getPublicUrl(auth),
+              mimeType: "text/csv",
+              fileId: csvFile.sId,
+              title: fileTitle,
+              contentType: csvFile.contentType,
+              snippet: csvSnippet,
+            },
+          },
+        ],
+      };
+    }
+  );
+
+  server.tool(
     "get_hubspot_link",
-    `Purpose:
-      1. Generates HubSpot UI links for different pages based on object types and IDs.
-      2. Supports both index pages (lists of objects) and record pages (specific object details).
-
-    Prerequisites:
-      1. Use the hubspot-get-portal-id tool to get the PortalId and UiDomain.
-
-    Usage Guidance:
-      1. Use to generate links to HubSpot UI pages when users need to reference specific HubSpot records.
-      2. Validates that object type IDs exist in the HubSpot system.
-  `,
+    "Purpose: Generates HubSpot UI links for different pages based on object types and IDs. " +
+      "Supports both index pages (lists of objects) and record pages (specific object details). " +
+      "Prerequisites: Use the hubspot-get-portal-id tool to get the PortalId and UiDomain. " +
+      "Usage Guidance: Use to generate links to HubSpot UI pages when users need to reference specific HubSpot records. " +
+      "Validates that object type IDs exist in the HubSpot system.",
     {
       portalId: z.string().describe("The HubSpot portal/account ID"),
       uiDomain: z.string().describe("The HubSpot UI domain"),
