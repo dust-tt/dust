@@ -6,7 +6,7 @@ import React from "react";
 import AgentsMCP from "./commands/AgentsMCP.js";
 import Auth from "./commands/Auth.js";
 import Cache from "./commands/Cache.js";
-import Chat from "./commands/Chat.js";
+import ChatWithTabs from "./commands/ChatWithTabs.js";
 import Logout from "./commands/Logout.js";
 import Status from "./commands/Status.js";
 import Help from "./Help.js";
@@ -72,7 +72,7 @@ const App: FC<AppProps> = ({ cli }) => {
     case "agents-mcp":
       return <AgentsMCP port={flags.port} sId={flags.sId} />;
     case "chat":
-      return <Chat sId={flags.sId?.[0]} agentSearch={flags.agent} message={flags.message} conversationId={flags.conversationId} />;
+      return <ChatWithTabs sId={flags.sId?.[0]} agentSearch={flags.agent} message={flags.message} conversationId={flags.conversationId} />;
     case "cache:clear":
       return <Cache />;
     case "help":

@@ -27,6 +27,7 @@ import Conversation from "../components/Conversation.js";
 import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
+import type { Tab } from "../components/TabManager.js";
 import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
 import {
   sendNonInteractiveMessage,
@@ -42,6 +43,10 @@ interface CliChatProps {
   agentSearch?: string;
   message?: string;
   conversationId?: string;
+  onOpenConversation?: () => void;
+  onNewConversation?: () => void;
+  onTabUpdate?: (updates: Partial<Tab>) => void;
+  tabData?: Tab;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -62,6 +67,10 @@ const CliChat: FC<CliChatProps> = ({
   agentSearch,
   message,
   conversationId,
+  onOpenConversation,
+  onNewConversation,
+  onTabUpdate,
+  tabData,
 }) => {
   const [error, setError] = useState<string | null>(null);
 
@@ -71,19 +80,23 @@ const CliChat: FC<CliChatProps> = ({
   }, [message, agentSearch, conversationId]);
 
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
-    null
+    tabData?.selectedAgent || null
   );
-  const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
+  const [isProcessingQuestion, setIsProcessingQuestion] = useState(
+    tabData?.isProcessingQuestion || false
+  );
   const [currentConversationId, setCurrentConversationId] = useState<
     string | null
-  >(null);
+  >(tabData?.conversationId || conversationId || null);
   const [conversationItems, setConversationItems] = useState<
     ConversationItem[]
-  >([]);
+  >(tabData?.conversationItems || []);
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
-  const [userInput, setUserInput] = useState("");
-  const [cursorPosition, setCursorPosition] = useState(0);
+  const [userInput, setUserInput] = useState(tabData?.userInput || "");
+  const [cursorPosition, setCursorPosition] = useState(
+    tabData?.cursorPosition || 0
+  );
   const [showCommandSelector, setShowCommandSelector] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
@@ -95,7 +108,9 @@ const CliChat: FC<CliChatProps> = ({
     ((approved: boolean) => void) | null
   >(null);
   const [pendingFiles, setPendingFiles] = useState<FileInfo[]>([]);
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>(
+    tabData?.uploadedFiles || []
+  );
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [showFileSelector, setShowFileSelector] = useState(false);
 
@@ -113,6 +128,45 @@ const CliChat: FC<CliChatProps> = ({
     error: agentsError,
     isLoading: agentsIsLoading,
   } = useAgents();
+
+  // Sync state changes back to tab with ref to prevent infinite loops
+  const lastTabUpdateRef = useRef<string>("");
+  
+  useEffect(() => {
+    if (onTabUpdate) {
+      const updateKey = JSON.stringify({
+        selectedAgent: selectedAgent?.sId,
+        conversationId: currentConversationId,
+        conversationItemsLength: conversationItems.length,
+        userInput,
+        cursorPosition,
+        uploadedFilesLength: uploadedFiles.length,
+        isProcessingQuestion,
+      });
+      
+      if (lastTabUpdateRef.current !== updateKey) {
+        lastTabUpdateRef.current = updateKey;
+        onTabUpdate({
+          selectedAgent,
+          conversationId: currentConversationId,
+          conversationItems,
+          userInput,
+          cursorPosition,
+          uploadedFiles,
+          isProcessingQuestion,
+        });
+      }
+    }
+  }, [
+    selectedAgent,
+    currentConversationId,
+    conversationItems,
+    userInput,
+    cursorPosition,
+    uploadedFiles,
+    isProcessingQuestion,
+    onTabUpdate,
+  ]);
 
   const triggerAgentSwitch = useCallback(async () => {
     // Clear all input states before switching.
@@ -276,6 +330,8 @@ const CliChat: FC<CliChatProps> = ({
     triggerAgentSwitch,
     clearFiles,
     attachFile: showAttachDialog,
+    openConversation: onOpenConversation,
+    newConversation: onNewConversation,
   });
 
   // Handle agent search when component mounts

@@ -2,6 +2,8 @@ export interface CommandContext {
   triggerAgentSwitch?: () => void;
   attachFile?: () => void;
   clearFiles?: () => void;
+  openConversation?: () => void;
+  newConversation?: () => void;
 }
 
 export interface Command {
@@ -42,6 +44,24 @@ export const createCommands = (context: CommandContext): Command[] => [
     execute: () => {
       if (context.clearFiles) {
         context.clearFiles();
+      }
+    },
+  },
+  {
+    name: "open",
+    description: "Open an existing conversation in a new tab",
+    execute: () => {
+      if (context.openConversation) {
+        context.openConversation();
+      }
+    },
+  },
+  {
+    name: "new",
+    description: "Create a new conversation",
+    execute: () => {
+      if (context.newConversation) {
+        context.newConversation();
       }
     },
   },
