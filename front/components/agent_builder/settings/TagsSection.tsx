@@ -150,7 +150,7 @@ export function TagsSection() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-grow flex-col gap-4">
       <h3>Tags</h3>
       {tagsSuggestions.status === "ok" &&
         filteredTagsSuggestions.length > 0 && (
