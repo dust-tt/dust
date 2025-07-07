@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Avatar } from "@sparkle/components";
+import { Avatar } from "@sparkle/components/Avatar";
 
 const meta = {
   title: "Assets/AvatarSet",

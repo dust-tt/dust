@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Avatar, Button, Input } from "@sparkle/components";
+import { Avatar } from "@sparkle/components/Avatar";
+import { Button } from "@sparkle/components/Button";
+import { Input } from "@sparkle/components/Input";
 
 import {
   Dialog,

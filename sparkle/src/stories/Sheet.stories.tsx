@@ -1,17 +1,19 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
+import { Avatar } from "@sparkle/components/Avatar";
+import { Button } from "@sparkle/components/Button";
 import {
-  Avatar,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Icon,
-  Input,
-  Page,
-  Separator,
+} from "@sparkle/components/Dropdown";
+import { Icon } from "@sparkle/components/Icon";
+import { Input } from "@sparkle/components/Input";
+import { Page } from "@sparkle/components/Page";
+import { Separator } from "@sparkle/components/Separator";
+import {
   Sheet,
   SheetContainer,
   SheetContent,
@@ -20,8 +22,8 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  TextArea,
-} from "@sparkle/components";
+} from "@sparkle/components/Sheet";
+import { TextArea } from "@sparkle/components/TextArea";
 import {
   CloudArrowLeftRightIcon,
   FolderIcon,

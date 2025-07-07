@@ -1,7 +1,7 @@
 import { cva } from "class-variance-authority";
 import React, { ComponentType, MouseEventHandler } from "react";
 
-import { Tooltip } from "@sparkle/components";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { Button, ButtonVariantType } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 

@@ -6,16 +6,16 @@ import React, {
   useState,
 } from "react";
 
+import { Button } from "@sparkle/components/Button";
+import { Icon } from "@sparkle/components/Icon";
+import Spinner from "@sparkle/components/Spinner";
 import {
-  Button,
-  Icon,
-  Spinner,
   TooltipContent,
   TooltipPortal,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-} from "@sparkle/components/";
+} from "@sparkle/components/Tooltip";
 import { ArrowDownSIcon, ArrowRightSIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 

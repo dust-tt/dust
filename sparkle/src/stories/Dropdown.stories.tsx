@@ -3,7 +3,7 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 import { useState } from "react";
 
-import { Spinner } from "@sparkle/components";
+import Spinner from "@sparkle/components/Spinner";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,

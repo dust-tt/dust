@@ -10,7 +10,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
-import { Checkbox } from "@sparkle/components";
+import { Checkbox } from "@sparkle/components/Checkbox";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
 import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";

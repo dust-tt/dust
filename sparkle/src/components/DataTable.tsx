@@ -17,10 +17,10 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { ReactNode, useEffect, useRef, useState } from "react";
 
+import { Avatar } from "@sparkle/components/Avatar";
+import { Button } from "@sparkle/components/Button";
+import { Checkbox } from "@sparkle/components/Checkbox";
 import {
-  Avatar,
-  Button,
-  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -31,14 +31,13 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  Icon,
-  IconButton,
-  Pagination,
-  ScrollArea,
-  ScrollBar,
-  Spinner,
-  Tooltip,
-} from "@sparkle/components";
+} from "@sparkle/components/Dropdown";
+import { Icon } from "@sparkle/components/Icon";
+import { IconButton } from "@sparkle/components/IconButton";
+import { Pagination } from "@sparkle/components/Pagination";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+import Spinner from "@sparkle/components/Spinner";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownIcon,

@@ -2,7 +2,7 @@ import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { cva, VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-import { ScrollArea, ScrollBar } from "@sparkle/components/";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { Button } from "@sparkle/components/Button";
 import { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { cn } from "@sparkle/lib/utils";

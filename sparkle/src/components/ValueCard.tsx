@@ -1,6 +1,7 @@
 import * as React from "react";
 
-import { Card, Spinner } from "@sparkle/components";
+import { Card } from "@sparkle/components/Card";
+import Spinner from "@sparkle/components/Spinner";
 import { cn } from "@sparkle/lib/utils";
 
 interface CardRootProps {

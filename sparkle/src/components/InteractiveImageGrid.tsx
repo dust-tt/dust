@@ -1,13 +1,13 @@
 import React from "react";
 
+import { Button } from "@sparkle/components/Button";
 import {
-  Button,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTrigger,
-  Spinner,
-} from "@sparkle/components/";
+} from "@sparkle/components/Dialog";
+import Spinner from "@sparkle/components/Spinner";
 import {
   ArrowDownOnSquareIcon,
   ChevronLeftIcon,

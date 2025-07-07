@@ -14,11 +14,11 @@ import {
   yellow,
 } from "tailwindcss/colors";
 
+import { Button } from "@sparkle/components/Button";
 import {
-  Button,
   ContentBlockWrapper,
   GetContentToDownloadFunction,
-} from "@sparkle/components";
+} from "@sparkle/components/markdown/ContentBlockWrapper";
 import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import {

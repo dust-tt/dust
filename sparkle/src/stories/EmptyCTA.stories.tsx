@@ -1,7 +1,8 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Button, EmptyCTA, EmptyCTAButton } from "@sparkle/components";
+import { Button } from "@sparkle/components/Button";
+import { EmptyCTA, EmptyCTAButton } from "@sparkle/components/EmptyCTA";
 import { CloudArrowDownIcon, PlusIcon } from "@sparkle/icons/app";
 
 const meta = {

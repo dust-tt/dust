@@ -7,8 +7,8 @@ import {
 } from "@tanstack/react-table";
 import React, { useCallback, useMemo, useState } from "react";
 
+import { DataTable, ScrollableDataTable } from "@sparkle/components/DataTable";
 import {
-  DataTable,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -16,10 +16,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DropdownMenu,
-  Input,
-  ScrollableDataTable,
-} from "@sparkle/components/";
+} from "@sparkle/components/Dialog";
+import { DropdownMenu } from "@sparkle/components/Dropdown";
+import { Input } from "@sparkle/components/Input";
 import { createSelectionColumn, MenuItem } from "@sparkle/components/DataTable";
 import { FolderIcon } from "@sparkle/icons/app";
 

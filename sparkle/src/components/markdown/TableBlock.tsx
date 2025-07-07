@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { ReactNode, useMemo } from "react";
 
-import { ScrollArea, ScrollBar } from "@sparkle/components";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
 
 const getNodeText = (node: ReactNode): string => {

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import * as React from "react";
 
-import { Avatar } from "@sparkle/components";
+import { Avatar } from "@sparkle/components/Avatar";
 import { HandThumbUpIcon } from "@sparkle/icons/app";
 
 import { ComposableCard, ValueCard } from "../components/ValueCard";

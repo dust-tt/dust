@@ -1,16 +1,16 @@
 import {} from "@radix-ui/react-dropdown-menu";
 import React from "react";
 
+import { Button } from "@sparkle/components/Button";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-  Label,
-  Page,
-} from "@sparkle/components";
+} from "@sparkle/components/Dropdown";
+import { Label } from "@sparkle/components/Label";
+import { Page } from "@sparkle/components/Page";
 import { ActionMoonIcon, ActionSunIcon, LightModeIcon } from "@sparkle/icons";
 
 export default {

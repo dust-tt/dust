@@ -3,7 +3,9 @@ import { FocusScope } from "@radix-ui/react-focus-scope";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { Button, Icon, ScrollArea } from "@sparkle/components";
+import { Button } from "@sparkle/components/Button";
+import { Icon } from "@sparkle/components/Icon";
+import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 

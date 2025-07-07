@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { LoadingBlock } from "@sparkle/components";
+import { LoadingBlock } from "@sparkle/components/LoadingBlock";
 
 const meta = {
   title: "Primitives/LoadingBlock",

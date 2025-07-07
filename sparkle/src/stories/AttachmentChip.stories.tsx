@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { AttachmentChip } from "@sparkle/components";
+import { AttachmentChip } from "@sparkle/components/AttachmentChip";
 import { DocumentIcon, DocumentTextIcon } from "@sparkle/icons/app";
 import { NotionLogo } from "@sparkle/logo";
 

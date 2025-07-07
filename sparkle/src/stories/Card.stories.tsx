@@ -1,7 +1,8 @@
 import type { Meta } from "@storybook/react";
 import React, { ComponentType } from "react";
 
-import { Card, Icon } from "@sparkle/components";
+import { Card } from "@sparkle/components/Card";
+import { Icon } from "@sparkle/components/Icon";
 import {
   CARD_VARIANTS,
   CARD_VARIANTS_SIZES,

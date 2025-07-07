@@ -1,11 +1,8 @@
 import { cva } from "class-variance-authority";
 import React, { ComponentType, ReactNode } from "react";
 
-import {
-  AnimatedText,
-  LinkWrapper,
-  LinkWrapperProps,
-} from "@sparkle/components/";
+import { AnimatedText } from "@sparkle/components/AnimatedText";
+import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 

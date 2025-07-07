@@ -3,19 +3,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { useMemo } from "react";
 
+import { Counter } from "@sparkle/components/Counter";
+import { Icon } from "@sparkle/components/Icon";
+import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
+import { SpinnerProps } from "@sparkle/components/Spinner";
+import Spinner from "@sparkle/components/Spinner";
 import {
-  Counter,
-  Icon,
-  LinkWrapper,
-  LinkWrapperProps,
-  Spinner,
   TooltipContent,
   TooltipPortal,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
-} from "@sparkle/components/";
-import { SpinnerProps } from "@sparkle/components/Spinner";
+} from "@sparkle/components/Tooltip";
 import { ChevronDownIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 

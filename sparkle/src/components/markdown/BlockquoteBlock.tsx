@@ -1,7 +1,7 @@
 import { cva } from "class-variance-authority";
 import React from "react";
 
-import { ContentBlockWrapper } from "@sparkle/components";
+import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
 
 export const blockquoteVariants = cva(
   ["s-w-full s-text-base s-italic s-rounded-2xl s-py-3 s-pl-5 s-pr-12"],

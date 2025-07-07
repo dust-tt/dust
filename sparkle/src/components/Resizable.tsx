@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as ResizablePrimitive from "react-resizable-panels";
 
-import { Icon } from "@sparkle/components/";
+import { Icon } from "@sparkle/components/Icon";
 import { GrabIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 

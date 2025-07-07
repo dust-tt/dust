@@ -1,12 +1,9 @@
 import React, { ReactNode } from "react";
 
-import {
-  Button,
-  Card,
-  CardProps,
-  Spinner,
-  Tooltip,
-} from "@sparkle/components/";
+import { Button } from "@sparkle/components/Button";
+import { Card, CardProps } from "@sparkle/components/Card";
+import Spinner from "@sparkle/components/Spinner";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 

@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 
-import { Button } from "@sparkle/components/";
+import { Button } from "@sparkle/components/Button";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
   ArrowDownOnSquareIcon,

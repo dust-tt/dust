@@ -1,6 +1,6 @@
 import React from "react";
 
-import { ScrollArea, ScrollBar } from "@sparkle/components";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { cn } from "@sparkle/lib";
 
 interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {

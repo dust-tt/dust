@@ -4,13 +4,15 @@ import React from "react";
 import {
   AssistantCard,
   AssistantCardMore,
-  CardGrid,
+  LargeAssistantCard,
+} from "@sparkle/components/AssistantCard";
+import { CardGrid } from "@sparkle/components/Card";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  LargeAssistantCard,
-} from "@sparkle/components";
+} from "@sparkle/components/Dropdown";
 
 const meta: Meta<typeof AssistantCard> = {
   title: "Modules/AssistantCard",

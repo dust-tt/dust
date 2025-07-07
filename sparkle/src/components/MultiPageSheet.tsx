@@ -1,6 +1,7 @@
 import * as React from "react";
 
-import { Button, Icon } from "@sparkle/components";
+import { Button } from "@sparkle/components/Button";
+import { Icon } from "@sparkle/components/Icon";
 import {
   Sheet,
   SheetClose,

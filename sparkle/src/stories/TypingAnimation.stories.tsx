@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { TypingAnimation } from "@sparkle/components";
+import { TypingAnimation } from "@sparkle/components/TypingAnimation";
 
 const meta = {
   title: "Effects/TypingAnimation",

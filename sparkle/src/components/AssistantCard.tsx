@@ -1,12 +1,12 @@
 import React from "react";
 
+import { Avatar } from "@sparkle/components/Avatar";
+import { MiniButtonProps } from "@sparkle/components/Button";
 import {
-  Avatar,
   Card,
   CardActionButton,
-  MiniButtonProps,
-} from "@sparkle/components/";
-import { CardVariantType } from "@sparkle/components/Card";
+  CardVariantType,
+} from "@sparkle/components/Card";
 import { MoreIcon } from "@sparkle/icons/app/";
 import { cn } from "@sparkle/lib/utils";
 

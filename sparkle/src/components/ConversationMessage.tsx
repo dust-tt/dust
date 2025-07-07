@@ -1,7 +1,9 @@
 import { cva, VariantProps } from "class-variance-authority";
 import React from "react";
 
-import { Avatar, Button, CitationGrid } from "@sparkle/components";
+import { Avatar } from "@sparkle/components/Avatar";
+import { Button } from "@sparkle/components/Button";
+import { CitationGrid } from "@sparkle/components/Citation";
 import { cn } from "@sparkle/lib/utils";
 
 export const ConversationContainer = React.forwardRef<

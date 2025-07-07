@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 
+import { ButtonProps, RegularButtonProps } from "@sparkle/components/Button";
 import {
-  ButtonProps,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  RegularButtonProps,
-} from "@sparkle/components/";
+} from "@sparkle/components/Dropdown";
 import { Button, ButtonVariantType } from "@sparkle/components/Button";
 import { Separator } from "@sparkle/components/Separator";
 import { ChevronDownIcon } from "@sparkle/icons/app";

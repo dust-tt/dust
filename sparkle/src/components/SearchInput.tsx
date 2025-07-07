@@ -1,17 +1,16 @@
 import React, { forwardRef, Ref, useEffect, useRef, useState } from "react";
 
+import { Button } from "@sparkle/components/Button";
+import { ContentMessage } from "@sparkle/components/ContentMessage";
+import { Icon } from "@sparkle/components/Icon";
+import { Input } from "@sparkle/components/Input";
 import {
-  Button,
-  ContentMessage,
-  Icon,
-  Input,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  ScrollArea,
-  ScrollBar,
-  Spinner,
-} from "@sparkle/components";
+} from "@sparkle/components/Popover";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+import Spinner from "@sparkle/components/Spinner";
 import { ContentMessageProps } from "@sparkle/components/ContentMessage";
 import {
   ListCheckIcon,
