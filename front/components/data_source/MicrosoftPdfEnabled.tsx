@@ -19,8 +19,10 @@ export function MicrosoftPdfEnabled({
   });
   const pdfEnabled = configValue === "true";
 
-  const { doToggle: togglePdfEnabled, isLoading: loading } =
-    useTogglePdfEnabled({ dataSource, owner });
+  const { doToggle: togglePdfEnabled, isLoading } = useTogglePdfEnabled({
+    dataSource,
+    owner,
+  });
 
   const handleSetPdfEnabled = async (pdfEnabled: boolean) => {
     await togglePdfEnabled(pdfEnabled);
@@ -39,7 +41,7 @@ export function MicrosoftPdfEnabled({
                 await handleSetPdfEnabled(!pdfEnabled);
               }}
               selected={pdfEnabled}
-              disabled={readOnly || !isAdmin || loading}
+              disabled={readOnly || !isAdmin || isLoading}
             />
           </div>
         }
