@@ -2,7 +2,7 @@ import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import clipboardy from "clipboardy";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
-import type { FC} from "react";
+import type { FC } from "react";
 import React, { useEffect, useState } from "react";
 
 import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on_mount.js";
