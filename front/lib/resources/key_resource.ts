@@ -45,8 +45,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     blob: Omit<CreationAttributes<KeyModel>, "secret" | "groupId">,
     group: GroupResource
   ) {
-    const new_id = Buffer.from(blake3(uuidv4())).toString("hex");
-    const secret = `${SECRET_KEY_PREFIX}${new_id.slice(0, 32)}`;
+    const secret = this.createNewSecret();
 
     const key = await KeyResource.model.create({
       ...blob,
@@ -55,6 +54,10 @@ export class KeyResource extends BaseResource<KeyModel> {
     });
 
     return new this(KeyResource.model, key.get());
+  }
+
+  static createNewSecret() {
+    return `${SECRET_KEY_PREFIX}${Buffer.from(blake3(uuidv4())).toString("hex").slice(0, 32)}`;
   }
 
   static async fetchSystemKeyForWorkspace(workspace: LightWorkspaceType) {
@@ -159,6 +162,16 @@ export class KeyResource extends BaseResource<KeyModel> {
         where: {
           id: this.id,
         },
+      }
+    );
+  }
+
+  async updateSecret() {
+    const newSecret = KeyResource.createNewSecret();
+    return this.model.update(
+      { secret: newSecret },
+      {
+        where: { id: this.id },
       }
     );
   }

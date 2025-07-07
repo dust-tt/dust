@@ -1,10 +1,4 @@
-import { hash as blake3 } from "blake3";
-import { v4 as uuidv4 } from "uuid";
-
-import {
-  KeyResource,
-  SECRET_KEY_PREFIX,
-} from "@app/lib/resources/key_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -40,10 +34,6 @@ makeScript(
       keyId
     );
 
-    // Using the same method as the key creation script.
-    // TODO (stephen): Move this to a shared function in the key resource.
-    const newSecret = `${SECRET_KEY_PREFIX}${Buffer.from(blake3(uuidv4())).toString("hex").slice(0, 32)}`;
-
     if (!keyToRotate) {
       logger.error("Key not found.");
       return;
@@ -54,10 +44,7 @@ makeScript(
       return;
     }
 
-    await keyToRotate.model.update(
-      { secret: newSecret },
-      { where: { id: keyToRotate.id } }
-    );
+    await keyToRotate.updateSecret();
 
     if (execute) {
       logger.info({ keyId }, "rotated key");
