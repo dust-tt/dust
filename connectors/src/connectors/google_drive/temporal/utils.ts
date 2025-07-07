@@ -335,19 +335,9 @@ export function isSharedDriveNotFoundError(error: unknown): boolean {
     return false;
   }
 
-  // Check if the error message contains "Shared drive not found"
-  if (errorData.message?.includes("Shared drive not found")) {
-    return true;
-  }
-
-  // Also check in the errors array
   const errors = errorData.errors;
   if (Array.isArray(errors)) {
-    return errors.some(
-      (err) =>
-        err.reason === "notFound" &&
-        err.message?.includes("Shared drive not found")
-    );
+    return errors.some((err) => err.reason === "notFound");
   }
 
   return false;
