@@ -25,6 +25,7 @@ import {
   SalesforceLogo,
   SlackLogo,
   StripeLogo,
+  GoogleSpreadsheetLogo,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ComponentProps } from "react";
@@ -60,6 +61,7 @@ export const InternalActionIcons = {
   LinearLogo,
   SlackLogo,
   StripeLogo,
+  GoogleSpreadsheetLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);
