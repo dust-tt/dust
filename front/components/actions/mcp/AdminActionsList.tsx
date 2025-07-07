@@ -137,8 +137,10 @@ export const AdminActionsList = ({
     }
   };
 
-  const enabledMCPServerIds = mcpServers.map((s) => s.sId);
-  const enabledMCPServerNames = mcpServers.map((s) => s.name);
+  const enabledMCPServers = mcpServers.map((s) => ({
+    id: s.sId,
+    name: s.name,
+  }));
 
   const rows: RowData[] = useMemo(
     () =>
@@ -276,8 +278,7 @@ export const AdminActionsList = ({
         portalToHeader(
           <AddActionMenu
             owner={owner}
-            enabledMCPServerIds={enabledMCPServerIds}
-            enabledMCPServerNames={enabledMCPServerNames}
+            enabledMCPServers={enabledMCPServers}
             setIsLoading={setIsLoading}
             createRemoteMCPServer={onCreateRemoteMCPServer}
             createInternalMCPServer={onCreateInternalMCPServer}
@@ -298,8 +299,7 @@ export const AdminActionsList = ({
               <AddActionMenu
                 buttonVariant="outline"
                 owner={owner}
-                enabledMCPServerIds={enabledMCPServerIds}
-                enabledMCPServerNames={enabledMCPServerNames}
+                enabledMCPServers={enabledMCPServers}
                 setIsLoading={setIsLoading}
                 createRemoteMCPServer={onCreateRemoteMCPServer}
                 createInternalMCPServer={onCreateInternalMCPServer}
