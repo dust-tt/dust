@@ -767,6 +767,7 @@ export const AdminResponseSchema = t.union([
   ZendeskCountTicketsResponseSchema,
   ZendeskFetchBrandResponseSchema,
   ZendeskFetchTicketResponseSchema,
+  ZendeskGetRetentionPeriodResponseSchema,
 ]);
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
 /**
