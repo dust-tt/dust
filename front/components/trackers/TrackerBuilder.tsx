@@ -346,6 +346,7 @@ export const TrackerBuilder = ({
                   providerId: tracker.providerId,
                 },
                 temperature: tracker.temperature,
+                reasoningEffort: "none",
               }}
               setGenerationSettings={(g: {
                 modelSettings: SupportedModel;

@@ -123,6 +123,17 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_meeting: "never_ask",
       get_file_public_url: "never_ask",
       get_associated_meetings: "never_ask",
+      get_hubspot_link: "never_ask",
+      get_hubspot_portal_id: "never_ask",
+      list_owners: "never_ask",
+      search_owners: "never_ask",
+      get_current_user_id: "never_ask",
+      get_user_activity: "never_ask",
+      list_associations: "never_ask",
+
+      count_objects_by_properties: "never_ask",
+      search_crm_objects: "never_ask",
+      export_crm_objects_csv: "never_ask",
 
       // Create operations.
       create_contact: "high",
@@ -134,15 +145,13 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_note: "high",
       create_communication: "high",
       create_meeting: "high",
+      create_association: "high",
 
       // Update operations.
       update_contact: "high",
       update_company: "high",
       update_deal: "high",
-
-      // Other operations.
-      count_objects_by_properties: "never_ask",
-      search_crm_objects: "never_ask",
+      remove_association: "high",
     },
   },
   agent_router: {

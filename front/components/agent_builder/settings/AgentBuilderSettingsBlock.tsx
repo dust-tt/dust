@@ -19,6 +19,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
 import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
 import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
+import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 import {
   fetchWithErr,
   getDescriptionSuggestion,
@@ -315,11 +316,11 @@ function AgentPictureInput() {
 
 function AgentAccessAndPublication() {
   return (
-    <div className="space-y-2">
+    <div className="flex-grow space-y-2">
       <label className="text-sm font-medium text-foreground dark:text-foreground-night">
         Access and Publication
       </label>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <AgentBuilderEditors />
         <AgentBuilderScopeSelector />
         <AgentBuilderSlackSelector />
@@ -355,7 +356,8 @@ export function AgentBuilderSettingsBlock() {
                 </div>
                 <AgentPictureInput />
               </div>
-              <div className="flex gap-8">
+              <div className="flex flex-grow gap-8">
+                <TagsSection />
                 <AgentAccessAndPublication />
               </div>
             </div>

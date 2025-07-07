@@ -182,6 +182,43 @@ export async function removeWorkOSOrganizationDomain(
   return new Ok(undefined);
 }
 
+export async function updateWorkOSOrganizationName(
+  workspace: LightWorkspaceType
+): Promise<Result<void, Error>> {
+  const organizationRes = await getWorkOSOrganization(workspace);
+  if (organizationRes.isErr()) {
+    return new Err(organizationRes.error);
+  }
+
+  const organization = organizationRes.value;
+  if (!organization) {
+    return new Ok(undefined);
+  }
+
+  const newName = `${workspace.name} - ${workspace.sId}`;
+
+  if (organization.name === newName) {
+    return new Ok(undefined);
+  }
+
+  try {
+    await getWorkOS().organizations.updateOrganization({
+      organization: organization.id,
+      name: newName,
+    });
+  } catch (error) {
+    const e = normalizeError(error);
+    logger.error("Failed to update WorkOS organization name", {
+      error: e,
+      workspaceId: workspace.id,
+      organizationId: organization.id,
+    });
+    return new Ok(undefined);
+  }
+
+  return new Ok(undefined);
+}
+
 export async function listWorkOSOrganizationsWithDomain(
   domain: string
 ): Promise<Organization[]> {

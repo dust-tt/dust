@@ -17,6 +17,7 @@ import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[t
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
+  AgentReasoningEffort,
   DataSourceViewSelectionConfigurations,
   LightAgentConfigurationType,
   PlanType,
@@ -155,6 +156,7 @@ export type AssistantBuilderState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    reasoningEffort: AgentReasoningEffort;
     responseFormat?: string;
   };
   actions: AssistantBuilderMCPOrVizState[];
@@ -174,6 +176,7 @@ export type AssistantBuilderInitialState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    reasoningEffort: AgentReasoningEffort;
     responseFormat?: string;
   } | null;
   actions: AssistantBuilderActionAndDataVisualizationConfiguration[];
@@ -213,6 +216,8 @@ export function getDefaultAssistantState() {
         providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       },
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,

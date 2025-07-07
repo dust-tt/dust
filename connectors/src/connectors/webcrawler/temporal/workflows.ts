@@ -3,6 +3,7 @@ import {
   CancellationScope,
   ParentClosePolicy,
   proxyActivities,
+  sleep,
   startChild,
   workflowInfo,
 } from "@temporalio/workflow";
@@ -148,7 +149,7 @@ export async function firecrawlCrawlCompletedWorkflow(
     // Sleep for 120s to provide a buffer for all firecrawl page scrape webhooks to arrive and be
     // processed. If some arrive after that means we may have a race on garbage collecting (deleting
     // and upserting a page) which may lead to dropping a few pages which is not catastrophic.
-    await new Promise((resolve) => setTimeout(resolve, 120_000));
+    await sleep(120_000);
 
     await startChild(garbageCollectWebsiteWorkflow, {
       workflowId: garbageCollectWebsiteWorkflowId(

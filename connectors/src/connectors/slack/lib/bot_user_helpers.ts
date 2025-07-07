@@ -1,9 +1,18 @@
 import type { WebClient } from "@slack/web-api";
+import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 
-import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
-import { reportSlackUsage } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  isSlackWebAPIPlatformError,
+  isSlackWebAPIPlatformErrorBotNotFound,
+} from "@connectors/connectors/slack/lib/errors";
+import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  getSlackBotInfo,
+  reportSlackUsage,
+} from "@connectors/connectors/slack/lib/slack_client";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import logger from "@connectors/logger/logger";
+import type { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
 
@@ -76,4 +85,81 @@ export async function getUserName(
 
 export function getUserCacheKey(userId: string, connectorId: ModelId) {
   return `slack-userid2name-${connectorId}-${userId}`;
+}
+
+export function shouldIndexSlackMessage(
+  slackConfiguration: SlackConfigurationResource,
+  messageElement: MessageElement,
+  slackClient: WebClient
+) {
+  if (messageElement.user) {
+    return true;
+  }
+
+  return isWhitelistedBotOrWorkflow(
+    slackConfiguration,
+    messageElement,
+    slackClient
+  );
+}
+
+export async function isWhitelistedBotOrWorkflow(
+  slackConfiguration: SlackConfigurationResource,
+  messageElement: MessageElement,
+  slackClient: WebClient
+) {
+  const { bot_id: botId, bot_profile: botProfile } = messageElement;
+  if (!botId && !botProfile) {
+    return false;
+  }
+
+  const botName = botProfile?.name;
+  if (botName) {
+    return slackConfiguration.isBotWhitelistedToIndexMessages(botName);
+  }
+
+  // If bot name is not provided, attempt to fetch it from the API.
+  if (botId) {
+    let slackBotOrWorkflowInfo: SlackUserInfo | undefined;
+    try {
+      slackBotOrWorkflowInfo = await getSlackBotInfo(
+        slackConfiguration.connectorId,
+        slackClient,
+        botId
+      );
+    } catch (err) {
+      if (isSlackWebAPIPlatformErrorBotNotFound(err)) {
+        logger.info(
+          {
+            botId,
+            connectorId: slackConfiguration.connectorId,
+          },
+          "Slack bot not found, skipping message"
+        );
+
+        return false;
+      }
+
+      logger.error(
+        {
+          err,
+          botId,
+          connectorId: slackConfiguration.connectorId,
+        },
+        "Failed to get Slack bot info"
+      );
+
+      throw err;
+    }
+
+    if (!slackBotOrWorkflowInfo.display_name) {
+      return false;
+    }
+
+    return slackConfiguration.isBotWhitelistedToIndexMessages(
+      slackBotOrWorkflowInfo.display_name
+    );
+  }
+
+  return false;
 }

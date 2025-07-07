@@ -127,9 +127,9 @@ export default function EditAssistant({
             modelSettings: {
               modelId: agentConfiguration.model.modelId,
               providerId: agentConfiguration.model.providerId,
-              reasoningEffort: agentConfiguration.model.reasoningEffort,
             },
             temperature: agentConfiguration.model.temperature,
+            reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
             responseFormat: agentConfiguration.model.responseFormat,
           },
           actions: [], // Actions will be populated later from the client
