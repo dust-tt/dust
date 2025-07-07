@@ -17,7 +17,7 @@ pub enum DatabasesStoreStrategy {
     GCSOnly,
 }
 
-pub const CURRENT_STRATEGY: DatabasesStoreStrategy = DatabasesStoreStrategy::PostgresAndWriteToGCS;
+pub const CURRENT_STRATEGY: DatabasesStoreStrategy = DatabasesStoreStrategy::PostgresOnly;
 
 #[async_trait]
 pub trait DatabasesStore {
