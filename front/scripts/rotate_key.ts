@@ -39,11 +39,6 @@ makeScript(
       return;
     }
 
-    if (keyToRotate.workspaceId !== workspace.id) {
-      logger.error("Key not found in workspace.");
-      return;
-    }
-
     if (execute) {
       const result = await keyToRotate.rotateSecret();
       if (result[0] === 1) {
