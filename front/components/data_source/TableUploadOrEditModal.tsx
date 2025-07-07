@@ -372,7 +372,7 @@ export const TableUploadOrEditModal = ({
                   <div>
                     <Page.SectionHeader
                       title="Description"
-                      description="Describe the content of your CSV file. It will be used by the LLM model to generate relevant queries."
+                      description="Describe the content of your data. It will be used by the LLM model to generate relevant queries."
                     />
                     <TextArea
                       placeholder="This table contains..."
@@ -389,7 +389,7 @@ export const TableUploadOrEditModal = ({
                       }}
                       error={
                         !tableState.description && editionStatus.description
-                          ? "You need to provide a description to your CSV file."
+                          ? "You need to provide a description for your data file."
                           : null
                       }
                       showErrorLabel
