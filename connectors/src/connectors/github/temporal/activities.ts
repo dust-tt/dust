@@ -865,6 +865,7 @@ function renderGithubUser(user: GithubUser | null): string {
   return `@${user.id}`;
 }
 
+// TODO(GH CLEAN-UP: 2025-07-07): Remove this activity.
 export async function githubCodeSyncActivity({
   dataSourceConfig,
   connectorId,
