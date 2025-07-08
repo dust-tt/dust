@@ -50,10 +50,20 @@ async function handler(
       });
     }
 
-    const actions = transformActionsToFormData(
-      agentConfiguration.actions || [],
+    const actionsResult = transformActionsToFormData(
+      agentConfiguration.actions,
       agentConfiguration.visualizationEnabled
     );
+
+    if (actionsResult.isErr()) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to transform agent actions: ${actionsResult.error.message}`,
+        },
+      });
+    }
 
     if (
       agentConfiguration.scope !== "visible" &&
@@ -62,7 +72,7 @@ async function handler(
       throw new Error("Invalid agent scope");
     }
 
-    res.status(200).json({ actions });
+    res.status(200).json({ actions: actionsResult.value });
   } catch (error) {
     return apiError(req, res, {
       status_code: 500,
