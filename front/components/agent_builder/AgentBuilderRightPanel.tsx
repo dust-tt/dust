@@ -11,11 +11,10 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useContext, useState } from "react";
 
+import { AgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
+import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import type { AgentConfigurationType } from "@app/types";
-
-import { AgentBuilderContext } from "./AgentBuilderContext";
-import { AgentBuilderPerformance } from "./AgentBuilderPerformance";
-import { AgentBuilderPreview } from "./AgentBuilderPreview";
 
 type AgentBuilderRightPanelTabType = "testing" | "performance";
 
