@@ -246,13 +246,13 @@ export class DustMcpServerTransport implements Transport {
     this.onclose?.();
   }
 
-  logError(...args: any[]): void {
+  logError(...args: unknown[]): void {
     if (this.verbose) {
       logger.error(...args);
     }
   }
 
-  logInfo(...args: any[]): void {
+  logInfo(...args: unknown[]): void {
     if (this.verbose) {
       logger.log(...args);
     }
