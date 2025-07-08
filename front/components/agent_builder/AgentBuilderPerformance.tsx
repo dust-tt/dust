@@ -26,9 +26,10 @@ const PERIODS = [
   { value: 7, label: "Last 7 days" },
   { value: 15, label: "Last 15 days" },
   { value: 30, label: "Last 30 days" },
-];
+] as const;
 
-const DEFAULT_PERIOD_VALUE = 30;
+type PeriodValue = (typeof PERIODS)[number]["value"];
+const DEFAULT_PERIOD_VALUE: PeriodValue = 30;
 
 function NoAgentState() {
   return (
