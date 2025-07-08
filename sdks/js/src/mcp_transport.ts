@@ -4,14 +4,7 @@ import { EventSourcePolyfill } from "event-source-polyfill";
 
 import { DustAPI } from ".";
 
-const createLogger = (verbose: boolean) => ({
-  error: (...args: any[]) => {
-    if (verbose) console.error(...args);
-  },
-  log: (...args: any[]) => {
-    if (verbose) console.log(...args);
-  },
-});
+const logger = console;
 
 const HEARTBEAT_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes.
 const RECONNECT_DELAY_MS = 5 * 1000; // 5 seconds.
@@ -27,7 +20,6 @@ export class DustMcpServerTransport implements Transport {
   private lastEventId: string | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
   private serverId: string | null = null;
-  private logger: ReturnType<typeof createLogger>;
 
   // Required by Transport interface.
   public onmessage?: (message: JSONRPCMessage) => void;
@@ -40,9 +32,7 @@ export class DustMcpServerTransport implements Transport {
     private readonly onServerIdReceived: (serverId: string) => void,
     private readonly serverName: string = "Dust Extension",
     private readonly verbose: boolean = false
-  ) {
-    this.logger = createLogger(verbose);
-  }
+  ) {}
 
   /**
    * Register the MCP server with the Dust backend
@@ -52,7 +42,7 @@ export class DustMcpServerTransport implements Transport {
       serverName: this.serverName,
     });
     if (registerRes.isErr()) {
-      this.logger.error(`Failed to register MCP server: ${registerRes.error}`);
+      logger.error(`Failed to register MCP server: ${registerRes.error}`);
       return false;
     }
 
@@ -87,7 +77,7 @@ export class DustMcpServerTransport implements Transport {
           ? heartbeatRes.error
           : new Error("Server not registered");
 
-        this.logger.error(`Failed to heartbeat MCP server: ${error}`);
+        logger.error(`Failed to heartbeat MCP server: ${error}`);
         await this.registerServer();
       }
     }, HEARTBEAT_INTERVAL_MS);
@@ -108,9 +98,9 @@ export class DustMcpServerTransport implements Transport {
       // Connect to the workspace-scoped requests endpoint.
       await this.connectToRequestsStream();
 
-      this.logger.log("MCP transport started successfully");
+      logger.log("MCP transport started successfully");
     } catch (error) {
-      this.logger.error("Failed to start MCP transport:", error);
+      logger.error("Failed to start MCP transport:", error);
       this.onerror?.(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
@@ -121,7 +111,7 @@ export class DustMcpServerTransport implements Transport {
    */
   private async connectToRequestsStream(): Promise<void> {
     if (!this.serverId) {
-      this.logger.error("Server ID is not set");
+      logger.error("Server ID is not set");
       return;
     }
 
@@ -167,7 +157,7 @@ export class DustMcpServerTransport implements Transport {
         // The actual request is in the data property.
         const { data } = eventData;
         if (!data) {
-          this.logger.error("No data field found in the event");
+          logger.error("No data field found in the event");
           return;
         }
 
@@ -175,7 +165,7 @@ export class DustMcpServerTransport implements Transport {
         if (this.onmessage) {
           this.onmessage(data);
         } else {
-          this.logger.error(
+          logger.error(
             "ERROR: onmessage handler not set - MCP response won't be sent"
           );
         }
@@ -186,26 +176,26 @@ export class DustMcpServerTransport implements Transport {
     };
 
     this.eventSource.onerror = (error) => {
-      this.logger.error("Error in MCP EventSource connection:", error);
+      logger.error("Error in MCP EventSource connection:", error);
       this.onerror?.(new Error(`SSE connection error: ${error}`));
 
       // Attempt to reconnect after a delay.
       setTimeout(() => {
         if (this.eventSource) {
-          this.logger.log("Attempting to reconnect to SSE...");
+          logger.log("Attempting to reconnect to SSE...");
           void this.connectToRequestsStream().catch((reconnectError) => {
-            this.logger.error("Failed to reconnect:", reconnectError);
+            logger.error("Failed to reconnect:", reconnectError);
           });
         }
       }, RECONNECT_DELAY_MS); // Wait before reconnecting.
     };
 
     this.eventSource.onopen = () => {
-      this.logger.log("MCP SSE connection established");
+      logger.log("MCP SSE connection established");
     };
 
     this.eventSource.addEventListener("close", () => {
-      this.logger.log("MCP SSE connection closed");
+      logger.log("MCP SSE connection closed");
       this.onclose?.();
     });
   }
@@ -216,7 +206,7 @@ export class DustMcpServerTransport implements Transport {
    */
   async send(message: JSONRPCMessage): Promise<void> {
     if (!this.serverId) {
-      this.logger.error("Server ID is not set");
+      logger.error("Server ID is not set");
       return;
     }
 
@@ -227,7 +217,7 @@ export class DustMcpServerTransport implements Transport {
     });
 
     if (postResultsRes.isErr()) {
-      this.logger.error("Failed to send MCP result:", postResultsRes.error);
+      logger.error("Failed to send MCP result:", postResultsRes.error);
       this.onerror?.(
         new Error(`Failed to send MCP result: ${postResultsRes.error}`)
       );
@@ -247,13 +237,25 @@ export class DustMcpServerTransport implements Transport {
 
     // Close SSE connection.
     if (this.eventSource) {
-      this.logger.log("Closing MCP SSE connection");
+      logger.log("Closing MCP SSE connection");
       this.eventSource.close();
       this.eventSource = null;
     }
 
     // Trigger onclose callback.
     this.onclose?.();
+  }
+
+  error(...args: any[]): void {
+    if (this.verbose) {
+      logger.error(...args);
+    }
+  }
+
+  log(...args: any[]): void {
+    if (this.verbose) {
+      logger.log(...args);
+    }
   }
 
   /**
