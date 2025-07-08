@@ -9,6 +9,44 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 // Create the plugin key outside so it can be shared
 const suggestionPluginKey = new PluginKey<DecorationSet>("suggestion");
 
+// Helper function to check if current suggestion is still valid
+const checkSuggestionMatch = (
+  currentText: string,
+  suggestion: string | null,
+  originalText: string | null
+): { isValid: boolean; remainingSuggestion: string } => {
+  if (!suggestion || !originalText) {
+    return { isValid: false, remainingSuggestion: "" };
+  }
+
+  console.log("Checking suggestion match:", {
+    currentText,
+    suggestion,
+    originalText,
+  });
+
+  // Check if current text starts with original text (user is continuing to type)
+  if (!currentText.startsWith(originalText)) {
+    return { isValid: false, remainingSuggestion: "" };
+  }
+
+  // Get the part the user has typed since the suggestion was generated
+  const typedSinceSuggestion = currentText.substring(originalText.length);
+
+  console.log("Typed since suggestion:", typedSinceSuggestion);
+
+  // Check if the suggestion starts with what the user has typed
+  if (!suggestion.startsWith(typedSinceSuggestion)) {
+    return { isValid: false, remainingSuggestion: "" };
+  }
+
+  // Return the remaining part of the suggestion
+  const remainingSuggestion = suggestion.substring(typedSinceSuggestion.length);
+  console.log("Remaining suggestion:", remainingSuggestion);
+
+  return { isValid: true, remainingSuggestion };
+};
+
 interface TextAutoCompleteExtensionOptions {
   applySuggestionKey: string;
   owner: LightWorkspaceType | null;
@@ -19,6 +57,7 @@ interface TextAutoCompleteExtensionStorage {
   builderState: AssistantBuilderState | null;
   currentSuggestion: string | null;
   suggestions: string[];
+  originalText: string | null; // Text when suggestion was generated
 }
 
 export const TextAutoCompleteExtension = Extension.create<
@@ -32,6 +71,7 @@ export const TextAutoCompleteExtension = Extension.create<
       builderState: null,
       currentSuggestion: null,
       suggestions: [],
+      originalText: null,
     };
   },
 
@@ -72,20 +112,39 @@ export const TextAutoCompleteExtension = Extension.create<
             if (suggestionText) {
               console.log("Accepting suggestion:", suggestionText);
 
-              // Insert the suggestion text
-              editor.chain().focus().insertContent(suggestionText).run();
+              // Get current text to calculate remaining suggestion.
+              const currentText = editor.state.doc.textBetween(
+                0,
+                editor.state.doc.content.size,
+                " "
+              );
 
-              // Clear the current suggestion - next suggestion will be shown on next keystroke
+              // Use helper function to get remaining suggestion.
+              const suggestionMatch = checkSuggestionMatch(
+                currentText,
+                this.storage.currentSuggestion,
+                this.storage.originalText
+              );
+
+              const remainingSuggestion = suggestionMatch.isValid
+                ? suggestionMatch.remainingSuggestion
+                : suggestionText;
+
+              // Insert only the remaining suggestion text.
+              editor.chain().focus().insertContent(remainingSuggestion).run();
+
+              // Clear the current suggestion - next suggestion will be shown on next keystroke.
               this.storage.currentSuggestion = null;
+              this.storage.originalText = null;
 
-              // Clear the decorations
+              // Clear the decorations.
               const tr = editor.state.tr;
               tr.setMeta(suggestionPluginKey, {
                 decorations: DecorationSet.empty,
               });
               editor.view.dispatch(tr);
 
-              return true; // Prevent default tab behavior
+              return true; // Prevent default tab behavior.
             } else {
               console.log("No suggestion in storage");
             }
@@ -207,21 +266,63 @@ export const TextAutoCompleteExtension = Extension.create<
                 return;
               }
 
-              // Reset the suggestion before fetching a new one.
-              setTimeout(() => {
-                const tr = view.state.tr;
-                tr.setMeta("addToHistory", false);
-                tr.setMeta(pluginKey, { decorations: DecorationSet.empty });
-                view.dispatch(tr);
-              }, 0);
-
               // Fetch a new suggestion.
               const currentText = view.state.doc.textBetween(
                 0,
                 view.state.doc.content.size,
                 " "
               );
-              console.log("Fetching suggestion for:", currentText);
+              console.log("Checking suggestion for:", currentText);
+
+              // Check if current suggestion still matches before fetching new ones
+              const suggestionMatch = checkSuggestionMatch(
+                currentText,
+                extensionStorage.currentSuggestion,
+                extensionStorage.originalText
+              );
+
+              if (suggestionMatch.isValid) {
+                console.log(
+                  "Current suggestion still matches, using existing:",
+                  extensionStorage.currentSuggestion
+                );
+
+                // Display the remaining suggestion (update existing decoration)
+                const updatedState = view.state;
+                const cursorPos = updatedState.selection.$head.pos;
+                const suggestionDecoration = Decoration.widget(
+                  cursorPos,
+                  () => {
+                    const parentNode = document.createElement("span");
+                    const addSpace = nextNode && nextNode.isText ? " " : "";
+                    parentNode.innerHTML = `${addSpace}${suggestionMatch.remainingSuggestion}`;
+                    parentNode.style.color = "#9ca3af";
+                    parentNode.style.fontStyle = "italic";
+                    parentNode.classList.add("autocomplete-suggestion");
+                    return parentNode;
+                  },
+                  { side: 1 }
+                );
+
+                const decorations = DecorationSet.create(updatedState.doc, [
+                  suggestionDecoration,
+                ]);
+                const tr = view.state.tr;
+                tr.setMeta("addToHistory", false);
+                tr.setMeta(pluginKey, { decorations });
+                view.dispatch(tr);
+                return;
+              }
+
+              console.log("Need to fetch new suggestion for:", currentText);
+
+              // Clear existing decorations before fetching new suggestion
+              setTimeout(() => {
+                const tr = view.state.tr;
+                tr.setMeta("addToHistory", false);
+                tr.setMeta(pluginKey, { decorations: DecorationSet.empty });
+                view.dispatch(tr);
+              }, 0);
 
               // Simple debounced fetch like the original.
               void getSuggestions(currentText, (suggestions) => {
@@ -236,6 +337,7 @@ export const TextAutoCompleteExtension = Extension.create<
 
                 const [suggestion] = suggestions;
                 extensionStorage.currentSuggestion = suggestion;
+                extensionStorage.originalText = currentText;
 
                 const updatedState = view.state;
                 const cursorPos = updatedState.selection.$head.pos;
