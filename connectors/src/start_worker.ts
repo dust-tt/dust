@@ -68,7 +68,11 @@ async function runWorkers(workers: WorkerType[]) {
   }
 
   // Shutdown Temporal native runtime *once*
-  await Runtime.instance().shutdown();
+  // Fix the issue of connectors hanging after receiving SIGINT in dev
+  // We don't have this issue with front workers, and deserve an investigation (no appetite for now)
+  if (process.env.NODE_ENV === "development") {
+    await Runtime.instance().shutdown();
+  }
 
   // Shutdown potential Redis client
   await closeRedisClient();
