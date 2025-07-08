@@ -1,8 +1,8 @@
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import type { Request, Response } from "express";
 import express from "express";
 import http from "http";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 
 /**
  * Abstract base class for external-facing MCP services

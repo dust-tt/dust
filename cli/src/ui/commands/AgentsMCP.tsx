@@ -5,8 +5,8 @@ import Spinner from "ink-spinner";
 import type { FC } from "react";
 import React, { useEffect, useState } from "react";
 
-import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on_mount.js";
 import { AgentsMcpService } from "../../mcp/servers/mcpServer.js";
+import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on_mount.js";
 import AgentSelector from "../components/AgentSelector.js";
 
 type AgentConfiguration =
@@ -27,7 +27,7 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
   const [copied, setCopied] = useState(false);
   const [mcpService, setMcpService] = useState<AgentsMcpService | null>(null);
 
-  // useClearTerminalOnMount();
+  useClearTerminalOnMount();
 
   // This useEffect handles starting the server after confirmedSelection is set
   useEffect(() => {

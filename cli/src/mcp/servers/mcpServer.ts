@@ -1,7 +1,4 @@
-import type {
-  GetAgentConfigurationsResponseType,
-  DustAPI,
-} from "@dust-tt/client";
+import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
