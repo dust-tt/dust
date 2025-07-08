@@ -7,29 +7,27 @@ import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
+import { AuthenticatorProvider } from "@app/lib/context/authenticator";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import type { AuthenticatorType } from "@app/types/auth";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-  if (!owner || !auth.isAdmin() || !subscription) {
+export const getServerSideProps =
+  withDefaultUserAuthRequirements<AuthenticatorType>(async (context, auth) => {
+    const authRes = auth.toResultJSON();
+
+    if (authRes.isErr()) {
+      return {
+        notFound: true,
+      };
+    }
+
     return {
-      notFound: true,
+      props: {
+        ...authRes.value,
+      },
     };
-  }
-
-  return {
-    props: {
-      owner,
-      subscription,
-    },
-  };
-});
+  });
 
 export default function Analytics({
   owner,
@@ -164,6 +162,13 @@ export default function Analytics({
   );
 }
 
-Analytics.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+Analytics.getLayout = (
+  page: React.ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <AppRootLayout>
+      <AuthenticatorProvider value={pageProps}>{page}</AuthenticatorProvider>
+    </AppRootLayout>
+  );
 };
