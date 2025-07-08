@@ -165,8 +165,6 @@ export async function unsafeGetUsageData(
     LEFT JOIN
         "agent_configurations" ac ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
     LEFT JOIN
-        "agent_retrieval_configurations" arc ON ac."id" = arc."agentConfigurationId"
-    LEFT JOIN
         "agent_mcp_server_configurations" amsc ON ac."id" = amsc."agentConfigurationId"
     LEFT JOIN
         "mcp_server_views" msv ON amsc."mcpServerViewId" = msv."id"
