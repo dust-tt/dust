@@ -74,15 +74,11 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   getContentFragmentType(): ContentFragmentType["contentFragmentType"] {
-    if (this.fileId) {
-      return "file";
-    }
-
-    if (this.nodeId) {
+    if (this.nodeType) {
       return "content_node";
     }
 
-    throw new Error(`Invalid content fragment type (sId: ${this.sId})`);
+    return "file";
   }
 
   static async makeNew(
