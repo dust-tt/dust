@@ -376,7 +376,8 @@ export async function deleteRunOnDustAppsActivity({
 
   // Fetch the total of runs to fetch to max end to not go over.
   const totalRunsToFetch = await RunResource.countByWorkspace(workspace, {
-    skipCutoffDate: true,
+    // We want to fetch ALL runs, not just the one created after the cutoff date
+    cutoffDays: false,
   });
   hardDeleteLogger.info(
     { totalRuns: totalRunsToFetch },
@@ -387,7 +388,7 @@ export async function deleteRunOnDustAppsActivity({
     const runs = await RunResource.listByWorkspace(workspace, {
       includeApp: true,
       // We want to fetch ALL runs, not just the one created after the cutoff date
-      skipCutoffDate: true,
+      cutoffDays: false,
       limit: BATCH_SIZE,
       order: [["createdAt", "ASC"]],
     });
