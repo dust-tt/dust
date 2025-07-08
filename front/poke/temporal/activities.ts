@@ -397,32 +397,58 @@ export async function deleteRunOnDustAppsActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  const runs = await RunResource.listByWorkspace(workspace, {
-    includeApp: true,
-    // We want to fetch ALL runs, not just the one created after the cutoff date
+  const BATCH_SIZE = 10_000;
+  let currentOffset = 0;
+
+  // Fetch the total of runs to fetch to max end to not go over.
+  const totalRunsToFetch = await RunResource.countByWorkspace(workspace, {
     skipCutoffDate: true,
   });
-
-  hardDeleteLogger.info({ runs: runs.length }, "Numbers of runs to be deleted");
-
-  await concurrentExecutor(
-    runs,
-    async (run, idx) => {
-      const res = await coreAPI.deleteRun({
-        projectId: run.app.dustAPIProjectId,
-        runId: run.dustRunId,
-      });
-      if (res.isErr()) {
-        throw new Error(`Error deleting Run from Core: ${res.error.message}`);
-      }
-      await run.delete(auth);
-
-      if (idx % 500) {
-        hardDeleteLogger.debug({ idx, runId: run.id }, "Run deleted");
-      }
-    },
-    { concurrency: 12 }
+  hardDeleteLogger.info(
+    { totalRuns: totalRunsToFetch },
+    "Numbers of runs to be deleted"
   );
+
+  do {
+    const runs = await RunResource.listByWorkspace(workspace, {
+      includeApp: true,
+      // We want to fetch ALL runs, not just the one created after the cutoff date
+      skipCutoffDate: true,
+      limit: BATCH_SIZE,
+      offset: currentOffset,
+      order: [["createdAt", "ASC"]],
+    });
+
+    hardDeleteLogger.info(
+      { batchSize: runs.length, currentOffset },
+      "Processing batch of runs"
+    );
+
+    await concurrentExecutor(
+      runs,
+      async (run, idx) => {
+        const res = await coreAPI.deleteRun({
+          projectId: run.app.dustAPIProjectId,
+          runId: run.dustRunId,
+        });
+        if (res.isErr()) {
+          throw new Error(`Error deleting Run from Core: ${res.error.message}`);
+        }
+        await run.delete(auth);
+
+        if (idx % 500) {
+          hardDeleteLogger.debug({ idx, runId: run.id }, "Run deleted");
+        }
+      },
+      { concurrency: 12 }
+    );
+
+    // The last fetch was less than the batch size, so we know there is no batch after that.
+    if (runs.length < BATCH_SIZE) {
+      break;
+    }
+    currentOffset += runs.length;
+  } while (currentOffset <= totalRunsToFetch);
 }
 
 export const deleteRemoteMCPServersActivity = async ({
