@@ -1,7 +1,5 @@
-import type { PostIdentitiesRequestProviderEnum } from "auth0";
 import { escape } from "html-escaper";
 
-import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
@@ -24,73 +22,14 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import logger from "@app/logger/logger";
-import type { Result, UserProviderType } from "@app/types";
+import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
 
-interface LegacyProviderInfo {
-  provider: UserProviderType;
-  providerId: number | string;
-}
-
-//TODO(workos): Clean up legacy provider.
-async function fetchUserWithLegacyProvider(
-  { provider, providerId }: LegacyProviderInfo,
-  sub: string
-) {
-  const user = await UserResource.fetchByProvider(
-    provider,
-    providerId.toString()
-  );
-
-  // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
-  if (user) {
-    await user.updateAuth0Sub({ sub, provider });
-  }
-
-  return user;
-}
-
-function mapAuth0ProviderToLegacy(auth0Sub: string): LegacyProviderInfo {
-  const [rawProvider, providerId] = auth0Sub.split("|");
-  switch (rawProvider) {
-    case "google-oauth2":
-      return { provider: "google", providerId };
-
-    case "github":
-      return { provider: "github", providerId };
-
-    default:
-      return { provider: rawProvider as UserProviderType, providerId };
-  }
-}
-//END-TODO(workos)
-
 export async function fetchUserFromSession(session: SessionWithUser) {
-  const { workOSUserId, auth0Sub } = session.user;
-
-  //TODO(workos): Remove auth0 user lookup.
-  if (session.type === "auth0" && auth0Sub) {
-    const userWithAuth0 = await UserResource.fetchByAuth0Sub(auth0Sub);
-    if (userWithAuth0) {
-      return userWithAuth0;
-    }
-
-    const legacyProviderInfo = mapAuth0ProviderToLegacy(auth0Sub);
-    const legacyUser = await fetchUserWithLegacyProvider(
-      legacyProviderInfo,
-      auth0Sub
-    );
-
-    if (legacyUser) {
-      return legacyUser;
-    }
-  }
+  const { workOSUserId } = session.user;
 
   if (workOSUserId) {
-    const userWithWorkOS = await UserResource.fetchByWorkOSUserId(workOSUserId);
-    if (userWithWorkOS) {
-      return userWithWorkOS;
-    }
+    return UserResource.fetchByWorkOSUserId(workOSUserId);
   }
 
   return null;
@@ -236,14 +175,12 @@ export async function mergeUserIdentities({
   secondaryUserId,
   enforceEmailMatch = true,
   revokeSecondaryUser = false,
-  skipAuth0 = false,
 }: {
   auth: Authenticator;
   primaryUserId: string;
   secondaryUserId: string;
   enforceEmailMatch?: boolean;
   revokeSecondaryUser?: boolean;
-  skipAuth0?: boolean;
 }): Promise<
   Result<{ primaryUser: UserResource; secondaryUser: UserResource }, Error>
 > {
@@ -283,69 +220,6 @@ export async function mergeUserIdentities({
     return new Err(
       new Error("Secondary must have a membership in the workspace.")
     );
-  }
-
-  if (!skipAuth0) {
-    const auth0ManagemementClient = getAuth0ManagemementClient();
-
-    const primaryUserAuth0 =
-      await auth0ManagemementClient.usersByEmail.getByEmail({
-        email: primaryUser.email,
-      });
-
-    const secondaryUserAuth0 =
-      await auth0ManagemementClient.usersByEmail.getByEmail({
-        email: secondaryUser.email,
-      });
-
-    const primaryUserAuth0Sub = primaryUserAuth0.data.find(
-      (u) => u.user_id === primaryUser.auth0Sub
-    );
-    const secondaryUserAuth0Sub = secondaryUserAuth0.data.find(
-      (u) => u.user_id === secondaryUser.auth0Sub
-    );
-
-    if (!primaryUserAuth0Sub) {
-      return new Err(new Error("Primary user not found in Auth0."));
-    }
-
-    // No auth0 sub for the secondary user, nothing to merge on that side.
-    if (secondaryUserAuth0Sub) {
-      const [identityToMerge] = secondaryUserAuth0Sub.identities;
-
-      // Retrieve the connection id for the identity to merge.
-      const connectionsResponse =
-        await getAuth0ManagemementClient().connections.getAll({
-          name: identityToMerge.connection,
-        });
-
-      const [connection] = connectionsResponse.data;
-      if (!connection) {
-        return new Err(
-          new Error(`Auth0 connection ${identityToMerge.connection} not found.`)
-        );
-      }
-
-      await auth0ManagemementClient.users.link(
-        { id: primaryUserAuth0Sub.user_id },
-        {
-          provider:
-            identityToMerge.provider as PostIdentitiesRequestProviderEnum,
-          connection_id: connection.id,
-          user_id: identityToMerge.user_id,
-        }
-      );
-
-      // Mark the primary user as having been linked.
-      await auth0ManagemementClient.users.update(
-        { id: primaryUserAuth0Sub.user_id },
-        {
-          app_metadata: {
-            account_linking_state: Date.now(),
-          },
-        }
-      );
-    }
   }
 
   // Migrate authorship of agent configurations from the secondary user to the primary user.

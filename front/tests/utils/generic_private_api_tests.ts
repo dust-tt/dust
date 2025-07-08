@@ -59,11 +59,11 @@ export const createPrivateApiMockRequest = async ({
   // Mock the getSession function to return the user without going through the auth0 session
   vi.mocked(getSession).mockReturnValue(
     Promise.resolve({
-      type: "auth0",
+      type: "workos",
       sessionId: "test-session-id",
       user: {
         auth0Sub: user.auth0Sub!,
-        workOSUserId: null,
+        workOSUserId: user.workOSUserId!,
         email: user.email!,
         email_verified: true,
         name: user.username!,

@@ -76,15 +76,6 @@ async function handler(
     externalUser: session.user,
   });
 
-  // TODO(workos): Remove after switch to workos. Update user information when user is created with auth0.
-  if (userCreated && session.type === "auth0" && session.user.workOSUserId) {
-    await updateUserFromAuth0(
-      session,
-      multiRegionsConfig.getCurrentRegion(),
-      session.user.email_verified
-    );
-  }
-
   ServerSideTracking.trackSignup({
     user: {
       sId: user.sId,
@@ -120,7 +111,7 @@ async function handler(
     if (userCreated) {
       // When user is just created, check whether they have a pending invitation. If they do, it is
       // assumed they are coming from the invitation link and have seen the join page; we redirect
-      // (after auth0 login) to this URL with inviteToken appended. The user will then end up on the
+      // (after workos login) to this URL with inviteToken appended. The user will then end up on the
       // workspace's welcome page (see comment's PR)
       const pendingInvitation =
         await MembershipInvitationResource.getPendingForEmail(user.email);
