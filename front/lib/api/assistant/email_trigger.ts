@@ -36,7 +36,6 @@ function renderUserType(user: UserModel): UserType {
     sId: user.sId,
     id: user.id,
     createdAt: user.createdAt.getTime(),
-    provider: user.provider,
     username: user.username,
     email: user.email,
     firstName: user.firstName,
