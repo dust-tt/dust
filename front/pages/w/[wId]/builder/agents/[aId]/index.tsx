@@ -10,7 +10,6 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   LightAgentConfigurationType,
@@ -20,7 +19,6 @@ import type {
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: LightAgentConfigurationType;
-  agentEditors: UserType[];
   owner: WorkspaceType;
   user: UserType;
 }>(async (context, auth) => {
@@ -64,24 +62,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       };
     }
 
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-      auth,
-      configuration
-    );
-    if (editorGroupRes.isErr()) {
-      throw new Error("Failed to find editor group for agent");
-    }
-
-    const agentEditors = (
-      await editorGroupRes.value.getActiveMembers(auth)
-    ).map((m) => m.toJSON());
-
     const user = auth.getNonNullableUser().toJSON();
 
     return {
       props: {
         agentConfiguration: configuration,
-        agentEditors,
         owner,
         user,
       },
@@ -91,7 +76,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export default function EditAgent({
   agentConfiguration,
-  agentEditors,
   owner,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -108,10 +92,7 @@ export default function EditAgent({
       <SpacesProvider owner={owner}>
         <MCPServerViewsProvider owner={owner}>
           <DataSourceViewsProvider owner={owner}>
-            <AgentBuilder
-              agentConfiguration={agentConfiguration}
-              agentEditors={agentEditors}
-            />
+            <AgentBuilder agentConfiguration={agentConfiguration} />
           </DataSourceViewsProvider>
         </MCPServerViewsProvider>
       </SpacesProvider>

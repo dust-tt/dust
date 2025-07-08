@@ -19,9 +19,9 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
+import { useEditors } from "@app/lib/swr/editors";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
-
 import type { AgentConfigurationType, UserType } from "@app/types";
 import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -35,7 +35,6 @@ interface AgentBuilderProps {
 
 export default function AgentBuilder({
   agentConfiguration,
-  agentEditors,
 }: AgentBuilderProps) {
   const { owner, user, supportedDataSourceViews } = useAgentBuilderContext();
   const { mcpServerViews, isMCPServerViewsLoading } =
@@ -47,6 +46,11 @@ export default function AgentBuilder({
     owner.sId,
     agentConfiguration?.sId ?? null
   );
+
+  const { editors, isEditorsLoading } = useEditors({
+    owner,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+  });
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -62,24 +66,37 @@ export default function AgentBuilder({
       return transformAgentConfigurationToFormData(
         agentConfiguration,
         user,
-        agentEditors || [],
+        editors.length > 0 ? editors : [user], // Use client-side editors or fallback to current user
         false // Don't include actions - they will be loaded client-side
       );
     }
     return getDefaultAgentFormData(user, defaultMaxSteps);
-  }, [agentConfiguration, user, agentEditors, defaultMaxSteps]);
+  }, [agentConfiguration, user, editors, defaultMaxSteps]);
 
-  // Create values object that includes async actions data
+  // Create values object that includes async data (actions and editors)
   const formValues = useMemo((): AgentBuilderFormData | undefined => {
-    if (!actions || actions.length === 0) {
+    const hasActions = actions && actions.length > 0;
+    const hasEditors = editors && editors.length > 0;
+
+    if (!hasActions && !hasEditors) {
       return undefined; // Let defaultValues handle initial state
     }
 
-    return {
-      ...defaultValues,
-      actions,
-    };
-  }, [defaultValues, actions]);
+    const updatedValues = { ...defaultValues };
+
+    if (hasActions) {
+      updatedValues.actions = actions;
+    }
+
+    if (hasEditors) {
+      updatedValues.agentSettings = {
+        ...updatedValues.agentSettings,
+        editors,
+      };
+    }
+
+    return updatedValues;
+  }, [defaultValues, actions, editors]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
@@ -148,7 +165,9 @@ export default function AgentBuilder({
             }}
             onSave={handleSave}
             isSaving={form.formState.isSubmitting}
-            isDisabled={isMCPServerViewsLoading || isActionsLoading}
+            isDisabled={
+              isMCPServerViewsLoading || isActionsLoading || isEditorsLoading
+            }
           />
         }
         rightPanel={
