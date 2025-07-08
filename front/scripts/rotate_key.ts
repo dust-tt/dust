@@ -90,15 +90,18 @@ makeScript(
 
     if (connectorsToUpdate.length === 0) {
       logger.info({ keyId }, "No connectors found to update with this key.");
-      return;
+    } else {
+      logger.info(
+        { keyId, connectorsToUpdate: connectorsToUpdate.map((c) => c.id) },
+        "Found connectors to update."
+      );
     }
 
-    logger.info(
-      { keyId, connectorsToUpdate: connectorsToUpdate.map((c) => c.id) },
-      "Found connectors to update."
-    );
-
     if (!execute) {
+      logger.info(
+        { keyId, connectorsToUpdate: connectorsToUpdate.map((c) => c.id) },
+        "Dry run. Would rotate key and update related connectors."
+      );
       return;
     }
 
@@ -114,24 +117,27 @@ makeScript(
         logger.error({ keyId }, "failed to rotate key");
         throw new Error("Failed to rotate key");
       }
-      for (const connector of connectorsToUpdate) {
-        await connectorsDb.query(
-          `UPDATE connectors SET "workspaceAPIKey" = :workspaceAPIKey WHERE "id" = :id`,
-          {
-            replacements: {
-              workspaceAPIKey: keyToRotate.secret,
-              id: connector.id,
-            },
-            transaction: connectorsTransaction,
-            type: QueryTypes.UPDATE,
-          }
-        );
+
+      if (connectorsToUpdate.length > 0) {
+        for (const connector of connectorsToUpdate) {
+          await connectorsDb.query(
+            `UPDATE connectors SET "workspaceAPIKey" = :workspaceAPIKey WHERE "id" = :id`,
+            {
+              replacements: {
+                workspaceAPIKey: keyToRotate.secret,
+                id: connector.id,
+              },
+              transaction: connectorsTransaction,
+              type: QueryTypes.UPDATE,
+            }
+          );
+        }
       }
       await connectorsTransaction.commit();
       await frontTransaction.commit();
       logger.info(
         { keyId },
-        "Successfully rotated key and updated connectors."
+        "Successfully rotated key and updated related connectors."
       );
     } catch (error) {
       logger.error(
