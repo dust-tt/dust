@@ -136,7 +136,7 @@ makeScript(
       await connectorsTransaction.commit();
       await frontTransaction.commit();
       logger.info(
-        { keyId },
+        { keyId, connectorsToUpdate: connectorsToUpdate.map((c) => c.id) },
         "Successfully rotated key and updated related connectors."
       );
     } catch (error) {
