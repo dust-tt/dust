@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -18,8 +18,10 @@ import { useMCPServerViewsContext } from "@app/components/assistant_builder/cont
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
+
 import type { AgentConfigurationType, UserType } from "@app/types";
 import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -41,6 +43,11 @@ export default function AgentBuilder({
   const router = useRouter();
   const sendNotification = useSendNotification();
 
+  const { actions, isActionsLoading } = useAgentConfigurationActions(
+    owner.sId,
+    agentConfiguration?.sId ?? null
+  );
+
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -50,20 +57,34 @@ export default function AgentBuilder({
     ? Math.min(10, EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT)
     : Math.min(10, MAX_STEPS_USE_PER_RUN_LIMIT);
 
-  const getInitialFormData = (): AgentBuilderFormData => {
+  const defaultValues = useMemo((): AgentBuilderFormData => {
     if (agentConfiguration) {
       return transformAgentConfigurationToFormData(
         agentConfiguration,
         user,
-        agentEditors || []
+        agentEditors || [],
+        false // Don't include actions - they will be loaded client-side
       );
     }
     return getDefaultAgentFormData(user, defaultMaxSteps);
-  };
+  }, [agentConfiguration, user, agentEditors, defaultMaxSteps]);
+
+  // Create values object that includes async actions data
+  const formValues = useMemo((): AgentBuilderFormData | undefined => {
+    if (!actions || actions.length === 0) {
+      return undefined; // Let defaultValues handle initial state
+    }
+
+    return {
+      ...defaultValues,
+      actions,
+    };
+  }, [defaultValues, actions]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
-    defaultValues: getInitialFormData(),
+    defaultValues,
+    values: formValues, // Reactive updates when actions are loaded
   });
 
   useEffect(() => {
@@ -127,7 +148,7 @@ export default function AgentBuilder({
             }}
             onSave={handleSave}
             isSaving={form.formState.isSubmitting}
-            isDisabled={isMCPServerViewsLoading}
+            isDisabled={isMCPServerViewsLoading || isActionsLoading}
           />
         }
         rightPanel={

@@ -8,26 +8,20 @@ import { MCPServerViewsProvider } from "@app/components/assistant_builder/contex
 import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import config from "@app/lib/api/config";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
-  AgentConfigurationType,
-  PlanType,
-  SubscriptionType,
+  LightAgentConfigurationType,
   UserType,
   WorkspaceType,
 } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
   agentEditors: UserType[];
-  baseUrl: string;
   owner: WorkspaceType;
-  plan: PlanType;
-  subscription: SubscriptionType;
   user: UserType;
 }>(async (context, auth) => {
   return tracer.trace("getServerSideProps", async () => {
@@ -54,7 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     }
 
     const [configuration] = await Promise.all([
-      getAgentConfiguration(auth, context.params?.aId as string, "full"),
+      getAgentConfiguration(auth, context.params?.aId as string, "light"),
       MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
     ]);
 
@@ -88,10 +82,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       props: {
         agentConfiguration: configuration,
         agentEditors,
-        baseUrl: config.getClientFacingUrl(),
         owner,
-        plan,
-        subscription,
         user,
       },
     };
@@ -101,10 +92,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function EditAgent({
   agentConfiguration,
   agentEditors,
-  baseUrl,
   owner,
-  plan,
-  subscription,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   if (agentConfiguration.scope === "global") {

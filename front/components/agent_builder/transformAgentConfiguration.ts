@@ -3,6 +3,7 @@ import type {
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
@@ -28,7 +29,8 @@ type SupportedAgentBuilderActionType =
 export function transformAgentConfigurationToFormData(
   agentConfiguration: AgentConfigurationType,
   currentUser: UserType,
-  agentEditors: UserType[] = []
+  agentEditors: UserType[] = [],
+  includeActions: boolean = true
 ): AgentBuilderFormData {
   return {
     agentSettings: {
@@ -54,10 +56,13 @@ export function transformAgentConfigurationToFormData(
       reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
       responseFormat: agentConfiguration.model.responseFormat,
     },
-    actions: transformActionsToFormData(
-      agentConfiguration.actions || [],
-      agentConfiguration.visualizationEnabled
-    ),
+    actions:
+      includeActions && "actions" in agentConfiguration
+        ? transformActionsToFormData(
+            agentConfiguration.actions || [],
+            agentConfiguration.visualizationEnabled
+          )
+        : [],
     maxStepsPerRun:
       agentConfiguration.maxStepsPerRun || DEFAULT_MAX_STEPS_USE_PER_RUN,
   };
@@ -73,7 +78,7 @@ const MCP_SERVER_TO_ACTION_TYPE_MAP: Record<
   include_data: "INCLUDE_DATA",
 };
 
-function transformActionsToFormData(
+export function transformActionsToFormData(
   actions: AgentActionConfigurationType[],
   visualizationEnabled: boolean = false
 ): AgentBuilderAction[] {
@@ -90,7 +95,7 @@ function transformActionsToFormData(
       ([serverName]) =>
         isInternalMCPServerOfName(
           action.internalMCPServerId,
-          serverName as keyof typeof MCP_SERVER_TO_ACTION_TYPE_MAP
+          serverName as InternalMCPServerNameType
         )
     )?.[1];
 
