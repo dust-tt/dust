@@ -166,14 +166,9 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
-  async rotateSecret() {
+  async rotateSecret(transaction?: Transaction) {
     const newSecret = KeyResource.createNewSecret();
-    return this.model.update(
-      { secret: newSecret },
-      {
-        where: { id: this.id },
-      }
-    );
+    return this.update({ secret: newSecret }, transaction);
   }
 
   static async countActiveForGroups(
