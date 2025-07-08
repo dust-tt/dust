@@ -53,11 +53,6 @@ export async function getPokeConversation(
                     };
                     break;
 
-                  case "search_labels_action":
-                    // TODO(REASONING TOOL): reasoning_action
-                    // Theses actions do not call a dust app
-                    break;
-
                   default:
                     assertNever(a);
                 }

@@ -130,7 +130,6 @@ async function streamAgentAnswerToSlack(
     switch (event.type) {
       case "conversation_include_file_params":
       case "process_params":
-      case "search_labels_params":
       case "tool_params":
       case "tool_notification":
         await postSlackMessageUpdate(

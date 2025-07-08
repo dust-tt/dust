@@ -552,28 +552,6 @@ const BaseActionSchema = z.object({
   type: BaseActionTypeSchema,
 });
 
-const SearchLabelsActionOutputSchema = z.object({
-  tags: z.array(
-    z.object({
-      tag: z.string(),
-      match_count: z.number(),
-      data_sources: z.array(z.string()),
-    })
-  ),
-});
-
-const SearchLabelsActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  output: SearchLabelsActionOutputSchema.nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("search_labels_action"),
-});
-type SearchLabelsActionPublicType = z.infer<
-  typeof SearchLabelsActionTypeSchema
->;
-
 const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   params: z.object({
@@ -1018,7 +996,6 @@ const AgentActionTypeSchema = z.union([
   ProcessActionTypeSchema,
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
-  SearchLabelsActionTypeSchema,
   MCPActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
@@ -1142,14 +1119,6 @@ const ProcessParamsEventSchema = z.object({
   action: ProcessActionTypeSchema,
 });
 
-const SearchLabelsParamsEventSchema = z.object({
-  type: z.literal("search_labels_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: SearchLabelsActionTypeSchema,
-});
-
 const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
 
 const MCPValidationMetadataSchema = z.object({
@@ -1260,7 +1229,6 @@ export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 const AgentActionSpecificEventSchema = z.union([
   ConversationIncludeFileParamsEventSchema,
   ProcessParamsEventSchema,
-  SearchLabelsParamsEventSchema,
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
@@ -2556,12 +2524,6 @@ export function isProcessActionType(
   return action.type === "process_action";
 }
 
-export function isSearchLabelsActionType(
-  action: AgentActionPublicType
-): action is SearchLabelsActionPublicType {
-  return action.type === "search_labels_action";
-}
-
 export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {
   return (arg as AgentMentionType).configurationId !== undefined;
 }
@@ -2746,7 +2708,6 @@ export const ACTION_RUNNING_LABELS: Record<
   conversation_list_files_action: "Listing files",
   dust_app_run_action: "Running App",
   process_action: "Extracting data",
-  search_labels_action: "Searching labels",
   tool_action: "Using a tool",
 };
 

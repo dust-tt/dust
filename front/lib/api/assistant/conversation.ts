@@ -1903,7 +1903,6 @@ async function* streamRunAgentEvents(
       // All other events that won't impact the database and are related to actions or tokens
       // generation.
       case "generation_tokens":
-      case "search_labels_params":
       case "tool_approve_execution":
       case "tool_notification":
       case "tool_params":
