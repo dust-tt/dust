@@ -1,10 +1,10 @@
 import assert from "assert";
 
 import {
-  DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
-  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
+  DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
+  DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,
@@ -171,7 +171,7 @@ export async function getJITServers(
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
       name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-      description: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
+      description: `The tables associated with the 'queryable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``,
       dataSources: null,
       tables,
       childAgentId: null,
@@ -242,7 +242,7 @@ export async function getJITServers(
       id: -1,
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
-      name: "conversation_search",
+      name: DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
       description: "Semantic search over all files from the conversation",
       dataSources,
       tables: null,
@@ -292,7 +292,7 @@ export async function getJITServers(
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
       name: DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
-      description: DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION,
+      description: `Extract structured data from the 'extractable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``,
       dataSources,
       tables: null,
       childAgentId: null,
