@@ -26,8 +26,6 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  useClearTerminalOnMount();
-
   // This useEffect handles starting the server after confirmedSelection is set
   useEffect(() => {
     if (confirmedSelection && !isServerStarted) {
@@ -52,6 +50,10 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
       setTimeout(() => setCopied(false), 1500);
     }
   });
+
+  if (!useClearTerminalOnMount()) {
+    return null;
+  }
 
   if (error) {
     return <Text color="red">Error: {error}</Text>;
