@@ -1,6 +1,8 @@
 import type { LightWorkspaceType } from "@dust-tt/client";
 import { Extension } from "@tiptap/core";
+import type { Node } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { debounce } from "lodash";
 
@@ -9,42 +11,146 @@ import type { AssistantBuilderState } from "@app/components/assistant_builder/ty
 // Create the plugin key outside so it can be shared
 const suggestionPluginKey = new PluginKey<DecorationSet>("suggestion");
 
+/**
+ * Helper function to normalize text by replacing multiple whitespace characters
+ * (spaces, tabs, newlines) with single spaces for comparison purposes.
+ * This allows suggestions to remain valid even when users add spaces or line breaks.
+ */
+const normalizeWhitespace = (text: string): string => {
+  return text.replace(/\s+/g, " ");
+};
+
 // Helper function to check if current suggestion is still valid
 const checkSuggestionMatch = (
   currentText: string,
   suggestion: string | null,
-  originalText: string | null
+  normalizedOriginalText: string | null,
+  normalizedSuggestion: string | null
 ): { isValid: boolean; remainingSuggestion: string } => {
-  if (!suggestion || !originalText) {
+  if (!suggestion || !normalizedOriginalText || !normalizedSuggestion) {
     return { isValid: false, remainingSuggestion: "" };
   }
 
   console.log("Checking suggestion match:", {
     currentText,
     suggestion,
-    originalText,
+    normalizedOriginalText,
   });
 
-  // Check if current text starts with original text (user is continuing to type)
-  if (!currentText.startsWith(originalText)) {
+  // Normalize current text only once
+  const normalizedCurrent = normalizeWhitespace(currentText);
+
+  // Check if normalized current text starts with normalized original text
+  if (!normalizedCurrent.startsWith(normalizedOriginalText)) {
     return { isValid: false, remainingSuggestion: "" };
   }
 
-  // Get the part the user has typed since the suggestion was generated
-  const typedSinceSuggestion = currentText.substring(originalText.length);
+  // Get the part the user has typed since the suggestion was generated (normalized)
+  const typedSinceSuggestion = normalizedCurrent.substring(
+    normalizedOriginalText.length
+  );
 
-  console.log("Typed since suggestion:", typedSinceSuggestion);
+  console.log("Typed since suggestion (normalized):", typedSinceSuggestion);
 
-  // Check if the suggestion starts with what the user has typed
-  if (!suggestion.startsWith(typedSinceSuggestion)) {
+  // Check if the normalized suggestion starts with what the user has typed
+  if (!normalizedSuggestion.startsWith(typedSinceSuggestion)) {
     return { isValid: false, remainingSuggestion: "" };
   }
 
-  // Return the remaining part of the suggestion
+  // Return the remaining part of the suggestion (original formatting)
   const remainingSuggestion = suggestion.substring(typedSinceSuggestion.length);
   console.log("Remaining suggestion:", remainingSuggestion);
 
   return { isValid: true, remainingSuggestion };
+};
+
+// Helper function to create suggestion decoration.
+const createSuggestionDecoration = (
+  doc: Node,
+  cursorPos: number,
+  suggestionText: string,
+  nextNode: Node | null
+): DecorationSet => {
+  const suggestionDecoration = Decoration.widget(
+    cursorPos,
+    () => {
+      const parentNode = document.createElement("span");
+      const addSpace = nextNode && nextNode.isText ? " " : "";
+      parentNode.innerHTML = `${addSpace}${suggestionText}`;
+      // TODO(2025-07-08): Add class `autocomplete-suggestion` to our style.
+      parentNode.style.color = "#9ca3af";
+      parentNode.style.fontStyle = "italic";
+      parentNode.classList.add("autocomplete-suggestion");
+      return parentNode;
+    },
+    { side: 1 }
+  );
+
+  return DecorationSet.create(doc, [suggestionDecoration]);
+};
+
+/**
+ * Helper function to clear all suggestion decorations from the editor view.
+ * Centralizes the decoration clearing logic to avoid duplication.
+ */
+const clearSuggestionDecorations = (
+  view: EditorView,
+  pluginKey: PluginKey<DecorationSet>
+): void => {
+  const tr = view.state.tr;
+  tr.setMeta("addToHistory", false);
+  tr.setMeta(pluginKey, { decorations: DecorationSet.empty });
+  view.dispatch(tr);
+};
+
+/**
+ * Cleans up suggestions that may contain duplicate text already present in the current text.
+ * Sometimes the API returns suggestions that include text the user has already typed.
+ * This function removes the overlapping portion to show only the new text to be suggested.
+ *
+ * @param currentText - The current text in the editor
+ * @param rawSuggestions - Array of raw suggestions from the API
+ * @returns Array of cleaned suggestions with duplicated text removed
+ */
+const cleanSuggestions = (
+  currentText: string,
+  rawSuggestions: string[]
+): string[] => {
+  console.log("Cleaning suggestions:", {
+    currentText,
+    rawSuggestions,
+  });
+
+  return rawSuggestions
+    .map((suggestion) => {
+      // If the suggestion starts with the current text, remove the duplicate part.
+      if (suggestion.startsWith(currentText)) {
+        return suggestion.substring(currentText.length);
+      }
+
+      // Try to find overlap at the end of current text with the beginning of suggestion
+      // For example: currentText = "You are a Sa", suggestion = "Sales person"
+      // We want to find that "Sa" overlaps with "Sales" and return "les person".
+      let overlap = 0;
+      const maxOverlap = Math.min(currentText.length, suggestion.length);
+
+      for (let i = 1; i <= maxOverlap; i++) {
+        const endOfCurrent = currentText.slice(-i);
+        const startOfSuggestion = suggestion.slice(0, i);
+
+        if (endOfCurrent === startOfSuggestion) {
+          overlap = i;
+        }
+      }
+
+      if (overlap > 0) {
+        return suggestion.substring(overlap);
+      }
+
+      // No overlap found, return the suggestion as-is.
+      return suggestion;
+    })
+    .filter((suggestion) => suggestion.length > 0); // Remove empty suggestions.
 };
 
 interface TextAutoCompleteExtensionOptions {
@@ -57,7 +163,8 @@ interface TextAutoCompleteExtensionStorage {
   builderState: AssistantBuilderState | null;
   currentSuggestion: string | null;
   suggestions: string[];
-  originalText: string | null; // Text when suggestion was generated
+  normalizedOriginalText: string | null; // Normalized original text for efficient comparison
+  normalizedCurrentSuggestion: string | null; // Normalized suggestion for efficient comparison
 }
 
 export const TextAutoCompleteExtension = Extension.create<
@@ -71,7 +178,8 @@ export const TextAutoCompleteExtension = Extension.create<
       builderState: null,
       currentSuggestion: null,
       suggestions: [],
-      originalText: null,
+      normalizedOriginalText: null,
+      normalizedCurrentSuggestion: null,
     };
   },
 
@@ -123,7 +231,8 @@ export const TextAutoCompleteExtension = Extension.create<
               const suggestionMatch = checkSuggestionMatch(
                 currentText,
                 this.storage.currentSuggestion,
-                this.storage.originalText
+                this.storage.normalizedOriginalText,
+                this.storage.normalizedCurrentSuggestion
               );
 
               const remainingSuggestion = suggestionMatch.isValid
@@ -135,14 +244,11 @@ export const TextAutoCompleteExtension = Extension.create<
 
               // Clear the current suggestion - next suggestion will be shown on next keystroke.
               this.storage.currentSuggestion = null;
-              this.storage.originalText = null;
+              this.storage.normalizedOriginalText = null;
+              this.storage.normalizedCurrentSuggestion = null;
 
               // Clear the decorations.
-              const tr = editor.state.tr;
-              tr.setMeta(suggestionPluginKey, {
-                decorations: DecorationSet.empty,
-              });
-              editor.view.dispatch(tr);
+              clearSuggestionDecorations(editor.view, suggestionPluginKey);
 
               return true; // Prevent default tab behavior.
             } else {
@@ -254,10 +360,7 @@ export const TextAutoCompleteExtension = Extension.create<
                 !nextNode.isBlock &&
                 pluginKey.getState(view.state)?.find().length
               ) {
-                const tr = view.state.tr;
-                tr.setMeta("addToHistory", false);
-                tr.setMeta(pluginKey, { decorations: DecorationSet.empty });
-                view.dispatch(tr);
+                clearSuggestionDecorations(view, pluginKey);
                 return;
               }
 
@@ -278,7 +381,8 @@ export const TextAutoCompleteExtension = Extension.create<
               const suggestionMatch = checkSuggestionMatch(
                 currentText,
                 extensionStorage.currentSuggestion,
-                extensionStorage.originalText
+                extensionStorage.normalizedOriginalText,
+                extensionStorage.normalizedCurrentSuggestion
               );
 
               if (suggestionMatch.isValid) {
@@ -287,26 +391,15 @@ export const TextAutoCompleteExtension = Extension.create<
                   extensionStorage.currentSuggestion
                 );
 
-                // Display the remaining suggestion (update existing decoration)
+                // Display the remaining suggestion (update existing decoration).
                 const updatedState = view.state;
                 const cursorPos = updatedState.selection.$head.pos;
-                const suggestionDecoration = Decoration.widget(
+                const decorations = createSuggestionDecoration(
+                  updatedState.doc,
                   cursorPos,
-                  () => {
-                    const parentNode = document.createElement("span");
-                    const addSpace = nextNode && nextNode.isText ? " " : "";
-                    parentNode.innerHTML = `${addSpace}${suggestionMatch.remainingSuggestion}`;
-                    parentNode.style.color = "#9ca3af";
-                    parentNode.style.fontStyle = "italic";
-                    parentNode.classList.add("autocomplete-suggestion");
-                    return parentNode;
-                  },
-                  { side: 1 }
+                  suggestionMatch.remainingSuggestion,
+                  nextNode
                 );
-
-                const decorations = DecorationSet.create(updatedState.doc, [
-                  suggestionDecoration,
-                ]);
                 const tr = view.state.tr;
                 tr.setMeta("addToHistory", false);
                 tr.setMeta(pluginKey, { decorations });
@@ -314,50 +407,56 @@ export const TextAutoCompleteExtension = Extension.create<
                 return;
               }
 
+              // Current suggestion is no longer valid - clear display immediately but keep storage
+              console.log(
+                "Current suggestion no longer matches, clearing display (keeping storage for potential backspace)"
+              );
+              clearSuggestionDecorations(view, pluginKey);
+
               console.log("Need to fetch new suggestion for:", currentText);
 
-              // Clear existing decorations before fetching new suggestion
-              setTimeout(() => {
-                const tr = view.state.tr;
-                tr.setMeta("addToHistory", false);
-                tr.setMeta(pluginKey, { decorations: DecorationSet.empty });
-                view.dispatch(tr);
-              }, 0);
-
-              // Simple debounced fetch like the original.
+              // Simple debounced fetch - clears decorations and fetches new suggestions.
               void getSuggestions(currentText, (suggestions) => {
-                console.log("Got suggestions:", suggestions);
+                console.log("Got raw suggestions:", suggestions);
+
+                // Clear decorations first (this happens after debounce delay)
+                clearSuggestionDecorations(view, pluginKey);
+
                 if (!suggestions) {
                   return;
                 }
 
-                if (suggestions) {
-                  extensionStorage.suggestions.push(...suggestions);
+                // Clean suggestions to remove any duplicate text.
+                const cleanedSuggestions = cleanSuggestions(
+                  currentText,
+                  suggestions
+                );
+                console.log("Cleaned suggestions:", cleanedSuggestions);
+
+                if (cleanedSuggestions.length === 0) {
+                  return;
                 }
 
-                const [suggestion] = suggestions;
+                if (cleanedSuggestions) {
+                  extensionStorage.suggestions.push(...cleanedSuggestions);
+                }
+
+                const [suggestion] = cleanedSuggestions;
                 extensionStorage.currentSuggestion = suggestion;
-                extensionStorage.originalText = currentText;
+                // Store normalized versions for efficient comparison
+                extensionStorage.normalizedOriginalText =
+                  normalizeWhitespace(currentText);
+                extensionStorage.normalizedCurrentSuggestion =
+                  normalizeWhitespace(suggestion);
 
                 const updatedState = view.state;
                 const cursorPos = updatedState.selection.$head.pos;
-                const suggestionDecoration = Decoration.widget(
+                const decorations = createSuggestionDecoration(
+                  updatedState.doc,
                   cursorPos,
-                  () => {
-                    const parentNode = document.createElement("span");
-                    const addSpace = nextNode && nextNode.isText ? " " : "";
-                    parentNode.innerHTML = `${addSpace}${suggestion}`;
-                    parentNode.style.color = "#9ca3af";
-                    parentNode.style.fontStyle = "italic";
-                    parentNode.classList.add("autocomplete-suggestion");
-                    return parentNode;
-                  },
-                  { side: 1 }
+                  suggestion,
+                  nextNode
                 );
-
-                const decorations = DecorationSet.create(updatedState.doc, [
-                  suggestionDecoration,
-                ]);
                 const tr = view.state.tr;
                 tr.setMeta("addToHistory", false);
                 tr.setMeta(pluginKey, { decorations });
