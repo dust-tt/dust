@@ -389,7 +389,7 @@ export async function deleteRunOnDustAppsActivity({
     });
 
     hardDeleteLogger.info(
-      { batchSize: runs.length, currentOffset: deletedRuns },
+      { batchSize: runs.length, deletedRuns },
       "Processing batch of runs"
     );
 
