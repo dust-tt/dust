@@ -181,29 +181,19 @@ export default function WorkspaceAdmin({
 
 const DEFAULT_PAGE_SIZE = 25;
 
-interface WorkspaceMembersListProps {
+interface WorkspaceMembersGroupsListProps {
   currentUser: UserType | null;
+  isProvisioningEnabled: boolean;
   owner: WorkspaceType;
   searchTerm: string;
-  isProvisioningEnabled: boolean;
 }
 
 function WorkspaceMembersGroupsList({
   currentUser,
+  isProvisioningEnabled,
   owner,
   searchTerm,
-  isProvisioningEnabled,
-}: WorkspaceMembersListProps) {
-  const { isLoading } = useWorkOSSSOStatus({ owner });
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
+}: WorkspaceMembersGroupsListProps) {
   return (
     <div className="flex flex-col gap-1 pt-2">
       <Tabs defaultValue="members">
