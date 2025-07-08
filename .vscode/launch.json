@@ -59,8 +59,6 @@
         "--batch-size",
         "3",
         "--skip-confirmation"
-        // "--project",
-        // "44"
       ]
     },
     {
@@ -92,6 +90,14 @@
       "name": "Debug front server",
       "request": "launch",
       "command": "npm run dev",
+      "cwd": "${workspaceFolder}/front",
+      "envFile": "${workspaceFolder}/front/.env.local"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Debug front worker",
+      "request": "launch",
+      "command": "npm run start:worker",
       "cwd": "${workspaceFolder}/front",
       "envFile": "${workspaceFolder}/front/.env.local"
     }
