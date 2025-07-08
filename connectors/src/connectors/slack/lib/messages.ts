@@ -1,7 +1,11 @@
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 
-import { getUserName } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import {
+  getBotName,
+  getBotOrUserName,
+  getUserName,
+} from "@connectors/connectors/slack/lib/bot_user_helpers";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
@@ -64,8 +68,8 @@ export async function formatMessagesForUpsert({
         slackClient
       );
 
-      const userName = await getUserName(
-        message.user as string,
+      const authorName = await getBotOrUserName(
+        message,
         connectorId,
         slackClient
       );
@@ -84,7 +88,7 @@ export async function formatMessagesForUpsert({
       return {
         messageDate,
         dateStr: messageDateStr,
-        userName,
+        authorName,
         text: text + filesInfo,
         content: text + "\n",
         sections: [],
@@ -113,7 +117,7 @@ export async function formatMessagesForUpsert({
       prefix: null,
       content: null,
       sections: data.map((d) => ({
-        prefix: `>> @${d.userName} [${d.dateStr}]:\n`,
+        prefix: `>> @${d.authorName} [${d.dateStr}]:\n`,
         content: d.text + "\n",
         sections: [],
       })),
