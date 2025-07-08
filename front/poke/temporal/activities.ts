@@ -421,7 +421,7 @@ export async function deleteRunOnDustAppsActivity({
         hardDeleteLogger.debug({ idx, runId: run.id }, "Run deleted");
       }
     },
-    { concurrency: 8 }
+    { concurrency: 12 }
   );
 }
 
