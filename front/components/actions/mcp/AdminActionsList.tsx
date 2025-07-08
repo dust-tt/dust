@@ -137,7 +137,10 @@ export const AdminActionsList = ({
     }
   };
 
-  const enabledMCPServers = mcpServers.map((s) => s.sId);
+  const enabledMCPServers = mcpServers.map((s) => ({
+    id: s.sId,
+    name: s.name,
+  }));
 
   const rows: RowData[] = useMemo(
     () =>

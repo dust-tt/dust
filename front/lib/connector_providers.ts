@@ -19,6 +19,7 @@ import {
 import type { ComponentType } from "react";
 
 import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
+import { createConnectorOptionsPdfEnabled } from "@app/components/data_source/ConnectorOptionsPdfEnabled";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
@@ -37,7 +38,7 @@ import type {
 } from "@app/types";
 import { assertNever } from "@app/types";
 
-interface ConnectorOptionsProps {
+export interface ConnectorOptionsProps {
   owner: WorkspaceType;
   readOnly: boolean;
   isAdmin: boolean;
@@ -188,6 +189,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return DriveLogo;
     },
+    optionsComponent: createConnectorOptionsPdfEnabled(
+      "When enabled, PDF documents from your Google Drive will be synced and processed by Dust."
+    ),
     isNested: true,
     permissions: {
       selected: "read",
@@ -310,6 +314,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return MicrosoftLogo;
     },
+    optionsComponent: createConnectorOptionsPdfEnabled(
+      "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
+    ),
     isNested: true,
     oauthExtraConfigComponent: MicrosoftOAuthExtraConfig,
     permissions: {

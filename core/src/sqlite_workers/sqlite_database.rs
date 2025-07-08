@@ -51,7 +51,7 @@ impl From<anyhow::Error> for SqliteDatabaseError {
 const MAX_ROWS: usize = 2048;
 
 // Switch to false to use the in-memory database without CSV files.
-const ALLOW_USAGE_OF_CSV_FILES: bool = true;
+const ALLOW_USAGE_OF_CSV_FILES: bool = false;
 
 impl SqliteDatabase {
     pub fn new() -> Self {

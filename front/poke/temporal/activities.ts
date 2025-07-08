@@ -1,5 +1,4 @@
 import assert from "assert";
-import { chunk } from "lodash";
 import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
@@ -64,6 +63,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/works
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
@@ -397,35 +397,58 @@ export async function deleteRunOnDustAppsActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  const runs = await RunResource.listByWorkspace(workspace, {
-    includeApp: true,
+  const BATCH_SIZE = 10_000;
+  let currentOffset = 0;
+
+  // Fetch the total of runs to fetch to max end to not go over.
+  const totalRunsToFetch = await RunResource.countByWorkspace(workspace, {
+    skipCutoffDate: true,
   });
+  hardDeleteLogger.info(
+    { totalRuns: totalRunsToFetch },
+    "Numbers of runs to be deleted"
+  );
 
-  const chunkSize = 8;
-  const chunks = chunk(runs, chunkSize);
+  do {
+    const runs = await RunResource.listByWorkspace(workspace, {
+      includeApp: true,
+      // We want to fetch ALL runs, not just the one created after the cutoff date
+      skipCutoffDate: true,
+      limit: BATCH_SIZE,
+      offset: currentOffset,
+      order: [["createdAt", "ASC"]],
+    });
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    if (!chunk) {
-      continue;
-    }
-    await Promise.all(
-      chunk.map((run) => {
-        return (async () => {
-          const res = await coreAPI.deleteRun({
-            projectId: run.app.dustAPIProjectId,
-            runId: run.dustRunId,
-          });
-          if (res.isErr()) {
-            throw new Error(
-              `Error deleting Run from Core: ${res.error.message}`
-            );
-          }
-          await run.delete(auth);
-        })();
-      })
+    hardDeleteLogger.info(
+      { batchSize: runs.length, currentOffset },
+      "Processing batch of runs"
     );
-  }
+
+    await concurrentExecutor(
+      runs,
+      async (run, idx) => {
+        const res = await coreAPI.deleteRun({
+          projectId: run.app.dustAPIProjectId,
+          runId: run.dustRunId,
+        });
+        if (res.isErr()) {
+          throw new Error(`Error deleting Run from Core: ${res.error.message}`);
+        }
+        await run.delete(auth);
+
+        if (idx % 500) {
+          hardDeleteLogger.debug({ idx, runId: run.id }, "Run deleted");
+        }
+      },
+      { concurrency: 12 }
+    );
+
+    // The last fetch was less than the batch size, so we know there is no batch after that.
+    if (runs.length < BATCH_SIZE) {
+      break;
+    }
+    currentOffset += runs.length;
+  } while (currentOffset <= totalRunsToFetch);
 }
 
 export const deleteRemoteMCPServersActivity = async ({

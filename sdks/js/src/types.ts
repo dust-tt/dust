@@ -1133,22 +1133,6 @@ const ConversationIncludeFileParamsEventSchema = z.object({
   action: ConversationIncludeFileActionTypeSchema,
 });
 
-const DustAppRunParamsEventSchema = z.object({
-  type: z.literal("dust_app_run_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: DustAppRunActionTypeSchema,
-});
-
-const DustAppRunBlockEventSchema = z.object({
-  type: z.literal("dust_app_run_block"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: DustAppRunActionTypeSchema,
-});
-
 const ProcessParamsEventSchema = z.object({
   type: z.literal("process_params"),
   created: z.number(),
@@ -1275,8 +1259,6 @@ export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
 const AgentActionSpecificEventSchema = z.union([
   ConversationIncludeFileParamsEventSchema,
-  DustAppRunBlockEventSchema,
-  DustAppRunParamsEventSchema,
   ProcessParamsEventSchema,
   SearchLabelsParamsEventSchema,
   MCPParamsEventSchema,
