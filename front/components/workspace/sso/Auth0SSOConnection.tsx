@@ -21,13 +21,13 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
 import React from "react";
 
 import { ToggleEnforceEnterpriseConnectionModal } from "@app/components/workspace/sso/Toggle";
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useWorkspaceEnterpriseConnection } from "@app/lib/swr/workspaces";
 import type {

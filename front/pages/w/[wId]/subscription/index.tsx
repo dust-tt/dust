@@ -13,7 +13,6 @@ import {
   Page,
   ShapesIcon,
   Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
@@ -25,6 +24,7 @@ import { subNavigationAdmin } from "@app/components/navigation/config";
 import { PricePlans } from "@app/components/plans/PlansTables";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";

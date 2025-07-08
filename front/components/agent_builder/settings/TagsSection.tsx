@@ -1,4 +1,4 @@
-import { Button, SparklesIcon, useSendNotification } from "@dust-tt/sparkle";
+import { Button, SparklesIcon } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -6,6 +6,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { TagsSelector } from "@app/components/agent_builder/settings/TagsSelector";
 import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useTags } from "@app/lib/swr/tags";
 import type {
   APIError,

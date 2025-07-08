@@ -11,10 +11,10 @@ import {
   DialogTitle,
   ScrollArea,
   Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCreateTag, useTagsSuggestions } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";

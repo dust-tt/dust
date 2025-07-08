@@ -8,13 +8,13 @@ import {
   Label,
   PlusCircleIcon,
   PlusIcon,
-  useSendNotification,
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { DatasetDataType } from "@app/lib/datasets";
 import {
   checkDatasetData,

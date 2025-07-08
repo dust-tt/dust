@@ -23,7 +23,6 @@ import {
   SheetTitle,
   Spinner,
   TrashIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, {
@@ -47,6 +46,7 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorPermissionsConfigurableBlocked,

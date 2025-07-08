@@ -1,13 +1,13 @@
 import {
   ContextItem,
   SliderToggle,
-  useSendNotification,
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 

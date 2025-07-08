@@ -9,12 +9,12 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import DatasetPicker from "@app/components/app/DatasetPicker";
 import DatasetView from "@app/components/app/DatasetView";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useDataset } from "@app/lib/swr/datasets";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {

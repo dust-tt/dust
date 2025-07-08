@@ -1,6 +1,6 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import type { SWRConfiguration } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { getErrorFromResponse, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
