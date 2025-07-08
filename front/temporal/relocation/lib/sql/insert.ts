@@ -5,8 +5,16 @@ const DEFAULT_CHUNK_SIZE = 250;
 // Temporary solution to handle JSONB columns.
 const JSONB_COLUMNS = [
   {
-    tableName: "agent_dust_app_run_actions",
-    columns: ["params", "output"],
+    tableName: "agent_mcp_actions",
+    columns: ["params"],
+  },
+  {
+    tableName: "agent_mcp_action_output_items",
+    columns: ["content"],
+  },
+  {
+    tableName: "agent_mcp_server_configurations",
+    columns: ["additionalConfiguration", "timeFrame", "jsonSchema"],
   },
   {
     tableName: "agent_configurations",
