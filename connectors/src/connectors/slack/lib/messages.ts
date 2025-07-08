@@ -2,7 +2,6 @@ import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 
 import {
-  getBotName,
   getBotOrUserName,
   getUserName,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
