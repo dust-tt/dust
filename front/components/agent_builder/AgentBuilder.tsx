@@ -57,8 +57,8 @@ export default function AgentBuilder({
   });
 
   const defaultMaxSteps = hasFeature("extended_max_steps_per_run")
-    ? Math.min(10, EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT)
-    : Math.min(10, MAX_STEPS_USE_PER_RUN_LIMIT);
+    ? EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT
+    : MAX_STEPS_USE_PER_RUN_LIMIT;
 
   const defaultValues = useMemo((): AgentBuilderFormData => {
     if (agentConfiguration) {
