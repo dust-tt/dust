@@ -59,20 +59,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [slackBotDataSource, slackDataSource] = await Promise.all([
-    (async () => {
-      return (
-        (
-          await DataSourceResource.listByConnectorProvider(auth, "slack_bot")
-        )[0] ?? null
-      );
-    })(),
-    (async () => {
-      return (
-        (await DataSourceResource.listByConnectorProvider(auth, "slack"))[0] ??
-        null
-      );
-    })(),
+  const [[slackDataSource], [slackBotDataSource]] = await Promise.all([
+    DataSourceResource.listByConnectorProvider(auth, "slack"),
+    DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
   ]);
 
   let isSlackDataSourceBotEnabled = false;
