@@ -165,7 +165,6 @@ export async function getWorkOSSessionFromCookie(
           email_verified: r.user.emailVerified,
           name: r.user.email ?? "",
           nickname: getUserNicknameFromEmail(r.user.email) ?? "",
-          auth0Sub: null,
           workOSUserId: r.user.id,
         },
         organizationId,

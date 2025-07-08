@@ -16,13 +16,7 @@ import {
   UserModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type {
-  LightWorkspaceType,
-  ModelId,
-  Result,
-  UserProviderType,
-  UserType,
-} from "@app/types";
+import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 export interface SearchMembersPaginationParams {
@@ -51,14 +45,9 @@ export class UserResource extends BaseResource<UserModel> {
   static async makeNew(
     blob: Omit<
       Attributes<UserModel>,
-      | "id"
-      | "createdAt"
-      | "updatedAt"
-      | "isDustSuperUser"
-      | "providerId"
-      | "imageUrl"
+      "id" | "createdAt" | "updatedAt" | "isDustSuperUser" | "imageUrl"
     > &
-      Partial<Pick<Attributes<UserModel>, "providerId" | "imageUrl">>
+      Partial<Pick<Attributes<UserModel>, "imageUrl">>
   ): Promise<UserResource> {
     const lowerCaseEmail = blob.email?.toLowerCase();
     const user = await UserModel.create({ ...blob, email: lowerCaseEmail });
@@ -118,19 +107,6 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  static async fetchByAuth0Sub(
-    sub: string,
-    transaction?: Transaction
-  ): Promise<UserResource | null> {
-    const user = await UserModel.findOne({
-      where: {
-        auth0Sub: sub,
-      },
-      transaction,
-    });
-    return user ? new UserResource(UserModel, user.get()) : null;
-  }
-
   static async fetchByWorkOSUserId(
     workOSUserId: string,
     transaction?: Transaction
@@ -155,20 +131,6 @@ export class UserResource extends BaseResource<UserModel> {
     return sortedUsers[0] ?? null;
   }
 
-  static async fetchByProvider(
-    provider: UserProviderType,
-    providerId: string
-  ): Promise<UserResource | null> {
-    const user = await UserModel.findOne({
-      where: {
-        provider,
-        providerId,
-      },
-    });
-
-    return user ? new UserResource(UserModel, user.get()) : null;
-  }
-
   static async getWorkspaceFirstAdmin(
     workspaceId: number
   ): Promise<UserResource | null> {
@@ -187,19 +149,6 @@ export class UserResource extends BaseResource<UserModel> {
     });
 
     return user ? new UserResource(UserModel, user.get()) : null;
-  }
-
-  async updateAuth0Sub({
-    sub,
-    provider,
-  }: {
-    sub: string;
-    provider: UserProviderType;
-  }) {
-    return this.update({
-      auth0Sub: sub,
-      provider,
-    });
   }
 
   async updateWorkOSUserId({ workOSUserId }: { workOSUserId: string }) {
@@ -357,7 +306,6 @@ export class UserResource extends BaseResource<UserModel> {
       sId: this.sId,
       id: this.id,
       createdAt: this.createdAt.getTime(),
-      provider: this.provider,
       username: this.username,
       email: this.email,
       firstName: this.firstName,
