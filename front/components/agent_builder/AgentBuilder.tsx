@@ -16,13 +16,20 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
+import type { AgentConfigurationType } from "@app/types";
 import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
   GPT_4O_MODEL_CONFIG,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
-export default function AgentBuilder() {
+interface AgentBuilderProps {
+  agentConfiguration?: AgentConfigurationType;
+}
+
+export default function AgentBuilder({
+  agentConfiguration,
+}: AgentBuilderProps) {
   const { owner, user, supportedDataSourceViews } = useAgentBuilderContext();
   const { mcpServerViews } = useMCPServerViewsContext();
   const router = useRouter();
@@ -120,7 +127,9 @@ export default function AgentBuilder() {
             isSaving={form.formState.isSubmitting}
           />
         }
-        rightPanel={<AgentBuilderRightPanel />}
+        rightPanel={
+          <AgentBuilderRightPanel agentConfiguration={agentConfiguration} />
+        }
       />
     </FormProvider>
   );

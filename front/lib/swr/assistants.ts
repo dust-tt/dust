@@ -417,8 +417,8 @@ export function useAgentAnalytics({
 
   return {
     agentAnalytics: data ? data : null,
-    isAgentAnayticsLoading: !error && !data && !disabled,
-    isAgentAnayticsError: error,
+    isAgentAnalyticsLoading: !error && !data && !disabled,
+    isAgentAnalyticsError: error,
   };
 }
 

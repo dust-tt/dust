@@ -1,51 +1,74 @@
-import { Page } from "@dust-tt/sparkle";
-import { DropdownMenu } from "@dust-tt/sparkle";
-import { DropdownMenuTrigger } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
-import { DropdownMenuContent } from "@dust-tt/sparkle";
-import { DropdownMenuItem } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
-import { CardGrid } from "@dust-tt/sparkle";
-import { ValueCard } from "@dust-tt/sparkle";
-import { Avatar } from "@dust-tt/sparkle";
-import { HandThumbUpIcon } from "@dust-tt/sparkle";
-import { HandThumbDownIcon } from "@dust-tt/sparkle";
-import { ChatBubbleLeftRightIcon } from "@dust-tt/sparkle";
-import { ChatBubbleThoughtIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Button,
+  CardGrid,
+  ChatBubbleLeftRightIcon,
+  ChatBubbleThoughtIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
+  Page,
+  Spinner,
+  ValueCard,
+} from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
-import type { LightAgentConfigurationType } from "@app/types";
-import type { WorkspaceType } from "@app/types";
+import type { AgentConfigurationType } from "@app/types";
 import { removeNulls } from "@app/types";
 
 const PERIODS = [
   { value: 7, label: "Last 7 days" },
   { value: 15, label: "Last 15 days" },
   { value: 30, label: "Last 30 days" },
-];
+] as const;
 
-interface AssistantDetailsPerformanceProps {
-  agentConfiguration: LightAgentConfigurationType;
-  owner: WorkspaceType;
-  gridMode: boolean;
+type PeriodValue = (typeof PERIODS)[number]["value"];
+const DEFAULT_PERIOD_VALUE: PeriodValue = 30;
+
+function NoAgentState() {
+  return (
+    <div className="flex h-full min-h-0 items-center justify-center">
+      <div className="px-4 text-center">
+        <div className="mb-2 text-lg font-medium text-foreground">
+          No Performance Data Available
+        </div>
+        <div className="max-w-sm text-muted-foreground">
+          Performance metrics will be available after your agent is created and
+          used in conversations.
+        </div>
+      </div>
+    </div>
+  );
 }
 
-export function AssistantDetailsPerformance({
+interface AgentBuilderPerformanceProps {
+  agentConfiguration?: AgentConfigurationType;
+}
+
+export function AgentBuilderPerformance({
   agentConfiguration,
-  owner,
-  gridMode,
-}: AssistantDetailsPerformanceProps) {
-  const [period, setPeriod] = useState(30);
+}: AgentBuilderPerformanceProps) {
+  const { owner } = useAgentBuilderContext();
+  const [period, setPeriod] = useState(DEFAULT_PERIOD_VALUE);
+
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
     workspaceId: owner.sId,
-    agentConfigurationId: agentConfiguration.sId,
+    agentConfigurationId: agentConfiguration?.sId || null,
     period,
   });
 
+  if (!agentConfiguration) {
+    return <NoAgentState />;
+  }
+
   return (
-    <>
+    <div className="flex h-full flex-col space-y-4">
       <div className="flex flex-row items-center justify-between gap-3">
         <Page.H variant="h5">Analytics</Page.H>
         <div className="self-end">
@@ -178,15 +201,15 @@ export function AssistantDetailsPerformance({
         </CardGrid>
       )}
       {agentConfiguration.scope !== "global" && (
-        <div>
+        <div className="flex-1 overflow-y-auto">
           <Page.SectionHeader title="Feedback" />
           <FeedbacksSection
             owner={owner}
             agentConfigurationId={agentConfiguration.sId}
-            gridMode={gridMode}
+            gridMode={false}
           />
         </div>
       )}
-    </>
+    </div>
   );
 }
