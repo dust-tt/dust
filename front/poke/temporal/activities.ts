@@ -403,9 +403,11 @@ export async function deleteRunOnDustAppsActivity({
     skipCutoffDate: true,
   });
 
+  hardDeleteLogger.info({ runs: runs.length }, "Numbers of runs to be deleted");
+
   await concurrentExecutor(
     runs,
-    async (run) => {
+    async (run, idx) => {
       const res = await coreAPI.deleteRun({
         projectId: run.app.dustAPIProjectId,
         runId: run.dustRunId,
@@ -414,8 +416,12 @@ export async function deleteRunOnDustAppsActivity({
         throw new Error(`Error deleting Run from Core: ${res.error.message}`);
       }
       await run.delete(auth);
+
+      if (idx % 500) {
+        hardDeleteLogger.debug({ idx, runId: run.id }, "Run deleted");
+      }
     },
-    { concurrency: 8 }
+    { concurrency: 12 }
   );
 }
 

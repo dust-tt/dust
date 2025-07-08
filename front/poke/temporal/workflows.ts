@@ -15,7 +15,6 @@ const {
   deleteAppsActivity,
   deleteMembersActivity,
   deletePluginRunsActivity,
-  deleteRunOnDustAppsActivity,
   deleteRemoteMCPServersActivity,
   deleteSpacesActivity,
   deleteTagsActivity,
@@ -27,8 +26,11 @@ const {
   scrubSpaceActivity,
 } = normalActivityProxies;
 
-const { deleteConversationsActivity, deleteWorkspaceActivity } =
-  longActivityProxies;
+const {
+  deleteConversationsActivity,
+  deleteWorkspaceActivity,
+  deleteRunOnDustAppsActivity,
+} = longActivityProxies;
 
 export async function scrubDataSourceWorkflow({
   dataSourceId,
