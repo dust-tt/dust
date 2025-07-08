@@ -115,7 +115,7 @@ export default function LandingLayout({
           {children}
         </div>
         <CookieBanner
-          className="fixed bottom-4 right-4"
+          className="fixed bottom-0 left-0 z-50 w-full"
           show={showCookieBanner}
           onClickAccept={() => {
             setAcceptedCookie("dust-cookies-accepted", "true", {
@@ -173,13 +173,13 @@ const CookieBanner = ({
   return (
     <div
       className={classNames(
-        "z-30 flex w-64 flex-col gap-3 rounded-xl border border-border bg-white p-4 shadow-xl",
+        "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-4 border-t border-border bg-blue-100 p-6 shadow-2xl md:flex-row",
         "s-transition-opacity s-duration-300 s-ease-in-out",
         isVisible ? "s-opacity-100" : "s-opacity-0",
         className || ""
       )}
     >
-      <div className="text-sm font-normal text-foreground">
+      <div className="text-sm font-normal text-foreground md:text-base">
         We use{" "}
         <A variant="primary">
           <Link
