@@ -72,7 +72,7 @@ export function AssistantDetailsPerformance({
         </div>
       </div>
 
-      {isAgentAnayticsLoading ? (
+      {isAgentAnalyticsLoading ? (
         <div className="w-full p-6">
           <Spinner variant="dark" />
         </div>

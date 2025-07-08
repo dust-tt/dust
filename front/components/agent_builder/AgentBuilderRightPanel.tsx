@@ -1,6 +1,7 @@
 import {
   BarChartIcon,
   Button,
+  ScrollArea,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
   Tabs,
@@ -8,10 +9,12 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import { ScrollArea } from "@dust-tt/sparkle";
 import React, { useContext, useState } from "react";
 
+import type { AgentConfigurationType } from "@app/types";
+
 import { AgentBuilderContext } from "./AgentBuilderContext";
+import { AgentBuilderPerformance } from "./AgentBuilderPerformance";
 import { AgentBuilderPreview } from "./AgentBuilderPreview";
 
 type AgentBuilderRightPanelTabType = "testing" | "performance";
@@ -103,9 +106,13 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
 
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
+  agentConfiguration?: AgentConfigurationType;
 }
 
-function ExpandedContent({ selectedTab }: ExpandedContentProps) {
+function ExpandedContent({
+  selectedTab,
+  agentConfiguration,
+}: ExpandedContentProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {selectedTab === "testing" && (
@@ -115,14 +122,20 @@ function ExpandedContent({ selectedTab }: ExpandedContentProps) {
       )}
       {selectedTab === "performance" && (
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-4">Performance</div>
+          <AgentBuilderPerformance agentConfiguration={agentConfiguration} />
         </div>
       )}
     </div>
   );
 }
 
-export function AgentBuilderRightPanel() {
+interface AgentBuilderRightPanelProps {
+  agentConfiguration?: AgentConfigurationType;
+}
+
+export function AgentBuilderRightPanel({
+  agentConfiguration,
+}: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     useContext(AgentBuilderContext);
   const [selectedTab, setSelectedTab] =
@@ -150,7 +163,10 @@ export function AgentBuilderRightPanel() {
         onTabChange={handleTabChange}
       />
       {isPreviewPanelOpen ? (
-        <ExpandedContent selectedTab={selectedTab} />
+        <ExpandedContent
+          selectedTab={selectedTab}
+          agentConfiguration={agentConfiguration}
+        />
       ) : (
         <CollapsedTabs onTabSelect={handleTabSelect} />
       )}
