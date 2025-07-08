@@ -15,6 +15,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import React, { useEffect, useMemo, useState } from "react";
 
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
+import { TextAutoCompleteExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/TextAutoCompleteExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import { InstructionDiffExtension } from "@app/components/assistant_builder/instructions/InstructionDiffExtension";
 import { InstructionHistory } from "@app/components/assistant_builder/instructions/InstructionsHistory";
@@ -87,6 +88,9 @@ export function InstructionScreen({
       InstructionDiffExtension,
       CharacterCount.configure({
         limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+      }),
+      TextAutoCompleteExtension.configure({
+        owner,
       }),
     ],
     editable: !doTypewriterEffect,
@@ -220,6 +224,20 @@ export function InstructionScreen({
       }
     }
   }, [isInstructionDiffMode, compareVersion, editor]);
+
+  // Update the autocomplete extension storage with current builder state
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const extension = editor.extensionManager.extensions.find(
+      (ext) => ext.name === "suggestion"
+    );
+    if (extension) {
+      extension.storage.agentFormData = builderState;
+    }
+  }, [editor, builderState]);
 
   const dateFormatter = new Intl.DateTimeFormat("en-US", {
     year: "numeric",

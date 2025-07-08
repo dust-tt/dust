@@ -56,6 +56,9 @@ async function handler(
         case "instructions":
           model = getLargeWhitelistedModel(owner);
           break;
+        case "autocompletion":
+          model = getLargeWhitelistedModel(owner);
+          break;
         case "name":
         case "description":
         case "emoji":
