@@ -1290,3 +1290,264 @@ export const getUserDetails = async (
   const data = await makeGraphQLRequest(accessToken, query, { userId });
   return data.users?.[0] || null;
 };
+
+export const moveItemToBoard = async (
+  accessToken: string,
+  itemId: string,
+  targetBoardId: string,
+  targetGroupId: string,
+  columnsMapping?: Array<{ source: string; target: string }>
+): Promise<MondayItem> => {
+  const query = `
+    mutation MoveItemToBoard($itemId: ID!, $boardId: ID!, $groupId: String!, $columnsMapping: [ColumnMappingInput!]) {
+      move_item_to_board(
+        item_id: $itemId
+        board_id: $boardId
+        group_id: $groupId
+        columns_mapping: $columnsMapping
+      ) {
+        id
+        name
+        state
+        board {
+          id
+          name
+        }
+        group {
+          id
+          title
+        }
+        column_values {
+          id
+          column {
+            title
+          }
+          type
+          value
+          text
+        }
+        created_at
+        updated_at
+        creator {
+          id
+          name
+          email
+        }
+      }
+    }
+  `;
+
+  const variables = {
+    itemId,
+    boardId: targetBoardId,
+    groupId: targetGroupId,
+    columnsMapping,
+  };
+
+  const data = await makeGraphQLRequest(accessToken, query, variables);
+  return data.move_item_to_board;
+};
+
+export const createMultipleItems = async (
+  accessToken: string,
+  items: Array<{
+    boardId: string;
+    itemName: string;
+    groupId?: string;
+    columnValues?: Record<string, any>;
+  }>
+): Promise<MondayItem[]> => {
+  const mutations = items
+    .map(
+      (item, index) => `
+      item${index}: create_item(
+        board_id: ${item.boardId}
+        item_name: "${item.itemName}"
+        ${item.groupId ? `group_id: "${item.groupId}"` : ""}
+        ${
+          item.columnValues
+            ? `column_values: ${JSON.stringify(
+                JSON.stringify(item.columnValues)
+              )}`
+            : ""
+        }
+      ) {
+        id
+        name
+        state
+        board {
+          id
+          name
+        }
+        group {
+          id
+          title
+        }
+        column_values {
+          id
+          column {
+            title
+          }
+          type
+          value
+          text
+        }
+        created_at
+        updated_at
+        creator {
+          id
+          name
+          email
+        }
+      }
+    `
+    )
+    .join("\n");
+
+  const query = `
+    mutation CreateMultipleItems {
+      ${mutations}
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query);
+  return Object.values(data);
+};
+
+export interface ActivityLog {
+  id: string;
+  event: string;
+  data: any;
+  user: {
+    id: string;
+    name: string;
+  };
+  created_at: string;
+}
+
+export const getActivityLogs = async (
+  accessToken: string,
+  boardId: string,
+  from?: Date,
+  to?: Date,
+  limit: number = 50
+): Promise<ActivityLog[]> => {
+  const query = `
+    query GetActivityLogs($boardId: ID!, $limit: Int, $from: String, $to: String) {
+      boards(ids: [$boardId]) {
+        activity_logs(limit: $limit, from: $from, to: $to) {
+          id
+          event
+          data
+          user {
+            id
+            name
+          }
+          created_at
+        }
+      }
+    }
+  `;
+
+  const variables = {
+    boardId,
+    limit,
+    from: from?.toISOString(),
+    to: to?.toISOString(),
+  };
+
+  const data = await makeGraphQLRequest(accessToken, query, variables);
+  return data.boards?.[0]?.activity_logs || [];
+};
+
+export interface BoardAnalytics {
+  boardId: string;
+  boardName: string;
+  totalItems: number;
+  itemsByStatus: Record<string, number>;
+  itemsByGroup: Record<string, number>;
+  itemsByAssignee: Record<string, number>;
+  completionRate: number;
+  averageTimeToComplete?: number;
+}
+
+export const getBoardAnalytics = async (
+  accessToken: string,
+  boardId: string
+): Promise<BoardAnalytics> => {
+  const query = `
+    query GetBoardAnalytics($boardId: ID!) {
+      boards(ids: [$boardId]) {
+        id
+        name
+        items_page(limit: 500) {
+          items {
+            id
+            name
+            state
+            group {
+              id
+              title
+            }
+            column_values {
+              id
+              column {
+                id
+                title
+                type
+              }
+              type
+              value
+              text
+            }
+            created_at
+            updated_at
+          }
+        }
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, { boardId });
+  const board = data.boards?.[0];
+  
+  if (!board) {
+    throw new Error("Board not found");
+  }
+
+  const items = board.items_page?.items || [];
+  
+  const analytics: BoardAnalytics = {
+    boardId: board.id,
+    boardName: board.name,
+    totalItems: items.length,
+    itemsByStatus: {},
+    itemsByGroup: {},
+    itemsByAssignee: {},
+    completionRate: 0,
+  };
+
+  let completedCount = 0;
+
+  items.forEach((item: any) => {
+    const groupTitle = item.group?.title || "No Group";
+    analytics.itemsByGroup[groupTitle] = (analytics.itemsByGroup[groupTitle] || 0) + 1;
+
+    const statusColumn = item.column_values?.find((cv: any) => cv.type === "status");
+    if (statusColumn?.text) {
+      analytics.itemsByStatus[statusColumn.text] = (analytics.itemsByStatus[statusColumn.text] || 0) + 1;
+      if (statusColumn.text.toLowerCase() === "done" || statusColumn.text.toLowerCase() === "complete") {
+        completedCount++;
+      }
+    }
+
+    const peopleColumn = item.column_values?.find((cv: any) => cv.type === "people");
+    if (peopleColumn?.text) {
+      analytics.itemsByAssignee[peopleColumn.text] = (analytics.itemsByAssignee[peopleColumn.text] || 0) + 1;
+    }
+  });
+
+  analytics.completionRate = items.length > 0 ? (completedCount / items.length) * 100 : 0;
+
+  return analytics;
+};

@@ -7,12 +7,15 @@ import {
   createColumn,
   createGroup,
   createItem,
+  createMultipleItems,
   createSubitem,
   createUpdate,
   deleteGroup,
   deleteItem,
   duplicateGroup,
   findUserByName,
+  getActivityLogs,
+  getBoardAnalytics,
   getBoardItems,
   getBoards,
   getBoardValues,
@@ -23,6 +26,7 @@ import {
   getItemsByColumnValue,
   getSubitemValues,
   getUserDetails,
+  moveItemToBoard,
   searchItems,
   updateItem,
   updateItemName,
@@ -59,10 +63,21 @@ const createServer = (): McpServer => {
 - **get_board_items**: Retrieves items from a specific board
 - **search_items**: Search for items with advanced filtering options
 - **create_item**: Creates new items in boards
+- **create_multiple_items**: Bulk create items for importing leads/opportunities
 - **update_item**: Updates existing items
 - **create_update**: Adds comments/updates to items
 - **create_board**: Creates new boards
+- **move_item_to_board**: Move items between boards (e.g., lead to opportunity conversion)
+- **get_activity_logs**: Track board activity and pipeline velocity
+- **get_board_analytics**: Get analytics for CRM reporting
 - And many more tools for comprehensive Monday.com management
+
+# CRM Workflow Examples:
+1. Create separate boards for Leads, Opportunities, and Accounts
+2. Use **move_item_to_board** to convert leads to opportunities
+3. Use **get_board_analytics** for pipeline reporting
+4. Use **create_multiple_items** for bulk imports
+5. Track activity with **get_activity_logs** for velocity metrics
 
 # General Workflow:
 1. Use **get_boards** to see available boards
@@ -793,6 +808,137 @@ All operations require proper Monday.com authentication and permissions.`,
       return makeMCPToolJSONSuccess({
         message: "User details retrieved successfully",
         result: user,
+      });
+    }
+  );
+
+  server.tool(
+    "move_item_to_board",
+    "Moves an item from one board to another. Useful for converting leads to opportunities in CRM workflows.",
+    {
+      itemId: z.string().describe("The item ID to move"),
+      targetBoardId: z.string().describe("The target board ID to move the item to"),
+      targetGroupId: z.string().describe("The target group ID in the destination board"),
+      columnsMapping: z
+        .array(
+          z.object({
+            source: z.string().describe("Source column ID"),
+            target: z.string().describe("Target column ID"),
+          })
+        )
+        .optional()
+        .describe("Optional mapping of column IDs between source and target boards"),
+    },
+    async ({ itemId, targetBoardId, targetGroupId, columnsMapping }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+
+      if (!accessToken) {
+        throw new Error("No Monday.com access token found");
+      }
+
+      const item = await moveItemToBoard(
+        accessToken,
+        itemId,
+        targetBoardId,
+        targetGroupId,
+        columnsMapping
+      );
+      return makeMCPToolJSONSuccess({
+        message: "Item moved to board successfully",
+        result: item,
+      });
+    }
+  );
+
+  server.tool(
+    "create_multiple_items",
+    "Creates multiple items in one or more boards in a single operation. Useful for bulk importing leads or opportunities.",
+    {
+      items: z
+        .array(
+          z.object({
+            boardId: z.string().describe("The board ID to create the item in"),
+            itemName: z.string().describe("The name of the new item"),
+            groupId: z.string().optional().describe("Optional group ID to add the item to"),
+            columnValues: z
+              .record(z.any())
+              .optional()
+              .describe("Optional column values as a JSON object"),
+          })
+        )
+        .describe("Array of items to create"),
+    },
+    async ({ items }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+
+      if (!accessToken) {
+        throw new Error("No Monday.com access token found");
+      }
+
+      const createdItems = await createMultipleItems(accessToken, items);
+      return makeMCPToolJSONSuccess({
+        message: `Created ${createdItems.length} items successfully`,
+        result: createdItems,
+      });
+    }
+  );
+
+  server.tool(
+    "get_activity_logs",
+    "Retrieves activity logs for a board. Useful for tracking pipeline velocity and user actions.",
+    {
+      boardId: z.string().describe("The board ID to retrieve activity logs for"),
+      from: z
+        .string()
+        .optional()
+        .describe("Filter logs from this date (ISO 8601 format)"),
+      to: z
+        .string()
+        .optional()
+        .describe("Filter logs to this date (ISO 8601 format)"),
+      limit: z
+        .number()
+        .optional()
+        .describe("Maximum number of logs to return (default: 50)"),
+    },
+    async ({ boardId, from, to, limit }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+
+      if (!accessToken) {
+        throw new Error("No Monday.com access token found");
+      }
+
+      const logs = await getActivityLogs(
+        accessToken,
+        boardId,
+        from ? new Date(from) : undefined,
+        to ? new Date(to) : undefined,
+        limit
+      );
+      return makeMCPToolJSONSuccess({
+        message: "Activity logs retrieved successfully",
+        result: logs,
+      });
+    }
+  );
+
+  server.tool(
+    "get_board_analytics",
+    "Retrieves analytics and statistics for a board including item counts by status, group, and assignee. Useful for CRM reporting.",
+    {
+      boardId: z.string().describe("The board ID to retrieve analytics for"),
+    },
+    async ({ boardId }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+
+      if (!accessToken) {
+        throw new Error("No Monday.com access token found");
+      }
+
+      const analytics = await getBoardAnalytics(accessToken, boardId);
+      return makeMCPToolJSONSuccess({
+        message: "Board analytics retrieved successfully",
+        result: analytics,
       });
     }
   );
