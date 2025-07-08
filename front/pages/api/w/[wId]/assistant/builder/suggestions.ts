@@ -87,12 +87,16 @@ async function handler(
       );
       config.CREATE_SUGGESTIONS.provider_id = model.providerId;
       config.CREATE_SUGGESTIONS.model_id = model.modelId;
+      const additionalConfiguration = {
+        minSuggestionCount: 8,
+        maxSuggestionCount: 16,
+      };
 
       const suggestionsResponse = await runAction(
         auth,
         `assistant-builder-${suggestionsType}-suggestions`,
         config,
-        [suggestionsInputs]
+        [{ ...suggestionsInputs, ...additionalConfiguration }]
       );
 
       if (suggestionsResponse.isErr() || !suggestionsResponse.value.results) {
