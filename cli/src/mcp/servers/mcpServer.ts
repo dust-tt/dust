@@ -5,9 +5,9 @@ import type {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { getDustClient } from "../utils/dustClient.js";
-import { normalizeError } from "../utils/errors.js";
-import { ExternalMcpService } from "./externalMcpService.js";
+import { getDustClient } from "../../utils/dustClient.js";
+import { normalizeError } from "../../utils/errors.js";
+import { ExternalMcpService } from "../types/externalMcpService.js";
 
 // Define AgentConfiguration type locally or import if shared
 type AgentConfiguration =
@@ -100,8 +100,7 @@ export class AgentsMcpService extends ExternalMcpService {
             };
           }
 
-          const { conversation, message: createdUserMessage } =
-            convRes.value;
+          const { conversation, message: createdUserMessage } = convRes.value;
           if (!createdUserMessage) {
             const errorMessage = `Failed to create user message`;
             console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
@@ -131,18 +130,14 @@ export class AgentsMcpService extends ExternalMcpService {
                 finalContent += event.text;
               } else if (event.type === "agent_error") {
                 const errorMessage = `Agent error: ${event.error.message}`;
-                console.error(
-                  `[MCP Tool Error ${toolName}] ${errorMessage}`
-                );
+                console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
                 return {
                   content: [{ type: "text", text: errorMessage }],
                   isError: true,
                 };
               } else if (event.type === "user_message_error") {
                 const errorMessage = `User message error: ${event.error.message}`;
-                console.error(
-                  `[MCP Tool Error ${toolName}] ${errorMessage}`
-                );
+                console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
                 return {
                   content: [{ type: "text", text: errorMessage }],
                   isError: true,
@@ -162,9 +157,7 @@ export class AgentsMcpService extends ExternalMcpService {
             };
           }
 
-          console.error(
-            `[MCP Tool Success ${toolName}] Execution finished.`
-          );
+          console.error(`[MCP Tool Success ${toolName}] Execution finished.`);
           return { content: [{ type: "text", text: finalContent.trim() }] };
         }
       );
