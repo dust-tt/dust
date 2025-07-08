@@ -15,7 +15,7 @@ if (process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN) {
   datadogLogs.init({
     clientToken: process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN,
     env: process.env.NODE_ENV === "production" ? "prod" : "dev",
-    service: "front",
+    service: process.env.NEXT_PUBLIC_DATADOG_SERVICE,
     site: "datadoghq.eu",
     forwardErrorsToLogs: true,
     sessionSampleRate: 100,
