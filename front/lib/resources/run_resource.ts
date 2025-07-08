@@ -1,6 +1,4 @@
 import assert from "assert";
-import { subDays } from "date-fns";
-import { isNumber } from "lodash";
 import type {
   Attributes,
   CreationAttributes,
@@ -19,10 +17,7 @@ import {
 } from "@app/lib/resources/storage/models/runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import {
-  getRunExecutionsDeletionCutoffDate,
-  RUN_EXECUTIONS_RETENTION_DAYS_THRESHOLD,
-} from "@app/temporal/hard_delete/utils";
+import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 import type {
   LightWorkspaceType,
   ModelId,
@@ -36,12 +31,7 @@ type RunResourceWithApp = RunResource & { app: AppModel };
 
 export type FetchRunOptions<T extends boolean> = {
   includeApp?: T;
-  /**
-   * Runs are not deleted from front but may no longer exist in core.
-   * Apply the cutoff date at runtime.
-   * Default to 30 days, provide 'false' if you want to remove that filter
-   */
-  cutoffDays?: number | false;
+  since?: Date;
   order?: [string, "ASC" | "DESC"][];
   limit?: number;
   offset?: number;
@@ -86,17 +76,10 @@ export class RunResource extends BaseResource<RunModel> {
       result.offset = options.offset;
     }
 
-    // We have a default cutoff date if not provided
-    if (options?.cutoffDays == null) {
+    if (options?.since) {
       result.where = {
         createdAt: {
-          [Op.gt]: subDays(new Date(), RUN_EXECUTIONS_RETENTION_DAYS_THRESHOLD),
-        },
-      };
-    } else if (options.cutoffDays != null && isNumber(options.cutoffDays)) {
-      result.where = {
-        createdAt: {
-          [Op.gt]: subDays(new Date(), options.cutoffDays),
+          [Op.gt]: options.since,
         },
       };
     }
@@ -134,7 +117,7 @@ export class RunResource extends BaseResource<RunModel> {
 
   static async countByWorkspace(
     workspace: LightWorkspaceType,
-    options: Pick<FetchRunOptions<boolean>, "cutoffDays">
+    options?: Pick<FetchRunOptions<boolean>, "since">
   ) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Disabled error for unused includeDeleted
     const { where } = this.getOptions(options);
