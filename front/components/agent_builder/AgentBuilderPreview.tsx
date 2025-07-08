@@ -4,14 +4,12 @@ import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  usePreviewAgent,
-  useTryAgentCore,
-} from "@app/components/agent_builder/hooks/useAgentPreview";
+import { usePreviewAgent, useTryAgentCore } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { useUser } from "@app/lib/swr/user";
 
 interface EmptyStateProps {
@@ -50,6 +48,7 @@ function LoadingState({ message }: LoadingStateProps) {
 export function AgentBuilderPreview() {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
+  const { isMCPServerViewsLoading } = useMCPServerViewsContext();
 
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
@@ -58,8 +57,12 @@ export function AgentBuilderPreview() {
     name: "agentSettings.name",
   });
 
-  const { draftAgent, isSavingDraftAgent, createDraftAgent } =
-    usePreviewAgent();
+  const {
+    draftAgent,
+    isSavingDraftAgent,
+    draftCreationFailed,
+    createDraftAgent,
+  } = usePreviewAgent();
   const { conversation, stickyMentions, setStickyMentions, handleSubmit } =
     useTryAgentCore({
       owner,
@@ -80,11 +83,15 @@ export function AgentBuilderPreview() {
       );
     }
 
-    if (isSavingDraftAgent && !draftAgent) {
+    if (
+      isMCPServerViewsLoading ||
+      isSavingDraftAgent ||
+      (!draftAgent && !draftCreationFailed)
+    ) {
       return <LoadingState message="Preparing your agent..." />;
     }
 
-    if (!draftAgent && !isSavingDraftAgent) {
+    if (!draftAgent && draftCreationFailed) {
       return (
         <EmptyState
           message="Unable to create preview"

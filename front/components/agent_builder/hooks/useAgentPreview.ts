@@ -181,6 +181,7 @@ export function usePreviewAgent() {
   return {
     draftAgent,
     isSavingDraftAgent,
+    draftCreationFailed,
     createDraftAgent,
   };
 }
