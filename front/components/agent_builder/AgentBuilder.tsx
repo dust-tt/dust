@@ -10,28 +10,34 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
+import {
+  getDefaultAgentFormData,
+  transformAgentConfigurationToFormData,
+} from "@app/components/agent_builder/transformAgentConfiguration";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types";
+import type { AgentConfigurationType, UserType } from "@app/types";
 import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
-  GPT_4O_MODEL_CONFIG,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
 interface AgentBuilderProps {
   agentConfiguration?: AgentConfigurationType;
+  agentEditors?: UserType[];
 }
 
 export default function AgentBuilder({
   agentConfiguration,
+  agentEditors,
 }: AgentBuilderProps) {
   const { owner, user, supportedDataSourceViews } = useAgentBuilderContext();
-  const { mcpServerViews } = useMCPServerViewsContext();
+  const { mcpServerViews, isMCPServerViewsLoading } =
+    useMCPServerViewsContext();
   const router = useRouter();
   const sendNotification = useSendNotification();
 
@@ -44,31 +50,20 @@ export default function AgentBuilder({
     ? Math.min(10, EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT)
     : Math.min(10, MAX_STEPS_USE_PER_RUN_LIMIT);
 
+  const getInitialFormData = (): AgentBuilderFormData => {
+    if (agentConfiguration) {
+      return transformAgentConfigurationToFormData(
+        agentConfiguration,
+        user,
+        agentEditors || []
+      );
+    }
+    return getDefaultAgentFormData(user, defaultMaxSteps);
+  };
+
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
-    defaultValues: {
-      agentSettings: {
-        name: "",
-        description: "",
-        pictureUrl: "",
-        scope: "hidden",
-        editors: [user],
-        slackProvider: null,
-        slackChannels: [],
-        tags: [],
-      },
-      instructions: "",
-      generationSettings: {
-        modelSettings: {
-          modelId: GPT_4O_MODEL_CONFIG.modelId,
-          providerId: "openai",
-        },
-        temperature: 0.7,
-        reasoningEffort: GPT_4O_MODEL_CONFIG.defaultReasoningEffort,
-      },
-      actions: [],
-      maxStepsPerRun: defaultMaxSteps,
-    },
+    defaultValues: getInitialFormData(),
   });
 
   useEffect(() => {
@@ -94,13 +89,16 @@ export default function AgentBuilder({
         owner,
         mcpServerViews,
         isDraft: false,
+        agentConfigurationId: agentConfiguration?.sId || null,
       });
 
       if (result.isOk()) {
         await router.push(`/w/${owner.sId}/builder/assistants`);
       } else {
         sendNotification({
-          title: "Error creating agent",
+          title: agentConfiguration
+            ? "Error updating agent"
+            : "Error creating agent",
           description: result.error.message,
           type: "error",
         });
@@ -119,12 +117,17 @@ export default function AgentBuilder({
       <AgentBuilderLayout
         leftPanel={
           <AgentBuilderLeftPanel
-            title="Create new agent"
+            title={
+              agentConfiguration
+                ? `Edit agent ${agentConfiguration.name}`
+                : "Create new agent"
+            }
             onCancel={async () => {
               await appLayoutBack(owner, router);
             }}
             onSave={handleSave}
             isSaving={form.formState.isSubmitting}
+            isDisabled={isMCPServerViewsLoading}
           />
         }
         rightPanel={

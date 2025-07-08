@@ -1,17 +1,29 @@
-import type { AgentBuilderAction, AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderAction,
+  AgentBuilderFormData,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceViewSelectionConfigurations, UserType } from "@app/types";
+import type {
+  DataSourceViewSelectionConfigurations,
+  UserType,
+} from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@app/types/assistant/agent";
 import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/assistant";
-import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types/data_source_view";
+import type {
+  DataSourceViewContentNode,
+  DataSourceViewType,
+} from "@app/types/data_source_view";
 
 // Type for the supported action types that can be transformed from MCP server configurations
-type SupportedAgentBuilderActionType = "EXTRACT_DATA" | "SEARCH" | "INCLUDE_DATA";
+type SupportedAgentBuilderActionType =
+  | "EXTRACT_DATA"
+  | "SEARCH"
+  | "INCLUDE_DATA";
 
 export function transformAgentConfigurationToFormData(
   agentConfiguration: AgentConfigurationType,
@@ -52,7 +64,10 @@ export function transformAgentConfigurationToFormData(
 }
 
 // Mapping of MCP server names to form action types
-const MCP_SERVER_TO_ACTION_TYPE_MAP: Record<string, SupportedAgentBuilderActionType> = {
+const MCP_SERVER_TO_ACTION_TYPE_MAP: Record<
+  string,
+  SupportedAgentBuilderActionType
+> = {
   extract_data: "EXTRACT_DATA",
   search: "SEARCH",
   include_data: "INCLUDE_DATA",
@@ -160,9 +175,9 @@ function transformDataSourceConfigurations(
         sId: ds.dataSourceViewId,
       } as DataSourceViewType,
       selectedResources:
-        ds.filter?.parents?.in?.map((internalId: string) => ({
+        (ds.filter?.parents?.in?.map((internalId: string) => ({
           internalId,
-        })) as DataSourceViewContentNode[] || [],
+        })) as DataSourceViewContentNode[]) || [],
       isSelectAll: !ds.filter?.parents,
       tagsFilter: ds.filter?.tags || null,
     };

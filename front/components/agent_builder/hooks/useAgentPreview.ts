@@ -27,7 +27,8 @@ import { Err, Ok } from "@app/types";
 
 export function usePreviewAgent() {
   const { owner } = useAgentBuilderContext();
-  const { mcpServerViews } = useMCPServerViewsContext();
+  const { mcpServerViews, isMCPServerViewsLoading } =
+    useMCPServerViewsContext();
 
   const form = useFormContext<AgentBuilderFormData>();
   const formData = form.watch();
@@ -59,6 +60,12 @@ export function usePreviewAgent() {
     async (
       overrideName?: string
     ): Promise<LightAgentConfigurationType | null> => {
+      // Don't create draft if MCP server views are still loading
+      if (isMCPServerViewsLoading) {
+        console.log("Skipping draft creation - MCP server views still loading");
+        return null;
+      }
+
       setIsSavingDraftAgent(true);
       setDraftCreationFailed(false);
 
@@ -67,12 +74,7 @@ export function usePreviewAgent() {
           ...formData,
           agentSettings: {
             ...formData.agentSettings,
-            name: overrideName || formData.agentSettings.name || "Draft Agent",
-            description:
-              formData.agentSettings.description || "Draft Agent for Testing",
-            pictureUrl:
-              formData.agentSettings.pictureUrl ||
-              "https://dust.tt/static/assistants/logo.svg",
+            name: overrideName || formData.agentSettings.name,
           },
         },
         owner,
@@ -96,7 +98,7 @@ export function usePreviewAgent() {
       setIsSavingDraftAgent(false);
       return aRes.value;
     },
-    [owner, mcpServerViews, sendNotification, formData]
+    [owner, mcpServerViews, sendNotification, formData, isMCPServerViewsLoading]
   );
 
   const createDraftAgent =
@@ -122,7 +124,8 @@ export function usePreviewAgent() {
         hasContent &&
         !draftAgent &&
         !isSavingDraftAgent &&
-        !draftCreationFailed
+        !draftCreationFailed &&
+        !isMCPServerViewsLoading // Don't create draft while MCP server views are loading
       ) {
         await createDraftAgent();
       } else if (!hasContent) {
@@ -138,6 +141,7 @@ export function usePreviewAgent() {
     isSavingDraftAgent,
     draftCreationFailed,
     createDraftAgent,
+    isMCPServerViewsLoading, // Add loading state to dependencies
   ]);
 
   useEffect(() => {
@@ -151,8 +155,13 @@ export function usePreviewAgent() {
     const previousName = lastDebouncedNameRef.current;
     const currentName = debouncedAgentName;
 
-    // Only trigger debounced creation if name changed and we have content
-    if (previousName !== currentName && currentName?.trim() && hasContent) {
+    // Only trigger debounced creation if name changed and we have content and MCP server views are loaded
+    if (
+      previousName !== currentName &&
+      currentName?.trim() &&
+      hasContent &&
+      !isMCPServerViewsLoading
+    ) {
       const createDraftWithDebouncedName = async () => {
         const result = await createDraftAgentWithName(currentName);
         if (result) {
@@ -162,7 +171,12 @@ export function usePreviewAgent() {
 
       void createDraftWithDebouncedName();
     }
-  }, [debouncedAgentName, hasContent, createDraftAgentWithName]);
+  }, [
+    debouncedAgentName,
+    hasContent,
+    createDraftAgentWithName,
+    isMCPServerViewsLoading,
+  ]);
 
   return {
     draftAgent,
@@ -222,12 +236,11 @@ export function useTryAgentCore({
         setStickyMentions([{ configurationId: currentAgent.sId }]);
 
         // Update mentions in the message data to use the newly created draft agent
-        const updatedMentions = mentions.map((mention) =>
+        mentions = mentions.map((mention) =>
           mention.configurationId === agent?.sId && currentAgent?.sId
             ? { ...mention, configurationId: currentAgent.sId }
             : mention
         );
-        mentions = updatedMentions;
       } catch (error) {
         return new Err({
           code: "internal_error",

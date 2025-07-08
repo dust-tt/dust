@@ -11,6 +11,7 @@ interface AgentBuilderLeftPanelProps {
   onSave?: () => void;
   onCancel: () => void;
   isSaving?: boolean;
+  isDisabled?: boolean;
 }
 
 export function AgentBuilderLeftPanel({
@@ -18,6 +19,7 @@ export function AgentBuilderLeftPanel({
   onSave,
   onCancel,
   isSaving,
+  isDisabled,
 }: AgentBuilderLeftPanelProps) {
   const confirm = React.useContext(ConfirmContext);
 
@@ -64,6 +66,7 @@ export function AgentBuilderLeftPanel({
             onCancel={handleCancel}
             onSave={onSave}
             isSaving={isSaving}
+            isDisabled={isDisabled}
           />
         }
       />
