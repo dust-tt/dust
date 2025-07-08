@@ -20,17 +20,17 @@ type Provider = {
 const providers: Record<string, Provider> = {
   workos: {
     name: "workos",
-    authorizeUri: "api.workos.com/user_management/authorize",
-    authenticateUri: "api.workos.com/user_management/authenticate",
-    logoutUri: "api.workos.com/user_management/sessions/logout",
-    clientId: config.getWorkOSClientId(),
+    authorizeUri: config.getWorkOSIssuerURL() + "/oauth2/authorize",
+    authenticateUri: config.getWorkOSIssuerURL() + "/oauth2/token",
+    logoutUri: config.getWorkOSIssuerURL() + "/oauth2/sessions/logout",
+    clientId: config.getWorkOSExtensionClientId(),
     scopes: "openid profile email",
   },
   auth0: {
     name: "auth0",
-    authorizeUri: config.getAuth0TenantUrl() + "/authorize",
-    authenticateUri: config.getAuth0TenantUrl() + "/oauth/token",
-    logoutUri: config.getAuth0TenantUrl() + "/v2/logout",
+    authorizeUri: "https://" + config.getAuth0TenantUrl() + "/authorize",
+    authenticateUri: "https://" + config.getAuth0TenantUrl() + "/oauth/token",
+    logoutUri: "https://" + config.getAuth0TenantUrl() + "/v2/logout",
     clientId: config.getAuth0ExtensionApplicationId(),
     scopes:
       "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file",
@@ -111,6 +111,11 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
     scope: provider.scopes,
   };
 
+  // Default to extension client id if not provided, otherwise use the client id from the query
+  if (query.client_id) {
+    options.client_id = `${query.client_id}`;
+  }
+
   if (provider.name === "workos") {
     options.provider = "authkit";
 
@@ -153,14 +158,14 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
     }),
   });
 
-  const authorizeUrl = `https://${provider.authorizeUri}?${params}`;
+  const authorizeUrl = `${provider.authorizeUri}?${params}`;
   res.redirect(authorizeUrl);
 }
 
 async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   try {
     const provider = await getProvider(req.query, null);
-    const response = await fetch(`https://${provider.authenticateUri}`, {
+    const response = await fetch(`${provider.authenticateUri}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -168,8 +173,8 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
       },
       credentials: "include",
       body: new URLSearchParams({
-        ...req.body,
         client_id: provider.clientId,
+        ...req.body,
       }).toString(),
     });
     const data = await response.json();
@@ -184,9 +189,9 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
   const provider = await getProvider(query, null);
   const params = new URLSearchParams({
-    ...query,
     client_id: provider.clientId,
+    ...query,
   }).toString();
-  const logoutUrl = `https://${provider.logoutUri}?${params}`;
+  const logoutUrl = `${provider.logoutUri}?${params}`;
   res.redirect(logoutUrl);
 }
