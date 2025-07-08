@@ -63,7 +63,7 @@ const createServer = (): McpServer => {
         .string()
         .optional()
         .describe(
-          "Search query to filter spreadsheets by name (e.g., 'Budget', 'Sales Data')."
+          "The text to search for in file names. Uses Google Drive's 'contains' operator which is case-insensitive and performs prefix matching only. For example, searching 'hello' will match 'HelloWorld' but not 'WorldHello'."
         ),
       pageToken: z.string().optional().describe("Page token for pagination."),
       pageSize: z
