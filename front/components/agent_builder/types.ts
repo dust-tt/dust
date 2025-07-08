@@ -1,5 +1,4 @@
-import type { z } from "zod";
-import { z as zod } from "zod";
+import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { SupportedModel } from "@app/types";
@@ -149,22 +148,22 @@ export const BUILDER_FLOWS = [
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 // Zod validation schema for data source configuration - defines the contract/shape
-export const dataSourceConfigurationSchema = zod.object({
-  sId: zod.string().optional(),
-  workspaceId: zod.string(),
-  dataSourceViewId: zod.string().min(1, "DataSourceViewId cannot be empty"),
-  filter: zod.object({
-    parents: zod
+export const dataSourceConfigurationSchema = z.object({
+  sId: z.string().optional(),
+  workspaceId: z.string(),
+  dataSourceViewId: z.string().min(1, "DataSourceViewId cannot be empty"),
+  filter: z.object({
+    parents: z
       .object({
-        in: zod.array(zod.string()),
-        not: zod.array(zod.string()),
+        in: z.array(z.string()),
+        not: z.array(z.string()),
       })
       .nullable(),
-    tags: zod
+    tags: z
       .object({
-        in: zod.array(zod.string()),
-        not: zod.array(zod.string()),
-        mode: zod.enum(["custom", "auto"]),
+        in: z.array(z.string()),
+        not: z.array(z.string()),
+        mode: z.enum(["custom", "auto"]),
       })
       .nullable()
       .optional(),
