@@ -748,6 +748,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "extended_max_steps_per_run"
   | "google_ai_studio_experimental_models_feature"
   | "index_private_slack_channel"
+  | "jira_tool"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
