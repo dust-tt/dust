@@ -102,7 +102,12 @@ describe("MCPServerViewResource", () => {
         const { globalGroup, systemGroup } =
           await GroupFactory.defaults(workspace1);
         const user1 = await UserFactory.superUser();
-        await MembershipFactory.associate(workspace1, user1, "user");
+        await MembershipFactory.associate(
+          workspace1,
+          user1,
+          { role: "user" },
+          t
+        );
         await GroupSpaceFactory.associate(systemSpace1, systemGroup);
         await GroupSpaceFactory.associate(space1, globalGroup);
 

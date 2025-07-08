@@ -2,8 +2,6 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
-use cloud_storage::Object;
-use csv::Writer;
 use futures::future::try_join_all;
 use serde_json::Value;
 use std::collections::hash_map::DefaultHasher;
@@ -17,7 +15,6 @@ use tracing::info;
 
 use crate::data_sources::data_source::DocumentStatus;
 use crate::data_sources::node::{Node, NodeESDocument, NodeType, ProviderVisibility};
-use crate::databases::table::LocalTable;
 use crate::search_filter::Filterable;
 use crate::{
     blocks::block::BlockType,
@@ -26,7 +23,7 @@ use crate::{
     data_sources::data_source::{DataSource, DataSourceConfig, Document, DocumentVersion},
     data_sources::folder::Folder,
     databases::{
-        table::{get_table_unique_id, Row, Table},
+        table::{get_table_unique_id, Table},
         table_schema::TableSchema,
         transient_database::TransientDatabase,
     },
@@ -2948,13 +2945,13 @@ impl Store for PostgresStore {
         Ok(())
     }
 
-    async fn store_data_source_table_csv(
+    async fn set_data_source_table_migrated_to_csv(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
-        schema: &TableSchema,
-        rows: &Vec<Row>,
+        migrated_to_csv: bool,
+        timestamp: Option<i64>,
     ) -> Result<()> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -2975,101 +2972,29 @@ impl Store for PostgresStore {
             1 => r[0].get(0),
             _ => unreachable!(),
         };
-
-        let now = utils::now();
-
-        let field_names = schema
-            .columns()
-            .iter()
-            .map(|c| c.name.clone())
-            .collect::<Vec<_>>();
-
-        // Read all rows and upload to GCS
-        let mut wtr = Writer::from_writer(vec![]);
-        // Write the header row.
-        wtr.write_record(field_names.as_slice())?;
-        for row in rows {
-            wtr.write_record(row.to_csv_record(&field_names)?.as_slice())?;
-        }
-        let content_duration = utils::now() - now;
-        let now = utils::now();
-
-        let csv = wtr.into_inner()?;
-
-        Object::create(
-            &LocalTable::get_bucket()?,
-            csv,
-            &LocalTable::get_csv_storage_file_path(&project_id, &data_source_id, &table_id),
-            "text/csv",
-        )
-        .await?;
 
         // Update migration flag.
-        let stmt = c
-            .prepare(
-                "UPDATE tables SET migrated_to_csv = true WHERE data_source = $1 AND table_id = $2",
-            )
-            .await?;
-        c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
-
-        let upload_duration = utils::now() - now;
-
-        info!(
-            content_duration = content_duration,
-            upload_duration = upload_duration,
-            "CSV upload"
-        );
-
-        Ok(())
-    }
-
-    async fn delete_data_source_table_csv(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-    ) -> Result<()> {
-        let project_id = project.project_id();
-        let data_source_id = data_source_id.to_string();
-        let table_id = table_id.to_string();
-
-        let pool = self.pool.clone();
-        let c = pool.get().await?;
-
-        // Get the data source row id.
-        let stmt = c
-            .prepare(
-                "SELECT id FROM data_sources WHERE project = $1 AND data_source_id = $2 LIMIT 1",
-            )
-            .await?;
-        let r = c.query(&stmt, &[&project_id, &data_source_id]).await?;
-        let data_source_row_id: i64 = match r.len() {
-            0 => Err(anyhow!("Unknown DataSource: {}", data_source_id))?,
-            1 => r[0].get(0),
-            _ => unreachable!(),
-        };
-
-        // Remove from GCS.
-        match Object::delete(
-            LocalTable::get_bucket()?.as_str(),
-            &LocalTable::get_csv_storage_file_path(&project_id, &data_source_id, &table_id),
-        )
-        .await
-        {
-            Ok(_) => {
-                // Clear the migration flag.
+        match timestamp {
+            // If timestamp is provided, only update if it matches the existing timestamp,
+            // to prevent race conditions
+            Some(ts) => {
                 let stmt = c.prepare(
-                    "UPDATE tables SET migrated_to_csv = false WHERE data_source = $1 AND table_id = $2",
-                ).await?;
-                c.query(&stmt, &[&data_source_row_id, &table_id]).await?;
+                        "UPDATE tables SET migrated_to_csv = $1 WHERE data_source = $2 AND table_id = $3 AND timestamp = $4",
+                    ).await?;
+                c.query(
+                    &stmt,
+                    &[&migrated_to_csv, &data_source_row_id, &table_id, &ts],
+                )
+                .await?
             }
-            Err(e) => {
-                info!(
-                    "Error deleting CSV file from GCS: {}. It's safe to continue.",
-                    e.to_string()
-                );
+            None => {
+                let stmt = c.prepare(
+                        "UPDATE tables SET migrated_to_csv = $1 WHERE data_source = $2 AND table_id = $3",
+                    ).await?;
+                c.query(&stmt, &[&migrated_to_csv, &data_source_row_id, &table_id])
+                    .await?
             }
-        }
+        };
 
         Ok(())
     }

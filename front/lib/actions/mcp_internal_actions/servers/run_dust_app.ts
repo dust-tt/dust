@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getDustAppRunResultsFileTitle } from "@app/components/actions/dust_app_run/utils";
 import {
   generateCSVFileAndSnippet,
+  generateJSONFileAndSnippet,
   generatePlainTextFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
@@ -29,13 +30,19 @@ import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { AppResource } from "@app/lib/resources/app_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import type { BlockRunConfig, DatasetSchema } from "@app/types";
+import type {
+  BlockRunConfig,
+  ConversationType,
+  DatasetSchema,
+} from "@app/types";
 import type { SpecificationBlockType } from "@app/types";
 import {
   getHeaderFromGroupIds,
   getHeaderFromRole,
+  safeParseJSON,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 
@@ -134,7 +141,7 @@ async function prepareAppContext(
 async function processDustFileOutput(
   auth: Authenticator,
   sanitizedOutput: DustFileOutput,
-  conversation: any,
+  conversation: ConversationType,
   appName: string
 ): Promise<{ type: "resource"; resource: ToolGeneratedFileType }[]> {
   const content: { type: "resource"; resource: ToolGeneratedFileType }[] = [];
@@ -204,26 +211,47 @@ async function processDustFileOutput(
 
     delete sanitizedOutput.__dust_file;
   } else if (containsValidDocumentOutput(sanitizedOutput)) {
-    const fileTitle = getDustAppRunResultsFileTitle({
-      appName,
-      resultsFileContentType: "text/plain",
-    });
+    let fileTitle = "";
+    let file: FileResource | null = null;
 
-    const plainTextFile = await generatePlainTextFile(auth, {
-      title: fileTitle,
-      conversationId: conversation.sId,
-      content: sanitizedOutput.__dust_file?.content ?? "",
-    });
+    const jsonOutputRes = safeParseJSON(
+      sanitizedOutput.__dust_file?.content ?? ""
+    );
+    if (jsonOutputRes.isOk()) {
+      // If the output is a valid json object, generate a json file.
+      fileTitle = getDustAppRunResultsFileTitle({
+        appName,
+        resultsFileContentType: "application/json",
+      });
+      const { jsonFile } = await generateJSONFileAndSnippet(auth, {
+        title: fileTitle,
+        conversationId: conversation.sId,
+        data: jsonOutputRes.value,
+      });
+      file = jsonFile;
+    } else {
+      // If the output is not a valid json object, generate a text file.
+      const fileTitle = getDustAppRunResultsFileTitle({
+        appName,
+        resultsFileContentType: "text/plain",
+      });
+
+      file = await generatePlainTextFile(auth, {
+        title: fileTitle,
+        conversationId: conversation.sId,
+        content: sanitizedOutput.__dust_file?.content ?? "",
+      });
+    }
 
     content.push({
       type: "resource",
       resource: {
         mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-        uri: `file://${plainTextFile.id}`,
-        fileId: plainTextFile.sId,
+        uri: `file://${file.id}`,
+        fileId: file.sId,
         title: fileTitle,
-        contentType: plainTextFile.contentType,
-        snippet: plainTextFile.snippet,
+        contentType: file.contentType,
+        snippet: file.snippet,
         text: `Generated text file: ${fileTitle}`,
       },
     });
@@ -235,7 +263,7 @@ async function processDustFileOutput(
 }
 
 async function prepareParamsWithHistory(
-  params: any,
+  params: { [p: string]: any },
   schema: DatasetSchema | null,
   agentLoopRunContext: AgentLoopRunContextType,
   auth: Authenticator

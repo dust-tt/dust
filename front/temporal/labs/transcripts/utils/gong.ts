@@ -209,7 +209,8 @@ export async function retrieveGongTranscriptContent(
       localLogger.error(
         {
           fileId,
-          transcriptsConfigurationId: transcriptsConfiguration.sId,
+          transcriptsConfigurationId: transcriptsConfiguration.id,
+          transcriptsConfigurationSid: transcriptsConfiguration.sId,
         },
         "[retrieveGongTranscripts] User not found. Skipping."
       );
@@ -232,7 +233,8 @@ export async function retrieveGongTranscriptContent(
         localLogger.error(
           {
             fileId,
-            transcriptsConfigurationId: transcriptsConfiguration.sId,
+            transcriptsConfigurationId: transcriptsConfiguration.id,
+            transcriptsConfigurationSid: transcriptsConfiguration.sId,
             status: response.status,
           },
           "[retrieveGongTranscripts] Error fetching Gong users. Skipping."
@@ -264,7 +266,8 @@ export async function retrieveGongTranscriptContent(
       localLogger.error(
         {
           fileId,
-          transcriptsConfigurationId: transcriptsConfiguration.sId,
+          transcriptsConfigurationId: transcriptsConfiguration.id,
+          transcriptsConfigurationSid: transcriptsConfiguration.sId,
           userEmail: user.email,
         },
         "[retrieveGongTranscripts] Gong user not found. Skipping."
@@ -297,7 +300,8 @@ export async function retrieveGongTranscriptContent(
     localLogger.error(
       {
         fileId,
-        transcriptsConfigurationId: transcriptsConfiguration.sId,
+        transcriptsConfigurationId: transcriptsConfiguration.id,
+        transcriptsConfigurationSid: transcriptsConfiguration.sId,
       },
       "[retrieveGongTranscripts] Error fetching call from Gong. Skipping."
     );
@@ -317,7 +321,8 @@ export async function retrieveGongTranscriptContent(
     localLogger.error(
       {
         fileId,
-        transcriptsConfigurationId: transcriptsConfiguration.sId,
+        transcriptsConfigurationId: transcriptsConfiguration.id,
+        transcriptsConfigurationSid: transcriptsConfiguration.sId,
       },
       "[retrieveGongTranscripts] Call data not found from Gong. Skipping."
     );

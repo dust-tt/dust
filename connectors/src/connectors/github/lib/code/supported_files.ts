@@ -109,6 +109,7 @@ const FILENAME_WHITELIST = [
   "Dockerfile",
   "package.json",
   "Cargo.toml",
+  ".authors",
 ];
 
 const DIRECTORY_BLACKLIST = [

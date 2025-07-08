@@ -155,7 +155,10 @@ export function RunPluginDialog({
                 <div className="mb-4 mt-4">
                   <div className="mb-2 font-medium">Result:</div>
                   <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
-                    <Markdown content={result.value} />
+                    <Markdown
+                      content={result.value}
+                      textColor="text-slate-500 dark:text-foreground-night"
+                    />
                   </div>
                 </div>
               )}

@@ -58,6 +58,9 @@ import type { DataSourceConfig } from "@connectors/types";
 const SYNC_UNRESOLVED_TICKETS_CONFIG_KEY =
   "zendeskSyncUnresolvedTicketsEnabled";
 const HIDE_CUSTOMER_DETAILS_CONFIG_KEY = "zendeskHideCustomerDetails";
+export const RETENTION_PERIOD_CONFIG_KEY = "zendeskRetentionPeriodDays";
+const MAX_RETENTION_DAYS = 365;
+const DEFAULT_RETENTION_DAYS = 180;
 
 export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "zendesk";
@@ -91,7 +94,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       },
       {
         subdomain,
-        retentionPeriodDays: 180,
+        retentionPeriodDays: DEFAULT_RETENTION_DAYS,
         syncUnresolvedTickets: false,
         hideCustomerDetails: false,
       }
@@ -558,7 +561,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         if (result.isErr()) {
           return result;
         }
-        break;
+        return new Ok(undefined);
       }
       case HIDE_CUSTOMER_DETAILS_CONFIG_KEY: {
         await zendeskConfiguration.update({
@@ -569,14 +572,70 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         if (result.isErr()) {
           return result;
         }
-        break;
+        return new Ok(undefined);
+      }
+      case RETENTION_PERIOD_CONFIG_KEY: {
+        const retentionDays = parseInt(configValue.trim(), 10);
+        if (
+          configValue.trim() !== "" &&
+          (isNaN(retentionDays) || retentionDays < 0)
+        ) {
+          return new Err(
+            new Error(
+              "Retention period must be a non-negative integer or empty to use default."
+            )
+          );
+        }
+        if (retentionDays > MAX_RETENTION_DAYS) {
+          return new Err(
+            new Error(
+              `Retention period cannot exceed ${MAX_RETENTION_DAYS} days.`
+            )
+          );
+        }
+
+        const finalRetentionDays =
+          configValue.trim() === "" ? DEFAULT_RETENTION_DAYS : retentionDays;
+
+        logger.info(
+          { connectorId, retentionDays },
+          "[Zendesk] Setting retention period"
+        );
+
+        const { retentionPeriodDays: currentRetentionDays } =
+          zendeskConfiguration;
+
+        await zendeskConfiguration.update({
+          retentionPeriodDays: finalRetentionDays,
+        });
+
+        // Triggers a ticket sync for a Zendesk connector when retention period is increased.
+        if (finalRetentionDays > currentRetentionDays) {
+          const syncResult = await launchZendeskTicketReSyncWorkflow(
+            connector,
+            {
+              forceResync: false,
+            }
+          );
+
+          if (syncResult.isErr()) {
+            logger.error(
+              { connectorId, error: syncResult.error },
+              "[Zendesk] Failed to execute ticket sync"
+            );
+            return syncResult;
+          }
+          logger.info(
+            { connectorId, workflowId: syncResult.value },
+            "[Zendesk] Successfully executed ticket sync"
+          );
+        }
+        return new Ok(undefined);
       }
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
     }
-
-    return new Ok(undefined);
   }
 
   async getConfigurationKey({
@@ -604,6 +663,9 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       }
       case HIDE_CUSTOMER_DETAILS_CONFIG_KEY: {
         return new Ok(zendeskConfiguration.hideCustomerDetails.toString());
+      }
+      case RETENTION_PERIOD_CONFIG_KEY: {
+        return new Ok(zendeskConfiguration.retentionPeriodDays.toString());
       }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));

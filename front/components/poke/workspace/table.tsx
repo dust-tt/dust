@@ -15,6 +15,7 @@ import type {
   WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { asDisplayName } from "@app/types";
 
 export function WorkspaceInfoTable({
   owner,
@@ -121,6 +122,14 @@ export function WorkspaceInfoTable({
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
+              <PokeTableCell className="max-w-48">
+                WorkOS organization
+              </PokeTableCell>
+              <PokeTableCell>
+                {owner.workOSOrganizationId ?? "None"}
+              </PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
               <PokeTableCell>Directory Sync</PokeTableCell>
               <PokeTableCell>
                 <Chip
@@ -128,7 +137,7 @@ export function WorkspaceInfoTable({
                     dsyncStatus?.status || "not_configured"
                   )}
                 >
-                  {dsyncStatus?.status || "not_configured"}
+                  {asDisplayName(dsyncStatus?.status || "not_configured")}
                 </Chip>
               </PokeTableCell>
             </PokeTableRow>

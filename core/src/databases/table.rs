@@ -7,10 +7,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
+use crate::databases_store;
+use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
+use crate::databases_store::store::{DatabasesStoreStrategy, CURRENT_STRATEGY};
 use crate::search_stores::search_store::NodeItem;
 use crate::{
     data_sources::node::ProviderVisibility,
-    databases::{csv::UpsertQueueCSVContent, database::HasValue, table_schema::TableSchema},
+    databases::{csv::GoogleCloudStorageCSVContent, database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
     search_filter::{Filterable, SearchFilter},
@@ -262,7 +265,25 @@ impl Table {
             .await?;
 
             // Delete the table rows.
-            databases_store.delete_table_rows(&self).await?;
+            // If we are only using one of the stores, the right store is passed in the parameters.
+            // If we are using both, we need to do the operation on the other store manually.
+            match CURRENT_STRATEGY {
+                DatabasesStoreStrategy::PostgresOnly | DatabasesStoreStrategy::GCSOnly => {
+                    databases_store.delete_table_data(&self).await?;
+                }
+                DatabasesStoreStrategy::PostgresAndWriteToGCS => {
+                    databases_store.delete_table_data(&self).await?;
+
+                    let gcs_store = GoogleCloudStorageDatabasesStore::new();
+                    gcs_store.delete_table_data(&self).await?;
+                }
+                DatabasesStoreStrategy::GCSAndWriteToPostgres => {
+                    databases_store.delete_table_data(&self).await?;
+
+                    let postgres_store = databases_store::postgres::get_postgres_store().await?;
+                    postgres_store.delete_table_data(&self).await?;
+                }
+            }
         }
 
         store
@@ -342,21 +363,6 @@ pub struct LocalTable {
 }
 
 impl LocalTable {
-    pub fn get_bucket() -> Result<String> {
-        match std::env::var("DUST_TABLES_BUCKET") {
-            Ok(bucket) => Ok(bucket),
-            Err(_) => Err(anyhow!("DUST_TABLES_BUCKET is not set")),
-        }
-    }
-
-    pub fn get_csv_storage_file_path(
-        project_id: &i64,
-        data_source_id: &str,
-        table_id: &str,
-    ) -> String {
-        format!("project-{}/{}/{}.csv", project_id, data_source_id, table_id)
-    }
-
     pub fn from_table(table: Table) -> Result<LocalTable> {
         match table.table_type() {
             Ok(TableType::Local) => Ok(LocalTable { table }),
@@ -481,44 +487,96 @@ impl LocalTable {
         // be updated. This isn't too bad, because the merged schema is necessarily
         // backward-compatible with the previous one. The other way around would not be true -- old
         // schema doesn't necessarily work with the new rows. This is why we cannot `try_join_all`.
-        databases_store
-            .batch_upsert_table_rows(&self.table, &rows, truncate)
-            .await?;
-        info!(
-            duration = utils::now() - now,
-            table_id = self.table.table_id(),
-            rows_count = rows.len(),
-            "DSSTRUCTSTAT [upsert_rows] rows upsert"
-        );
 
-        now = utils::now();
-        // Upload the CSV file to the bucket.
-        if truncate {
-            store
-                .store_data_source_table_csv(
-                    &self.table.project,
-                    &self.table.data_source_id,
-                    &self.table.table_id,
-                    &new_table_schema,
-                    &rows,
-                )
-                .await?;
-        } else {
-            if self.table.migrated_to_csv() {
+        let mut upsert_rows_duration: u64 = 0;
+        let mut upsert_csv_duration: u64 = 0;
+        match CURRENT_STRATEGY {
+            DatabasesStoreStrategy::PostgresOnly => {
+                databases_store
+                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                    .await?;
+
+                upsert_rows_duration = utils::now() - now;
+            }
+            DatabasesStoreStrategy::GCSOnly => {
+                databases_store
+                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                    .await?;
+
                 store
-                    .delete_data_source_table_csv(
+                    .set_data_source_table_migrated_to_csv(
                         &self.table.project,
                         &self.table.data_source_id,
                         &self.table.table_id,
+                        true,
+                        None,
                     )
                     .await?;
+
+                upsert_csv_duration = utils::now() - now;
+            }
+            DatabasesStoreStrategy::PostgresAndWriteToGCS => {
+                databases_store
+                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                    .await?;
+
+                upsert_rows_duration = utils::now() - now;
+                now = utils::now();
+
+                // Do the same write operation on the GCS store.
+                // Only do it if we are truncating or if the table is already migrated to CSV.
+                if truncate || self.table.migrated_to_csv() {
+                    let gcs_store = GoogleCloudStorageDatabasesStore::new();
+                    gcs_store
+                        .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                        .await?;
+
+                    store
+                        .set_data_source_table_migrated_to_csv(
+                            &self.table.project,
+                            &self.table.data_source_id,
+                            &self.table.table_id,
+                            true,
+                            None,
+                        )
+                        .await?;
+                }
+                upsert_csv_duration = utils::now() - now;
+            }
+            DatabasesStoreStrategy::GCSAndWriteToPostgres => {
+                databases_store
+                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                    .await?;
+
+                store
+                    .set_data_source_table_migrated_to_csv(
+                        &self.table.project,
+                        &self.table.data_source_id,
+                        &self.table.table_id,
+                        true,
+                        None,
+                    )
+                    .await?;
+
+                upsert_csv_duration = utils::now() - now;
+                now = utils::now();
+
+                let postgres_store = databases_store::postgres::get_postgres_store().await?;
+                postgres_store
+                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                    .await?;
+
+                upsert_rows_duration = utils::now() - now;
             }
         }
-
         info!(
-            duration = utils::now() - now,
+            strategy = format!("{:?}", CURRENT_STRATEGY),
+            duration = upsert_rows_duration + upsert_csv_duration,
             table_id = self.table.table_id(),
-            "DSSTRUCTSTAT [upsert_rows] csv upload"
+            rows_count = rows.len(),
+            upsert_rows_duration,
+            upsert_csv_duration,
+            "DSSTRUCTSTAT [upsert_rows] rows upsert"
         );
 
         now = utils::now();
@@ -561,7 +619,7 @@ impl LocalTable {
     ) -> Result<()> {
         let now = utils::now();
 
-        let rows = UpsertQueueCSVContent {
+        let rows = GoogleCloudStorageCSVContent {
             bucket: bucket.to_string(),
             bucket_csv_path: bucket_csv_path.to_string(),
         }
@@ -602,7 +660,34 @@ impl LocalTable {
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
         row_id: &str,
     ) -> Result<()> {
-        databases_store.delete_table_row(&self.table, row_id).await
+        // Delete the table row.
+        // If we are only using one of the stores, the right store is passed in the parameters.
+        // If we are using both, we need to do the operation on the other store manually.
+        match CURRENT_STRATEGY {
+            DatabasesStoreStrategy::PostgresOnly | DatabasesStoreStrategy::GCSOnly => {
+                databases_store
+                    .delete_table_row(&self.table, row_id)
+                    .await?;
+            }
+            DatabasesStoreStrategy::PostgresAndWriteToGCS => {
+                databases_store
+                    .delete_table_row(&self.table, row_id)
+                    .await?;
+
+                let gcs_store = GoogleCloudStorageDatabasesStore::new();
+                gcs_store.delete_table_row(&self.table, row_id).await?;
+            }
+            DatabasesStoreStrategy::GCSAndWriteToPostgres => {
+                databases_store
+                    .delete_table_row(&self.table, row_id)
+                    .await?;
+
+                let postgres_store = databases_store::postgres::get_postgres_store().await?;
+                postgres_store.delete_table_row(&self.table, row_id).await?;
+            }
+        }
+
+        Ok(())
     }
 
     pub async fn list_rows(
@@ -671,7 +756,7 @@ impl LocalTable {
     pub async fn validate_csv_content(bucket: &str, bucket_csv_path: &str) -> Result<TableSchema> {
         let now = utils::now();
         let rows = Arc::new(
-            UpsertQueueCSVContent {
+            GoogleCloudStorageCSVContent {
                 bucket: bucket.to_string(),
                 bucket_csv_path: bucket_csv_path.to_string(),
             }
@@ -847,6 +932,12 @@ impl Row {
     pub fn to_csv_record(&self, headers: &Vec<String>) -> Result<Vec<String>> {
         let mut record = Vec::new();
         for header in headers {
+            // We need to set the row_id in a __dust_id field
+            if header == "__dust_id" {
+                record.push(self.row_id().to_string());
+                continue;
+            }
+
             match self.value().get(header) {
                 Some(Value::Bool(b)) => record.push(b.to_string()),
                 Some(Value::Number(x)) => {
@@ -1193,6 +1284,18 @@ mod tests {
             date_reconstructed_row.content()["date_col"]["epoch"]
         );
         // Note: string_value may change format during parsing, so we don't assert equality on it
+
+        // Test case 5: Test that the __dust_id field is present in the CSV record at the position of the field in the headers
+        let dust_id_row = Row::new(
+            "dust_id_test_id".to_string(),
+            serde_json::Map::from_iter([("property".to_string(), "value".into())]),
+        );
+        let headers = vec!["property".to_string(), "__dust_id".to_string()];
+        let dust_id_csv_record = dust_id_row.to_csv_record(&headers)?;
+        assert_eq!(
+            dust_id_csv_record[dust_id_csv_record.len() - 1],
+            dust_id_row.row_id()
+        );
 
         Ok(())
     }

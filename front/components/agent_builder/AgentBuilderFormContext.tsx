@@ -1,7 +1,4 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import React from "react";
-import type { UseFormReturn } from "react-hook-form";
-import { FormProvider } from "react-hook-form";
 import { z } from "zod";
 
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
@@ -14,17 +11,17 @@ import {
 
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
-const reasoningEffortSchema = z.enum(REASONING_EFFORT_IDS).optional();
+const reasoningEffortSchema = z.enum(REASONING_EFFORT_IDS);
 
 const supportedModelSchema = z.object({
   modelId: modelIdSchema,
   providerId: providerIdSchema,
-  reasoningEffort: reasoningEffortSchema,
 });
 
 export const generationSettingsSchema = z.object({
   modelSettings: supportedModelSchema,
   temperature: z.number().min(0).max(1),
+  reasoningEffort: reasoningEffortSchema,
   responseFormat: z.string().optional(),
 });
 
@@ -92,6 +89,14 @@ const baseActionSchema = z.object({
   noConfigurationRequired: z.boolean(),
 });
 
+const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
+
+const tagSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+  kind: TAG_KINDS,
+});
+
 const searchActionSchema = baseActionSchema.extend({
   type: z.literal("SEARCH"),
   configuration: searchActionConfigurationSchema,
@@ -119,10 +124,36 @@ const actionSchema = z.discriminatedUnion("type", [
   extractDataActionSchema,
 ]);
 
+const userSchema = z.object({
+  sId: z.string(),
+  id: z.number(),
+  createdAt: z.number(),
+  provider: z
+    .enum(["auth0", "github", "google", "okta", "samlp", "waad"])
+    .nullable(),
+  username: z.string(),
+  email: z.string(),
+  firstName: z.string(),
+  lastName: z.string().nullable(),
+  fullName: z.string(),
+  image: z.string().nullable(),
+  lastLoginAt: z.number().nullable(),
+});
+
 const agentSettingsSchema = z.object({
   name: z.string().min(1, "Agent name is required"),
   description: z.string().min(1, "Agent description is required"),
   pictureUrl: z.string().optional(),
+  scope: z.enum(["hidden", "visible"]),
+  editors: z.array(userSchema),
+  slackProvider: z.enum(["slack", "slack_bot"]).nullable(),
+  slackChannels: z.array(
+    z.object({
+      slackChannelId: z.string(),
+      slackChannelName: z.string(),
+    })
+  ),
+  tags: z.array(tagSchema),
 });
 
 export const agentBuilderFormSchema = z.object({
@@ -135,26 +166,4 @@ export const agentBuilderFormSchema = z.object({
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
-interface AgentBuilderFormProviderProps {
-  children: React.ReactNode;
-  form: UseFormReturn<AgentBuilderFormData>;
-  onSubmit?: (data: AgentBuilderFormData) => void | Promise<void>;
-}
-
-export function AgentBuilderFormProvider({
-  children,
-  form,
-  onSubmit,
-}: AgentBuilderFormProviderProps) {
-  const handleSubmit = async (data: AgentBuilderFormData) => {
-    if (onSubmit) {
-      await onSubmit(data);
-    }
-  };
-
-  return (
-    <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)}>{children}</form>
-    </FormProvider>
-  );
-}
+export type AgentBuilderAction = z.infer<typeof actionSchema>;

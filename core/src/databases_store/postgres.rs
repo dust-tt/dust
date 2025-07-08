@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
@@ -9,6 +9,7 @@ use tracing::info;
 
 use crate::{
     databases::table::{Row, Table},
+    databases::table_schema::TableSchema,
     databases_store::store::DatabasesStore,
     utils,
 };
@@ -127,6 +128,7 @@ impl DatabasesStore for PostgresDatabasesStore {
     async fn batch_upsert_table_rows(
         &self,
         table: &Table,
+        _schema: &TableSchema,
         rows: &Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
@@ -257,7 +259,7 @@ impl DatabasesStore for PostgresDatabasesStore {
         Ok(())
     }
 
-    async fn delete_table_rows(&self, table: &Table) -> Result<()> {
+    async fn delete_table_data(&self, table: &Table) -> Result<()> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 
@@ -317,3 +319,13 @@ pub const SQL_INDEXES: [&'static str; 2] = [
     "CREATE UNIQUE INDEX IF NOT EXISTS tables_rows_unique ON tables_rows (row_id, table_id);",
     "CREATE INDEX IF NOT EXISTS tables_rows_table_id ON tables_rows (table_id);",
 ];
+
+pub async fn get_postgres_store() -> Result<PostgresDatabasesStore> {
+    match std::env::var("DATABASES_STORE_DATABASE_URI") {
+        Ok(db_uri) => {
+            let s = PostgresDatabasesStore::new(&db_uri).await?;
+            Ok(s)
+        }
+        Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
+    }
+}

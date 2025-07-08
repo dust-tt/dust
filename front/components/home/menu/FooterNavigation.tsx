@@ -33,19 +33,24 @@ export function FooterNavigation() {
                 </div>
               )}
               {item?.items?.length &&
-                item.items.map((item) => (
-                  <React.Fragment key={item.href}>
-                    {item.href ? (
-                      <FooterLink href={item.href} isExternal={item.isExternal}>
-                        {item.title}
-                      </FooterLink>
-                    ) : (
-                      <div className="copy-xs block select-none py-2 pt-4 uppercase text-primary-800 no-underline outline-none">
-                        {item.title}
-                      </div>
-                    )}
-                  </React.Fragment>
-                ))}
+                item.items
+                  .filter((item) => item.title.trim() !== "")
+                  .map((item) => (
+                    <React.Fragment key={item.href}>
+                      {item.href ? (
+                        <FooterLink
+                          href={item.href}
+                          isExternal={item.isExternal}
+                        >
+                          {item.title}
+                        </FooterLink>
+                      ) : (
+                        <div className="copy-xs block select-none py-2 pt-4 uppercase text-primary-800 no-underline outline-none">
+                          {item.title}
+                        </div>
+                      )}
+                    </React.Fragment>
+                  ))}
             </div>
           ))}
         </Grid>

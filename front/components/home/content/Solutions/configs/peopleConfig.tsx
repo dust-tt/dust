@@ -29,9 +29,9 @@ export const pageSettings: pageSettingsProps = {
     <>Expedite HR operations and focus on what matters most - people.</>
   ),
   bulletPoints: [
-    "Answer recurring HR questions with information from your policies",
-    "Onboard new hires through company processes and documentation",
-    "Guide managers to deliver quality feedback based on your company guidelines",
+    "Answer recurring HR questions with information from your policies.",
+    "Onboard new hires through company processes and documentation.",
+    "Guide managers to deliver quality feedback based on your company guidelines.",
   ],
   image: "/static/landing/hr/askhr.png",
 };
@@ -161,9 +161,9 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
-    title: "30% time savings in HR: How Alan’s People team scaled with Dust",
+    title: "30% time savings in HR: How Alan's People team scaled with Dust",
     content:
-      "Alan’s HR team quadrupled AI adoption and saved 30% of time spent on employee queries by deploying custom Dust agents for people operations.",
+      "Alan's HR team quadrupled AI adoption and saved 30% of time spent on employee queries by deploying custom Dust agents for people operations.",
     href: "https://blog.dust.tt/how-lucas-people-analyst-at-alan-introduced-dust-to-his-hr-team/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan.png",
   },

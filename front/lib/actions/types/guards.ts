@@ -1,8 +1,4 @@
-import type {
-  ConversationIncludeFileActionType,
-  ConversationIncludeFileConfigurationType,
-} from "@app/lib/actions/conversation/include_file";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import type { DustAppRunConfigurationType } from "@app/components/actions/dust_app_run/utils";
 import type {
   ClientSideMCPToolConfigurationType,
   MCPActionType,
@@ -201,23 +197,6 @@ export function isClientSideMCPToolConfiguration(
   arg: ActionConfigurationType
 ): arg is ClientSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "clientSideMcpServerId" in arg;
-}
-
-export function isConversationIncludeFileConfiguration(
-  arg: unknown
-): arg is ConversationIncludeFileConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "conversation_include_file_configuration"
-  );
-}
-
-export function isConversationIncludeFileConfigurationActionType(
-  arg: AgentActionType
-): arg is ConversationIncludeFileActionType {
-  return arg.type === "conversation_include_file_action";
 }
 
 export function throwIfInvalidAgentConfiguration(

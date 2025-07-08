@@ -14,9 +14,7 @@ use crate::{
         folder::Folder,
         node::{Node, ProviderVisibility},
     },
-    databases::{
-        table::Row, table::Table, table_schema::TableSchema, transient_database::TransientDatabase,
-    },
+    databases::{table::Table, table_schema::TableSchema, transient_database::TransientDatabase},
     dataset::Dataset,
     http::request::{HttpRequest, HttpResponse},
     project::Project,
@@ -301,19 +299,13 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
-    async fn store_data_source_table_csv(
+    async fn set_data_source_table_migrated_to_csv(
         &self,
         project: &Project,
         data_source_id: &str,
         table_id: &str,
-        schema: &TableSchema,
-        rows: &Vec<Row>,
-    ) -> Result<()>;
-    async fn delete_data_source_table_csv(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
+        migrated_to_csv: bool,
+        timestamp: Option<i64>,
     ) -> Result<()>;
     async fn load_data_source_table(
         &self,

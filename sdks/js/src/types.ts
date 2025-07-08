@@ -735,7 +735,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "advanced_search"
   | "agent_builder_v2"
-  | "claude_3_7_reasoning"
   | "claude_4_opus_feature"
   | "co_edition"
   | "deepseek_feature"
@@ -743,7 +742,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
-  | "enforce_datasource_quota"
   | "exploded_tables_query"
   | "extended_max_steps_per_run"
   | "google_ai_studio_experimental_models_feature"
@@ -1136,22 +1134,6 @@ const ConversationIncludeFileParamsEventSchema = z.object({
   action: ConversationIncludeFileActionTypeSchema,
 });
 
-const DustAppRunParamsEventSchema = z.object({
-  type: z.literal("dust_app_run_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: DustAppRunActionTypeSchema,
-});
-
-const DustAppRunBlockEventSchema = z.object({
-  type: z.literal("dust_app_run_block"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: DustAppRunActionTypeSchema,
-});
-
 const ProcessParamsEventSchema = z.object({
   type: z.literal("process_params"),
   created: z.number(),
@@ -1278,8 +1260,6 @@ export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
 const AgentActionSpecificEventSchema = z.union([
   ConversationIncludeFileParamsEventSchema,
-  DustAppRunBlockEventSchema,
-  DustAppRunParamsEventSchema,
   ProcessParamsEventSchema,
   SearchLabelsParamsEventSchema,
   MCPParamsEventSchema,

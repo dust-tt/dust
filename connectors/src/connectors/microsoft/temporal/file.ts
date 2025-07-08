@@ -35,6 +35,7 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
+import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
@@ -581,6 +582,7 @@ export async function recursiveNodeDeletion({
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
 }): Promise<string[]> {
+  await heartbeat();
   const node = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     nodeId

@@ -1,6 +1,3 @@
-import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
-import { CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION } from "@app/types/assistant/chain_of_thought_meta_prompt";
-
 import type { WhitelistableFeature } from "../shared/feature_flags";
 import type { ExtractSpecificKeys } from "../shared/typescipt_utils";
 import { ioTsEnum } from "../shared/utils/iots_utils";
@@ -9,7 +6,6 @@ import type {
   AgentReasoningEffort,
   LightAgentConfigurationType,
 } from "./agent";
-import type { GenerationTokensEvent } from "./generation";
 
 /**
  * PROVIDER IDS
@@ -52,7 +48,12 @@ export function getProviderDisplayName(
   }
 }
 
-export const REASONING_EFFORT_IDS = ["low", "medium", "high"] as const;
+export const REASONING_EFFORT_IDS = [
+  "none",
+  "light",
+  "medium",
+  "high",
+] as const;
 export type ReasoningEffortIdType = (typeof REASONING_EFFORT_IDS)[number];
 
 export const isReasoningEffortId = (
@@ -104,6 +105,24 @@ export function getSmallWhitelistedModel(
   }
   if (isProviderWhitelisted(owner, "mistral")) {
     return MISTRAL_SMALL_MODEL_CONFIG;
+  }
+  return null;
+}
+
+export function getLargeNonAnthropicWhitelistedModel(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_4_1_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_PRO_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "mistral")) {
+    return MISTRAL_LARGE_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "xai")) {
+    return GROK_3_MODEL_CONFIG;
   }
   return null;
 }
@@ -279,22 +298,6 @@ export type ModelConfigurationType = {
   shortDescription: string;
   isLegacy: boolean;
 
-  // Allows configuring parsing of special delimiters in the streamed model output.
-  delimitersConfiguration?: {
-    delimiters: Array<{
-      openingPattern: string;
-      closingPattern: string;
-      classification: Exclude<
-        GenerationTokensEvent["classification"],
-        "opening_delimiter" | "closing_delimiter"
-      >;
-      swallow: boolean;
-    }>;
-    // If one of these patterns is found at the end of a model event, we'll wait for the
-    // the next event before emitting tokens.
-    incompleteDelimiterPatterns: RegExp[];
-  };
-
   // This meta-prompt is injected into the agent's system instructions if the agent is in a tool-use context.
   toolUseMetaPrompt?: string;
 
@@ -306,8 +309,10 @@ export type ModelConfigurationType = {
 
   supportsVision: boolean;
 
-  // Only used for O-series OpenAI models.
-  reasoningEffort?: AgentReasoningEffort;
+  // Reasoning effort constraints for the model
+  minimumReasoningEffort: AgentReasoningEffort;
+  maximumReasoningEffort: AgentReasoningEffort;
+  defaultReasoningEffort: AgentReasoningEffort;
 
   // Denotes model is able to take a response format request parameter
   supportsResponseFormat?: boolean;
@@ -336,6 +341,9 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: false,
 };
 
@@ -353,6 +361,9 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   generationTokensCount: 2048,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: false,
 };
 export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
@@ -368,6 +379,9 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: true,
 };
 export const GPT_4_1_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -383,6 +397,9 @@ export const GPT_4_1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 32_000,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: true,
 };
 export const GPT_4_1_MODEL_CONFIG: ModelConfigurationType = {
@@ -398,6 +415,9 @@ export const GPT_4_1_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 32_000,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: true,
 };
 export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
@@ -413,6 +433,9 @@ export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: true,
 };
 export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -429,6 +452,9 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   generationTokensCount: 2048,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: false,
 };
 export const O1_MODEL_CONFIG: ModelConfigurationType = {
@@ -445,30 +471,14 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   featureFlag: "openai_o1_feature",
   customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
   supportsResponseFormat: false,
 };
-export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "openai",
-  modelId: O1_MODEL_ID,
-  displayName: "o1 (High Reasoning)",
-  contextSize: 200_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
-  largeModel: true,
-  description:
-    "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access). High reasoning effort.",
-  shortDescription: "OpenAI's reasoning model (high effort).",
-  isLegacy: false,
-  generationTokensCount: 2048,
-  supportsVision: true,
-  reasoningEffort: "high",
-  featureFlag: "openai_o1_high_reasoning_feature",
-  customAssistantFeatureFlag:
-    "openai_o1_high_reasoning_custom_assistants_feature",
-  supportsResponseFormat: false,
-};
+
 export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: O1_MINI_MODEL_ID,
@@ -483,6 +493,9 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   featureFlag: "openai_o1_mini_feature",
   customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
   supportsResponseFormat: false,
@@ -502,6 +515,9 @@ export const O3_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  minimumReasoningEffort: "medium",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
 };
 
@@ -519,23 +535,9 @@ export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
-  supportsResponseFormat: true,
-};
-export const O3_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "openai",
-  modelId: O3_MINI_MODEL_ID,
-  displayName: "o3-mini (High Reasoning)",
-  contextSize: 200_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
-  largeModel: true,
-  description:
-    "OpenAI's fast reasoning model particularly good at coding, math, and science. High reasoning effort.",
-  shortDescription: "OpenAI's fast reasoning model.",
-  isLegacy: false,
-  generationTokensCount: 2048,
-  supportsVision: false,
-  reasoningEffort: "high",
+  minimumReasoningEffort: "medium",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
 };
 
@@ -552,25 +554,10 @@ export const O4_MINI_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 100_000,
   supportsVision: true,
+  minimumReasoningEffort: "medium",
+  maximumReasoningEffort: "high",
+  defaultReasoningEffort: "medium",
   supportsResponseFormat: true,
-  reasoningEffort: "medium",
-};
-
-export const O4_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "openai",
-  modelId: O4_MINI_MODEL_ID,
-  displayName: "o4-mini (High Reasoning)",
-  contextSize: 200_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128,
-  largeModel: true,
-  description: "OpenAI's o4 mini model (200k context). High reasoning effort.",
-  shortDescription: "OpenAI's fast o4 model.",
-  isLegacy: false,
-  generationTokensCount: 100_000,
-  supportsVision: true,
-  supportsResponseFormat: true,
-  reasoningEffort: "high",
 };
 
 export const DEFAULT_TOKEN_COUNT_ADJUSTMENT = 1.15;
@@ -587,10 +574,11 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description: "Anthropic's Claude 3 Opus model (200k context).",
   shortDescription: "Anthropic's largest model.",
   isLegacy: false,
-  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 4096,
   supportsVision: true,
-  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 
@@ -606,10 +594,11 @@ export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurat
     description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
     shortDescription: "Anthropic's latest model.",
     isLegacy: false,
-    delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
     generationTokensCount: 8192,
     supportsVision: true,
-    toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
+    minimumReasoningEffort: "none",
+    maximumReasoningEffort: "light",
+    defaultReasoningEffort: "light",
     tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   };
 
@@ -624,10 +613,11 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
   shortDescription: "Anthropic's latest model.",
   isLegacy: false,
-  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 8192,
   supportsVision: true,
-  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -641,10 +631,11 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description: "Anthropic's latest Claude 3.7 Sonnet model (200k context).",
   shortDescription: "Anthropic's best model.",
   isLegacy: false,
-  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 64_000,
   supportsVision: true,
-  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 
@@ -660,10 +651,11 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 4 Opus model, the most powerful model in the Claude 4 family (200k context).",
   shortDescription: "Anthropic's most powerful model.",
   isLegacy: false,
-  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 32_000,
   supportsVision: true,
-  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   featureFlag: "claude_4_opus_feature",
 };
@@ -680,31 +672,13 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 4 Sonnet model, balancing power and efficiency (200k context).",
   shortDescription: "Anthropic's balanced Claude 4 model.",
   isLegacy: false,
-  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 64_000,
   supportsVision: true,
-  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
-export const CLAUDE_3_7_SONNET_REASONING_MODEL_CONFIG: ModelConfigurationType =
-  {
-    providerId: "anthropic",
-    modelId: CLAUDE_3_7_SONNET_20250219_MODEL_ID,
-    displayName: "Claude 3.7 Sonnet",
-    contextSize: 200_000,
-    recommendedTopK: 16,
-    recommendedExhaustiveTopK: 128, // 65_536
-    largeModel: true,
-    description: "Anthropic's latest Claude 3.7 Sonnet model (200k context).",
-    shortDescription: "Anthropic's best model.",
-    isLegacy: false,
-    delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
-    generationTokensCount: 64_000,
-    supportsVision: true,
-    toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
-    tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
-    featureFlag: "claude_3_7_reasoning",
-  };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
@@ -719,6 +693,9 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -735,6 +712,9 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -750,6 +730,9 @@ export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: true,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
 };
 export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
@@ -765,6 +748,9 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: true,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
 };
 
 export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
@@ -780,6 +766,9 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
 };
 export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
@@ -794,6 +783,9 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: true,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
 };
 export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "mistral",
@@ -808,6 +800,9 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
 };
 
 export const MISTRAL_CODESTRAL_MODEL_CONFIG: ModelConfigurationType = {
@@ -824,6 +819,9 @@ export const MISTRAL_CODESTRAL_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
 };
 
 export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -840,6 +838,9 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
 };
 
 export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -856,6 +857,9 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
 };
 
 export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
@@ -871,6 +875,9 @@ export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
 };
 
 export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
@@ -886,6 +893,9 @@ export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
 };
 
 // Current Preview model
@@ -900,10 +910,11 @@ export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   description: "Google's powerful large context model (1m context).",
   shortDescription: "Google's powerful model (preview).",
   isLegacy: false,
-  delimitersConfiguration: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   generationTokensCount: 2048,
   supportsVision: true,
-  toolUseMetaPrompt: CHAIN_OF_THOUGHT_META_PROMPT,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
 };
 
 // DEPRECATED -- Replaced by GA model
@@ -921,6 +932,9 @@ export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
     isLegacy: false,
     generationTokensCount: 2048,
     supportsVision: true,
+    minimumReasoningEffort: "none",
+    maximumReasoningEffort: "none",
+    defaultReasoningEffort: "none",
     featureFlag: "google_ai_studio_experimental_models_feature",
   };
 
@@ -939,6 +953,9 @@ export const GEMINI_2_FLASH_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   featureFlag: "google_ai_studio_experimental_models_feature",
 };
 
@@ -956,6 +973,9 @@ export const GEMINI_2_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   featureFlag: "google_ai_studio_experimental_models_feature",
 };
 
@@ -975,6 +995,9 @@ export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationTyp
     isLegacy: false,
     generationTokensCount: 2048,
     supportsVision: true,
+    minimumReasoningEffort: "none",
+    maximumReasoningEffort: "none",
+    defaultReasoningEffort: "none",
     featureFlag: "google_ai_studio_experimental_models_feature",
   };
 
@@ -992,6 +1015,9 @@ export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigur
     isLegacy: false,
     generationTokensCount: 2048,
     supportsVision: false,
+    minimumReasoningEffort: "none",
+    maximumReasoningEffort: "none",
+    defaultReasoningEffort: "none",
   };
 
 export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
@@ -1008,6 +1034,9 @@ export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigura
     isLegacy: false,
     generationTokensCount: 2048,
     supportsVision: false,
+    minimumReasoningEffort: "none",
+    maximumReasoningEffort: "none",
+    defaultReasoningEffort: "none",
   };
 
 export const TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
@@ -1024,6 +1053,9 @@ export const TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationTyp
     isLegacy: false,
     generationTokensCount: 2048,
     supportsVision: false,
+    minimumReasoningEffort: "none",
+    maximumReasoningEffort: "none",
+    defaultReasoningEffort: "none",
   };
 
 export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
@@ -1040,6 +1072,9 @@ export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
     isLegacy: false,
     generationTokensCount: 2048,
     supportsVision: false,
+    minimumReasoningEffort: "none",
+    maximumReasoningEffort: "none",
+    defaultReasoningEffort: "none",
   };
 
 export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
@@ -1055,6 +1090,9 @@ export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
 };
 
 export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
@@ -1070,6 +1108,9 @@ export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
 };
 
 export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
@@ -1085,6 +1126,9 @@ export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   featureFlag: "deepseek_feature",
 };
 
@@ -1101,6 +1145,9 @@ export const DEEPSEEK_REASONER_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   featureFlag: "deepseek_feature",
 };
 
@@ -1118,17 +1165,9 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
-  delimitersConfiguration: {
-    incompleteDelimiterPatterns: [/<\/?[a-zA-Z_]*$/],
-    delimiters: [
-      {
-        openingPattern: "<think>",
-        closingPattern: "</think>",
-        classification: "chain_of_thought" as const,
-        swallow: false,
-      },
-    ],
-  },
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
 };
 
 export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
@@ -1144,6 +1183,9 @@ export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 8_192,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: false,
   featureFlag: "xai_feature",
 };
@@ -1161,6 +1203,9 @@ export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 8_192,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: false,
   featureFlag: "xai_feature",
 };
@@ -1178,6 +1223,9 @@ export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 8_192,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: false,
   featureFlag: "xai_feature",
 };
@@ -1195,6 +1243,9 @@ export const GROK_3_MINI_FAST_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 8_192,
   supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
   supportsResponseFormat: false,
   featureFlag: "xai_feature",
 };
@@ -1208,13 +1259,10 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_4_1_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
-  O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O3_MODEL_CONFIG,
   O3_MINI_MODEL_CONFIG,
-  O3_MINI_HIGH_REASONING_MODEL_CONFIG,
   O4_MINI_MODEL_CONFIG,
-  O4_MINI_HIGH_REASONING_MODEL_CONFIG,
   CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
@@ -1258,7 +1306,7 @@ export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];
 // pairs that are in SUPPORTED_MODELS
 export type SupportedModel = ExtractSpecificKeys<
   (typeof SUPPORTED_MODEL_CONFIGS)[number],
-  "providerId" | "modelId" | "reasoningEffort"
+  "providerId" | "modelId"
 >;
 
 export function isSupportedModel(model: unknown): model is SupportedModel {

@@ -63,6 +63,7 @@ export class CustomerioServerSideTracking {
           sId: workspace.sId,
           startAt,
           role,
+          endAt: null,
         },
       ],
     });
@@ -318,7 +319,7 @@ export class CustomerioServerSideTracking {
         if (w.startAt !== undefined) {
           relAttributes.start_at = Math.floor(w.startAt.getTime() / 1000);
         }
-        if (w.endAt !== undefined) {
+        if (w.endAt !== undefined && w.endAt !== null) {
           relAttributes.end_at = w.endAt
             ? Math.floor(w.endAt.getTime() / 1000)
             : null;

@@ -21,6 +21,7 @@ import {
   GmailLogo,
   HubspotLogo,
   JiraLogo,
+  LinearLogo,
   NotionLogo,
   SalesforceLogo,
   SlackLogo,
@@ -58,6 +59,7 @@ export const InternalActionIcons = {
   SalesforceLogo,
   GmailLogo,
   GcalLogo,
+  LinearLogo,
   SlackLogo,
   StripeLogo,
 };

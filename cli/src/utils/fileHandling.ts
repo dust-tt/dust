@@ -1,5 +1,4 @@
-import type {
-  SupportedFileContentType} from "@dust-tt/client";
+import type { SupportedFileContentType } from "@dust-tt/client";
 import {
   isSupportedFileContentType,
   supportedFileExtensions,

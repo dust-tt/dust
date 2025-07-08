@@ -52,7 +52,9 @@ export const createPrivateApiMockRequest = async ({
     : UserFactory.basic());
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
 
-  const membership = await MembershipFactory.associate(workspace, user, role);
+  const membership = await MembershipFactory.associate(workspace, user, {
+    role,
+  });
 
   // Mock the getSession function to return the user without going through the auth0 session
   vi.mocked(getSession).mockReturnValue(

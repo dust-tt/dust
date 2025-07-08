@@ -4,7 +4,7 @@ use crate::{
         table::{LocalTable, Row, Table},
         transient_database::get_transient_database_unique_table_names,
     },
-    databases_store::store::DatabasesStore,
+    databases_store::{gcs::GoogleCloudStorageDatabasesStore, store::DatabasesStore},
     utils,
 };
 use anyhow::{anyhow, Result};
@@ -49,6 +49,9 @@ impl From<anyhow::Error> for SqliteDatabaseError {
 }
 
 const MAX_ROWS: usize = 2048;
+
+// Switch to false to use the in-memory database without CSV files.
+const ALLOW_USAGE_OF_CSV_FILES: bool = false;
 
 impl SqliteDatabase {
     pub fn new() -> Self {
@@ -228,6 +231,10 @@ async fn create_in_memory_sqlite_db_with_csv(
     tables: Vec<LocalTable>,
     unique_table_names: HashMap<String, String>,
 ) -> Result<Option<Vec<NamedTempFile>>> {
+    if !ALLOW_USAGE_OF_CSV_FILES {
+        return Ok(None);
+    }
+
     let tables_with_csv = tables
         .iter()
         .filter(|lt| lt.table.migrated_to_csv())
@@ -263,12 +270,8 @@ async fn create_in_memory_sqlite_db_with_csv(
 
             async move {
                 let mut stream = Object::download_streamed(
-                    &LocalTable::get_bucket()?,
-                    &LocalTable::get_csv_storage_file_path(
-                        &table.table.project().project_id(),
-                        &table.table.data_source_id(),
-                        &table.table.table_id(),
-                    ),
+                    &GoogleCloudStorageDatabasesStore::get_bucket()?,
+                    &GoogleCloudStorageDatabasesStore::get_csv_storage_file_path(&table.table),
                 )
                 .await?;
                 let mut temp_file = NamedTempFile::new()?;
@@ -324,11 +327,14 @@ async fn create_in_memory_sqlite_db_without_csv(
     tables: Vec<LocalTable>,
     unique_table_names: HashMap<String, String>,
 ) -> Result<()> {
-    let tables_without_csv = tables
-        .iter()
-        .filter(|lt| !lt.table.migrated_to_csv())
-        .map(|lt| lt.clone())
-        .collect::<Vec<_>>();
+    let tables_without_csv = match ALLOW_USAGE_OF_CSV_FILES {
+        true => tables
+            .iter()
+            .filter(|lt| !lt.table.migrated_to_csv())
+            .map(|lt| lt.clone())
+            .collect::<Vec<_>>(),
+        false => tables.clone(),
+    };
 
     if tables_without_csv.is_empty() {
         return Ok(());

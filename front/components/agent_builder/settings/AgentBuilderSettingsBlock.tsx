@@ -11,16 +11,20 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentBuilderEditors } from "@app/components/agent_builder/settings/AgentBuilderEditors";
+import { AgentBuilderScopeSelector } from "@app/components/agent_builder/settings/AgentBuilderScopeSelector";
+import { AgentBuilderSlackSelector } from "@app/components/agent_builder/settings/AgentBuilderSlackSelector";
+import { TagsSection } from "@app/components/agent_builder/settings/TagsSection";
 import {
+  fetchWithErr,
   getDescriptionSuggestion,
   getNameSuggestions,
 } from "@app/components/agent_builder/settings/utils";
-import { fetchWithErr } from "@app/components/agent_builder/settings/utils";
 import { AvatarPicker } from "@app/components/assistant_builder/avatar_picker/AssistantBuilderAvatarPicker";
 import {
   buildSelectedEmojiType,
@@ -310,6 +314,21 @@ function AgentPictureInput() {
   );
 }
 
+function AgentAccessAndPublication() {
+  return (
+    <div className="flex-grow space-y-2">
+      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+        Access and Publication
+      </label>
+      <div className="flex flex-wrap items-center gap-2">
+        <AgentBuilderEditors />
+        <AgentBuilderScopeSelector />
+        <AgentBuilderSlackSelector />
+      </div>
+    </div>
+  );
+}
+
 export function AgentBuilderSettingsBlock() {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -336,6 +355,10 @@ export function AgentBuilderSettingsBlock() {
                   <AgentDescriptionInput />
                 </div>
                 <AgentPictureInput />
+              </div>
+              <div className="flex flex-grow gap-8">
+                <TagsSection />
+                <AgentAccessAndPublication />
               </div>
             </div>
           </div>

@@ -221,8 +221,8 @@ export const energyConfig: IndustryPageConfig = {
     titleColor: "text-blue-600",
     ctaButtons: {
       primary: {
-        label: "Start free trial",
-        href: "/api/auth/login",
+        label: "Start Free Trial",
+        href: "/api/workos/login",
       },
       secondary: {
         label: "Contact sales",

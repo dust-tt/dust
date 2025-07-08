@@ -138,18 +138,18 @@ export const b2bSaasConfig: IndustryPageConfig = {
             icon: "bg-pink-400 rounded-tl-full",
             title: "Content localization at scale",
             description:
-              "Launch campaigns globally, keeping brand and technical consistency",
+              "Launch campaigns globally, keeping brand and technical consistency.",
           },
           {
             icon: "bg-red-500",
             title: "Market intelligence",
             description:
-              "Monitor trends and competitors to equip GTM and sales teams",
+              "Monitor trends and competitors to equip GTM and sales teams.",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
             title: "Content optimization",
-            description: "Turn drafts into high-conversion assets",
+            description: "Turn drafts into high-conversion assets.",
           },
         ],
       },
@@ -198,7 +198,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
           {
             icon: "bg-red-500",
             title: "Automated code reviews",
-            description: "Maintain standards and compliance at scale",
+            description: "Maintain standards and compliance at scale.",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
@@ -299,12 +299,12 @@ export const b2bSaasConfig: IndustryPageConfig = {
         title:
           "50,000 Hours Saved: How Qonto Revolutionized Compliance and Risk Assessment with AI",
         content:
-          "Germi, Qonto’s AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
+          "Germi, Qonto's AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
         href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
         src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
       },
       {
-        title: "Kyriba’s adoption of Dust across all functions",
+        title: "Kyriba's adoption of Dust across all functions",
         content:
           "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
         href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
@@ -318,7 +318,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
     ctaButtons: {
       primary: {
         label: "Start Free Trial",
-        href: "/api/auth/login",
+        href: "/api/workos/login",
       },
       secondary: {
         label: "Contact Sales",

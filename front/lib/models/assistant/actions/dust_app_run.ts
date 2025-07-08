@@ -1,7 +1,6 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { DustAppParameters } from "@app/lib/actions/dust_app_run";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -88,7 +87,7 @@ export class AgentDustAppRunAction extends WorkspaceAwareModel<AgentDustAppRunAc
   declare appId: string;
   declare appName: string;
 
-  declare params: DustAppParameters;
+  declare params: unknown;
   declare output: unknown | null;
   declare functionCallId: string | null;
   declare functionCallName: string | null;

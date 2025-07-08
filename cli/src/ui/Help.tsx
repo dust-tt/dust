@@ -78,12 +78,26 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>-m, --message</Text> Send a message non-interactively (requires --agent)
+          <Text bold>-m, --message</Text> Send a message non-interactively
+          (requires --agent)
         </Text>
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>-c, --conversationId</Text> Send to existing conversation (requires --agent and --message)
+          <Text bold>-c, --conversationId</Text> Conversation ID (use with
+          --agent and --message, or with --messageId)
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>--messageId</Text> Display details of a specific message
+          (requires --conversationId)
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>-d, --details</Text> Show detailed message information
+          (requires --agent and --message)
         </Text>
       </Box>
     </Box>

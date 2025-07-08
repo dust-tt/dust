@@ -404,7 +404,6 @@ export function AgentMessage({
 
     // Merge all references
     setReferences({
-      ...allWebReferences,
       ...allMCPSearchReferences,
       ...allMCPWebSearchReferences,
     });

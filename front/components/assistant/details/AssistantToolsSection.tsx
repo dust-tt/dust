@@ -10,7 +10,6 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isDustAppRunConfiguration,
   isMCPServerConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
@@ -122,13 +121,7 @@ function renderOtherAction(
   action: AgentActionConfigurationType,
   mcpServers: MCPServerTypeWithViews[]
 ) {
-  if (isDustAppRunConfiguration(action)) {
-    return {
-      title: action.name,
-      avatar: <Avatar icon={CommandIcon} size="xs" />,
-      order: 2,
-    };
-  } else if (isServerSideMCPServerConfiguration(action)) {
+  if (isServerSideMCPServerConfiguration(action)) {
     const mcpServer = mcpServers.find((s) =>
       s.views.some((v) => v.sId === action.mcpServerViewId)
     );
