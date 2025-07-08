@@ -122,6 +122,26 @@ export class ActivityInboundLogInterceptor
     } catch (err: unknown) {
       error = err;
 
+      // Log connection-related errors with more context
+      if (err instanceof Error && err.message.includes("other side closed")) {
+        this.logger.error(
+          {
+            error: err,
+            errorType: "grpc_connection_error",
+            errorMessage: err.message,
+            errorStack: err.stack,
+            activityType: this.context.info.activityType,
+            workflowType: this.context.info.workflowType,
+            workflowId: this.context.info.workflowExecution.workflowId,
+            workflowRunId: this.context.info.workflowExecution.runId,
+            attempt: this.context.info.attempt,
+            activityStartTime: startTime.toISOString(),
+            elapsedMs: new Date().getTime() - startTime.getTime(),
+          },
+          "gRPC connection error during activity execution"
+        );
+      }
+
       if (
         err instanceof ExternalOAuthTokenError ||
         err instanceof WorkspaceQuotaExceededError

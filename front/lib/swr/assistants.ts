@@ -1,8 +1,8 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,

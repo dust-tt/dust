@@ -695,7 +695,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
-    const { groupKinds = ["global", "regular"] } = options;
+    const { groupKinds = ["global", "regular", "provisioned"] } = options;
     const groups = await this.baseFetch(auth, {
       where: {
         kind: {

@@ -5,11 +5,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getMcpServerDisplayName,
   getServerTypeAndIdFromSId,

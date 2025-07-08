@@ -44,3 +44,9 @@ export async function redisClient({
 
   return client;
 }
+
+export async function closeRedisClient() {
+  if (client) {
+    await client.quit();
+  }
+}

@@ -9,7 +9,6 @@ import {
   PencilSquareIcon,
   SparklesIcon,
   TextArea,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
@@ -34,6 +33,7 @@ import {
   DROID_AVATAR_URLS,
   SPIRIT_AVATAR_URLS,
 } from "@app/components/assistant_builder/shared";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   APIError,
   BuilderEmojiSuggestionsType,

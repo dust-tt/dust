@@ -19,6 +19,7 @@ import {
   GcalLogo,
   GithubLogo,
   GmailLogo,
+  GoogleSpreadsheetLogo,
   HubspotLogo,
   LinearLogo,
   NotionLogo,
@@ -60,6 +61,7 @@ export const InternalActionIcons = {
   LinearLogo,
   SlackLogo,
   StripeLogo,
+  GoogleSpreadsheetLogo,
 };
 
 export const INTERNAL_ALLOWED_ICONS = Object.keys(InternalActionIcons);

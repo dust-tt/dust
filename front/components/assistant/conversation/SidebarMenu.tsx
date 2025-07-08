@@ -17,7 +17,6 @@ import {
   RobotIcon,
   SearchInput,
   TrashIcon,
-  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import moment from "moment";
@@ -30,6 +29,7 @@ import { useConversationsNavigation } from "@app/components/assistant/conversati
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   useConversations,
   useDeleteConversation,

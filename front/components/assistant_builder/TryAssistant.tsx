@@ -1,4 +1,3 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -9,6 +8,7 @@ import {
 import { getDefaultAvatarUrlForPreview } from "@app/components/assistant_builder/avatar_picker/utils";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
 import type {
   AgentMention,

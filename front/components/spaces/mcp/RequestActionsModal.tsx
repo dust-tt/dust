@@ -14,11 +14,11 @@ import {
   SheetTrigger,
   Spinner,
   TextArea,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import _ from "lodash";
 import { useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";

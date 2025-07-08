@@ -1,7 +1,7 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";

@@ -19,11 +19,11 @@ import {
   StarIcon,
   TestTubeIcon,
   UserIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";

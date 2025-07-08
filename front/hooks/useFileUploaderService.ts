@@ -1,6 +1,6 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
 import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";

@@ -1,7 +1,7 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import {

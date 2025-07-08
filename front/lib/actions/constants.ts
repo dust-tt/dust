@@ -9,9 +9,6 @@ import type {
 // future based on user feedback.
 export const PROCESS_ACTION_TOP_K = 768;
 
-export const DEFAULT_PROCESS_ACTION_NAME =
-  "extract_structured_data_from_data_sources";
-
 // If we have actions that are used in global agents, we define the name and description of the action
 // (<=> of the internal MCP server) here and use it from here in both the internal MCP server
 // and `global_agents.ts`.
@@ -20,24 +17,21 @@ export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search_&_browse";
 export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION =
   "Agent can search (Google) and retrieve information from specific websites.";
 
-export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME =
-  "list_conversation_files";
-
+// TODO(durable-agents): remove this (only used in the non-MCP variant, inlined in the MCP tool definition).
 export const DEFAULT_SEARCH_LABELS_ACTION_NAME = "search_labels";
 
-export const DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME =
-  "include_conversation_file";
+export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME = "list_files";
+
+export const DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME = "include_file";
 
 export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
   "query_conversation_tables";
-export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION = `The tables associated with the 'queryable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;
 
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
 
 export const DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME =
   "extract_conversation_files";
-export const DEFAULT_CONVERSATION_EXTRACT_ACTION_DATA_DESCRIPTION = `Extract structured data from the 'extractable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;
 
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";

@@ -26,7 +26,6 @@ import {
   SheetTitle,
   Spinner,
   useCopyToClipboard,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -36,6 +35,7 @@ import { useSWRConfig } from "swr";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";

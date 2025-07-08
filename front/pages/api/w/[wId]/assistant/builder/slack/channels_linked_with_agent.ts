@@ -42,18 +42,27 @@ export async function handleSlackChannelsLinkedWithAgent(
     });
   }
 
-  const [dataSourceSlack] = await DataSourceResource.listByConnectorProvider(
-    auth,
-    "slack"
-  );
+  const [[dataSourceSlack], [dataSourceSlackBot]] = await Promise.all([
+    DataSourceResource.listByConnectorProvider(auth, "slack"),
+    DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
+  ]);
+  let isSlackBotEnabled = false;
+  if (dataSourceSlackBot && dataSourceSlackBot.connectorId) {
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsAPIConfig(),
+      logger
+    );
+    const configRes = await connectorsAPI.getConnectorConfig(
+      dataSourceSlackBot.connectorId,
+      "botEnabled"
+    );
+    if (configRes.isOk()) {
+      isSlackBotEnabled = configRes.value.configValue === "true";
+    }
+  }
 
-  const [dataSourceSlackBot] = await DataSourceResource.listByConnectorProvider(
-    auth,
-    "slack_bot"
-  );
-
-  const provider = dataSourceSlackBot ? "slack_bot" : "slack";
-  const dataSource = dataSourceSlackBot ? dataSourceSlackBot : dataSourceSlack;
+  const provider = isSlackBotEnabled ? "slack_bot" : "slack";
+  const dataSource = isSlackBotEnabled ? dataSourceSlackBot : dataSourceSlack;
 
   if (!dataSource) {
     return res.status(200).json({
