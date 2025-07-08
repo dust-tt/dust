@@ -697,19 +697,31 @@ export function ConnectorPermissionsModal({
         );
 
         if (!r.ok) {
-          const error: { error: { message: string } } = await r.json();
-          window.alert(error.error.message);
-        }
-        void mutate(
-          (key) =>
-            typeof key === "string" &&
-            key.startsWith(
-              `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`
-            )
-        );
+          const error: {
+            error: {
+              type: string;
+              message: string;
+              connectors_error: { type: string; message: string };
+            };
+          } = await r.json();
+          console.log(JSON.stringify(error, null, 2));
+          sendNotification({
+            type: "error",
+            title: error.error.message,
+            description: error.error.connectors_error.message,
+          });
+        } else {
+          void mutate(
+            (key) =>
+              typeof key === "string" &&
+              key.startsWith(
+                `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`
+              )
+          );
 
-        // Display the data updated modal.
-        setModalToShow("data_updated");
+          // Display the data updated modal.
+          setModalToShow("data_updated");
+        }
       } else {
         closeModal(false);
       }
