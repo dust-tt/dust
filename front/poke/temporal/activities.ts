@@ -416,6 +416,7 @@ export async function deleteRunOnDustAppsActivity({
       skipCutoffDate: true,
       limit: BATCH_SIZE,
       offset: currentOffset,
+      order: [["createdAt", "ASC"]],
     });
 
     hardDeleteLogger.info(
