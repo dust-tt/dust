@@ -17,6 +17,8 @@ const agentBuilderInstructionsAutoCompletePluginKey =
     AGENT_BUILDER_INSTRUCTIONS_AUTO_COMPLETE_EXTENSION_NAME
   );
 
+const MINIMUM_TEXT_LENGTH_FOR_SUGGESTIONS = 3;
+
 /**
  * Fetches autocompletion suggestions from the agent builder API.
  * This function is specific to the agent builder instructions context.
@@ -26,7 +28,7 @@ const fetchAgentBuilderSuggestions = async (
   owner: LightWorkspaceType | null,
   builderState: AssistantBuilderState | null
 ): Promise<string[]> => {
-  if (!owner || currentText.length === 0) {
+  if (!owner || currentText.length < MINIMUM_TEXT_LENGTH_FOR_SUGGESTIONS) {
     return [];
   }
 
@@ -186,7 +188,6 @@ const createSuggestionDecoration = (
       // TODO(2025-07-08): Add class `autocomplete-suggestion` to our style.
       parentNode.style.color = "#9ca3af";
       parentNode.style.fontStyle = "italic";
-      parentNode.classList.add("autocomplete-suggestion");
       return parentNode;
     },
     { side: 1 }
