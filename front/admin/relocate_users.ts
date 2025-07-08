@@ -20,9 +20,6 @@ import { makeScript } from "@app/scripts/helpers";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 
-const remaining = 10;
-const resetTime = Date.now();
-
 function makeWorkOSThrottler<T>(logger: Logger) {
   return async (fn: () => Promise<T>) => {
     try {
