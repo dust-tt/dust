@@ -125,7 +125,7 @@ type AuthQuery = Record<
 
 const HANDLED_ERROR_REASONS = ["email_not_verified"];
 
-export default handleAuth({
+const auth0Handler = handleAuth({
   login: handleLogin((req) => {
     // req.query is defined on NextApiRequest (page-router), but not on NextRequest (app-router).
     const query = ("query" in req ? req.query : {}) as Partial<AuthQuery>;
@@ -213,3 +213,15 @@ export default handleAuth({
     });
   },
 });
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const { auth0, connection } = req.query;
+  if (auth0 === "login" && !connection) {
+    return res.redirect("/api/workos/login");
+  }
+
+  return auth0Handler(req, res);
+}
