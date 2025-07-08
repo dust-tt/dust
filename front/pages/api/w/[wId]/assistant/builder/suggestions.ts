@@ -19,7 +19,6 @@ import {
   assertNever,
   BuilderEmojiSuggestionsResponseBodySchema,
   BuilderSuggestionsResponseBodySchema,
-  GEMINI_2_FLASH_LITE_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   InternalPostBuilderSuggestionsRequestBodySchema,
@@ -58,7 +57,7 @@ async function handler(
           model = getLargeWhitelistedModel(owner);
           break;
         case "autocompletion":
-          model = GEMINI_2_FLASH_LITE_MODEL_CONFIG; //getLargeWhitelistedModel(owner);
+          model = getLargeWhitelistedModel(owner);
           break;
         case "name":
         case "description":
