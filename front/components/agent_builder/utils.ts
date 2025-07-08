@@ -47,7 +47,7 @@ export function createMinimalDataSourceView(sId: string): DataSourceViewType {
   return {
     sId,
     id: 0 as ModelId,
-    category: "managed" as DataSourceViewCategory,
+    category: "managed" satisfies DataSourceViewCategory,
     createdAt: 0,
     updatedAt: 0,
     spaceId: "",

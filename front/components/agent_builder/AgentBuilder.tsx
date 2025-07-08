@@ -56,10 +56,9 @@ export default function AgentBuilder({
     workspaceId: owner.sId,
   });
 
-  const hasExtendedFeature = hasFeature("extended_max_steps_per_run");
-  const defaultMaxSteps = hasExtendedFeature
-    ? Math.min(10, EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT)
-    : Math.min(10, MAX_STEPS_USE_PER_RUN_LIMIT);
+  const defaultMaxSteps = hasFeature("extended_max_steps_per_run")
+    ? EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT
+    : MAX_STEPS_USE_PER_RUN_LIMIT;
 
   const defaultValues = useMemo((): AgentBuilderFormData => {
     if (agentConfiguration) {
@@ -77,7 +76,6 @@ export default function AgentBuilder({
           "Failed to transform agent configuration to form data:",
           result.error
         );
-        return getDefaultAgentFormData(user, defaultMaxSteps);
       }
     }
     return getDefaultAgentFormData(user, defaultMaxSteps);
