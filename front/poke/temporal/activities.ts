@@ -417,7 +417,7 @@ export async function deleteRunOnDustAppsActivity({
       }
       await run.delete(auth);
 
-      if (idx % 100) {
+      if (idx % 500) {
         hardDeleteLogger.debug({ idx, runId: run.id }, "Run deleted");
       }
     },
