@@ -12,6 +12,7 @@ interface AgentBuilderLeftPanelProps {
   onCancel: () => void;
   isSaving?: boolean;
   isDisabled?: boolean;
+  agentConfigurationId: string | null;
 }
 
 export function AgentBuilderLeftPanel({
@@ -20,6 +21,7 @@ export function AgentBuilderLeftPanel({
   onCancel,
   isSaving,
   isDisabled,
+  agentConfigurationId,
 }: AgentBuilderLeftPanelProps) {
   const confirm = React.useContext(ConfirmContext);
 
@@ -53,7 +55,9 @@ export function AgentBuilderLeftPanel({
       />
       <div className="flex-1 overflow-y-auto">
         <div className="space-y-6 p-4">
-          <AgentBuilderInstructionsBlock />
+          <AgentBuilderInstructionsBlock
+            agentConfigurationId={agentConfigurationId}
+          />
           <AgentBuilderCapabilitiesBlock />
           <AgentBuilderSettingsBlock />
         </div>
