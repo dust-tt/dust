@@ -170,7 +170,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       const agentMessage = message.agentMessage;
 
-      const actions: AgentActionType[] = agentMCPActions
+      const actions: AgentActionType[] = [agentMCPActions]
         .flat()
         .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);
