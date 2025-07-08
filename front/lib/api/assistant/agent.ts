@@ -267,6 +267,7 @@ async function* runMultiActionsAgentLoop(
             index: event.index,
             type: event.content.type,
             value: event.content,
+            version: 0,
           });
           agentMessage.contents.push({
             step: i,

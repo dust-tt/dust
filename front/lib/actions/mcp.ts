@@ -530,6 +530,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       workspaceId: owner.id,
       isError: false,
       executionState: "pending",
+      version: 0,
     });
 
     const mcpAction = new MCPActionType({
