@@ -92,22 +92,20 @@ async function getConfluenceAccessTokenWithThrow(connectionId: string) {
 
 export async function getConfluenceClient(config: {
   cloudId?: string;
-  ignoreNearRateLimit?: boolean;
   connectorId: ModelId;
 }): Promise<ConfluenceClient>;
 export async function getConfluenceClient(
-  config: { cloudId?: string; ignoreNearRateLimit?: boolean },
+  config: { cloudId?: string },
   connector: ConnectorResource
 ): Promise<ConfluenceClient>;
 export async function getConfluenceClient(
   config: {
     cloudId?: string;
-    ignoreNearRateLimit?: boolean;
     connectorId?: ModelId;
   },
   connector?: ConnectorResource
 ) {
-  const { cloudId, connectorId, ignoreNearRateLimit } = config;
+  const { cloudId, connectorId } = config;
 
   // Ensure the connector is fetched if not directly provided.
   const effectiveConnector =
@@ -124,7 +122,6 @@ export async function getConfluenceClient(
 
   return new ConfluenceClient(accessToken, {
     cloudId,
-    ignoreNearRateLimit,
     useProxy: effectiveConnector.useProxy ?? false,
   });
 }
@@ -445,7 +442,6 @@ export async function confluenceCheckAndUpsertSinglePageActivity({
   const client = await getConfluenceClient(
     {
       cloudId: confluenceConfig.cloudId,
-      ignoreNearRateLimit: confluenceConfig.ignoreNearRateLimit,
     },
     connector
   );
@@ -589,7 +585,6 @@ export async function confluenceUpsertPageWithFullParentsActivity({
   const client = await getConfluenceClient(
     {
       cloudId: confluenceConfig.cloudId,
-      ignoreNearRateLimit: confluenceConfig.ignoreNearRateLimit,
     },
     connector
   );
