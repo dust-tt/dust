@@ -28,25 +28,15 @@ import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@app/types/assistant/agent";
 import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/assistant";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+/**
+ * Transforms a light agent configuration (server-side) into agent builder form data (client-side).
+ */
 export function transformAgentConfigurationToFormData(
   agentConfiguration: AgentConfigurationType,
   currentUser: UserType,
-  agentEditors: UserType[] = [],
-  includeActions: boolean = true
+  agentEditors: UserType[] = []
 ): Result<AgentBuilderFormData, Error> {
   try {
-    const actionsResult =
-      includeActions && "actions" in agentConfiguration
-        ? transformActionsToFormData(
-            agentConfiguration.actions,
-            agentConfiguration.visualizationEnabled
-          )
-        : new Ok([]);
-
-    if (actionsResult.isErr()) {
-      return new Err(actionsResult.error);
-    }
-
     const formData: AgentBuilderFormData = {
       agentSettings: {
         name: agentConfiguration.name,
@@ -71,7 +61,7 @@ export function transformAgentConfigurationToFormData(
         reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
         responseFormat: agentConfiguration.model.responseFormat,
       },
-      actions: actionsResult.value,
+      actions: [], // Actions are always loaded client-side via SWR
       maxStepsPerRun:
         agentConfiguration.maxStepsPerRun || DEFAULT_MAX_STEPS_USE_PER_RUN,
     };

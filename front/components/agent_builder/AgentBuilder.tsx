@@ -66,8 +66,7 @@ export default function AgentBuilder({
       const result = transformAgentConfigurationToFormData(
         agentConfiguration,
         user,
-        editors.length > 0 ? editors : [user], // Use client-side editors or fallback to current user
-        false // Don't include actions - they will be loaded client-side
+        editors.length > 0 ? editors : [user] // Use client-side editors or fallback to current user
       );
 
       if (result.isOk()) {
