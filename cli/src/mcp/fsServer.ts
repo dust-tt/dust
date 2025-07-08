@@ -52,10 +52,14 @@ export class FileSystemMcpService extends McpService {
       }
 
       // Create transport
-      const transport = new DustMcpServerTransport(dustAPI, (serverId) => {
-        this.serverId = serverId;
-        onServerIdReceived(serverId);
-      });
+      const transport = new DustMcpServerTransport(
+        dustAPI,
+        (serverId) => {
+          this.serverId = serverId;
+          onServerIdReceived(serverId);
+        },
+        "fs-cli"
+      );
 
       // Connect the server to the transport
       await server.connect(transport);
