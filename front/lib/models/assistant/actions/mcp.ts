@@ -188,6 +188,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare functionCallName: string | null;
 
   declare step: number;
+  declare version: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
 
   declare isError: boolean;
@@ -232,6 +233,11 @@ AgentMCPAction.init(
     step: {
       type: DataTypes.INTEGER,
       allowNull: false,
+    },
+    version: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
     executionState: {
       type: DataTypes.STRING,
