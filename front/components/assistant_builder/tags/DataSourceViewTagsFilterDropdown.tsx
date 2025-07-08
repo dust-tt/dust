@@ -116,7 +116,10 @@ export function DataSourceViewTagsFilterDropdown({
             isCounter={tagsCounter !== null}
           />
         </PopoverTrigger>
-        <PopoverContent className="w-[600px] max-w-[600px]">
+        <PopoverContent
+          className="max-h-[var(--radix-popper-available-height)] w-[600px] max-w-[600px] overflow-scroll"
+          collisionPadding={20}
+        >
           <div className="flex flex-col gap-8 p-2">
             <div className="flex flex-col gap-2">
               <Page.SectionHeader
