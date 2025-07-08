@@ -1,4 +1,5 @@
 import type { LightWorkspaceType } from "@dust-tt/client";
+import type { Editor } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
@@ -19,6 +20,10 @@ const suggestionPluginKey = new PluginKey<DecorationSet>("suggestion");
 const normalizeWhitespace = (text: string): string => {
   return text.replace(/\s+/g, " ");
 };
+
+function getCurrentTextFromView(view: EditorView) {
+  return view.state.doc.textBetween(0, view.state.doc.content.size);
+}
 
 // Helper function to check if current suggestion is still valid
 const checkSuggestionMatch = (
@@ -224,10 +229,7 @@ export const TextAutoCompleteExtension = Extension.create<
               console.log("Accepting suggestion:", suggestionText);
 
               // Get current text to calculate remaining suggestion.
-              const currentText = editor.state.doc.textBetween(
-                0,
-                editor.state.doc.content.size
-              );
+              const currentText = getCurrentTextFromView(editor.view);
 
               // Use helper function to get remaining suggestion.
               const suggestionMatch = checkSuggestionMatch(
@@ -377,10 +379,7 @@ export const TextAutoCompleteExtension = Extension.create<
               }
 
               // Fetch a new suggestion.
-              const currentText = view.state.doc.textBetween(
-                0,
-                view.state.doc.content.size
-              );
+              const currentText = getCurrentTextFromView(view);
               console.log("Checking suggestion for:", currentText);
 
               // Check if current suggestion still matches before fetching new ones
@@ -449,10 +448,7 @@ export const TextAutoCompleteExtension = Extension.create<
                   );
 
                   // Get current text at the time the response arrives
-                  const currentTextNow = view.state.doc.textBetween(
-                    0,
-                    view.state.doc.content.size
-                  );
+                  const currentTextNow = getCurrentTextFromView(view);
 
                   // Always preserve suggestions in the array for potential future use
                   if (suggestions && suggestions.length > 0) {
