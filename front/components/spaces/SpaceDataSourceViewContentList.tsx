@@ -66,7 +66,7 @@ import type {
 import { isValidContentNodesViewType } from "@app/types";
 
 const DEFAULT_VIEW_TYPE = "all";
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 100;
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
