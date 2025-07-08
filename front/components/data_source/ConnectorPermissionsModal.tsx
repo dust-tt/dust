@@ -618,6 +618,13 @@ export function ConnectorPermissionsModal({
     dataSource.connectorProvider === "notion" &&
     featureFlags.includes("advanced_notion_management");
 
+  const getNodeParents = (node: ContentNodeWithParent) => {
+    if (node.parentInternalId) {
+      return [node.parentInternalId];
+    }
+    return node.parentInternalIds ?? [];
+  };
+
   const initialTreeSelectionModel = useMemo(
     () =>
       allSelectedResources.reduce<
@@ -628,7 +635,7 @@ export function ConnectorPermissionsModal({
           [r.internalId]: {
             isSelected: true,
             node: r,
-            parents: r.parentInternalIds ?? [],
+            parents: getNodeParents(r),
           },
         }),
         {}
