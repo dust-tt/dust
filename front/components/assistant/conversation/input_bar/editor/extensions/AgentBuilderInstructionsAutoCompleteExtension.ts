@@ -1,5 +1,4 @@
 import type { LightWorkspaceType } from "@dust-tt/client";
-import type { Editor } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
@@ -9,8 +8,62 @@ import { debounce } from "lodash";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 
+export const AGENT_BUILDER_INSTRUCTIONS_AUTO_COMPLETE_EXTENSION_NAME =
+  "agentBuilderInstructionsAutoComplete";
+
 // Create the plugin key outside so it can be shared
-const suggestionPluginKey = new PluginKey<DecorationSet>("suggestion");
+const agentBuilderInstructionsAutoCompletePluginKey =
+  new PluginKey<DecorationSet>(
+    AGENT_BUILDER_INSTRUCTIONS_AUTO_COMPLETE_EXTENSION_NAME
+  );
+
+/**
+ * Fetches autocompletion suggestions from the agent builder API.
+ * This function is specific to the agent builder instructions context.
+ */
+const fetchAgentBuilderSuggestions = async (
+  currentText: string,
+  owner: LightWorkspaceType | null,
+  builderState: AssistantBuilderState | null
+): Promise<string[]> => {
+  if (!owner || currentText.length === 0) {
+    return [];
+  }
+
+  try {
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/builder/suggestions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "autocompletion",
+          inputs: {
+            name: builderState?.handle ?? null,
+            description: builderState?.description ?? null,
+            instructions: currentText,
+            tools:
+              builderState?.actions?.map((action) => ({
+                name: action.name,
+                description: action.description,
+              })) || [],
+          },
+        }),
+      }
+    );
+    if (!res.ok) {
+      console.error("Failed to get suggestions", res);
+      return [];
+    }
+    const data = await res.json();
+    return data.suggestions || [];
+  } catch (error) {
+    console.error("Error fetching suggestions:", error);
+    return [];
+  }
+};
 
 /**
  * Helper function to normalize text by replacing multiple whitespace characters
@@ -35,7 +88,7 @@ function getCurrentTextFromView(view: EditorView) {
  */
 const handleTabAcceptSuggestion = (
   editor: any,
-  storage: TextAutoCompleteExtensionStorage
+  storage: AgentBuilderInstructionsAutoCompleteExtensionStorage
 ): boolean => {
   const suggestionText = storage.currentSuggestion;
   if (!suggestionText) {
@@ -65,7 +118,10 @@ const handleTabAcceptSuggestion = (
   storage.normalizedCurrentSuggestion = null;
 
   // Clear visual decorations.
-  clearSuggestionDecorations(editor.view, suggestionPluginKey);
+  clearSuggestionDecorations(
+    editor.view,
+    agentBuilderInstructionsAutoCompletePluginKey
+  );
 
   return true;
 };
@@ -206,13 +262,13 @@ const cleanSuggestions = (
     .filter((suggestion) => suggestion.length > 0); // Remove empty suggestions.
 };
 
-interface TextAutoCompleteExtensionOptions {
+interface AgentBuilderInstructionsAutoCompleteExtensionOptions {
   applySuggestionKey: string;
   owner: LightWorkspaceType | null;
   suggestionDebounce: number;
 }
 
-interface TextAutoCompleteExtensionStorage {
+interface AgentBuilderInstructionsAutoCompleteExtensionStorage {
   builderState: AssistantBuilderState | null;
   currentSuggestion: string | null;
   suggestions: string[];
@@ -220,11 +276,11 @@ interface TextAutoCompleteExtensionStorage {
   normalizedCurrentSuggestion: string | null; // Normalized suggestion for efficient comparison
 }
 
-export const TextAutoCompleteExtension = Extension.create<
-  TextAutoCompleteExtensionOptions,
-  TextAutoCompleteExtensionStorage
+export const AgentBuilderInstructionsAutoCompleteExtension = Extension.create<
+  AgentBuilderInstructionsAutoCompleteExtensionOptions,
+  AgentBuilderInstructionsAutoCompleteExtensionStorage
 >({
-  name: "suggestion",
+  name: "agentBuilderInstructionsAutoComplete",
 
   addStorage() {
     return {
@@ -239,70 +295,33 @@ export const TextAutoCompleteExtension = Extension.create<
   addOptions() {
     return {
       applySuggestionKey: "Tab",
-      suggestionDebounce: 1500,
       owner: null,
+      suggestionDebounce: 1500,
     };
   },
 
   addKeyboardShortcuts() {
     return {
       Tab: ({ editor }) => {
-        const decorations = suggestionPluginKey.getState(editor.state);
+        const decorations =
+          agentBuilderInstructionsAutoCompletePluginKey.getState(editor.state);
 
-        // Check if there's a suggestion visible
+        // Check if there's a suggestion visible.
         if (decorations && decorations.find().length > 0) {
-          // For now, always accept suggestions (TODO: Add cursor position check if needed)
+          // For now, always accept suggestions (TODO: Add cursor position check if needed).
           return handleTabAcceptSuggestion(editor, this.storage);
         }
 
-        return false; // Allow default tab behavior
+        return false; // Allow default tab behavior.
       },
     };
   },
 
   addProseMirrorPlugins() {
-    const pluginKey = suggestionPluginKey;
+    const pluginKey = agentBuilderInstructionsAutoCompletePluginKey;
     const extensionStorage = this.storage;
 
-    const fetchSuggestions = async (
-      previousText: string
-    ): Promise<string[]> => {
-      if (!this.options.owner) {
-        return [];
-      }
-
-      const res = await fetch(
-        `/api/w/${this.options.owner.sId}/assistant/builder/suggestions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            type: "autocompletion",
-            inputs: {
-              name: this.storage.builderState?.handle ?? null,
-              description: this.storage.builderState?.description ?? null,
-              instructions: previousText,
-              tools:
-                this.storage.builderState?.actions?.map((action) => ({
-                  name: action.name,
-                  description: action.description,
-                })) || [],
-            },
-          }),
-        }
-      );
-      if (!res.ok) {
-        console.error("Failed to get suggestions", res);
-        return [];
-      }
-      const data = await res.json();
-      console.log("Got suggestions:", data);
-      return data.suggestions || [];
-    };
-
-    // Simple debounced suggestion function - like the original working version.
+    // Simple debounced suggestion function.
     const getSuggestions = debounce(
       async (
         requestText: string,
@@ -313,18 +332,19 @@ export const TextAutoCompleteExtension = Extension.create<
           return;
         }
 
-        console.log("Fetching suggestion for:", requestText);
         try {
-          const suggestions = await fetchSuggestions(requestText);
-          console.log("Got suggestions:", suggestions);
+          const allSuggestions = await fetchAgentBuilderSuggestions(
+            requestText,
+            this.options.owner,
+            extensionStorage.builderState
+          );
 
-          if (suggestions.length > 0) {
-            cb(suggestions, requestText);
+          if (allSuggestions.length > 0) {
+            cb(allSuggestions, requestText);
           } else {
             cb(null, requestText);
           }
         } catch (error) {
-          console.error("Error fetching suggestions:", error);
           cb(null, requestText);
         }
       },
@@ -336,15 +356,15 @@ export const TextAutoCompleteExtension = Extension.create<
         key: pluginKey,
         state: {
           init() {
-            console.log("AutoComplete plugin initialized");
             return DecorationSet.empty;
           },
           apply(tr, oldValue) {
             if (tr.getMeta(pluginKey)) {
-              // Update the decoration state based on the async data
+              // Update the decoration state based on the async data.
               const { decorations } = tr.getMeta(pluginKey);
               return decorations;
             }
+
             return tr.docChanged ? oldValue.map(tr.mapping, tr.doc) : oldValue;
           },
         },
@@ -374,9 +394,8 @@ export const TextAutoCompleteExtension = Extension.create<
 
               // Fetch a new suggestion.
               const currentText = getCurrentTextFromView(view);
-              console.log("Checking suggestion for:", currentText);
 
-              // Check if current suggestion still matches before fetching new ones
+              // Check if current suggestion still matches before fetching new ones.
               const suggestionMatch = checkSuggestionMatch(
                 currentText,
                 extensionStorage.currentSuggestion,
@@ -385,18 +404,10 @@ export const TextAutoCompleteExtension = Extension.create<
               );
 
               if (suggestionMatch.isValid) {
-                console.log(
-                  "Current suggestion still matches, using existing:",
-                  extensionStorage.currentSuggestion
-                );
-
-                // Cancel any pending API calls since we have a valid suggestion
+                // Cancel any pending API calls since we have a valid suggestion.
                 getSuggestions.cancel();
-                console.log(
-                  "Cancelled pending API call - using stored suggestion"
-                );
 
-                // Check if there's actually something left to suggest
+                // Check if there's actually something left to suggest.
                 if (suggestionMatch.remainingSuggestion.length > 0) {
                   // Display the remaining suggestion (update existing decoration).
                   const updatedState = view.state;
@@ -412,8 +423,7 @@ export const TextAutoCompleteExtension = Extension.create<
                   tr.setMeta(pluginKey, { decorations });
                   view.dispatch(tr);
                 } else {
-                  // User has typed the complete suggestion - clear it and storage
-                  console.log("User completed the suggestion, clearing");
+                  // User has typed the complete suggestion - clear it and storage.
                   clearSuggestionDecorations(view, pluginKey);
                   extensionStorage.currentSuggestion = null;
                   extensionStorage.normalizedOriginalText = null;
@@ -422,13 +432,8 @@ export const TextAutoCompleteExtension = Extension.create<
                 return;
               }
 
-              // Current suggestion is no longer valid - clear display immediately but keep storage
-              console.log(
-                "Current suggestion no longer matches, clearing display (keeping storage for potential backspace)"
-              );
+              // Current suggestion is no longer valid - clear display immediately but keep storage.
               clearSuggestionDecorations(view, pluginKey);
-
-              console.log("Need to fetch new suggestion for:", currentText);
 
               // Simple debounced fetch - fetches new suggestions.
               void getSuggestions(
@@ -441,10 +446,10 @@ export const TextAutoCompleteExtension = Extension.create<
                     originalRequestText
                   );
 
-                  // Get current text at the time the response arrives
+                  // Get current text at the time the response arrives.
                   const currentTextNow = getCurrentTextFromView(view);
 
-                  // Always preserve suggestions in the array for potential future use
+                  // Always preserve suggestions in the array for potential future use.
                   if (suggestions && suggestions.length > 0) {
                     const cleanedSuggestions = cleanSuggestions(
                       originalRequestText,
@@ -452,26 +457,16 @@ export const TextAutoCompleteExtension = Extension.create<
                     );
                     if (cleanedSuggestions.length > 0) {
                       extensionStorage.suggestions.push(...cleanedSuggestions);
-                      console.log(
-                        "Preserved suggestions in array:",
-                        cleanedSuggestions
-                      );
                     }
                   }
 
-                  // Validate if this response is still relevant to current text
+                  // Validate if this response is still relevant to current text.
                   if (originalRequestText !== currentTextNow) {
-                    console.log(
-                      "Ignoring stale API response. Request was for:",
-                      originalRequestText,
-                      "but current text is:",
-                      currentTextNow
-                    );
                     return;
                   }
 
                   if (!suggestions) {
-                    // Clear decorations only if no suggestions returned
+                    // Clear decorations only if no suggestions returned.
                     clearSuggestionDecorations(view, pluginKey);
                     return;
                   }
@@ -481,10 +476,6 @@ export const TextAutoCompleteExtension = Extension.create<
                     currentTextNow,
                     suggestions
                   );
-                  console.log(
-                    "Cleaned suggestions for current context:",
-                    cleanedSuggestions
-                  );
 
                   if (cleanedSuggestions.length === 0) {
                     clearSuggestionDecorations(view, pluginKey);
@@ -493,7 +484,7 @@ export const TextAutoCompleteExtension = Extension.create<
 
                   const [suggestion] = cleanedSuggestions;
                   extensionStorage.currentSuggestion = suggestion;
-                  // Store normalized versions for efficient comparison
+                  // Store normalized versions for efficient comparison.
                   extensionStorage.normalizedOriginalText =
                     normalizeWhitespace(currentTextNow);
                   extensionStorage.normalizedCurrentSuggestion =

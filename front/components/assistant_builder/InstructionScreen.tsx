@@ -10,12 +10,15 @@ import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
-import type { Editor, JSONContent } from "@tiptap/react";
+import type { Editor, Extensions, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import React, { useEffect, useMemo, useState } from "react";
 
+import {
+  AGENT_BUILDER_INSTRUCTIONS_AUTO_COMPLETE_EXTENSION_NAME,
+  AgentBuilderInstructionsAutoCompleteExtension,
+} from "@app/components/assistant/conversation/input_bar/editor/extensions/AgentBuilderInstructionsAutoCompleteExtension";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
-import { TextAutoCompleteExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/TextAutoCompleteExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import { InstructionDiffExtension } from "@app/components/assistant_builder/instructions/InstructionDiffExtension";
 import { InstructionHistory } from "@app/components/assistant_builder/instructions/InstructionsHistory";
@@ -26,10 +29,12 @@ import {
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   LightAgentConfigurationType,
   ModelConfigurationType,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
 import { isSupportingResponseFormat } from "@app/types";
@@ -47,6 +52,17 @@ const useInstructionEditorService = (editor: Editor | null) => {
 
   return editorService;
 };
+
+const BASE_EXTENSIONS: Extensions = [
+  Document,
+  Text,
+  ParagraphExtension,
+  History,
+  InstructionDiffExtension,
+  CharacterCount.configure({
+    limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+  }),
+];
 
 export function InstructionScreen({
   owner,
@@ -79,20 +95,15 @@ export function InstructionScreen({
   isInstructionDiffMode: boolean;
   setIsInstructionDiffMode: (isDiffMode: boolean) => void;
 }) {
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
   const editor = useEditor({
-    extensions: [
-      Document,
-      Text,
-      ParagraphExtension,
-      History,
-      InstructionDiffExtension,
-      CharacterCount.configure({
-        limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-      }),
-      TextAutoCompleteExtension.configure({
-        owner,
-      }),
-    ],
+    extensions: getAgentBuilderInstructionsExtensionsForWorkspace(
+      owner,
+      featureFlags
+    ),
     editable: !doTypewriterEffect,
     content: tipTapContentFromPlainText(
       (!doTypewriterEffect && builderState.instructions) || ""
@@ -225,14 +236,15 @@ export function InstructionScreen({
     }
   }, [isInstructionDiffMode, compareVersion, editor]);
 
-  // Update the autocomplete extension storage with current builder state
+  // Update the autocomplete extension storage (if present) with current builder state.
   useEffect(() => {
     if (!editor) {
       return;
     }
 
     const extension = editor.extensionManager.extensions.find(
-      (ext) => ext.name === "suggestion"
+      (ext) =>
+        ext.name === AGENT_BUILDER_INSTRUCTIONS_AUTO_COMPLETE_EXTENSION_NAME
     );
     if (extension) {
       extension.storage.builderState = builderState;
@@ -405,3 +417,19 @@ const InstructionsCharacterCount = ({
     </span>
   );
 };
+
+function getAgentBuilderInstructionsExtensionsForWorkspace(
+  owner: WorkspaceType,
+  featureFlags: WhitelistableFeature[]
+): Extensions {
+  if (featureFlags.includes("agent_builder_instructions_autocomplete")) {
+    return [
+      ...BASE_EXTENSIONS,
+      AgentBuilderInstructionsAutoCompleteExtension.configure({
+        owner,
+      }),
+    ];
+  }
+
+  return BASE_EXTENSIONS;
+}

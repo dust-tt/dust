@@ -8,6 +8,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   agent_builder_v2: {
     description: "Version 2 of the agent builder interface",
   },
+  agent_builder_instructions_autocomplete: {
+    description: "Autocomplete feature for agent builder instructions",
+  },
   claude_4_opus_feature: {
     description: "Access to Claude 4 Opus model",
   },
