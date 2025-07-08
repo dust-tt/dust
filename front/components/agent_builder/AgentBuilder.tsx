@@ -66,7 +66,7 @@ export default function AgentBuilder({
       const result = transformAgentConfigurationToFormData(
         agentConfiguration,
         user,
-        editors.length > 0 ? editors : [user] // Use client-side editors or fallback to current user
+        [user] // Always use current user as fallback - editors will be updated reactively
       );
 
       if (result.isOk()) {
@@ -81,7 +81,7 @@ export default function AgentBuilder({
       }
     }
     return getDefaultAgentFormData(user, defaultMaxSteps);
-  }, [agentConfiguration, user, editors, defaultMaxSteps]);
+  }, [agentConfiguration, user, defaultMaxSteps]);
 
   // Create values object that includes async data (actions and editors)
   const formValues = useMemo((): AgentBuilderFormData | undefined => {
