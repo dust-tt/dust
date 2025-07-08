@@ -5,7 +5,6 @@ import {
   isSlackWebAPIPlatformError,
   isSlackWebAPIPlatformErrorBotNotFound,
 } from "@connectors/connectors/slack/lib/errors";
-import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackBotInfo,
   reportSlackUsage,
@@ -15,6 +14,8 @@ import logger from "@connectors/logger/logger";
 import type { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
+
+const BOT_NAME_CACHE_TTL = 60 * 10 * 1000; // 10 minutes.
 
 async function getBotUserId(
   slackClient: WebClient,
@@ -103,6 +104,59 @@ export function shouldIndexSlackMessage(
   );
 }
 
+/**
+ * Bots.
+ */
+
+async function getBotName({
+  botId,
+  connectorId,
+  slackClient,
+}: {
+  botId: string;
+  connectorId: ModelId;
+  slackClient: WebClient;
+}): Promise<string | undefined> {
+  try {
+    const slackBotOrWorkflowInfo = await getSlackBotInfo(
+      connectorId,
+      slackClient,
+      botId
+    );
+
+    return slackBotOrWorkflowInfo.display_name;
+  } catch (err) {
+    if (isSlackWebAPIPlatformErrorBotNotFound(err)) {
+      logger.info(
+        {
+          botId,
+          connectorId,
+        },
+        "Slack bot not found, skipping message"
+      );
+
+      return undefined;
+    }
+
+    logger.error(
+      {
+        err,
+        botId,
+        connectorId,
+      },
+      "Failed to get Slack bot info"
+    );
+
+    throw err;
+  }
+}
+
+export const getBotNameMemoized = cacheWithRedis(
+  getBotName,
+  ({ botId, connectorId }) => `slack-bot-name-${connectorId}-${botId}`,
+  BOT_NAME_CACHE_TTL
+);
+
 export async function isWhitelistedBotOrWorkflow(
   slackConfiguration: SlackConfigurationResource,
   messageElement: MessageElement,
@@ -120,46 +174,26 @@ export async function isWhitelistedBotOrWorkflow(
 
   // If bot name is not provided, attempt to fetch it from the API.
   if (botId) {
-    let slackBotOrWorkflowInfo: SlackUserInfo | undefined;
-    try {
-      slackBotOrWorkflowInfo = await getSlackBotInfo(
-        slackConfiguration.connectorId,
-        slackClient,
-        botId
-      );
-    } catch (err) {
-      if (isSlackWebAPIPlatformErrorBotNotFound(err)) {
-        logger.info(
-          {
-            botId,
-            connectorId: slackConfiguration.connectorId,
-          },
-          "Slack bot not found, skipping message"
-        );
+    const botName = await getBotNameMemoized({
+      botId,
+      connectorId: slackConfiguration.connectorId,
+      slackClient,
+    });
 
-        return false;
-      }
-
-      logger.error(
-        {
-          err,
-          botId,
-          connectorId: slackConfiguration.connectorId,
-        },
-        "Failed to get Slack bot info"
-      );
-
-      throw err;
-    }
-
-    if (!slackBotOrWorkflowInfo.display_name) {
-      return false;
-    }
-
-    return slackConfiguration.isBotWhitelistedToIndexMessages(
-      slackBotOrWorkflowInfo.display_name
-    );
+    return botName
+      ? slackConfiguration.isBotWhitelistedToIndexMessages(botName)
+      : false;
   }
 
   return false;
+}
+
+export async function getBotOrUserName(
+  message: MessageElement,
+  connectorId: ModelId,
+  slackClient: WebClient
+): Promise<string | undefined> {
+  return message.bot_id
+    ? getBotNameMemoized({ botId: message.bot_id, connectorId, slackClient })
+    : getUserName(message.user as string, connectorId, slackClient);
 }
