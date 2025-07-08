@@ -183,18 +183,6 @@ export const confluence = async ({
       return { success: true };
     }
 
-    case "ignore-near-rate-limit": {
-      await confluenceConfig.update({ ignoreNearRateLimit: true });
-
-      return { success: true };
-    }
-
-    case "unignore-near-rate-limit": {
-      await confluenceConfig.update({ ignoreNearRateLimit: false });
-
-      return { success: true };
-    }
-
     case "check-page-exists": {
       assert(
         args.url && typeof args.url === "string",
