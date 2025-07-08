@@ -1,6 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import {
+  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+  DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -48,7 +52,7 @@ function createServer(
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "include_file",
+    DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
     "Include the content of a file from the conversation attachments. Use this to access the full content of files that have been attached to the conversation.",
     {
       fileId: z
@@ -121,7 +125,7 @@ function createServer(
   );
 
   server.tool(
-    "list_files",
+    DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
     "List all files attached to the conversation.",
     {},
     async () => {
