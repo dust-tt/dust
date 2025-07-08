@@ -6,7 +6,7 @@ import type {
   PokeConversationType,
   Result,
 } from "@app/types";
-import { assertNever, Ok } from "@app/types";
+import { Ok } from "@app/types";
 
 export async function getPokeConversation(
   auth: Authenticator,
@@ -43,19 +43,12 @@ export async function getPokeConversation(
           if (m.actions.length > 0) {
             {
               for (const a of m.actions) {
-                switch (a.type) {
-                  case "tool_action":
-                    a.mcpIO = {
-                      params: a.params,
-                      output: a.output,
-                      generatedFiles: a.generatedFiles,
-                      isError: a.isError,
-                    };
-                    break;
-
-                  default:
-                    assertNever(a);
-                }
+                a.mcpIO = {
+                  params: a.params,
+                  output: a.output,
+                  generatedFiles: a.generatedFiles,
+                  isError: a.isError,
+                };
               }
             }
           }
