@@ -5,18 +5,19 @@ import { uniqueId } from "lodash";
 import type React from "react";
 import type { SVGProps } from "react";
 
+import type { DustAppRunConfigurationType } from "@app/components/actions/dust_app_run/utils";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
   DEFAULT_MCP_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
+  AgentReasoningEffort,
   DataSourceViewSelectionConfigurations,
   LightAgentConfigurationType,
   PlanType,
@@ -155,6 +156,7 @@ export type AssistantBuilderState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    reasoningEffort: AgentReasoningEffort;
     responseFormat?: string;
   };
   actions: AssistantBuilderMCPOrVizState[];
@@ -174,6 +176,7 @@ export type AssistantBuilderInitialState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    reasoningEffort: AgentReasoningEffort;
     responseFormat?: string;
   } | null;
   actions: AssistantBuilderActionAndDataVisualizationConfiguration[];
@@ -213,6 +216,8 @@ export function getDefaultAssistantState() {
         providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       },
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,

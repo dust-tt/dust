@@ -6,10 +6,14 @@ import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
+import {
+  AgentMessageContentParser,
+  getDelimitersConfiguration,
+} from "@app/lib/api/assistant/agent_message_content_parser";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { getRedisClient } from "@app/lib/api/redis";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -22,12 +26,10 @@ import type {
   ReasoningModelConfigurationType,
 } from "@app/types";
 import {
-  CLAUDE_3_7_SONNET_20250219_MODEL_ID,
   isModelId,
   isModelProviderId,
   isProviderWhitelisted,
   isReasoningEffortId,
-  SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
@@ -185,11 +187,7 @@ async function* runReasoning(
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  const supportedModel = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === reasoningModel.modelId &&
-      m.providerId === reasoningModel.providerId
-  );
+  const supportedModel = getSupportedModelConfig(reasoningModel);
 
   if (!supportedModel) {
     yield { type: "error", message: "Reasoning configuration not found" };
@@ -237,18 +235,11 @@ async function* runReasoning(
   if (reasoningModel.temperature) {
     config.MODEL.temperature = reasoningModel.temperature;
   }
-  if (reasoningModel.reasoningEffort) {
-    config.MODEL.reasoning_effort = reasoningModel.reasoningEffort;
-  }
 
-  if (supportedModel.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID) {
-    // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
-    config.MODEL.anthropic_beta_thinking = {
-      type: "enabled",
-      budget_tokens: 6400,
-    };
-    // Add the beta flag for larger outputs.
-    config.MODEL.anthropic_beta_flags = ["output-128k-2025-02-19"];
+  const reasoningEffort =
+    reasoningModel.reasoningEffort ?? supportedModel.defaultReasoningEffort;
+  if (reasoningEffort !== "none" && reasoningEffort !== "light") {
+    config.MODEL.reasoning_effort = reasoningEffort;
   }
 
   // Run the app.
@@ -286,7 +277,7 @@ async function* runReasoning(
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
-    supportedModel.delimitersConfiguration
+    getDelimitersConfiguration({ agentConfiguration })
   );
 
   const redis = await getRedisClient({ origin: "reasoning_generation" });

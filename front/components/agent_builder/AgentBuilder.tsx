@@ -1,31 +1,29 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
-import React from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  AgentBuilderFormProvider,
-  agentBuilderFormSchema,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
-  GPT_4O_MODEL_ID,
+  GPT_4O_MODEL_CONFIG,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
 export default function AgentBuilder() {
-  const { owner } = useAgentBuilderContext();
+  const { owner, user, supportedDataSourceViews } = useAgentBuilderContext();
   const { mcpServerViews } = useMCPServerViewsContext();
   const router = useRouter();
   const sendNotification = useSendNotification();
@@ -46,20 +44,41 @@ export default function AgentBuilder() {
         name: "",
         description: "",
         pictureUrl: "",
+        scope: "hidden",
+        editors: [user],
+        slackProvider: null,
+        slackChannels: [],
+        tags: [],
       },
       instructions: "",
       generationSettings: {
         modelSettings: {
-          modelId: GPT_4O_MODEL_ID,
+          modelId: GPT_4O_MODEL_CONFIG.modelId,
           providerId: "openai",
-          reasoningEffort: undefined,
         },
         temperature: 0.7,
+        reasoningEffort: GPT_4O_MODEL_CONFIG.defaultReasoningEffort,
       },
       actions: [],
       maxStepsPerRun: defaultMaxSteps,
     },
   });
+
+  useEffect(() => {
+    if (
+      supportedDataSourceViews.find(
+        (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
+      )
+    ) {
+      form.setValue("agentSettings.slackProvider", "slack_bot");
+    } else if (
+      supportedDataSourceViews.find(
+        (dsv) => dsv.dataSource.connectorProvider === "slack"
+      )
+    ) {
+      form.setValue("agentSettings.slackProvider", "slack");
+    }
+  }, [supportedDataSourceViews, form]);
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
@@ -89,7 +108,7 @@ export default function AgentBuilder() {
   };
 
   return (
-    <AgentBuilderFormProvider form={form} onSubmit={handleSubmit}>
+    <FormProvider form={form} onSubmit={handleSubmit}>
       <AgentBuilderLayout
         leftPanel={
           <AgentBuilderLeftPanel
@@ -103,6 +122,6 @@ export default function AgentBuilder() {
         }
         rightPanel={<AgentBuilderRightPanel />}
       />
-    </AgentBuilderFormProvider>
+    </FormProvider>
   );
 }

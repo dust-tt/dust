@@ -318,46 +318,48 @@ export function CreateMCPServerDialog({
                   </div>
                 </div>
               )}
-              <div className="space-y-2">
-                <Label htmlFor="requiresBearerToken">
-                  {defaultServerConfig?.authMethod === "bearer"
-                    ? `${defaultServerConfig.name} API Key`
-                    : "Authentication"}
-                </Label>
-                <div className="flex items-center space-x-2">
-                  {!defaultServerConfig && (
-                    <div>
-                      <SliderToggle
-                        disabled={false}
-                        selected={requiresBearerToken}
-                        onClick={() =>
-                          setRequiresBearerToken(!requiresBearerToken)
+              {defaultServerConfig?.authMethod !== "oauth" && (
+                <div className="space-y-2">
+                  <Label htmlFor="requiresBearerToken">
+                    {defaultServerConfig?.authMethod === "bearer"
+                      ? `${defaultServerConfig.name} API Key`
+                      : "Authentication"}
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    {!defaultServerConfig && (
+                      <div>
+                        <SliderToggle
+                          disabled={false}
+                          selected={requiresBearerToken}
+                          onClick={() =>
+                            setRequiresBearerToken(!requiresBearerToken)
+                          }
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex-grow">
+                      <Input
+                        id="sharedSecret"
+                        placeholder={
+                          defaultServerConfig?.authMethod === "bearer"
+                            ? `Paste your ${defaultServerConfig.name} API key here`
+                            : requiresBearerToken
+                              ? "Paste the Bearer Token here"
+                              : ""
+                        }
+                        disabled={!requiresBearerToken}
+                        value={sharedSecret}
+                        onChange={(e) => setSharedSecret(e.target.value)}
+                        isError={
+                          defaultServerConfig?.authMethod === "bearer" &&
+                          !sharedSecret
                         }
                       />
                     </div>
-                  )}
-
-                  <div className="flex-grow">
-                    <Input
-                      id="sharedSecret"
-                      placeholder={
-                        defaultServerConfig?.authMethod === "bearer"
-                          ? `Paste your ${defaultServerConfig.name} API key here`
-                          : requiresBearerToken
-                            ? "Paste the Bearer Token here"
-                            : ""
-                      }
-                      disabled={!requiresBearerToken}
-                      value={sharedSecret}
-                      onChange={(e) => setSharedSecret(e.target.value)}
-                      isError={
-                        defaultServerConfig?.authMethod === "bearer" &&
-                        !sharedSecret
-                      }
-                    />
                   </div>
                 </div>
-              </div>
+              )}
             </>
           )}
           {authorization && (

@@ -47,6 +47,7 @@ export type ResourceFindOptions<M extends Model> = {
   attributes?: FindOptions<M>["attributes"];
   includes?: TypedIncludeable<M>[];
   limit?: number;
+  offset?: number;
   order?: FindOptions<M>["order"];
   where?: WhereOptions<M>;
 } & (M extends SoftDeletableWorkspaceAwareModel

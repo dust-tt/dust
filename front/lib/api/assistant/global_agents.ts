@@ -55,10 +55,8 @@ import {
   MISTRAL_LARGE_MODEL_CONFIG,
   MISTRAL_MEDIUM_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
-  O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
-  O3_MINI_HIGH_REASONING_MODEL_CONFIG,
   O3_MODEL_CONFIG,
 } from "@app/types";
 
@@ -83,6 +81,7 @@ const dummyModelConfiguration = {
   providerId: GPT_4_1_MODEL_CONFIG.providerId,
   modelId: GPT_4_1_MODEL_CONFIG.modelId,
   temperature: 0,
+  reasoningEffort: GPT_4_1_MODEL_CONFIG.defaultReasoningEffort,
 };
 
 type PrefetchedDataSourcesType = {
@@ -261,6 +260,7 @@ function _getHelperGlobalAgent({
         providerId: modelConfiguration?.providerId,
         modelId: modelConfiguration?.modelId,
         temperature: 0.2,
+        reasoningEffort: modelConfiguration?.defaultReasoningEffort,
       }
     : dummyModelConfiguration;
   const status = modelConfiguration ? "active" : "disabled_by_admin";
@@ -473,9 +473,10 @@ function _getO3MiniGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.providerId,
-      modelId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.modelId,
+      providerId: O3_MODEL_CONFIG.providerId,
+      modelId: O3_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort: "high" as const,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -617,10 +618,10 @@ function _getO1HighReasoningGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: O1_HIGH_REASONING_MODEL_CONFIG.providerId,
-      modelId: O1_HIGH_REASONING_MODEL_CONFIG.modelId,
-      temperature: 1, // 1 is forced for O1
-      reasoningEffort: O1_HIGH_REASONING_MODEL_CONFIG.reasoningEffort,
+      providerId: O1_MODEL_CONFIG.providerId,
+      modelId: O1_MODEL_CONFIG.modelId,
+      temperature: 1,
+      reasoningEffort: "high" as const,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -799,6 +800,8 @@ function _getClaude3HaikuGlobalAgent({
       providerId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -850,6 +853,8 @@ function _getClaude3OpusGlobalAgent({
       providerId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -901,6 +906,8 @@ function _getClaude3GlobalAgent({
       providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -952,6 +959,8 @@ function _getClaude4SonnetGlobalAgent({
       providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -1003,6 +1012,8 @@ function _getClaude3_7GlobalAgent({
       providerId: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -1054,6 +1065,7 @@ function _getMistralLargeGlobalAgent({
       providerId: MISTRAL_LARGE_MODEL_CONFIG.providerId,
       modelId: MISTRAL_LARGE_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort: MISTRAL_LARGE_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -1105,6 +1117,7 @@ function _getMistralMediumGlobalAgent({
       providerId: MISTRAL_MEDIUM_MODEL_CONFIG.providerId,
       modelId: MISTRAL_MEDIUM_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort: MISTRAL_MEDIUM_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -1151,6 +1164,7 @@ function _getMistralSmallGlobalAgent({
       providerId: MISTRAL_SMALL_MODEL_CONFIG.providerId,
       modelId: MISTRAL_SMALL_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort: MISTRAL_SMALL_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -1202,6 +1216,8 @@ function _getGeminiProGlobalAgent({
       providerId: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.providerId,
       modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
@@ -1251,6 +1267,8 @@ function _getDeepSeekR1GlobalAgent({
       providerId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.providerId,
       modelId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.modelId,
       temperature: 0.7,
+      reasoningEffort:
+        FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [],
     maxStepsPerRun: 1,
@@ -1302,6 +1320,7 @@ function _getManagedDataSourceAgent(
         providerId: modelConfiguration.providerId,
         modelId: modelConfiguration.modelId,
         temperature: 0.7,
+        reasoningEffort: modelConfiguration.defaultReasoningEffort,
       }
     : dummyModelConfiguration;
 
@@ -1576,6 +1595,7 @@ function _getDustGlobalAgent(
         providerId: modelConfiguration.providerId,
         modelId: modelConfiguration.modelId,
         temperature: 0.7,
+        reasoningEffort: modelConfiguration.defaultReasoningEffort,
       }
     : dummyModelConfiguration;
 

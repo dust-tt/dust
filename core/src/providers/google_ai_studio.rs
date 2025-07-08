@@ -1,18 +1,7 @@
-use anyhow::{anyhow, Result};
-use async_trait::async_trait;
-
-use http::Uri;
-use parking_lot::RwLock;
-use serde_json::Value;
-use std::sync::Arc;
-
-use tokio::sync::mpsc::UnboundedSender;
-
-use crate::{run::Credentials, utils};
-
 use super::{
     chat_messages::ChatMessage,
     embedder::Embedder,
+    helpers::{convert_message_images_to_base64, fetch_and_encode_images_from_messages},
     llm::{ChatFunction, LLMChatGeneration, LLMGeneration, LLM},
     openai_compatible_helpers::{openai_compatible_chat_completion, TransformSystemMessages},
     provider::{Provider, ProviderID},
@@ -20,6 +9,14 @@ use super::{
         batch_tokenize_async, cl100k_base_singleton, decode_async, encode_async, CoreBPE,
     },
 };
+use crate::{run::Credentials, utils};
+use anyhow::{anyhow, Result};
+use async_trait::async_trait;
+use http::Uri;
+use parking_lot::RwLock;
+use serde_json::Value;
+use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
 
 pub struct GoogleAiStudioProvider {}
 
@@ -148,11 +145,18 @@ impl LLM for GoogleAiStudioLLM {
             None => Err(anyhow!("GOOGLE_AI_STUDIO_API_KEY is not set."))?,
         };
 
+        let base64_map = fetch_and_encode_images_from_messages(messages).await?;
+
+        let messages = messages
+            .iter()
+            .map(|msg| convert_message_images_to_base64(msg.clone(), &base64_map))
+            .collect::<Result<Vec<_>>>()?;
+
         openai_compatible_chat_completion(
             self.model_endpoint(),
             self.id.clone(),
             api_key,
-            messages,
+            &messages,
             functions,
             function_call,
             temperature,

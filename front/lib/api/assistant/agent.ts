@@ -17,8 +17,6 @@ import type {
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
-  isConversationIncludeFileConfiguration,
-  isDustAppRunConfiguration,
   isMCPToolConfiguration,
   isSearchLabelsConfiguration,
 } from "@app/lib/actions/types/guards";
@@ -40,6 +38,7 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -66,7 +65,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { assertNever, removeNulls } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -209,14 +208,13 @@ async function* runMultiActionsAgentLoop(
           event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
           const eventStreamGenerators = event.actions.map(
-            ({ action, inputs, functionCallId, specification }, index) => {
+            ({ action, inputs, functionCallId }, index) => {
               return runAction(auth, {
                 configuration,
                 actionConfiguration: action,
                 conversation,
                 agentMessage,
                 inputs,
-                specification,
                 functionCallId,
                 step: i,
                 stepActionIndex: index,
@@ -356,11 +354,7 @@ async function* runMultiActionsAgent(
   | AgentContentEvent
   | AgentStepContentEvent
 > {
-  const model = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === agentConfiguration.model.modelId &&
-      m.providerId === agentConfiguration.model.providerId
-  );
+  const model = getSupportedModelConfig(agentConfiguration.model);
 
   if (!model) {
     yield {
@@ -589,9 +583,13 @@ async function* runMultiActionsAgent(
   runConfig.MODEL.provider_id = model.providerId;
   runConfig.MODEL.model_id = model.modelId;
   runConfig.MODEL.temperature = agentConfiguration.model.temperature;
-  if (agentConfiguration.model.reasoningEffort) {
-    runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
+
+  const reasoningEffort =
+    agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
+  if (reasoningEffort !== "none" && reasoningEffort !== "light") {
+    runConfig.MODEL.reasoning_effort = reasoningEffort;
   }
+
   if (agentConfiguration.model.responseFormat) {
     runConfig.MODEL.response_format = JSON.parse(
       agentConfiguration.model.responseFormat
@@ -896,7 +894,7 @@ async function* runMultiActionsAgent(
     }
 
     const chainOfThought =
-      nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
+      (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
     yield {
       type: "agent_message_content",
@@ -1076,7 +1074,7 @@ async function* runMultiActionsAgent(
   yield* contentParser.flushTokens();
 
   const chainOfThought =
-    nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
+    (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
   if (chainOfThought?.length) {
     yield {
@@ -1120,7 +1118,6 @@ async function* runAction(
     conversation,
     agentMessage,
     inputs,
-    specification,
     functionCallId,
     step,
     stepActionIndex,
@@ -1132,7 +1129,6 @@ async function* runAction(
     conversation: ConversationType;
     agentMessage: AgentMessageType;
     inputs: Record<string, string | boolean | number>;
-    specification: AgentActionSpecification | null;
     functionCallId: string | null;
     step: number;
     stepActionIndex: number;
@@ -1143,137 +1139,7 @@ async function* runAction(
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
   void
 > {
-  const now = Date.now();
-
-  if (isDustAppRunConfiguration(actionConfiguration)) {
-    if (!specification) {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          elapsedTime: Date.now() - now,
-        },
-        "No specification found for Dust app run action."
-      );
-      yield {
-        type: "agent_error",
-        created: now,
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "parameters_generation_error",
-          message: "No specification found for Dust app run action.",
-          metadata: null,
-        },
-      };
-      return;
-    }
-
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(
-      auth,
-      {
-        agentConfiguration: configuration,
-        conversation,
-        agentMessage,
-        rawInputs: inputs,
-        functionCallId,
-        step,
-      },
-      {
-        spec: specification,
-      }
-    );
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "dust_app_run_params":
-          yield event;
-          break;
-        case "dust_app_run_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "dust_app_run_block":
-          yield event;
-          break;
-        case "dust_app_run_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isConversationIncludeFileConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "conversation_include_file_params":
-          yield event;
-          break;
-        case "conversation_include_file_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "conversation_include_file_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isSearchLabelsConfiguration(actionConfiguration)) {
+  if (isSearchLabelsConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(auth, {

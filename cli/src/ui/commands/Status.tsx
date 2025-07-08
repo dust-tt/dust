@@ -1,7 +1,7 @@
 import type { MeResponseType, WorkspaceType } from "@dust-tt/client";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
-import type { FC} from "react";
+import type { FC } from "react";
 import React, { useEffect, useState } from "react";
 
 import AuthService from "../../utils/authService.js";

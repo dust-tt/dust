@@ -107,14 +107,14 @@ export const TagsSuggestDialog = ({
             )}
           </DialogDescription>
         </DialogHeader>
-        <DialogContainer className="h-[500px]">
+        <DialogContainer className="h-125">
           {isSuggestionsLoading && (
             <div className="flex justify-center py-8">
               <Spinner size="lg" />
             </div>
           )}
           {suggestions.length > 0 && (
-            <div className="-mt-4 max-h-[500px]">
+            <div className="-mt-4 max-h-125">
               <ScrollArea>
                 <ContextItem.List>
                   {suggestions.map((suggestion) => (

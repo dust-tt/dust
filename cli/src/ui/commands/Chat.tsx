@@ -28,10 +28,6 @@ import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
 import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
-import {
-  sendNonInteractiveMessage,
-  validateNonInteractiveFlags,
-} from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -40,7 +36,6 @@ type AgentConfiguration =
 interface CliChatProps {
   sId?: string;
   agentSearch?: string;
-  message?: string;
   conversationId?: string;
 }
 
@@ -60,15 +55,9 @@ function getLastConversationItem<T extends ConversationItem>(
 const CliChat: FC<CliChatProps> = ({
   sId: requestedSId,
   agentSearch,
-  message,
   conversationId,
 }) => {
   const [error, setError] = useState<string | null>(null);
-
-  // Validate flags usage
-  useEffect(() => {
-    validateNonInteractiveFlags(message, agentSearch, conversationId);
-  }, [message, agentSearch, conversationId]);
 
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
@@ -310,33 +299,6 @@ const CliChat: FC<CliChatProps> = ({
     ]);
   }, [agentSearch, allAgents, selectedAgent]);
 
-  // Handle non-interactive mode when message is provided
-  useEffect(() => {
-    if (!message || !selectedAgent) {
-      return;
-    }
-
-    // Wait for authentication to load
-    if (isMeLoading) {
-      return;
-    }
-
-    // Check for authentication errors
-    if (!me || meError) {
-      console.error(
-        JSON.stringify({
-          error: "Authentication error",
-          details: meError || "Not authenticated",
-        })
-      );
-      process.exit(1);
-    }
-
-    // Call the standalone function
-    setIsProcessingQuestion(true);
-    void sendNonInteractiveMessage(message, selectedAgent, me, conversationId);
-  }, [message, selectedAgent, me, meError, isMeLoading, conversationId]);
-
   const canSubmit =
     me &&
     !meError &&
@@ -573,9 +535,9 @@ const CliChat: FC<CliChatProps> = ({
                     type: "agent_message_content_line",
                     text: line || " ",
                     index,
-                  } satisfies ConversationItem & {
+                  }) satisfies ConversationItem & {
                     type: "agent_message_content_line";
-                  })
+                  }
               )
               .filter((item) => !prevIds.has(item.key))
               .slice(0, isStreaming ? -1 : undefined);
@@ -597,9 +559,9 @@ const CliChat: FC<CliChatProps> = ({
                       type: "agent_message_cot_line",
                       text: line,
                       index,
-                    } satisfies ConversationItem & {
+                    }) satisfies ConversationItem & {
                       type: "agent_message_cot_line";
-                    })
+                    }
                 )
                 .filter((item) => !prevIds.has(item.key))
                 .slice(0, isStreaming && !contentItems.length ? -1 : undefined);
@@ -1096,13 +1058,6 @@ const CliChat: FC<CliChatProps> = ({
       }
     }
   });
-
-  // In non-interactive mode, show minimal UI
-  if (message) {
-    // Don't show any UI in non-interactive mode
-    // All output is handled via console.log/console.error in the useEffect
-    return null;
-  }
 
   // Show loading state while searching for agent
   if (agentSearch && agentsIsLoading) {

@@ -85,7 +85,7 @@ import {
   assertNever,
   ConversationError,
   Err,
-  getSmallWhitelistedModel,
+  getLargeNonAnthropicWhitelistedModel,
   isAgentMention,
   isAgentMessageType,
   isContentFragmentInputWithContentNode,
@@ -355,7 +355,7 @@ export async function generateConversationTitle(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getSmallWhitelistedModel(owner);
+  const model = getLargeNonAnthropicWhitelistedModel(owner);
   if (!model) {
     return new Err(
       new Error(`Failed to find a whitelisted model to generate title`)
@@ -1902,9 +1902,6 @@ async function* streamRunAgentEvents(
 
       // All other events that won't impact the database and are related to actions or tokens
       // generation.
-      case "conversation_include_file_params":
-      case "dust_app_run_block":
-      case "dust_app_run_params":
       case "generation_tokens":
       case "search_labels_params":
       case "tool_approve_execution":

@@ -1,6 +1,8 @@
 import { faker } from "@faker-js/faker";
-import { describe, expect } from "vitest";
+import type { Organization } from "@workos-inc/node";
+import { describe, expect, vi } from "vitest";
 
+import * as workosClient from "@app/lib/api/workos/client";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { itInTransaction } from "@app/tests/utils/utils";
@@ -64,6 +66,44 @@ describe("POST /api/w/[wId]", () => {
   });
 
   itInTransaction("updates workspace name", async () => {
+    const getOrganizationByExternalIdSpy = vi.fn().mockResolvedValue({
+      id: "org_123",
+      name: "Old Workspace Name - sId123",
+      object: "organization",
+      allowProfilesOutsideOrganization: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      domains: [],
+      externalId: "sId123",
+      metadata: {},
+      connectionCount: 0,
+      state: "active",
+    } as Organization);
+
+    const updateOrganizationSpy = vi.fn().mockResolvedValue({
+      id: "org_123",
+      name: "New Workspace Name - sId123",
+      object: "organization",
+      allowProfilesOutsideOrganization: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      domains: [],
+      externalId: "sId123",
+      metadata: {},
+      connectionCount: 0,
+      state: "active",
+    } as Organization);
+
+    vi.spyOn(workosClient, "getWorkOS").mockImplementation(
+      () =>
+        ({
+          organizations: {
+            getOrganizationByExternalId: getOrganizationByExternalIdSpy,
+            updateOrganization: updateOrganizationSpy,
+          },
+        }) as any
+    );
+
     const { req, res, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -82,6 +122,8 @@ describe("POST /api/w/[wId]", () => {
         name: "New Workspace Name",
       }),
     });
+
+    expect(updateOrganizationSpy).toHaveBeenCalled();
   });
 
   itInTransaction("updates SSO enforcement", async () => {

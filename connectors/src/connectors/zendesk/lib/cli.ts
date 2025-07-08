@@ -1,4 +1,8 @@
 import {
+  RETENTION_PERIOD_CONFIG_KEY,
+  ZendeskConnectorManager,
+} from "@connectors/connectors/zendesk";
+import {
   extractMetadataFromDocumentUrl,
   shouldSyncTicket,
   syncTicket,
@@ -34,6 +38,7 @@ import type {
   ZendeskCountTicketsResponseType,
   ZendeskFetchBrandResponseType,
   ZendeskFetchTicketResponseType,
+  ZendeskGetRetentionPeriodResponseType,
 } from "@connectors/types";
 
 export const zendesk = async ({
@@ -44,6 +49,7 @@ export const zendesk = async ({
   | ZendeskCountTicketsResponseType
   | ZendeskFetchTicketResponseType
   | ZendeskFetchBrandResponseType
+  | ZendeskGetRetentionPeriodResponseType
   | AdminResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
@@ -363,6 +369,23 @@ export const zendesk = async ({
         { ticketId, brandId, connectorId: connector.id },
         "Successfully synced single ticket"
       );
+      return { success: true };
+    }
+    case "get-retention-period": {
+      return {
+        retentionPeriodDays: configuration.retentionPeriodDays,
+      };
+    }
+    case "set-retention-period": {
+      const retentionPeriodDays = args.retentionPeriodDays;
+      if (retentionPeriodDays === undefined) {
+        throw new Error("Missing --retentionPeriodDays argument");
+      }
+      const manager = new ZendeskConnectorManager(connectorId);
+      await manager.setConfigurationKey({
+        configKey: RETENTION_PERIOD_CONFIG_KEY,
+        configValue: retentionPeriodDays.toString(),
+      });
       return { success: true };
     }
   }
