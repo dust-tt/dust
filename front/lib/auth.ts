@@ -8,6 +8,7 @@ import type {
 } from "next";
 
 import config from "@app/lib/api/config";
+import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
@@ -305,6 +306,61 @@ export class Authenticator {
       groups,
       subscription,
     });
+  }
+
+  static async fromWorkOSToken({
+    token,
+    wId,
+  }: {
+    token: WorkOSJwtPayload;
+    wId: string;
+  }): Promise<
+    Result<
+      Authenticator,
+      { code: "user_not_found" | "workspace_not_found" | "sso_enforced" }
+    >
+  > {
+    const user = await UserResource.fetchByWorkOSUserId(token.sub);
+    if (!user) {
+      return new Err({ code: "user_not_found" });
+    }
+
+    const workspace = await WorkspaceModel.findOne({
+      where: {
+        sId: wId,
+      },
+    });
+    if (!workspace) {
+      return new Err({ code: "workspace_not_found" });
+    }
+
+    let role = "none" as RoleType;
+    let groups: GroupResource[] = [];
+    let subscription: SubscriptionResource | null = null;
+
+    [role, groups, subscription] = await Promise.all([
+      MembershipResource.getActiveRoleForUserInWorkspace({
+        user: user,
+        workspace: renderLightWorkspaceType({ workspace }),
+      }),
+      GroupResource.listUserGroupsInWorkspace({
+        user,
+        workspace: renderLightWorkspaceType({ workspace }),
+      }),
+      SubscriptionResource.fetchActiveByWorkspace(
+        renderLightWorkspaceType({ workspace })
+      ),
+    ]);
+
+    return new Ok(
+      new Authenticator({
+        workspace,
+        groups,
+        user,
+        role,
+        subscription,
+      })
+    );
   }
 
   /**
