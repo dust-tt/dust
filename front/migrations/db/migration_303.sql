@@ -1,1 +1,4 @@
-DELETE FROM agent_search_labels_actions;
+-- Migration created on Jul 08, 2025
+ALTER TABLE "public"."users" DROP COLUMN "provider";
+ALTER TABLE "public"."users" DROP COLUMN "providerId";
+ALTER TABLE "public"."users" DROP COLUMN "auth0Sub";
