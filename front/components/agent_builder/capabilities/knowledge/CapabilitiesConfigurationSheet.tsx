@@ -10,10 +10,13 @@ import {
 import { AnimatePresence } from "framer-motion";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useEffect, useState } from "react";
-import { useWatch } from "react-hook-form";
+import { useForm, useFormContext, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
 import {
@@ -40,6 +43,24 @@ import type {
 } from "@app/types";
 
 const DESCRIPTION_MAX_LENGTH = 800;
+
+const capabilityFormSchema = z.object({
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(DESCRIPTION_MAX_LENGTH, "Description too long"),
+  dataSourceConfigurations: z.record(z.any()).default({}),
+  timeFrame: z
+    .object({
+      duration: z.number().nullable(),
+      unit: z.enum(["hour", "day", "week", "month", "year"]).nullable(),
+    })
+    .nullable()
+    .default(null),
+  jsonSchema: z.any().nullable().default(null),
+});
+
+type CapabilityFormData = z.infer<typeof capabilityFormSchema>;
 
 const PAGE_IDS = {
   DATA_SOURCE_SELECTION: "data-source-selection",
@@ -176,33 +197,44 @@ export function CapabilitiesConfigurationSheet({
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     PAGE_IDS.DATA_SOURCE_SELECTION
   );
-  const [description, setDescription] = useState(action?.description ?? "");
-  const [dataSourceConfigurations, setDataSourceConfigurations] =
-    useState<DataSourceViewSelectionConfigurations>(() =>
-      getDataSourceConfigurations(action)
-    );
-  const [timeFrame, setTimeFrame] = useState<TimeFrame | null>(() =>
-    getTimeFrame(action)
-  );
-  const [jsonSchema, setJsonSchema] = useState<JSONSchema | null>(() =>
-    getJsonSchema(action)
-  );
+
+  const form = useForm<CapabilityFormData>({
+    resolver: zodResolver(capabilityFormSchema),
+    defaultValues: {
+      description: action?.description ?? "",
+      dataSourceConfigurations: getDataSourceConfigurations(action),
+      timeFrame: getTimeFrame(action),
+      jsonSchema: getJsonSchema(action),
+    },
+  });
+
+  const { watch, setValue, getValues } = form;
+  const [description, dataSourceConfigurations, timeFrame, jsonSchema] = watch([
+    "description",
+    "dataSourceConfigurations",
+    "timeFrame",
+    "jsonSchema",
+  ]);
 
   useEffect(() => {
     if (isOpen) {
-      setDescription(action?.description ?? "");
-      setDataSourceConfigurations(getDataSourceConfigurations(action));
-      setTimeFrame(getTimeFrame(action));
-      setJsonSchema(getJsonSchema(action));
+      form.reset({
+        description: action?.description ?? "",
+        dataSourceConfigurations: getDataSourceConfigurations(action),
+        timeFrame: getTimeFrame(action),
+        jsonSchema: getJsonSchema(action),
+      });
     }
-  }, [action, isOpen]);
+  }, [action, isOpen, form]);
 
   const handleClose = () => {
     onClose();
-    setDescription("");
-    setDataSourceConfigurations({});
-    setTimeFrame(null);
-    setJsonSchema(null);
+    form.reset({
+      description: "",
+      dataSourceConfigurations: {},
+      timeFrame: null,
+      jsonSchema: null,
+    });
     setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
   };
 
@@ -211,6 +243,7 @@ export function CapabilitiesConfigurationSheet({
   const handleSave = () => {
     if (!capability) return;
 
+    const formData = getValues();
     const config = CAPABILITY_CONFIGS[capability];
     let newAction: AgentBuilderAction;
 
@@ -220,10 +253,10 @@ export function CapabilitiesConfigurationSheet({
           id: action?.id || `${capability}_${Date.now()}`,
           type: "SEARCH",
           name: config.actionName,
-          description,
+          description: formData.description,
           configuration: {
             type: "SEARCH",
-            dataSourceConfigurations,
+            dataSourceConfigurations: formData.dataSourceConfigurations,
           },
           noConfigurationRequired: false,
         } as SearchAgentBuilderAction;
@@ -233,11 +266,11 @@ export function CapabilitiesConfigurationSheet({
           id: action?.id || `include_data_${Date.now()}`,
           type: "INCLUDE_DATA",
           name: config.actionName,
-          description,
+          description: formData.description,
           configuration: {
             type: "INCLUDE_DATA",
-            dataSourceConfigurations,
-            timeFrame,
+            dataSourceConfigurations: formData.dataSourceConfigurations,
+            timeFrame: formData.timeFrame,
           },
           noConfigurationRequired: false,
         } as IncludeDataAgentBuilderAction;
@@ -247,12 +280,12 @@ export function CapabilitiesConfigurationSheet({
           id: action?.id || `extract_data_${Date.now()}`,
           type: "EXTRACT_DATA",
           name: config.actionName,
-          description,
+          description: formData.description,
           configuration: {
             type: "EXTRACT_DATA",
-            dataSourceConfigurations,
-            timeFrame,
-            jsonSchema,
+            dataSourceConfigurations: formData.dataSourceConfigurations,
+            timeFrame: formData.timeFrame,
+            jsonSchema: formData.jsonSchema,
           },
           noConfigurationRequired: false,
         } as ExtractDataAgentBuilderAction;
@@ -292,7 +325,9 @@ export function CapabilitiesConfigurationSheet({
                   allowedSpaces={spaces}
                   owner={owner}
                   selectionConfigurations={dataSourceConfigurations}
-                  setSelectionConfigurations={setDataSourceConfigurations}
+                  setSelectionConfigurations={(configs) =>
+                    setValue("dataSourceConfigurations", configs)
+                  }
                   viewType={config.viewType}
                   isRootSelectable={true}
                 />
@@ -310,7 +345,7 @@ export function CapabilitiesConfigurationSheet({
               {config.hasTimeFrame && (
                 <TimeFrameSection
                   timeFrame={timeFrame}
-                  setTimeFrame={setTimeFrame}
+                  setTimeFrame={(timeFrame) => setValue("timeFrame", timeFrame)}
                   actionType={
                     capability === "extract_data" ? "extract" : "include"
                   }
@@ -326,7 +361,7 @@ export function CapabilitiesConfigurationSheet({
                       ? JSON.stringify(getJsonSchema(action), null, 2)
                       : null
                   }
-                  onChange={setJsonSchema}
+                  onChange={(schema) => setValue("jsonSchema", schema)}
                   agentInstructions={instructions}
                   agentDescription={description}
                   owner={owner}
@@ -337,7 +372,7 @@ export function CapabilitiesConfigurationSheet({
                 description={config.descriptionConfig.description}
                 placeholder={config.descriptionConfig.placeholder}
                 value={description}
-                onChange={setDescription}
+                onChange={(desc) => setValue("description", desc)}
                 maxLength={config.descriptionConfig.maxLength}
                 helpText={config.descriptionConfig.helpText}
               />
