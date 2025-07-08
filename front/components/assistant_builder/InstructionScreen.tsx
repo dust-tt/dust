@@ -99,11 +99,15 @@ export function InstructionScreen({
     workspaceId: owner.sId,
   });
 
-  const editor = useEditor({
-    extensions: getAgentBuilderInstructionsExtensionsForWorkspace(
+  const extensions = useMemo(() => {
+    return getAgentBuilderInstructionsExtensionsForWorkspace(
       owner,
       featureFlags
-    ),
+    );
+  }, [owner, featureFlags]);
+
+  const editor = useEditor({
+    extensions,
     editable: !doTypewriterEffect,
     content: tipTapContentFromPlainText(
       (!doTypewriterEffect && builderState.instructions) || ""
