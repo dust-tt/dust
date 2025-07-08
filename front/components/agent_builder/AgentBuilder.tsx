@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -57,8 +57,8 @@ export default function AgentBuilder({
   });
 
   const defaultMaxSteps = hasFeature("extended_max_steps_per_run")
-    ? EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT
-    : MAX_STEPS_USE_PER_RUN_LIMIT;
+    ? Math.min(10, EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT)
+    : Math.min(10, MAX_STEPS_USE_PER_RUN_LIMIT);
 
   const defaultValues = useMemo((): AgentBuilderFormData => {
     if (agentConfiguration) {
@@ -86,7 +86,22 @@ export default function AgentBuilder({
     const hasActions = actions && actions.length > 0;
     const hasEditors = editors && editors.length > 0;
 
-    if (!hasActions && !hasEditors) {
+    // Determine Slack provider based on supported data source views
+    const slackProvider = supportedDataSourceViews.find(
+      (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
+    )
+      ? "slack_bot"
+      : supportedDataSourceViews.find(
+            (dsv) => dsv.dataSource.connectorProvider === "slack"
+          )
+        ? "slack"
+        : defaultValues.agentSettings.slackProvider;
+
+    if (
+      !hasActions &&
+      !hasEditors &&
+      slackProvider === defaultValues.agentSettings.slackProvider
+    ) {
       return undefined; // Let defaultValues handle initial state
     }
 
@@ -103,30 +118,21 @@ export default function AgentBuilder({
       };
     }
 
+    if (slackProvider !== defaultValues.agentSettings.slackProvider) {
+      updatedValues.agentSettings = {
+        ...updatedValues.agentSettings,
+        slackProvider,
+      };
+    }
+
     return updatedValues;
-  }, [defaultValues, actions, editors]);
+  }, [defaultValues, actions, editors, supportedDataSourceViews]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
     defaultValues,
     values: formValues, // Reactive updates when actions are loaded
   });
-
-  useEffect(() => {
-    if (
-      supportedDataSourceViews.find(
-        (dsv) => dsv.dataSource.connectorProvider === "slack_bot"
-      )
-    ) {
-      form.setValue("agentSettings.slackProvider", "slack_bot");
-    } else if (
-      supportedDataSourceViews.find(
-        (dsv) => dsv.dataSource.connectorProvider === "slack"
-      )
-    ) {
-      form.setValue("agentSettings.slackProvider", "slack");
-    }
-  }, [supportedDataSourceViews, form]);
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
