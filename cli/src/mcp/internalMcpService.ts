@@ -2,9 +2,10 @@ import type { DustAPI } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 /**
- * Abstract base class for MCP services
+ * Abstract base class for internal MCP services
+ * Integrates directly with Dust's API for internal agent capabilities
  */
-export abstract class McpService {
+export abstract class InternalMcpService {
   /**
    * Create and connect to a server for a workspace
    * Primary method for workspace-scoped MCP implementation

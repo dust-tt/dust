@@ -6,7 +6,7 @@ import type { FC } from "react";
 import React, { useEffect, useState } from "react";
 
 import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on_mount.js";
-import { startMcpServer } from "../../mcp/mcpServer.js";
+import { AgentsMcpService } from "../../mcp/mcpServer.js";
 import AgentSelector from "../components/AgentSelector.js";
 
 type AgentConfiguration =
@@ -25,20 +25,24 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
   const [isServerStarted, setIsServerStarted] = useState(false);
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [mcpService, setMcpService] = useState<AgentsMcpService | null>(null);
 
-  useClearTerminalOnMount();
+  // useClearTerminalOnMount();
 
   // This useEffect handles starting the server after confirmedSelection is set
   useEffect(() => {
     if (confirmedSelection && !isServerStarted) {
-      void startMcpServer(
-        confirmedSelection,
-        (url) => {
+      const service = new AgentsMcpService(confirmedSelection, port);
+      setMcpService(service);
+
+      void service
+        .startServer((url) => {
           setIsServerStarted(true);
           setServerUrl(url);
-        },
-        port
-      );
+        })
+        .catch((err) => {
+          setError(err.message || "Failed to start MCP server");
+        });
     }
   }, [confirmedSelection, isServerStarted, port]);
 
@@ -52,6 +56,15 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
       setTimeout(() => setCopied(false), 1500);
     }
   });
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (mcpService) {
+        void mcpService.disconnect();
+      }
+    };
+  }, [mcpService]);
 
   if (error) {
     return <Text color="red">Error: {error}</Text>;

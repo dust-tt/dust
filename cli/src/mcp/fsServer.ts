@@ -1,13 +1,13 @@
 import type { DustAPI } from "@dust-tt/client";
 import { DustMcpServerTransport } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { McpService } from "./mcpService.js";
+import { InternalMcpService } from "./internalMcpService.js";
 
 /**
  * Filesystem MCP service implementation
  * Provides file system tools through MCP protocol
  */
-export class FileSystemMcpService extends McpService {
+export class FileSystemMcpService extends InternalMcpService {
   private server: McpServer | null = null;
   private transport: DustMcpServerTransport | null = null;
   private serverId: string | undefined = undefined;
