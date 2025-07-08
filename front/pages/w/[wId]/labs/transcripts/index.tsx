@@ -1,10 +1,4 @@
-import {
-  BookOpenIcon,
-  Breadcrumbs,
-  Page,
-  Spinner,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { BookOpenIcon, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
@@ -16,6 +10,7 @@ import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSele
 import { StorageConfiguration } from "@app/components/labs/transcripts/StorageConfiguration";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";

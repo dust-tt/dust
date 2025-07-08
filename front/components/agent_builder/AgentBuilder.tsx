@@ -1,4 +1,3 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/router";
 import { useEffect } from "react";
@@ -14,6 +13,7 @@ import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgen
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import {

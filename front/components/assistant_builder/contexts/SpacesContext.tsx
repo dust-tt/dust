@@ -1,7 +1,7 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import React, { createContext, memo, useContext, useEffect } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 

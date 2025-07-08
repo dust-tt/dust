@@ -5,7 +5,6 @@ import {
   ScrollableDataTable,
   SearchInput,
   useHashParam,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import React from "react";
@@ -21,6 +20,7 @@ import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchCon
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import {

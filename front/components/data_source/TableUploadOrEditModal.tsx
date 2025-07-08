@@ -11,11 +11,11 @@ import {
   SheetTitle,
   Spinner,
   TextArea,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   useDataSourceViewTable,
   useUpdateDataSourceViewTable,
