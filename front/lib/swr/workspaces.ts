@@ -6,11 +6,7 @@ import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
-import type {
-  LightWorkspaceType,
-  WhitelistableFeature,
-  WorkspaceEnterpriseConnection,
-} from "@app/types";
+import type { LightWorkspaceType, WhitelistableFeature } from "@app/types";
 
 export function useWorkspace({
   owner,

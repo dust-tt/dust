@@ -3,7 +3,6 @@ import { sealData } from "iron-session";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { makeEnterpriseConnectionName } from "@app/lib/api/enterprise_connection";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
   config as multiRegionsConfig,
@@ -14,10 +13,8 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
 import { setRegionForUser } from "@app/lib/api/workos/user";
-import { getFeatureFlags, getSession } from "@app/lib/auth";
+import { getSession } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { isString } from "@app/types";
