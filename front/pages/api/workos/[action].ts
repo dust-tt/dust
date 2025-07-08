@@ -57,33 +57,6 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       organizationIdToUse = organizationId;
     }
 
-    // Get the last workspace ID from cookie if available
-    const lastWorkspaceId = req.cookies.lastWorkspaceId;
-
-    if (lastWorkspaceId) {
-      const workspace = await WorkspaceModel.findOne({
-        where: {
-          sId: lastWorkspaceId,
-        },
-      });
-      if (workspace) {
-        const lightWorkspace = renderLightWorkspaceType({ workspace });
-        const featureFlags = await getFeatureFlags(lightWorkspace);
-        if (
-          featureFlags.includes("okta_enterprise_connection") &&
-          !featureFlags.includes("workos")
-        ) {
-          // Redirect to legacy enterprise login
-          res.redirect(
-            `/api/auth/login?connection=${makeEnterpriseConnectionName(
-              workspace.sId
-            )}`
-          );
-          return;
-        }
-      }
-    }
-
     let enterpriseParams: { organizationId?: string; connectionId?: string } =
       {};
     if (organizationIdToUse) {

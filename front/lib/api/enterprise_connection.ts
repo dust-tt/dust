@@ -1,17 +1,8 @@
-import type { Connection } from "auth0";
-
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type {
-  IdpSpecificConnectionTypeDetails,
-  SAMLConnectionTypeDetails,
-} from "@app/pages/api/w/[wId]/enterprise-connection";
 import type { LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
 
 export function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
@@ -27,27 +18,11 @@ export async function makeEnterpriseConnectionInitiateLoginUrl(
     },
   });
 
-  // TODO(workos): Remove this once we can use WorkOS for everybody
-  const oauthProvider = config.getOAuthProvider();
-  const loginPath =
-    oauthProvider === "workos" ? "api/workos/login" : "api/auth/login";
-
-  if (!workspace) {
-    return `${config.getClientFacingUrl()}/${loginPath}`;
+  if (!workspace || !workspace.workOSOrganizationId) {
+    return `${config.getClientFacingUrl()}/api/workos/login`;
   }
 
-  const w = renderLightWorkspaceType({ workspace });
-  const featureFlags = await getFeatureFlags(w);
-  if (
-    oauthProvider === "workos" ||
-    (featureFlags.includes("workos") && workspace.workOSOrganizationId)
-  ) {
-    return `${config.getClientFacingUrl()}/api/workos/login?organizationId=${workspace.workOSOrganizationId}`;
-  }
-
-  return `${config.getClientFacingUrl()}/api/auth/login?connection=${makeEnterpriseConnectionName(
-    workspaceId
-  )}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`;
+  return `${config.getClientFacingUrl()}/api/workos/login?organizationId=${workspace.workOSOrganizationId}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ""}`;
 }
 
 export function makeAudienceUri(owner: LightWorkspaceType) {
@@ -68,83 +43,4 @@ export async function getEnterpriseConnectionForWorkspace(auth: Authenticator) {
   });
 
   return connections.data.find((c) => c.name === expectedConnectionName);
-}
-
-type EnterpriseConnectionDetails =
-  | IdpSpecificConnectionTypeDetails
-  | SAMLConnectionTypeDetails;
-
-export async function createEnterpriseConnection(
-  auth: Authenticator,
-  verifiedDomain: string,
-  connectionDetails: EnterpriseConnectionDetails
-): Promise<Connection> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const { sId } = owner;
-  const connection = await getAuth0ManagemementClient().connections.create({
-    name: makeEnterpriseConnectionName(sId),
-    display_name: makeEnterpriseConnectionName(sId),
-    strategy: connectionDetails.strategy,
-    options: {
-      ...getCreateConnectionPayloadFromConnectionDetails(connectionDetails),
-      domain_aliases: [verifiedDomain],
-      scope: "email profile openid",
-    },
-    is_domain_connection: false,
-    realms: [],
-    enabled_clients: [
-      config.getAuth0WebApplicationId(),
-      config.getAuth0ExtensionApplicationId(),
-      config.getAuth0CliApplicationId(),
-    ],
-    metadata: {},
-  });
-
-  return connection.data;
-}
-
-export async function deleteEnterpriseConnection(auth: Authenticator) {
-  const existingConnection = await getEnterpriseConnectionForWorkspace(auth);
-  if (!existingConnection) {
-    throw new Error("Enterprise connection not found.");
-  }
-
-  return getAuth0ManagemementClient().connections.delete({
-    id: existingConnection.id,
-  });
-}
-
-function getCreateConnectionPayloadFromConnectionDetails(
-  connectionDetails: EnterpriseConnectionDetails
-) {
-  switch (connectionDetails.strategy) {
-    case "okta":
-      return {
-        domain: connectionDetails.domain,
-        strategy: connectionDetails.strategy,
-        client_id: connectionDetails.clientId,
-        client_secret: connectionDetails.clientSecret,
-      };
-
-    case "waad":
-      return {
-        tenant_domain: connectionDetails.domain,
-        strategy: connectionDetails.strategy,
-        client_id: connectionDetails.clientId,
-        client_secret: connectionDetails.clientSecret,
-        // We trust the email from WAAD enterprise connection.
-        should_trust_email_verified_connection: "always_set_emails_as_verified",
-      };
-
-    case "samlp":
-      return {
-        strategy: connectionDetails.strategy,
-        signingCert: connectionDetails.x509SignInCertificate,
-        signInEndpoint: connectionDetails.signInUrl,
-      };
-
-    default:
-      assertNever(connectionDetails);
-  }
 }

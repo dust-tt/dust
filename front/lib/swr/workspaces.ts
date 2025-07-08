@@ -80,34 +80,6 @@ export function useWorkspaceAnalytics({
   };
 }
 
-// TODO(workos): Remove this once we have migrated to WorkOS.
-export function useWorkspaceEnterpriseConnection({
-  owner,
-  disabled,
-}: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-}) {
-  const workspaceEnterpriseConnectionFetcher: Fetcher<{
-    connection: WorkspaceEnterpriseConnection;
-  }> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/enterprise-connection`,
-    workspaceEnterpriseConnectionFetcher,
-    {
-      disabled,
-    }
-  );
-
-  return {
-    enterpriseConnection: data ? data.connection : null,
-    isEnterpriseConnectionLoading: !error && !data,
-    isEnterpriseConnectionError: error,
-    mutateEnterpriseConnection: mutate,
-  };
-}
-
 export function useWorkspaceActiveSubscription({
   owner,
   disabled,
