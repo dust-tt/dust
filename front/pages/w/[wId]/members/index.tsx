@@ -1,7 +1,6 @@
 import {
   Page,
   SearchInput,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -29,7 +28,6 @@ import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
-import { useWorkOSSSOStatus } from "@app/lib/swr/workos";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   PlanType,
