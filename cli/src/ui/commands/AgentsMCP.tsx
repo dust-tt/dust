@@ -6,7 +6,7 @@ import type { FC } from "react";
 import React, { useEffect, useState } from "react";
 
 import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on_mount.js";
-import { startMcpServer } from "../../utils/mcpServer.js";
+import { startMcpServer } from "../../mcp/mcpServer.js";
 import AgentSelector from "../components/AgentSelector.js";
 
 type AgentConfiguration =

@@ -6,8 +6,8 @@ import express from "express";
 import http from "http";
 import { z } from "zod";
 
-import { getDustClient } from "./dustClient.js";
-import { normalizeError } from "./errors.js";
+import { getDustClient } from "../utils/dustClient.js";
+import { normalizeError } from "../utils/errors.js";
 
 // Define AgentConfiguration type locally or import if shared
 type AgentConfiguration =
@@ -260,8 +260,7 @@ export async function startMcpServer(
 
       httpServer.listen(port, () => {
         const address = httpServer.address();
-        const boundPort =
-          typeof address === "string" ? 0 : (address?.port ?? 0);
+        const boundPort = typeof address === "string" ? 0 : address?.port ?? 0;
         resolve(boundPort);
       });
     });
