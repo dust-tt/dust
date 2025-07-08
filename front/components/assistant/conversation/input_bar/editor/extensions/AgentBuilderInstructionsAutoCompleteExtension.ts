@@ -139,12 +139,6 @@ const checkSuggestionMatch = (
     return { isValid: false, remainingSuggestion: "" };
   }
 
-  console.log("Checking suggestion match:", {
-    currentText,
-    suggestion,
-    normalizedOriginalText,
-  });
-
   // Normalize current text only once
   const normalizedCurrent = normalizeWhitespace(currentText);
 
@@ -158,8 +152,6 @@ const checkSuggestionMatch = (
     normalizedOriginalText.length
   );
 
-  console.log("Typed since suggestion (normalized):", typedSinceSuggestion);
-
   // Check if the normalized suggestion starts with what the user has typed
   if (!normalizedSuggestion.startsWith(typedSinceSuggestion)) {
     return { isValid: false, remainingSuggestion: "" };
@@ -167,7 +159,6 @@ const checkSuggestionMatch = (
 
   // Return the remaining part of the suggestion (original formatting)
   const remainingSuggestion = suggestion.substring(typedSinceSuggestion.length);
-  console.log("Remaining suggestion:", remainingSuggestion);
 
   return { isValid: true, remainingSuggestion };
 };
@@ -224,12 +215,6 @@ const cleanSuggestions = (
   rawSuggestions: string[]
 ): string[] => {
   const trimmedCurrentText = currentText.trim();
-
-  console.log("Cleaning suggestions:", {
-    currentText,
-    trimmedCurrentText,
-    rawSuggestions,
-  });
 
   return rawSuggestions
     .map((suggestion) => {
@@ -440,13 +425,6 @@ export const AgentBuilderInstructionsAutoCompleteExtension = Extension.create<
               void getSuggestions(
                 currentText,
                 (suggestions, originalRequestText) => {
-                  console.log(
-                    "Got raw suggestions:",
-                    suggestions,
-                    "for request:",
-                    originalRequestText
-                  );
-
                   // Get current text at the time the response arrives.
                   const currentTextNow = getCurrentTextFromView(view);
 
