@@ -199,7 +199,9 @@ export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
   t.type({
     type: t.literal("autocompletion"),
     inputs: t.type({
+      description: t.union([t.null, t.string]),
       instructions: t.string,
+      name: t.union([t.null, t.string]),
       tools: t.array(t.type({ name: t.string, description: t.string })),
     }),
   }),
