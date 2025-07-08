@@ -11,14 +11,16 @@ import type { AppProps } from "next/app";
 
 import RootLayout from "@app/components/app/RootLayout";
 
-datadogLogs.init({
-  clientToken: process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN || "",
-  env: process.env.NODE_ENV === "production" ? "prod" : "dev",
-  service: "front",
-  site: "datadoghq.eu",
-  forwardErrorsToLogs: true,
-  sessionSampleRate: 100,
-});
+if (process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN) {
+  datadogLogs.init({
+    clientToken: process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN,
+    env: process.env.NODE_ENV === "production" ? "prod" : "dev",
+    service: "front",
+    site: "datadoghq.eu",
+    forwardErrorsToLogs: true,
+    sessionSampleRate: 100,
+  });
+}
 
 export type NextPageWithLayout<P = unknown, IP = P> = NextPage<P, IP> & {
   getLayout?: (
