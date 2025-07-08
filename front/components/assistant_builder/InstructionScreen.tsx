@@ -235,7 +235,7 @@ export function InstructionScreen({
       (ext) => ext.name === "suggestion"
     );
     if (extension) {
-      extension.storage.agentFormData = builderState;
+      extension.storage.builderState = builderState;
     }
   }, [editor, builderState]);
 

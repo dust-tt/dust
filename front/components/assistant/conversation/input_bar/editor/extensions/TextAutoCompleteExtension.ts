@@ -116,15 +116,18 @@ const cleanSuggestions = (
   currentText: string,
   rawSuggestions: string[]
 ): string[] => {
+  const trimmedCurrentText = currentText.trim();
+
   console.log("Cleaning suggestions:", {
     currentText,
+    trimmedCurrentText,
     rawSuggestions,
   });
 
   return rawSuggestions
     .map((suggestion) => {
       // If the suggestion starts with the current text, remove the duplicate part.
-      if (suggestion.startsWith(currentText)) {
+      if (suggestion.startsWith(trimmedCurrentText)) {
         return suggestion.substring(currentText.length);
       }
 
@@ -223,8 +226,7 @@ export const TextAutoCompleteExtension = Extension.create<
               // Get current text to calculate remaining suggestion.
               const currentText = editor.state.doc.textBetween(
                 0,
-                editor.state.doc.content.size,
-                " "
+                editor.state.doc.content.size
               );
 
               // Use helper function to get remaining suggestion.
@@ -283,8 +285,8 @@ export const TextAutoCompleteExtension = Extension.create<
           body: JSON.stringify({
             type: "autocompletion",
             inputs: {
-              name: this.storage.builderState?.handle,
-              description: this.storage.builderState?.description,
+              name: this.storage.builderState?.handle ?? null,
+              description: this.storage.builderState?.description ?? null,
               instructions: previousText,
               tools:
                 this.storage.builderState?.actions?.map((action) => ({
@@ -307,22 +309,27 @@ export const TextAutoCompleteExtension = Extension.create<
     // Simple debounced suggestion function - like the original working version.
     const getSuggestions = debounce(
       async (
-        previousText: string,
-        cb: (suggestions: string[] | null) => void
+        requestText: string,
+        cb: (suggestions: string[] | null, originalRequestText: string) => void
       ) => {
-        console.log("Fetching suggestion for:", previousText);
+        if (requestText.length === 0) {
+          cb(null, requestText);
+          return;
+        }
+
+        console.log("Fetching suggestion for:", requestText);
         try {
-          const suggestions = await fetchSuggestions(previousText);
+          const suggestions = await fetchSuggestions(requestText);
           console.log("Got suggestions:", suggestions);
 
           if (suggestions.length > 0) {
-            cb(suggestions);
+            cb(suggestions, requestText);
           } else {
-            cb(null);
+            cb(null, requestText);
           }
         } catch (error) {
           console.error("Error fetching suggestions:", error);
-          cb(null);
+          cb(null, requestText);
         }
       },
       this.options.suggestionDebounce
@@ -372,8 +379,7 @@ export const TextAutoCompleteExtension = Extension.create<
               // Fetch a new suggestion.
               const currentText = view.state.doc.textBetween(
                 0,
-                view.state.doc.content.size,
-                " "
+                view.state.doc.content.size
               );
               console.log("Checking suggestion for:", currentText);
 
@@ -391,19 +397,35 @@ export const TextAutoCompleteExtension = Extension.create<
                   extensionStorage.currentSuggestion
                 );
 
-                // Display the remaining suggestion (update existing decoration).
-                const updatedState = view.state;
-                const cursorPos = updatedState.selection.$head.pos;
-                const decorations = createSuggestionDecoration(
-                  updatedState.doc,
-                  cursorPos,
-                  suggestionMatch.remainingSuggestion,
-                  nextNode
+                // Cancel any pending API calls since we have a valid suggestion
+                getSuggestions.cancel();
+                console.log(
+                  "Cancelled pending API call - using stored suggestion"
                 );
-                const tr = view.state.tr;
-                tr.setMeta("addToHistory", false);
-                tr.setMeta(pluginKey, { decorations });
-                view.dispatch(tr);
+
+                // Check if there's actually something left to suggest
+                if (suggestionMatch.remainingSuggestion.length > 0) {
+                  // Display the remaining suggestion (update existing decoration).
+                  const updatedState = view.state;
+                  const cursorPos = updatedState.selection.$head.pos;
+                  const decorations = createSuggestionDecoration(
+                    updatedState.doc,
+                    cursorPos,
+                    suggestionMatch.remainingSuggestion,
+                    nextNode
+                  );
+                  const tr = view.state.tr;
+                  tr.setMeta("addToHistory", false);
+                  tr.setMeta(pluginKey, { decorations });
+                  view.dispatch(tr);
+                } else {
+                  // User has typed the complete suggestion - clear it and storage
+                  console.log("User completed the suggestion, clearing");
+                  clearSuggestionDecorations(view, pluginKey);
+                  extensionStorage.currentSuggestion = null;
+                  extensionStorage.normalizedOriginalText = null;
+                  extensionStorage.normalizedCurrentSuggestion = null;
+                }
                 return;
               }
 
@@ -415,53 +437,92 @@ export const TextAutoCompleteExtension = Extension.create<
 
               console.log("Need to fetch new suggestion for:", currentText);
 
-              // Simple debounced fetch - clears decorations and fetches new suggestions.
-              void getSuggestions(currentText, (suggestions) => {
-                console.log("Got raw suggestions:", suggestions);
+              // Simple debounced fetch - fetches new suggestions.
+              void getSuggestions(
+                currentText,
+                (suggestions, originalRequestText) => {
+                  console.log(
+                    "Got raw suggestions:",
+                    suggestions,
+                    "for request:",
+                    originalRequestText
+                  );
 
-                // Clear decorations first (this happens after debounce delay)
-                clearSuggestionDecorations(view, pluginKey);
+                  // Get current text at the time the response arrives
+                  const currentTextNow = view.state.doc.textBetween(
+                    0,
+                    view.state.doc.content.size
+                  );
 
-                if (!suggestions) {
-                  return;
+                  // Always preserve suggestions in the array for potential future use
+                  if (suggestions && suggestions.length > 0) {
+                    const cleanedSuggestions = cleanSuggestions(
+                      originalRequestText,
+                      suggestions
+                    );
+                    if (cleanedSuggestions.length > 0) {
+                      extensionStorage.suggestions.push(...cleanedSuggestions);
+                      console.log(
+                        "Preserved suggestions in array:",
+                        cleanedSuggestions
+                      );
+                    }
+                  }
+
+                  // Validate if this response is still relevant to current text
+                  if (originalRequestText !== currentTextNow) {
+                    console.log(
+                      "Ignoring stale API response. Request was for:",
+                      originalRequestText,
+                      "but current text is:",
+                      currentTextNow
+                    );
+                    return;
+                  }
+
+                  if (!suggestions) {
+                    // Clear decorations only if no suggestions returned
+                    clearSuggestionDecorations(view, pluginKey);
+                    return;
+                  }
+
+                  // Clean suggestions to remove any duplicate text.
+                  const cleanedSuggestions = cleanSuggestions(
+                    currentTextNow,
+                    suggestions
+                  );
+                  console.log(
+                    "Cleaned suggestions for current context:",
+                    cleanedSuggestions
+                  );
+
+                  if (cleanedSuggestions.length === 0) {
+                    clearSuggestionDecorations(view, pluginKey);
+                    return;
+                  }
+
+                  const [suggestion] = cleanedSuggestions;
+                  extensionStorage.currentSuggestion = suggestion;
+                  // Store normalized versions for efficient comparison
+                  extensionStorage.normalizedOriginalText =
+                    normalizeWhitespace(currentTextNow);
+                  extensionStorage.normalizedCurrentSuggestion =
+                    normalizeWhitespace(suggestion);
+
+                  const updatedState = view.state;
+                  const cursorPos = updatedState.selection.$head.pos;
+                  const decorations = createSuggestionDecoration(
+                    updatedState.doc,
+                    cursorPos,
+                    suggestion,
+                    nextNode
+                  );
+                  const tr = view.state.tr;
+                  tr.setMeta("addToHistory", false);
+                  tr.setMeta(pluginKey, { decorations });
+                  view.dispatch(tr);
                 }
-
-                // Clean suggestions to remove any duplicate text.
-                const cleanedSuggestions = cleanSuggestions(
-                  currentText,
-                  suggestions
-                );
-                console.log("Cleaned suggestions:", cleanedSuggestions);
-
-                if (cleanedSuggestions.length === 0) {
-                  return;
-                }
-
-                if (cleanedSuggestions) {
-                  extensionStorage.suggestions.push(...cleanedSuggestions);
-                }
-
-                const [suggestion] = cleanedSuggestions;
-                extensionStorage.currentSuggestion = suggestion;
-                // Store normalized versions for efficient comparison
-                extensionStorage.normalizedOriginalText =
-                  normalizeWhitespace(currentText);
-                extensionStorage.normalizedCurrentSuggestion =
-                  normalizeWhitespace(suggestion);
-
-                const updatedState = view.state;
-                const cursorPos = updatedState.selection.$head.pos;
-                const decorations = createSuggestionDecoration(
-                  updatedState.doc,
-                  cursorPos,
-                  suggestion,
-                  nextNode
-                );
-                const tr = view.state.tr;
-                tr.setMeta("addToHistory", false);
-                tr.setMeta(pluginKey, { decorations });
-                view.dispatch(tr);
-              });
+              );
             },
           };
         },
