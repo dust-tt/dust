@@ -25,6 +25,51 @@ function getCurrentTextFromView(view: EditorView) {
   return view.state.doc.textBetween(0, view.state.doc.content.size);
 }
 
+/**
+ * Handles Tab key press to accept the current autocompletion suggestion.
+ * Calculates the remaining suggestion text and inserts it into the editor.
+ *
+ * @param editor - The TipTap editor instance
+ * @param storage - The extension's storage containing current suggestion
+ * @returns true if suggestion was accepted, false to allow default Tab behavior
+ */
+const handleTabAcceptSuggestion = (
+  editor: any,
+  storage: TextAutoCompleteExtensionStorage
+): boolean => {
+  const suggestionText = storage.currentSuggestion;
+  if (!suggestionText) {
+    return false;
+  }
+
+  const currentText = getCurrentTextFromView(editor.view);
+
+  // Calculate remaining suggestion using stored normalized data.
+  const suggestionMatch = checkSuggestionMatch(
+    currentText,
+    storage.currentSuggestion,
+    storage.normalizedOriginalText,
+    storage.normalizedCurrentSuggestion
+  );
+
+  const remainingSuggestion = suggestionMatch.isValid
+    ? suggestionMatch.remainingSuggestion
+    : suggestionText;
+
+  // Insert the remaining suggestion text.
+  editor.chain().focus().insertContent(remainingSuggestion).run();
+
+  // Clear suggestion data from storage.
+  storage.currentSuggestion = null;
+  storage.normalizedOriginalText = null;
+  storage.normalizedCurrentSuggestion = null;
+
+  // Clear visual decorations.
+  clearSuggestionDecorations(editor.view, suggestionPluginKey);
+
+  return true;
+};
+
 // Helper function to check if current suggestion is still valid
 const checkSuggestionMatch = (
   currentText: string,
@@ -204,61 +249,10 @@ export const TextAutoCompleteExtension = Extension.create<
       Tab: ({ editor }) => {
         const decorations = suggestionPluginKey.getState(editor.state);
 
-        // Check if there's a suggestion.
+        // Check if there's a suggestion visible
         if (decorations && decorations.find().length > 0) {
-          const { selection } = editor.state;
-          const { from, to } = selection;
-
-          // Check if cursor is at the end of the content.
-          const docSize = editor.state.doc.content.size;
-          // TODO: Debug cursor logic here.
-          const isAtEnd = true; //from === to && from === docSize;
-
-          console.log("Suggestion exists, cursor at end:", isAtEnd, {
-            from,
-            to,
-            docSize,
-          });
-
-          if (isAtEnd) {
-            // Get the suggestion text from storage
-            const suggestionText = this.storage.currentSuggestion;
-            console.log("Current suggestion in storage:", suggestionText);
-
-            if (suggestionText) {
-              console.log("Accepting suggestion:", suggestionText);
-
-              // Get current text to calculate remaining suggestion.
-              const currentText = getCurrentTextFromView(editor.view);
-
-              // Use helper function to get remaining suggestion.
-              const suggestionMatch = checkSuggestionMatch(
-                currentText,
-                this.storage.currentSuggestion,
-                this.storage.normalizedOriginalText,
-                this.storage.normalizedCurrentSuggestion
-              );
-
-              const remainingSuggestion = suggestionMatch.isValid
-                ? suggestionMatch.remainingSuggestion
-                : suggestionText;
-
-              // Insert only the remaining suggestion text.
-              editor.chain().focus().insertContent(remainingSuggestion).run();
-
-              // Clear the current suggestion - next suggestion will be shown on next keystroke.
-              this.storage.currentSuggestion = null;
-              this.storage.normalizedOriginalText = null;
-              this.storage.normalizedCurrentSuggestion = null;
-
-              // Clear the decorations.
-              clearSuggestionDecorations(editor.view, suggestionPluginKey);
-
-              return true; // Prevent default tab behavior.
-            } else {
-              console.log("No suggestion in storage");
-            }
-          }
+          // For now, always accept suggestions (TODO: Add cursor position check if needed)
+          return handleTabAcceptSuggestion(editor, this.storage);
         }
 
         return false; // Allow default tab behavior
