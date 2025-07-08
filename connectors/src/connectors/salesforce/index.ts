@@ -217,7 +217,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     if (getConnectorAndCredentialsRes.isErr()) {
       return new Err(getConnectorAndCredentialsRes.error);
     }
-    const { credentials } = getConnectorAndCredentialsRes.value;
+    const { connector, credentials } = getConnectorAndCredentialsRes.value;
 
     // Get connection.
     const connRes = await getSalesforceConnection(credentials);
@@ -230,21 +230,25 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    // We return a single fake node just to display the message in the UI instead of "No documents found".
-    const node: ContentNode = {
-      internalId: `salesforce-synced-query-root-${this.connectorId}`,
-      parentInternalId: null,
-      type: "folder",
-      title: "Synced Queries are manually setup by Dust",
-      sourceUrl: null,
-      expandable: false,
-      preventSelection: false,
-      permission: "read",
-      lastUpdatedAt: null,
-      mimeType: INTERNAL_MIME_TYPES.SALESFORCE.SYNCED_QUERY_FOLDER,
-    };
+    const queries =
+      await SalesforceSyncedQueryResource.fetchByConnector(connector);
 
-    return new Ok([node]);
+    return new Ok(
+      queries.map((query) => {
+        return {
+          internalId: `salesforce-synced-query-${connector.id}-${query.id}`,
+          parentInternalId: null,
+          type: "folder",
+          title: `[Synced Query] ${query.rootNodeName}`,
+          sourceUrl: null,
+          expandable: false,
+          preventSelection: true,
+          permission: "read",
+          lastUpdatedAt: null,
+          mimeType: INTERNAL_MIME_TYPES.SALESFORCE.SYNCED_QUERY_FOLDER,
+        };
+      })
+    );
   }
 
   async retrieveContentNodeParents({
@@ -257,8 +261,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }
 
   async setPermissions(): Promise<Result<void, Error>> {
-    // No permissions to set for Salesforce synced queries.
-    return new Ok(undefined);
+    return new Err(new Error("Synced Queries are managed by Dust"));
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {
