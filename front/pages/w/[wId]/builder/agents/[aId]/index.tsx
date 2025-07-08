@@ -11,11 +11,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type {
-  LightAgentConfigurationType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+import type { LightAgentConfigurationType, UserType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: LightAgentConfigurationType;
@@ -75,10 +71,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 });
 
 export default function EditAgent({
-  agentConfiguration,
-  owner,
-  user,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+                                    agentConfiguration,
+                                    owner,
+                                    user,
+                                  }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global agent");
   }
