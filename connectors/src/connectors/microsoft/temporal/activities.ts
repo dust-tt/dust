@@ -30,6 +30,7 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
+import { isItemNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   deleteFile,
   deleteFolder,
@@ -647,15 +648,31 @@ export async function syncDeltaForRootNodesInDrive({
   } else {
     const microsoftNodes = await concurrentExecutor(
       rootNodeIds,
-      async (rootNodeId) =>
-        getItem(
-          logger,
-          client,
-          typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
-        ) as Promise<{ id: string }>,
+      async (rootNodeId) => {
+        try {
+          return (await getItem(
+            logger,
+            client,
+            typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
+          )) as { id: string };
+        } catch (error) {
+          if (isItemNotFoundError(error)) {
+            // Resource not found will be garbage collected later and is not blocking the activity
+            logger.info(
+              { rootNodeId, error: error.message },
+              "Root node not found, skipping"
+            );
+            return null;
+          }
+          throw error;
+        }
+      },
       { concurrency: 5 }
     );
-    microsoftNodes.forEach((rootNode) => {
+    const validMicrosoftNodes = microsoftNodes.filter(
+      (node): node is { id: string } => node !== null
+    );
+    validMicrosoftNodes.forEach((rootNode) => {
       sortedChangedItems.push(
         ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
       );
