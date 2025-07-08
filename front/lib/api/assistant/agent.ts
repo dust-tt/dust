@@ -948,8 +948,6 @@ async function* runMultiActionsAgent(
       actionNamesFromLLM.includes(ac.name)
     );
     let args = a.arguments;
-    let spec =
-      specifications.find((s) => actionNamesFromLLM.includes(s.name)) ?? null;
 
     if (!action) {
       if (!a.name) {
@@ -1054,19 +1052,12 @@ async function* runMultiActionsAgent(
 
         action = catchAllAction;
         args = {};
-        spec = {
-          description:
-            "The agent attempted to run an invalid action, this will catch it.",
-          inputSchema: {},
-          name: a.name,
-        };
       }
     }
 
     actions.push({
       action: action!,
       inputs: args ?? {},
-      specification: spec,
       functionCallId: a.functionCallId ?? null,
     });
   }
