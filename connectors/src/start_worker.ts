@@ -11,7 +11,7 @@ import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
 import { closeRedisClient } from "@connectors/lib/redis";
-import { setupGlobalErrorHandler } from "@connectors/types";
+import { isDevelopment, setupGlobalErrorHandler } from "@connectors/types";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
@@ -70,7 +70,7 @@ async function runWorkers(workers: WorkerType[]) {
   // Shutdown Temporal native runtime *once*
   // Fix the issue of connectors hanging after receiving SIGINT in dev
   // We don't have this issue with front workers, and deserve an investigation (no appetite for now)
-  if (process.env.NODE_ENV === "development") {
+  if (isDevelopment()) {
     await Runtime.instance().shutdown();
   }
 
