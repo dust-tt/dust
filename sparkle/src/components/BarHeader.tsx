@@ -84,6 +84,7 @@ type BarHeaderButtonBarValidateProps = {
   onSave?: () => void;
   saveLabel?: string;
   isSaving?: boolean;
+  isDisabled?: boolean;
   savingLabel?: string;
   saveTooltip?: string;
 };
@@ -152,7 +153,7 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
             label="Cancel"
             variant="ghost"
             onClick={props.onCancel}
-            disabled={!props.onCancel || props.isSaving}
+            disabled={!props.onCancel || props.isSaving || props.isDisabled}
           />
           <ValidateSaveButton {...props} />
         </>
