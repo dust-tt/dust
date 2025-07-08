@@ -80,9 +80,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   usage_data_api: {
     description: "API for accessing usage data",
   },
-  workos: {
-    description: "WorkOS authentication integration",
-  },
   workos_user_provisioning: {
     description: "WorkOS user provisioning features",
   },

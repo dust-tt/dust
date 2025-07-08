@@ -3,9 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionName } from "@app/lib/api/enterprise_connection";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { getFeatureFlags } from "@app/lib/auth";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 
 type Provider = {
@@ -40,23 +38,11 @@ const providers: Record<string, Provider> = {
 async function getProvider(
   query: Partial<{
     [key: string]: string | string[];
-  }>,
-  workspace: WorkspaceModel | null
+  }>
 ): Promise<Provider> {
-  if (workspace) {
-    const lightWorkspace = renderLightWorkspaceType({ workspace });
-    const featureFlags = await getFeatureFlags(lightWorkspace);
-    if (
-      featureFlags.includes("okta_enterprise_connection") &&
-      !featureFlags.includes("workos")
-    ) {
-      return providers["auth0"];
-    }
-  }
-
   const forcedProvider =
     typeof query.forcedProvider === "string" ? query.forcedProvider : undefined;
-  const provider = forcedProvider || config.getOAuthProvider();
+  const provider = forcedProvider || "workos";
   return providers[provider];
 }
 
@@ -104,7 +90,7 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
       })
     : null;
 
-  const provider = await getProvider(query, workspace);
+  const provider = await getProvider(query);
 
   const options: Record<string, string | undefined> = {
     client_id: provider.clientId,
@@ -159,7 +145,7 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
 
 async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const provider = await getProvider(req.query, null);
+    const provider = await getProvider(req.query);
     const response = await fetch(`https://${provider.authenticateUri}`, {
       method: "POST",
       headers: {
@@ -182,7 +168,7 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
 
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
-  const provider = await getProvider(query, null);
+  const provider = await getProvider(query);
   const params = new URLSearchParams({
     ...query,
     client_id: provider.clientId,

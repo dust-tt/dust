@@ -168,7 +168,6 @@ export async function getWorkOSSessionFromCookie(
           auth0Sub: null,
           workOSUserId: r.user.id,
         },
-        // TODO(workos): Should we resolve the workspaceId and remove organizationId from here?
         organizationId,
         workspaceId,
         isSSO: authenticationMethod?.toLowerCase() === "sso",
