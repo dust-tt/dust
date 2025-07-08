@@ -16,7 +16,12 @@ import {
   testSalesforceConnection,
 } from "@connectors/connectors/salesforce/lib/salesforce_api";
 import { getConnectorAndCredentials } from "@connectors/connectors/salesforce/lib/utils";
-import { stopSalesforceSyncQueryWorkflow } from "@connectors/connectors/salesforce/temporal/client";
+import {
+  launchSalesforceSyncWorkflow,
+  stopSalesforceSyncQueryWorkflow,
+  stopSalesforceSyncWorkflow,
+} from "@connectors/connectors/salesforce/temporal/client";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
@@ -48,7 +53,12 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       },
       {}
     );
-    // The synced query workflow is lauched manually by us with a cli command once we've set up the query.
+
+    const launchRes = await launchSalesforceSyncWorkflow(connector.id);
+    if (launchRes.isErr()) {
+      throw launchRes.error;
+    }
+
     return new Ok(connector.id.toString());
   }
 
@@ -100,7 +110,9 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     );
     await connector.update({ connectionId });
 
-    // We do not launch the workflow again - it has to be done manually with the cli command.
+    // We launch the workflow again so it syncs immediately.
+    await launchSalesforceSyncWorkflow(connector.id);
+
     return new Ok(connector.id.toString());
   }
 
@@ -133,20 +145,61 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
         stopSalesforceSyncQueryWorkflow(connector.id, query.id)
       )
     );
+    const stopRes = await stopSalesforceSyncWorkflow(this.connectorId);
+    if (stopRes.isErr()) {
+      return stopRes;
+    }
 
     return new Ok(undefined);
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    throw new Error("Method resume not implemented.");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+
+    if (!connector) {
+      logger.error(
+        {
+          connectorId: this.connectorId,
+        },
+        "BigQuery connector not found."
+      );
+      return new Err(new Error("Connector not found"));
+    }
+
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    try {
+      const launchRes = await launchSalesforceSyncWorkflow(connector.id);
+      if (launchRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: dataSourceConfig.workspaceId,
+            dataSourceId: dataSourceConfig.dataSourceId,
+            error: launchRes.error,
+          },
+          "Error launching Salesforce sync workflow."
+        );
+        return launchRes;
+      }
+    } catch (e) {
+      logger.error(
+        {
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          error: e,
+        },
+        "Error launching Salesforce sync workflow."
+      );
+    }
+
+    return new Ok(undefined);
   }
 
   async sync({
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     fromTs,
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
+    logger.info({ fromTs }, "To be implemented");
     throw new Error("Method sync not implemented.");
   }
 
@@ -182,7 +235,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       internalId: `salesforce-synced-query-root-${this.connectorId}`,
       parentInternalId: null,
       type: "folder",
-      title: "Synced Queries are set by Dust - no permissions needed.",
+      title: "Synced Queries are manually setup by Dust",
       sourceUrl: null,
       expandable: false,
       preventSelection: false,
