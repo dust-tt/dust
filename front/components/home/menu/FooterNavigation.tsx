@@ -5,6 +5,7 @@ import * as React from "react";
 
 import { A, Grid } from "@app/components/home/ContentComponents";
 import { menuConfig } from "@app/components/home/menu/config";
+import { appendUTMParams } from "@app/lib/utils/utm";
 
 export function FooterNavigation() {
   return (
@@ -68,7 +69,7 @@ interface FooterLinkProps extends LinkProps {
 function FooterLink({ href, children, isExternal, ...props }: FooterLinkProps) {
   return (
     <Link
-      href={href}
+      href={isExternal ? href : appendUTMParams(href)}
       shallow={!isExternal}
       target={isExternal ? "_blank" : undefined}
       {...props}
