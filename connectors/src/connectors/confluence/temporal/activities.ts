@@ -42,6 +42,7 @@ import {
 } from "@connectors/lib/models/confluence";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
@@ -830,6 +831,8 @@ export async function confluenceUpdatePagesParentIdsActivity(
     },
   });
 
+  await heartbeat();
+
   logger.info(
     {
       connectorId,
@@ -859,7 +862,12 @@ export async function confluenceUpdatePagesParentIdsActivity(
         parentId: parentIds[1],
       });
     },
-    { concurrency: 10 }
+    {
+      concurrency: 10,
+      onBatchComplete: async () => {
+        await heartbeat();
+      },
+    }
   );
 
   logger.info({ connectorId }, "Done updating pages parent ids.");
