@@ -12,13 +12,22 @@ import type {
  * Do not use if the intent is to show an issue to the agent as part of a normal tool execution,
  * only use if the error should be logged and tracked.
  */
-export function makeMCPToolTextError(text: string): {
+export function makeMCPToolTextError(
+  text: string,
+  metadata: Record<string, boolean | number | string> = {}
+): {
   isError: true;
   content: [TextContent];
 } {
   return {
     isError: true,
-    content: [{ type: "text", text }],
+    content: [
+      {
+        type: "text",
+        ...metadata,
+        text,
+      },
+    ],
   };
 }
 

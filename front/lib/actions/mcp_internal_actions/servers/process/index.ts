@@ -24,6 +24,7 @@ import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -507,18 +508,11 @@ function processToolError({
     },
     "Error running process"
   );
-  return {
-    isError: true,
-    content: [
-      {
-        type: "text" as const,
-        created: Date.now(),
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        text: `${errorMessage}: ${errorDetails}`,
-      },
-    ],
-  };
+  return makeMCPToolTextError(`${errorMessage}: ${errorDetails}`, {
+    created: Date.now(),
+    workspaceId: conversation.owner.sId,
+    conversationId: conversation.sId,
+  });
 }
 
 async function generateProcessToolOutput({
