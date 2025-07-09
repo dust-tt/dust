@@ -10,7 +10,10 @@ import {
   GCSRepositoryManager,
 } from "@connectors/connectors/github/lib/code/gcs_repository";
 import { extractGitHubTarballToGCS } from "@connectors/connectors/github/lib/code/tar_extraction";
-import { RepositoryAccessBlockedError } from "@connectors/connectors/github/lib/errors";
+import {
+  isGithubRequestErrorNotFound,
+  RepositoryAccessBlockedError,
+} from "@connectors/connectors/github/lib/errors";
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
 import type { RepositoryInfo } from "@connectors/connectors/github/lib/github_code";
 import {
@@ -65,6 +68,33 @@ export async function githubExtractToGcsActivity({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
+  // Local cleanup function to handle missing/inaccessible repositories
+  const cleanupMissingRepository = async (loggerTask: string) => {
+    await garbageCollectCodeSync(
+      dataSourceConfig,
+      connector,
+      repoId,
+      new Date(),
+      logger.child({ task: loggerTask })
+    );
+
+    await heartbeat();
+
+    // Deleting the code root folder from data_source_folders (core)
+    await deleteDataSourceFolder({
+      dataSourceConfig,
+      folderId: getCodeRootInternalId(repoId),
+    });
+
+    // Finally delete the repository object if it exists.
+    await GithubCodeRepository.destroy({
+      where: {
+        connectorId: connector.id,
+        repoId: repoId.toString(),
+      },
+    });
+  };
+
   // Get GitHub client.
   const octokit = await getOctokit(connector);
 
@@ -91,18 +121,34 @@ export async function githubExtractToGcsActivity({
   });
 
   // Get tarball stream from GitHub.
-  const tarballResponse = await octokit.request(
-    "GET /repos/{owner}/{repo}/tarball/{ref}",
-    {
-      owner: repoLogin,
-      repo: repoName,
-      ref: repoInfo.default_branch,
-      request: {
-        parseSuccessResponseBody: false,
-        timeout: GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS,
-      },
+  let tarballResponse;
+  try {
+    tarballResponse = await octokit.request(
+      "GET /repos/{owner}/{repo}/tarball/{ref}",
+      {
+        owner: repoLogin,
+        repo: repoName,
+        ref: repoInfo.default_branch,
+        request: {
+          parseSuccessResponseBody: false,
+          timeout: GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS,
+        },
+      }
+    );
+  } catch (error) {
+    if (isGithubRequestErrorNotFound(error)) {
+      logger.info(
+        { err: error, repoLogin, repoName, repoId },
+        "Repository tarball not found (404): Garbage collecting repo."
+      );
+
+      await cleanupMissingRepository("garbageCollectRepoNotFound");
+
+      return null;
     }
-  );
+
+    throw error;
+  }
 
   const tarballStream = (tarballResponse as { data: Readable }).data;
 
@@ -121,29 +167,7 @@ export async function githubExtractToGcsActivity({
         "Missing Github repository: Garbage collecting repo."
       );
 
-      await garbageCollectCodeSync(
-        dataSourceConfig,
-        connector,
-        repoId,
-        new Date(),
-        logger.child({ task: "garbageCollectRepoNotFound" })
-      );
-
-      await heartbeat();
-
-      // Deleting the code root folder from data_source_folders (core)
-      await deleteDataSourceFolder({
-        dataSourceConfig,
-        folderId: getCodeRootInternalId(repoId),
-      });
-
-      // Finally delete the repository object if it exists.
-      await GithubCodeRepository.destroy({
-        where: {
-          connectorId: connector.id,
-          repoId: repoId.toString(),
-        },
-      });
+      await cleanupMissingRepository("garbageCollectRepoNotFound");
 
       return null;
     }
