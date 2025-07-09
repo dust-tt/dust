@@ -15,6 +15,7 @@ import {
 } from "@app/shared/context/PlatformContext";
 import { AuthProvider } from "@app/ui/components/auth/AuthProvider";
 import { routes } from "@app/ui/pages/routes";
+import { datadogLogs } from "@datadog/browser-logs";
 import {
   Button,
   classNames,
@@ -26,6 +27,21 @@ import { compare } from "compare-versions";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+
+if (process.env.DATADOG_CLIENT_TOKEN) {
+  datadogLogs.init({
+    clientToken: process.env.DATADOG_CLIENT_TOKEN,
+    site: "datadoghq.eu",
+    service: "dust-chrome-extension",
+    env: process.env.DATADOG_ENV,
+    version: process.env.VERSION,
+    forwardErrorsToLogs: true,
+    sessionSampleRate: 100,
+  });
+}
+
+const logger = datadogLogs.logger;
+logger.info("Dust extension loaded");
 
 const router = createBrowserRouter(routes);
 
