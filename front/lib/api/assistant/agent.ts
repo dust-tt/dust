@@ -16,10 +16,7 @@ import type {
   AgentActionSpecificEvent,
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
-import {
-  isMCPToolConfiguration,
-  isSearchLabelsConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getPublicErrorMessage } from "@app/lib/api/assistant/agent_errors";
@@ -465,13 +462,8 @@ async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    const specRes = await getRunnerForActionConfiguration(a).buildSpecification(
-      auth,
-      {
-        name: a.name,
-        description: a.description ?? null,
-      }
-    );
+    const specRes =
+      await getRunnerForActionConfiguration(a).buildSpecification(auth);
 
     if (specRes.isErr()) {
       logger.error(
@@ -1130,57 +1122,7 @@ async function* runAction(
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
   void
 > {
-  if (isSearchLabelsConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "search_labels_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-
-        case "search_labels_params":
-          yield event;
-          break;
-
-        case "search_labels_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isMCPToolConfiguration(actionConfiguration)) {
+  if (isMCPToolConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(auth, {

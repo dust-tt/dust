@@ -1,0 +1,1 @@
+DELETE FROM agent_search_labels_actions;

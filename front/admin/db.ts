@@ -11,7 +11,6 @@ import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/r
 import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
@@ -152,7 +151,6 @@ async function main() {
 
   await AgentDataRetentionModel.sync({ alter: true });
   await AgentStepContentModel.sync({ alter: true });
-  await AgentSearchLabelsAction.sync({ alter: true });
   await AgentMCPAction.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });
   await AgentChildAgentConfiguration.sync({ alter: true });
