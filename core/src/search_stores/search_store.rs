@@ -823,7 +823,9 @@ impl ElasticsearchSearchStore {
         let keyword_field = format!("{}.keyword", field);
 
         // Check if the query contains punctuation that might be split by word_delimiter
-        let contains_punctuation = query.chars().any(|c| !c.is_alphanumeric() && !c.is_whitespace());
+        let contains_punctuation = query
+            .chars()
+            .any(|c| !c.is_alphanumeric() && !c.is_whitespace());
 
         let mut should_queries = vec![
             // Primary match using edge n-grams for partial matching.
@@ -835,7 +837,11 @@ impl ElasticsearchSearchStore {
             // Standard text match for better relevance calculation
             // - Uses standard analyzer without edge n-grams
             // - Helps with scoring when terms are complete words
-            Query::from(Query::r#match(field, query).operator(Operator::And).boost(2.0)),
+            Query::from(
+                Query::r#match(field, query)
+                    .operator(Operator::And)
+                    .boost(2.0),
+            ),
             // Exact phrase match for higher relevance.
             // - Requires terms to appear in exact order
             // - Gives higher score (EXACT_MATCH_BOOST) for exact matches
@@ -845,23 +851,23 @@ impl ElasticsearchSearchStore {
             // Exact keyword match for perfect exact matches (case insensitive)
             // - Uses term query on keyword field with lowercase
             // - Highest boost for exact title matches
-            Query::from(Query::term(keyword_field, query.to_lowercase()).boost(EXACT_MATCH_BOOST * 2.0)),
+            Query::from(
+                Query::term(keyword_field, query.to_lowercase()).boost(EXACT_MATCH_BOOST * 2.0),
+            ),
         ];
 
         // If query contains punctuation, also try matching as a phrase on edge field
         // This helps "hello.w" match "hello.world" by treating it as a phrase prefix
         if contains_punctuation {
             counter.add(1);
-            should_queries.push(
-                Query::from(Query::r#match_phrase(edge_field, query).boost(PHRASE_PREFIX_BOOST))
-            );
+            should_queries.push(Query::from(
+                Query::r#match_phrase(edge_field, query).boost(PHRASE_PREFIX_BOOST),
+            ));
         }
 
         counter.add(4);
 
-        Ok(Query::bool()
-            .should(should_queries)
-            .minimum_should_match(1))
+        Ok(Query::bool().should(should_queries).minimum_should_match(1))
     }
 
     fn build_data_sources_content_query(
