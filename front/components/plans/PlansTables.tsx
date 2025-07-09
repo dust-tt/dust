@@ -92,23 +92,25 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   },
 ];
 
-export function ProPriceTable({
-  owner,
-  size,
-  plan,
-  onClick,
-  isProcessing,
-  display,
-  billingPeriod = "monthly",
-}: {
-  owner?: WorkspaceType;
-  size: "sm" | "xs";
-  plan?: PlanType;
-  onClick?: () => void;
-  isProcessing?: boolean;
-  display: PriceTableDisplay;
+interface PriceTableProps {
   billingPeriod?: BillingPeriod;
-}) {
+  display: PriceTableDisplay;
+  isProcessing?: boolean;
+  onClick?: () => void;
+  owner?: WorkspaceType;
+  plan?: PlanType;
+  size: "sm" | "xs";
+}
+
+export function ProPriceTable({
+  billingPeriod = "monthly",
+  display,
+  isProcessing,
+  onClick,
+  owner,
+  plan,
+  size,
+}: PriceTableProps) {
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
 
   const PRO_PLAN_ITEMS: PriceTableItem[] = [
@@ -240,18 +242,12 @@ export function ProPriceTable({
 }
 
 export function BusinessPriceTable({
-  size,
-  plan,
-  onClick,
-  isProcessing,
   display,
-}: {
-  size: "sm" | "xs";
-  plan?: PlanType;
-  onClick?: () => void;
-  isProcessing?: boolean;
-  display: PriceTableDisplay;
-}) {
+  isProcessing,
+  onClick,
+  plan,
+  size,
+}: PriceTableProps) {
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
 
   const PRO_PLAN_ITEMS: PriceTableItem[] = [
