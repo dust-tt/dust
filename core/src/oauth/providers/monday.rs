@@ -12,8 +12,10 @@ use lazy_static::lazy_static;
 use std::env;
 
 lazy_static! {
-    static ref OAUTH_MONDAY_CLIENT_ID: String = env::var("OAUTH_MONDAY_CLIENT_ID").unwrap();
-    static ref OAUTH_MONDAY_CLIENT_SECRET: String = env::var("OAUTH_MONDAY_CLIENT_SECRET").unwrap();
+    static ref OAUTH_MONDAY_CLIENT_ID: String =
+        env::var("OAUTH_MONDAY_CLIENT_ID").expect("OAUTH_MONDAY_CLIENT_ID must be set");
+    static ref OAUTH_MONDAY_CLIENT_SECRET: String =
+        env::var("OAUTH_MONDAY_CLIENT_SECRET").expect("OAUTH_MONDAY_CLIENT_SECRET must be set");
 }
 
 pub struct MondayConnectionProvider {}
