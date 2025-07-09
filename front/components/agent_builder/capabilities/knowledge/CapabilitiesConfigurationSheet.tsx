@@ -3,7 +3,6 @@ import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
-import { z } from "zod";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -18,53 +17,26 @@ import {
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
 import type { CapabilityConfig } from "@app/components/agent_builder/capabilities/knowledge/utils";
-import {
-  CAPABILITY_CONFIGS,
-  DESCRIPTION_MAX_LENGTH,
-} from "@app/components/agent_builder/capabilities/knowledge/utils";
+import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import type {
+  CapabilityFormData,
+  ConfigurationSheetPageId,
+} from "@app/components/agent_builder/types";
 import type {
   AgentBuilderAction,
+  CapabilitiesConfigurationSheetProps,
   ExtractDataAgentBuilderAction,
   IncludeDataAgentBuilderAction,
-  KnowledgeServerName,
   SearchAgentBuilderAction,
+} from "@app/components/agent_builder/types";
+import {
+  capabilityFormSchema,
+  CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
-
-const capabilityFormSchema = z.object({
-  description: z
-    .string()
-    .min(1, "Description is required")
-    .max(DESCRIPTION_MAX_LENGTH, "Description too long"),
-  timeFrame: z
-    .object({
-      duration: z.number(),
-      unit: z.enum(["hour", "day", "week", "month", "year"]),
-    })
-    .nullable()
-    .default(null),
-  jsonSchema: z.any().nullable().default(null),
-});
-
-type CapabilityFormData = z.infer<typeof capabilityFormSchema>;
-
-const PAGE_IDS = {
-  DATA_SOURCE_SELECTION: "data-source-selection",
-  CONFIGURATION: "configuration",
-} as const;
-
-type PageId = (typeof PAGE_IDS)[keyof typeof PAGE_IDS];
-
-interface CapabilitiesConfigurationSheetProps {
-  capability: KnowledgeServerName | null;
-  onSave: (action: AgentBuilderAction) => void;
-  isOpen: boolean;
-  onClose: () => void;
-  action?: AgentBuilderAction;
-}
 
 export function CapabilitiesConfigurationSheet({
   capability,
@@ -79,8 +51,8 @@ export function CapabilitiesConfigurationSheet({
     name: "instructions",
   });
 
-  const [currentPageId, setCurrentPageId] = useState<PageId>(
-    PAGE_IDS.DATA_SOURCE_SELECTION
+  const [currentPageId, setCurrentPageId] = useState<ConfigurationSheetPageId>(
+    CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
   );
   const [dataSourceConfigurations, setDataSourceConfigurations] =
     useState<DataSourceViewSelectionConfigurations>(() =>
@@ -114,7 +86,7 @@ export function CapabilitiesConfigurationSheet({
         jsonSchema: getJsonSchema(action),
       });
       setDataSourceConfigurations(getDataSourceConfigurations(action));
-      setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
+      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
     }
   }, [action, isOpen, form, capability]);
 
@@ -190,7 +162,7 @@ export function CapabilitiesConfigurationSheet({
   };
 
   const handlePageChange = (pageId: string) => {
-    if (isValidPage(pageId, PAGE_IDS)) {
+    if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
       setCurrentPageId(pageId);
     }
   };
@@ -198,7 +170,7 @@ export function CapabilitiesConfigurationSheet({
   const pages: MultiPageSheetPage[] = config
     ? [
         {
-          id: PAGE_IDS.DATA_SOURCE_SELECTION,
+          id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
           title: config.title,
           description: config.description,
           icon: config.icon,
@@ -223,7 +195,7 @@ export function CapabilitiesConfigurationSheet({
           ),
         },
         {
-          id: PAGE_IDS.CONFIGURATION,
+          id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
           title: config.configPageTitle,
           description: config.configPageDescription,
           icon: config.icon,
@@ -284,7 +256,9 @@ export function CapabilitiesConfigurationSheet({
         onSave={handleSave}
         showNavigation={true}
         disableNext={
-          currentPageId === PAGE_IDS.DATA_SOURCE_SELECTION && !hasDataSources
+          currentPageId ===
+            CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION &&
+          !hasDataSources
         }
         disableSave={!hasDataSources || !formState.isValid}
       />

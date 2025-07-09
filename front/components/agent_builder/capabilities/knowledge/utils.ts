@@ -6,12 +6,11 @@ import {
   TableIcon,
 } from "@dust-tt/sparkle";
 
-import type {
-    AgentBuilderAction,
-  KnowledgeServerName,
+import {
+  DESCRIPTION_MAX_LENGTH,
+    type AgentBuilderAction,
+  type KnowledgeServerName,
 } from "@app/components/agent_builder/types";
-
-export const DESCRIPTION_MAX_LENGTH = 800;
 
 export interface CapabilityConfig {
   title: string;

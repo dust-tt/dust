@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { SupportedModel } from "@app/types";
@@ -124,3 +124,37 @@ export const BUILDER_FLOWS = [
   "personal_assistants",
 ] as const;
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
+
+export const DESCRIPTION_MAX_LENGTH = 800;
+
+export const capabilityFormSchema = z.object({
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(DESCRIPTION_MAX_LENGTH, "Description too long"),
+  timeFrame: z
+    .object({
+      duration: z.number(),
+      unit: z.enum(["hour", "day", "week", "month", "year"]),
+    })
+    .nullable()
+    .default(null),
+  jsonSchema: z.any().nullable().default(null),
+});
+
+export type CapabilityFormData = z.infer<typeof capabilityFormSchema>;
+
+export const CONFIGURATION_SHEET_PAGE_IDS = {
+  DATA_SOURCE_SELECTION: "data-source-selection",
+  CONFIGURATION: "configuration",
+} as const;
+
+export type PageId = (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
+
+export interface CapabilitiesConfigurationSheetProps {
+  capability: KnowledgeServerName | null;
+  onSave: (action: AgentBuilderAction) => void;
+  isOpen: boolean;
+  onClose: () => void;
+  action?: AgentBuilderAction;
+}
