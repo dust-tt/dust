@@ -135,16 +135,12 @@ export async function unsafeGetUsageData(
         COALESCE(ac."sId", am."agentConfigurationId") AS "assistantId",
         COALESCE(ac."name", am."agentConfigurationId") AS "assistantName",
         CASE
-            WHEN COUNT(DISTINCT arc."id") > 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") = 0 AND COUNT(DISTINCT msv."id") = 0 THEN 'retrieval'
-            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") > 0 AND COUNT(DISTINCT adarc."id") = 0 AND COUNT(DISTINCT msv."id") = 0 THEN 'tablesQuery'
-            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") > 0 AND COUNT(DISTINCT msv."id") = 0 THEN 'dustAppRun'
-            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") = 0 AND COUNT(DISTINCT msv."id") > 0 THEN 
-              CASE 
-                WHEN msv."internalMCPServerId" IN (:sids) THEN 
+            WHEN COUNT(DISTINCT msv."id") > 0 THEN
+              CASE
+                WHEN msv."internalMCPServerId" IN (:sids) THEN
                   (SELECT name FROM (SELECT unnest(ARRAY[:sids]) as sid, unnest(ARRAY[:names]) as name) as t WHERE t.sid = msv."internalMCPServerId")
                 ELSE msv."internalMCPServerId"
               END
-            WHEN COUNT(DISTINCT arc."id") + COUNT(DISTINCT atqc."id") + COUNT(DISTINCT adarc."id") + COUNT(DISTINCT msv."id") > 1 THEN 'multiActions'
             ELSE NULL
         END AS "actionType",
         um."userContextOrigin" AS "source"
