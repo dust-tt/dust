@@ -149,5 +149,5 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
   CONFIGURATION: "configuration",
 } as const;
 
-export type ConfigurationSheetPageId = (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
-
+export type ConfigurationSheetPageId =
+  (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
