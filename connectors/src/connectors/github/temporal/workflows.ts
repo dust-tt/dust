@@ -67,7 +67,7 @@ const {
 const { githubExtractToGcsActivity } = proxyActivities<
   typeof activitiesSyncCode
 >({
-  startToCloseTimeout: "60 minute",
+  startToCloseTimeout: "120 minute",
 });
 
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
