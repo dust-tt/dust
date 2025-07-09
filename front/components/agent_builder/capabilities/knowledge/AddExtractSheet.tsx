@@ -148,8 +148,6 @@ export function AddExtractSheet({
             actionType="extract"
           />
           <JsonSchemaSection
-            title="Schema"
-            description="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
             value={jsonSchema}
             initialSchemaString={
               action && getJsonSchema(action)

@@ -11,8 +11,6 @@ import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_acti
 import type { WorkspaceType } from "@app/types";
 
 interface JsonSchemaSectionProps {
-  title: string;
-  description: string;
   label?: string;
   placeholder?: string;
   value: JSONSchema | null;
@@ -25,8 +23,6 @@ interface JsonSchemaSectionProps {
 }
 
 export function JsonSchemaSection({
-  title,
-  description,
   label,
   placeholder,
   value,
@@ -128,8 +124,12 @@ export function JsonSchemaSection({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-element-900 text-base font-medium">{title}</h3>
-        <p className="text-element-700 mt-1 text-sm">{description}</p>
+        <h3 className="text-element-900 text-base font-medium">Schema</h3>
+        <p className="text-element-700 mt-1 text-sm">
+          Optionally, provide a schema for the data to be extracted. If you do
+          not specify a schema, the tool will determine the schema based on the
+          conversation context.
+        </p>
       </div>
       <Button
         tooltip="Automatically re-generate the extraction schema based on Instructions"
