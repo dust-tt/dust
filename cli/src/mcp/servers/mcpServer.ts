@@ -1,10 +1,10 @@
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
 import { ExternalMcpService } from "../types/externalMcpService.js";
+import { McpTransport } from "../types/transports/http.js";
 
 // Define AgentConfiguration type locally or import if shared
 type AgentConfiguration =
@@ -26,18 +26,36 @@ export class AgentsMcpService extends ExternalMcpService {
   private dustClient: any = null;
   private user: any = null;
 
-  constructor(selectedAgents: AgentConfiguration[], requestedPort?: number) {
-    super(requestedPort);
+  constructor(transport: McpTransport, selectedAgents: AgentConfiguration[]) {
+    super(transport, {
+      name: "dist-cli-agents-mcp-server",
+      version: process.env.npm_package_version || "0.1.0",
+    });
     this.selectedAgents = selectedAgents;
   }
 
-  async createMcpServer(): Promise<McpServer> {
-    await this.initializeDustClient();
+  protected async authenticate(): Promise<void> {
+    if (this.dustClient) {
+      return;
+    }
 
-    const server = new McpServer({
-      name: "dust-cli-agents-mcp-server",
-      version: process.env.npm_package_version || "0.1.0",
-    });
+    this.dustClient = await getDustClient();
+    if (!this.dustClient) {
+      throw new Error("Dust client not initialized. Please run 'dust login'.");
+    }
+
+    const meRes = await this.dustClient.me();
+    if (meRes.isErr()) {
+      throw new Error(`Failed to get user information: ${meRes.error.message}`);
+    }
+
+    this.user = meRes.value;
+  }
+
+  protected registerTools(): void {
+    if (!this.server) {
+      return;
+    }
 
     for (const agent of this.selectedAgents) {
       const toolName = `run_agent_${slugify(agent.name)}`;
@@ -46,7 +64,7 @@ export class AgentsMcpService extends ExternalMcpService {
         toolDescription += `\nThe agent is described as follows: ${agent.description}`;
       }
 
-      server.tool(
+      this.server.tool(
         toolName,
         toolDescription,
         { userInput: z.string().describe("The user input to the agent.") },
@@ -140,37 +158,5 @@ export class AgentsMcpService extends ExternalMcpService {
         }
       );
     }
-
-    return server;
   }
-
-  async initializeDustClient(): Promise<void> {
-    if (!this.dustClient) {
-      this.dustClient = await getDustClient();
-      if (!this.dustClient) {
-        throw new Error(
-          "Dust client not initialized. Please run 'dust login'."
-        );
-      }
-
-      const meRes = await this.dustClient.me();
-      if (meRes.isErr()) {
-        throw new Error(
-          `Failed to get user information: ${meRes.error.message}`
-        );
-      }
-      this.user = meRes.value;
-    }
-  }
-}
-
-// Legacy function for backward compatibility
-export async function startMcpServer(
-  selectedAgents: AgentConfiguration[],
-  onServerStart: (url: string) => void,
-  requestedPort?: number
-) {
-  const service = new AgentsMcpService(selectedAgents, requestedPort);
-  const url = await service.startServer(onServerStart);
-  return url;
 }

@@ -1,4 +1,4 @@
-import type { DustAPI} from "@dust-tt/client";
+import type { DustAPI } from "@dust-tt/client";
 import { DustMcpServerTransport } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -69,7 +69,9 @@ export abstract class InternalMcpService {
       throw new Error("Cannot connect null server");
     }
 
-    if (this.transport) {return;}
+    if (this.transport) {
+      return;
+    }
 
     try {
       const transport = new DustMcpServerTransport(
