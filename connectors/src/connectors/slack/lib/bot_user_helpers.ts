@@ -46,7 +46,7 @@ export async function getUserName(
   slackUserId: string,
   connectorId: ModelId,
   slackClient: WebClient
-): Promise<string | undefined> {
+): Promise<string | null> {
   const fromCache = await cacheGet(getUserCacheKey(slackUserId, connectorId));
   if (fromCache) {
     return fromCache;
@@ -66,17 +66,17 @@ export async function getUserName(
 
       if (userName) {
         await cacheSet(getUserCacheKey(slackUserId, connectorId), userName);
-        return info.user.name;
+        return userName;
       }
     }
 
-    return undefined;
+    return null;
   } catch (err) {
     if (isSlackWebAPIPlatformError(err)) {
       if (err.data.error === "user_not_found") {
         logger.info({ connectorId, slackUserId }, "Slack user not found.");
 
-        return undefined;
+        return null;
       }
     }
 
@@ -196,7 +196,7 @@ export async function getBotOrUserName(
   message: MessageElement,
   connectorId: ModelId,
   slackClient: WebClient
-): Promise<string | undefined> {
+): Promise<string | null> {
   return message.bot_id
     ? getBotNameMemoized({ botId: message.bot_id, connectorId, slackClient })
     : getUserName(message.user as string, connectorId, slackClient);
