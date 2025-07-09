@@ -135,9 +135,7 @@ export async function sendInvitations({
       sendNotification({
         type: "error",
         title: "Some invites failed",
-        description:
-          result[0].error_message ||
-          `Failed to invite ${failures} new member(s) to workspace.`,
+        description: `Failed to invite ${failures.map((f) => f.email).join(", ")} to the workspace.`,
       });
     } else {
       sendNotification({
