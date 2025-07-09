@@ -31,7 +31,6 @@ interface MultiPageSheetProps {
   trapFocusScope?: boolean;
   showNavigation?: boolean;
   footerContent?: React.ReactNode;
-  onSave?: () => void;
   className?: string;
   disableNext?: boolean;
   disableSave?: boolean;
@@ -59,7 +58,6 @@ const MultiPageSheetContent = React.forwardRef<
       trapFocusScope,
       showNavigation = true,
       footerContent,
-      onSave,
       className,
       disableNext = false,
       disableSave = false,
@@ -180,13 +178,12 @@ const MultiPageSheetContent = React.forwardRef<
                 onClick={handleNext}
               />
             )}
-            {showNavigation && pages.length > 1 && !hasNext && onSave && (
+            {showNavigation && pages.length > 1 && !hasNext && (
               <Button
                 label="Save changes"
                 variant="primary"
                 size="sm"
                 disabled={disableSave}
-                onClick={onSave}
                 type="submit"
               />
             )}
