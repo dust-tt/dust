@@ -6,10 +6,9 @@ import {
   TableIcon,
 } from "@dust-tt/sparkle";
 
+import type {AgentBuilderAction, KnowledgeServerName} from "@app/components/agent_builder/types";
 import {
-  DESCRIPTION_MAX_LENGTH,
-  type AgentBuilderAction,
-  type KnowledgeServerName,
+  DESCRIPTION_MAX_LENGTH
 } from "@app/components/agent_builder/types";
 
 export interface CapabilityConfig {
