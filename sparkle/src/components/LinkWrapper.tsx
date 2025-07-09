@@ -10,29 +10,54 @@ export interface LinkWrapperProps {
   shallow?: boolean;
   target?: string;
   prefetch?: boolean;
+  ariaLabel?: string;
+  ariaCurrent?: string;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 export const LinkWrapper = React.forwardRef<
   HTMLAnchorElement,
   LinkWrapperProps
->(({ children, href, rel, replace, shallow, target, prefetch }, ref) => {
-  const { components } = React.useContext(SparkleContext);
+>(
+  (
+    {
+      children,
+      href,
+      rel,
+      replace,
+      shallow,
+      target,
+      prefetch,
+      ariaLabel,
+      ariaCurrent,
+      className,
+      style,
+    },
+    ref
+  ) => {
+    const { components } = React.useContext(SparkleContext);
 
-  if (href) {
-    return (
-      <components.link
-        ref={ref}
-        href={href}
-        target={target}
-        rel={rel}
-        replace={replace}
-        shallow={shallow}
-        prefetch={prefetch}
-      >
-        {children}
-      </components.link>
-    );
+    if (href) {
+      return (
+        <components.link
+          ref={ref}
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          shallow={shallow}
+          prefetch={prefetch}
+          className={className}
+          aria-label={ariaLabel}
+          aria-current={ariaCurrent}
+          style={style}
+        >
+          {children}
+        </components.link>
+      );
+    }
+
+    return children;
   }
-
-  return children;
-});
+);
