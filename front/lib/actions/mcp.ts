@@ -469,6 +469,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       rawInputs,
       functionCallId,
       step,
+      stepContentId,
       stepActionIndex,
       stepActions,
       citationsRefsOffset,
@@ -531,6 +532,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       isError: false,
       executionState: "pending",
       version: 0,
+      stepContentId: stepContentId || null,
     });
 
     const mcpAction = new MCPActionType({

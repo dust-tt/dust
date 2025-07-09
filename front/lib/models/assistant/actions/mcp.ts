@@ -5,6 +5,7 @@ import { DataTypes } from "sequelize";
 
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -190,6 +191,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare step: number;
   declare version: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare stepContentId: ForeignKey<AgentStepContentModel["id"]> | null;
 
   declare isError: boolean;
   declare executionState:
@@ -278,6 +280,15 @@ AgentMCPAction.belongsTo(AgentMessage, {
 
 AgentMessage.hasMany(AgentMCPAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+AgentMCPAction.belongsTo(AgentStepContentModel, {
+  foreignKey: { name: "stepContentId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+
+AgentStepContentModel.hasMany(AgentMCPAction, {
+  foreignKey: { name: "stepContentId", allowNull: true },
 });
 
 export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPActionOutputItem> {

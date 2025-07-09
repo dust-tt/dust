@@ -246,28 +246,6 @@ export async function deleteAgentsActivity({
       },
     });
 
-    const mcpActions = await AgentMCPAction.findAll({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
-        },
-      },
-    });
-
-    await AgentMCPActionOutputItem.destroy({
-      where: {
-        agentMCPActionId: {
-          [Op.in]: mcpActions.map((r) => r.id),
-        },
-      },
-    });
-    await AgentMCPAction.destroy({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
-        },
-      },
-    });
     await AgentChildAgentConfiguration.destroy({
       where: {
         mcpServerConfigurationId: {

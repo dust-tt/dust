@@ -59,6 +59,7 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  ModelId,
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
@@ -142,6 +143,9 @@ async function* runMultiActionsAgentLoop(
   let processedContent = "";
   const runIds = [];
 
+  // Track step content IDs by function call ID for later use in actions.
+  const functionCallStepContentIds: Record<string, ModelId> = {};
+
   for (let i = 0; i < maxStepsPerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
@@ -206,6 +210,11 @@ async function* runMultiActionsAgentLoop(
 
           const eventStreamGenerators = event.actions.map(
             ({ action, inputs, functionCallId }, index) => {
+              // Find the step content ID for this function call
+              const stepContentId = functionCallId
+                ? functionCallStepContentIds[functionCallId]
+                : undefined;
+
               return runAction(auth, {
                 configuration,
                 actionConfiguration: action,
@@ -217,6 +226,7 @@ async function* runMultiActionsAgentLoop(
                 stepActionIndex: index,
                 stepActions: event.actions.map((a) => a.action),
                 citationsRefsOffset,
+                stepContentId,
               });
             }
           );
@@ -257,7 +267,7 @@ async function* runMultiActionsAgentLoop(
           break;
 
         case "agent_step_content":
-          await AgentStepContentModel.create({
+          const stepContent = await AgentStepContentModel.create({
             workspaceId: conversation.owner.id,
             agentMessageId: agentMessage.agentMessageId,
             step: i,
@@ -266,6 +276,15 @@ async function* runMultiActionsAgentLoop(
             value: event.content,
             version: 0,
           });
+
+          // If this is a function call step content, track its ID.
+          if (
+            event.content.type === "function_call" &&
+            event.content.value.id
+          ) {
+            functionCallStepContentIds[event.content.value.id] = stepContent.id;
+          }
+
           agentMessage.contents.push({
             step: i,
             content: event.content,
@@ -1107,6 +1126,7 @@ async function* runAction(
     stepActionIndex,
     stepActions,
     citationsRefsOffset,
+    stepContentId,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: ActionConfigurationType;
@@ -1118,6 +1138,7 @@ async function* runAction(
     stepActionIndex: number;
     stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
+    stepContentId?: ModelId;
   }
 ): AsyncGenerator<
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
@@ -1136,6 +1157,7 @@ async function* runAction(
       stepActionIndex,
       stepActions,
       citationsRefsOffset,
+      stepContentId,
     });
 
     for await (const event of eventStream) {
