@@ -187,6 +187,7 @@ const MultiPageSheetContent = React.forwardRef<
                 size="sm"
                 disabled={disableSave}
                 onClick={onSave}
+                type="submit"
               />
             )}
             {footerContent}
