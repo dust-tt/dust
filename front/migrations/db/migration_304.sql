@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY agent_mcp_actions_agent_message_id;
