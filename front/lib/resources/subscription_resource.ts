@@ -554,9 +554,10 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       user,
       billingPeriod,
       planCode,
-      allowedPaymentMethods: owner.metadata?.isBusiness
-        ? ["card", "sepa_debit"]
-        : ["card"],
+      allowedPaymentMethods:
+        owner.metadata?.isBusiness && planCode === PRO_PLAN_SEAT_39_CODE
+          ? ["card", "sepa_debit"]
+          : ["card"],
     });
 
     if (!checkoutUrl) {
