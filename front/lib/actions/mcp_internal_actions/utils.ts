@@ -4,10 +4,9 @@ import type {
 } from "@modelcontextprotocol/sdk/types.js";
 
 /**
- * Error tool result. This won't fail in the agent loop but will be logged.
- * The text will be shown to the model.
- * The error will be logged by the wrapper `withToolLogging` and the error message will be shown
- * in the logs to help debugging it.
+ * Error tool result. Does not fail the agent loop (the text is shown to the model) but is logged.
+ * If the tool callback is wrapped by `withToolLogging`, the error will be tracked and the error
+ * message will be shown in the logs to help debugging it.
  *
  * Do not use if the intent is to show an issue to the agent as part of a normal tool execution,
  * only use if the error should be logged and tracked.
