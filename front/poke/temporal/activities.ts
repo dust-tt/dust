@@ -350,12 +350,10 @@ export async function deleteRunOnDustAppsActivity({
   }
 
   const BATCH_SIZE = 10_000;
-  let currentOffset = 0;
+  let deletedRuns = 0;
 
   // Fetch the total of runs to fetch to max end to not go over.
-  const totalRunsToFetch = await RunResource.countByWorkspace(workspace, {
-    skipCutoffDate: true,
-  });
+  const totalRunsToFetch = await RunResource.countByWorkspace(workspace);
   hardDeleteLogger.info(
     { totalRuns: totalRunsToFetch },
     "Numbers of runs to be deleted"
@@ -364,15 +362,12 @@ export async function deleteRunOnDustAppsActivity({
   do {
     const runs = await RunResource.listByWorkspace(workspace, {
       includeApp: true,
-      // We want to fetch ALL runs, not just the one created after the cutoff date
-      skipCutoffDate: true,
       limit: BATCH_SIZE,
-      offset: currentOffset,
       order: [["createdAt", "ASC"]],
     });
 
     hardDeleteLogger.info(
-      { batchSize: runs.length, currentOffset },
+      { batchSize: runs.length, deletedRuns },
       "Processing batch of runs"
     );
 
@@ -399,8 +394,8 @@ export async function deleteRunOnDustAppsActivity({
     if (runs.length < BATCH_SIZE) {
       break;
     }
-    currentOffset += runs.length;
-  } while (currentOffset <= totalRunsToFetch);
+    deletedRuns += runs.length;
+  } while (deletedRuns <= totalRunsToFetch);
 }
 
 export const deleteRemoteMCPServersActivity = async ({
