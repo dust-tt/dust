@@ -1,22 +1,12 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import {
-  ActionIncludeIcon,
-  ActionScanIcon,
-  MagnifyingGlassIcon,
-  MultiPageSheet,
-  MultiPageSheetContent,
-  TableIcon,
-} from "@dust-tt/sparkle";
-import { AnimatePresence } from "framer-motion";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { useEffect, useState } from "react";
-import { useForm, useFormContext, useWatch } from "react-hook-form";
+import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
 import {
@@ -27,6 +17,11 @@ import {
   isValidPage,
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
+import type { CapabilityConfig } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import {
+  CAPABILITY_CONFIGS,
+  DESCRIPTION_MAX_LENGTH,
+} from "@app/components/agent_builder/capabilities/knowledge/utils";
 import type {
   AgentBuilderAction,
   ExtractDataAgentBuilderAction,
@@ -36,24 +31,18 @@ import type {
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  TimeFrame,
-} from "@app/types";
-
-const DESCRIPTION_MAX_LENGTH = 800;
+import { FormProvider } from "@app/components/sparkle/FormProvider";
+import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
 const capabilityFormSchema = z.object({
   description: z
     .string()
     .min(1, "Description is required")
     .max(DESCRIPTION_MAX_LENGTH, "Description too long"),
-  dataSourceConfigurations: z.record(z.any()).default({}),
   timeFrame: z
     .object({
-      duration: z.number().nullable(),
-      unit: z.enum(["hour", "day", "week", "month", "year"]).nullable(),
+      duration: z.number(),
+      unit: z.enum(["hour", "day", "week", "month", "year"]),
     })
     .nullable()
     .default(null),
@@ -68,110 +57,6 @@ const PAGE_IDS = {
 } as const;
 
 type PageId = (typeof PAGE_IDS)[keyof typeof PAGE_IDS];
-
-interface CapabilityConfig {
-  title: string;
-  description: string;
-  icon: React.ComponentType;
-  viewType: DataSourceViewType;
-  actionType: AgentBuilderAction["type"];
-  actionName: string;
-  configPageTitle: string;
-  configPageDescription: string;
-  hasTimeFrame: boolean;
-  hasJsonSchema: boolean;
-  descriptionConfig: {
-    title: string;
-    description: string;
-    placeholder: string;
-    helpText?: string;
-    maxLength?: number;
-  };
-}
-
-const CAPABILITY_CONFIGS: Record<KnowledgeServerName, CapabilityConfig> = {
-  search: {
-    title: "Select Data Sources",
-    description: "Choose which data sources to search",
-    icon: MagnifyingGlassIcon,
-    viewType: "document",
-    actionType: "SEARCH",
-    actionName: "Search",
-    configPageTitle: "Configure Search",
-    configPageDescription: "Describe what you want to search for",
-    hasTimeFrame: false,
-    hasJsonSchema: false,
-    descriptionConfig: {
-      title: "Search Description",
-      description:
-        "Describe what you want to search for in your selected data sources.",
-      placeholder: "Describe what you want to search for...",
-      helpText:
-        "This description helps the agent understand what to search for.",
-    },
-  },
-  include_data: {
-    title: "Select Data Sources",
-    description: "Choose which data sources to include data from",
-    icon: ActionIncludeIcon,
-    viewType: "document",
-    actionType: "INCLUDE_DATA",
-    actionName: "Include Data",
-    configPageTitle: "Configure Include Data",
-    configPageDescription: "Set time range and describe what data to include",
-    hasTimeFrame: true,
-    hasJsonSchema: false,
-    descriptionConfig: {
-      title: "Data Description",
-      description:
-        "Describe what type of data you want to include from your selected data sources to provide context to the agent.",
-      placeholder:
-        "Describe what data you want to include from your selected data sources...",
-      helpText:
-        "This description helps the agent understand what type of data to include as context.",
-    },
-  },
-  extract_data: {
-    title: "Data Sources",
-    description: "Choose which data sources to extract data from",
-    icon: ActionScanIcon,
-    viewType: "document",
-    actionType: "EXTRACT_DATA",
-    actionName: "Extract Data",
-    configPageTitle: "Configure Extract Data",
-    configPageDescription:
-      "Set extraction parameters and describe what data to extract",
-    hasTimeFrame: true,
-    hasJsonSchema: true,
-    descriptionConfig: {
-      title: "What's the data?",
-      description:
-        "Provide a brief description (maximum 800 characters) of the data content and context to help the agent determine when to utilize it effectively.",
-      placeholder: "This data contains…",
-      maxLength: DESCRIPTION_MAX_LENGTH,
-    },
-  },
-  query_tables: {
-    title: "Select Tables",
-    description: "Choose which tables to query from your data sources",
-    icon: TableIcon,
-    viewType: "table",
-    actionType: "SEARCH",
-    actionName: "Query Tables",
-    configPageTitle: "Configure Query Tables",
-    configPageDescription: "Describe how you want to query the selected tables",
-    hasTimeFrame: false,
-    hasJsonSchema: false,
-    descriptionConfig: {
-      title: "Query Description",
-      description:
-        "Describe what kind of queries you want to run against your selected tables. The agent will use this context to generate appropriate SQL queries.",
-      placeholder: "Describe what you want to query from your tables...",
-      helpText:
-        "This description helps the agent understand what kind of SQL queries to generate based on your conversation context.",
-    },
-  },
-};
 
 interface CapabilitiesConfigurationSheetProps {
   capability: KnowledgeServerName | null;
@@ -197,51 +82,62 @@ export function CapabilitiesConfigurationSheet({
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     PAGE_IDS.DATA_SOURCE_SELECTION
   );
+  const [dataSourceConfigurations, setDataSourceConfigurations] =
+    useState<DataSourceViewSelectionConfigurations>(() =>
+      getDataSourceConfigurations(action)
+    );
+  const [config, setConfig] = useState<CapabilityConfig | null>(null);
 
   const form = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
+    mode: "onChange",
     defaultValues: {
       description: action?.description ?? "",
-      dataSourceConfigurations: getDataSourceConfigurations(action),
       timeFrame: getTimeFrame(action),
       jsonSchema: getJsonSchema(action),
     },
   });
 
-  const { watch, setValue, getValues } = form;
-  const [description, dataSourceConfigurations, timeFrame, jsonSchema] = watch([
+  const { watch, setValue, getValues, formState } = form;
+  const [description, timeFrame, jsonSchema] = watch([
     "description",
-    "dataSourceConfigurations",
     "timeFrame",
     "jsonSchema",
   ]);
 
   useEffect(() => {
     if (isOpen) {
+      setConfig(capability ? CAPABILITY_CONFIGS[capability] : null);
       form.reset({
         description: action?.description ?? "",
-        dataSourceConfigurations: getDataSourceConfigurations(action),
         timeFrame: getTimeFrame(action),
         jsonSchema: getJsonSchema(action),
       });
+      setDataSourceConfigurations(getDataSourceConfigurations(action));
     }
-  }, [action, isOpen, form]);
+  }, [action, isOpen, form, capability]);
 
   const handleClose = () => {
     onClose();
-    form.reset({
-      description: "",
-      dataSourceConfigurations: {},
-      timeFrame: null,
-      jsonSchema: null,
-    });
-    setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
+
+    setTimeout(() => {
+      form.reset({
+        description: "",
+        timeFrame: null,
+        jsonSchema: null,
+      });
+      setDataSourceConfigurations({});
+      setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
+      setConfig(null);
+    }, 200);
   };
 
   const hasDataSources = hasDataSourceSelections(dataSourceConfigurations);
 
   const handleSave = () => {
-    if (!capability) return;
+    if (!capability) {
+      return;
+    }
 
     const formData = getValues();
     const config = CAPABILITY_CONFIGS[capability];
@@ -256,7 +152,7 @@ export function CapabilitiesConfigurationSheet({
           description: formData.description,
           configuration: {
             type: "SEARCH",
-            dataSourceConfigurations: formData.dataSourceConfigurations,
+            dataSourceConfigurations,
           },
           noConfigurationRequired: false,
         } as SearchAgentBuilderAction;
@@ -269,7 +165,7 @@ export function CapabilitiesConfigurationSheet({
           description: formData.description,
           configuration: {
             type: "INCLUDE_DATA",
-            dataSourceConfigurations: formData.dataSourceConfigurations,
+            dataSourceConfigurations,
             timeFrame: formData.timeFrame,
           },
           noConfigurationRequired: false,
@@ -283,7 +179,7 @@ export function CapabilitiesConfigurationSheet({
           description: formData.description,
           configuration: {
             type: "EXTRACT_DATA",
-            dataSourceConfigurations: formData.dataSourceConfigurations,
+            dataSourceConfigurations,
             timeFrame: formData.timeFrame,
             jsonSchema: formData.jsonSchema,
           },
@@ -294,8 +190,8 @@ export function CapabilitiesConfigurationSheet({
         return;
     }
 
-    onSave(newAction);
     handleClose();
+    onSave(newAction);
   };
 
   const handlePageChange = (pageId: string) => {
@@ -303,8 +199,6 @@ export function CapabilitiesConfigurationSheet({
       setCurrentPageId(pageId);
     }
   };
-
-  const config = capability ? CAPABILITY_CONFIGS[capability] : null;
 
   const pages: MultiPageSheetPage[] = config
     ? [
@@ -325,9 +219,7 @@ export function CapabilitiesConfigurationSheet({
                   allowedSpaces={spaces}
                   owner={owner}
                   selectionConfigurations={dataSourceConfigurations}
-                  setSelectionConfigurations={(configs) =>
-                    setValue("dataSourceConfigurations", configs)
-                  }
+                  setSelectionConfigurations={setDataSourceConfigurations}
                   viewType={config.viewType}
                   isRootSelectable={true}
                 />
@@ -341,59 +233,55 @@ export function CapabilitiesConfigurationSheet({
           description: config.configPageDescription,
           icon: config.icon,
           content: (
-            <div className="space-y-6">
-              {config.hasTimeFrame && (
-                <TimeFrameSection
-                  timeFrame={timeFrame}
-                  setTimeFrame={(timeFrame) => setValue("timeFrame", timeFrame)}
-                  actionType={
-                    capability === "extract_data" ? "extract" : "include"
-                  }
+            <FormProvider form={form}>
+              <div className="space-y-6">
+                {config.hasTimeFrame && (
+                  <TimeFrameSection
+                    timeFrame={timeFrame}
+                    setTimeFrame={(timeFrame) =>
+                      setValue("timeFrame", timeFrame)
+                    }
+                    actionType={
+                      capability === "extract_data" ? "extract" : "include"
+                    }
+                  />
+                )}
+                {config.hasJsonSchema && (
+                  <JsonSchemaSection
+                    title="Schema"
+                    description="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
+                    value={jsonSchema}
+                    initialSchemaString={
+                      action && getJsonSchema(action)
+                        ? JSON.stringify(getJsonSchema(action), null, 2)
+                        : null
+                    }
+                    onChange={(schema) => setValue("jsonSchema", schema)}
+                    agentInstructions={instructions}
+                    agentDescription={description}
+                    owner={owner}
+                  />
+                )}
+                <DescriptionSection
+                  title={config.descriptionConfig.title}
+                  description={config.descriptionConfig.description}
+                  placeholder={config.descriptionConfig.placeholder}
+                  maxLength={config.descriptionConfig.maxLength}
+                  helpText={config.descriptionConfig.helpText}
                 />
-              )}
-              {config.hasJsonSchema && (
-                <JsonSchemaSection
-                  title="Schema"
-                  description="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
-                  value={jsonSchema}
-                  initialSchemaString={
-                    action && getJsonSchema(action)
-                      ? JSON.stringify(getJsonSchema(action), null, 2)
-                      : null
-                  }
-                  onChange={(schema) => setValue("jsonSchema", schema)}
-                  agentInstructions={instructions}
-                  agentDescription={description}
-                  owner={owner}
-                />
-              )}
-              <DescriptionSection
-                title={config.descriptionConfig.title}
-                description={config.descriptionConfig.description}
-                placeholder={config.descriptionConfig.placeholder}
-                value={description}
-                onChange={(desc) => setValue("description", desc)}
-                maxLength={config.descriptionConfig.maxLength}
-                helpText={config.descriptionConfig.helpText}
-              />
-            </div>
+              </div>
+            </FormProvider>
           ),
         },
       ]
     : [];
 
-  const isDescriptionValid =
-    config &&
-    (config.descriptionConfig.maxLength
-      ? description.trim() &&
-        description.length <= config.descriptionConfig.maxLength
-      : description.trim());
-
   return (
     <MultiPageSheet
-      key={capability}
       open={isOpen}
-      onOpenChange={(open) => !open && handleClose()}
+      onOpenChange={(open) => {
+        !open && handleClose();
+      }}
     >
       <MultiPageSheetContent
         pages={pages}
@@ -405,7 +293,7 @@ export function CapabilitiesConfigurationSheet({
         disableNext={
           currentPageId === PAGE_IDS.DATA_SOURCE_SELECTION && !hasDataSources
         }
-        disableSave={!hasDataSources || !isDescriptionValid}
+        disableSave={!hasDataSources || !formState.isValid}
       />
     </MultiPageSheet>
   );
