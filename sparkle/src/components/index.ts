@@ -7,8 +7,7 @@ export {
 } from "./AssistantCard";
 export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
-export { BarFooter } from "./BarFooter";
-export { BarHeader } from "./BarHeader";
+export { Bar, BarFooter, BarHeader } from "./Bar";
 export type { BreadcrumbItem } from "./Breadcrumbs";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type {
