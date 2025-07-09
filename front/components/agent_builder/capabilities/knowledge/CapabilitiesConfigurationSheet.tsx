@@ -114,20 +114,15 @@ export function CapabilitiesConfigurationSheet({
         jsonSchema: getJsonSchema(action),
       });
       setDataSourceConfigurations(getDataSourceConfigurations(action));
+      setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
     }
   }, [action, isOpen, form, capability]);
 
   const handleClose = () => {
     onClose();
 
+    // Wait until closing animation ends, otherwise exit animation won't work.
     setTimeout(() => {
-      form.reset({
-        description: "",
-        timeFrame: null,
-        jsonSchema: null,
-      });
-      setDataSourceConfigurations({});
-      setCurrentPageId(PAGE_IDS.DATA_SOURCE_SELECTION);
       setConfig(null);
     }, 200);
   };
