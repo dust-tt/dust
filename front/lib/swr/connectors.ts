@@ -7,7 +7,7 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+// import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/connector";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
@@ -44,9 +44,9 @@ export function useConnectorPermissions<T extends ConnectorPermission | null>({
   disabled?: boolean;
   viewType?: ContentNodesViewType;
 }): UseConnectorPermissionsReturn<T> {
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  // const { featureFlags } = useFeatureFlags({
+  //   workspaceId: owner.sId,
+  // });
   const permissionsFetcher: Fetcher<
     T extends ConnectorPermission
       ? GetDataSourcePermissionsResponseBody<T>
@@ -69,13 +69,28 @@ export function useConnectorPermissions<T extends ConnectorPermission | null>({
     resources: useMemo(
       () =>
         data
-          ? data.resources.filter(
-              (resource) =>
-                resource.providerVisibility !== "private" ||
-                featureFlags.includes("index_private_slack_channel")
-            )
+          ? Array(1000)
+              .fill(data.resources)
+              .flat()
+              .map((resource) => {
+                // Randomize name and id for demo/testing purposes
+                const randomSuffix = Math.random().toString(36).substring(2, 8);
+                return {
+                  ...resource,
+                  // Try to randomize both id and name/title if present
+                  ...(resource.internal_id && {
+                    internal_id: `${resource.internal_id}-${randomSuffix}`,
+                  }),
+                  ...(resource.name && {
+                    name: `${resource.name} ${randomSuffix}`,
+                  }),
+                  ...(resource.title && {
+                    title: `${resource.title} ${randomSuffix}`,
+                  }),
+                };
+              })
           : [],
-      [data, featureFlags]
+      [data]
     ),
     isResourcesLoading: !error && !data,
     isResourcesError: error,

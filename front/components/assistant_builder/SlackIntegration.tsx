@@ -9,10 +9,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
+import type {
+  ContentNodeTreeItemStatus,
+  VirtualizedContentNodeTreeItemStatus,
+} from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
+import { VirtualizedContentNodeTree } from "@app/components/VirtualizedContentNodeTree";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import type { ContentNode, DataSourceType, WorkspaceType } from "@app/types";
 import { isAdmin } from "@app/types";
@@ -51,14 +55,6 @@ export function SlackIntegration({
     }
   }, [existingSelection]);
 
-  const customIsNodeChecked = useCallback(
-    (node: ContentNode) => {
-      const channelId = node.internalId.substring("slack-channel-".length);
-      return newSelection?.some((c) => c.slackChannelId === channelId) || false;
-    },
-    [newSelection]
-  );
-
   // Notify parent component when newSelection changes.
   useEffect(() => {
     if (newSelection !== null) {
@@ -72,53 +68,138 @@ export function SlackIntegration({
     [owner, slackDataSource]
   );
 
-  const { resources } = useResourcesHook(null);
-  const selectedNodes = resources.reduce(
-    (acc, c) =>
-      customIsNodeChecked(c)
-        ? {
-            ...acc,
-            [c.internalId]: {
-              node: c,
-              isSelected: true,
-              parents: [],
-            },
-          }
-        : acc,
-    {} as Record<string, ContentNodeTreeItemStatus>
+  const { resources, isResourcesLoading } = useResourcesHook(null);
+
+  // Defer initial render to avoid blocking the UI
+  const [shouldRender, setShouldRender] = useState(false);
+  
+  useEffect(() => {
+    if (!isResourcesLoading) {
+      if (resources.length > 0) {
+        const timer = setTimeout(() => {
+          setShouldRender(true);
+        }, 100);
+        return () => clearTimeout(timer);
+      } else {
+        setShouldRender(true);
+      }
+    }
+  }, [isResourcesLoading, resources.length]);
+
+  // Create a Set for faster lookups instead of array.some() calls
+  const selectedChannelIds = useMemo(() => {
+    return new Set(newSelection.map((c) => c.slackChannelId));
+  }, [newSelection]);
+
+  // Optimized custom node check using Set lookup
+  const optimizedCustomIsNodeChecked = useCallback(
+    (node: ContentNode) => {
+      const channelId = node.internalId.substring("slack-channel-".length);
+      return selectedChannelIds.has(channelId);
+    },
+    [selectedChannelIds]
   );
+
+  // Lazy computation - only compute when needed
+  const selectedNodes = useMemo(() => {
+    if (resources.length <= 100) {
+      return resources.reduce(
+        (acc, c) =>
+          optimizedCustomIsNodeChecked(c)
+            ? {
+                ...acc,
+                [c.internalId]: {
+                  node: c,
+                  isSelected: true,
+                  parents: [],
+                },
+              }
+            : acc,
+        {} as Record<string, ContentNodeTreeItemStatus>
+      );
+    }
+    return {};
+  }, [resources, optimizedCustomIsNodeChecked]);
+
+  const virtualizedSelectedNodes = useMemo(() => {
+    if (resources.length > 100) {
+      return resources.reduce(
+        (acc, c) =>
+          optimizedCustomIsNodeChecked(c)
+            ? {
+                ...acc,
+                [c.internalId]: {
+                  node: c,
+                  isSelected: true,
+                  parents: [],
+                },
+              }
+            : acc,
+        {} as Record<string, VirtualizedContentNodeTreeItemStatus>
+      );
+    }
+    return {};
+  }, [resources, optimizedCustomIsNodeChecked]);
+
+  const handleSelectionChange = useCallback(
+    (updater: (prev: any) => any) => {
+      const newModel = updater(
+        resources.length > 100 ? virtualizedSelectedNodes : selectedNodes
+      );
+
+      setNewSelection((prevSelection) => {
+        const newSelection = [...prevSelection];
+        Object.values(newModel).forEach((item: any) => {
+          const { isSelected, node } = item;
+          const index = newSelection.findIndex(
+            (c) => `slack-channel-${c.slackChannelId}` === node.internalId
+          );
+
+          if (isSelected && index === -1) {
+            newSelection.push({
+              slackChannelId: node.internalId.substring(
+                "slack-channel-".length
+              ),
+              slackChannelName: node.title,
+            });
+          }
+
+          if (!isSelected && index !== -1) {
+            newSelection.splice(index, 1);
+          }
+        });
+        return newSelection;
+      });
+    },
+    [resources.length, virtualizedSelectedNodes, selectedNodes]
+  );
+
+  if (isResourcesLoading || !shouldRender) {
+    return (
+      <div className="flex items-center justify-center h-32 text-gray-500">
+        Loading channels...
+      </div>
+    );
+  }
+
+  // Use virtualized tree for large channel lists (>100 channels)
+  if (resources.length > 100) {
+    return (
+      <VirtualizedContentNodeTree
+        selectedNodes={virtualizedSelectedNodes}
+        setSelectedNodes={handleSelectionChange}
+        showExpand={false}
+        useResourcesHook={useResourcesHook}
+        isTitleFilterEnabled={true}
+      />
+    );
+  }
 
   return (
     <ContentNodeTree
       // not limited to those synced with Dust.
       selectedNodes={selectedNodes}
-      setSelectedNodes={(updater) => {
-        const newModel = updater(selectedNodes);
-
-        setNewSelection((prevSelection) => {
-          const newSelection = [...prevSelection];
-          Object.values(newModel).forEach((item) => {
-            const { isSelected, node } = item;
-            const index = newSelection.findIndex(
-              (c) => `slack-channel-${c.slackChannelId}` === node.internalId
-            );
-
-            if (isSelected && index === -1) {
-              newSelection.push({
-                slackChannelId: node.internalId.substring(
-                  "slack-channel-".length
-                ),
-                slackChannelName: node.title,
-              });
-            }
-
-            if (!isSelected && index !== -1) {
-              newSelection.splice(index, 1);
-            }
-          });
-          return newSelection;
-        });
-      }}
+      setSelectedNodes={handleSelectionChange}
       showExpand={false}
       useResourcesHook={useResourcesHook}
     />

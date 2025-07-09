@@ -66,6 +66,9 @@ export type ContentNodeTreeItemStatus<T extends ContentNode = ContentNode> = {
   parents: string[];
 };
 
+// Re-export from VirtualizedContentNodeTree for backward compatibility
+export type { VirtualizedContentNodeTreeItemStatus } from "./VirtualizedContentNodeTree";
+
 export type TreeSelectionModelUpdater = (
   prev: Record<string, ContentNodeTreeItemStatus>
 ) => Record<string, ContentNodeTreeItemStatus>;
