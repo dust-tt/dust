@@ -1,14 +1,8 @@
 import { dataSourceConfigurationSchema } from "@app/components/agent_builder/types";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { AssistantTemplateListType } from "@app/pages/api/templates";
-import type { ModelId, Result, TemplateTagCodeType } from "@app/types";
+import type { Result, TemplateTagCodeType } from "@app/types";
 import { Err, Ok } from "@app/types";
-import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
-import type { DataSourceType } from "@app/types/data_source";
-import type {
-  DataSourceViewContentNode,
-  DataSourceViewType,
-} from "@app/types/data_source_view";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const isInvalidJson = (value: string | null | undefined): boolean => {
@@ -40,28 +34,4 @@ export function validateDataSourceConfiguration(
   } catch (error) {
     return new Err(normalizeError(error));
   }
-}
-
-// Create minimal objects with placeholder values that will be populated by the server
-export function createMinimalDataSourceView(sId: string): DataSourceViewType {
-  return {
-    sId,
-    id: 0 as ModelId,
-    category: "managed" satisfies DataSourceViewCategory,
-    createdAt: 0,
-    updatedAt: 0,
-    spaceId: "",
-    kind: "default",
-    parentsIn: null,
-    dataSource: {} as DataSourceType,
-  };
-}
-
-export function createMinimalDataSourceViewContentNodes(
-  parentIds: string[]
-): DataSourceViewContentNode[] {
-  return parentIds.map((internalId) => ({
-    internalId,
-    dataSourceView: createMinimalDataSourceView(""),
-  })) as DataSourceViewContentNode[];
 }

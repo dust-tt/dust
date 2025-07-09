@@ -1,26 +1,11 @@
 import type {
   AgentBuilderAction,
   AgentBuilderFormData,
+  BaseActionData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { SupportedAgentBuilderActionType } from "@app/components/agent_builder/types";
-import {
-  AGENT_BUILDER_MCP_SERVERS,
-  MCP_SERVER_TO_ACTION_TYPE_MAP,
-} from "@app/components/agent_builder/types";
-import {
-  createMinimalDataSourceView,
-  createMinimalDataSourceViewContentNodes,
-  validateDataSourceConfiguration,
-} from "@app/components/agent_builder/utils";
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type {
-  DataSourceViewSelectionConfigurations,
-  UserType,
-} from "@app/types";
+import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
+import type { UserType } from "@app/types";
 import type { LightAgentConfigurationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@app/types/assistant/agent";
@@ -63,49 +48,59 @@ export function transformAgentConfigurationToFormData(
   };
 }
 
-export function transformActionsToFormData(
-  actions: AgentActionConfigurationType[],
-  visualizationEnabled: boolean = false
+const SERVER_NAME_TO_ACTION_TYPE = {
+  extract_data: "EXTRACT_DATA",
+  include_data: "INCLUDE_DATA",
+  search: "SEARCH",
+} as const satisfies Record<string, SupportedAgentBuilderActionType>;
+
+function isKnownServerName(
+  serverName: string
+): serverName is keyof typeof SERVER_NAME_TO_ACTION_TYPE {
+  return serverName in SERVER_NAME_TO_ACTION_TYPE;
+}
+
+/**
+ * Transforms assistant builder MCP configurations (from the builder actions API)
+ * into agent builder form actions. This handles the fully hydrated data source
+ * configurations that come from the server.
+ */
+export function transformAssistantBuilderActionsToFormData(
+  assistantBuilderActions: AssistantBuilderMCPConfiguration[],
+  mcpServerViews: Array<{ sId: string; server: { name: string } }> = []
 ): Result<AgentBuilderAction[], Error> {
   try {
     const formActions: AgentBuilderAction[] = [];
 
-    // Transform MCP server configurations to form actions
-    for (const action of actions) {
-      if (!isServerSideMCPServerConfiguration(action)) {
+    for (const action of assistantBuilderActions) {
+      if (action.type !== "MCP") {
         continue;
       }
 
-      // Check if this is an agent builder MCP server and transform it
-      const matchingServerName = AGENT_BUILDER_MCP_SERVERS.find((serverName) =>
-        isInternalMCPServerOfName(action.internalMCPServerId, serverName)
+      const mcpServerViewId = action.configuration.mcpServerViewId;
+      const mcpServerView = mcpServerViews.find(
+        (view) => view.sId === mcpServerViewId
       );
 
-      if (matchingServerName) {
-        const actionType = MCP_SERVER_TO_ACTION_TYPE_MAP[matchingServerName];
-        const transformResult = transformMCPServerConfigToAction(
-          action,
-          actionType
-        );
-        if (transformResult.isErr()) {
-          return new Err(transformResult.error);
-        }
-        formActions.push(transformResult.value);
-      }
-    }
+      const actionType = determineActionType(mcpServerView);
 
-    // Add data visualization action if enabled (this is stored as a flag, not an MCP config)
-    if (visualizationEnabled) {
-      formActions.push({
-        id: "data_visualization",
-        name: "Data Visualization",
-        description: "Enable data visualization capabilities",
-        type: "DATA_VISUALIZATION",
-        noConfigurationRequired: true,
-        configuration: {
-          type: "DATA_VISUALIZATION",
-        },
+      const dataSourceConfigurations =
+        action.configuration.dataSourceConfigurations ?? {};
+
+      const baseActionData = {
+        id: mcpServerViewId,
+        name: action.name,
+        description: action.description,
+        noConfigurationRequired: action.noConfigurationRequired ?? false,
+      };
+
+      const formAction = createTypedAction(actionType, baseActionData, {
+        dataSourceConfigurations,
+        timeFrame: action.configuration.timeFrame,
+        jsonSchema: action.configuration.jsonSchema,
       });
+
+      formActions.push(formAction);
     }
 
     return new Ok(formActions);
@@ -114,121 +109,74 @@ export function transformActionsToFormData(
   }
 }
 
-function transformMCPServerConfigToAction(
-  mcpConfig: ServerSideMCPServerConfigurationType,
-  actionType: SupportedAgentBuilderActionType
-): Result<AgentBuilderAction, Error> {
-  try {
-    const dataSourceConfigurationsResult = transformDataSourceConfigurations(
-      mcpConfig.dataSources || []
-    );
-
-    if (dataSourceConfigurationsResult.isErr()) {
-      return new Err(dataSourceConfigurationsResult.error);
-    }
-
-    const baseActionData = {
-      id: mcpConfig.sId,
-      name: mcpConfig.name,
-      description: mcpConfig.description || "",
-      noConfigurationRequired: false,
-    };
-
-    const dataSourceConfigurations = dataSourceConfigurationsResult.value;
-
-    // Create properly typed action objects
-    switch (actionType) {
-      case "EXTRACT_DATA":
-        return new Ok({
-          ...baseActionData,
-          type: "EXTRACT_DATA",
-          configuration: {
-            type: "EXTRACT_DATA",
-            dataSourceConfigurations,
-            timeFrame: mcpConfig.timeFrame,
-            jsonSchema: mcpConfig.jsonSchema,
-          },
-        });
-      case "INCLUDE_DATA":
-        return new Ok({
-          ...baseActionData,
-          type: "INCLUDE_DATA",
-          configuration: {
-            type: "INCLUDE_DATA",
-            dataSourceConfigurations,
-            timeFrame: mcpConfig.timeFrame,
-          },
-        });
-      default:
-        return new Ok({
-          ...baseActionData,
-          type: "SEARCH",
-          configuration: {
-            type: "SEARCH",
-            dataSourceConfigurations,
-          },
-        });
-    }
-  } catch (error) {
-    return new Err(normalizeError(error));
+function determineActionType(
+  mcpServerView: { server: { name: string } } | undefined
+): SupportedAgentBuilderActionType {
+  if (!mcpServerView) {
+    throw new Error("MCP server view is required");
   }
+
+  const serverName = mcpServerView.server.name;
+  if (isKnownServerName(serverName)) {
+    return SERVER_NAME_TO_ACTION_TYPE[serverName];
+  }
+
+  throw new Error(`Unknown MCP server name: ${serverName}`);
 }
 
-/**
- * Transforms server-side data source configurations into client-side form data structure.
- *
- * **Problem this solves:**
- * MCP server configurations store data sources in a compact, server-optimized format
- * (DataSourceConfiguration[]), but the agent builder form needs a rich, UI-optimized
- * format (DataSourceViewSelectionConfigurations) for rendering and editing.
- *
- * **Key transformations:**
- * 1. **Structure**: Array → Record (keyed by dataSourceViewId for O(1) lookup)
- * 2. **Data completeness**: Minimal server data → Full UI objects with placeholders
- * 3. **Selection logic**: Parent filter presence → isSelectAll boolean flag
- * 4. **Resource mapping**: Parent IDs → DataSourceViewContentNode objects
- *
- * **Why minimal objects are safe:**
- * The form initially shows placeholder data (loading states), then the real
- * DataSourceView objects are loaded asynchronously via SWR hooks and merged
- * into the form state, replacing these minimal placeholders.
- */
-function transformDataSourceConfigurations(
-  dataSourceConfigs: DataSourceConfiguration[]
-): Result<DataSourceViewSelectionConfigurations, Error> {
-  try {
-    const configurations: DataSourceViewSelectionConfigurations = {};
+type ActionConfig = Pick<
+  AssistantBuilderMCPConfiguration["configuration"],
+  "dataSourceConfigurations" | "timeFrame" | "jsonSchema"
+>;
 
-    for (const dsConfig of dataSourceConfigs) {
-      const validationResult = validateDataSourceConfiguration(dsConfig);
-      if (validationResult.isErr()) {
-        return new Err(
-          new Error(
-            `Invalid data source configuration: ${validationResult.error.message}`
-          )
-        );
-      }
+function createTypedAction(
+  actionType: SupportedAgentBuilderActionType,
+  baseActionData: BaseActionData,
+  config: ActionConfig
+): AgentBuilderAction {
+  const baseAction = {
+    ...baseActionData,
+    configuration: {
+      dataSourceConfigurations: config.dataSourceConfigurations ?? {},
+    },
+  };
 
-      // Create minimal placeholder objects that will be hydrated by SWR
-      const dataSourceView = createMinimalDataSourceView(
-        dsConfig.dataSourceViewId
-      );
-      const selectedResources = dsConfig.filter?.parents?.in?.length
-        ? createMinimalDataSourceViewContentNodes(dsConfig.filter.parents.in)
-        : [];
-
-      // Map to UI-friendly structure with key selection logic
-      configurations[dsConfig.dataSourceViewId] = {
-        dataSourceView,
-        selectedResources,
-        isSelectAll: !dsConfig.filter?.parents, // No parent filter = select all
-        tagsFilter: dsConfig.filter?.tags || null,
+  switch (actionType) {
+    case "EXTRACT_DATA":
+      return {
+        ...baseAction,
+        type: "EXTRACT_DATA",
+        configuration: {
+          type: "EXTRACT_DATA",
+          dataSourceConfigurations:
+            baseAction.configuration.dataSourceConfigurations,
+          timeFrame: config.timeFrame,
+          jsonSchema: config.jsonSchema,
+        },
       };
-    }
 
-    return new Ok(configurations);
-  } catch (error) {
-    return new Err(normalizeError(error));
+    case "INCLUDE_DATA":
+      return {
+        ...baseAction,
+        type: "INCLUDE_DATA",
+        configuration: {
+          type: "INCLUDE_DATA",
+          dataSourceConfigurations:
+            baseAction.configuration.dataSourceConfigurations,
+          timeFrame: config.timeFrame,
+        },
+      };
+
+    case "SEARCH":
+      return {
+        ...baseAction,
+        type: "SEARCH",
+        configuration: {
+          type: "SEARCH",
+          dataSourceConfigurations:
+            baseAction.configuration.dataSourceConfigurations,
+        },
+      };
   }
 }
 

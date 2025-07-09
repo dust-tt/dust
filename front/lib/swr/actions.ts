@@ -2,10 +2,9 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import type { AgentBuilderAction } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { transformActionsToFormData } from "@app/components/agent_builder/transformAgentConfiguration";
+import { transformAssistantBuilderActionsToFormData } from "@app/components/agent_builder/transformAgentConfiguration";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetActionsResponseBody } from "@app/pages/api/w/[wId]/builder/assistants/[aId]/actions";
-import type { AgentConfigurationType } from "@app/types";
 
 export function useAssistantConfigurationActions(
   ownerId: string,
@@ -32,15 +31,14 @@ export function useAssistantConfigurationActions(
 
 export function useAgentConfigurationActions(
   ownerId: string,
-  agentConfigurationId: string | null
+  agentConfigurationId: string | null,
+  mcpServerViews?: Array<{ sId: string; server: { name: string } }>
 ) {
   const disabled = agentConfigurationId === null;
-  const configurationFetcher: Fetcher<{
-    agentConfiguration: AgentConfigurationType;
-  }> = fetcher;
+  const actionsFetcher: Fetcher<GetActionsResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${ownerId}/assistant/agent_configurations/${agentConfigurationId}`,
-    configurationFetcher,
+    `/api/w/${ownerId}/builder/assistants/${agentConfigurationId}/actions`,
+    actionsFetcher,
     {
       disabled,
       revalidateOnFocus: false,
@@ -48,19 +46,18 @@ export function useAgentConfigurationActions(
     }
   );
 
-  // Transform raw agent configuration to client-side form data
+  // Transform assistant builder actions to agent builder form actions
   const actions = useMemo((): AgentBuilderAction[] => {
-    if (!data || !data.agentConfiguration || !data.agentConfiguration.actions) {
+    if (!data?.actions) {
       return [];
     }
 
-    const transformResult = transformActionsToFormData(
-      data.agentConfiguration.actions,
-      data.agentConfiguration.visualizationEnabled
+    const transformResult = transformAssistantBuilderActionsToFormData(
+      data.actions,
+      mcpServerViews || []
     );
-
     return transformResult.isOk() ? transformResult.value : [];
-  }, [data]);
+  }, [data, mcpServerViews]);
 
   return {
     actions,

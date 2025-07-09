@@ -22,15 +22,14 @@ import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/editors";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType, UserType } from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types";
 import {
   EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
 interface AgentBuilderProps {
-  agentConfiguration?: AgentConfigurationType;
-  agentEditors?: UserType[];
+  agentConfiguration?: LightAgentConfigurationType;
 }
 
 export default function AgentBuilder({
@@ -44,7 +43,8 @@ export default function AgentBuilder({
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
     owner.sId,
-    agentConfiguration?.sId ?? null
+    agentConfiguration?.sId ?? null,
+    mcpServerViews
   );
 
   const { editors, isEditorsLoading } = useEditors({
@@ -69,6 +69,12 @@ export default function AgentBuilder({
 
   // Create values object that includes async data (actions and editors)
   const formValues = useMemo((): AgentBuilderFormData | undefined => {
+    // Don't show form data until MCP server views are loaded
+    // This prevents transformation errors when data source views are not available
+    if (isMCPServerViewsLoading) {
+      return undefined;
+    }
+
     const hasActions = actions && actions.length > 0;
     const hasEditors = editors && editors.length > 0;
 
@@ -112,7 +118,13 @@ export default function AgentBuilder({
     }
 
     return updatedValues;
-  }, [defaultValues, actions, editors, supportedDataSourceViews]);
+  }, [
+    defaultValues,
+    actions,
+    editors,
+    supportedDataSourceViews,
+    isMCPServerViewsLoading,
+  ]);
 
   const form = useForm<AgentBuilderFormData>({
     resolver: zodResolver(agentBuilderFormSchema),
@@ -171,7 +183,9 @@ export default function AgentBuilder({
           />
         }
         rightPanel={
-          <AgentBuilderRightPanel agentConfiguration={agentConfiguration} />
+          <AgentBuilderRightPanel
+            agentConfigurationSId={agentConfiguration?.sId}
+          />
         }
       />
     </FormProvider>
