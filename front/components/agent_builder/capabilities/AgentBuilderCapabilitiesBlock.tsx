@@ -20,9 +20,6 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
-import { AddExtractSheet } from "@app/components/agent_builder/capabilities/knowledge/AddExtractSheet";
-import { AddIncludeDataSheet } from "@app/components/agent_builder/capabilities/knowledge/AddIncludeDataSheet";
-import { AddSearchSheet } from "@app/components/agent_builder/capabilities/knowledge/AddSearchSheet";
 import { CapabilitiesConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/CapabilitiesConfigurationSheet";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { KnowledgeServerName } from "@app/components/agent_builder/types";
