@@ -55,13 +55,18 @@ const { githubUpsertIssueActivity, githubUpsertDiscussionActivity } =
   });
 
 const {
-  githubCleanupCodeSyncActivity,
   githubEnsureCodeSyncEnabledActivity,
   githubGetGcsFilesActivity,
   githubProcessDirectoryChunkActivity,
   githubProcessFileChunkActivity,
 } = proxyActivities<typeof activitiesSyncCode>({
   startToCloseTimeout: "10 minute",
+});
+
+const { githubCleanupCodeSyncActivity } = proxyActivities<
+  typeof activitiesSyncCode
+>({
+  startToCloseTimeout: "20 minute",
 });
 
 const { githubExtractToGcsActivity } = proxyActivities<
