@@ -10,6 +10,7 @@ export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentM
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare sId: string;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare step: number;
   declare index: number;
@@ -31,6 +32,10 @@ AgentStepContentModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    sId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     agentMessageId: {
       type: DataTypes.BIGINT,
@@ -70,6 +75,11 @@ AgentStepContentModel.init(
     modelName: "agent_step_content",
     tableName: "agent_step_contents",
     indexes: [
+      {
+        unique: true,
+        fields: ["sId"],
+        name: "agent_step_contents_s_id_idx",
+      },
       {
         unique: true,
         fields: ["agentMessageId", "step", "index", "version"],

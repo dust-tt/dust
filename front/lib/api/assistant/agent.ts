@@ -38,8 +38,8 @@ import { getRedisClient } from "@app/lib/api/redis";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -267,7 +267,7 @@ async function* runMultiActionsAgentLoop(
           break;
 
         case "agent_step_content":
-          const stepContent = await AgentStepContentModel.create({
+          const stepContent = await AgentStepContentResource.makeNew({
             workspaceId: conversation.owner.id,
             agentMessageId: agentMessage.agentMessageId,
             step: i,
