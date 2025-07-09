@@ -92,6 +92,14 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   },
 ];
 
+function isProPlanCode(plan?: PlanType) {
+  return (
+    plan?.code === PRO_PLAN_SEAT_29_CODE ||
+    plan?.code === PRO_PLAN_LARGE_FILES_CODE ||
+    plan?.code === PRO_PLAN_SEAT_39_CODE
+  );
+}
+
 interface PriceTableProps {
   billingPeriod?: BillingPeriod;
   display: PriceTableDisplay;
@@ -202,11 +210,6 @@ export function ProPriceTable({
       ? getPriceWithCurrency(PRO_PLAN_COST_MONTHLY)
       : getPriceWithCurrency(PRO_PLAN_COST_YEARLY);
 
-  const isProPlanCode =
-    plan?.code === PRO_PLAN_SEAT_29_CODE ||
-    plan?.code === PRO_PLAN_LARGE_FILES_CODE ||
-    plan?.code === PRO_PLAN_SEAT_39_CODE;
-
   return (
     <>
       <FairUsageModal
@@ -221,7 +224,7 @@ export function ProPriceTable({
         size={size}
         magnified={false}
       >
-        {onClick && (!plan || !isProPlanCode) && (
+        {onClick && (!plan || !isProPlanCode(plan)) && (
           <PriceTable.ActionContainer position="top">
             <Button
               variant="highlight"
@@ -331,11 +334,6 @@ export function BusinessPriceTable({
 
   const price = getPriceWithCurrency(BUSINESS_PLAN_COST_MONTHLY);
 
-  const isProPlanCode =
-    plan?.code === PRO_PLAN_SEAT_29_CODE ||
-    plan?.code === PRO_PLAN_LARGE_FILES_CODE ||
-    plan?.code === PRO_PLAN_SEAT_39_CODE;
-
   return (
     <>
       <FairUsageModal
@@ -350,7 +348,7 @@ export function BusinessPriceTable({
         size={size}
         magnified={false}
       >
-        {onClick && (!plan || !isProPlanCode) && (
+        {onClick && (!plan || !isProPlanCode(plan)) && (
           <PriceTable.ActionContainer position="top">
             <Button
               variant="highlight"
