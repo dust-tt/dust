@@ -113,6 +113,19 @@ export function ProPriceTable({
 }: PriceTableProps) {
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
 
+  // If the owner has the business metadata, we show the BusinessPriceTable instead.
+  if (owner?.metadata?.isBusiness) {
+    return (
+      <BusinessPriceTable
+        display={display}
+        isProcessing={isProcessing}
+        onClick={onClick}
+        plan={plan}
+        size={size}
+      />
+    );
+  }
+
   const PRO_PLAN_ITEMS: PriceTableItem[] = [
     {
       label: "From 1 user",
@@ -184,15 +197,10 @@ export function ProPriceTable({
 
   const biggerButtonSize = size === "xs" ? "sm" : "md";
 
-  let price =
+  const price =
     billingPeriod === "monthly"
       ? getPriceWithCurrency(PRO_PLAN_COST_MONTHLY)
       : getPriceWithCurrency(PRO_PLAN_COST_YEARLY);
-
-  const isBusiness = owner?.metadata?.isBusiness ?? false;
-  if (isBusiness) {
-    price = getPriceWithCurrency(BUSINESS_PLAN_COST_MONTHLY);
-  }
 
   const isProPlanCode =
     plan?.code === PRO_PLAN_SEAT_29_CODE ||
