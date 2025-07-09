@@ -580,7 +580,6 @@ impl OpenAICompatibleError {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransformSystemMessages {
-    Remove,
     ReplaceWithDeveloper,
     Keep,
 }
