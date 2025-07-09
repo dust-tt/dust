@@ -1237,7 +1237,6 @@ async function createAgentDataSourcesConfiguration(
         dataSourceId: dataSourceView.dataSource.id,
         parentsIn: dsConfig.filter.parents?.in,
         parentsNotIn: dsConfig.filter.parents?.not,
-        retrievalConfigurationId: retrievalConfiguration?.id || null,
         dataSourceViewId: dataSourceView.id,
         mcpServerConfigurationId: mcpServerConfiguration?.id || null,
         tagsMode,
