@@ -1,6 +1,7 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgMonday = (props: SVGProps<SVGSVGElement>) => (
+interface MondayProps extends SVGProps<SVGSVGElement> {}
+const SvgMonday = (props: MondayProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     xmlnsXlink="http://www.w3.org/1999/xlink"
