@@ -112,7 +112,7 @@ function MobileLink({
 }: MobileLinkProps) {
   return (
     <Link
-      href={isExternal ? href : appendUTMParams(href)}
+      href={isExternal ? href : appendUTMParams(href.toString())}
       onClick={() => {
         onOpenChange?.(false);
       }}
