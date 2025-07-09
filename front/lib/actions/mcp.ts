@@ -2,6 +2,7 @@ import { isSupportedImageContentType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { Sequelize } from "sequelize";
 
 import type { DustAppRunConfigurationType } from "@app/components/actions/dust_app_run/utils";
 import type {
@@ -1160,14 +1161,33 @@ const buildErrorEvent = (
 // Internal interface for the retrieval and rendering of an MCPAction action. Should not be used
 // outside api/assistant. We allow a ModelId interface here because we don't have `sId` on actions
 // (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
+// This function only returns the actions with the maximum version for each step.
 export async function mcpActionTypesFromAgentMessageIds(
   auth: Authenticator,
   { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<MCPActionType[]> {
-  const actions = await AgentMCPAction.findAll({
+  const owner = auth.getNonNullableWorkspace();
+
+  // Get the IDs of actions with the maximum version for each step.
+  const maxVersionActions = await AgentMCPAction.findAll({
+    attributes: [
+      [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
+      [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
+    ],
     where: {
       agentMessageId: agentMessageIds,
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId: owner.id,
+    },
+    group: ["step", "agentMessageId"],
+  });
+
+  const actionIds = maxVersionActions.map((action) => action.id);
+
+  // Then fetch the full records with includes using the filtered IDs
+  const actions = await AgentMCPAction.findAll({
+    where: {
+      id: actionIds,
+      workspaceId: owner.id,
     },
     include: [
       {
