@@ -19,8 +19,7 @@ export function DescriptionSection({
   placeholder,
   helpText,
 }: DescriptionSectionProps) {
-  const { register, formState } = useFormContext();
-  const fieldError = formState.errors[FIELD_NAME];
+  const { register } = useFormContext();
 
   return (
     <div className="space-y-4">
@@ -35,7 +34,6 @@ export function DescriptionSection({
           placeholder={placeholder}
           {...register(FIELD_NAME)}
           rows={4}
-          error={fieldError?.message as string}
           showErrorLabel={true}
         />
         {helpText && (

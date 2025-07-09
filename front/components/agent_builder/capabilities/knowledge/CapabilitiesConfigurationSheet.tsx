@@ -23,12 +23,7 @@ import type {
   ConfigurationSheetPageId,
   KnowledgeServerName,
 } from "@app/components/agent_builder/types";
-import type {
-  AgentBuilderAction,
-  ExtractDataAgentBuilderAction,
-  IncludeDataAgentBuilderAction,
-  SearchAgentBuilderAction,
-} from "@app/components/agent_builder/types";
+import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
   capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
@@ -53,7 +48,7 @@ export function CapabilitiesConfigurationSheet({
   onClose,
   action,
 }: CapabilitiesConfigurationSheetProps) {
-  // We store as state to to control the timing to update the content for exit animation.
+  // We store as state to control the timing to update the content for exit animation.
   const [config, setConfig] = useState<CapabilityConfig | null>(null);
 
   const handleClose = () => {
@@ -152,7 +147,7 @@ function CapabilitiesConfigurationSheetContent({
             dataSourceConfigurations,
           },
           noConfigurationRequired: false,
-        } as SearchAgentBuilderAction;
+        };
         break;
       case "INCLUDE_DATA":
         newAction = {
@@ -166,7 +161,7 @@ function CapabilitiesConfigurationSheetContent({
             timeFrame: formData.timeFrame,
           },
           noConfigurationRequired: false,
-        } as IncludeDataAgentBuilderAction;
+        };
         break;
       case "EXTRACT_DATA":
         newAction = {
@@ -181,7 +176,7 @@ function CapabilitiesConfigurationSheetContent({
             jsonSchema: formData.jsonSchema,
           },
           noConfigurationRequired: false,
-        } as ExtractDataAgentBuilderAction;
+        };
         break;
       default:
         return;
