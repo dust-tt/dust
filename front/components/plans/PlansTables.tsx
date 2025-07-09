@@ -81,12 +81,12 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing"],
   },
   {
-    label: "(soon) User provisioning",
+    label: "User provisioning",
     variant: "check",
     display: ["landing"],
   },
   {
-    label: "(soon) Salesforce Connection",
+    label: "Salesforce Connection",
     variant: "check",
     display: ["landing"],
   },
@@ -238,6 +238,142 @@ export function ProPriceTable({
     </>
   );
 }
+
+export function BusinessPriceTable({
+  size,
+  plan,
+  onClick,
+  isProcessing,
+  display,
+}: {
+  size: "sm" | "xs";
+  plan?: PlanType;
+  onClick?: () => void;
+  isProcessing?: boolean;
+  display: PriceTableDisplay;
+}) {
+  const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
+
+  const PRO_PLAN_ITEMS: PriceTableItem[] = [
+    {
+      label: "From 1 user",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Multiple private spaces",
+      variant: "check",
+      display: ["landing"],
+    },
+    {
+      label: "Flexible payment options (SEPA, Credit Card)",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "US / EU data hosting",
+      variant: "check",
+      display: ["landing"],
+    },
+    {
+      label: "Advanced models (GPT-4, Claude…)",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Custom agents which can execute actions",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Connections (GitHub, Google Drive, Notion, Slack, ...)",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Native integrations (Zendesk, Slack, Chrome Extension)",
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Privacy and Data Security (SOC2, Zero Data Retention)",
+      variant: "check",
+      display: ["landing"],
+    },
+    {
+      label: (
+        <>
+          Unlimited messages (
+          <Hoverable
+            className="cursor-pointer text-gray-400 underline hover:text-gray-500"
+            onClick={() => setIsFairUseModalOpened(true)}
+          >
+            Fair use limits apply*
+          </Hoverable>
+          )
+        </>
+      ),
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Up to 1GB/user of data sources",
+      variant: "dash",
+      display: ["landing", "subscribe"],
+    },
+  ];
+
+  const biggerButtonSize = size === "xs" ? "sm" : "md";
+
+  const price = getPriceWithCurrency(BUSINESS_PLAN_COST_MONTHLY);
+
+  const isProPlanCode =
+    plan?.code === PRO_PLAN_SEAT_29_CODE ||
+    plan?.code === PRO_PLAN_LARGE_FILES_CODE ||
+    plan?.code === PRO_PLAN_SEAT_39_CODE;
+
+  return (
+    <>
+      <FairUsageModal
+        isOpened={isFairUseModalOpened}
+        onClose={() => setIsFairUseModalOpened(false)}
+      />
+      <PriceTable
+        title="Business"
+        price={price}
+        color="blue"
+        priceLabel="/ month / user, excl. tax."
+        size={size}
+        magnified={false}
+      >
+        {onClick && (!plan || !isProPlanCode) && (
+          <PriceTable.ActionContainer position="top">
+            <Button
+              variant="highlight"
+              size={biggerButtonSize}
+              label={
+                display === "landing" ? "Start now, 15 days free" : "Start now"
+              }
+              icon={RocketIcon}
+              disabled={isProcessing}
+              onClick={onClick}
+            />
+          </PriceTable.ActionContainer>
+        )}
+        {PRO_PLAN_ITEMS.filter((item) => item.display.includes(display)).map(
+          (item, index) => (
+            <PriceTable.Item
+              key={index}
+              label={item.label}
+              variant={item.variant}
+            />
+          )
+        )}
+      </PriceTable>
+    </>
+  );
+}
+
 function EnterprisePriceTable({
   size,
   isProcessing,
