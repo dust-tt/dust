@@ -12,7 +12,7 @@ const UTMHandler = ({ utmParams }: Props) => {
       try {
         sessionStorage?.setItem("utm_data", JSON.stringify(utmParams));
       } catch (error) {
-        console.error("Error storing UTM parameters:", error);
+        // Do nothing
       }
     }
   }, [utmParams]);

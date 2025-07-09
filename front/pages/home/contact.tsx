@@ -29,8 +29,8 @@ export default function Contact() {
           hasCTA={false}
           subtitle={
             <>
-              To prepare for our demo call, please share a bit about yourself and
-              the challenges you're hoping to address with Dust.
+              To prepare for our demo call, please share a bit about yourself
+              and the challenges you're hoping to address with Dust.
             </>
           }
         />
