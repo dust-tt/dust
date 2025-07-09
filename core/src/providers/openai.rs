@@ -1029,17 +1029,13 @@ impl LLM for OpenAILLM {
             || self.id.as_str().starts_with("o1")
             || self.id.as_str().starts_with("o4");
 
-        // o1-mini specifically does not support any type of system messages.
-        let remove_system_messages = self.id.as_str().starts_with("o1-mini");
 
         let api_key = match self.api_key.clone() {
             Some(key) => key,
             None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
         };
 
-        let transform_system_messages = if remove_system_messages {
-            TransformSystemMessages::Remove
-        } else if is_reasoning_model {
+        let transform_system_messages = if is_reasoning_model {
             TransformSystemMessages::ReplaceWithDeveloper
         } else {
             TransformSystemMessages::Keep
