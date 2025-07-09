@@ -46,7 +46,7 @@ export async function getUserName(
   slackUserId: string,
   connectorId: ModelId,
   slackClient: WebClient
-): Promise<string | undefined> {
+): Promise<string | null> {
   const fromCache = await cacheGet(getUserCacheKey(slackUserId, connectorId));
   if (fromCache) {
     return fromCache;
@@ -66,17 +66,17 @@ export async function getUserName(
 
       if (userName) {
         await cacheSet(getUserCacheKey(slackUserId, connectorId), userName);
-        return info.user.name;
+        return userName;
       }
     }
 
-    return undefined;
+    return null;
   } catch (err) {
     if (isSlackWebAPIPlatformError(err)) {
       if (err.data.error === "user_not_found") {
         logger.info({ connectorId, slackUserId }, "Slack user not found.");
 
-        return undefined;
+        return null;
       }
     }
 
@@ -116,7 +116,7 @@ async function getBotName({
   botId: string;
   connectorId: ModelId;
   slackClient: WebClient;
-}): Promise<string | undefined> {
+}): Promise<string | null> {
   try {
     const slackBotOrWorkflowInfo = await getSlackBotInfo(
       connectorId,
@@ -124,7 +124,9 @@ async function getBotName({
       botId
     );
 
-    return slackBotOrWorkflowInfo.display_name;
+    // Return null instead of undefined to avoid Redis "Invalid argument type" error
+    // when caching the result - undefined cannot be JSON.stringified properly for Redis storage.
+    return slackBotOrWorkflowInfo.display_name ?? null;
   } catch (err) {
     if (isSlackWebAPIPlatformErrorBotNotFound(err)) {
       logger.info(
@@ -135,7 +137,9 @@ async function getBotName({
         "Slack bot not found, skipping message"
       );
 
-      return undefined;
+      // Return null instead of undefined to avoid Redis "Invalid argument type" error
+      // when caching the result - undefined cannot be JSON.stringified properly for Redis storage.
+      return null;
     }
 
     logger.error(
@@ -192,7 +196,7 @@ export async function getBotOrUserName(
   message: MessageElement,
   connectorId: ModelId,
   slackClient: WebClient
-): Promise<string | undefined> {
+): Promise<string | null> {
   return message.bot_id
     ? getBotNameMemoized({ botId: message.bot_id, connectorId, slackClient })
     : getUserName(message.user as string, connectorId, slackClient);
