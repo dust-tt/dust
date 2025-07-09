@@ -335,7 +335,9 @@ async function searchCallback(
     });
 
     if (searchResult.isErr()) {
-      return makeMCPToolTextError("Failed to search content");
+      return makeMCPToolTextError(
+        `Failed to search content: ${searchResult.error.message}`
+      );
     }
     renderedNodes = renderSearchResults(
       searchResult.value,
@@ -603,7 +605,9 @@ const createServer = (
         });
 
         if (searchResult.isErr()) {
-          return makeMCPToolTextError("Failed to search content");
+          return makeMCPToolTextError(
+            `Failed to search content: ${searchResult.error.message}`
+          );
         }
 
         return {
