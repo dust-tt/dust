@@ -6,6 +6,7 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -151,6 +152,43 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     );
   }
 
+  static async fetchWithMCPActions({
+    auth,
+    agentMessageId,
+    transaction,
+  }: {
+    auth: Authenticator;
+    agentMessageId: number;
+    transaction?: Transaction;
+  }): Promise<AgentStepContentResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const agentStepContents = await AgentStepContentModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        agentMessageId,
+      },
+      include: [
+        {
+          model: AgentMCPAction,
+          as: "agentMCPActions",
+          required: false,
+        },
+      ],
+      order: [
+        ["step", "ASC"],
+        ["index", "ASC"],
+        ["version", "DESC"],
+      ],
+      transaction,
+    });
+
+    return agentStepContents.map(
+      (content) =>
+        new AgentStepContentResource(AgentStepContentModel, content.get())
+    );
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -174,8 +212,8 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return new Ok(deletedCount);
   }
 
-  toJSON(): AgentStepContentType {
-    return {
+  async toJSON(includeActions = false): Promise<AgentStepContentType> {
+    const base: AgentStepContentType = {
       id: this.id,
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
@@ -187,6 +225,17 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       type: this.type,
       value: this.value,
     };
+
+    if (includeActions) {
+      const mcpActions = await AgentMCPAction.findAll({
+        where: {
+          stepContentId: this.id,
+        },
+      });
+      base.mcpActionIds = mcpActions.map((action) => action.id);
+    }
+
+    return base;
   }
 }
 

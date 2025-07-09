@@ -12,5 +12,7 @@ export type AgentStepContentType = {
   version: number;
   type: AgentContentItemType["type"];
   value: AgentContentItemType;
+  // Array of MCP action IDs that reference this step content.
+  mcpActionIds?: ModelId[];
 };
 

@@ -70,6 +70,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       params: this.params,
       executionState: this.executionState,
       isError: this.isError,
+      stepContentId: this.stepContentId,
     };
   }
 
