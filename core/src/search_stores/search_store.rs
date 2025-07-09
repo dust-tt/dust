@@ -253,6 +253,12 @@ const DATA_SOURCE_BOOST: f32 = 2.0;
 /// Boost factor applied to data source nodes to increase their relevance in search results.
 const DATA_SOURCE_NODE_BOOST: f32 = 1.0;
 
+/// Boost factor applied to standard text matches for better relevance calculation.
+const STANDARD_TEXT_MATCH_BOOST: f32 = 2.0;
+
+/// Multiplier for exact keyword match boost (applied to EXACT_MATCH_BOOST).
+const EXACT_KEYWORD_MATCH_MULTIPLIER: f32 = 2.0;
+
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
     async fn search_nodes(
@@ -840,7 +846,7 @@ impl ElasticsearchSearchStore {
             Query::from(
                 Query::r#match(field, query)
                     .operator(Operator::And)
-                    .boost(2.0),
+                    .boost(STANDARD_TEXT_MATCH_BOOST),
             ),
             // Exact phrase match for higher relevance.
             // - Requires terms to appear in exact order
@@ -852,7 +858,8 @@ impl ElasticsearchSearchStore {
             // - Uses term query on keyword field with lowercase
             // - Highest boost for exact title matches
             Query::from(
-                Query::term(keyword_field, query.to_lowercase()).boost(EXACT_MATCH_BOOST * 2.0),
+                Query::term(keyword_field, query.to_lowercase())
+                    .boost(EXACT_MATCH_BOOST * EXACT_KEYWORD_MATCH_MULTIPLIER),
             ),
         ];
 
