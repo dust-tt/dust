@@ -1029,7 +1029,6 @@ impl LLM for OpenAILLM {
             || self.id.as_str().starts_with("o1")
             || self.id.as_str().starts_with("o4");
 
-
         let api_key = match self.api_key.clone() {
             Some(key) => key,
             None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
