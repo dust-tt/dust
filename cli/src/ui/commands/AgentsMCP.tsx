@@ -51,7 +51,8 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
     }
   });
 
-  if (!useClearTerminalOnMount()) {
+  const isCleared = useClearTerminalOnMount();
+  if (!isCleared) {
     return null;
   }
 
