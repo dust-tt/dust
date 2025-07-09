@@ -3,7 +3,6 @@ import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
-import type { UserProviderType } from "@app/types";
 
 export class UserModel extends BaseModel<UserModel> {
   declare createdAt: CreationOptional<Date>;
@@ -12,10 +11,7 @@ export class UserModel extends BaseModel<UserModel> {
   declare lastLoginAt: Date | null;
 
   declare sId: string;
-  declare auth0Sub: string | null;
   declare workOSUserId: string | null;
-  declare provider: UserProviderType;
-  declare providerId: string | null;
 
   declare username: string;
   declare email: string;
@@ -46,19 +42,6 @@ UserModel.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    provider: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    providerId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    auth0Sub: {
-      type: DataTypes.STRING,
-      // TODO(2024-03-01 flav) Set to false once new login flow is released.
-      allowNull: true,
     },
     workOSUserId: {
       type: DataTypes.STRING,
@@ -99,8 +82,6 @@ UserModel.init(
     sequelize: frontSequelize,
     indexes: [
       { fields: ["username"] },
-      { fields: ["provider", "providerId"] },
-      { fields: ["auth0Sub"], unique: true, concurrently: true },
       { fields: ["workOSUserId"], unique: true, concurrently: true },
       { unique: true, fields: ["sId"] },
       { fields: ["email"] },

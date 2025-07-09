@@ -3,8 +3,7 @@ export interface ExternalUser {
   email_verified: boolean;
   name: string;
   nickname: string;
-  auth0Sub: string | null;
-  workOSUserId: string | null;
+  workOSUserId: string;
   // Google-specific fields.
   family_name?: string;
   given_name?: string;
@@ -14,7 +13,7 @@ export interface ExternalUser {
 }
 
 export type SessionWithUser = {
-  type: "workos" | "auth0";
+  type: "workos";
   sessionId: string;
   user: ExternalUser;
   workspaceId?: string;

@@ -1,7 +1,5 @@
 import { RateLimitExceededException } from "@workos-inc/node";
-import type { ApiResponse } from "auth0";
 
-import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
@@ -21,37 +19,6 @@ import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import { makeScript } from "@app/scripts/helpers";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
-
-let remaining = 10;
-let resetTime = Date.now();
-
-function makeAuth0Throttler<T>(
-  { rateLimitThreshold }: { rateLimitThreshold: number },
-  logger: Logger
-) {
-  return async (fn: () => Promise<ApiResponse<T>>) => {
-    if (remaining < rateLimitThreshold) {
-      const now = Date.now();
-      const waitTime = resetTime * 1000 - now;
-      logger.info({ waitTime }, "Waiting");
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
-    }
-
-    const res = await fn();
-    if (res.status !== 200) {
-      logger.error({ res }, "When calling Auth0");
-      process.exit(1);
-    }
-
-    remaining = Number(res.headers.get("x-ratelimit-remaining"));
-    resetTime = Number(res.headers.get("x-ratelimit-reset"));
-
-    const limit = Number(res.headers.get("x-ratelimit-limit"));
-    logger.info({ limit, remaining, resetTime }, "Rate limit");
-
-    return res.data;
-  };
-}
 
 function makeWorkOSThrottler<T>(logger: Logger) {
   return async (fn: () => Promise<T>) => {
@@ -104,50 +71,6 @@ async function isWorkspaceEmpty(auth: Authenticator) {
 
   if (agents.length > 0) {
     return false;
-  }
-
-  return true;
-}
-
-async function changeAuth0UserRegion(
-  {
-    auth0Id,
-    region,
-    execute,
-  }: {
-    auth0Id: string;
-    region: string;
-    execute: boolean;
-  },
-  throttler: ReturnType<typeof makeAuth0Throttler>,
-  logger: Logger
-) {
-  const managementClient = getAuth0ManagemementClient();
-
-  logger.info({ user: auth0Id }, "Setting region for user");
-
-  if (execute) {
-    try {
-      await throttler(() => managementClient.users.get({ id: auth0Id }));
-    } catch (err) {
-      logger.error({ user: auth0Id, err }, "Error fetching user");
-      return false;
-    }
-
-    await throttler(() =>
-      managementClient.users.update(
-        {
-          id: auth0Id,
-        },
-        {
-          app_metadata: {
-            region,
-          },
-        }
-      )
-    );
-
-    logger.info({ user: auth0Id }, "Region set for user");
   }
 
   return true;
@@ -277,19 +200,6 @@ export async function updateAllWorkspaceUsersRegionMetadata(
 
   const users = await UserResource.fetchByModelIds(userIds);
 
-  const auth0Ids = removeNulls(users.map((u) => u.auth0Sub));
-  const countAuth0Relocations = await relocateAuth0Users(
-    auth0Ids,
-    newRegion,
-    execute,
-    rateLimitThreshold,
-    logger
-  );
-  logger.info(
-    { count: countAuth0Relocations, newRegion, workspaceId: workspace.sId },
-    "Relocated users in Auth0"
-  );
-
   const organizationRes = await getOrCreateWorkOSOrganization(workspace);
   if (organizationRes.isErr()) {
     return new Err(organizationRes.error);
@@ -317,34 +227,6 @@ export async function updateAllWorkspaceUsersRegionMetadata(
   );
 
   return new Ok(undefined);
-}
-
-async function relocateAuth0Users(
-  auth0Ids: string[],
-  newRegion: string,
-  execute: boolean,
-  rateLimitThreshold: number,
-  logger: Logger
-) {
-  logger.info(`Will relocate ${auth0Ids.length} auth0 users`);
-
-  let count = 0;
-
-  const auth0Throttler = makeAuth0Throttler({ rateLimitThreshold }, logger);
-
-  for (const auth0Id of auth0Ids) {
-    const hasChanged = await changeAuth0UserRegion(
-      { auth0Id, region: newRegion, execute },
-      auth0Throttler,
-      logger
-    );
-
-    if (hasChanged) {
-      count++;
-    }
-  }
-
-  return count;
 }
 
 async function relocateWorkOSUsers(

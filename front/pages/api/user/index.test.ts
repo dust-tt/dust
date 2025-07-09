@@ -25,7 +25,6 @@ describe("GET /api/user", () => {
         fullName: `${user.firstName} ${user.lastName}`,
         image: user.imageUrl,
         createdAt: user.createdAt.getTime(),
-        provider: user.provider,
         lastLoginAt: user.lastLoginAt?.getTime(),
         workspaces: [
           {
