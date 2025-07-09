@@ -164,7 +164,6 @@ benefits from higher rate limits.
 
 `;
     viewsUsedByAgents.forEach((agent) => {
-      // https://dust.tt/w/0ec9852c2f/builder/assistants/Mz63Kh2mBN?flow=workspace_assistants#?selectedTab=actions
       email += `${agent.name} - ${workspaceUrl(auth)}assistant/new?assistantDetails=${agent.sId}\n`;
     });
 
