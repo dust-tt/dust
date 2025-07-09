@@ -508,6 +508,7 @@ function processToolError({
     "Error running process"
   );
   return {
+    isError: true,
     content: [
       {
         type: "text" as const,
@@ -517,7 +518,6 @@ function processToolError({
         text: `${errorMessage}: ${errorDetails}`,
       },
     ],
-    isError: true,
   };
 }
 

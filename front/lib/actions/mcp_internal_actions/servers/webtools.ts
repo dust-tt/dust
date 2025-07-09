@@ -10,6 +10,7 @@ import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset } from "@app/lib/actions/utils";
 import { getWebsearchNumResults } from "@app/lib/actions/utils";
@@ -76,15 +77,9 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
       });
 
       if (websearchRes.isErr()) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Failed to search: ${websearchRes.error.message}`,
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          `Failed to search: ${websearchRes.error.message}`
+        );
       }
 
       const refsOffset = actionRefsOffset({
