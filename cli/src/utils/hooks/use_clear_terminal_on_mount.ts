@@ -6,9 +6,8 @@ export function useClearTerminalOnMount() {
   const [isCleared, setIsCleared] = useState(false);
 
   useEffect(() => {
-    void clearTerminal().then(() => {
-      setIsCleared(true);
-    });
+    void clearTerminal();
+    setIsCleared(true);
   }, []);
 
   return isCleared;
