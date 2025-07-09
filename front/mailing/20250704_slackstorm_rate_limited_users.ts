@@ -167,11 +167,13 @@ benefits from higher rate limits.
       // https://dust.tt/w/0ec9852c2f/builder/assistants/Mz63Kh2mBN?flow=workspace_assistants#?selectedTab=actions
       email += `${agent.name} - ${workspaceUrl(auth)}assistant/new?assistantDetails=${agent.sId}\n`;
     });
+
+    email += `
+You will need to migrate these agents to the new Slack tools to maintain their
+capabilities.`;
   }
 
   email += `
-You will need to migrate these agents to the new Slack tools to maintain their
-capabilities.
 
 Please reply to this email if you have any questions.
 
