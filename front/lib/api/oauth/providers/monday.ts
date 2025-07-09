@@ -47,6 +47,6 @@ export class MondayOAuthProvider implements BaseOAuthStrategyProvider {
     // Allow mcp_server_id for MCP server connections
     const allowedKeys = ["mcp_server_id"];
     const keys = Object.keys(extraConfig);
-    return keys.length === 0 || keys.every(key => allowedKeys.includes(key));
+    return keys.length === 0 || keys.every((key) => allowedKeys.includes(key));
   }
 }

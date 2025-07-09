@@ -817,8 +817,12 @@ All operations require proper Monday.com authentication and permissions.`,
     "Moves an item from one board to another. Useful for converting leads to opportunities in CRM workflows.",
     {
       itemId: z.string().describe("The item ID to move"),
-      targetBoardId: z.string().describe("The target board ID to move the item to"),
-      targetGroupId: z.string().describe("The target group ID in the destination board"),
+      targetBoardId: z
+        .string()
+        .describe("The target board ID to move the item to"),
+      targetGroupId: z
+        .string()
+        .describe("The target group ID in the destination board"),
       columnsMapping: z
         .array(
           z.object({
@@ -827,9 +831,14 @@ All operations require proper Monday.com authentication and permissions.`,
           })
         )
         .optional()
-        .describe("Optional mapping of column IDs between source and target boards"),
+        .describe(
+          "Optional mapping of column IDs between source and target boards"
+        ),
     },
-    async ({ itemId, targetBoardId, targetGroupId, columnsMapping }, { authInfo }) => {
+    async (
+      { itemId, targetBoardId, targetGroupId, columnsMapping },
+      { authInfo }
+    ) => {
       const accessToken = authInfo?.token;
 
       if (!accessToken) {
@@ -859,7 +868,10 @@ All operations require proper Monday.com authentication and permissions.`,
           z.object({
             boardId: z.string().describe("The board ID to create the item in"),
             itemName: z.string().describe("The name of the new item"),
-            groupId: z.string().optional().describe("Optional group ID to add the item to"),
+            groupId: z
+              .string()
+              .optional()
+              .describe("Optional group ID to add the item to"),
             columnValues: z
               .record(z.any())
               .optional()
@@ -887,7 +899,9 @@ All operations require proper Monday.com authentication and permissions.`,
     "get_activity_logs",
     "Retrieves activity logs for a board. Useful for tracking pipeline velocity and user actions.",
     {
-      boardId: z.string().describe("The board ID to retrieve activity logs for"),
+      boardId: z
+        .string()
+        .describe("The board ID to retrieve activity logs for"),
       from: z
         .string()
         .optional()

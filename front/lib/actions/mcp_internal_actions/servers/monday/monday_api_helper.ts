@@ -83,7 +83,7 @@ const makeGraphQLRequest = async (
 
     // Capture response text for better error reporting
     const responseText = await response.text();
-    
+
     if (!response.ok) {
       localLogger.error("Monday API HTTP error", {
         status: response.status,
@@ -92,12 +92,14 @@ const makeGraphQLRequest = async (
         query: query.substring(0, 200), // Log first 200 chars of query
         variables,
       });
-      
+
       // Special handling for authentication errors
       if (response.status === 401 || response.status === 403) {
-        throw new Error(`Authentication failed: ${response.status} - Token may be expired or invalid`);
+        throw new Error(
+          `Authentication failed: ${response.status} - Token may be expired or invalid`
+        );
       }
-      
+
       // Include response body in error message for better debugging
       let errorMessage = `Monday API request failed: ${response.status} ${response.statusText}`;
       if (responseText) {
@@ -113,7 +115,7 @@ const makeGraphQLRequest = async (
           errorMessage += ` - ${responseText.substring(0, 200)}`;
         }
       }
-      
+
       const error = new Error(errorMessage);
       throw normalizeError(error);
     }
@@ -135,11 +137,15 @@ const makeGraphQLRequest = async (
         query: query.substring(0, 200),
         variables,
       });
-      
-      const errorDetails = result.errors.map((e: any) => 
-        e.extensions ? `${e.message} (${JSON.stringify(e.extensions)})` : e.message
-      ).join(", ");
-      
+
+      const errorDetails = result.errors
+        .map((e: any) =>
+          e.extensions
+            ? `${e.message} (${JSON.stringify(e.extensions)})`
+            : e.message
+        )
+        .join(", ");
+
       const error = new Error(`Monday GraphQL error: ${errorDetails}`);
       throw normalizeError(error);
     }
@@ -186,7 +192,7 @@ export const getBoardItems = async (
   if (isNaN(boardIdInt)) {
     throw new Error(`Invalid board ID: ${boardId}`);
   }
-  
+
   const query = `
     query GetBoardItems($boardIds: [ID!], $limit: Int!) {
       boards(ids: $boardIds) {
@@ -301,7 +307,7 @@ export const searchItems = async (
     if (isNaN(boardIdInt)) {
       throw new Error(`Invalid board ID: ${filters.boardId}`);
     }
-    
+
     query = `
       query SearchBoardItems($boardIds: [ID!], $limit: Int!) {
         boards(ids: $boardIds) {
@@ -393,7 +399,9 @@ export const searchItems = async (
   } else {
     // For global search, collect items from all boards
     if (data.boards && Array.isArray(data.boards)) {
-      allItems = data.boards.flatMap((board: any) => board.items_page?.items || []);
+      allItems = data.boards.flatMap(
+        (board: any) => board.items_page?.items || []
+      );
     }
   }
 
@@ -414,7 +422,8 @@ export const searchItems = async (
     allItems = allItems.filter((item: MondayItem) => {
       const statusColumn = item.column_values.find(
         (col) =>
-          col.type === "status" || col.column.title.toLowerCase().includes("status")
+          col.type === "status" ||
+          col.column.title.toLowerCase().includes("status")
       );
       return (
         statusColumn?.text?.toLowerCase() === filters.status?.toLowerCase()
@@ -642,7 +651,7 @@ export const updateItemName = async (
   if (!itemDetails) {
     throw new Error("Item not found");
   }
-  
+
   const query = `
     mutation UpdateItemName($boardId: ID!, $itemId: ID!, $name: String!) {
       change_simple_column_value(
@@ -680,10 +689,10 @@ export const updateItemName = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { 
+  const data = await makeGraphQLRequest(accessToken, query, {
     boardId: itemDetails.board.id,
-    itemId, 
-    name 
+    itemId,
+    name,
   });
   return data.change_simple_column_value;
 };
@@ -1091,7 +1100,7 @@ export const getBoardValues = async (
   if (isNaN(boardIdInt)) {
     throw new Error(`Invalid board ID: ${boardId}`);
   }
-  
+
   const query = `
     query GetBoardValues($boardIds: [ID!]) {
       boards(ids: $boardIds) {
@@ -1116,7 +1125,9 @@ export const getBoardValues = async (
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query, { boardIds: [boardIdInt] });
+  const data = await makeGraphQLRequest(accessToken, query, {
+    boardIds: [boardIdInt],
+  });
   return data.boards[0] || null;
 };
 
@@ -1207,7 +1218,7 @@ export const getGroupDetails = async (
   if (isNaN(boardIdInt)) {
     throw new Error(`Invalid board ID: ${boardId}`);
   }
-  
+
   const query = `
     query GetGroupDetails($boardIds: [ID!], $groupId: String!) {
       boards(ids: $boardIds) {
@@ -1510,13 +1521,13 @@ export const getBoardAnalytics = async (
 
   const data = await makeGraphQLRequest(accessToken, query, { boardId });
   const board = data.boards?.[0];
-  
+
   if (!board) {
     throw new Error("Board not found");
   }
 
   const items = board.items_page?.items || [];
-  
+
   const analytics: BoardAnalytics = {
     boardId: board.id,
     boardName: board.name,
@@ -1531,23 +1542,34 @@ export const getBoardAnalytics = async (
 
   items.forEach((item: any) => {
     const groupTitle = item.group?.title || "No Group";
-    analytics.itemsByGroup[groupTitle] = (analytics.itemsByGroup[groupTitle] || 0) + 1;
+    analytics.itemsByGroup[groupTitle] =
+      (analytics.itemsByGroup[groupTitle] || 0) + 1;
 
-    const statusColumn = item.column_values?.find((cv: any) => cv.type === "status");
+    const statusColumn = item.column_values?.find(
+      (cv: any) => cv.type === "status"
+    );
     if (statusColumn?.text) {
-      analytics.itemsByStatus[statusColumn.text] = (analytics.itemsByStatus[statusColumn.text] || 0) + 1;
-      if (statusColumn.text.toLowerCase() === "done" || statusColumn.text.toLowerCase() === "complete") {
+      analytics.itemsByStatus[statusColumn.text] =
+        (analytics.itemsByStatus[statusColumn.text] || 0) + 1;
+      if (
+        statusColumn.text.toLowerCase() === "done" ||
+        statusColumn.text.toLowerCase() === "complete"
+      ) {
         completedCount++;
       }
     }
 
-    const peopleColumn = item.column_values?.find((cv: any) => cv.type === "people");
+    const peopleColumn = item.column_values?.find(
+      (cv: any) => cv.type === "people"
+    );
     if (peopleColumn?.text) {
-      analytics.itemsByAssignee[peopleColumn.text] = (analytics.itemsByAssignee[peopleColumn.text] || 0) + 1;
+      analytics.itemsByAssignee[peopleColumn.text] =
+        (analytics.itemsByAssignee[peopleColumn.text] || 0) + 1;
     }
   });
 
-  analytics.completionRate = items.length > 0 ? (completedCount / items.length) * 100 : 0;
+  analytics.completionRate =
+    items.length > 0 ? (completedCount / items.length) * 100 : 0;
 
   return analytics;
 };
