@@ -347,12 +347,14 @@ export async function deleteRunOnDustAppsActivity({
     throw new Error("Could not find the workspace.");
   }
 
+  const localLogger = hardDeleteLogger.child({ workspaceId });
+
   const BATCH_SIZE = 10_000;
   let deletedRuns = 0;
 
   // Fetch the total of runs to fetch to max end to not go over.
   const totalRunsToFetch = await RunResource.countByWorkspace(workspace);
-  hardDeleteLogger.info(
+  localLogger.info(
     { totalRuns: totalRunsToFetch },
     "Numbers of runs to be deleted"
   );
@@ -364,7 +366,7 @@ export async function deleteRunOnDustAppsActivity({
       order: [["createdAt", "ASC"]],
     });
 
-    hardDeleteLogger.info(
+    localLogger.info(
       { batchSize: runs.length, deletedRuns },
       "Processing batch of runs"
     );
@@ -382,14 +384,22 @@ export async function deleteRunOnDustAppsActivity({
         await run.delete(auth);
 
         if (idx % 500) {
-          hardDeleteLogger.debug({ idx, runId: run.id }, "Run deleted");
+          localLogger.info({ idx, runId: run.id }, "Run deleted");
         }
       },
       { concurrency: 12 }
     );
 
+    localLogger.info(
+      { deletedRuns, batchRunsDeleted: runs.length },
+      "Processed batch of runs"
+    );
+
     // The last fetch was less than the batch size, so we know there is no batch after that.
     if (runs.length < BATCH_SIZE) {
+      localLogger.info(
+        "Exiting the loop as there is less runs than the batch size"
+      );
       break;
     }
     deletedRuns += runs.length;
