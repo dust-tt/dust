@@ -35,41 +35,35 @@ export function transformAgentConfigurationToFormData(
   agentConfiguration: AgentConfigurationType,
   currentUser: UserType,
   agentEditors: UserType[] = []
-): Result<AgentBuilderFormData, Error> {
-  try {
-    const formData: AgentBuilderFormData = {
-      agentSettings: {
-        name: agentConfiguration.name,
-        description: agentConfiguration.description,
-        pictureUrl: agentConfiguration.pictureUrl,
-        scope:
-          agentConfiguration.scope === "global"
-            ? "visible"
-            : agentConfiguration.scope,
-        editors: agentEditors.length > 0 ? agentEditors : [currentUser],
-        slackProvider: null, // TODO: determine from agent configuration
-        slackChannels: [], // TODO: determine from agent configuration
-        tags: agentConfiguration.tags,
+): AgentBuilderFormData {
+  return {
+    agentSettings: {
+      name: agentConfiguration.name,
+      description: agentConfiguration.description,
+      pictureUrl: agentConfiguration.pictureUrl,
+      scope:
+        agentConfiguration.scope === "global"
+          ? "visible"
+          : agentConfiguration.scope,
+      editors: agentEditors.length > 0 ? agentEditors : [currentUser],
+      slackProvider: null, // TODO: determine from agent configuration
+      slackChannels: [], // TODO: determine from agent configuration
+      tags: agentConfiguration.tags,
+    },
+    instructions: agentConfiguration.instructions || "",
+    generationSettings: {
+      modelSettings: {
+        modelId: agentConfiguration.model.modelId,
+        providerId: agentConfiguration.model.providerId,
       },
-      instructions: agentConfiguration.instructions || "",
-      generationSettings: {
-        modelSettings: {
-          modelId: agentConfiguration.model.modelId,
-          providerId: agentConfiguration.model.providerId,
-        },
-        temperature: agentConfiguration.model.temperature,
-        reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
-        responseFormat: agentConfiguration.model.responseFormat,
-      },
-      actions: [], // Actions are always loaded client-side via SWR
-      maxStepsPerRun:
-        agentConfiguration.maxStepsPerRun || DEFAULT_MAX_STEPS_USE_PER_RUN,
-    };
-
-    return new Ok(formData);
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
+      temperature: agentConfiguration.model.temperature,
+      reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
+      responseFormat: agentConfiguration.model.responseFormat,
+    },
+    actions: [], // Actions are always loaded client-side via SWR
+    maxStepsPerRun:
+      agentConfiguration.maxStepsPerRun || DEFAULT_MAX_STEPS_USE_PER_RUN,
+  };
 }
 
 export function transformActionsToFormData(

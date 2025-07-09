@@ -62,21 +62,11 @@ export default function AgentBuilder({
 
   const defaultValues = useMemo((): AgentBuilderFormData => {
     if (agentConfiguration) {
-      const result = transformAgentConfigurationToFormData(
+      return transformAgentConfigurationToFormData(
         agentConfiguration,
         user,
         [user] // Always use current user as fallback - editors will be updated reactively
       );
-
-      if (result.isOk()) {
-        return result.value;
-      } else {
-        // Handle error case - log error and return default values
-        console.error(
-          "Failed to transform agent configuration to form data:",
-          result.error
-        );
-      }
     }
     return getDefaultAgentFormData(user, defaultMaxSteps);
   }, [agentConfiguration, user, defaultMaxSteps]);
