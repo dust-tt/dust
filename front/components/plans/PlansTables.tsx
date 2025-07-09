@@ -86,7 +86,7 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
     display: ["landing"],
   },
   {
-    label: "Salesforce Connection",
+    label: "Salesforce Tool",
     variant: "check",
     display: ["landing"],
   },
