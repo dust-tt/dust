@@ -19,6 +19,7 @@ import {
   H5,
   P,
 } from "@app/components/home/ContentComponents";
+import UTMButton from "@app/components/UTMButton";
 import { classNames } from "@app/lib/utils";
 
 import type { ROIProps } from "./content/Solutions/configs/utils";
@@ -182,7 +183,7 @@ export const HeaderContentBlock = ({
       )}
       {hasCTA && (
         <div className="flex flex-col gap-4 xs:flex-row sm:flex-row md:flex-row">
-          <Button
+          <UTMButton
             variant="highlight"
             size="md"
             label="Get started"
@@ -190,7 +191,7 @@ export const HeaderContentBlock = ({
             icon={RocketIcon}
             className="w-full xs:w-auto sm:w-auto md:w-auto"
           />
-          <Button
+          <UTMButton
             href="/home/contact"
             variant="outline"
             size="md"

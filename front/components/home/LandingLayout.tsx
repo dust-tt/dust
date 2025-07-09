@@ -19,13 +19,16 @@ import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 // import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
+import UTMHandler from "@app/components/UTMHandler";
 import { useGeolocation } from "@app/lib/swr/geo";
 import { classNames } from "@app/lib/utils";
+import { appendUTMParams } from "@app/lib/utils/utm";
 
 export interface LandingLayoutProps {
   shape: number;
   postLoginReturnToUrl?: string;
   gtmTrackingId?: string;
+  utmParams?: { [key: string]: string | string[] | undefined };
 }
 
 export default function LandingLayout({
@@ -35,7 +38,11 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const { postLoginReturnToUrl = "/api/login", gtmTrackingId } = pageProps;
+  const {
+    postLoginReturnToUrl = "/api/login",
+    gtmTrackingId,
+    utmParams,
+  } = pageProps;
 
   const [cookies, setCookie] = useCookies(["dust-cookies-accepted"]);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
@@ -90,6 +97,8 @@ export default function LandingLayout({
   return (
     <>
       <Header />
+      {/* Handle UTM parameter storage */}
+      {utmParams && <UTMHandler utmParams={utmParams} />}
       <ScrollingHeader>
         <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
           <div className="hidden h-[24px] w-[96px] xl:block">
@@ -113,7 +122,7 @@ export default function LandingLayout({
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
             <Button
-              href="/home/contact"
+              href={appendUTMParams("/home/contact")}
               className="hidden xs:inline-flex"
               variant="outline"
               size="sm"
@@ -125,7 +134,8 @@ export default function LandingLayout({
               label="Sign in"
               icon={LoginIcon}
               onClick={() => {
-                window.location.href = `/api/workos/login?returnTo=${postLoginReturnToUrl}`;
+                const returnToWithUtm = appendUTMParams(postLoginReturnToUrl);
+                window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(returnToWithUtm)}`;
               }}
             />
           </div>
@@ -165,7 +175,17 @@ export default function LandingLayout({
               j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
               })(window,document,'script','dataLayer','${gtmTrackingId}');
-              (function(){var g=new URLSearchParams(window.location.search).get('gclid');g&&sessionStorage.setItem('gclid',g);})();
+              (function(){
+                var utmParams = {};
+                var urlParams = new URLSearchParams(window.location.search);
+                ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid', 'msclkid'].forEach(function(param) {
+                  var value = urlParams.get(param);
+                  if (value) {
+                    utmParams[param] = value;
+                    sessionStorage.setItem('utm_' + param, value);
+                  }
+                });
+              })();
             `}
           </Script>
         )}

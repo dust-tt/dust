@@ -18,6 +18,7 @@ import * as React from "react";
 
 import { menuConfig } from "@app/components/home/menu/config";
 import { classNames } from "@app/lib/utils";
+import { appendUTMParams } from "@app/lib/utils/utm";
 
 export function MobileNavigation() {
   const [open, setOpen] = React.useState(false);
@@ -111,7 +112,7 @@ function MobileLink({
 }: MobileLinkProps) {
   return (
     <Link
-      href={href}
+      href={isExternal ? href : appendUTMParams(href)}
       onClick={() => {
         onOpenChange?.(false);
       }}
