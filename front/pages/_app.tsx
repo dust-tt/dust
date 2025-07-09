@@ -16,6 +16,7 @@ if (process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN) {
     clientToken: process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN,
     env: process.env.NODE_ENV === "production" ? "prod" : "dev",
     service: process.env.NEXT_PUBLIC_DATADOG_SERVICE,
+    version: process.env.NEXT_PUBLIC_COMMIT_HASH || "",
     site: "datadoghq.eu",
     forwardErrorsToLogs: true,
     sessionSampleRate: 100,
