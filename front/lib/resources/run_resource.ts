@@ -119,7 +119,6 @@ export class RunResource extends BaseResource<RunModel> {
     workspace: LightWorkspaceType,
     options?: Pick<FetchRunOptions<boolean>, "since">
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Disabled error for unused includeDeleted
     const { where } = this.getOptions(options);
 
     return this.model.count({
