@@ -33,7 +33,6 @@ import {
   updateSubitem,
   uploadFileToColumn,
 } from "@app/lib/actions/mcp_internal_actions/servers/monday/monday_api_helper";
-// Removed unused imports: ERROR_MESSAGES, withAuth
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
@@ -55,38 +54,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 };
 
 const createServer = (): McpServer => {
-  const server = new McpServer(serverInfo, {
-    instructions: `You have access to Monday.com tools for managing boards, items, and updates.
-
-# Available Tools:
-- **get_boards**: Lists all accessible boards in your Monday.com workspace
-- **get_board_items**: Retrieves items from a specific board
-- **search_items**: Search for items with advanced filtering options
-- **create_item**: Creates new items in boards
-- **create_multiple_items**: Bulk create items for importing leads/opportunities
-- **update_item**: Updates existing items
-- **create_update**: Adds comments/updates to items
-- **create_board**: Creates new boards
-- **move_item_to_board**: Move items between boards (e.g., lead to opportunity conversion)
-- **get_activity_logs**: Track board activity and pipeline velocity
-- **get_board_analytics**: Get analytics for CRM reporting
-- And many more tools for comprehensive Monday.com management
-
-# CRM Workflow Examples:
-1. Create separate boards for Leads, Opportunities, and Accounts
-2. Use **move_item_to_board** to convert leads to opportunities
-3. Use **get_board_analytics** for pipeline reporting
-4. Use **create_multiple_items** for bulk imports
-5. Track activity with **get_activity_logs** for velocity metrics
-
-# General Workflow:
-1. Use **get_boards** to see available boards
-2. Use **get_board_items** or **search_items** to find specific items
-3. Use **create_item**, **update_item**, or **create_update** to modify data
-4. Use **create_board** to create new boards when needed
-
-All operations require proper Monday.com authentication and permissions.`,
-  });
+  const server = new McpServer(serverInfo);
 
   server.tool(
     "get_boards",

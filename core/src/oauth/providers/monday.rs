@@ -18,6 +18,8 @@ lazy_static! {
         env::var("OAUTH_MONDAY_CLIENT_SECRET").expect("OAUTH_MONDAY_CLIENT_SECRET must be set");
 }
 
+const MONDAY_TOKEN_EXPIRES_IN_DEFAULT_SECS: u64 = 30 * 24 * 60 * 60;
+
 pub struct MondayConnectionProvider {}
 
 impl MondayConnectionProvider {
@@ -58,7 +60,9 @@ impl Provider for MondayConnectionProvider {
             .map_err(|e| self.handle_provider_request_error(e))?;
 
         // Monday.com tokens expire in 30 days
-        let expires_in = result["expires_in"].as_u64().unwrap_or(30 * 24 * 60 * 60); // Default to 30 days if not provided
+        let expires_in = result["expires_in"]
+            .as_u64()
+            .unwrap_or(MONDAY_TOKEN_EXPIRES_IN_DEFAULT_SECS); // Default to 30 days if not provided
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
@@ -102,7 +106,9 @@ impl Provider for MondayConnectionProvider {
             .await
             .map_err(|e| self.handle_provider_request_error(e))?;
 
-        let expires_in = result["expires_in"].as_u64().unwrap_or(30 * 24 * 60 * 60); // Default to 30 days if not provided
+        let expires_in = result["expires_in"]
+            .as_u64()
+            .unwrap_or(MONDAY_TOKEN_EXPIRES_IN_DEFAULT_SECS); // Default to 30 days if not provided
 
         Ok(RefreshResult {
             access_token: result["access_token"]
