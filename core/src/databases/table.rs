@@ -3,14 +3,15 @@ use std::sync::Arc;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
+use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::info;
+use tracing::{error, info};
 
-use crate::databases_store;
 use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
 use crate::databases_store::store::{DatabasesStoreStrategy, CURRENT_STRATEGY};
 use crate::search_stores::search_store::NodeItem;
+use crate::{cache, databases_store};
 use crate::{
     data_sources::node::ProviderVisibility,
     databases::{csv::GoogleCloudStorageCSVContent, database::HasValue, table_schema::TableSchema},
@@ -28,6 +29,16 @@ use crate::{
 pub enum TableType {
     Local,
     Remote(String),
+}
+
+pub const REDIS_TABLE_UPSERT_HASH_NAME: &str = "TABLE_UPSERT";
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct TableUpsertCall {
+    pub time: u64,
+    pub project_id: i64,
+    pub data_source_id: String,
+    pub table_id: String,
 }
 
 pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &str) -> String {
@@ -383,7 +394,71 @@ impl LocalTable {
         }
     }
 
+    async fn validate_rows_lowercase(rows: Vec<Row>) -> Result<()> {
+        let now = utils::now();
+        let rows_count = rows.len();
+        tokio::task::spawn_blocking(move || {
+            // Validate that all rows keys are lowercase. We run it in a spawn_blocking since it is CPU
+            // bound (even if running fast for reasonably sized tables);
+            for row in rows.iter() {
+                for key in row.value().keys() {
+                    if key.to_lowercase() != *key {
+                        return Err(anyhow!("Row key '{}' is not lowercase", key));
+                    }
+                }
+            }
+            Ok::<_, anyhow::Error>(())
+        })
+        .await??;
+        info!(
+            duration = utils::now() - now,
+            rows_count = rows_count,
+            "DSSTRUCTSTAT [validate_rows_lowercase] validation"
+        );
+        Ok(())
+    }
+
     pub async fn upsert_rows(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        rows: Vec<Row>,
+        truncate: bool,
+    ) -> Result<()> {
+        Self::validate_rows_lowercase(rows.clone()).await?;
+
+        if truncate {
+            self.upsert_rows_now(store, databases_store, rows, truncate)
+                .await
+        } else {
+            if let Some(client) = &*cache::REDIS_CLIENT {
+                match client.get_async_connection().await {
+                    Ok(mut conn) => {
+                        let upsert_call = TableUpsertCall {
+                            time: utils::now(),
+                            project_id: self.table.project().project_id(),
+                            data_source_id: self.table.data_source_id().to_string(),
+                            table_id: self.table.table_id().to_string(),
+                        };
+                        let _: () = conn
+                            .hset(
+                                REDIS_TABLE_UPSERT_HASH_NAME,
+                                self.table.unique_id(),
+                                serde_json::to_string(&upsert_call).unwrap(),
+                            )
+                            .await
+                            .unwrap();
+                    }
+                    Err(e) => {
+                        error!("Error connecting to Redis: {}.", e);
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
+
+    pub async fn upsert_rows_now(
         &self,
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
@@ -393,36 +468,6 @@ impl LocalTable {
         let rows = Arc::new(rows);
 
         let mut now = utils::now();
-        // Validate that all rows keys are lowercase. We run it in a spawn_blocking since it is CPU
-        // bound (even if running fast for resaonably sized tables);
-        {
-            let rows = rows.clone();
-            tokio::task::spawn_blocking(move || {
-                for (row_index, row) in rows.iter().enumerate() {
-                    match row.value().keys().find(|key| match key.chars().next() {
-                        Some(c) => c.is_ascii_uppercase(),
-                        None => false,
-                    }) {
-                        Some(key) => Err(anyhow!(
-                            "Row {} has a key '{}' that contains uppercase characters",
-                            row_index,
-                            key
-                        ))?,
-                        None => (),
-                    }
-                }
-                Ok::<_, anyhow::Error>(())
-            })
-            .await??;
-        }
-        info!(
-            duration = utils::now() - now,
-            table_id = self.table.table_id(),
-            rows_count = rows.len(),
-            "DSSTRUCTSTAT [upsert_rows] validation"
-        );
-
-        now = utils::now();
         let new_table_schema = match truncate {
             // If the new rows replace existing ones, we need to clear the schema cache.
             true => TableSchema::from_rows_async(rows.clone()).await?,
@@ -806,9 +851,28 @@ pub struct Row {
     pub value: serde_json::Map<String, serde_json::Value>,
 }
 
+// To keep track of pending delete actions, we use a special key in the row value.
+// This allows us to keep all the row datya in the same format, and makes it easier
+// to persist and read from GCS
+pub const DELETED_ROW_MARKER_KEY: &str = "__dust_deleted";
+
 impl Row {
     pub fn new(row_id: String, value: serde_json::Map<String, serde_json::Value>) -> Self {
         Row { row_id, value }
+    }
+
+    pub fn new_delete(row_id: String) -> Self {
+        Row {
+            row_id,
+            value: serde_json::Map::from_iter(vec![(
+                DELETED_ROW_MARKER_KEY.to_string(),
+                Value::Bool(true),
+            )]),
+        }
+    }
+
+    pub fn is_delete(&self) -> bool {
+        self.value.contains_key(DELETED_ROW_MARKER_KEY)
     }
 
     /// This method implements our interpretation of CSVs into Table rows.

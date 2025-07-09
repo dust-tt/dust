@@ -222,37 +222,50 @@ impl DatabasesStore for PostgresDatabasesStore {
                 "DSSTRUCTSTAT [upsert_rows] insertion batch (COPY)"
             );
         } else {
-            let table_id = table.unique_id();
-            let stmt = c
-                .prepare(
-                    "INSERT INTO tables_rows
-                    (table_id, row_id, created, content)
-                    SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[])
-                    ON CONFLICT (table_id, row_id) DO UPDATE
-                    SET content = EXCLUDED.content",
-                )
-                .await?;
+            let (rows_to_add, rows_to_delete): (Vec<&Row>, Vec<&Row>) =
+                rows.iter().partition(|r| !r.is_delete());
 
-            for chunk in rows.chunks(1024) {
-                let now = utils::now() as i64;
+            if !rows_to_delete.is_empty() {
+                let stmt = c
+                    .prepare("DELETE FROM tables_rows WHERE table_id = $1 AND row_id = ANY($2)")
+                    .await?;
+                let row_ids: Vec<&str> = rows_to_delete.iter().map(|r| r.row_id()).collect();
+                c.execute(&stmt, &[&table.unique_id(), &row_ids]).await?;
+            }
 
-                let table_ids: Vec<&str> = vec![&table_id; chunk.len()];
-                let row_ids: Vec<&str> = chunk.iter().map(|r| r.row_id()).collect();
-                let createds: Vec<i64> = vec![now; chunk.len()];
-                let contents: Vec<String> = chunk
-                    .iter()
-                    .map(|r| serde_json::Value::Object(r.content().clone()).to_string())
-                    .collect();
-
-                c.execute(&stmt, &[&table_ids, &row_ids, &createds, &contents])
+            if !rows_to_add.is_empty() {
+                let table_id = table.unique_id();
+                let stmt = c
+                    .prepare(
+                        "INSERT INTO tables_rows
+                        (table_id, row_id, created, content)
+                        SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[])
+                        ON CONFLICT (table_id, row_id) DO UPDATE
+                        SET content = EXCLUDED.content",
+                    )
                     .await?;
 
-                info!(
-                    duration = utils::now() - now as u64,
-                    table_id = table_id,
-                    inserted_rows = chunk.len(),
-                    "DSSTRUCTSTAT [upsert_rows] insertion batch (INSERT...ON CONFLICT)"
-                );
+                for chunk in rows_to_add.chunks(1024) {
+                    let now = utils::now() as i64;
+
+                    let table_ids: Vec<&str> = vec![&table_id; chunk.len()];
+                    let row_ids: Vec<&str> = chunk.iter().map(|r| r.row_id()).collect();
+                    let createds: Vec<i64> = vec![now; chunk.len()];
+                    let contents: Vec<String> = chunk
+                        .iter()
+                        .map(|r| serde_json::Value::Object(r.content().clone()).to_string())
+                        .collect();
+
+                    c.execute(&stmt, &[&table_ids, &row_ids, &createds, &contents])
+                        .await?;
+
+                    info!(
+                        duration = utils::now() - now as u64,
+                        table_id = table_id,
+                        inserted_rows = chunk.len(),
+                        "DSSTRUCTSTAT [upsert_rows] insertion batch (INSERT...ON CONFLICT)"
+                    );
+                }
             }
         }
 

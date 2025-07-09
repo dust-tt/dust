@@ -154,10 +154,18 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
                 .collect::<HashMap<_, _>>();
 
             // Merge the two maps to get the final rows.
-            // New ones take precedence.
+            // New ones take precedence, which includes the case where a 'delete' row
+            // replaces a regular row.
             let merged_rows_map = previous_rows_map
                 .into_iter()
                 .chain(new_rows_map.into_iter())
+                .collect::<HashMap<_, _>>();
+
+            // Remove all rows marked as is_delete. Note that there is no delete action to
+            // take here, as the row is simply not included in the final result.
+            let merged_rows_map = merged_rows_map
+                .into_iter()
+                .filter(|(_, row)| !row.is_delete())
                 .collect::<HashMap<_, _>>();
 
             new_rows = merged_rows_map.into_values().collect();

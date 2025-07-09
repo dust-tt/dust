@@ -47,6 +47,7 @@ pub mod databases {
             pub mod snowflake;
         }
     }
+    pub mod table_upserts_background_worker;
     pub mod transient_database;
 }
 pub mod project;

@@ -6,7 +6,10 @@ use axum::{
     Router,
 };
 use dust::{
-    databases::table::{LocalTable, Table},
+    databases::{
+        table::{LocalTable, Table},
+        table_upserts_background_worker::table_upserts_and_deletes_loop,
+    },
     databases_store::{self},
     sqlite_workers::{
         client::HEARTBEAT_INTERVAL_MS,
@@ -340,6 +343,10 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
+        tokio::task::spawn(async move {
+            table_upserts_and_deletes_loop().await;
+        });
+
         tracing_subscriber::registry()
             .with(JsonStorageLayer)
             .with(
