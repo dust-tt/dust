@@ -116,7 +116,7 @@ async function getBotName({
   botId: string;
   connectorId: ModelId;
   slackClient: WebClient;
-}): Promise<string | undefined> {
+}): Promise<string | null> {
   try {
     const slackBotOrWorkflowInfo = await getSlackBotInfo(
       connectorId,
@@ -124,7 +124,9 @@ async function getBotName({
       botId
     );
 
-    return slackBotOrWorkflowInfo.display_name;
+    // Return null instead of undefined to avoid Redis "Invalid argument type" error
+    // when caching the result - undefined cannot be JSON.stringified properly for Redis storage.
+    return slackBotOrWorkflowInfo.display_name ?? null;
   } catch (err) {
     if (isSlackWebAPIPlatformErrorBotNotFound(err)) {
       logger.info(
@@ -135,7 +137,9 @@ async function getBotName({
         "Slack bot not found, skipping message"
       );
 
-      return undefined;
+      // Return null instead of undefined to avoid Redis "Invalid argument type" error
+      // when caching the result - undefined cannot be JSON.stringified properly for Redis storage.
+      return null;
     }
 
     logger.error(
