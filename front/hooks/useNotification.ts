@@ -8,9 +8,14 @@ export const useSendNotification = () => {
 
   return useCallback(
     (notification: NotificationType) => {
-      datadogLogs.logger.info("Notification sent", {
-        notification,
-      });
+      if (notification.type === "error") {
+        datadogLogs.logger.info(
+          `UI error notification: ${notification.title}`,
+          {
+            notification,
+          }
+        );
+      }
       sendNotification(notification);
     },
     [sendNotification]
