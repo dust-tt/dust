@@ -5,7 +5,6 @@ import "@dust-tt/sparkle/dist/sparkle.css";
 // Local tailwind components override sparkle styles
 import "@app/styles/components.css";
 
-import { useUser } from "@app/lib/swr/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import type { NextPage } from "next";
 import type { AppProps } from "next/app";
@@ -13,6 +12,7 @@ import { useRouter } from "next/router";
 import { useEffect } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
+import { useUser } from "@app/lib/swr/user";
 
 if (process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN) {
   datadogLogs.init({
