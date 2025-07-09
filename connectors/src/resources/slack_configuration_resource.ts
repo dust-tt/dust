@@ -1,11 +1,5 @@
-import type {
-  ModelId,
-  Result,
-  SlackAutoReadPattern,
-  SlackbotWhitelistType,
-  SlackConfigurationType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import {
@@ -18,6 +12,13 @@ import {
 import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import type {
+  ModelId,
+  SlackAutoReadPattern,
+  SlackbotWhitelistType,
+  SlackConfigurationType,
+} from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -43,10 +44,16 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   static async makeNew({
     slackTeamId,
     connectorId,
+    autoReadChannelPatterns,
+    whitelistedDomains,
+    restrictedSpaceAgentsEnabled,
     transaction,
   }: {
     slackTeamId: string;
     connectorId: ModelId;
+    autoReadChannelPatterns?: SlackAutoReadPattern[];
+    whitelistedDomains?: string[];
+    restrictedSpaceAgentsEnabled?: boolean;
     transaction: Transaction;
   }) {
     const otherSlackConfigurationWithBotEnabled =
@@ -58,14 +65,21 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
         transaction,
       });
 
-    await SlackConfigurationModel.create(
+    const model = await SlackConfigurationModel.create(
       {
-        autoReadChannelPatterns: [],
+        autoReadChannelPatterns: autoReadChannelPatterns ?? [],
         botEnabled: otherSlackConfigurationWithBotEnabled ? false : true,
         connectorId,
         slackTeamId,
+        restrictedSpaceAgentsEnabled: restrictedSpaceAgentsEnabled ?? true,
+        whitelistedDomains,
       },
       { transaction }
+    );
+
+    return new SlackConfigurationResource(
+      SlackConfigurationResource.model,
+      model.get()
     );
   }
 
@@ -140,13 +154,15 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   async isBotWhitelistedToIndexMessages(
     botName: string | string[]
   ): Promise<boolean> {
-    return !!(await SlackBotWhitelistModel.findOne({
+    const isWhitelisted = await SlackBotWhitelistModel.findOne({
       where: {
         connectorId: this.connectorId,
         botName: botName,
         whitelistType: "index_messages",
       },
-    }));
+    });
+
+    return !!isWhitelisted;
   }
 
   async whitelistBot(
@@ -154,13 +170,28 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     groupIds: string[],
     whitelistType: SlackbotWhitelistType
   ): Promise<Result<undefined, Error>> {
-    await SlackBotWhitelistModel.create({
-      connectorId: this.connectorId,
-      slackConfigurationId: this.id,
-      botName,
-      groupIds,
-      whitelistType,
+    const existingBot = await SlackBotWhitelistModel.findOne({
+      where: {
+        connectorId: this.connectorId,
+        slackConfigurationId: this.id,
+        botName,
+      },
     });
+
+    if (existingBot) {
+      await existingBot.update({
+        groupIds,
+        whitelistType,
+      });
+    } else {
+      await SlackBotWhitelistModel.create({
+        connectorId: this.connectorId,
+        slackConfigurationId: this.id,
+        botName,
+        groupIds,
+        whitelistType,
+      });
+    }
 
     return new Ok(undefined);
   }
@@ -313,7 +344,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -322,6 +353,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       autoReadChannelPatterns: this.autoReadChannelPatterns,
       botEnabled: this.botEnabled,
       whitelistedDomains: this.whitelistedDomains?.map((d) => d),
+      restrictedSpaceAgentsEnabled: this.restrictedSpaceAgentsEnabled,
     };
   }
 }

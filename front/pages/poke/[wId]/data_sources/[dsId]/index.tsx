@@ -3,11 +3,6 @@ import {
   Chip,
   ContextItem,
   DocumentTextIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
   EyeIcon,
   Input,
   LockIcon,
@@ -17,27 +12,8 @@ import {
   TableIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorType,
-  CoreAPIDataSource,
-  DataSourceType,
-  GroupType,
-  NotionCheckUrlResponseType,
-  NotionFindUrlResponseType,
-  SlackAutoReadPattern,
-  SlackbotWhitelistType,
-  WorkspaceType,
-  ZendeskFetchTicketResponseType,
-} from "@dust-tt/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  isSlackAutoReadPatterns,
-  safeParseJSON,
-} from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
@@ -49,16 +25,30 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
+import type {
+  ConnectorType,
+  CoreAPIDataSource,
+  DataSourceType,
+  NotionCheckUrlResponseType,
+  NotionFindUrlResponseType,
+  SlackAutoReadPattern,
+  WorkspaceType,
+  ZendeskFetchTicketResponseType,
+} from "@app/types";
+import {
+  ConnectorsAPI,
+  CoreAPI,
+  isSlackAutoReadPatterns,
+  safeParseJSON,
+} from "@app/types";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
@@ -87,7 +77,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     runId: string;
     status: string;
   }[];
-  groupsForSlackBot: GroupType[];
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
@@ -131,7 +120,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       dataSource.connectorId
     );
     if (connectorRes.isOk()) {
-      connector = connectorRes.value;
+      connector = {
+        ...connectorRes.value,
+        connectionId: null,
+      };
       const temporalClient = await getTemporalConnectorsNamespaceConnection();
 
       const res = temporalClient.workflow.list({
@@ -167,6 +159,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   );
   if (dataSource.connectorId) {
     switch (dataSource.connectorProvider) {
+      case "slack_bot":
       case "slack":
         const botEnabledRes = await connectorsAPI.getConnectorConfig(
           dataSource.connectorId,
@@ -296,14 +289,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     }
   }
 
-  // Getting groups that a Slack bot/workflow can be assigned to
-  const authForSlackBot = await Authenticator.internalAdminForWorkspace(
-    owner.sId
-  );
-  const groupsForSlackBot = (
-    await GroupResource.listAllWorkspaceGroups(authForSlackBot)
-  ).map((g) => g.toJSON());
-
   return {
     props: {
       owner,
@@ -313,7 +298,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       features,
       temporalWorkspace: TEMPORAL_CONNECTORS_NAMESPACE,
       temporalRunningWorkflows: workflowInfos,
-      groupsForSlackBot,
     },
   };
 });
@@ -326,7 +310,6 @@ const DataSourcePage = ({
   temporalWorkspace,
   temporalRunningWorkflows,
   features,
-  groupsForSlackBot,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const [limit] = useState(10);
   const [offsetDocument, setOffsetDocument] = useState(0);
@@ -394,140 +377,137 @@ const DataSourcePage = ({
   };
 
   return (
-    <div className="flex flex-row gap-x-6">
-      <ViewDataSourceTable
-        dataSource={dataSource}
-        temporalWorkspace={temporalWorkspace}
-        coreDataSource={coreDataSource}
-        connector={connector}
-        temporalRunningWorkflows={temporalRunningWorkflows}
-      />
-      <div className="mt-4 flex grow flex-col gap-y-4">
-        <PluginList
-          resourceType="data_sources"
-          workspaceResource={{
-            workspace: owner,
-            resourceId: dataSource.sId,
-          }}
-        />
-        <div className="flex w-full items-center gap-3 p-4">
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Are you sure you want to access this sensible user data? (Access will be logged)"
-                )
-              ) {
-                void router.push(
-                  `/poke/${owner.sId}/data_sources/${dataSource.sId}/search`
-                );
-              }
-            }}
-            label="Search Data"
-            icon={LockIcon}
-          />
-          {dataSource.connectorProvider === "slack" && (
-            <ConfigToggle
-              title="Slackbot enabled?"
-              owner={owner}
-              features={features}
-              dataSource={dataSource}
-              configKey="botEnabled"
-              featureKey="slackBotEnabled"
-            />
-          )}
-          {dataSource.connectorProvider === "notion" && (
-            <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
-          )}
-          {dataSource.connectorProvider === "zendesk" && (
-            <ZendeskTicketCheck owner={owner} dsId={dataSource.sId} />
-          )}
-          {dataSource.connectorProvider === "google_drive" && (
-            <>
-              <ConfigToggle
-                title="PDF syncing enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="pdfEnabled"
-                featureKey="googleDrivePdfEnabled"
-              />
-              <ConfigToggle
-                title="CSV syncing enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="csvEnabled"
-                featureKey="googleDriveCsvEnabled"
-              />
+    <>
+      <h3 className="text-xl font-bold">
+        Data Source: {dataSource.name} of workspace:{" "}
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
+          {owner.name}
+        </a>
+      </h3>
+      <p>
+        The content source of truth is <b>connectors</b>.
+      </p>
 
-              <ConfigToggle
-                title="Large Files enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="largeFilesEnabled"
-                featureKey="googleDriveLargeFilesEnabled"
-              />
-            </>
-          )}
-          {dataSource.connectorProvider === "microsoft" && (
-            <>
-              <ConfigToggle
-                title="Pdf syncing enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="pdfEnabled"
-                featureKey="microsoftPdfEnabled"
-              />
-              <ConfigToggle
-                title="CSV syncing enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="csvEnabled"
-                featureKey="microsoftCsvEnabled"
-              />
-              <ConfigToggle
-                title="Large Files enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="largeFilesEnabled"
-                featureKey="microsoftLargeFilesEnabled"
-              />
-            </>
-          )}
-          {dataSource.connectorProvider === "github" && (
-            <>
-              <ConfigToggle
-                title="Code sync enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="codeSyncEnabled"
-                featureKey="githubCodeSyncEnabled"
-              />
-              <ConfigToggle
-                title="Use proxy?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="useProxy"
-                featureKey="githubUseProxyEnabled"
-              />
-            </>
-          )}
-        </div>
-        {dataSource.connectorProvider === "slack" && (
-          <>
-            <SlackWhitelistBot
-              owner={owner}
-              connectorId={connector?.id}
-              groups={groupsForSlackBot}
+      <div className="flex flex-row gap-x-6">
+        <ViewDataSourceTable
+          dataSource={dataSource}
+          temporalWorkspace={temporalWorkspace}
+          coreDataSource={coreDataSource}
+          connector={connector}
+          temporalRunningWorkflows={temporalRunningWorkflows}
+        />
+        <div className="mt-4 flex grow flex-col gap-y-4">
+          <PluginList
+            pluginResourceTarget={{
+              resourceId: dataSource.sId,
+              resourceType: "data_sources",
+              workspace: owner,
+            }}
+          />
+          <div className="flex w-full items-center gap-3 p-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Are you sure you want to access this sensible user data? (Access will be logged)"
+                  )
+                ) {
+                  void router.push(
+                    `/poke/${owner.sId}/data_sources/${dataSource.sId}/search`
+                  );
+                }
+              }}
+              label="Search Data"
+              icon={LockIcon}
             />
+            {dataSource.connectorProvider === "notion" && (
+              <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
+            )}
+            {dataSource.connectorProvider === "zendesk" && (
+              <ZendeskTicketCheck owner={owner} dsId={dataSource.sId} />
+            )}
+            {dataSource.connectorProvider === "google_drive" && (
+              <>
+                <ConfigToggle
+                  title="PDF syncing enabled?"
+                  owner={owner}
+                  features={features}
+                  dataSource={dataSource}
+                  configKey="pdfEnabled"
+                  featureKey="googleDrivePdfEnabled"
+                />
+                <ConfigToggle
+                  title="CSV syncing enabled?"
+                  owner={owner}
+                  features={features}
+                  dataSource={dataSource}
+                  configKey="csvEnabled"
+                  featureKey="googleDriveCsvEnabled"
+                />
+
+                <ConfigToggle
+                  title="Large Files enabled?"
+                  owner={owner}
+                  features={features}
+                  dataSource={dataSource}
+                  configKey="largeFilesEnabled"
+                  featureKey="googleDriveLargeFilesEnabled"
+                />
+              </>
+            )}
+            {dataSource.connectorProvider === "microsoft" && (
+              <>
+                <ConfigToggle
+                  title="Pdf syncing enabled?"
+                  owner={owner}
+                  features={features}
+                  dataSource={dataSource}
+                  configKey="pdfEnabled"
+                  featureKey="microsoftPdfEnabled"
+                />
+                <ConfigToggle
+                  title="CSV syncing enabled?"
+                  owner={owner}
+                  features={features}
+                  dataSource={dataSource}
+                  configKey="csvEnabled"
+                  featureKey="microsoftCsvEnabled"
+                />
+                <ConfigToggle
+                  title="Large Files enabled?"
+                  owner={owner}
+                  features={features}
+                  dataSource={dataSource}
+                  configKey="largeFilesEnabled"
+                  featureKey="microsoftLargeFilesEnabled"
+                />
+              </>
+            )}
+            {dataSource.connectorProvider === "github" && (
+              <>
+                <ConfigToggle
+                  title="Code sync enabled?"
+                  owner={owner}
+                  features={features}
+                  dataSource={dataSource}
+                  configKey="codeSyncEnabled"
+                  featureKey="githubCodeSyncEnabled"
+                />
+                <ConfigToggle
+                  title="Use proxy?"
+                  owner={owner}
+                  features={features}
+                  dataSource={dataSource}
+                  configKey="useProxy"
+                  featureKey="githubUseProxyEnabled"
+                />
+              </>
+            )}
+          </div>
+          {["slack", "slack_bot"].includes(
+            dataSource.connectorProvider ?? ""
+          ) && (
             <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
               <SlackChannelPatternInput
                 initialValues={features.autoReadChannelPatterns || ""}
@@ -535,186 +515,195 @@ const DataSourcePage = ({
                 dataSource={dataSource}
               />
             </div>
-          </>
-        )}
-        {!dataSource.connectorId ? (
-          <>
-            <div className="mt-4 flex flex-row">
-              <div className="flex flex-1">
-                <div className="flex flex-col">
-                  <div className="flex flex-row">
-                    <div className="flex flex-initial gap-x-2">
-                      <Button
-                        variant="ghost"
-                        disabled={offsetDocument < limit}
-                        onClick={() => {
-                          if (offsetDocument >= limit) {
-                            setOffsetDocument(offsetDocument - limit);
-                          } else {
-                            setOffsetDocument(0);
-                          }
-                        }}
-                        label="Previous"
-                      />
-                      <Button
-                        variant="ghost"
-                        label="Next"
-                        disabled={offsetDocument + limit >= totalDocuments}
-                        onClick={() => {
-                          if (offsetDocument + limit < totalDocuments) {
-                            setOffsetDocument(offsetDocument + limit);
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-                    {totalDocuments > 0 && (
-                      <span>
-                        Showing documents {offsetDocument + 1} - {lastDocument}{" "}
-                        of {totalDocuments} documents
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-              {documents.length > 0 ? (
-                <ContextItem.List>
-                  {documents.map((d) => (
-                    <ContextItem
-                      key={d.document_id}
-                      title={displayNameByDocId[d.document_id]}
-                      visual={
-                        <ContextItem.Visual
-                          visual={({ className }) =>
-                            DocumentTextIcon({
-                              className: className + " text-element-600",
-                            })
-                          }
-                        />
-                      }
-                      action={
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            icon={EyeIcon}
-                            onClick={() =>
-                              onDisplayDocumentSource(d.document_id)
+          )}
+          {!dataSource.connectorId ? (
+            <>
+              <div className="mt-4 flex flex-row">
+                <div className="flex flex-1">
+                  <div className="flex flex-col">
+                    <div className="flex flex-row">
+                      <div className="flex flex-initial gap-x-2">
+                        <Button
+                          variant="ghost"
+                          disabled={offsetDocument < limit}
+                          onClick={() => {
+                            if (offsetDocument >= limit) {
+                              setOffsetDocument(offsetDocument - limit);
+                            } else {
+                              setOffsetDocument(0);
                             }
-                            tooltip="View"
-                          />
-                        </div>
-                      }
-                    >
-                      <ContextItem.Description>
-                        <div className="pt-2 text-sm text-element-700">
-                          {Math.floor(d.text_size / 1024)} kb,{" "}
-                          {timeAgoFrom(d.timestamp)} ago
-                        </div>
-                      </ContextItem.Description>
-                    </ContextItem>
-                  ))}
-                </ContextItem.List>
-              ) : (
-                <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-                  <p>Empty</p>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 flex flex-row">
-              <div className="flex flex-1">
-                <div className="flex flex-col">
-                  <div className="flex flex-row">
-                    <div className="flex flex-initial gap-x-2">
-                      <Button
-                        variant="ghost"
-                        disabled={offsetTable < limit}
-                        onClick={() => {
-                          if (offsetTable >= limit) {
-                            setOffsetTable(offsetTable - limit);
-                          } else {
-                            setOffsetTable(0);
-                          }
-                        }}
-                        label="Previous"
-                      />
-                      <Button
-                        variant="ghost"
-                        label="Next"
-                        disabled={offsetTable + limit >= totalTables}
-                        onClick={() => {
-                          if (offsetTable + limit < totalTables) {
-                            setOffsetTable(offsetTable + limit);
-                          }
-                        }}
-                      />
+                          }}
+                          label="Previous"
+                        />
+                        <Button
+                          variant="ghost"
+                          label="Next"
+                          disabled={offsetDocument + limit >= totalDocuments}
+                          onClick={() => {
+                            if (offsetDocument + limit < totalDocuments) {
+                              setOffsetDocument(offsetDocument + limit);
+                            }
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-                    {totalDocuments > 0 && (
-                      <span>
-                        Showing tables {offsetTable + 1} - {lastTable} of{" "}
-                        {totalTables} tables
-                      </span>
-                    )}
+                    <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
+                      {totalDocuments > 0 && (
+                        <span>
+                          Showing documents {offsetDocument + 1} -{" "}
+                          {lastDocument} of {totalDocuments} documents
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-              {tables.length > 0 ? (
-                <ContextItem.List>
-                  {tables.map((t) => (
-                    <ContextItem
-                      key={t.table_id}
-                      title={t.name}
-                      visual={
-                        <ContextItem.Visual
-                          visual={({ className }) =>
-                            TableIcon({
-                              className: className + " text-element-600",
-                            })
-                          }
+              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+                {documents.length > 0 ? (
+                  <ContextItem.List>
+                    {documents.map((d) => (
+                      <ContextItem
+                        key={d.document_id}
+                        title={displayNameByDocId[d.document_id]}
+                        visual={
+                          <ContextItem.Visual
+                            visual={({ className }) =>
+                              DocumentTextIcon({
+                                className:
+                                  className +
+                                  " text-muted-foreground dark:text-muted-foreground-night",
+                              })
+                            }
+                          />
+                        }
+                        action={
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              icon={EyeIcon}
+                              onClick={() =>
+                                onDisplayDocumentSource(d.document_id)
+                              }
+                              tooltip="View"
+                            />
+                          </div>
+                        }
+                      >
+                        <ContextItem.Description>
+                          <div className="pt-2 text-sm text-muted-foreground">
+                            {Math.floor(d.text_size / 1024)} kb,{" "}
+                            {timeAgoFrom(d.timestamp)} ago
+                          </div>
+                        </ContextItem.Description>
+                      </ContextItem>
+                    ))}
+                  </ContextItem.List>
+                ) : (
+                  <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+                    <p>Empty</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-row">
+                <div className="flex flex-1">
+                  <div className="flex flex-col">
+                    <div className="flex flex-row">
+                      <div className="flex flex-initial gap-x-2">
+                        <Button
+                          variant="ghost"
+                          disabled={offsetTable < limit}
+                          onClick={() => {
+                            if (offsetTable >= limit) {
+                              setOffsetTable(offsetTable - limit);
+                            } else {
+                              setOffsetTable(0);
+                            }
+                          }}
+                          label="Previous"
                         />
-                      }
-                    >
-                      <ContextItem.Description>
-                        <div className="pt-2 text-sm text-element-700">
-                          {timeAgoFrom(t.timestamp)} ago
-                        </div>
-                      </ContextItem.Description>
-                    </ContextItem>
-                  ))}
-                </ContextItem.List>
-              ) : (
-                <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-                  <p>Empty</p>
+                        <Button
+                          variant="ghost"
+                          label="Next"
+                          disabled={offsetTable + limit >= totalTables}
+                          onClick={() => {
+                            if (offsetTable + limit < totalTables) {
+                              setOffsetTable(offsetTable + limit);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
+                      {totalDocuments > 0 && (
+                        <span>
+                          Showing tables {offsetTable + 1} - {lastTable} of{" "}
+                          {totalTables} tables
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <PokePermissionTree
-            owner={owner}
-            dataSource={dataSource}
-            onDocumentViewClick={onDisplayDocumentSource}
-            permissionFilter="read"
-          />
-        )}
+              </div>
+
+              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+                {tables.length > 0 ? (
+                  <ContextItem.List>
+                    {tables.map((t) => (
+                      <ContextItem
+                        key={t.table_id}
+                        title={t.name}
+                        visual={
+                          <ContextItem.Visual
+                            visual={({ className }) =>
+                              TableIcon({
+                                className:
+                                  className +
+                                  " text-muted-foreground dark:text-muted-foreground-night",
+                              })
+                            }
+                          />
+                        }
+                      >
+                        <ContextItem.Description>
+                          <div className="pt-2 text-sm text-muted-foreground">
+                            {timeAgoFrom(t.timestamp)} ago
+                          </div>
+                        </ContextItem.Description>
+                      </ContextItem>
+                    ))}
+                  </ContextItem.List>
+                ) : (
+                  <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+                    <p>Empty</p>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <PokePermissionTree
+              owner={owner}
+              dataSource={dataSource}
+              onDocumentViewClick={onDisplayDocumentSource}
+              permissionFilter="read"
+            />
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
-DataSourcePage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+DataSourcePage.getLayout = (
+  page: ReactElement,
+  { owner, dataSource }: { owner: WorkspaceType; dataSource: DataSourceType }
+) => {
+  return (
+    <PokeLayout title={`${owner.name} - ${dataSource.name}`}>{page}</PokeLayout>
+  );
 };
 
 async function handleCheckOrFindNotionUrl(
@@ -780,46 +769,6 @@ async function handleCheckZendeskTicket(
   return res.json();
 }
 
-async function handleWhitelistBot({
-  botName,
-  wId,
-  groupId,
-  whitelistType,
-}: {
-  botName: string;
-  wId: string;
-  groupId: string;
-  whitelistType: SlackbotWhitelistType;
-}): Promise<void> {
-  const res = await fetch(`/api/poke/admin`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      majorCommand: "slack",
-      command: "whitelist-bot",
-      args: {
-        botName,
-        wId,
-        groupId,
-        whitelistType,
-      },
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json();
-    alert(
-      `Failed to whitelist bot: ${
-        err.error?.connectors_error?.message
-      }\n\n${JSON.stringify(err)}`
-    );
-    return;
-  }
-  alert("Bot whitelisted successfully");
-}
-
 function NotionUrlCheckOrFind({
   owner,
   dsId,
@@ -837,8 +786,8 @@ function NotionUrlCheckOrFind({
   );
 
   return (
-    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
-      <div className="flex items-center gap-2">
+    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <div className="flex items-center gap-2 px-2 pt-2">
         <div>Notion URL</div>
         <div className="grow">
           <Input
@@ -878,18 +827,11 @@ function NotionUrlCheckOrFind({
           }}
         />
       </div>
-      <div className="text-gray-800">
+      <div className="text-muted-foreground dark:text-muted-foreground-night">
         {urlDetails && (
-          <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
-            <span
-              className={classNames(
-                "font-bold",
-                urlDetails.page || urlDetails.db
-                  ? "text-emerald-800"
-                  : "text-red-800"
-              )}
-            >
-              {(() => {
+          <div className="text-md flex flex-col gap-2 rounded-md p-4 pt-2">
+            <Chip
+              label={(() => {
                 if (urlDetails.page) {
                   return "Page found";
                 }
@@ -898,10 +840,10 @@ function NotionUrlCheckOrFind({
                 }
                 return "Not found";
               })()}
-            </span>
+              color={urlDetails.page || urlDetails.db ? "success" : "warning"}
+            />
             {(urlDetails.page || urlDetails.db) && (
               <div>
-                <span className="font-bold">Details:</span>{" "}
                 <span>
                   {urlDetails.page ? (
                     <>
@@ -911,10 +853,10 @@ function NotionUrlCheckOrFind({
                         rootName={false}
                       />
                       {command === "find-url" && (
-                        <div>
+                        <div className="pt-4">
                           {urlDetails.page.parentType === "page" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -926,7 +868,7 @@ function NotionUrlCheckOrFind({
                           )}
                           {urlDetails.page.parentType === "database" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -950,7 +892,7 @@ function NotionUrlCheckOrFind({
                         <div>
                           {urlDetails.db?.parentType === "page" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -962,7 +904,7 @@ function NotionUrlCheckOrFind({
                           )}
                           {urlDetails.db?.parentType === "database" && (
                             <>
-                              <span className="font-bold text-emerald-800">
+                              <span className="font-bold text-success">
                                 Parent URL:
                               </span>
                               <span className="pl-2">
@@ -1092,7 +1034,7 @@ function ZendeskTicketCheck({
                 trigger={
                   <Chip
                     label={ticketDetails.isTicketOnDb ? "Synced" : "Not synced"}
-                    color={ticketDetails.isTicketOnDb ? "purple" : "pink"}
+                    color={ticketDetails.isTicketOnDb ? "success" : "info"}
                   />
                 }
               />
@@ -1108,13 +1050,35 @@ function ZendeskTicketCheck({
                 trigger={
                   <Chip
                     label={ticketDetails.ticket ? "Found" : "Not Found"}
-                    color={ticketDetails.ticket ? "emerald" : "warning"}
+                    color={ticketDetails.ticket ? "success" : "warning"}
                   />
                 }
               />
+              {ticketDetails.ticket && (
+                <Tooltip
+                  label={
+                    ticketDetails.shouldSyncTicket
+                      ? "Looking at its state, the ticket should be synced with Dust."
+                      : "Looking at its state, the ticket should not be synced with Dust."
+                  }
+                  className="max-w-md"
+                  trigger={
+                    <Chip
+                      label={
+                        ticketDetails.shouldSyncTicket
+                          ? "Should be synced"
+                          : "Should not be synced"
+                      }
+                      color={
+                        ticketDetails.shouldSyncTicket ? "success" : "info"
+                      }
+                    />
+                  }
+                />
+              )}
             </div>
             {ticketDetails.ticket && (
-              <div className="ml-4 pt-2 text-xs text-element-700">
+              <div className="ml-4 pt-2 text-xs text-muted-foreground">
                 <div className="mb-1 font-bold">Details</div>
                 <JsonViewer
                   theme={isDark ? "dark" : "light"}
@@ -1185,95 +1149,5 @@ const ConfigToggle = ({
     </div>
   );
 };
-
-function SlackWhitelistBot({
-  owner,
-  connectorId,
-  groups,
-}: {
-  owner: WorkspaceType;
-  connectorId?: string;
-  groups: GroupType[];
-}) {
-  const [botName, setBotName] = useState("");
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-
-  const selectedGroupName = groups.find(
-    (group) => group.sId === selectedGroup
-  )?.name;
-
-  return (
-    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
-      <div className="flex items-center gap-2">
-        <div>Whitelist slack bot or workflow</div>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="grow">
-          <Input
-            placeholder="Bot or workflow name"
-            onChange={(e) => setBotName(e.target.value)}
-            value={botName}
-          />
-        </div>
-        <div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                label={selectedGroupName ?? "Select a group"}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuRadioGroup
-                value={selectedGroup ?? undefined}
-                onValueChange={setSelectedGroup}
-              >
-                {groups.map((group) => (
-                  <DropdownMenuRadioItem
-                    value={group.sId}
-                    key={group.sId}
-                    label={group.name}
-                    className="p-1"
-                  />
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <Button
-          variant="outline"
-          label="Whitelist"
-          onClick={async () => {
-            if (!botName) {
-              alert("Please enter a bot name");
-              return;
-            }
-            if (!selectedGroup) {
-              alert("Please select a group");
-              return;
-            }
-            await handleWhitelistBot({
-              botName,
-              wId: owner.sId,
-              groupId: selectedGroup,
-              whitelistType: "summon_agent",
-            });
-            setBotName("");
-          }}
-        />
-      </div>
-      <div>
-        See{" "}
-        <Link
-          href={`https://metabase.dust.tt/question/637-whitelisted-bots-given-connector?connectorId=${connectorId}`}
-          target="_blank"
-          className="text-sm text-action-400"
-        >
-          list of whitelisted bots for this workspace
-        </Link>
-      </div>
-    </div>
-  );
-}
 
 export default DataSourcePage;

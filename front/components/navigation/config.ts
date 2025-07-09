@@ -1,18 +1,20 @@
 import {
+  BarChartIcon,
   BookOpenIcon,
   BracesIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   CommandLineIcon,
-  CompanyIcon,
   DocumentTextIcon,
   FolderOpenIcon,
   LockIcon,
+  PlanetIcon,
   ShapesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import type { AppType, WorkspaceType } from "@dust-tt/types";
-import { isAdmin, isBuilder } from "@dust-tt/types";
+
+import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need
@@ -46,7 +48,9 @@ export type SubNavigationAdminId =
   | "members"
   | "providers"
   | "api_keys"
-  | "dev_secrets";
+  | "dev_secrets"
+  | "analytics"
+  | "actions";
 
 export type SubNavigationAppId =
   | "specification"
@@ -72,6 +76,7 @@ export type AppLayoutNavigation = {
   current: boolean;
   subMenuLabel?: string;
   subMenu?: AppLayoutNavigation[];
+  featureFlag?: WhitelistableFeature;
 };
 
 export type TabAppLayoutNavigation = {
@@ -91,6 +96,7 @@ export type TabAppLayoutNavigation = {
   isCurrent: (currentRoute: string) => boolean;
   subMenuLabel?: string;
   subMenu?: AppLayoutNavigation[];
+  ref?: React.RefObject<HTMLDivElement>;
 };
 
 export type SidebarNavigation = {
@@ -100,7 +106,10 @@ export type SidebarNavigation = {
   menus: AppLayoutNavigation[];
 };
 
-export const getTopNavigationTabs = (owner: WorkspaceType) => {
+export const getTopNavigationTabs = (
+  owner: WorkspaceType,
+  spaceMenuButtonRef: React.RefObject<HTMLDivElement>
+) => {
   const nav: TabAppLayoutNavigation[] = [];
 
   nav.push({
@@ -119,12 +128,13 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
 
   nav.push({
     id: "data_sources",
-    label: "Knowledge",
+    label: "Spaces",
     icon: BookOpenIcon,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
       currentRoute.startsWith("/w/[wId]/spaces/"),
     sizing: "hug",
+    ref: spaceMenuButtonRef,
   });
 
   if (isAdmin(owner)) {
@@ -139,6 +149,8 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
           "/w/[wId]/members",
           "/w/[wId]/workspace",
           "/w/[wId]/subscription",
+          "/w/[wId]/analytics",
+          "/w/[wId]/actions",
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
@@ -170,12 +182,12 @@ export const subNavigationAdmin = ({
   if (isAdmin(owner)) {
     nav.push({
       id: "workspace",
-      label: "Workspace Settings",
+      label: "Workspace Management",
       variant: "primary",
       menus: [
         {
           id: "members",
-          label: "Members",
+          label: "People & Security",
           icon: UserIcon,
           href: `/w/${owner.sId}/members`,
           current: current === "members",
@@ -184,12 +196,21 @@ export const subNavigationAdmin = ({
         },
         {
           id: "workspace",
-          label: "Workspace",
-          icon: CompanyIcon,
+          label: "Workspace Settings",
+          icon: PlanetIcon,
           href: `/w/${owner.sId}/workspace`,
           current: current === "workspace",
           subMenuLabel: current === "workspace" ? subMenuLabel : undefined,
           subMenu: current === "workspace" ? subMenu : undefined,
+        },
+        {
+          id: "analytics",
+          label: "Analytics",
+          icon: BarChartIcon,
+          href: `/w/${owner.sId}/analytics`,
+          current: current === "analytics",
+          subMenuLabel: current === "analytics" ? subMenuLabel : undefined,
+          subMenu: current === "analytics" ? subMenu : undefined,
         },
         {
           id: "subscription",
@@ -205,7 +226,7 @@ export const subNavigationAdmin = ({
 
     nav.push({
       id: "developers",
-      label: "Developers",
+      label: "Builder Tools Management",
       variant: "primary",
       menus: [
         {

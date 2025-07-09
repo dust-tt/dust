@@ -1,11 +1,3 @@
-import type {
-  ConnectorType,
-  DataSourceType,
-  DataSourceViewCategory,
-  DataSourceViewType,
-  SpaceType,
-} from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -13,11 +5,20 @@ import type { ReactElement } from "react";
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type {
+  ConnectorType,
+  DataSourceType,
+  DataSourceViewCategory,
+  DataSourceViewType,
+  SpaceType,
+} from "@app/types";
+import { ConnectorsAPI } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
@@ -86,7 +87,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       dataSourceView.dataSource.connectorId
     );
     if (connectorRes.isOk()) {
-      connector = connectorRes.value;
+      connector = {
+        ...connectorRes.value,
+        connectionId: null,
+      };
     }
   }
 
@@ -151,8 +155,10 @@ Space.getLayout = (
   pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
 ) => {
   return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch>
-      {page}
-    </SpaceLayout>
+    <AppRootLayout>
+      <SpaceLayout pageProps={pageProps} useBackendSearch>
+        {page}
+      </SpaceLayout>
+    </AppRootLayout>
   );
 };

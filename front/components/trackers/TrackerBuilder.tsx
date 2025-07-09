@@ -11,8 +11,24 @@ import {
   Page,
   TextArea,
   TrashIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
+import { capitalize } from "lodash";
+import { LockIcon } from "lucide-react";
+import { useRouter } from "next/router";
+import { useContext, useMemo, useState } from "react";
+
+import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
+import { ConfirmContext } from "@app/components/Confirm";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import {
+  AppLayoutSimpleCloseTitle,
+  AppLayoutSimpleSaveCancelTitle,
+} from "@app/components/sparkle/AppLayoutTitle";
+import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuilderDataSourceModal";
+import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { isConnectorTypeTrackable } from "@app/lib/connector_providers";
+import { isEmailValid } from "@app/lib/utils";
 import type {
   APIError,
   DataSourceViewSelectionConfiguration,
@@ -22,27 +38,11 @@ import type {
   SupportedModel,
   TrackerConfigurationStateType,
   WorkspaceType,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
-  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   TRACKER_FREQUENCIES,
-} from "@dust-tt/types";
-import { capitalize } from "lodash";
-import { LockIcon } from "lucide-react";
-import { useRouter } from "next/router";
-import { useContext, useMemo, useState } from "react";
-
-import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
-import { ConfirmContext } from "@app/components/Confirm";
-import AppLayout from "@app/components/sparkle/AppLayout";
-import {
-  AppLayoutSimpleCloseTitle,
-  AppLayoutSimpleSaveCancelTitle,
-} from "@app/components/sparkle/AppLayoutTitle";
-import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuilderDataSourceModal";
-import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
-import { isConnectorTypeTrackable } from "@app/lib/document_upsert_hooks/hooks/tracker/consts";
-import { isEmailValid } from "@app/lib/utils";
+} from "@app/types";
 
 export const TrackerBuilder = ({
   owner,
@@ -81,8 +81,8 @@ export const TrackerBuilder = ({
       skipEmptyEmails: true,
       recipients: "",
       recipientsError: null,
-      modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-      providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       temperature: 0.5,
       maintainedDataSources: {},
       watchedDataSources: {},
@@ -206,7 +206,7 @@ export const TrackerBuilder = ({
       return;
     }
     setIsSubmitting(false);
-    await router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+    await router.push(`/w/${owner.sId}/labs/trackers`);
     sendNotification({
       title: initialTrackerId ? "Tracker updated" : "Tracker Created",
       description: initialTrackerId
@@ -243,7 +243,7 @@ export const TrackerBuilder = ({
       );
       if (res.ok) {
         setIsDeleting(false);
-        void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+        void router.push(`/w/${owner.sId}/labs/trackers`);
         sendNotification({
           title: "Tracker deleted",
           description: "Tracker successfully deleted.",
@@ -275,7 +275,7 @@ export const TrackerBuilder = ({
   );
 
   return (
-    <AppLayout
+    <AppContentLayout
       owner={owner}
       subscription={subscription}
       hideSidebar
@@ -288,14 +288,14 @@ export const TrackerBuilder = ({
           <AppLayoutSimpleCloseTitle
             title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
             onClose={() => {
-              void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+              void router.push(`/w/${owner.sId}/labs/trackers`);
             }}
           />
         ) : (
           <AppLayoutSimpleSaveCancelTitle
             title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
             onCancel={() => {
-              void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+              void router.push(`/w/${owner.sId}/labs/trackers`);
             }}
             onSave={onSubmit}
             isSaving={isSubmitting}
@@ -312,7 +312,7 @@ export const TrackerBuilder = ({
                 <DropdownMenuTrigger>
                   <Chip
                     size="sm"
-                    color={tracker.status === "active" ? "emerald" : "warning"}
+                    color={tracker.status === "active" ? "success" : "warning"}
                     className="capitalize"
                     icon={tracker.status === "active" ? undefined : LockIcon}
                   >
@@ -346,6 +346,7 @@ export const TrackerBuilder = ({
                   providerId: tracker.providerId,
                 },
                 temperature: tracker.temperature,
+                reasoningEffort: "none",
               }}
               setGenerationSettings={(g: {
                 modelSettings: SupportedModel;
@@ -373,7 +374,6 @@ export const TrackerBuilder = ({
                 disabled={isSubmitting || isDeleting}
               />
             )}
-            r
           </div>
         </div>
 
@@ -382,7 +382,7 @@ export const TrackerBuilder = ({
         <div className="flex flex-col gap-8">
           <div>
             <Page.SectionHeader title="Naming" />
-            <div className="text-sm font-normal text-element-700">
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               Give your tracker a clear, memorable name and description that
               will help you and your team identify its purpose.
             </div>
@@ -436,7 +436,7 @@ export const TrackerBuilder = ({
         <div className="flex flex-col gap-8">
           <div>
             <Page.SectionHeader title="Notification Settings" />
-            <div className="text-sm font-normal text-element-700">
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               Choose when and who receives update notifications. We'll bundle
               all tracked changes into organized email summaries delivered on
               your preferred schedule.
@@ -519,7 +519,7 @@ export const TrackerBuilder = ({
                     }
                   }}
                 />
-                <div className="text-sm text-element-700">
+                <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Don't send emails when there are no updates.
                 </div>
               </div>
@@ -532,7 +532,7 @@ export const TrackerBuilder = ({
         <div className="flex flex-col gap-8">
           <div>
             <Page.SectionHeader title="Tracker Settings" />
-            <div className="text-sm font-normal text-element-700">
+            <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               Set up what you want to track and monitor. Tell us what to look
               for, specify which documents to maintain current versions of, and
               select which documents to watch for changes.
@@ -587,7 +587,7 @@ export const TrackerBuilder = ({
               <div className="flex flex-col space-y-2">
                 <Label className="mb-1">Maintained Documents</Label>
                 {Object.keys(tracker.maintainedDataSources).length === 0 ? (
-                  <div className="text-sm font-normal text-element-700">
+                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                     No documents selected.
                   </div>
                 ) : (
@@ -627,7 +627,7 @@ export const TrackerBuilder = ({
               <div className="flex flex-col space-y-2">
                 <Label className="mb-1">Watched Documents</Label>
                 {Object.keys(tracker.watchedDataSources).length === 0 ? (
-                  <div className="text-sm font-normal text-element-700">
+                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                     No documents selected.
                   </div>
                 ) : (
@@ -641,6 +641,6 @@ export const TrackerBuilder = ({
           </div>
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 };

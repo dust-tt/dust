@@ -7,10 +7,6 @@ import {
   TabsTrigger,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { DatasetType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -18,13 +14,18 @@ import { useContext } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getDatasets } from "@app/lib/api/datasets";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { classNames } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
+import type { AppType } from "@app/types";
+import type { DatasetType } from "@app/types";
+import type { SubscriptionType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -98,7 +99,7 @@ export default function DatasetsView({
   };
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
@@ -158,16 +159,16 @@ export default function DatasetsView({
                       >
                         <div
                           key={d.name}
-                          className="dark:border-gray-300-night group rounded border border-gray-300 px-4 py-4"
+                          className="group rounded border border-gray-300 px-4 py-4 dark:border-gray-300-night"
                         >
                           <div className="flex items-center justify-between">
-                            <p className="truncate text-base font-bold text-action-500">
+                            <p className="heading-base truncate text-highlight-500">
                               {d.name}
                             </p>
                             {readOnly ? null : (
                               <div className="ml-2 flex flex-shrink-0">
                                 <TrashIcon
-                                  className="dark:text-gray-400-night hidden h-4 w-4 text-gray-400 hover:text-red-600 group-hover:block"
+                                  className="hidden h-4 w-4 text-gray-400 hover:text-warning group-hover:block dark:text-gray-400-night"
                                   onClick={async (e) => {
                                     e.preventDefault();
                                     await handleDelete(d.name);
@@ -181,8 +182,8 @@ export default function DatasetsView({
                               <p
                                 className={classNames(
                                   d.description
-                                    ? "dark:text-gray-700-night text-gray-700"
-                                    : "dark:text-gray-300-night text-gray-300",
+                                    ? "text-gray-700 dark:text-gray-700-night"
+                                    : "text-gray-300 dark:text-gray-300-night",
                                   "text-s flex items-center"
                                 )}
                               >
@@ -198,11 +199,11 @@ export default function DatasetsView({
                   })}
                 </ul>
                 <div className="mt-2 max-w-4xl px-2">
-                  <div className="dark:text-gray-400-night py-2 text-sm text-gray-400">
+                  <div className="py-2 text-sm text-gray-400 dark:text-gray-400-night">
                     Datasets are used as input data to apps (
-                    <Chip label="input" color="slate" /> block) or few-shot
-                    examples to prompt models (
-                    <Chip label="data" color="slate" /> block).
+                    <Chip label="input" /> block) or few-shot examples to prompt
+                    models (
+                    <Chip label="data" /> block).
                   </div>
                 </div>
               </div>
@@ -210,6 +211,10 @@ export default function DatasetsView({
           </div>
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+DatasetsView.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

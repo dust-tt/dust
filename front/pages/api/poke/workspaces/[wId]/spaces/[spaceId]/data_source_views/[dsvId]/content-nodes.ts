@@ -1,20 +1,20 @@
-import type {
-  DataSourceViewContentNode,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { ContentNodesViewTypeCodec, removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  DataSourceViewContentNode,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { ContentNodesViewTypeCodec, removeNulls } from "@app/types";
 
 const GetContentNodesOrChildrenRequestBody = t.type({
   internalIds: t.union([t.array(t.union([t.string, t.null])), t.undefined]),
@@ -158,4 +158,4 @@ async function handler(
   return res.status(200).json(contentNodesRes.value);
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForPoke(handler);

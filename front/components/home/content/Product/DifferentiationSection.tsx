@@ -9,12 +9,14 @@ export function DifferentiationSection() {
   return (
     <>
       <Grid>
-        <div className="col-span-12 mb-6">
+        <div className="col-span-12">
           <div>
-            <H2 from="from-sky-200" to="to-blue-400">
-              Your own AI agents, powered by the best models
+            <H2>
+              Your own AI agents,
+              <br />
+              powered by the best models
             </H2>
-            <P size="lg">
+            <P size="lg" className="mt-6 text-muted-foreground">
               Dust connects your entire enterprise knowledge in one secure,
               SOC2-certified platform.
             </P>
@@ -22,9 +24,9 @@ export function DifferentiationSection() {
         </div>
         <div
           className={classNames(
-            "col-span-12 pt-8",
-            "grid grid-cols-1 gap-x-8 gap-y-20",
-            "sm:grid-cols-3 md:gap-y-16"
+            "col-span-12",
+            "grid grid-cols-1 gap-x-16 gap-y-12",
+            "sm:grid-cols-3 md:gap-y-8"
           )}
         >
           <ImgBlock

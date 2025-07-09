@@ -1,5 +1,6 @@
-import type { DataSourceViewContentNode } from "@dust-tt/types";
 import { useEffect, useState } from "react";
+
+import type { DataSourceViewContentNode } from "@app/types";
 
 export function useParentResourcesById({
   selectedResources,

@@ -1,35 +1,33 @@
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
+
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
+import type { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import { frontSequelize } from "@app/lib/resources/storage";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentMessageStatus,
   ConversationVisibility,
   MessageVisibility,
   ParticipantActionType,
   UserMessageOrigin,
-} from "@dust-tt/types";
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+} from "@app/types";
 
-import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import type { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import { frontSequelize } from "@app/lib/resources/storage";
-import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-
-export class Conversation extends WorkspaceAwareModel<Conversation> {
+export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string;
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
+  declare depth: CreationOptional<number>;
 
   declare requestedGroupIds: number[][];
-
-  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-  declare groupIds?: number[];
 }
 
-Conversation.init(
+ConversationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -54,15 +52,13 @@ Conversation.init(
       allowNull: false,
       defaultValue: "unlisted",
     },
+    depth: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
-      allowNull: false,
-      defaultValue: [],
-    },
-
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: false,
       defaultValue: [],
     },
@@ -70,6 +66,7 @@ Conversation.init(
   {
     modelName: "conversation",
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         unique: true,
         fields: ["sId"],
@@ -78,24 +75,28 @@ Conversation.init(
         fields: ["workspaceId"],
         name: "conversations_wId_idx",
       },
+      {
+        unique: true,
+        fields: ["workspaceId", "sId"],
+      },
     ],
     sequelize: frontSequelize,
   }
 );
 
-export class ConversationParticipant extends WorkspaceAwareModel<ConversationParticipant> {
+export class ConversationParticipantModel extends WorkspaceAwareModel<ConversationParticipantModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare action: ParticipantActionType;
 
-  declare conversationId: ForeignKey<Conversation["id"]>;
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
 
-  declare conversation?: NonAttribute<Conversation>;
+  declare conversation?: NonAttribute<ConversationModel>;
   declare user?: NonAttribute<UserModel>;
 }
-ConversationParticipant.init(
+ConversationParticipantModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -119,33 +120,42 @@ ConversationParticipant.init(
       {
         fields: ["userId"],
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["userId", "conversationId"],
+        unique: true,
+      },
+      {
+        fields: ["workspaceId", "userId", "conversationId"],
         unique: true,
       },
       {
         fields: ["conversationId"],
         concurrently: true,
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["userId", "action"],
         concurrently: true,
       },
+      {
+        fields: ["workspaceId", "userId", "action"],
+      },
     ],
   }
 );
-Conversation.hasMany(ConversationParticipant, {
+ConversationModel.hasMany(ConversationParticipantModel, {
   foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "RESTRICT",
 });
-ConversationParticipant.belongsTo(Conversation, {
+ConversationParticipantModel.belongsTo(ConversationModel, {
   foreignKey: { name: "conversationId", allowNull: false },
 });
-UserModel.hasMany(ConversationParticipant, {
+UserModel.hasMany(ConversationParticipantModel, {
   foreignKey: { name: "userId", allowNull: false },
   onDelete: "RESTRICT",
 });
-ConversationParticipant.belongsTo(UserModel, {
+ConversationParticipantModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
@@ -154,6 +164,10 @@ export class UserMessage extends WorkspaceAwareModel<UserMessage> {
   declare updatedAt: CreationOptional<Date>;
 
   declare content: string;
+
+  // TODO(MCP Clean-up): Remove these once we have migrated to the new MCP server ids.
+  declare localMCPServerIds?: string[];
+  declare clientSideMCPServerIds: string[];
 
   declare userContextUsername: string;
   declare userContextTimezone: string;
@@ -180,6 +194,17 @@ UserMessage.init(
     content: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    // TODO(MCP Clean-up): Remove these once we have migrated to the new MCP server ids.
+    localMCPServerIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+      defaultValue: [],
+    },
+    clientSideMCPServerIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+      defaultValue: [],
     },
     userContextUsername: {
       type: DataTypes.STRING,
@@ -227,13 +252,16 @@ export class AgentMessage extends WorkspaceAwareModel<AgentMessage> {
 
   declare errorCode: string | null;
   declare errorMessage: string | null;
+  declare errorMetadata: Record<string, string | number | boolean> | null;
 
-  // Not a relation as global agents are not in the DB
-  // needs both sId and version to uniquely identify the agent configuration
+  declare skipToolsValidation: boolean;
+
+  // Not a relation as global agents are not in the DB + sId is stable across versions. Both sId and
+  // version are needed to uniquely identify the agent configuration.
   declare agentConfigurationId: string;
   declare agentConfigurationVersion: number;
 
-  declare agentMessageContents?: NonAttribute<AgentMessageContent[]>;
+  declare agentStepContents?: NonAttribute<AgentStepContentModel[]>;
   declare message?: NonAttribute<Message>;
   declare feedbacks?: NonAttribute<AgentMessageFeedback[]>;
 }
@@ -266,6 +294,36 @@ AgentMessage.init(
     errorMessage: {
       type: DataTypes.TEXT,
       allowNull: true,
+    },
+    errorMetadata: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isValidJSON(value: any) {
+          if (value !== null && typeof value !== "object") {
+            throw new Error("errorMetadata must be an object or null");
+          }
+          if (
+            value !== null &&
+            !Object.values(value).every(
+              (v) =>
+                typeof v === "string" ||
+                typeof v === "number" ||
+                typeof v === "boolean"
+            )
+          ) {
+            throw new Error(
+              "errorMetadata values must be string | number | boolean"
+            );
+          }
+        },
+      },
+    },
+    skipToolsValidation: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     agentConfigurationId: {
       type: DataTypes.STRING,
@@ -380,7 +438,7 @@ export class Message extends WorkspaceAwareModel<Message> {
   declare rank: number;
   declare visibility: CreationOptional<MessageVisibility>;
 
-  declare conversationId: ForeignKey<Conversation["id"]>;
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
 
   declare parentId: ForeignKey<Message["id"]> | null;
   declare userMessageId: ForeignKey<UserMessage["id"]> | null;
@@ -392,7 +450,7 @@ export class Message extends WorkspaceAwareModel<Message> {
   declare contentFragment?: NonAttribute<ContentFragmentModel>;
   declare reactions?: NonAttribute<MessageReaction[]>;
 
-  declare conversation?: NonAttribute<Conversation>;
+  declare conversation?: NonAttribute<ConversationModel>;
 }
 
 Message.init(
@@ -434,9 +492,15 @@ Message.init(
         unique: true,
         fields: ["sId"],
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       {
         unique: true,
         fields: ["conversationId", "rank", "version"],
+      },
+      {
+        unique: true,
+        fields: ["workspaceId", "conversationId", "rank", "version"],
+        concurrently: true,
       },
       {
         fields: ["agentMessageId"],
@@ -453,6 +517,12 @@ Message.init(
       {
         fields: ["parentId"],
         concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "conversationId"],
+      },
+      {
+        fields: ["workspaceId", "conversationId", "sId"],
       },
     ],
     hooks: {
@@ -472,11 +542,11 @@ Message.init(
   }
 );
 
-Conversation.hasMany(Message, {
+ConversationModel.hasMany(Message, {
   foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "RESTRICT",
 });
-Message.belongsTo(Conversation, {
+Message.belongsTo(ConversationModel, {
   as: "conversation",
   foreignKey: { name: "conversationId", allowNull: false },
 });
@@ -613,11 +683,19 @@ Mention.init(
     modelName: "mention",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
       {
         fields: ["messageId"],
       },
       {
+        fields: ["workspaceId", "messageId"],
+      },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
+      {
         fields: ["agentConfigurationId", "createdAt"],
+      },
+      {
+        fields: ["workspaceId", "agentConfigurationId", "createdAt"],
       },
     ],
   }

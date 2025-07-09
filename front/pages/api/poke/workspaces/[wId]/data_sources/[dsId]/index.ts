@@ -1,15 +1,15 @@
-import type { DataSourceType } from "@dust-tt/types";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { DataSourceType } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever } from "@app/types";
 
 export type DeleteDataSourceResponseBody = DataSourceType;
 
@@ -80,7 +80,9 @@ async function handler(
       const viewsUsedByAgentsName = viewsUsageByAgentsRes.reduce(
         (acc, usageRes) => {
           if (usageRes.isOk() && usageRes.value.count > 0) {
-            usageRes.value.agentNames.forEach((name) => acc.add(name));
+            usageRes.value.agents
+              .map((a) => a.name)
+              .forEach((name) => acc.add(name));
           }
 
           return acc;
@@ -130,4 +132,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForPoke(handler);

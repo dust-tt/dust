@@ -20,8 +20,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Customer Support",
   title: <>Instant knowledge, exceptional support</>,
-  from: "from-sky-200",
-  to: "to-sky-500",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>
       Equip your team with AI agents to accelerate issue resolution and increase
@@ -29,10 +28,10 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Deflect tickets by integrating AI agents directly in your product",
-    "Speed up ticket resolution from your staff",
-    "Identify and anticipate customer needs",
-    "Convert tickets into searchable knowledge base",
+    "Deflect tickets by integrating AI agents directly in your product.",
+    "Speed up ticket resolution from your staff.",
+    "Identify and anticipate customer needs.",
+    "Convert tickets into searchable knowledge base.",
   ],
   image: "/static/landing/support/ticketResolution.png",
 };
@@ -111,8 +110,7 @@ export const Metrics: MetricProps = {
       description: <>saved weekly per agent</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -121,9 +119,9 @@ export const UseCases: UseCaseProps = {
     "Create custom AI agents without writing a single line of code.",
   items: [
     {
-      title: "Ticket deflection",
+      title: "Ticket routing",
       content:
-        "Integrate AI agents in your product interface to deflect Tier 1 tickets and reduce support workload.",
+        "Automatically classify and route support tickets based on query history and team domain expertise.",
       images: ["/static/landing/support/ticketDeflection.png"],
     },
     {
@@ -150,7 +148,7 @@ export const UseCases: UseCaseProps = {
 export const ROI: ROIProps = {
   number: "50%",
   subtitle: "reduction in ticket resolution time",
-  logo: "/static/landing/logos/malt.png",
+  logo: "/static/landing/logos/gray/malt.png",
 };
 
 export const Quote: QuoteProps = {
@@ -158,16 +156,23 @@ export const Quote: QuoteProps = {
     "We're managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
   name: "Anaïs Ghelfi",
   title: "Head of Data Platform at Malt",
-  logo: "/static/landing/logos/malt.png",
+  logo: "/static/landing/logos/color/malt.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/r0dwaexoez",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [
+  {
+    title: "Blueground accelerates customer support resolution time with Dust",
+    content:
+      "Discover how Blueground boosted satisfaction and cut resolution time using Dust agents.",
+    href: "https://blog.dust.tt/customer-support-blueground/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/06/Blueground_dust.jpg",
+  },
   {
     title: "Malt cuts support ticket closing time by 50% with Dust",
     content:

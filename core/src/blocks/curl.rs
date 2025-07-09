@@ -119,7 +119,7 @@ impl Block for Curl {
                 &headers_code,
                 "_fun",
                 &e,
-                std::time::Duration::from_secs(10),
+                std::time::Duration::from_secs(45),
             )
             .await
             .map_err(|e| anyhow!("Error in `headers_code`: {}", e))?;
@@ -127,7 +127,7 @@ impl Block for Curl {
         let mut e = env.clone_with_unredacted_secrets();
         let body_code = self.body_code.clone();
         let (body_value, body_logs): (Value, Vec<Value>) = JSExecutor::client()?
-            .exec(&body_code, "_fun", &e, std::time::Duration::from_secs(10))
+            .exec(&body_code, "_fun", &e, std::time::Duration::from_secs(45))
             .await
             .map_err(|e| anyhow!("Error in `body_code`: {}", e))?;
 

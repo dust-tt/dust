@@ -1,7 +1,8 @@
 import { Icon, StopSignIcon } from "@dust-tt/sparkle";
-import type { ConversationError } from "@dust-tt/types";
-import { isAPIErrorResponse, safeParseJSON } from "@dust-tt/types";
 import type { ComponentType } from "react";
+
+import type { ConversationError } from "@app/types";
+import { isAPIErrorResponse, safeParseJSON } from "@app/types";
 
 interface ConversationErrorProps {
   error: ConversationError;
@@ -79,10 +80,10 @@ function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
           size="lg"
         />
       )}
-      <p className="text-center text-xl font-bold leading-7 text-foreground dark:text-foreground-night">
+      <p className="heading-xl text-center text-foreground dark:text-foreground-night">
         {title}
       </p>
-      <p className="text-center text-sm font-normal leading-tight text-slate-700 dark:text-slate-700-night">
+      <p className="copy-sm text-center text-muted-foreground dark:text-muted-foreground-night">
         {Array.isArray(message) ? (
           message.map((line, index) => <p key={index}>{line}</p>)
         ) : (

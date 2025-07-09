@@ -1,17 +1,20 @@
-import { Button, LoginIcon, LogoSquareColorLogo, Page } from "@dust-tt/sparkle";
-import type { LightWorkspaceType } from "@dust-tt/types";
+import {
+  Button,
+  DustLogoSquare,
+  Hoverable,
+  LoginIcon,
+  Page,
+} from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
-import {
-  getWorkspaceInfos,
-  getWorkspaceVerifiedDomain,
-} from "@app/lib/api/workspace";
-import { getPendingMembershipInvitationForToken } from "@app/lib/iam/invitations";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { getSignUpUrl } from "@app/lib/signup";
+import type { LightWorkspaceType } from "@app/types";
 
 /**
  * 3 ways to end up here:
@@ -60,7 +63,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     };
   }
 
-  const workspaceDomain = await getWorkspaceVerifiedDomain(workspace);
+  const workspaceDomains = await getWorkspaceVerifiedDomains(workspace);
 
   const cId = typeof context.query.cId === "string" ? context.query.cId : null;
   const token = typeof context.query.t === "string" ? context.query.t : null;
@@ -76,7 +79,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   // Redirect to 404 if in a flow where we need a verified domain and there is none.
   if (
-    !workspaceDomain?.domainAutoJoinEnabled &&
+    !workspaceDomains.some((d) => d.domainAutoJoinEnabled) &&
     ["domain_conversation_link", "domain_invite_link"].includes(onboardingType)
   ) {
     return {
@@ -92,7 +95,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       break;
     case "email_invite": {
       signUpCallbackUrl = `/api/login?inviteToken=${token}`;
-      const res = await getPendingMembershipInvitationForToken(
+      const res = await MembershipInvitationResource.getPendingForToken(
         token ?? undefined
       );
       // Redirect to login error page with specific reason
@@ -100,7 +103,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       if (res.isErr()) {
         return {
           redirect: {
-            destination: `/api/auth/logout?returnTo=/login-error?reason=${res.error.code}`,
+            destination: `/api/auth/logout?returnTo=/login-error${encodeURIComponent(`?type=email-invite&reason=${res.error.code}`)}`,
             permanent: false,
           },
         };
@@ -160,7 +163,7 @@ export default function Join({
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <Page.Header
           title={`Hello there!`}
-          icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
+          icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
         />
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
@@ -182,13 +185,13 @@ export default function Join({
             Dust is a platform giving you access to the best AI agents. It's
             easy to use and it's a great place for teams to collaborate. Learn
             more about Dust on{" "}
-            <Link
+            <Hoverable
               href="https://dust.tt"
-              className="cursor-pointer text-sm font-bold text-action-500"
+              variant="highlight"
               target="_blank"
             >
               our website
-            </Link>
+            </Hoverable>
             .
           </p>
         </div>
@@ -204,14 +207,14 @@ export default function Join({
         </div>
         <div className="flex flex-col gap-3 pb-20">
           <p>
-            By signing-up, you accept Dust's{" "}
-            <Link
+            By signing up, you accept Dust's{" "}
+            <Hoverable
               href="https://dust.tt/terms"
-              className="cursor-pointer text-sm font-bold text-action-500"
+              variant="highlight"
               target="_blank"
             >
               terms and conditions
-            </Link>
+            </Hoverable>
             .
           </p>
         </div>

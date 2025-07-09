@@ -1,7 +1,8 @@
 import { cva } from "class-variance-authority";
 import React, { useState } from "react";
 
-import { UserIcon } from "@sparkle/icons/solid";
+import { Tooltip } from "@sparkle/components";
+import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 
@@ -80,7 +81,7 @@ const avatarVariants = cva(
   }
 );
 
-const textVariants = cva("s-select-none s-font-medium", {
+const textVariants = cva("s-select-none s-font-semibold", {
   variants: {
     size: {
       xs: "s-text-xs",
@@ -99,58 +100,42 @@ const textVariants = cva("s-select-none s-font-medium", {
 
 const getColor = (name: string) => {
   if (/\+/.test(name)) {
-    return "s-bg-slate-300";
+    return "s-bg-primary-300";
   }
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   const colors = [
+    "s-bg-blue-300",
+    "s-bg-violet-300",
+    "s-bg-pink-300",
     "s-bg-red-300",
     "s-bg-orange-300",
-    "s-bg-amber-300",
-    "s-bg-yellow-300",
+    "s-bg-golden-300",
     "s-bg-lime-300",
-    "s-bg-green-300",
     "s-bg-emerald-300",
-    "s-bg-teal-300",
-    "s-bg-cyan-300",
-    "s-bg-sky-300",
-    "s-bg-blue-300",
-    "s-bg-indigo-300",
-    "s-bg-violet-300",
-    "s-bg-purple-300",
-    "s-bg-fuchsia-300",
-    "s-bg-rose-300",
   ];
   return colors[Math.abs(hash) % colors.length];
 };
 
 const getTextVariant = (name: string) => {
   if (/\+/.test(name)) {
-    return "s-text-slate-700";
+    return "s-text-muted-foreground";
   }
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
   const txtColors = [
+    "s-text-blue-700",
+    "s-text-violet-700",
+    "s-text-pink-700",
     "s-text-red-700",
     "s-text-orange-700",
-    "s-text-amber-700",
-    "s-text-yellow-700",
+    "s-text-golden-700",
     "s-text-lime-700",
-    "s-text-green-700",
     "s-text-emerald-700",
-    "s-text-teal-700",
-    "s-text-cyan-700",
-    "s-text-sky-700",
-    "s-text-blue-700",
-    "s-text-indigo-700",
-    "s-text-violet-700",
-    "s-text-purple-700",
-    "s-text-fuchsia-700",
-    "s-text-rose-700",
   ];
   return txtColors[Math.abs(hash) % txtColors.length];
 };
@@ -165,8 +150,11 @@ interface AvatarProps {
   busy?: boolean;
   isRounded?: boolean;
   backgroundColor?: string;
+  hexBgColor?: string;
   className?: string;
   disabled?: boolean;
+  icon?: React.ComponentType<{ className?: string }>;
+  iconColor?: string;
 }
 
 export function Avatar({
@@ -179,8 +167,11 @@ export function Avatar({
   busy = false,
   isRounded = false,
   backgroundColor,
+  hexBgColor,
   disabled = false,
   className,
+  icon,
+  iconColor = "s-text-foreground",
 }: AvatarProps) {
   const emojiInfos =
     typeof visual === "string" && getEmojiAndBackgroundFromUrl(visual);
@@ -199,19 +190,23 @@ export function Avatar({
   return (
     <div
       className={cn(
+        typeof visualToUse !== "string" && "s-border s-border-primary-800/10",
         avatarVariants({
           size,
           variant,
           rounded: isRounded,
         }),
         busy ? "s-animate-breathing s-cursor-default" : "",
-        backgroundColorToUse
-          ? backgroundColorToUse
-          : name
-            ? getColor(name)
-            : "s-bg-primary-200 dark:s-bg-primary-200-night",
+        hexBgColor
+          ? ""
+          : backgroundColorToUse
+            ? backgroundColorToUse
+            : name
+              ? getColor(name)
+              : "s-bg-muted-background",
         className
       )}
+      style={hexBgColor ? { backgroundColor: hexBgColor } : undefined}
     >
       {size === "auto" && <div style={{ paddingBottom: "100%" }} />}
       {typeof visualToUse === "string" ? (
@@ -220,11 +215,15 @@ export function Avatar({
           alt={name}
           className={cn(
             avatarVariants({ size }),
-            "s-h-full s-w-full s-object-cover s-object-center"
+            "s-object-cover s-object-center"
           )}
         />
       ) : visualToUse ? (
         visualToUse
+      ) : icon ? (
+        React.createElement(icon, {
+          className: cn("s-h-1/2 s-w-1/2", iconColor),
+        })
       ) : emojiToUse ? (
         <span className={textVariants({ size })}>{emojiToUse}</span>
       ) : name ? (
@@ -232,7 +231,7 @@ export function Avatar({
           {/\+/.test(name) ? name : name[0].toUpperCase()}
         </span>
       ) : (
-        <UserIcon className="s-h-1/2 s-w-1/2 s-opacity-20" />
+        <UserIcon className="s-h-1/2 s-w-1/2 s-text-foreground s-opacity-20" />
       )}
     </div>
   );
@@ -242,8 +241,8 @@ const AVATAR_STACK_SIZES = ["xs", "sm", "md"] as const;
 type AvatarStackSizeType = (typeof AVATAR_STACK_SIZES)[number];
 
 interface AvatarStackProps {
-  children: React.ReactElement<AvatarProps> | React.ReactElement<AvatarProps>[];
-  nbMoreItems?: number;
+  avatars: AvatarProps[];
+  nbVisibleItems?: number;
   size?: AvatarStackSizeType;
   isRounded?: boolean;
   hasMagnifier?: boolean;
@@ -256,14 +255,28 @@ const sizeClassesPx: Record<AvatarStackSizeType, number> = {
 };
 
 Avatar.Stack = function ({
-  children,
-  nbMoreItems,
+  avatars,
+  nbVisibleItems,
   size = "sm",
   isRounded = false,
   hasMagnifier = true,
 }: AvatarStackProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const childrenArray = React.Children.toArray(children);
+
+  // Get visible avatars and calculate remaining count
+  const shouldShowAll = !nbVisibleItems || avatars.length <= nbVisibleItems;
+  const visibleAvatars = shouldShowAll
+    ? avatars
+    : avatars.slice(0, nbVisibleItems - 1);
+  const remainingCount = shouldShowAll
+    ? 0
+    : avatars.length - (nbVisibleItems - 1);
+
+  // Get all names for tooltip
+  const avatarNames = avatars
+    .filter((avatar) => avatar.name)
+    .map((avatar) => avatar.name);
+  const tooltipLabel = avatarNames.join(", ");
 
   const sizeSetting = {
     marginLeft: 0,
@@ -272,77 +285,88 @@ Avatar.Stack = function ({
   };
 
   const collapsedWidth =
-    sizeSetting.width * (childrenArray.length + Number(Boolean(nbMoreItems))) +
+    sizeSetting.width *
+      (visibleAvatars.length + Number(Boolean(remainingCount))) +
     (sizeClassesPx[size] - sizeSetting.width);
 
   const openedWidth =
     sizeSetting.widthHovered *
-      (childrenArray.length + Number(Boolean(nbMoreItems))) +
+      (visibleAvatars.length + Number(Boolean(remainingCount))) +
     (sizeClassesPx[size] - sizeSetting.widthHovered);
 
   const transitionSettings = "width 200ms ease-out";
 
   return (
-    <div
-      className="s-flex s-flex-row"
-      onMouseEnter={() => childrenArray.length > 1 && setIsHovered(true)}
-      onMouseLeave={() => childrenArray.length > 1 && setIsHovered(false)}
-      style={{
-        width: `${isHovered ? openedWidth : collapsedWidth}px`,
-        transition: transitionSettings,
-      }}
-    >
-      {childrenArray.map((child, i) => {
-        if (React.isValidElement<AvatarProps>(child)) {
-          return (
-            <div
-              key={i}
-              className="s-cursor-pointer s-drop-shadow-md"
-              style={{
-                width: isHovered ? sizeSetting.widthHovered : sizeSetting.width,
-                transition: transitionSettings,
-              }}
-            >
-              {hasMagnifier ? (
-                <div
-                  style={{
-                    transform: `scale(${
-                      1 - (childrenArray.length - i) * 0.06
-                    })`,
-                  }}
-                >
-                  {React.cloneElement(child, {
-                    size: size,
-                    isRounded: isRounded,
-                  })}
-                </div>
-              ) : (
-                React.cloneElement(child, {
-                  size: size,
-                  isRounded: isRounded,
-                })
-              )}
-            </div>
-          );
-        }
-        return null;
-      })}
-      {Boolean(nbMoreItems) && (
-        <div
-          className="s-cursor-pointer s-drop-shadow-md"
-          style={{
-            width: isHovered ? sizeSetting.widthHovered : sizeSetting.width,
-            transition: transitionSettings,
-          }}
-        >
-          <Avatar
-            size={size}
-            name={"+" + String(Number(nbMoreItems) < 10 ? nbMoreItems : "")}
-            isRounded={isRounded}
-            clickable
-          />
-        </div>
-      )}
-    </div>
+    <Tooltip
+      label={tooltipLabel}
+      triggerAsChild
+      trigger={
+        <>
+          <div
+            className="s-flex s-flex-row"
+            onMouseEnter={() => visibleAvatars.length > 1 && setIsHovered(true)}
+            onMouseLeave={() =>
+              visibleAvatars.length > 1 && setIsHovered(false)
+            }
+            style={{
+              width: `${isHovered ? openedWidth : collapsedWidth}px`,
+              transition: transitionSettings,
+            }}
+          >
+            {visibleAvatars.map((avatarProps, i) => (
+              <div
+                key={i}
+                className="s-cursor-pointer s-drop-shadow-md"
+                style={{
+                  width: isHovered
+                    ? sizeSetting.widthHovered
+                    : sizeSetting.width,
+                  transition: transitionSettings,
+                }}
+              >
+                {hasMagnifier ? (
+                  <div
+                    style={{
+                      transform: `scale(${
+                        1 - (visibleAvatars.length - i) * 0.06
+                      })`,
+                    }}
+                  >
+                    <Avatar
+                      {...avatarProps}
+                      size={size}
+                      isRounded={isRounded}
+                    />
+                  </div>
+                ) : (
+                  <Avatar {...avatarProps} size={size} isRounded={isRounded} />
+                )}
+              </div>
+            ))}
+            {remainingCount > 0 && (
+              <div
+                className="s-cursor-pointer s-drop-shadow-md"
+                style={{
+                  width: isHovered
+                    ? sizeSetting.widthHovered
+                    : sizeSetting.width,
+                  transition: transitionSettings,
+                }}
+              >
+                <Avatar
+                  size={size}
+                  name={
+                    "+" +
+                    String(Number(remainingCount) < 10 ? remainingCount : "")
+                  }
+                  isRounded={isRounded}
+                  clickable
+                />
+              </div>
+            )}
+          </div>
+        </>
+      }
+    />
   );
 };

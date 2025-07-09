@@ -1,17 +1,14 @@
-import type {
-  AgentConfigurationType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { PostOrPatchAgentConfigurationRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
+import type { AgentConfigurationType, WithAPIErrorResponse } from "@app/types";
+import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -28,6 +25,17 @@ async function handler(
     session,
     req.query.wId as string
   );
+
+  if (!auth.isDustSuperUser()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "user_not_found",
+        message: "Could not find the user.",
+      },
+    });
+  }
+
   if (req.method !== "POST") {
     return apiError(req, res, {
       status_code: 405,
@@ -71,4 +79,4 @@ async function handler(
   res.status(200).json({ assistant: result.value });
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForPoke(handler);

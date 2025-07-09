@@ -1,11 +1,11 @@
 import { Button, Checkbox } from "@dust-tt/sparkle";
-import { createIoTsCodecFromArgs } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import type * as t from "io-ts";
 import { useMemo, useState } from "react";
 import React from "react";
 import { useForm } from "react-hook-form";
 
+import { EnumSelect } from "@app/components/poke/plugins/EnumSelect";
 import {
   PokeForm,
   PokeFormControl,
@@ -16,33 +16,39 @@ import {
   PokeFormLabel,
   PokeFormMessage,
   PokeFormTextArea,
+  PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
-import {
-  PokeSelect,
-  PokeSelectContent,
-  PokeSelectItem,
-  PokeSelectTrigger,
-  PokeSelectValue,
-} from "@app/components/poke/shadcn/ui/select";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
+import type { AsyncEnumValues, EnumValues } from "@app/types";
+import { createIoTsCodecFromArgs } from "@app/types";
 
 type FallbackArgs = Record<string, unknown>;
 
 type FormValues<T> = T extends t.TypeC<any> ? t.TypeOf<T> : FallbackArgs;
 
 interface PluginFormProps {
+  asyncArgs?: Partial<
+    Record<string, string | number | boolean | AsyncEnumValues | EnumValues>
+  > | null;
   disabled?: boolean;
   manifest: PokeGetPluginDetailsResponseBody["manifest"];
   onSubmit: (args: FormValues<any>) => Promise<void>;
 }
 
-export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
+export function PluginForm({
+  asyncArgs,
+  disabled,
+  manifest,
+  onSubmit,
+}: PluginFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const argsCodec = useMemo(() => {
     if (!manifest) {
       return null;
     }
+
+    // Create codec from original manifest - async values are handled in rendering
     return createIoTsCodecFromArgs(manifest.args);
   }, [manifest]);
 
@@ -60,13 +66,18 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
           case "number":
             return [key, 0];
           case "boolean":
-            return [key, false];
+            return [
+              key,
+              arg.async && asyncArgs?.[key] !== undefined
+                ? (asyncArgs[key] as boolean)
+                : false,
+            ];
           default:
             return [key, null];
         }
       })
     );
-  }, [manifest]);
+  }, [manifest, asyncArgs]);
 
   const form = useForm({
     resolver: argsCodec ? ioTsResolver(argsCodec) : undefined,
@@ -126,25 +137,20 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
                         />
                       )}
                       {arg.type === "enum" && (
-                        <PokeSelect
-                          value={field.value ? field.value.toString() : ""}
-                          onValueChange={field.onChange}
-                        >
-                          <PokeFormControl>
-                            <PokeSelectTrigger>
-                              <PokeSelectValue placeholder={arg.label} />
-                            </PokeSelectTrigger>
-                          </PokeFormControl>
-                          <PokeSelectContent>
-                            <div className="bg-slate-100 dark:bg-slate-100-night">
-                              {arg.values.map((option) => (
-                                <PokeSelectItem key={option} value={option}>
-                                  {option}
-                                </PokeSelectItem>
-                              ))}
-                            </div>
-                          </PokeSelectContent>
-                        </PokeSelect>
+                        <EnumSelect
+                          label={arg.label}
+                          onValueChange={(value) => field.onChange(value)}
+                          options={
+                            arg.async && asyncArgs?.[key]
+                              ? (asyncArgs[key] as AsyncEnumValues)
+                              : arg.values
+                          }
+                          placeholder="Select value"
+                          value={field.value}
+                        />
+                      )}
+                      {arg.type === "file" && (
+                        <PokeFormUpload type="file" {...field} />
                       )}
                     </>
                   </PokeFormControl>

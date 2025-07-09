@@ -1,24 +1,14 @@
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  SubscriptionType,
-  WithAPIErrorResponse,
-  WorkspaceDomain,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
-import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
+import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
-  FREE_TEST_PLAN_CODE,
   isEntreprisePlan,
   isFreePlan,
   isFriendsAndFamilyPlan,
@@ -28,10 +18,20 @@ import {
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  LightWorkspaceType,
+  MembershipRoleType,
+  SubscriptionType,
+  WithAPIErrorResponse,
+  WorkspaceDomain,
+} from "@app/types";
 
 export type PokeWorkspaceType = LightWorkspaceType & {
   createdAt: string;
@@ -39,7 +39,7 @@ export type PokeWorkspaceType = LightWorkspaceType & {
   adminEmail: string | null;
   membersCount: number;
   dataSourcesCount: number;
-  workspaceDomain: WorkspaceDomain | null;
+  workspaceDomains: WorkspaceDomain[];
 };
 
 export type GetPokeWorkspacesResponseBody = {
@@ -145,24 +145,11 @@ async function handler(
         limit = originalLimit;
       }
 
-      const conditions: WhereOptions<Workspace>[] = [];
+      const conditions: WhereOptions<WorkspaceModel>[] = [];
 
       if (listUpgraded !== undefined) {
-        const subscriptions = await Subscription.findAll({
-          where: {
-            status: "active",
-          },
-          attributes: ["workspaceId"],
-          include: [
-            {
-              model: Plan,
-              as: "plan",
-              where: {
-                code: { [Op.ne]: FREE_TEST_PLAN_CODE },
-              },
-            },
-          ],
-        });
+        const subscriptions =
+          await SubscriptionResource.internalListAllActiveNoFreeTestPlan();
         const workspaceIds = subscriptions.map((s) => s.workspaceId);
         if (listUpgraded) {
           conditions.push({
@@ -202,7 +189,7 @@ async function handler(
 
         let isSearchByDomain = false;
         if (isDomain(searchTerm)) {
-          const workspaceDomain = await WorkspaceHasDomain.findOne({
+          const workspaceDomain = await WorkspaceHasDomainModel.findOne({
             where: { domain: searchTerm },
           });
 
@@ -236,13 +223,13 @@ async function handler(
         limit = 100;
       }
 
-      const where: FindOptions<Workspace>["where"] = conditions.length
+      const where: FindOptions<WorkspaceModel>["where"] = conditions.length
         ? {
             [Op.and]: conditions,
           }
         : {};
 
-      const workspaces = await Workspace.findAll({
+      const workspaces = await WorkspaceModel.findAll({
         where,
         limit,
         include: [
@@ -327,8 +314,8 @@ async function handler(
                 activeOnly: true,
               });
 
-            const verifiedDomain =
-              await getWorkspaceVerifiedDomain(lightWorkspace);
+            const verifiedDomains =
+              await getWorkspaceVerifiedDomains(lightWorkspace);
 
             return {
               ...lightWorkspace,
@@ -337,7 +324,7 @@ async function handler(
               adminEmail: firstAdmin?.email ?? null,
               membersCount,
               dataSourcesCount,
-              workspaceDomain: verifiedDomain,
+              workspaceDomains: verifiedDomains,
             };
           })
         ),
@@ -354,4 +341,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForPoke(handler);

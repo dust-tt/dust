@@ -1,9 +1,9 @@
-import type { WhitelistableFeature } from "@dust-tt/types";
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { WhitelistableFeature } from "@app/types";
 
 export class FeatureFlag extends WorkspaceAwareModel<FeatureFlag> {
   declare createdAt: CreationOptional<Date>;

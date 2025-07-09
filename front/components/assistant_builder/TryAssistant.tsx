@@ -1,16 +1,3 @@
-import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  ConversationType,
-  LightAgentConfigurationType,
-  MentionType,
-  ModelConfigurationType,
-  Result,
-  UploadedContentFragment,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -21,131 +8,148 @@ import {
 import { getDefaultAvatarUrlForPreview } from "@app/components/assistant_builder/avatar_picker/utils";
 import { submitAssistantBuilderForm } from "@app/components/assistant_builder/submitAssistantBuilderForm";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
-import { debounce } from "@app/lib/utils/debounce";
+import type {
+  AgentMention,
+  ContentFragmentsType,
+  ConversationType,
+  LightAgentConfigurationType,
+  MentionType,
+  Result,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
+
+interface UsePreviewAssistantProps {
+  owner: WorkspaceType;
+  builderState: AssistantBuilderState;
+}
 
 export function usePreviewAssistant({
   owner,
   builderState,
-  isPreviewOpened,
-  reasoningModels,
-}: {
-  owner: WorkspaceType;
-  builderState: AssistantBuilderState;
-  isPreviewOpened: boolean;
-  reasoningModels: ModelConfigurationType[];
-}): {
-  shouldAnimate: boolean;
-  isFading: boolean; // Add isFading to the return type
-  draftAssistant: LightAgentConfigurationType | null;
-} {
-  const animationLength = 1000;
+}: UsePreviewAssistantProps) {
   const [draftAssistant, setDraftAssistant] =
-    useState<LightAgentConfigurationType | null>();
-  const [animateDrawer, setAnimateDrawer] = useState(false);
-  const [isFading, setIsFading] = useState(false);
-  const drawerAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
+    useState<LightAgentConfigurationType | null>(null);
+  const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(false);
+  const [draftCreationFailed, setDraftCreationFailed] = useState(false);
+
   const sendNotification = useSendNotification();
+  const lastBuilderStateRef = useRef<AssistantBuilderState>(builderState);
+  const nameDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Some state to keep track of the previous builderState
-  const previousBuilderState = useRef<AssistantBuilderState>(builderState);
-  const [hasChanged, setHasChanged] = useState(false);
+  const createDraftAgent =
+    useCallback(async (): Promise<LightAgentConfigurationType | null> => {
+      if (
+        draftAssistant &&
+        isEqual(lastBuilderStateRef.current, builderState)
+      ) {
+        return draftAssistant;
+      }
 
-  const animate = () => {
-    if (drawerAnimationTimeoutRef.current) {
-      clearTimeout(drawerAnimationTimeoutRef.current);
-      drawerAnimationTimeoutRef.current = null;
-    }
-    setAnimateDrawer(true);
-    setIsFading(true); // Start fading conversation
-    drawerAnimationTimeoutRef.current = setTimeout(() => {
-      setAnimateDrawer(false);
-      setIsFading(false); // Stop fading
-    }, animationLength);
-  };
+      setIsSavingDraftAgent(true);
+      setDraftCreationFailed(false);
+
+      const aRes = await submitAssistantBuilderForm({
+        owner,
+        builderState: {
+          ...builderState,
+          description: "Draft Agent",
+          avatarUrl: builderState.avatarUrl ?? getDefaultAvatarUrlForPreview(),
+          scope: "hidden",
+        },
+        agentConfigurationId: null,
+        slackData: {
+          provider: "slack_bot",
+          selectedSlackChannels: [],
+          slackChannelsLinkedWithAgent: [],
+        },
+        isDraft: true,
+      });
+
+      if (!aRes.isOk()) {
+        sendNotification({
+          title: "Error saving Draft Agent",
+          description: aRes.error.message,
+          type: "error",
+        });
+        setIsSavingDraftAgent(false);
+        setDraftCreationFailed(true);
+        return null;
+      }
+
+      setDraftAssistant(aRes.value);
+      lastBuilderStateRef.current = builderState;
+      setIsSavingDraftAgent(false);
+
+      return aRes.value;
+    }, [draftAssistant, owner, builderState, sendNotification]);
 
   useEffect(() => {
-    if (!isEqual(previousBuilderState.current, builderState)) {
-      setHasChanged(true);
-      previousBuilderState.current = builderState;
-    }
-  }, [builderState]);
+    const createDraftAgentIfNeeded = async () => {
+      const hasContent =
+        builderState.instructions?.trim() || builderState.actions.length > 0;
 
-  const submit = useCallback(async () => {
-    if (!isPreviewOpened) {
-      // Preview is not opened, no need to submit
-      return;
-    }
-    if (draftAssistant && !hasChanged) {
-      // No changes since the last submission
-      return;
-    }
+      if (
+        hasContent &&
+        !draftAssistant &&
+        !isSavingDraftAgent &&
+        !draftCreationFailed
+      ) {
+        await createDraftAgent();
+      } else if (!hasContent) {
+        setIsSavingDraftAgent(false);
+        setDraftCreationFailed(false);
+      }
+    };
 
-    const aRes = await submitAssistantBuilderForm({
-      owner,
-      builderState: {
-        handle: builderState.handle,
-        description: "Draft Agent",
-        instructions: builderState.instructions,
-        avatarUrl: builderState.avatarUrl ?? getDefaultAvatarUrlForPreview(),
-        scope: "private",
-        generationSettings: builderState.generationSettings,
-        actions: builderState.actions,
-        maxStepsPerRun: builderState.maxStepsPerRun,
-        visualizationEnabled: builderState.visualizationEnabled,
-        templateId: builderState.templateId,
-      },
-      agentConfigurationId: null,
-      slackData: {
-        selectedSlackChannels: [],
-        slackChannelsLinkedWithAgent: [],
-      },
-      isDraft: true,
-      reasoningModels,
-    });
-
-    if (!aRes.isOk()) {
-      sendNotification({
-        title: "Error saving Draft Agent",
-        description: aRes.error.message,
-        type: "error",
-      });
-      return;
-    }
-
-    animate();
-
-    // Use setTimeout to delay the execution of setDraftAssistant by 500 milliseconds
-    setTimeout(() => {
-      setDraftAssistant(aRes.value);
-      setHasChanged(false);
-    }, animationLength / 2);
+    void createDraftAgentIfNeeded();
   }, [
-    isPreviewOpened,
-    draftAssistant,
-    hasChanged,
-    owner,
-    builderState.handle,
     builderState.instructions,
-    builderState.avatarUrl,
-    builderState.generationSettings,
-    builderState.actions,
-    builderState.maxStepsPerRun,
-    builderState.templateId,
-    builderState.visualizationEnabled,
-    reasoningModels,
-    sendNotification,
+    builderState.actions.length,
+    draftAssistant,
+    isSavingDraftAgent,
+    draftCreationFailed,
+    createDraftAgent,
   ]);
 
   useEffect(() => {
-    debounce(debounceHandle, submit, 1500);
-  }, [submit]);
+    if (!isEqual(lastBuilderStateRef.current, builderState)) {
+      setDraftCreationFailed(false);
+    }
+  }, [builderState]);
+
+  // Debounced draft creation for assistant name changes
+  useEffect(() => {
+    const previousHandle = lastBuilderStateRef.current.handle;
+    const currentHandle = builderState.handle;
+
+    // Only trigger debounced creation if handle changed and we have content
+    if (previousHandle !== currentHandle && currentHandle?.trim()) {
+      if (nameDebounceTimeoutRef.current) {
+        clearTimeout(nameDebounceTimeoutRef.current);
+      }
+
+      nameDebounceTimeoutRef.current = setTimeout(() => {
+        void createDraftAgent();
+      }, 1000);
+    }
+  }, [builderState.handle, createDraftAgent]);
+
+  useEffect(() => {
+    return () => {
+      if (nameDebounceTimeoutRef.current) {
+        clearTimeout(nameDebounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return {
-    shouldAnimate: animateDrawer,
-    isFading,
-    draftAssistant: draftAssistant ?? null,
+    draftAssistant,
+    isSavingDraftAgent,
+    createDraftAgent,
   };
 }
 
@@ -154,11 +158,13 @@ export function useTryAssistantCore({
   user,
   assistant,
   openWithConversation,
+  createDraftAgent,
 }: {
   owner: WorkspaceType;
   user: UserType | null;
   openWithConversation?: ConversationType;
   assistant: LightAgentConfigurationType | null;
+  createDraftAgent?: () => Promise<LightAgentConfigurationType | null>;
 }) {
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([
     { configurationId: assistant?.sId as string },
@@ -171,7 +177,7 @@ export function useTryAssistantCore({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    contentFragments: ContentFragmentsType
   ): Promise<Result<undefined, DustError>> => {
     if (!user) {
       return new Err({
@@ -180,6 +186,39 @@ export function useTryAssistantCore({
         message: "No user found",
       });
     }
+
+    // Create or update draft agent before submitting message if createDraftAgent is provided
+    let currentAssistant = assistant;
+    if (createDraftAgent) {
+      try {
+        currentAssistant = await createDraftAgent();
+        if (!currentAssistant) {
+          return new Err({
+            code: "internal_error",
+            name: "Draft Agent Creation Failed",
+            message: "Failed to create draft agent before submitting message",
+          });
+        }
+
+        // Update sticky mentions with the newly created draft agent
+        setStickyMentions([{ configurationId: currentAssistant.sId }]);
+
+        // Update mentions in the message data to use the newly created draft agent
+        const updatedMentions = mentions.map((mention) =>
+          mention.configurationId === assistant?.sId && currentAssistant?.sId
+            ? { ...mention, configurationId: currentAssistant.sId }
+            : mention
+        );
+        mentions = updatedMentions;
+      } catch (error) {
+        return new Err({
+          code: "internal_error",
+          name: "Draft Agent Creation Failed",
+          message: "Failed to create draft agent before submitting message",
+        });
+      }
+    }
+
     const messageData = { input, mentions, contentFragments };
     if (!conversation) {
       const result = await createConversationWithMessage({
@@ -187,7 +226,7 @@ export function useTryAssistantCore({
         user,
         messageData,
         visibility: "test",
-        title: `Trying @${assistant?.name}`,
+        title: `Trying @${currentAssistant?.name}`,
       });
       if (result.isOk()) {
         setConversation(result.value);

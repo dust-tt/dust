@@ -1,5 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { assertNever, ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import type Stripe from "stripe";
@@ -15,16 +13,16 @@ import {
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
   getStripeClient,
 } from "@app/lib/plans/stripe";
-import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -33,6 +31,9 @@ import {
   launchScheduleWorkspaceScrubWorkflow,
   terminateScheduleWorkspaceScrubWorkflow,
 } from "@app/temporal/scrub_workspace/client";
+import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever, ConnectorsAPI, removeNulls } from "@app/types";
 
 export type GetResponseBody = {
   success: boolean;
@@ -94,7 +95,7 @@ async function handler(
 
       logger.info(
         { sig, stripeError: false, event },
-        "Processing Strip event."
+        "Processing Stripe event."
       );
 
       let subscription;
@@ -147,7 +148,7 @@ async function handler(
               throw new Error("Missing required data in event.");
             }
 
-            const workspace = await Workspace.findOne({
+            const workspace = await WorkspaceModel.findOne({
               where: { sId: workspaceId },
             });
             if (!workspace) {
@@ -265,6 +266,11 @@ async function handler(
             await unpauseAllConnectorsAndCancelScrub(
               await Authenticator.internalAdminForWorkspace(workspace.sId)
             );
+
+            await launchWorkOSWorkspaceSubscriptionCreatedWorkflow({
+              workspaceId,
+            });
+
             return res.status(200).json({ success: true });
           } catch (error) {
             logger.error(
@@ -305,7 +311,7 @@ async function handler(
           // Setting subscription payment status to succeeded
           subscription = await Subscription.findOne({
             where: { stripeSubscriptionId: invoice.subscription },
-            include: [Workspace],
+            include: [WorkspaceModel],
           });
           if (!subscription) {
             logger.warn(
@@ -348,7 +354,7 @@ async function handler(
           // Logging that we have a failed payment
           subscription = await Subscription.findOne({
             where: { stripeSubscriptionId: invoice.subscription },
-            include: [Workspace],
+            include: [WorkspaceModel],
           });
           if (!subscription) {
             logger.warn(
@@ -450,6 +456,39 @@ async function handler(
           if (!previousAttributes) {
             break;
           } // should not happen by definition of the subscription.updated event
+
+          if (stripeSubscription.status === "trialing") {
+            // We check if the trialing subscription is being canceled.
+            if (
+              stripeSubscription.cancel_at_period_end &&
+              stripeSubscription.cancel_at
+            ) {
+              const endDate = new Date(stripeSubscription.cancel_at * 1000);
+              const subscription = await Subscription.findOne({
+                where: { stripeSubscriptionId: stripeSubscription.id },
+                include: [WorkspaceModel],
+              });
+              if (!subscription) {
+                logger.warn(
+                  {
+                    event,
+                    stripeSubscriptionId: stripeSubscription.id,
+                  },
+                  "[Stripe Webhook] Subscription not found."
+                );
+                // We return a 200 here to handle multiple regions, DD will watch
+                // the warnings and create an alert if this log appears in all regions.
+                return res.status(200).json({ success: true });
+              }
+              await subscription.update({
+                endDate,
+                // If the subscription is canceled, we set the requestCancelAt date to now.
+                // If the subscription is reactivated, we unset the requestCancelAt date.
+                requestCancelAt: endDate ? now : null,
+              });
+            }
+          }
+
           if (
             // The subscription is canceled (but not yet ended) or reactivated
             stripeSubscription.status === "active" &&
@@ -464,7 +503,7 @@ async function handler(
             // get subscription
             const subscription = await Subscription.findOne({
               where: { stripeSubscriptionId: stripeSubscription.id },
-              include: [Workspace],
+              include: [WorkspaceModel],
             });
             if (!subscription) {
               logger.warn(
@@ -608,7 +647,7 @@ async function handler(
 
           const matchingSubscription = await Subscription.findOne({
             where: { stripeSubscriptionId: stripeSubscription.id },
-            include: [Workspace],
+            include: [WorkspaceModel],
           });
 
           if (!matchingSubscription) {
@@ -688,7 +727,7 @@ async function handler(
 
           const trialingSubscription = await Subscription.findOne({
             where: { stripeSubscriptionId: stripeSubscription.id },
-            include: [Workspace],
+            include: [WorkspaceModel],
           });
 
           if (!trialingSubscription) {
@@ -704,7 +743,7 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          await maybeCancelInactiveTrials(
+          await SubscriptionResource.maybeCancelInactiveTrials(
             await Authenticator.internalAdminForWorkspace(
               trialingSubscription.workspace.sId
             ),

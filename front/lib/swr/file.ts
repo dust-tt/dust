@@ -1,18 +1,23 @@
-import { useSendNotification } from "@dust-tt/sparkle";
-import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
 import type { SWRConfiguration } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { getErrorFromResponse, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   UpsertFileToDataSourceRequestBody,
   UpsertFileToDataSourceResponseBody,
 } from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
+import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,
   fileId: string
 ) => `/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
+
+export const getProcessedFileDownloadUrl = (
+  owner: LightWorkspaceType,
+  fileId: string
+) => `/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
 
 export function useFileProcessedContent(
   owner: LightWorkspaceType,
@@ -29,13 +34,20 @@ export function useFileProcessedContent(
     mutate,
   } = useSWRWithDefaults(
     isDisabled ? null : getFileProcessedUrl(owner, fileId),
-    // Stream fetcher -> don't try to parse the stream
-    // Wait for initial response to trigger swr error handling
+    // Stream fetcher -> don't try to parse the stream.
+    // Wait for initial response to trigger swr error handling.
     async (...args) => {
-      const response = await fetch(...args);
+      const response = await fetch(...args, { redirect: "manual" });
+
+      // File is not safe to display -> opaque redirect response. Return null.
+      if (response.type === "opaqueredirect") {
+        return null;
+      }
+
       if (!response.ok) {
         throw new Error(`Error reading the file content: ${response.status}`);
       }
+
       return response;
     },
     config
@@ -86,8 +98,8 @@ export function useUpsertFileAsDatasourceEntry(
 
       sendNotification({
         type: "success",
-        title: "File successfully uploaded",
-        description: "The file has been successfully uploaded.",
+        title: "File processing",
+        description: "Your file is processing and will appear shortly.",
       });
 
       const response: UpsertFileToDataSourceResponseBody = await res.json();

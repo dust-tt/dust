@@ -1,26 +1,16 @@
-import type { RetrievalDocumentType } from "@dust-tt/types";
-import {
-  getProviderFromRetrievedDocument,
-  getTitleFromRetrievedDocument,
-} from "@dust-tt/types";
+import { DocumentIcon } from "@dust-tt/sparkle";
 
-import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
-import { citationIconMap } from "@app/components/markdown/MarkdownCitation";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { isConnectorProvider } from "@app/types";
 
-export function makeDocumentCitation(
-  document: RetrievalDocumentType
-): MarkdownCitation {
-  const IconComponent =
-    citationIconMap[getProviderFromRetrievedDocument(document)];
-  return {
-    href: document.sourceUrl ?? undefined,
-    title: getTitleFromRetrievedDocument(document),
-    icon: <IconComponent />,
-  };
-}
-
-export function makeDocumentCitations(
-  documents: RetrievalDocumentType[]
-): MarkdownCitation[] {
-  return documents.map(makeDocumentCitation);
+// TODO: Move to another place.
+export function getDocumentIcon(provider: string | null | undefined) {
+  if (provider && isConnectorProvider(provider)) {
+    const IconComponent = getConnectorProviderLogoWithFallback({
+      provider,
+      fallback: DocumentIcon,
+    });
+    return IconComponent;
+  }
+  return DocumentIcon;
 }

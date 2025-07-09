@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   proxyActivities,
@@ -12,6 +11,7 @@ import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/te
 import { folderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import type * as activities from "@connectors/connectors/microsoft/temporal/activities";
 import type * as sync_status from "@connectors/lib/sync_status";
+import type { ModelId } from "@connectors/types";
 
 const {
   getRootNodesToSync,
@@ -87,7 +87,10 @@ export async function fullSyncWorkflow({
   nodeIdsToSync = uniq(nodeIdsToSync);
   nodeIdsToDelete = uniq(nodeIdsToDelete);
 
-  await populateDeltas(connectorId, nodeIdsToSync);
+  if (totalCount === 0) {
+    // Only populate deltas if we're starting a full sync, not for continueAsNew
+    await populateDeltas(connectorId, nodeIdsToSync);
+  }
 
   let nextPageLink: string | undefined = undefined;
 
@@ -202,14 +205,12 @@ export async function microsoftGarbageCollectionWorkflow({
 }: {
   connectorId: number;
 }) {
-  const rootNodeIds = await getRootNodesToSync(connectorId);
   const startGarbageCollectionTs = new Date().getTime();
   let idCursor: number | null = 0;
   while (idCursor !== null) {
     idCursor = await microsoftGarbageCollectionActivity({
       connectorId,
       idCursor,
-      rootNodeIds,
       startGarbageCollectionTs,
     });
     await sleep("30 seconds");

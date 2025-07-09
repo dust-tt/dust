@@ -313,11 +313,14 @@ impl Block for Chat {
                 if let Some(Value::String(s)) = v.get("openai_organization_id") {
                     extras["openai_organization_id"] = json!(s.clone());
                 }
-                if let Some(Value::String(s)) = v.get("response_format") {
+                if let Some(Value::Object(s)) = v.get("response_format") {
                     extras["response_format"] = json!(s.clone());
                 }
                 if let Some(Value::String(s)) = v.get("reasoning_effort") {
                     extras["reasoning_effort"] = json!(s.clone());
+                }
+                if let Some(Value::Object(s)) = v.get("anthropic_thinking") {
+                    extras["anthropic_thinking"] = json!(s.clone());
                 }
                 if let Some(Value::Array(a)) = v.get("anthropic_beta_flags") {
                     extras["anthropic_beta_flags"] = json!(a
@@ -491,6 +494,30 @@ impl Block for Chat {
                                                     "input_index": input_index,
                                                     "map": map,
                                                     "tokens": c,
+                                                },
+                                            }));
+                                        }
+                                        if s == "reasoning_tokens" {
+                                            let _ = sender.send(json!({
+                                                "type": s,
+                                                "content": {
+                                                    "block_type": "chat",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "tokens": c,
+                                                },
+                                            }));
+                                        }
+                                        if s == "reasoning_item" {
+                                            let _ = sender.send(json!({
+                                                "type": s,
+                                                "content": {
+                                                    "block_type": "chat",
+                                                    "block_name": block_name,
+                                                    "input_index": input_index,
+                                                    "map": map,
+                                                    "item": c,
                                                 },
                                             }));
                                         }

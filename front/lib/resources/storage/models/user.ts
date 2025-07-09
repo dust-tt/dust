@@ -1,16 +1,19 @@
-import type { UserProviderType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import type { UserProviderType } from "@app/types";
 
 export class UserModel extends BaseModel<UserModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare lastLoginAt: Date | null;
+
   declare sId: string;
   declare auth0Sub: string | null;
+  declare workOSUserId: string | null;
   declare provider: UserProviderType;
   declare providerId: string | null;
 
@@ -35,6 +38,11 @@ UserModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    lastLoginAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -50,6 +58,10 @@ UserModel.init(
     auth0Sub: {
       type: DataTypes.STRING,
       // TODO(2024-03-01 flav) Set to false once new login flow is released.
+      allowNull: true,
+    },
+    workOSUserId: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     username: {
@@ -89,6 +101,7 @@ UserModel.init(
       { fields: ["username"] },
       { fields: ["provider", "providerId"] },
       { fields: ["auth0Sub"], unique: true, concurrently: true },
+      { fields: ["workOSUserId"], unique: true, concurrently: true },
       { unique: true, fields: ["sId"] },
       { fields: ["email"] },
     ],

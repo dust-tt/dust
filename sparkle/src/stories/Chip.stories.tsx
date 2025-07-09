@@ -56,7 +56,7 @@ export const Basic: Story = {
   args: {
     label: "Example Chip",
     size: "sm",
-    color: "slate",
+    color: "primary",
     isBusy: true,
     onRemove: undefined,
   },
@@ -65,18 +65,106 @@ export const Basic: Story = {
 export const ThinkingChip = () => (
   <Chip
     size="sm"
-    color="slate"
-    label="
-      Thinking, Searching"
+    label="Thinking, Searching"
     isBusy
+    onClick={() => console.log()}
   />
 );
 
 export const RemovableChip = () => (
-  <Chip
-    size="sm"
-    color="slate"
-    label="Remove me"
-    onRemove={() => alert("Removed")}
-  />
+  <div className="s-space-x-2">
+    <Chip
+      size="xs"
+      color="golden"
+      label="Remove me"
+      onRemove={() => alert("Removed")}
+    />
+    <Chip
+      size="sm"
+      color="golden"
+      label="Remove me"
+      onRemove={() => alert("Removed")}
+    />
+  </div>
+);
+
+export const AllColors = () => (
+  <div className="s-flex s-flex-col s-gap-4">
+    <div className="s-flex s-flex-wrap s-gap-2">
+      <Chip size="sm" color="primary" label="Primary" />
+      <Chip size="sm" color="highlight" label="Highlight" />
+      <Chip size="sm" color="success" label="Success" />
+      <Chip size="sm" color="warning" label="Warning" />
+      <Chip size="sm" color="info" label="Info" />
+      <Chip size="sm" color="green" label="Green" />
+      <Chip size="sm" color="blue" label="Blue" />
+      <Chip size="sm" color="rose" label="Rose" />
+      <Chip size="sm" color="golden" label="Golden" />
+    </div>
+    <div className="s-flex s-flex-wrap s-gap-2">
+      <Chip
+        size="sm"
+        color="primary"
+        label="Primary"
+        onClick={() => alert("Clicked")}
+        onRemove={() => alert("Removed")}
+      />
+      <Chip
+        size="sm"
+        color="highlight"
+        label="Highlight"
+        onClick={() => alert("Clicked")}
+        onRemove={() => alert("Removed")}
+      />
+      <Chip
+        size="sm"
+        color="success"
+        label="Success"
+        onClick={() => alert("Clicked")}
+        onRemove={() => alert("Removed")}
+      />
+      <Chip
+        size="sm"
+        color="warning"
+        label="Warning"
+        onClick={() => alert("Clicked")}
+        onRemove={() => alert("Removed")}
+      />
+      <Chip
+        size="sm"
+        color="info"
+        label="Info"
+        onClick={() => alert("Clicked")}
+        onRemove={() => alert("Removed")}
+      />
+      <Chip
+        size="sm"
+        color="green"
+        label="Green"
+        onClick={() => alert("Clicked")}
+        onRemove={() => alert("Removed")}
+      />
+      <Chip
+        size="sm"
+        color="blue"
+        label="Blue"
+        onClick={() => alert("Clicked")}
+        onRemove={() => alert("Removed")}
+      />
+      <Chip
+        size="sm"
+        color="rose"
+        label="Rose"
+        onClick={() => alert("Clicked")}
+        onRemove={() => alert("Removed")}
+      />
+      <Chip
+        size="sm"
+        color="golden"
+        label="Golden"
+        onClick={() => alert("Clicked")}
+        onRemove={() => alert("Removed")}
+      />
+    </div>
+  </div>
 );

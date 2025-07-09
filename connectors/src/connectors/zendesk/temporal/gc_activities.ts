@@ -1,6 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { getZendeskGarbageCollectionWorkflowId } from "@dust-tt/types";
-
 import {
   getArticleInternalId,
   getCategoryInternalId,
@@ -29,6 +26,8 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
+import { getZendeskGarbageCollectionWorkflowId } from "@connectors/types";
 
 /**
  * Retrieves the IDs of the Brands whose tickets are to be deleted.
@@ -155,9 +154,6 @@ export async function removeMissingArticleBatchActivity({
     accessToken,
     subdomain,
   });
-  if (!brandSubdomain) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
-  }
 
   // not deleting in batch for now, assuming we won't have that many articles to delete at once
   await concurrentExecutor(

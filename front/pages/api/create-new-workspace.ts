@@ -1,13 +1,13 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import { createAndLogMembership } from "@app/lib/api/signup";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createWorkspace } from "@app/lib/iam/workspaces";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
-import { createAndLogMembership } from "@app/pages/api/login";
+import type { WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -63,6 +63,7 @@ async function handler(
     user: u,
     workspace,
     role: "admin",
+    origin: "invited",
   });
 
   res.status(200).json({ sId: workspace.sId });

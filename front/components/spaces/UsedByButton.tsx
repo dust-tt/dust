@@ -5,9 +5,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   RobotIcon,
-  ScrollArea,
 } from "@dust-tt/sparkle";
-import type { DataSourceWithAgentsUsageType } from "@dust-tt/types";
+
+import type { DataSourceWithAgentsUsageType } from "@app/types";
 
 export const UsedByButton = ({
   usage,
@@ -36,19 +36,17 @@ export const UsedByButton = ({
           label={`${usage.count}`}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="max-w-[300px]">
-        <ScrollArea className="border-1 h-[130px]">
-          {usage.agentNames.map((name) => (
-            <DropdownMenuItem
-              key={`assistant-picker-${name}`}
-              label={name}
-              onClick={(e) => {
-                e.stopPropagation();
-                onItemClick(name);
-              }}
-            />
-          ))}
-        </ScrollArea>
+      <DropdownMenuContent className="max-w-48">
+        {usage.agents.map((agent) => (
+          <DropdownMenuItem
+            key={`assistant-picker-${agent.sId}`}
+            label={agent.name}
+            onClick={(e) => {
+              e.stopPropagation();
+              onItemClick(agent.sId);
+            }}
+          />
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

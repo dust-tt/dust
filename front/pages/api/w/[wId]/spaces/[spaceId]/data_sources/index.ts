@@ -1,23 +1,3 @@
-import type {
-  DataSourceType,
-  DataSourceViewType,
-  PlanType,
-  WithAPIErrorResponse,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  CONNECTOR_PROVIDERS,
-  ConnectorConfigurationTypeSchema,
-  ConnectorsAPI,
-  CoreAPI,
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
-  dustManagedCredentials,
-  EMBEDDING_CONFIGS,
-  ioTsParsePayload,
-  sendUserOperationMessage,
-  WebCrawlerConfigurationTypeSchema,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -26,9 +6,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { createDataSourceWithoutProvider } from "@app/lib/api/data_sources";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { getOrCreateSystemApiKey } from "@app/lib/auth";
+import { getFeatureFlags, getOrCreateSystemApiKey } from "@app/lib/auth";
 import {
   getDefaultDataSourceDescription,
   getDefaultDataSourceName,
@@ -44,6 +25,26 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  DataSourceType,
+  DataSourceViewType,
+  PlanType,
+  WithAPIErrorResponse,
+  WorkspaceType,
+} from "@app/types";
+import {
+  CONNECTOR_PROVIDERS,
+  ConnectorConfigurationTypeSchema,
+  ConnectorsAPI,
+  CoreAPI,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
+  DEFAULT_QDRANT_CLUSTER,
+  dustManagedCredentials,
+  EMBEDDING_CONFIGS,
+  ioTsParsePayload,
+  sendUserOperationMessage,
+  WebCrawlerConfigurationTypeSchema,
+} from "@app/types";
 
 // Sorcery: Create a union type with at least two elements to satisfy t.union
 function getConnectorProviderCodec(): t.Mixed {
@@ -239,10 +240,13 @@ const handleDataSourceWithProvider = async ({
     });
   }
 
+  const featureFlags = await getFeatureFlags(owner);
+
   // Checking that the provider is allowed for the workspace plan
   const isDataSourceAllowedInPlan = isConnectorProviderAllowedForPlan(
     plan,
-    provider
+    provider,
+    featureFlags
   );
   if (!isDataSourceAllowedInPlan) {
     return apiError(req, res, {
@@ -291,11 +295,12 @@ const handleDataSourceWithProvider = async ({
   let dataSourceDescription = getDefaultDataSourceDescription(provider, suffix);
 
   let { configuration } = body;
-  if (provider === "slack") {
+  if (provider === "slack" || provider === "slack_bot") {
     configuration = {
       botEnabled: true,
       whitelistedDomains: undefined,
       autoReadChannelPatterns: [],
+      restrictedSpaceAgentsEnabled: true,
     };
   }
 
@@ -421,6 +426,22 @@ const handleDataSourceWithProvider = async ({
     config.getConnectorsAPIConfig(),
     logger
   );
+
+  if (connectionId) {
+    const checkConnectionOwnershipRes = await checkConnectionOwnership(
+      auth,
+      connectionId
+    );
+    if (checkConnectionOwnershipRes.isErr()) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Failed to get the access token for the connector.",
+        },
+      });
+    }
+  }
 
   const connectorsRes = await connectorsAPI.createConnector({
     provider,

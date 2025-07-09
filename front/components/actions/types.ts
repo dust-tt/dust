@@ -1,22 +1,14 @@
-import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
-import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
-
-import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
-import { ConversationIncludeFileActionDetails } from "@app/components/actions/conversation/include_file/IncludeFileActionDetails";
-import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
-import { GithubCreateIssueActionDetails } from "@app/components/actions/github/GithubCreateIssueActionDetails";
-import { GithubGetPullRequestActionDetails } from "@app/components/actions/github/GithubGetPullRequestActionDetails";
-import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
-import { ReasoningActionDetails } from "@app/components/actions/reasoning/ReasoningActionDetails";
-import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
-import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
-import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
+import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
+import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { AgentActionType, LightWorkspaceType } from "@app/types";
+import { ACTION_RUNNING_LABELS } from "@app/types";
 
 export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType,
 > {
   action: T;
   owner: LightWorkspaceType;
+  lastNotification: ProgressNotificationContentType | null;
   defaultOpen: boolean;
 }
 
@@ -32,49 +24,9 @@ type ActionSpecifications = {
 };
 
 const actionsSpecification: ActionSpecifications = {
-  dust_app_run_action: {
-    detailsComponent: DustAppRunActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.dust_app_run_action,
-  },
-  process_action: {
-    detailsComponent: ProcessActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.process_action,
-  },
-  retrieval_action: {
-    detailsComponent: RetrievalActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.retrieval_action,
-  },
-  tables_query_action: {
-    detailsComponent: TablesQueryActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.tables_query_action,
-  },
-  websearch_action: {
-    detailsComponent: WebsearchActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.websearch_action,
-  },
-  browse_action: {
-    detailsComponent: BrowseActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.browse_action,
-  },
-  conversation_list_files_action: {
-    detailsComponent: () => null,
-    runningLabel: ACTION_RUNNING_LABELS.conversation_list_files_action,
-  },
-  conversation_include_file_action: {
-    detailsComponent: ConversationIncludeFileActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.conversation_include_file_action,
-  },
-  github_get_pull_request_action: {
-    detailsComponent: GithubGetPullRequestActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.github_get_pull_request_action,
-  },
-  github_create_issue_action: {
-    detailsComponent: GithubCreateIssueActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.github_create_issue_action,
-  },
-  reasoning_action: {
-    detailsComponent: ReasoningActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.reasoning_action,
+  tool_action: {
+    detailsComponent: MCPActionDetails,
+    runningLabel: ACTION_RUNNING_LABELS.tool_action,
   },
 };
 

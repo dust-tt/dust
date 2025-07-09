@@ -1,9 +1,9 @@
-import type { CrawlingFrequency, DepthOption } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
+import type { CrawlingFrequency, DepthOption } from "@connectors/types";
 
 export class WebCrawlerConfigurationModel extends ConnectorBaseModel<WebCrawlerConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -14,6 +14,7 @@ export class WebCrawlerConfigurationModel extends ConnectorBaseModel<WebCrawlerC
   declare depth: DepthOption;
   declare crawlFrequency: CrawlingFrequency;
   declare lastCrawledAt: Date | null;
+  declare crawlId: string | null;
 }
 
 WebCrawlerConfigurationModel.init(
@@ -53,6 +54,11 @@ WebCrawlerConfigurationModel.init(
     lastCrawledAt: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    crawlId: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

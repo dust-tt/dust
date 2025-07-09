@@ -1,19 +1,16 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import {
-  CreateTemplateFormSchema,
-  isTemplateTagCodeArray,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
-import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { AssistantTemplateListType } from "@app/pages/api/templates";
+import type { WithAPIErrorResponse } from "@app/types";
+import { CreateTemplateFormSchema, isTemplateTagCodeArray } from "@app/types";
 
 export interface CreateTemplateResponseBody {
   success: boolean;
@@ -124,4 +121,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForPoke(handler);

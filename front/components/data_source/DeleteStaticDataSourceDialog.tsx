@@ -7,11 +7,11 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo, useState } from "react";
 
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { useDataSourceUsage } from "@app/lib/swr/data_sources";
+import type { DataSourceType, LightWorkspaceType } from "@app/types";
 
 interface DeleteStaticDataSourceDialogProps {
   owner: LightWorkspaceType;
@@ -53,7 +53,7 @@ export function DeleteStaticDataSourceDialog({
       return "No usage data available.";
     }
     if (usage.count > 0) {
-      return `${usage.count} agents currently use "${name}": ${usage.agentNames.join(", ")}.`;
+      return `${usage.count} agents currently use "${name}": ${usage.agents.map((a) => a.name).join(", ")}.`;
     }
     return `No agents are using "${name}".`;
   }, [isUsageLoading, isUsageError, usage, name]);

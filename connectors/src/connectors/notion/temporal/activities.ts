@@ -1,15 +1,4 @@
-import type {
-  CoreAPIDataSourceDocumentSection,
-  ModelId,
-  PageObjectProperties,
-  ParsedNotionBlock,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  getNotionDatabaseTableId,
-  MIME_TYPES,
-  slugify,
-} from "@dust-tt/types";
+import { assertNever } from "@dust-tt/client";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
@@ -43,12 +32,16 @@ import {
   updateAllParentsFields,
 } from "@connectors/connectors/notion/lib/parents";
 import { getTagsForPage } from "@connectors/connectors/notion/lib/tags";
-import { DATABASE_TO_CSV_MAX_SIZE } from "@connectors/connectors/notion/temporal/config";
+import {
+  DATABASE_PROCESSING_INTERVAL_MS,
+  DATABASE_TO_CSV_MAX_SIZE,
+} from "@connectors/connectors/notion/temporal/config";
 import {
   dataSourceConfigFromConnector,
   dataSourceInfoFromConnector,
 } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   deleteDataSourceDocument,
   deleteDataSourceTable,
@@ -60,6 +53,7 @@ import {
   renderDocumentTitleAndContent,
   renderPrefixSection,
   sectionLength,
+  truncateSection,
   updateDataSourceDocumentParents,
   updateDataSourceTableParents,
   upsertDataSourceDocument,
@@ -79,7 +73,17 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type {
+  PageObjectProperties,
+  ParsedNotionBlock,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  getNotionDatabaseTableId,
+  INTERNAL_MIME_TYPES,
+  slugify,
+} from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -89,7 +93,6 @@ export async function fetchDatabaseChildPages({
   cursor,
   loggerArgs,
   returnUpToDatePageIdsForExistingDatabase,
-  runTimestamp,
   storeInCache,
   topLevelWorkflowId,
 }: {
@@ -99,20 +102,8 @@ export async function fetchDatabaseChildPages({
   loggerArgs: Record<string, string | number>;
   storeInCache: boolean;
   topLevelWorkflowId: string;
-} & (
-  | {
-      // If returnUpToDatePageIdsForExistingDatabase is true, we will return all pageIds in the database.
-      // In this case, we do not care about the runTimestamp.
-      returnUpToDatePageIdsForExistingDatabase: true;
-      runTimestamp?: undefined | number;
-    }
-  | {
-      // If returnUpToDatePageIdsForExistingDatabase is false, we will return only the pageIds that have been
-      // updated since their lastSeenTs, unless this is the first run we see this database.
-      returnUpToDatePageIdsForExistingDatabase: false;
-      runTimestamp: number;
-    }
-)): Promise<{
+  returnUpToDatePageIdsForExistingDatabase: boolean;
+}): Promise<{
   pageIds: string[];
   nextCursor: string | null;
 }> {
@@ -214,19 +205,21 @@ export async function fetchDatabaseChildPages({
     });
   }
 
+  const isExistingDatabase = notionDbModel && notionDbModel.lastUpsertedRunTs;
+
   if (
+    // If `returnUpToDatePageIdsForExistingDatabase` is true, we always return all the pages.
     returnUpToDatePageIdsForExistingDatabase ||
     // If the database is new (either we never seen it before, or the first time we saw it was
     // during this run), we return all the pages.
-    !notionDbModel ||
-    !notionDbModel.firstSeenTs ||
-    notionDbModel.firstSeenTs.getTime() === runTimestamp
+    isExistingDatabase
   ) {
     return {
       pageIds: pages.map((p) => p.id),
       nextCursor,
     };
   }
+  // Otherwise, we filter-out pages that are already up to date.
 
   // We exclude pages that we have already seen since their lastEditedTs we recieved from
   // getPagesEditedSince.
@@ -443,13 +436,21 @@ export async function getPagesAndDatabasesToSync({
   };
 }
 
-export async function upsertDatabaseInConnectorsDb(
-  connectorId: ModelId,
-  databaseId: string,
-  runTimestamp: number,
-  topLevelWorkflowId: string,
-  loggerArgs: Record<string, string | number>
-): Promise<void> {
+export async function upsertDatabaseInConnectorsDb({
+  connectorId,
+  databaseId,
+  runTimestamp,
+  topLevelWorkflowId,
+  requestQueuingForUpsertToCore,
+  loggerArgs,
+}: {
+  connectorId: ModelId;
+  databaseId: string;
+  runTimestamp: number;
+  topLevelWorkflowId: string;
+  requestQueuingForUpsertToCore: boolean;
+  loggerArgs: Record<string, string | number>;
+}): Promise<void> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error("Could not find connector");
@@ -533,6 +534,7 @@ export async function upsertDatabaseInConnectorsDb(
     title: parsedDb ? parsedDb.title : null,
     notionUrl: parsedDb ? parsedDb.url : null,
     lastCreatedOrMovedRunTs: createdOrMoved ? runTimestamp : undefined,
+    requestQueuingForUpsertToCore,
   });
 }
 
@@ -1277,6 +1279,70 @@ export async function markParentsAsUpdated({
   });
 }
 
+export async function getAllOrphanedResources({
+  connectorId,
+  cursor = null,
+}: {
+  connectorId: ModelId;
+  cursor: {
+    pageCursor: ModelId | null;
+    databaseCursor: ModelId | null;
+  } | null;
+}): Promise<{
+  pageIds: string[];
+  databaseIds: string[];
+  nextCursor: {
+    pageCursor: ModelId | null;
+    databaseCursor: ModelId | null;
+  } | null;
+}> {
+  const pages =
+    cursor && !cursor.pageCursor
+      ? ([] as NotionPage[])
+      : await NotionPage.findAll({
+          where: {
+            connectorId,
+            parentType: "unknown",
+            id: {
+              [Op.gt]: cursor?.pageCursor ?? 0,
+            },
+          },
+          attributes: ["notionPageId", "id"],
+          order: [["id", "ASC"]],
+          limit: 128,
+        });
+
+  const databases =
+    cursor && !cursor.databaseCursor
+      ? ([] as NotionDatabase[])
+      : await NotionDatabase.findAll({
+          where: {
+            connectorId,
+            parentType: "unknown",
+            id: {
+              [Op.gt]: cursor?.databaseCursor ?? 0,
+            },
+          },
+          attributes: ["notionDatabaseId", "id"],
+          order: [["id", "ASC"]],
+          limit: 128,
+        });
+
+  const nextCursor = {
+    pageCursor: pages.at(-1)?.id ?? null,
+    databaseCursor: databases.at(-1)?.id ?? null,
+  };
+
+  return {
+    pageIds: pages.map((page) => page.notionPageId),
+    databaseIds: databases.map((db) => db.notionDatabaseId),
+    nextCursor:
+      nextCursor.pageCursor !== null || nextCursor.databaseCursor !== null
+        ? nextCursor
+        : null,
+  };
+}
+
 export async function cachePage({
   connectorId,
   pageId,
@@ -1885,10 +1951,11 @@ export async function renderAndUpsertPageFromCache({
             parents: parents,
             parentId: parents[1] || null,
             title: parentDb.title ?? "Untitled Notion Database",
-            mimeType: MIME_TYPES.NOTION.DATABASE,
+            mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
             sourceUrl:
               parentDb.notionUrl ??
               `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
+            allowEmptySchema: true,
           })
         );
       } else {
@@ -1919,18 +1986,17 @@ export async function renderAndUpsertPageFromCache({
   }
 
   localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
-  const renderedPageSection = await renderPageSection({
+
+  let renderedPageSection = await renderPageSection({
     dsConfig,
     blocksByParentId,
   });
-  const documentLength = sectionLength(renderedPageSection);
 
   // add a newline to separate the page from the metadata above (title, author...)
   renderedPageSection.content = "\n";
 
   // Adding notion properties to the page rendering
   // We skip the title as it is added separately as prefix to the top-level document section.
-  let propertiesContentLength = 0;
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText)
   );
@@ -1940,7 +2006,6 @@ export async function renderAndUpsertPageFromCache({
     }
     const propertyValue = Array.isArray(p.value) ? p.value.join(", ") : p.value;
     const propertyContent = `$${p.key}: ${propertyValue}\n`;
-    propertiesContentLength += propertyContent.length;
     renderedPageSection.sections.unshift({
       prefix: null,
       content: propertyContent,
@@ -2036,92 +2101,90 @@ export async function renderAndUpsertPageFromCache({
     title = title.join(" ");
   }
 
-  let upsertTs: number | undefined = undefined;
-  let skipReason: string | null = null;
-
-  if (documentLength > MAX_DOCUMENT_TXT_LEN) {
-    localLogger.info(
+  const initialDocumentLength = sectionLength(renderedPageSection);
+  if (initialDocumentLength > MAX_DOCUMENT_TXT_LEN) {
+    localLogger.warn(
       {
-        renderedPageLength: documentLength,
+        renderedPageLength: initialDocumentLength,
         maxDocumentTxtLength: MAX_DOCUMENT_TXT_LEN,
       },
-      "notionRenderAndUpsertPageFromCache: Skipping page with too large body."
+      "notionRenderAndUpsertPageFromCache: Truncating page with too large body."
     );
-    skipReason = "body_too_large";
+
+    // Not skipping the page as we want to upsert the page to make sure that we preserve
+    // the node hierarchy. Instead, we truncate the page to the max length.
+    renderedPageSection = truncateSection(
+      renderedPageSection,
+      MAX_DOCUMENT_TXT_LEN
+    );
   }
+
+  const upsertTs: number = new Date().getTime();
 
   const createdAt = new Date(pageCacheEntry.createdTime);
   const updatedAt = new Date(pageCacheEntry.lastEditedTime);
 
-  if (documentLength === 0 && propertiesContentLength < 128) {
-    localLogger.info(
-      { propertiesContentLength },
-      "notionRenderAndUpsertPageFromCache: Not upserting page without body nor substantial properties."
-    );
-  } else if (!skipReason) {
-    upsertTs = new Date().getTime();
-    const documentId = `notion-${pageId}`;
-    localLogger.info(
-      "notionRenderAndUpsertPageFromCache: Fetching resource parents."
-    );
+  const documentId = `notion-${pageId}`;
+  localLogger.info(
+    "notionRenderAndUpsertPageFromCache: Fetching resource parents."
+  );
 
-    const parentPageOrDbIds = await getParents(
-      connectorId,
-      pageId,
-      [],
-      true,
-      runTimestamp.toString()
+  const parentPageOrDbIds = await getParents(
+    connectorId,
+    pageId,
+    [],
+    true,
+    runTimestamp.toString()
+  );
+  await heartbeat();
+
+  const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
+  if (parentIds.length === 1) {
+    const page = await getNotionPageFromConnectorsDb(connectorId, pageId);
+    localLogger.warn(
+      { parentIds, parentType: page?.parentType, parentId: page?.parentId },
+      "notionRenderAndUpsertPageFromCache: Page has no parent."
     );
-    await heartbeat();
+  }
 
-    const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
-    if (parentIds.length === 1) {
-      const page = await getNotionPageFromConnectorsDb(connectorId, pageId);
-      localLogger.warn(
-        { parentIds, parentType: page?.parentType, parentId: page?.parentId },
-        "notionRenderAndUpsertPageFromCache: Page has no parent."
-      );
-    }
+  const content = await renderDocumentTitleAndContent({
+    dataSourceConfig: dsConfig,
+    title: title ?? null,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+    author,
+    lastEditor,
+    content: renderedPageSection,
+  });
 
-    const content = await renderDocumentTitleAndContent({
-      dataSourceConfig: dsConfig,
-      title: title ?? null,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
+  localLogger.info(
+    "notionRenderAndUpsertPageFromCache: Upserting to Data Source."
+  );
+  await upsertDataSourceDocument({
+    dataSourceConfig: dsConfig,
+    documentId,
+    documentContent: content,
+    documentUrl: pageCacheEntry.url,
+    timestampMs: updatedAt.getTime(),
+    tags: getTagsForPage({
+      title,
       author,
       lastEditor,
-      content: renderedPageSection,
-    });
-
-    localLogger.info(
-      "notionRenderAndUpsertPageFromCache: Upserting to Data Source."
-    );
-    await upsertDataSourceDocument({
-      dataSourceConfig: dsConfig,
-      documentId,
-      documentContent: content,
-      documentUrl: pageCacheEntry.url,
-      timestampMs: updatedAt.getTime(),
-      tags: getTagsForPage({
-        title,
-        author,
-        lastEditor,
-        createdTime: createdAt.getTime(),
-        updatedTime: updatedAt.getTime(),
-        parsedProperties,
-        logger: localLogger,
-      }),
-      parents: parentIds,
-      parentId: parentIds[1] || null,
-      loggerArgs,
-      upsertContext: {
-        sync_type: isFullSync ? "batch" : "incremental",
-      },
-      title: title ?? "",
-      mimeType: MIME_TYPES.NOTION.PAGE,
-      async: true,
-    });
-  }
+      createdTime: createdAt.getTime(),
+      updatedTime: updatedAt.getTime(),
+      parsedProperties,
+      logger: localLogger,
+    }),
+    parents: parentIds,
+    parentId: parentIds[1] || null,
+    loggerArgs,
+    upsertContext: {
+      sync_type: isFullSync ? "batch" : "incremental",
+    },
+    title: title ?? "",
+    mimeType: INTERNAL_MIME_TYPES.NOTION.PAGE,
+    async: true,
+  });
 
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Saving page in connectors DB."
@@ -2135,7 +2198,7 @@ export async function renderAndUpsertPageFromCache({
     title,
     notionUrl: pageCacheEntry.url,
     lastUpsertedTs: upsertTs,
-    skipReason: skipReason ?? undefined,
+    skipReason: undefined,
     lastCreatedOrMovedRunTs: createdOrMoved ? runTimestamp : undefined,
   });
 
@@ -2505,6 +2568,8 @@ export async function upsertDatabaseStructuredDataFromCache({
     databaseId,
   });
 
+  localLogger.info("Start upserting Notion Database.");
+
   const dbModel = await NotionDatabase.findOne({
     where: {
       connectorId,
@@ -2609,15 +2674,17 @@ export async function upsertDatabaseStructuredDataFromCache({
       tableDescription,
       tableCsv: csv,
       loggerArgs,
-      // We overwrite the whole table since we just fetched all child pages.
+      // We always cache all the child pages of a DB while we iterate over them,
+      // so we can safely truncate the table.
       truncate: true,
       parents: parentIds,
       parentId: parentIds[1] || null,
       title: dbModel.title ?? "Untitled Notion Database",
-      mimeType: MIME_TYPES.NOTION.DATABASE,
+      mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
       sourceUrl:
         dbModel.notionUrl ??
         `https://www.notion.so/${dbModel.notionDatabaseId.replace(/-/g, "")}`,
+      allowEmptySchema: true,
     })
   );
 
@@ -2677,7 +2744,7 @@ export async function upsertDatabaseStructuredDataFromCache({
           sync_type: "batch",
         },
         title: databaseName,
-        mimeType: MIME_TYPES.NOTION.DATABASE,
+        mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
         async: true,
       });
     } else {
@@ -2689,6 +2756,8 @@ export async function upsertDatabaseStructuredDataFromCache({
       );
     }
   }
+
+  localLogger.info("Done upserting Notion Database.");
 
   await dbModel.update({ structuredDataUpsertedTs: upsertAt });
 }
@@ -2862,4 +2931,240 @@ export async function getParentPageOrDb({
     "Could not find page or database in Notion."
   );
   return null;
+}
+
+export async function maybeUpdateOrphaneResourcesParents({
+  connectorId,
+  resources,
+}: {
+  connectorId: ModelId;
+  resources: Array<{
+    type: "page" | "database";
+    notionId: string;
+  }>;
+}) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  const localLogger = logger.child({
+    connectorId,
+    workspaceId: connector.workspaceId,
+    dataSourceId: connector.dataSourceId,
+  });
+
+  for (const resource of resources) {
+    const iterationLogger = localLogger.child({
+      resourceId: resource.notionId,
+      resourceType: resource.type,
+    });
+
+    iterationLogger.info("Checking parent for resource.");
+
+    const parent = await getParentPageOrDb({
+      connectorId,
+      pageOrDbId: resource.notionId,
+    });
+
+    const parentObject =
+      parent?.parentType === "page"
+        ? await getNotionPageFromConnectorsDb(connectorId, parent.parentId)
+        : parent?.parentType === "database"
+          ? await getNotionDatabaseFromConnectorsDb(
+              connectorId,
+              parent.parentId
+            )
+          : parent?.parentType === "workspace"
+            ? {
+                parentId: "workspace" as const,
+                parentType: "workspace" as const,
+              }
+            : null;
+
+    if (!parent || !parentObject) {
+      // We don't have the parent in our DB.
+      iterationLogger.info(
+        {
+          parentId: parent?.parentId,
+          parentType: parent?.parentType,
+        },
+        "Parent not found in our DB."
+      );
+      continue;
+    }
+
+    iterationLogger.info(
+      {
+        parentId: parent.parentId,
+        parentType: parent.parentType,
+      },
+      "Parent found in our DB. Updating resource."
+    );
+
+    const updateParams = {
+      parentId: parent.parentId,
+      parentType: parent.parentType,
+      lastCreatedOrMovedRunTs: new Date(),
+    };
+
+    if (resource.type === "page") {
+      await NotionPage.update(updateParams, {
+        where: {
+          notionPageId: resource.notionId,
+          connectorId,
+        },
+      });
+    } else if (resource.type === "database") {
+      await NotionDatabase.update(updateParams, {
+        where: {
+          notionDatabaseId: resource.notionId,
+          connectorId,
+        },
+      });
+    }
+
+    iterationLogger.info("Updated parent for resource.");
+  }
+}
+
+export async function clearParentsLastUpdatedAt({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  const notionConnectorState = await NotionConnectorState.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!connector || !notionConnectorState) {
+    throw new Error("Could not find notion connector state");
+  }
+
+  logger.info(
+    {
+      connectorId,
+      workspaceId: connector.workspaceId,
+      dataSourceId: connector.dataSourceId,
+      provider: "notion",
+    },
+    "Clearing parents last updated at"
+  );
+
+  await notionConnectorState.update({ parentsLastUpdatedAt: null });
+}
+
+// Finds the next database to upsert for the connector.
+// Only considers databases that were requested to be upserted
+// (upsertRequestedRunTs is not null and greater than lastUpsertedRunTs).
+// Prioritizes databases never upserted.
+// Otherwise, prioritizes databases that were requested to be upserted first.
+// Returns null if all databases have been upserted in the last DATABASE_PROCESSING_INTERVAL_MS.
+export async function getNextDatabaseToUpsert({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<string | null> {
+  // We only consider databases that were requested to be upserted.
+
+  // Look if we have notion DBs that were never upserted.
+  // If so, return the oldest one.
+  let notionDatabases = await NotionDatabase.findAll({
+    where: {
+      connectorId,
+      lastUpsertedRunTs: {
+        [Op.is]: null,
+      },
+      upsertRequestedRunTs: {
+        [Op.not]: null,
+      },
+    },
+    order: [
+      ["upsertRequestedRunTs", "ASC"],
+      ["id", "ASC"],
+    ],
+    limit: 1,
+  });
+
+  if (notionDatabases.length) {
+    return notionDatabases[0]!.notionDatabaseId;
+  }
+
+  // Otherwise, look if we have notion DBs that were upserted more than DATABASE_PROCESSING_INTERVAL_MS ago.
+  // If so, return the oldest one.
+  notionDatabases = await NotionDatabase.findAll({
+    where: {
+      connectorId,
+      lastUpsertedRunTs: {
+        [Op.lt]: new Date(Date.now() - DATABASE_PROCESSING_INTERVAL_MS),
+      },
+      upsertRequestedRunTs: {
+        // Only consider if upsertRequestedRunTs is more recent than lastUpsertedRunTs.
+        [Op.and]: [
+          {
+            [Op.not]: null,
+          },
+          {
+            [Op.gt]: {
+              [Op.col]: "lastUpsertedRunTs",
+            },
+          },
+        ],
+      },
+    },
+    order: [
+      ["upsertRequestedRunTs", "ASC"],
+      ["id", "ASC"],
+    ],
+    limit: 1,
+  });
+
+  if (notionDatabases.length) {
+    return notionDatabases[0]!.notionDatabaseId;
+  }
+
+  // Otherwise, we don't update any DBs for now.
+  return null;
+}
+
+// Marks a database as upserted.
+export async function markDatabasesAsUpserted({
+  connectorId,
+  databaseIds,
+  runTimestamp,
+}: {
+  connectorId: ModelId;
+  databaseIds: string[];
+  runTimestamp: number;
+}): Promise<{ isNewDatabase: boolean; isMissing: boolean }> {
+  const db = await NotionDatabase.findOne({
+    where: {
+      connectorId,
+      notionDatabaseId: {
+        [Op.in]: databaseIds,
+      },
+    },
+  });
+
+  if (!db) {
+    return { isNewDatabase: false, isMissing: true };
+  }
+
+  await NotionDatabase.update(
+    {
+      lastUpsertedRunTs: new Date(runTimestamp),
+    },
+    {
+      where: {
+        connectorId,
+        notionDatabaseId: {
+          [Op.in]: databaseIds,
+        },
+      },
+    }
+  );
+
+  return { isNewDatabase: !db.lastUpsertedRunTs, isMissing: false };
 }

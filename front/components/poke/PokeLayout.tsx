@@ -1,3 +1,4 @@
+import Head from "next/head";
 import React from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
@@ -11,11 +12,16 @@ export interface PokeLayoutProps {
 
 export default function PokeLayout({
   children,
+  title,
 }: {
   children: React.ReactNode;
+  title: string;
 }) {
   return (
     <ThemeProvider>
+      <Head>
+        <title>{"Poke - " + title}</title>
+      </Head>
       <PokeLayoutContent>{children}</PokeLayoutContent>
     </ThemeProvider>
   );
@@ -29,7 +35,7 @@ const PokeLayoutContent = ({ children }: PokeLayoutContentProps) => {
   const { region } = usePokeRegion();
 
   return (
-    <div className="min-h-screen bg-structure-50 dark:bg-structure-50-night dark:text-white">
+    <div className="min-h-screen bg-muted-background dark:bg-muted-background-night dark:text-white">
       <PokeNavbar currentRegion={region} />
       <div className="flex flex-col p-6">{children}</div>
     </div>

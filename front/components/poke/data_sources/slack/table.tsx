@@ -1,8 +1,12 @@
 import { IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type { SlackAutoReadPattern, SpaceType } from "@dust-tt/types";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import type {
+  DataSourceType,
+  SlackAutoReadPattern,
+  SpaceType,
+} from "@app/types";
 
 function prepareSlackAutoReadPatternsForDisplay(
   patterns: SlackAutoReadPattern[],
@@ -66,19 +70,26 @@ function makeColumnsForSlackAutoReadPatterns(
 
 interface SlackAutoReadPatternsTableProps {
   autoReadPatterns: SlackAutoReadPattern[];
+  dataSource: DataSourceType;
   onDelete: (pattern: SlackAutoReadPattern) => Promise<void>;
   spaces: SpaceType[];
 }
 
 export function SlackAutoReadPatternsTable({
   autoReadPatterns,
+  dataSource,
   onDelete,
   spaces,
 }: SlackAutoReadPatternsTableProps) {
+  const tableTitle =
+    dataSource.connectorProvider === "slack"
+      ? "Slack Auto Read Patterns"
+      : "Slack Bot Auto Join Channels Patterns";
+
   return (
-    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-slate-100">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4">
-        <h2 className="text-md font-bold">Slack Auto Read Patterns :</h2>
+    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
+      <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
+        <h2 className="text-md font-bold">{tableTitle}</h2>
       </div>
       <div className="flex flex-grow flex-col justify-center p-4">
         <PokeDataTable

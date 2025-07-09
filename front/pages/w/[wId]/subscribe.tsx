@@ -1,11 +1,4 @@
-import {
-  BarHeader,
-  Button,
-  LockIcon,
-  Page,
-  useSendNotification,
-} from "@dust-tt/sparkle";
-import type { BillingPeriod, WorkspaceType } from "@dust-tt/types";
+import { BarHeader, Button, LockIcon, Page } from "@dust-tt/sparkle";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -14,11 +7,13 @@ import React from "react";
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
+import type { BillingPeriod, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
@@ -48,7 +43,7 @@ export default function Subscribe({
   const { user } = useUser();
 
   const { subscriptions } = useWorkspaceSubscriptions({
-    workspaceId: owner.sId,
+    owner,
   });
 
   const [billingPeriod, setBillingPeriod] =
@@ -118,7 +113,11 @@ export default function Subscribe({
                     }}
                   />
                 )}
-                <div>{user && <UserMenu user={user} owner={owner} />}</div>
+                <div>
+                  {user && (
+                    <UserMenu user={user} owner={owner} subscription={null} />
+                  )}
+                </div>
               </div>
             </>
           }
@@ -131,7 +130,11 @@ export default function Subscribe({
               <Page.Vertical sizing="grow" gap="lg">
                 <Page.Header
                   icon={CreditCardIcon}
-                  title="Setting up your subscription"
+                  title={
+                    noPreviousSubscription
+                      ? "Start your free trial"
+                      : "Resume your subscription"
+                  }
                 />
                 {!noPreviousSubscription ? (
                   <>

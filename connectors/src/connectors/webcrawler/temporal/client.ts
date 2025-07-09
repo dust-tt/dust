@@ -1,19 +1,37 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { WorkflowHandle } from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/client";
+import {
+  ScheduleOverlapPolicy,
+  WorkflowExecutionAlreadyStartedError,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 import { getTemporalClient } from "@connectors/lib/temporal";
+import {
+  createSchedule,
+  scheduleExists,
+  triggerSchedule,
+} from "@connectors/lib/temporal_schedules";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
+import type { CrawlingFrequency, ModelId } from "@connectors/types";
+import { CrawlingFrequencies, normalizeError } from "@connectors/types";
 
 import { WebCrawlerQueueNames } from "./config";
 import {
   crawlWebsiteSchedulerWorkflow,
-  crawlWebsiteSchedulerWorkflowId,
   crawlWebsiteWorkflow,
   crawlWebsiteWorkflowId,
+  firecrawlCrawlCompletedWorkflow,
+  firecrawlCrawlCompletedWorkflowId,
+  firecrawlCrawlFailedWorkflow,
+  firecrawlCrawlFailedWorkflowId,
+  firecrawlCrawlPageWorkflow,
+  firecrawlCrawlPageWorkflowId,
+  firecrawlCrawlStartedWorkflow,
+  firecrawlCrawlStartedWorkflowId,
 } from "./workflows";
 
 export async function launchCrawlWebsiteWorkflow(
@@ -73,7 +91,7 @@ export async function launchCrawlWebsiteWorkflow(
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -102,46 +120,223 @@ export async function stopCrawlWebsiteWorkflow(
       },
       `Failed stopping workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
-export async function launchCrawlWebsiteSchedulerWorkflow(): Promise<
-  Result<string, Error>
-> {
-  const client = await getTemporalClient();
+export async function launchCrawlWebsiteScheduler() {
+  const scheduleId = `webcrawler-scheduler`;
 
-  const workflowId = crawlWebsiteSchedulerWorkflowId();
-  try {
-    const handle = client.workflow.getHandle(workflowId);
-    await handle.terminate();
-  } catch (e) {
-    if (!(e instanceof WorkflowNotFoundError)) {
-      throw e;
-    }
+  // Only create the schedule if it doesn't already exist.
+  const scheduleAlreadyExists = await scheduleExists({
+    scheduleId,
+  });
+  // If the schedule already exists, trigger it.
+  if (scheduleAlreadyExists) {
+    return triggerSchedule({
+      scheduleId,
+    });
   }
-  try {
-    await client.workflow.start(crawlWebsiteSchedulerWorkflow, {
+
+  return createSchedule({
+    scheduleId,
+    action: {
+      type: "startWorkflow",
+      workflowType: crawlWebsiteSchedulerWorkflow,
       args: [],
       taskQueue: WebCrawlerQueueNames.UPDATE_WEBSITE,
+    },
+    spec: {
+      intervals: [{ every: "1h" }],
+      jitter: "5m", // Add some randomness to avoid syncing on the exact hour.
+    },
+    policies: {
+      overlap: ScheduleOverlapPolicy.SKIP,
+      catchupWindow: "1 day",
+    },
+  });
+}
+
+function isCrawlFrequency(value: string): value is CrawlingFrequency {
+  return (CrawlingFrequencies as readonly string[]).includes(value);
+}
+
+export async function updateCrawlerCrawlFrequency(
+  connectorId: string,
+  crawlFrequency: string
+) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const webcrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
+
+  if (!webcrawlerConfig) {
+    return new Err(new Error(`CrawlerConfig not found for ${connector.id}`));
+  }
+
+  if (!isCrawlFrequency(crawlFrequency)) {
+    return new Err(new Error(`"${crawlFrequency}" is not a valid frequency`));
+  }
+
+  await webcrawlerConfig.updateCrawlFrequency(crawlFrequency);
+
+  return new Ok(undefined);
+}
+
+// Firecrawl related workflows
+
+export async function launchFirecrawlCrawlStartedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = firecrawlCrawlStartedWorkflowId(connectorId, crawlId);
+
+  try {
+    await client.workflow.start(firecrawlCrawlStartedWorkflow, {
+      args: [connectorId, crawlId],
+      taskQueue: WebCrawlerQueueNames.FIRECRAWL,
       workflowId: workflowId,
-      cronSchedule: "0 * * * *", // every hour, on the hour
-    });
-    logger.info(
-      {
-        workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
       },
-      `Started workflow.`
-    );
+      memo: {
+        connectorId: connectorId,
+      },
+    });
     return new Ok(workflowId);
   } catch (e) {
-    logger.error(
-      {
-        workflowId,
-        error: e,
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchFirecrawlCrawlFailedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = firecrawlCrawlFailedWorkflowId(connectorId, crawlId);
+
+  try {
+    await client.workflow.start(firecrawlCrawlFailedWorkflow, {
+      args: [connectorId, crawlId],
+      taskQueue: WebCrawlerQueueNames.FIRECRAWL,
+      workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
       },
-      `Failed starting workflow.`
-    );
-    return new Err(e as Error);
+      memo: {
+        connectorId: connectorId,
+      },
+    });
+    return new Ok(workflowId);
+  } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchFirecrawlCrawlCompletedWorkflow(
+  connectorId: ModelId,
+  crawlId: string
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = firecrawlCrawlCompletedWorkflowId(connectorId, crawlId);
+
+  try {
+    await client.workflow.start(firecrawlCrawlCompletedWorkflow, {
+      args: [connectorId, crawlId],
+      taskQueue: WebCrawlerQueueNames.FIRECRAWL,
+      workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      memo: {
+        connectorId: connectorId,
+      },
+    });
+    return new Ok(workflowId);
+  } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchFirecrawlCrawlPageWorkflow(
+  connectorId: ModelId,
+  crawlId: string,
+  scrapeId: string
+): Promise<Result<string, Error>> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const client = await getTemporalClient();
+  const workflowId = firecrawlCrawlPageWorkflowId(
+    connectorId,
+    crawlId,
+    scrapeId
+  );
+
+  try {
+    await client.workflow.start(firecrawlCrawlPageWorkflow, {
+      args: [connectorId, crawlId, scrapeId],
+      taskQueue: WebCrawlerQueueNames.FIRECRAWL,
+      workflowId: workflowId,
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      memo: {
+        connectorId: connectorId,
+      },
+    });
+    return new Ok(workflowId);
+  } catch (e) {
+    if (e instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.warn(
+        { workflowId, connectorId, crawlId },
+        "Workflow already started"
+      );
+      return new Ok(workflowId);
+    }
+    return new Err(normalizeError(e));
   }
 }

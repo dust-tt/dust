@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import { assertNever } from "@temporalio/common/lib/type-helpers";
 import {
   executeChild,
@@ -15,6 +14,7 @@ import type {
   ZendeskUpdateSignal,
 } from "@connectors/connectors/zendesk/temporal/signals";
 import { zendeskUpdatesSignal } from "@connectors/connectors/zendesk/temporal/signals";
+import type { ModelId } from "@connectors/types";
 
 const {
   syncZendeskBrandActivity,
@@ -26,13 +26,16 @@ const {
   startToCloseTimeout: "15 minutes",
 });
 
+const { setZendeskTimestampCursorActivity, getZendeskTimestampCursorActivity } =
+  proxyActivities<typeof incremental_activities>({
+    startToCloseTimeout: "5 minutes",
+  });
+
 const {
-  setZendeskTimestampCursorActivity,
-  getZendeskTimestampCursorActivity,
   syncZendeskTicketUpdateBatchActivity,
   syncZendeskArticleUpdateBatchActivity,
 } = proxyActivities<typeof incremental_activities>({
-  startToCloseTimeout: "5 minutes",
+  startToCloseTimeout: "15 minutes",
 });
 
 const {

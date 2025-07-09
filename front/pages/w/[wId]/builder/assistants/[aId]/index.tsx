@@ -1,128 +1,107 @@
-import type {
-  AgentConfigurationType,
-  AppType,
-  DataSourceViewType,
-  PlanType,
-  PlatformActionsConfigurationType,
-  SpaceType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
+import tracer from "dd-trace";
 import type { InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
-import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
-import {
-  buildInitialActions,
-  getAccessibleSourcesAndApps,
-} from "@app/components/assistant_builder/server_side_props_helpers";
-import type {
-  AssistantBuilderInitialState,
-  BuilderFlow,
-} from "@app/components/assistant_builder/types";
+import { AssistantBuilderProviders } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
+import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { PlatformActionsConfigurationResource } from "@app/lib/resources/platform_actions_configuration_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type {
+  LightAgentConfigurationType,
+  PlanType,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  actions: AssistantBuilderInitialState["actions"];
-  agentConfiguration: AgentConfigurationType;
+  agentConfiguration: LightAgentConfigurationType;
+  agentEditors: UserType[];
   baseUrl: string;
-  dataSourceViews: DataSourceViewType[];
-  dustApps: AppType[];
   flow: BuilderFlow;
   owner: WorkspaceType;
   plan: PlanType;
-  spaces: SpaceType[];
   subscription: SubscriptionType;
-  platformActionsConfigurations: PlatformActionsConfigurationType[];
 }>(async (context, auth) => {
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  const subscription = auth.subscription();
-  if (
-    !owner ||
-    !plan ||
-    !subscription ||
-    !auth.isUser() ||
-    !context.params?.aId
-  ) {
+  return tracer.trace("getServerSideProps", async () => {
+    const owner = auth.workspace();
+    const plan = auth.plan();
+    const subscription = auth.subscription();
+    if (
+      !owner ||
+      !plan ||
+      !subscription ||
+      !auth.isUser() ||
+      !context.params?.aId
+    ) {
+      return {
+        notFound: true,
+      };
+    }
+
+    const [configuration] = await Promise.all([
+      getAgentConfiguration(auth, context.params?.aId as string, "light"),
+      MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
+    ]);
+
+    if (!configuration) {
+      return {
+        notFound: true,
+      };
+    }
+
+    if (!configuration.canEdit && !auth.isAdmin()) {
+      return {
+        notFound: true,
+      };
+    }
+
+    const flow: BuilderFlow = BUILDER_FLOWS.includes(
+      context.query.flow as BuilderFlow
+    )
+      ? (context.query.flow as BuilderFlow)
+      : "personal_assistants";
+
+    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+      auth,
+      configuration
+    );
+    if (editorGroupRes.isErr()) {
+      throw new Error("Failed to find editor group for agent");
+    }
+
+    const agentEditors = (
+      await editorGroupRes.value.getActiveMembers(auth)
+    ).map((m) => m.toJSON());
+
     return {
-      notFound: true,
+      props: {
+        agentConfiguration: configuration,
+        agentEditors,
+        baseUrl: config.getClientFacingUrl(),
+        flow,
+        owner,
+        plan,
+        subscription,
+      },
     };
-  }
-
-  const [
-    { spaces, dataSourceViews, dustApps },
-    configuration,
-    platformActionsConfigurations,
-  ] = await Promise.all([
-    getAccessibleSourcesAndApps(auth),
-    getAgentConfiguration(auth, context.params?.aId as string),
-    PlatformActionsConfigurationResource.listByWorkspace(auth),
-  ]);
-
-  if (configuration?.scope === "workspace" && !auth.isBuilder()) {
-    return {
-      notFound: true,
-    };
-  }
-
-  if (!configuration) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const flow: BuilderFlow = BUILDER_FLOWS.includes(
-    context.query.flow as BuilderFlow
-  )
-    ? (context.query.flow as BuilderFlow)
-    : "personal_assistants";
-
-  const actions = await buildInitialActions({
-    dataSourceViews,
-    dustApps,
-    configuration,
   });
-
-  return {
-    props: {
-      actions,
-      agentConfiguration: configuration,
-      baseUrl: config.getClientFacingUrl(),
-      dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
-      dustApps: dustApps.map((a) => a.toJSON()),
-      flow,
-      owner,
-      plan,
-      subscription,
-      spaces: spaces.map((s) => s.toJSON()),
-      platformActionsConfigurations: platformActionsConfigurations.map((c) =>
-        c.toJSON()
-      ),
-    },
-  };
 });
 
 export default function EditAssistant({
-  actions,
   agentConfiguration,
+  agentEditors,
   baseUrl,
-  spaces,
-  dataSourceViews,
-  dustApps,
   flow,
   owner,
   plan,
   subscription,
-  platformActionsConfigurations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  throwIfInvalidAgentConfiguration(agentConfiguration);
-
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global agent");
   }
@@ -132,12 +111,7 @@ export default function EditAssistant({
   }
 
   return (
-    <AssistantBuilderProvider
-      spaces={spaces}
-      dustApps={dustApps}
-      dataSourceViews={dataSourceViews}
-      platformActionsConfigurations={platformActionsConfigurations}
-    >
+    <AssistantBuilderProviders owner={owner}>
       <AssistantBuilder
         owner={owner}
         subscription={subscription}
@@ -153,19 +127,26 @@ export default function EditAssistant({
             modelSettings: {
               modelId: agentConfiguration.model.modelId,
               providerId: agentConfiguration.model.providerId,
-              reasoningEffort: agentConfiguration.model.reasoningEffort,
             },
             temperature: agentConfiguration.model.temperature,
+            reasoningEffort: agentConfiguration.model.reasoningEffort || "none",
+            responseFormat: agentConfiguration.model.responseFormat,
           },
-          actions,
+          actions: [], // Actions will be populated later from the client
           visualizationEnabled: agentConfiguration.visualizationEnabled,
           maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,
+          tags: agentConfiguration.tags,
+          editors: agentEditors,
         }}
-        agentConfigurationId={agentConfiguration.sId}
+        agentConfiguration={agentConfiguration}
         baseUrl={baseUrl}
         defaultTemplate={null}
       />
-    </AssistantBuilderProvider>
+    </AssistantBuilderProviders>
   );
 }
+
+EditAssistant.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

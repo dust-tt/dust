@@ -1,4 +1,3 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { getConnectorManager } from "@connectors/connectors";
@@ -6,6 +5,7 @@ import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
 type ConnectorUnpauseResBody = WithConnectorsAPIErrorReponse<{
   connectorId: string;
@@ -40,7 +40,7 @@ const _unpauseConnectorAPIHandler = async (
     const unpauseRes = await getConnectorManager({
       connectorProvider: connector.type,
       connectorId: connector.id,
-    }).unpause();
+    }).unpauseAndResume();
 
     if (unpauseRes.isErr()) {
       return apiError(req, res, {

@@ -1,19 +1,27 @@
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 
 export async function recordUsageActivity(workspaceId: string) {
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       sId: workspaceId,
     },
   });
+
+  const logger = mainLogger.child({ workspaceId });
+  logger.info({}, "[UsageQueue] Recording usage for worskpace.");
+
   if (!workspace) {
-    throw new Error("Workspace not found.");
+    // The workspace likely deleted during the debouncing period of usage reporting.
+    logger.info(
+      "[UsageQueue] Cannot record usage of subscription: workspace not found."
+    );
+    return;
   }
 
   const subscription = await Subscription.findOne({
@@ -23,9 +31,6 @@ export async function recordUsageActivity(workspaceId: string) {
     },
     include: [Plan],
   });
-
-  const logger = mainLogger.child({ workspaceId });
-  logger.info({}, "[UsageQueue] Recording usage for worskpace.");
 
   if (!subscription) {
     // The workspace likely downgraded during the debouncing period of usage reporting.

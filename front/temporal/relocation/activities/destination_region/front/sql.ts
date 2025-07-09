@@ -117,10 +117,7 @@ export async function processFrontTableChunk({
     for (const { sql, params } of statements) {
       await frontSequelize.transaction(async (transaction) =>
         frontSequelize.query(sql, {
-          // TODO(2025-01-31): Remove this once current batch of data is processed.
-          bind: params.map((p) =>
-            isArrayOfPlainObjects(p) ? JSON.stringify(p) : p
-          ),
+          bind: params,
           type: QueryTypes.INSERT,
           transaction,
         })

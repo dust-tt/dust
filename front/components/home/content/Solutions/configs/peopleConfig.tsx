@@ -24,15 +24,14 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Recruiting & People",
   title: <>Streamline Operations, Focus on People</>,
-  from: "from-blue-200",
-  to: "to-blue-500",
+  accentColor: "text-brand-red-rose",
   description: (
     <>Expedite HR operations and focus on what matters most - people.</>
   ),
   bulletPoints: [
-    "Answer recurring HR questions with information from your policies",
-    "Onboard new hires through company processes and documentation",
-    "Guide managers to deliver quality feedback based on your company guidelines",
+    "Answer recurring HR questions with information from your policies.",
+    "Onboard new hires through company processes and documentation.",
+    "Guide managers to deliver quality feedback based on your company guidelines.",
   ],
   image: "/static/landing/hr/askhr.png",
 };
@@ -111,8 +110,7 @@ export const Metrics: MetricProps = {
       description: <>time savings on employee questions</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -150,15 +148,15 @@ export const UseCases: UseCaseProps = {
 export const Quote: QuoteProps = {
   quote:
     "We asked ourselves for years: what if your team had 20% more time? Dust has made it possible, empowering our employees to work smarter, innovate, and push boundaries.",
-  name: "Matthieu Birach ",
+  name: "Matthieu Birach",
   title: "Chief People Officer at Doctolib",
-  logo: "/static/landing/logos/doctolib.png",
+  logo: "/static/landing/logos/color/doctolib.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/eu73efeak9?seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/eu73efeak9",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [
@@ -169,13 +167,13 @@ export const Stories: CustomerStory[] = [
     href: "https://blog.dust.tt/how-lucas-people-analyst-at-alan-introduced-dust-to-his-hr-team/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan.png",
   },
-  // {
-  //   title: "Kyriba's RFP Agent for improving pre-sales efficiency",
-  //   content:
-  //     "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
-  //   href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
-  //   src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
-  // },
+  {
+    title: "Clay accelerates team onboarding with Dust AI agents",
+    content:
+      "Clay uses Dust AI agents to onboard new GTM engineers faster and reduce bottlenecks, achieving 100% adoption and saving 58 hours monthly across their growing team",
+    href: "https://blog.dust.tt/clay-scaling-gtme-team/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+  },
   // {
   //   title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
   //   content:

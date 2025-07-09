@@ -1,5 +1,14 @@
-import { ContextItem, Popup, SlackLogo, SliderToggle } from "@dust-tt/sparkle";
-import type { DataSourceType, PlanType, WorkspaceType } from "@dust-tt/types";
+import {
+  ContextItem,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  SlackLogo,
+  SliderToggle,
+} from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import * as React from "react";
@@ -8,6 +17,7 @@ import {
   useConnectorConfig,
   useToggleSlackChatBot,
 } from "@app/lib/swr/connectors";
+import type { DataSourceType, PlanType, WorkspaceType } from "@app/types";
 
 export function SlackBotEnableView({
   owner,
@@ -65,24 +75,38 @@ export function SlackBotEnableView({
               selected={botEnabled}
               disabled={readOnly || !isAdmin || loading}
             />
-            <Popup
-              show={showNoSlackBotPopup}
-              className="absolute bottom-8 right-0"
-              chipLabel={`${plan.name} plan`}
-              description="Your plan does not allow for the Slack bot to be enabled. Upgrade your plan to chat with Dust agents on Slack."
-              buttonLabel="Check Dust plans"
-              buttonClick={() => {
-                void router.push(`/w/${owner.sId}/subscription`);
-              }}
-              onClose={() => {
-                setShowNoSlackBotPopup(false);
-              }}
-            />
+            <Dialog open={showNoSlackBotPopup}>
+              <DialogContent size="md">
+                <DialogHeader hideButton={true}>
+                  <DialogTitle>{`${plan.name} plan`}</DialogTitle>
+                </DialogHeader>
+                <DialogContainer>
+                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Your plan does not allow for the Slack bot to be enabled.
+                    Upgrade your plan to chat with Dust agents on Slack.
+                  </p>
+                </DialogContainer>
+                <DialogFooter
+                  leftButtonProps={{
+                    label: "Cancel",
+                    variant: "outline",
+                    onClick: () => setShowNoSlackBotPopup(false),
+                  }}
+                  rightButtonProps={{
+                    label: "Check Dust plans",
+                    variant: "primary",
+                    onClick: () => {
+                      void router.push(`/w/${owner.sId}/subscription`);
+                    },
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
         }
       >
         <ContextItem.Description>
-          <div className="text-element-700">
+          <div className="text-muted-foreground dark:text-muted-foreground-night">
             You can ask questions to your agents directly from Slack by
             mentioning @Dust.
           </div>

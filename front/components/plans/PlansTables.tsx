@@ -8,7 +8,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type { BillingPeriod, PlanType, WorkspaceType } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useState } from "react";
 
@@ -25,6 +24,7 @@ import {
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
+import type { BillingPeriod, PlanType, WorkspaceType } from "@app/types";
 
 export type PriceTableDisplay = "landing" | "subscribe";
 
@@ -169,7 +169,7 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "Up to 1Gb/user of data sources",
+      label: "Up to 1GB/user of data sources",
       variant: "dash",
       display: ["landing", "subscribe"],
     },
@@ -300,11 +300,11 @@ export function PricePlans({
       >
         <Tabs defaultValue="pro">
           <TabsList>
-            <TabsTrigger value="pro" label="Pro" buttonVariant="outline" />
+            <TabsTrigger value="pro" label="Pro" variant="outline" />
             <TabsTrigger
               value="enterprise"
               label="Enterprise"
-              buttonVariant="outline"
+              variant="outline"
             />
           </TabsList>
           <div className="mt-8">

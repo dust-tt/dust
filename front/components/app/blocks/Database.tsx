@@ -1,23 +1,23 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Button, Label, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type {
-  AppType,
-  SpecificationBlockType,
-  SpecificationType,
-} from "@dust-tt/types";
-import type { BlockType, RunType } from "@dust-tt/types";
 import _ from "lodash";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect } from "react";
 
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import TablePicker from "@app/components/tables/TablePicker";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
+import type {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types";
+import type { BlockType, RunType } from "@app/types";
 
 import Block from "./Block";
-
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
   { ssr: false }
@@ -152,7 +152,7 @@ export function TablesManager({
                 <Button
                   onClick={() => removeTable(index)}
                   className={classNames(
-                    "text-slate-400 dark:text-slate-400",
+                    "text-muted-foreground dark:text-muted-foreground-night",
                     "hover:text-muted-foreground dark:hover:text-muted-foreground"
                   )}
                   icon={XMarkIcon}
@@ -214,7 +214,8 @@ export default function Database({
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
 }>) {
-  const theme = localStorage.getItem("theme");
+  const { isDark } = useTheme();
+
   return (
     <Block
       owner={owner}
@@ -246,7 +247,7 @@ export default function Database({
           <Label>Query</Label>
           <div className="w-full font-normal">
             <CodeEditor
-              data-color-mode={theme === "dark" ? "dark" : "light"}
+              data-color-mode={isDark ? "dark" : "light"}
               readOnly={readOnly}
               value={block.spec.query}
               language="jinja2"
@@ -258,9 +259,8 @@ export default function Database({
               }}
               padding={3}
               minHeight={80}
-              className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+              className="rounded-lg bg-muted-background dark:bg-muted-background-night"
               style={{
-                color: "rgb(55 65 81)",
                 fontSize: 13,
                 fontFamily:
                   "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",

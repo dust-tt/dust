@@ -1,4 +1,4 @@
-// import type { ModelId, Result } from "@dust-tt/types";
+// import type { ModelId, Result } from "@connectors/types";
 // import parseArgs from "minimist";
 // import readline from "readline";
 

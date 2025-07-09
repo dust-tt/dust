@@ -94,6 +94,18 @@ export const ConversationExample = () => {
             they can find answers on the knwledge of the company Make 10
             proposals of short text
           </ConversationMessage>
+
+          <ConversationMessage
+            type="user"
+            name="Edouard"
+            pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
+            isDisabled={true}
+            renderName={(name) => (
+              <span className="s-text-gray-600 s-text-opacity-25">{name}</span>
+            )}
+          >
+            This is a message with a disabled agent
+          </ConversationMessage>
         </ConversationContainer>
       </div>
     </>
@@ -102,10 +114,11 @@ export const ConversationExample = () => {
 
 const example = `
 # Level 1 Title
-
 ## Level 2 Title
-
 ### Level 3 Title
+#### Level 4 Title
+##### Level 5 Title
+###### Level 6 Title
 
 This is a paragraph with **bold** text and *italic* text. This is \`code\` block:
 \`\`\`

@@ -1,3 +1,4 @@
+import { GraphError } from "@microsoft/microsoft-graph-client";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
@@ -5,6 +6,8 @@ import type {
 } from "@temporalio/worker";
 
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+
+const knownMicrosoftSignInErrors = ["AADSTS50173", "AADSTS700016"];
 
 // The SDK does not expose an error class that is rich enough for our use.
 // We'll use this function as a temporary solution for identifying an identified type of error.
@@ -14,8 +17,15 @@ export function isMicrosoftSignInError(err: unknown): err is Error {
     err.message.startsWith(
       "Error retrieving access token from microsoft: code=provider_access_token_refresh_error"
     ) &&
-    err.message.includes("invalid_grant") &&
-    err.message.includes("AADSTS50173")
+    knownMicrosoftSignInErrors.some((code) => err.message.includes(code))
+  );
+}
+
+export function isItemNotFoundError(err: unknown): err is GraphError {
+  return (
+    err instanceof GraphError &&
+    err.statusCode === 404 &&
+    err.code === "itemNotFound"
   );
 }
 

@@ -39,6 +39,13 @@ function buildNodeSerializers(schema: Schema) {
     state.write(`:mention[${node.attrs?.label}]{sId=${node.attrs?.id}}`);
   };
 
+  map.dataSourceLink = (
+    state: MarkdownSerializerState,
+    node: ProseMirrorNode
+  ) => {
+    state.write(`:content_node_mention[${node.attrs.title}]`);
+  };
+
   // Add fallback for any missing nodes in schema.
   Object.keys(schema.nodes).forEach((nodeName) => {
     if (!map[nodeName]) {

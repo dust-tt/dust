@@ -1,9 +1,9 @@
-import Paragraph from "@tiptap/extension-paragraph";
+import { Paragraph } from "@tiptap/extension-paragraph";
 
 export const ParagraphExtension = Paragraph.extend({
   addKeyboardShortcuts() {
     return {
-      Enter: () => false,
+      ...this.parent?.(),
 
       "Shift-Enter": () => {
         // Chain is what Tiptap does by default for Enter:

@@ -1,14 +1,10 @@
-import type {
-  ConnectorProvider,
-  ConnectorType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
+  Transaction,
   WhereOptions,
 } from "sequelize";
 
@@ -24,6 +20,12 @@ import { getConnectorProviderStrategy } from "@connectors/resources/connector/st
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import type {
+  ConnectorErrorType,
+  ConnectorType,
+  ModelId,
+} from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -35,7 +37,7 @@ export interface ConnectorResource
 export class ConnectorResource extends BaseResource<ConnectorModel> {
   static model: ModelStatic<ConnectorModel> = ConnectorModel;
 
-  private configuration: ConnectorProviderConfigurationResource | null = null;
+  private _configuration: ConnectorProviderConfigurationResource | null = null;
 
   // TODO(2024-02-20 flav): Delete Model from the constructor, once `update` has been migrated.
   constructor(
@@ -48,7 +50,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   async postFetchHook() {
     const configurations =
       await this.strategy.fetchConfigurationsbyConnectorIds([this.id]);
-    this.configuration = configurations[this.id] ?? null;
+    this._configuration = configurations[this.id] ?? null;
   }
 
   get strategy(): ConnectorProviderStrategy<
@@ -61,15 +63,16 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   static async makeNew<T extends keyof ConnectorProviderModelMapping>(
     type: T,
     blob: Omit<CreationAttributes<ConnectorModel>, "type">,
-    specificBlob: ConnectorProviderModelMapping[T]
+    specificBlob: ConnectorProviderModelMapping[T],
+    transaction?: Transaction
   ) {
-    return sequelizeConnection.transaction(async (transaction) => {
+    const createConnector = async (t: Transaction) => {
       const connector = await ConnectorModel.create(
         {
           ...blob,
           type,
         },
-        { transaction }
+        { transaction: t }
       );
 
       const connectorRes = new this(ConnectorModel, connector.get());
@@ -77,13 +80,19 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       const configuration = await connectorRes.strategy.makeNew(
         connector.id,
         specificBlob,
-        transaction
+        t
       );
 
-      connectorRes.configuration = configuration;
+      connectorRes._configuration = configuration;
 
       return connectorRes;
-    });
+    };
+
+    if (transaction) {
+      return createConnector(transaction);
+    }
+
+    return sequelizeConnection.transaction(createConnector);
   }
 
   static async listByType(
@@ -112,7 +121,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
     const connectors = blobs.map((b: ConnectorModel) => {
       const c = new this(this.model, b.get());
-      c.configuration = configurations[b.id] ?? null;
+      c._configuration = configurations[b.id] ?? null;
       return c;
     });
 
@@ -130,6 +139,25 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
     const blob = await ConnectorResource.model.findOne({
       where,
+    });
+    if (!blob) {
+      return null;
+    }
+
+    const c = new this(this.model, blob.get());
+    await c.postFetchHook();
+    return c;
+  }
+
+  static async findByWorkspaceIdAndType(
+    workspaceId: string,
+    type: ConnectorProvider
+  ) {
+    const blob = await ConnectorResource.model.findOne({
+      where: {
+        workspaceId,
+        type,
+      },
     });
     if (!blob) {
       return null;
@@ -178,7 +206,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
     return blobs.map((b: ConnectorModel) => {
       const c = new this(this.model, b.get());
-      c.configuration = configurations[b.id] ?? null;
+      c._configuration = configurations[b.id] ?? null;
       return c;
     });
   }
@@ -197,7 +225,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
         return new Ok(undefined);
       } catch (err) {
-        return new Err(err as Error);
+        return new Err(normalizeError(err));
       }
     });
   }
@@ -210,8 +238,38 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     return this.update({ pausedAt: new Date() });
   }
 
+  // Unpausing a connector necessarily means clearing the connector errorType.
   async markAsUnpaused() {
-    return this.update({ pausedAt: null });
+    return this.update({
+      errorType: null,
+      pausedAt: null,
+    });
+  }
+
+  async markAsError(errorType: ConnectorErrorType) {
+    return this.update({
+      errorType,
+    });
+  }
+
+  // Metadata.
+
+  async markAsRateLimited() {
+    return this.update({
+      metadata: {
+        ...this.metadata,
+        rateLimited: { at: new Date() },
+      },
+    });
+  }
+
+  async markAsNotRateLimited() {
+    return this.update({
+      metadata: {
+        ...this.metadata,
+        rateLimited: null,
+      },
+    });
   }
 
   get isAuthTokenRevoked() {
@@ -220,6 +278,10 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
   get isThirdPartyInternalError() {
     return this.errorType === "third_party_internal_error";
+  }
+
+  get configuration(): ConnectorProviderConfigurationResource | null {
+    return this._configuration;
   }
 
   toJSON(): ConnectorType {
@@ -237,11 +299,15 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       firstSuccessfulSyncTime: this.firstSuccessfulSyncTime?.getTime(),
       firstSyncProgress: this.firstSyncProgress,
       errorType: this.errorType ?? undefined,
-      configuration: this.configuration
-        ? this.strategy.configurationJSON(this.configuration)
+      configuration: this._configuration
+        ? this.strategy.configurationJSON(this._configuration)
         : null,
       pausedAt: this.pausedAt?.getTime(),
       updatedAt: this.updatedAt.getTime(),
     };
+  }
+
+  async setUseProxy(useProxy: boolean) {
+    await this.update({ useProxy });
   }
 }

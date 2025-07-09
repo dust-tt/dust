@@ -8,14 +8,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { SetStateAction } from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -24,6 +16,15 @@ import {
   supportsDocumentsData,
   supportsStructuredData,
 } from "@app/lib/data_sources";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type {
+  ContentNodesViewType,
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 interface TrackerBuilderDataSourceModal {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
@@ -56,6 +57,10 @@ export default function TrackerBuilderDataSourceModal({
     [setSelectionConfigurations]
   );
 
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
   const supportedDataSourceViewsForViewType = useMemo(() => {
     switch (viewType) {
       case "all":
@@ -66,12 +71,12 @@ export default function TrackerBuilderDataSourceModal({
         );
       case "document":
         return dataSourceViews.filter((dsv) =>
-          supportsDocumentsData(dsv.dataSource)
+          supportsDocumentsData(dsv.dataSource, featureFlags)
         );
       default:
         assertNever(viewType);
     }
-  }, [dataSourceViews, viewType]);
+  }, [dataSourceViews, viewType, featureFlags]);
 
   return (
     <Sheet>

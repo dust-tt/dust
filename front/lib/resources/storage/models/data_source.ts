@@ -1,12 +1,12 @@
-import type { ConnectorProvider } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Conversation } from "@app/lib/models/assistant/conversation";
+import { ConversationModel } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { ConnectorProvider } from "@app/types";
 
 export class DataSourceModel extends SoftDeletableWorkspaceAwareModel<DataSourceModel> {
   declare id: CreationOptional<number>;
@@ -25,10 +25,10 @@ export class DataSourceModel extends SoftDeletableWorkspaceAwareModel<DataSource
   declare connectorId: string | null;
   declare connectorProvider: ConnectorProvider | null;
   declare vaultId: ForeignKey<SpaceModel["id"]>;
-  declare conversationId: ForeignKey<Conversation["id"]>;
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
 
   declare editedByUser: NonAttribute<UserModel>;
-  declare conversation: NonAttribute<Conversation>;
+  declare conversation: NonAttribute<ConversationModel>;
   declare space: NonAttribute<SpaceModel>;
 }
 
@@ -85,12 +85,12 @@ DataSourceModel.init(
       { fields: ["workspaceId", "name", "deletedAt"], unique: true },
       { fields: ["workspaceId", "connectorProvider"] },
       { fields: ["workspaceId", "vaultId"] },
-      { fields: ["workspaceId", "conversationId"] },
+      { fields: ["workspaceId", "conversationId"], unique: true },
       { fields: ["dustAPIProjectId"] },
     ],
   }
 );
-Conversation.hasMany(DataSourceModel, {
+ConversationModel.hasMany(DataSourceModel, {
   as: "conversation",
   foreignKey: { name: "conversationId", allowNull: true },
   onDelete: "RESTRICT",

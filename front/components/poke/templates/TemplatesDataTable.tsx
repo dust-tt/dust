@@ -5,13 +5,13 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { TemplateTagCodeType, TemplateVisibility } from "@dust-tt/types";
-import { TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import Link from "next/link";
 import React, { useState } from "react";
 
 import { usePokeAssistantTemplates, usePokePullTemplates } from "@app/poke/swr";
+import type { TemplateTagCodeType, TemplateVisibility } from "@app/types";
+import { TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export interface TemplatesDisplayType {
   id: string;

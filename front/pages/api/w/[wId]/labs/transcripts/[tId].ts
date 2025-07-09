@@ -1,4 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -7,13 +6,16 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
-} from "@app/temporal/labs/client";
+} from "@app/temporal/labs/transcripts/client";
+import type { WithAPIErrorResponse } from "@app/types";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
@@ -61,7 +63,7 @@ async function handler(
   }
 
   const transcriptsConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchByModelId(
+    await LabsTranscriptsConfigurationResource.fetchById(
       transcriptsConfigurationId
     );
   // TODO(2024-04-19 flav) Consider adding auth to `fetchById` to move this permission check within the method.
@@ -119,7 +121,8 @@ async function handler(
       if (isActive !== undefined) {
         logger.info(
           {
-            configurationId: transcriptsConfiguration.id,
+            transcriptsConfigurationId: transcriptsConfiguration.id,
+            transcriptsConfigurationSid: transcriptsConfiguration.sId,
             isActive,
           },
           "Setting transcript configuration active status."
@@ -128,22 +131,44 @@ async function handler(
       }
 
       if (dataSourceViewId !== undefined) {
-        await transcriptsConfiguration.setDataSourceViewId(
-          auth,
-          dataSourceViewId
-        );
+        const dataSourceView = dataSourceViewId
+          ? await DataSourceViewResource.fetchById(auth, dataSourceViewId)
+          : null;
 
-        const flags = await getFeatureFlags(owner);
-        if (flags.includes("labs_transcripts_full_storage")) {
-          await transcriptsConfiguration.setIsDefaultFullStorage(
-            !!dataSourceViewId
-          );
+        if (dataSourceView) {
+          const canWrite = dataSourceView.canWrite(auth);
+          if (!canWrite) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "data_source_auth_error",
+                message:
+                  "The user does not have permission to write to the datasource view.",
+              },
+            });
+          }
+        }
+
+        await transcriptsConfiguration.setDataSourceView(dataSourceView);
+
+        if (
+          isProviderWithDefaultWorkspaceConfiguration(
+            transcriptsConfiguration.provider
+          )
+        ) {
+          const defaultFullStorageConfiguration =
+            await LabsTranscriptsConfigurationResource.fetchDefaultConfigurationForWorkspace(
+              auth.getNonNullableWorkspace()
+            );
+          if (defaultFullStorageConfiguration === null) {
+            await transcriptsConfiguration.setIsDefault(!!dataSourceViewId);
+          }
         }
       }
 
       const updatedTranscriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchByModelId(
-          transcriptsConfiguration.id
+        await LabsTranscriptsConfigurationResource.fetchById(
+          transcriptsConfiguration.sId
         );
 
       if (!updatedTranscriptsConfiguration) {
@@ -163,7 +188,8 @@ async function handler(
       if (shouldStartWorkflow) {
         logger.info(
           {
-            configurationId: updatedTranscriptsConfiguration.id,
+            transcriptsConfigurationId: updatedTranscriptsConfiguration.id,
+            transcriptsConfigurationSid: updatedTranscriptsConfiguration.sId,
           },
           "Starting transcript retrieval workflow."
         );

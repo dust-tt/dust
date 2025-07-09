@@ -21,6 +21,7 @@ export type PlanAttributes = Omit<
 export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   code: ENT_PLAN_FAKE_CODE,
   name: "Entreprise",
+  maxImagesPerWeek: 800,
   maxMessages: -1,
   maxMessagesTimeframe: "lifetime",
   maxUsersInWorkspace: -1,
@@ -33,6 +34,7 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   isManagedGithubAllowed: true,
   isManagedIntercomAllowed: true,
   isManagedWebCrawlerAllowed: true,
+  isManagedSalesforceAllowed: true,
   maxDataSourcesCount: -1,
   maxDataSourcesDocumentsCount: -1,
   maxDataSourcesDocumentsSizeMb: 2,

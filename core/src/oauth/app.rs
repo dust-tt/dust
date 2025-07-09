@@ -66,7 +66,7 @@ async fn connections_create(
         // Create credential
         match Credential::create(
             state.store.clone(),
-            crate::oauth::credential::CredentialProvider::Salesforce,
+            crate::oauth::credential::CredentialProvider::from(payload.provider),
             credential_metadata,
             credential_content,
         )
@@ -137,12 +137,18 @@ async fn connections_finalize(
         .await
     {
         Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve connection",
+            Some(e),
+        ),
+        Ok(None) => error_response(
             StatusCode::NOT_FOUND,
             "connection_not_found",
             "Requested connection was not found",
-            Some(e),
+            None,
         ),
-        Ok(mut c) => match c
+        Ok(Some(mut c)) => match c
             .finalize(
                 state.clone().store.clone(),
                 &payload.code,
@@ -153,7 +159,8 @@ async fn connections_finalize(
             Err(e) => error_response(
                 match e.code {
                     connection::ConnectionErrorCode::TokenRevokedError => StatusCode::UNAUTHORIZED,
-                    connection::ConnectionErrorCode::ConnectionAlreadyFinalizedError => {
+                    connection::ConnectionErrorCode::ConnectionAlreadyFinalizedError
+                    | connection::ConnectionErrorCode::InvalidMetadataError => {
                         StatusCode::BAD_REQUEST
                     }
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -196,6 +203,11 @@ pub struct ConnectionAccessTokenResponse {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct ConnectionMetadataResponse {
+    pub connection: ConnectionInfo,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct ConnectionInfo {
     connection_id: String,
     created: u64,
@@ -218,16 +230,23 @@ async fn connections_access_token(
 ) -> (StatusCode, Json<APIResponse>) {
     match state.store.retrieve_connection(&connection_id).await {
         Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve connection",
+            Some(e),
+        ),
+        Ok(None) => error_response(
             StatusCode::NOT_FOUND,
             "connection_not_found",
             "Requested connection was not found",
-            Some(e),
+            None,
         ),
-        Ok(mut c) => match c.access_token(state.clone().store.clone()).await {
+        Ok(Some(mut c)) => match c.access_token(state.clone().store.clone()).await {
             Err(e) => error_response(
                 match e.code {
                     connection::ConnectionErrorCode::TokenRevokedError => StatusCode::UNAUTHORIZED,
-                    connection::ConnectionErrorCode::ConnectionNotFinalizedError => {
+                    connection::ConnectionErrorCode::ConnectionNotFinalizedError
+                    | connection::ConnectionErrorCode::InvalidMetadataError => {
                         StatusCode::BAD_REQUEST
                     }
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -255,6 +274,40 @@ async fn connections_access_token(
                 }),
             ),
         },
+    }
+}
+async fn connections_metadata(
+    State(state): State<Arc<OAuthState>>,
+    Path(connection_id): Path<String>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state.store.retrieve_connection(&connection_id).await {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve connection",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "connection_not_found",
+            "Requested connection was not found",
+            None,
+        ),
+        Ok(Some(c)) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!(ConnectionMetadataResponse {
+                    connection: ConnectionInfo {
+                        connection_id: c.connection_id(),
+                        created: c.created(),
+                        provider: c.provider(),
+                        status: c.status(),
+                        metadata: c.metadata().clone(),
+                    },
+                })),
+            }),
+        ),
     }
 }
 
@@ -304,12 +357,18 @@ async fn credentials_retrieve(
 ) -> (StatusCode, Json<APIResponse>) {
     match state.store.retrieve_credential(&credential_id).await {
         Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve credentials",
+            Some(e),
+        ),
+        Ok(None) => error_response(
             StatusCode::NOT_FOUND,
             "credential_not_found",
             "Requested credential was not found",
-            Some(e),
+            None,
         ),
-        Ok(c) => match c.unseal_encrypted_content() {
+        Ok(Some(c)) => match c.unseal_encrypted_content() {
             Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",
@@ -372,20 +431,24 @@ pub async fn create_app() -> Result<Router> {
         // Connections
         .route("/connections", post(connections_create))
         .route(
-            "/connections/:connection_id/finalize",
+            "/connections/{connection_id}/finalize",
             post(connections_finalize),
         )
         .route(
-            "/connections/:connection_id/access_token",
+            "/connections/{connection_id}/access_token",
             post(deprecated_connections_access_token),
         )
         .route(
-            "/connections/:connection_id/access_token",
+            "/connections/{connection_id}/access_token",
             get(connections_access_token),
         )
+        .route(
+            "/connections/{connection_id}/metadata",
+            get(connections_metadata),
+        )
         .route("/credentials", post(credentials_create))
-        .route("/credentials/:credential_id", get(credentials_retrieve))
-        .route("/credentials/:credential_id", delete(credentials_delete))
+        .route("/credentials/{credential_id}", get(credentials_retrieve))
+        .route("/credentials/{credential_id}", delete(credentials_delete))
         // Extensions
         .layer(
             TraceLayer::new_for_http()

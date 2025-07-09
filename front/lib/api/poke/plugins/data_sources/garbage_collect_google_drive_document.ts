@@ -1,11 +1,9 @@
-import type { Result } from "@dust-tt/types";
-import { CoreAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
-import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { CoreAPI, Err, Ok } from "@app/types";
 
 export async function garbageCollectGoogleDriveDocument(
   dataSource: DataSourceResource,
@@ -51,35 +49,16 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin({
       },
     },
   },
-  isVisible: async (
-    auth: Authenticator,
-    resourceId: string | undefined
-  ): Promise<boolean> => {
-    if (!resourceId) {
+  isApplicableTo: (auth, resource) => {
+    if (!resource) {
       return false;
     }
 
-    const dataSource = await DataSourceResource.fetchById(auth, resourceId);
-    if (!dataSource) {
-      return false;
-    }
-
-    return dataSource.connectorProvider === "google_drive";
+    return resource.connectorProvider === "google_drive";
   },
-  execute: async (auth, dataSourceId, args) => {
-    if (!dataSourceId) {
-      return new Err(new Error("Data source not found."));
-    }
-
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+  execute: async (auth, dataSource, args) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
-    }
-
-    if (dataSource.connectorProvider !== "google_drive") {
-      return new Err(
-        new Error("This Plugin only works with Google Drive data sources.")
-      );
     }
 
     const { connectorId } = dataSource;

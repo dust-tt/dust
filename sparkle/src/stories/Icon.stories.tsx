@@ -13,7 +13,7 @@ type Story = StoryObj<typeof meta>;
 export const IconSM: Story = {
   args: {
     visual: ChatBubbleBottomCenterTextIcon,
-    className: "s-text-action-800",
+    className: "s-text-highlight-500",
     size: "sm",
   },
 };
@@ -21,7 +21,7 @@ export const IconSM: Story = {
 export const IconXS: Story = {
   args: {
     visual: ChatBubbleBottomCenterTextIcon,
-    className: "s-text-brand",
+    className: "s-text-highlight-500",
     size: "xs",
   },
 };
@@ -29,7 +29,7 @@ export const IconXS: Story = {
 export const IconMD: Story = {
   args: {
     visual: ChatBubbleBottomCenterTextIcon,
-    className: "s-text-element-800",
+    className: "s-text-highlight-500",
     size: "md",
   },
 };
@@ -37,7 +37,7 @@ export const IconMD: Story = {
 export const IconLG: Story = {
   args: {
     visual: ChatBubbleBottomCenterTextIcon,
-    className: "s-text-brand",
+    className: "s-text-highlight-500",
     size: "lg",
   },
 };

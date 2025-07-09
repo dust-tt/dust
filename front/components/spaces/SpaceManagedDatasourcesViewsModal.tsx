@@ -5,18 +5,21 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr/data_source_views";
+import { emptyArray } from "@app/lib/swr/swr";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { isAdmin } from "@app/types";
 
 // We need to stabilize the initial state of the selection configurations,
 // to avoid resetting state when swr revalidates initialSelectedDataSources
@@ -46,6 +49,7 @@ interface SpaceManagedDataSourcesViewsModalProps {
   owner: WorkspaceType;
   systemSpaceDataSourceViews: DataSourceViewType[];
   space: SpaceType;
+  systemSpace: SpaceType;
 }
 
 export default function SpaceManagedDataSourcesViewsModal({
@@ -56,11 +60,12 @@ export default function SpaceManagedDataSourcesViewsModal({
   owner,
   systemSpaceDataSourceViews,
   space,
+  systemSpace,
 }: SpaceManagedDataSourcesViewsModalProps) {
   const defaultSelectedDataSources = useStabilizedValue(
     initialSelectedDataSources,
     isOpen,
-    []
+    emptyArray()
   );
 
   const [systemDataSourceViews, spaceDataSourceViews] = useMemo(() => {
@@ -94,6 +99,7 @@ export default function SpaceManagedDataSourcesViewsModal({
     owner,
     viewType: "all",
   });
+
   const [selectionConfigurations, setSelectionConfigurations] =
     useState<DataSourceViewSelectionConfigurations>({});
 
@@ -140,6 +146,9 @@ export default function SpaceManagedDataSourcesViewsModal({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
+          // This is required to avoid a stale state when closing and reopening the modal.
+          // Before, we used SWR, so we had invalidation for free, but now we need to do it manually.
+          initialConfigurations.invalidate();
           onClose();
         }
       }}
@@ -150,16 +159,23 @@ export default function SpaceManagedDataSourcesViewsModal({
         </SheetHeader>
         <SheetContainer>
           <div className="overflow-x-auto">
-            <DataSourceViewsSelector
-              useCase="spaceDatasourceManagement"
-              dataSourceViews={systemSpaceDataSourceViews}
-              owner={owner}
-              selectionConfigurations={selectionConfigurations}
-              setSelectionConfigurations={setSelectionConfigurationsCallback}
-              viewType="all"
-              isRootSelectable={true}
-              space={space}
-            />
+            {initialConfigurations.isNodesLoading ? (
+              <div className="flex items-center justify-center">
+                <Spinner />
+              </div>
+            ) : (
+              <DataSourceViewsSelector
+                useCase="spaceDatasourceManagement"
+                dataSourceViews={systemSpaceDataSourceViews}
+                owner={owner}
+                selectionConfigurations={selectionConfigurations}
+                setSelectionConfigurations={setSelectionConfigurationsCallback}
+                viewType="all"
+                isRootSelectable={true}
+                space={systemSpace}
+                allowAdminSearch={isAdmin(owner)}
+              />
+            )}
           </div>
         </SheetContainer>
         <SheetFooter

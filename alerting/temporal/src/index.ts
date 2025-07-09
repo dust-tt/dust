@@ -79,18 +79,18 @@ const getMetricNames = async (): Promise<{
         httpsAgent,
       });
       const { data: metricNames } = labelsResponseDataSchema.parse(
-        metricNamesResponse.data
+        metricNamesResponse.data,
       );
 
       const countMetricNames = metricNames.filter(
         (metricName) =>
           TARGET_METRIC_NAMES.includes(metricName) &&
-          metricName.endsWith("_count")
+          metricName.endsWith("_count"),
       );
       const histogramMetricNames = metricNames.filter(
         (metricName) =>
           TARGET_METRIC_NAMES.includes(metricName) &&
-          metricName.endsWith("_bucket")
+          metricName.endsWith("_bucket"),
       );
 
       return { countMetricNames, histogramMetricNames };
@@ -143,11 +143,11 @@ const generateQueryWindow = (): QueryWindow => {
 // I'm not exactly sure why this is important, but I think that without it, we may inaccurately
 // report some metrics.
 const alignQueryWindowOnPrometheusStep = (
-  queryWindow: QueryWindow
+  queryWindow: QueryWindow,
 ): QueryWindow => {
   const startSecondsSinceEpoch =
     Math.floor(
-      queryWindow.startSecondsSinceEpoch / PROMETHEUS_STEP_SECONDS - 1
+      queryWindow.startSecondsSinceEpoch / PROMETHEUS_STEP_SECONDS - 1,
     ) * PROMETHEUS_STEP_SECONDS;
   const endSecondsSinceEpoch =
     Math.floor(queryWindow.endSecondsSinceEpoch / PROMETHEUS_STEP_SECONDS + 1) *
@@ -158,14 +158,14 @@ const alignQueryWindowOnPrometheusStep = (
 
 const queryPrometheusCount = async (
   metricName: string,
-  queryWindow: QueryWindow
+  queryWindow: QueryWindow,
 ): Promise<MetricData> => {
   try {
     const response = await axios.get(PROM_QUERY_URL, {
       httpsAgent,
       params: {
         ...basePrometheusQueryParams,
-        query: `rate(${metricName}[1m])`,
+        query: `sum(rate(${metricName}[1m])) by (region)`,
         start: queryWindow.startSecondsSinceEpoch.toFixed(0),
         end: queryWindow.endSecondsSinceEpoch.toFixed(0),
       },
@@ -183,7 +183,7 @@ const queryPrometheusCount = async (
 
 const convertPrometheusCountToDatadogRateSeries = (
   metricName: string,
-  metricData: MetricData
+  metricData: MetricData,
 ): void => {
   metricData.result.forEach((prometheusMetric) => {
     const metric = metricName.split("_count")[0] + "_rate1m";
@@ -200,14 +200,14 @@ const convertPrometheusCountToDatadogRateSeries = (
 const queryPrometheusHistogram = async (
   metricName: string,
   quantile: number,
-  queryWindow: QueryWindow
+  queryWindow: QueryWindow,
 ): Promise<MetricData> => {
   try {
     const response = await axios.get(PROM_QUERY_URL, {
       httpsAgent,
       params: {
         ...basePrometheusQueryParams,
-        query: `histogram_quantile(${quantile}, sum(rate(${metricName}[1m])) by (temporal_account,temporal_namespace,operation,le))`,
+        query: `histogram_quantile(${quantile}, sum(rate(${metricName}[1m])) by (region,temporal_account,temporal_namespace,operation,le))`,
         start: queryWindow.startSecondsSinceEpoch.toFixed(0),
         end: queryWindow.endSecondsSinceEpoch.toFixed(0),
       },
@@ -226,7 +226,7 @@ const queryPrometheusHistogram = async (
 const convertPrometheusHistogramToDatadogGuageSeries = (
   metricName: string,
   quantile: number,
-  metricData: MetricData
+  metricData: MetricData,
 ): void => {
   metricData.result.forEach((prometheusMetric) => {
     const metric = metricName.split("_bucket")[0] + "_P" + quantile * 100;
@@ -258,10 +258,10 @@ const main = async () => {
       countMetricNames.map(async (metricName) => {
         const data = await queryPrometheusCount(
           metricName,
-          generateQueryWindow()
+          generateQueryWindow(),
         );
         convertPrometheusCountToDatadogRateSeries(metricName, data);
-      })
+      }),
     );
 
     // Process histogram metrics
@@ -272,16 +272,16 @@ const main = async () => {
             const data = await queryPrometheusHistogram(
               metricName,
               quantile,
-              generateQueryWindow()
+              generateQueryWindow(),
             );
             convertPrometheusHistogramToDatadogGuageSeries(
               metricName,
               quantile,
-              data
+              data,
             );
-          })
-        )
-      )
+          }),
+        ),
+      ),
     );
 
     statsD.increment("temporal_metrics.collection.success");

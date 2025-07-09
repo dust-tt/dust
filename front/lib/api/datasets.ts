@@ -1,12 +1,11 @@
-import type { AppType } from "@dust-tt/types";
-import type { DatasetSchema, DatasetType } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { AppResource } from "@app/lib/resources/app_resource";
 import { Dataset } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
+import type { AppType } from "@app/types";
+import type { DatasetSchema, DatasetType } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function getDatasets(
   auth: Authenticator,

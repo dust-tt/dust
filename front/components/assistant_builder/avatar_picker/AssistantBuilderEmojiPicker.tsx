@@ -10,14 +10,14 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
-import { generateTailwindBackgroundColors } from "@dust-tt/types";
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
 
 import type {
   AvatarPickerTabElement,
   SelectedEmojiType,
 } from "@app/components/assistant_builder/avatar_picker/types";
-import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
+import { makeUrlForEmojiAndBackground } from "@app/components/assistant_builder/avatar_picker/utils";
+import { generateTailwindBackgroundColors } from "@app/types";
 
 const DEFAULT_BACKGROUND_COLOR: avatarUtils.AvatarBackgroundColorType =
   "bg-gray-100";
@@ -40,7 +40,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
   const [selectedEmoji, setSelectedEmoji] = useState<SelectedEmojiType | null>(
     null
   );
-  const [selectedBgColor, setSelectedBgColor] = useState(
+  const [selectedBgColor, setSelectedBgColor] = useState<`bg-${string}`>(
     DEFAULT_BACKGROUND_COLOR
   );
 
@@ -64,7 +64,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
     return {
       getUrl: async () => {
         if (selectedEmoji) {
-          return makeUrlForEmojiAndBackgroud(selectedEmoji, selectedBgColor);
+          return makeUrlForEmojiAndBackground(selectedEmoji, selectedBgColor);
         }
 
         return null;
@@ -88,7 +88,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
               label="Pick an Emoji"
             />
           </PopoverTrigger>
-          <PopoverContent className="p-4" fullWidth>
+          <PopoverContent fullWidth>
             <EmojiPicker
               theme="light"
               previewPosition="none"
@@ -109,13 +109,14 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
           <PopoverTrigger asChild>
             <Button variant="outline" icon={PaintIcon} label="Pick a color" />
           </PopoverTrigger>
-          <PopoverContent mountPortal={false} className="p-4" fullWidth>
+          <PopoverContent mountPortal={false} className="w-fit">
             <ColorPicker
+              selectedColor={selectedBgColor}
               colors={
                 generateTailwindBackgroundColors() as avatarUtils.AvatarBackgroundColorType[]
               }
               onColorSelect={(color) => {
-                setSelectedBgColor(color);
+                setSelectedBgColor(color as `bg-${string}`);
                 // We only mark as stale if an emoji has been selected.
                 if (selectedEmoji) {
                   onChange();

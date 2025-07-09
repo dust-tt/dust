@@ -25,7 +25,7 @@ pub enum QueryDatabaseError {
     #[error("Result is too large: {0}")]
     ResultTooLarge(String),
     #[error("Query execution error: {0}")]
-    ExecutionError(String),
+    ExecutionError(String, Option<String>),
 }
 
 #[derive(Serialize)]
@@ -34,7 +34,6 @@ pub enum SqlDialect {
     DustSqlite,
     Snowflake,
     Bigquery,
-    SalesforceSoql,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -56,7 +55,7 @@ pub async fn execute_query(
     tables: Vec<Table>,
     query: &str,
     store: Box<dyn Store + Sync + Send>,
-) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
     match get_table_type_for_tables(tables.iter().collect()) {
         Err(e) => Err(QueryDatabaseError::GenericError(anyhow!(
             "Failed to get table type for tables: {}",
@@ -113,7 +112,14 @@ pub async fn get_tables_schema(
                 .iter()
                 .zip(schemas.iter())
                 .map(|(table, schema)| {
-                    schema.render_dbml(table.table_id_for_dbml(), table.description())
+                    let table_id = table.table_id_for_dbml().replace("__DUST_DOT__", ".");
+                    schema.as_ref().map(|s| {
+                        s.render_dbml(
+                            &table_id,
+                            table.description(),
+                            remote_db.should_use_column_description(table),
+                        )
+                    })
                 })
                 .collect::<Vec<_>>();
 
@@ -122,10 +128,16 @@ pub async fn get_tables_schema(
                 schemas
                     .into_iter()
                     .zip(dbmls.into_iter())
-                    .map(|(schema, dbml)| GetTableSchemaResult {
-                        schema: Some(schema),
-                        dbml,
-                        head: None,
+                    .filter_map(|(schema, dbml)| {
+                        if let (Some(schema), Some(dbml)) = (schema, dbml) {
+                            Some(GetTableSchemaResult {
+                                schema: Some(schema),
+                                dbml,
+                                head: None,
+                            })
+                        } else {
+                            None
+                        }
                     })
                     .collect::<Vec<_>>(),
             ))

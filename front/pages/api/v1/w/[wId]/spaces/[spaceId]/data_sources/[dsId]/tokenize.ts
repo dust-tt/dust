@@ -1,5 +1,3 @@
-import type { CoreAPITokenType, WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -12,6 +10,8 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { CoreAPITokenType, WithAPIErrorResponse } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export type PostDatasourceTokenizeBody = {
   text: string;

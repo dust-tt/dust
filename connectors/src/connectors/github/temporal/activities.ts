@@ -1,11 +1,17 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { assertNever, MIME_TYPES } from "@dust-tt/types";
-import { Context } from "@temporalio/activity";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
 import PQueue from "p-queue";
-import { Op } from "sequelize";
 
+import { formatCodeContentForUpsert } from "@connectors/connectors/github/lib/code/file_operations";
+import { garbageCollectCodeSync } from "@connectors/connectors/github/lib/code/garbage_collect";
+import {
+  isGraphQLNotFound,
+  isGraphQLRepositoryNotFound,
+  RepositoryAccessBlockedError,
+  RepositoryNotFoundError,
+} from "@connectors/connectors/github/lib/errors";
 import type {
   GithubIssue as GithubIssueType,
   GithubUser,
@@ -22,6 +28,7 @@ import {
   getReposPage,
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
+import type { DiscussionNode } from "@connectors/connectors/github/lib/github_graphql";
 import {
   getCodeRootInternalId,
   getDiscussionInternalId,
@@ -37,12 +44,13 @@ import { QUEUE_NAME } from "@connectors/connectors/github/temporal/config";
 import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals";
 import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
+  sectionLength,
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
@@ -56,11 +64,18 @@ import {
   GithubIssue,
 } from "@connectors/lib/models/github";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import type { Logger } from "@connectors/logger/logger";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { normalizeError } from "@connectors/types/api";
+
+// Only allow documents up to 5mb to be processed.
+const MAX_DOCUMENT_TXT_LEN = 5000000;
 
 export async function githubGetReposResultPageActivity(
   connectorId: ModelId,
@@ -284,6 +299,11 @@ export async function githubUpsertIssueActivity(
     content: renderedIssue,
   } = renderedIssueResult;
 
+  if (sectionLength(renderedIssue) > MAX_DOCUMENT_TXT_LEN) {
+    logger.info("Issue is too large to upsert.");
+    return;
+  }
+
   const documentId = getIssueInternalId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
   const tags = [
@@ -315,7 +335,7 @@ export async function githubUpsertIssueActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: issue.title,
-    mimeType: MIME_TYPES.GITHUB.ISSUE,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.ISSUE,
     async: true,
   });
 
@@ -334,13 +354,26 @@ async function renderDiscussion(
   login: string,
   discussionNumber: number,
   logger: Logger
-) {
-  const discussion = await getDiscussion(
+): Promise<
+  Result<
+    {
+      discussion: DiscussionNode;
+      content: CoreAPIDataSourceDocumentSection;
+    },
+    Error
+  >
+> {
+  const discussionRes = await getDiscussion(
     connector,
     repoName,
     login,
     discussionNumber
   );
+  if (discussionRes.isErr()) {
+    return new Err(discussionRes.error);
+  }
+
+  const discussion = discussionRes.value;
 
   const content = await renderDocumentTitleAndContent({
     dataSourceConfig,
@@ -435,10 +468,10 @@ async function renderDiscussion(
     nextCursor = cursor;
   }
 
-  return {
+  return new Ok({
     discussion,
     content,
-  };
+  });
 }
 
 export async function githubUpsertDiscussionActivity(
@@ -463,7 +496,7 @@ export async function githubUpsertDiscussionActivity(
     ...loggerArgs,
   });
   logger.info("Upserting GitHub discussion.");
-  const { discussion, content: renderedDiscussion } = await renderDiscussion(
+  const renderedDiscussionRes = await renderDiscussion(
     dataSourceConfig,
     connector,
     repoName,
@@ -471,6 +504,22 @@ export async function githubUpsertDiscussionActivity(
     discussionNumber,
     logger
   );
+
+  if (renderedDiscussionRes.isErr()) {
+    if (isGraphQLNotFound(renderedDiscussionRes.error)) {
+      logger.warn("Discussion not found. Skipping.");
+      return;
+    }
+    throw renderedDiscussionRes.error;
+  }
+
+  const { discussion, content: renderedDiscussion } =
+    renderedDiscussionRes.value;
+
+  if (sectionLength(renderedDiscussion) > MAX_DOCUMENT_TXT_LEN) {
+    logger.info("Discussion is too large to upsert.");
+    return;
+  }
 
   const documentId = getDiscussionInternalId(
     repoId.toString(),
@@ -501,7 +550,7 @@ export async function githubUpsertDiscussionActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: discussion.title,
-    mimeType: MIME_TYPES.GITHUB.DISCUSSION,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.DISCUSSION,
     async: true,
   });
 
@@ -519,7 +568,7 @@ export async function githubGetRepoDiscussionsResultPageActivity(
   repoLogin: string,
   cursor: string | null,
   loggerArgs: Record<string, string | number>
-): Promise<{ cursor: string | null; discussionNumbers: number[] }> {
+): Promise<{ cursor: string | null; discussionNumbers: number[] } | null> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector not found (connectorId: ${connectorId})`);
@@ -531,17 +580,34 @@ export async function githubGetRepoDiscussionsResultPageActivity(
     ...loggerArgs,
   });
   logger.info("Fetching GitHub discussions result page.");
-  const { cursor: nextCursor, discussions } = await getRepoDiscussionsPage(
-    connector,
-    repoName,
-    repoLogin,
-    cursor
-  );
 
-  return {
-    cursor: nextCursor,
-    discussionNumbers: discussions.map((discussion) => discussion.number),
-  };
+  try {
+    const { cursor: nextCursor, discussions } = await getRepoDiscussionsPage(
+      connector,
+      repoName,
+      repoLogin,
+      cursor
+    );
+
+    return {
+      cursor: nextCursor,
+      discussionNumbers: discussions.map((discussion) => discussion.number),
+    };
+  } catch (err) {
+    if (isGraphQLRepositoryNotFound(err)) {
+      logger.info(
+        {
+          connectorId,
+          repoName,
+          repoOwner: repoLogin,
+          error: normalizeError(err).message,
+        },
+        "Skipping repository - repository not found"
+      );
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function githubSaveStartSyncActivity(
@@ -799,99 +865,7 @@ function renderGithubUser(user: GithubUser | null): string {
   return `@${user.id}`;
 }
 
-export function formatCodeContentForUpsert(
-  sourceUrl: string,
-  content: Buffer
-): CoreAPIDataSourceDocumentSection {
-  // For now we simply add the file name as prefix to all chunks.
-  return {
-    prefix: `SOURCE FILE: ${sourceUrl}\n\n`,
-    content: content.toString(),
-    sections: [],
-  };
-}
-
-async function garbageCollectCodeSync(
-  dataSourceConfig: DataSourceConfig,
-  connector: ConnectorResource,
-  repoId: number,
-  codeSyncStartedAt: Date,
-  logger: Logger
-) {
-  const filesToDelete = await GithubCodeFile.findAll({
-    where: {
-      connectorId: connector.id,
-      repoId: repoId.toString(),
-      lastSeenAt: {
-        [Op.lt]: codeSyncStartedAt,
-      },
-    },
-  });
-
-  if (filesToDelete.length > 0) {
-    logger.info(
-      { filesToDelete: filesToDelete.length },
-      "GarbageCollectCodeSync: deleting files"
-    );
-
-    const fq = new PQueue({ concurrency: 8 });
-    filesToDelete.forEach((f) =>
-      fq.add(async () => {
-        Context.current().heartbeat();
-        await deleteDataSourceDocument(
-          dataSourceConfig,
-          f.documentId,
-          logger.bindings()
-        );
-        // Only destroy once we succesfully removed from the data source. This is idempotent and will
-        // work as expected when retried.
-        await f.destroy();
-      })
-    );
-    await fq.onIdle();
-  }
-
-  const directoriesToDelete = await GithubCodeDirectory.findAll({
-    where: {
-      connectorId: connector.id,
-      repoId: repoId.toString(),
-      lastSeenAt: {
-        [Op.lt]: codeSyncStartedAt,
-      },
-    },
-  });
-
-  if (directoriesToDelete.length > 0) {
-    logger.info(
-      {
-        directoriesToDelete: directoriesToDelete.length,
-      },
-      "GarbageCollectCodeSync: deleting directories"
-    );
-
-    await concurrentExecutor(
-      directoriesToDelete,
-      async (d) => {
-        await deleteDataSourceFolder({
-          dataSourceConfig,
-          folderId: d.internalId,
-        });
-      },
-      { concurrency: 10 }
-    );
-
-    await GithubCodeDirectory.destroy({
-      where: {
-        connectorId: connector.id,
-        repoId: repoId.toString(),
-        lastSeenAt: {
-          [Op.lt]: codeSyncStartedAt,
-        },
-      },
-    });
-  }
-}
-
+// TODO(GH CLEAN-UP: 2025-07-07): Remove this activity.
 export async function githubCodeSyncActivity({
   dataSourceConfig,
   connectorId,
@@ -923,6 +897,7 @@ export async function githubCodeSyncActivity({
     repoLogin,
     ...loggerArgs,
   });
+
   const connectorState = await GithubConnectorState.findOne({
     where: {
       connectorId: connector.id,
@@ -932,7 +907,7 @@ export async function githubCodeSyncActivity({
     throw new Error(`Connector state not found for connector ${connector.id}`);
   }
 
-  Context.current().heartbeat();
+  await heartbeat();
   if (!connectorState.codeSyncEnabled) {
     // Garbage collect any existing code files.
     logger.info("Code sync disabled for connector");
@@ -962,6 +937,21 @@ export async function githubCodeSyncActivity({
     return;
   }
 
+  let githubCodeRepository = await GithubCodeRepository.findOne({
+    where: {
+      connectorId: connector.id,
+      repoId: repoId.toString(),
+    },
+  });
+
+  if (githubCodeRepository && githubCodeRepository.skipReason) {
+    logger.info(
+      { skipReason: githubCodeRepository.skipReason },
+      "Repository skipped, not syncing."
+    );
+    return;
+  }
+
   // upserting a folder for the code root in data_source_folders (core)
   await upsertDataSourceFolder({
     dataSourceConfig,
@@ -969,15 +959,8 @@ export async function githubCodeSyncActivity({
     title: "Code",
     parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB.CODE_ROOT,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_ROOT,
     sourceUrl: getRepoUrl(repoLogin, repoName),
-  });
-
-  let githubCodeRepository = await GithubCodeRepository.findOne({
-    where: {
-      connectorId: connector.id,
-      repoId: repoId.toString(),
-    },
   });
 
   if (!githubCodeRepository) {
@@ -1009,7 +992,7 @@ export async function githubCodeSyncActivity({
     "Attempting download of Github repository for sync"
   );
 
-  Context.current().heartbeat();
+  await heartbeat();
   let nbEntries = 0;
   const repoRes = await processRepository({
     connector,
@@ -1018,19 +1001,23 @@ export async function githubCodeSyncActivity({
     repoId,
     onEntry: () => {
       if (nbEntries % 100 === 0) {
-        Context.current().heartbeat();
+        void heartbeat();
       }
       ++nbEntries;
     },
     logger: logger,
   });
-  Context.current().heartbeat();
+  await heartbeat();
 
   if (repoRes.isErr()) {
-    if (repoRes.error instanceof ExternalOAuthTokenError) {
+    if (
+      repoRes.error instanceof ExternalOAuthTokenError ||
+      repoRes.error instanceof RepositoryAccessBlockedError ||
+      repoRes.error instanceof RepositoryNotFoundError
+    ) {
       logger.info(
         { err: repoRes.error },
-        "Missing Github repository tarball: Garbage collecting repo."
+        "Missing Github repository: Garbage collecting repo."
       );
 
       await garbageCollectCodeSync(
@@ -1041,7 +1028,7 @@ export async function githubCodeSyncActivity({
         logger.child({ task: "garbageCollectRepoNotFound" })
       );
 
-      Context.current().heartbeat();
+      await heartbeat();
 
       // deleting the code root folder from data_source_folders (core)
       await deleteDataSourceFolder({
@@ -1091,7 +1078,7 @@ export async function githubCodeSyncActivity({
     const fq = new PQueue({ concurrency: 4 });
     const fqPromises = files.map((f) =>
       fq.add(async () => {
-        Context.current().heartbeat();
+        await heartbeat();
         // Read file (files are 1MB at most).
         let content;
         try {
@@ -1131,6 +1118,23 @@ export async function githubCodeSyncActivity({
           },
         });
 
+        // Skip processing if the file has a skipReason.
+        if (githubCodeFile.skipReason) {
+          logger.info(
+            {
+              repoId,
+              fileName: f.fileName,
+              documentId: f.documentId,
+              skipReason: githubCodeFile.skipReason,
+            },
+            "Skipping file due to skipReason"
+          );
+          // Update lastSeenAt to prevent garbage collection.
+          githubCodeFile.lastSeenAt = codeSyncStartedAt;
+          await githubCodeFile.save();
+          return;
+        }
+
         // If the parents have updated then the documentId gets updated as well so we should never
         // have an udpate to parentInternalId. We check that this is always the case. If the file
         // is moved (the parents change) then it will trigger the creation of a new file with a
@@ -1157,6 +1161,13 @@ export async function githubCodeSyncActivity({
           }
           repoUpdatedAt = codeSyncStartedAt;
 
+          const renderedCode = formatCodeContentForUpsert(f.sourceUrl, content);
+
+          if (sectionLength(renderedCode) > MAX_DOCUMENT_TXT_LEN) {
+            logger.info("Code file is too large to upsert.");
+            return;
+          }
+
           const tags = [
             `title:${f.fileName}`,
             `lasUpdatedAt:${codeSyncStartedAt.getTime()}`,
@@ -1171,7 +1182,7 @@ export async function githubCodeSyncActivity({
           await upsertDataSourceDocument({
             dataSourceConfig,
             documentId: f.documentId,
-            documentContent: formatCodeContentForUpsert(f.sourceUrl, content),
+            documentContent: renderedCode,
             documentUrl: f.sourceUrl,
             timestampMs: codeSyncStartedAt.getTime(),
             tags,
@@ -1182,7 +1193,7 @@ export async function githubCodeSyncActivity({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: f.fileName,
-            mimeType: MIME_TYPES.GITHUB.CODE_FILE,
+            mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_FILE,
             async: true,
           });
 
@@ -1212,7 +1223,7 @@ export async function githubCodeSyncActivity({
     const dq = new PQueue({ concurrency: 8 });
     const dqPromises = directories.map((d) =>
       dq.add(async () => {
-        Context.current().heartbeat();
+        await heartbeat();
         const parentInternalId = d.parentInternalId || rootInternalId;
 
         const parents: [...string[], string, string] = [
@@ -1226,7 +1237,7 @@ export async function githubCodeSyncActivity({
           parents,
           parentId: parents[1],
           title: d.dirName,
-          mimeType: MIME_TYPES.GITHUB.CODE_DIRECTORY,
+          mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_DIRECTORY,
           sourceUrl: d.sourceUrl,
         });
 
@@ -1281,7 +1292,7 @@ export async function githubCodeSyncActivity({
     );
     await Promise.all(dqPromises);
 
-    Context.current().heartbeat();
+    await heartbeat();
 
     // Final part of the sync, we delete all files and directories that were not seen during the
     // sync.
@@ -1298,9 +1309,9 @@ export async function githubCodeSyncActivity({
       githubCodeRepository.codeUpdatedAt = repoUpdatedAt;
       await githubCodeRepository.save();
     }
-    Context.current().heartbeat();
+    await heartbeat();
   } finally {
-    Context.current().heartbeat();
+    await heartbeat();
     await cleanUpProcessRepository(tempDir);
     logger.info(
       {
@@ -1370,7 +1381,7 @@ export async function githubUpsertRepositoryFolderActivity({
     parents: [getRepositoryInternalId(repoId)],
     parentId: null,
     sourceUrl: getRepoUrl(repoLogin, repoName),
-    mimeType: MIME_TYPES.GITHUB.REPOSITORY,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.REPOSITORY,
   });
 }
 
@@ -1395,7 +1406,7 @@ export async function githubUpsertIssuesFolderActivity({
     title: "Issues",
     parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB.ISSUES,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.ISSUES,
     sourceUrl: getIssuesUrl(getRepoUrl(repoLogin, repoName)),
   });
 }
@@ -1424,7 +1435,7 @@ export async function githubUpsertDiscussionsFolderActivity({
       getRepositoryInternalId(repoId),
     ],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB.DISCUSSIONS,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,
     sourceUrl: getDiscussionsUrl(getRepoUrl(repoLogin, repoName)),
   });
 }

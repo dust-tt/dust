@@ -12,32 +12,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
-  LightWorkspaceType,
-  PlanType,
-  Result,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isOAuthProvider,
-  Ok,
-  setupOAuthConnection,
-} from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
-import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
+import { CreateConnectionOAuthModal } from "@app/components/data_source/CreateConnectionOAuthModal";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   CONNECTOR_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
@@ -47,6 +30,24 @@ import {
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type {
+  ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
+  LightWorkspaceType,
+  OAuthUseCase,
+  PlanType,
+  Result,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  Err,
+  isOAuthProvider,
+  Ok,
+  setupOAuthConnection,
+} from "@app/types";
 
 export type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;
@@ -64,10 +65,12 @@ type AddConnectionMenuProps = {
 export async function setupConnection({
   owner,
   provider,
+  useCase = "connection",
   extraConfig,
 }: {
   owner: LightWorkspaceType;
   provider: ConnectorProvider;
+  useCase?: OAuthUseCase;
   extraConfig: Record<string, string>;
 }): Promise<Result<string, Error>> {
   let connectionId: string;
@@ -78,7 +81,7 @@ export async function setupConnection({
       dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider,
-      useCase: "connection",
+      useCase,
       extraConfig,
     });
     if (!cRes.isOk()) {
@@ -153,6 +156,7 @@ export const AddConnectionMenu = ({
     [owner, systemSpace]
   );
 
+  // Filter available integrations.
   const availableIntegrations = integrations.filter((i) => {
     const hide = CONNECTOR_CONFIGURATIONS[i.connectorProvider].hide;
     const rolloutFlag =
@@ -160,7 +164,11 @@ export const AddConnectionMenu = ({
     const hasFlag = rolloutFlag && featureFlags.includes(rolloutFlag);
 
     return (
-      isConnectorProviderAllowedForPlan(plan, i.connectorProvider) &&
+      isConnectorProviderAllowedForPlan(
+        plan,
+        i.connectorProvider,
+        featureFlags
+      ) &&
       isConnectionIdRequiredForProvider(i.connectorProvider) &&
       // If the connector is hidden, it should only be shown if the feature flag is enabled.
       (!hide || hasFlag)
@@ -278,7 +286,8 @@ export const AddConnectionMenu = ({
 
     const isProviderAllowed = isConnectorProviderAllowedForPlan(
       plan,
-      configuration.connectorProvider
+      configuration.connectorProvider,
+      featureFlags
     );
 
     if (!isProviderAllowed) {
@@ -399,8 +408,9 @@ export const AddConnectionMenu = ({
             case "zendesk":
             case "salesforce":
             case "webcrawler":
+            case "gong":
               return (
-                <CreateConnectionConfirmationModal
+                <CreateConnectionOAuthModal
                   key={`${c}-${isOpen}`}
                   connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
                   isOpen={isOpen}
@@ -416,6 +426,7 @@ export const AddConnectionMenu = ({
                   }}
                 />
               );
+            case "slack_bot":
             case undefined:
               return null;
             default:

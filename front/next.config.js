@@ -1,13 +1,16 @@
 const path = require("path");
 
+const showReactScan =
+  process.env.NODE_ENV === "development" && process.env.REACT_SCAN === "true";
+
 const CONTENT_SECURITY_POLICIES = [
   "default-src 'none';",
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.cr-relay.com;`,
-  `style-src 'self' 'unsafe-inline' *.typekit.net;`,
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.cr-relay.com ${showReactScan ? "unpkg.com" : ""};`,
+  `style-src 'self' 'unsafe-inline';`,
   `img-src 'self' data: https:;`,
-  `connect-src 'self' blob: *.google-analytics.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com;`,
+  `connect-src 'self' blob: browser-intake-datadoghq.eu *.google-analytics.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com;`,
   `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net;`,
-  `font-src 'self' data: *.typekit.net;`,
+  `font-src 'self' data: dust.tt *.dust.tt;`,
   `object-src 'none';`,
   `form-action 'self';`,
   `base-uri 'self';`,

@@ -3,16 +3,23 @@ import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
+import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useEffect, useMemo } from "react";
 
+import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
 import { MentionWithPasteExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
+import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { SuggestionProps } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
+import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
+import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { isMobile } from "@app/lib/utils";
+
+import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
 export interface EditorMention {
   id: string;
@@ -191,6 +198,15 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
+  onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
+  suggestionHandler: {
+    render: () => {
+      onKeyDown: (props: SuggestionKeyDownProps) => boolean;
+      onStart: (props: SuggestionProps) => void;
+      onExit: () => void;
+      onUpdate: (props: SuggestionProps) => void;
+    };
+  };
 }
 
 const useCustomEditor = ({
@@ -198,31 +214,44 @@ const useCustomEditor = ({
   resetEditorContainerSize,
   suggestions,
   disableAutoFocus,
+  onUrlDetected,
+  suggestionHandler,
 }: CustomEditorProps) => {
+  const extensions = [
+    StarterKit.configure({
+      hardBreak: false, // Disable the built-in Shift+Enter.
+      paragraph: false,
+      strike: false,
+    }),
+    MentionStorageExtension,
+    DataSourceLinkExtension,
+    MentionWithPasteExtension.configure({
+      HTMLAttributes: {
+        class:
+          "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
+      },
+      suggestion: suggestionHandler,
+    }),
+    Placeholder.configure({
+      placeholder: "Ask a question or get some @help",
+      emptyNodeClass:
+        "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+    }),
+    MarkdownStyleExtension,
+    ParagraphExtension,
+    URLStorageExtension,
+  ];
+  if (onUrlDetected) {
+    extensions.push(
+      URLDetectionExtension.configure({
+        onUrlDetected,
+      })
+    );
+  }
+
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
-    extensions: [
-      StarterKit.configure({
-        hardBreak: false, // Disable the built-in Shift+Enter.
-        paragraph: false,
-        strike: false,
-      }),
-      MentionStorageExtension,
-      MentionWithPasteExtension.configure({
-        HTMLAttributes: {
-          class:
-            "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
-        },
-        suggestion: makeGetAssistantSuggestions(),
-      }),
-      Placeholder.configure({
-        placeholder: "Ask a question or get some @help",
-        emptyNodeClass:
-          "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
-      }),
-      MarkdownStyleExtension,
-      ParagraphExtension,
-    ],
+    extensions,
   });
 
   // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
@@ -238,13 +267,23 @@ const useCustomEditor = ({
         class: "border-0 outline-none overflow-y-auto h-full scrollbar-hide",
       },
       handleKeyDown: (view, event) => {
-        if (
-          event.key === "Enter" &&
-          !event.shiftKey &&
-          !event.ctrlKey &&
-          !event.metaKey &&
-          !event.altKey
-        ) {
+        const submitMessageKey = localStorage.getItem("submitMessageKey");
+        const isCmdEnterForSubmission =
+          isSubmitMessageKey(submitMessageKey) &&
+          submitMessageKey === "cmd+enter";
+        const isEnterForSubmission = !isCmdEnterForSubmission;
+
+        // Check if this is a submission key combination based on user preferences
+        const isSubmissionKey =
+          (isEnterForSubmission &&
+            event.key === "Enter" &&
+            !event.shiftKey &&
+            !event.ctrlKey &&
+            !event.metaKey &&
+            !event.altKey) ||
+          (isCmdEnterForSubmission && event.key === "Enter" && event.metaKey);
+
+        if (isSubmissionKey) {
           const mentionPluginState = MentionPluginKey.getState(view.state);
           // Let the mention extension handle the event if its dropdown is currently opened.
           if (mentionPluginState?.active) {

@@ -1,4 +1,5 @@
 name: Deploy
+run-name: Deploy ${{ inputs.component }} to ${{ inputs.regions }}
 
 on:
   workflow_dispatch:
@@ -16,15 +17,18 @@ on:
         description: "Name of the component to deploy"
         required: true
         type: choice
+        default:
         options:
           - connectors
           - core
           - front
           - front-edge
+          - front-qa
           - prodbox
           - oauth
           - viz
           - alerting-temporal
+          - dante
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
@@ -34,20 +38,38 @@ on:
           - "check"
           - "force (dangerous)"
 
+permissions:
+  contents: read
+  pull-requests: write
+
 concurrency:
   group: "deploy_${{ inputs.component }}"
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if deployment is from main branch
+        if: ${{ github.ref != 'refs/heads/main' && inputs.component != 'front-edge' && inputs.component != 'front-qa' }}
+        run: |
+          echo "Error: Deployments for ${{ inputs.component }} are only allowed from the main branch"
+          exit 1
+
   prepare:
+    needs: [check-branch]
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
+      long_sha: ${{ steps.short_sha.outputs.long_sha }}
     steps:
       - uses: actions/checkout@v3
       - name: Get short sha
         id: short_sha
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Get long sha
+        id: long_sha
+        run: echo "long_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   notify-start:
     needs: [prepare]
@@ -70,7 +92,7 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack Check Deployment Blocked
-        if: ${{ inputs.check_deployment_blocked }}
+        if: ${{ inputs.check_deployment_blocked == 'check' }}
         id: check_deployment_blocked
         uses: ./.github/actions/slack-check-deployment-blocked
         with:
@@ -122,7 +144,9 @@ jobs:
           component: ${{ inputs.component }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
           depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
           commit_sha: ${{ needs.prepare.outputs.short_sha }}
+          commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
 
       - name: Notify Failure
         if: failure()

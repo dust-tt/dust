@@ -7,8 +7,6 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
-import type { PlanType } from "@dust-tt/types";
 import type * as t from "io-ts";
 import type { ReactElement } from "react";
 import React from "react";
@@ -23,9 +21,11 @@ import {
   useEditingPlan,
 } from "@app/components/poke/plans/form";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
+import type { PlanType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async () => {
@@ -127,7 +127,7 @@ const PlansPage = () => {
           <div className="h-full py-8 text-2xl font-bold">Plans</div>
           <div className="h-full w-full overflow-x-auto pb-52 pt-12">
             <table className="mx-auto h-full table-auto overflow-visible rounded-lg">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted dark:bg-muted-night">
                 <tr>
                   {Object.keys(PLAN_FIELDS).map((fieldName) => {
                     const field =
@@ -147,7 +147,7 @@ const PlansPage = () => {
                   <th className="px-4 py-2">Edit</th>
                 </tr>
               </thead>
-              <tbody className="h-full bg-white pb-48 text-gray-700">
+              <tbody className="h-full bg-background pb-48 text-primary-light dark:bg-background-night dark:text-primary-light-night">
                 {plansToRender?.map((plan) => {
                   const planId = plan.isNewPlan ? "newPlan" : plan.code;
 
@@ -168,7 +168,7 @@ const PlansPage = () => {
                           />
                         </React.Fragment>
                       ))}
-                      <td className="w-12 min-w-[4rem] flex-none border px-4 py-2">
+                      <td className="w-12 min-w-16 flex-none border px-4 py-2">
                         {plan.code === editingPlan?.code || plan.isNewPlan ? (
                           <div className="flex flex-row justify-center">
                             <IconButton
@@ -211,7 +211,7 @@ const PlansPage = () => {
 };
 
 PlansPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+  return <PokeLayout title="Plans">{page}</PokeLayout>;
 };
 
 export default PlansPage;

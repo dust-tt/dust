@@ -1,10 +1,10 @@
-import { concurrentExecutor } from "@dust-tt/types";
 import type { Logger } from "pino";
 import { makeScript } from "scripts/helpers";
 
 import { workspaceIdFromConnectionId } from "@connectors/connectors/notion";
 import { NotionConnectorState } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { concurrentExecutor } from "@connectors/types";
 
 async function updateConnector(
   connector: ConnectorResource,

@@ -1,12 +1,13 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+import type { GroupKind, LightWorkspaceType } from "@app/types";
+import { isGroupKind } from "@app/types";
 
 type PaginationParams = {
   orderColumn: "createdAt";
@@ -52,7 +53,7 @@ export function useMembers({
     });
 
   return {
-    members: useMemo(() => (data ? data.members : []), [data]),
+    members: data?.members ?? emptyArray(),
     isMembersLoading: !error && !data,
     isMembersError: error,
     hasNextPage: !!data?.nextPageUrl,
@@ -90,7 +91,7 @@ export function useAdmins(
   );
 
   return {
-    admins: useMemo(() => (data ? data.members : []), [data]),
+    admins: data?.members ?? emptyArray(),
     isAdminsLoading: !error && !data,
     iAdminsError: error,
     mutateMembers: mutate,
@@ -106,7 +107,7 @@ export function useWorkspaceInvitations(owner: LightWorkspaceType) {
   );
 
   return {
-    invitations: useMemo(() => (data ? data.invitations : []), [data]),
+    invitations: data?.invitations ?? emptyArray(),
     isInvitationsLoading: !error && !data,
     isInvitationsError: error,
     mutateInvitations: mutate,
@@ -138,7 +139,7 @@ export function useMembersByEmails({
     );
 
   return {
-    members: useMemo(() => (data ? data.members : []), [data]),
+    members: data?.members ?? emptyArray(),
     isMembersLoading: !error && !data && !disabled,
     isMembersError: error,
     mutate,
@@ -151,12 +152,14 @@ export function useSearchMembers({
   searchTerm,
   pageIndex,
   pageSize,
+  groupKind,
   disabled,
 }: {
   workspaceId: string;
   searchTerm: string;
   pageIndex: number;
   pageSize: number;
+  groupKind?: Omit<GroupKind, "system">;
   disabled?: boolean;
 }) {
   const searchMembersFetcher: Fetcher<SearchMembersResponseBody> = fetcher;
@@ -179,6 +182,10 @@ export function useSearchMembers({
     limit: pageSize.toString(),
   });
 
+  if (groupKind && isGroupKind(groupKind)) {
+    searchParams.set("groupKind", groupKind);
+  }
+
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
       `/api/w/${workspaceId}/members/search?${searchParams.toString()}`,
@@ -191,7 +198,7 @@ export function useSearchMembers({
     );
 
   return {
-    members: useMemo(() => (data ? data.members : []), [data]),
+    members: data?.members ?? emptyArray(),
     totalMembersCount: data?.total ?? 0,
     isLoading: !error && !data,
     isError: !!error,

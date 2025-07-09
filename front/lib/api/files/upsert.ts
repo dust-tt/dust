@@ -1,23 +1,16 @@
-import { isSupportedPlainTextContentType } from "@dust-tt/client";
-import type {
-  FileUseCase,
-  Result,
-  SupportedFileContentType,
-} from "@dust-tt/types";
 import {
-  assertNever,
-  Err,
-  isSupportedImageContentType,
-  Ok,
-  slugify,
-  TABLE_PREFIX,
-} from "@dust-tt/types";
+  DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
+  isDustMimeType,
+  isSupportedPlainTextContentType,
+} from "@dust-tt/client";
 
 import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
 } from "@app/lib/api/data_sources";
 import {
+  createDataSourceFolder,
+  isUpsertDocumentArgs,
   isUpsertTableArgs,
   upsertDocument,
   upsertTable,
@@ -26,10 +19,24 @@ import { generateSnippet } from "@app/lib/api/files/snippet";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type {
+  CoreAPIDataSourceDocumentSection,
+  FileUseCase,
+  Result,
+  SupportedFileContentType,
+} from "@app/types";
+import {
+  assertNever,
+  Err,
+  isSupportedImageContentType,
+  Ok,
+  slugify,
+  TABLE_PREFIX,
+} from "@app/types";
 
 // Upload to dataSource
 const upsertDocumentToDatasource: ProcessingFunction = async (
@@ -39,16 +46,16 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   // Use the file id as the document id to make it easy to track the document back to the file.
   const sourceUrl = file.getPrivateUrl(auth);
   let documentId = file.sId;
-  if (upsertArgs && "document_id" in upsertArgs) {
+  if (isUpsertDocumentArgs(upsertArgs)) {
     documentId = upsertArgs.document_id;
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const title = upsertTitle ?? file.fileName;
   const content = await getFileContent(auth, file);
   if (!content) {
-    return new Err({
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
+      code: "internal_error",
       message:
         "There was an error upserting the document: failed to get file content.",
     });
@@ -72,12 +79,61 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   });
 
   if (upsertDocumentRes.isErr()) {
-    return new Err({
+    return new Err<DustError>(upsertDocumentRes.error);
+  }
+
+  return new Ok(undefined);
+};
+
+// Upload seachable document to dataSource
+// We expect the content of the file to be the JSON representation of a CoreAPIDataSourceDocumentSection.
+const upsertSectionDocumentToDatasource: ProcessingFunction = async (
+  auth,
+  { file, dataSource, upsertArgs }
+) => {
+  // Get the content of the file.
+  const content = await getFileContent(auth, file);
+  if (!content) {
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
-      message: "There was an error upserting the document.",
-      data_source_error: upsertDocumentRes.error,
+      code: "internal_error",
+      message:
+        "There was an error upserting the document: failed to get file content.",
     });
+  }
+
+  // Parse the content of the file to get the section.
+  let section: CoreAPIDataSourceDocumentSection | null = null;
+  try {
+    section = JSON.parse(content);
+  } catch (e) {
+    return new Err<DustError>({
+      name: "dust_error",
+      code: "internal_error",
+      message: "There was an error upserting the document.",
+    });
+  }
+
+  const upsertDocumentRes = await upsertDocument({
+    auth,
+    dataSource,
+    title: file.fileName,
+    mime_type: file.contentType,
+    document_id: file.sId,
+    source_url: file.getPrivateUrl(auth),
+    parents: [file.sId],
+    section,
+    tags: [
+      `title:${file.fileName}`,
+      `fileId:${file.sId}`,
+      `fileName:${file.fileName}`,
+    ],
+    light_document_output: true,
+    ...upsertArgs,
+  });
+
+  if (upsertDocumentRes.isErr()) {
+    return new Err<DustError>(upsertDocumentRes.error);
   }
 
   return new Ok(undefined);
@@ -99,15 +155,43 @@ const updateUseCaseMetadata = async (
   }
 };
 
+async function upsertWorkbookToDatasource(
+  auth: Authenticator,
+  dataSource: DataSourceResource,
+  file: FileResource
+): Promise<Result<{ folderId: string }, DustError>> {
+  const folderId = file.sId;
+
+  const folderRes = await createDataSourceFolder(dataSource, {
+    folderId,
+    mimeType: DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
+    title: file.fileName,
+  });
+
+  if (folderRes.isErr()) {
+    return new Err(new DustError("internal_error", folderRes.error.message));
+  }
+
+  return new Ok({ folderId: folderRes.value.folder.folder_id });
+}
+
 const upsertTableToDatasource: ProcessingFunction = async (
   auth,
   { file, dataSource, upsertArgs }
 ) => {
   // Use the file sId as the table id to make it easy to track the table back to the file.
   let tableId = file.sId;
-  if (upsertArgs && "tableId" in upsertArgs) {
-    tableId = upsertArgs.tableId ?? tableId;
+
+  if (upsertArgs && !isUpsertTableArgs(upsertArgs)) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_error",
+      message:
+        "Only table upsert args are supported for this file type. Please use the table upsert args instead.",
+    });
   }
+  tableId = upsertArgs?.tableId ?? tableId;
+
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const title = upsertTitle ?? file.fileName;
 
@@ -126,9 +210,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
         `fileId:${file.sId}`,
         `fileName:${file.fileName}`,
       ],
-      parentId: isUpsertTableArgs(upsertArgs)
-        ? upsertArgs?.parentId
-        : upsertArgs?.parent_id ?? null,
+      parentId: upsertArgs?.parentId ?? null,
       parents: upsertArgs?.parents ?? [tableId],
       async: false,
       title,
@@ -142,18 +224,18 @@ const upsertTableToDatasource: ProcessingFunction = async (
   });
 
   if (upsertTableRes.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: `There was an error upserting the table. Error: ${upsertTableRes.error.message}`,
-      data_source_error: upsertTableRes.error,
-    });
+    return new Err(upsertTableRes.error);
   }
 
   await updateUseCaseMetadata(file, [tableId]);
 
   return new Ok(undefined);
 };
+
+// Append the workbook name to the worksheet name to make it unique.
+function makeWorksheetName(file: FileResource, worksheetName: string) {
+  return `${file.fileName} - ${worksheetName}`;
+}
 
 // Excel files are processed in a special way, we need to extract the content of each worksheet and
 // upsert it as a separate table. This means we pull the whole content of the file (this is not
@@ -167,69 +249,111 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   let worksheetContent: string | undefined;
 
   if (upsertArgs && !isUpsertTableArgs(upsertArgs)) {
-    return new Err(new Error("Invalid upsert args"));
+    return new Err<DustError>({
+      name: "dust_error",
+      code: "internal_error",
+      message:
+        "Excel files can only be processed as tables. " +
+        "Please use table arguments instead of document arguments.",
+    });
   }
 
   const tableIds: string[] = [];
 
-  const upsertWorksheet = async (
-    worksheetName: string,
-    worksheetContent: string
-  ) => {
-    const title = `${file.fileName} ${worksheetName}`;
+  const upsertWorksheet = async ({
+    worksheetName,
+    worksheetContent,
+    workbookFolderId,
+  }: {
+    worksheetName: string;
+    worksheetContent: string;
+    workbookFolderId?: string;
+  }) => {
+    const title = makeWorksheetName(file, worksheetName);
+    const slugifiedName = slugify(title);
     const tableId = `${file.sId}-${slugify(worksheetName)}`;
-    const upsertTableArgs: UpsertTableArgs = {
-      ...upsertArgs,
-      title,
-      name: slugify(title),
-      tableId,
-      parentId: file.sId,
-      parents: [tableId, file.sId],
-      description: "Table uploaded from excel file",
-      truncate: true,
-      mimeType: "text/csv",
-      sourceUrl: null,
-    };
 
     const worksheetFile = await FileResource.makeNew({
       workspaceId: file.workspaceId,
       userId: file.userId,
       contentType: "text/csv",
-      fileName: slugify(`${file.fileName} ${worksheetName}`) + ".csv",
+      fileName: `${slugifiedName}.csv`,
       fileSize: Buffer.byteLength(worksheetContent),
       useCase: file.useCase,
       useCaseMetadata: file.useCaseMetadata,
     });
 
+    const parentId = workbookFolderId ?? file.sId;
+    const parents = workbookFolderId ? [tableId, workbookFolderId] : [tableId];
+
+    const upsertTableArgs: UpsertTableArgs = {
+      ...upsertArgs,
+      title,
+      name: slugifiedName,
+      tableId,
+      parentId,
+      parents,
+      description: "Table uploaded from excel file",
+      truncate: true,
+      mimeType: "text/csv",
+      fileId: worksheetFile.sId,
+      sourceUrl: null,
+    };
+
     await processAndStoreFile(auth, {
       file: worksheetFile,
-      reqOrString: worksheetContent,
+      content: {
+        type: "string",
+        value: worksheetContent,
+      },
     });
 
-    tableIds.push(tableId);
-
-    await upsertTableToDatasource(auth, {
+    const res = await upsertTableToDatasource(auth, {
       file: worksheetFile,
       dataSource,
       upsertArgs: upsertTableArgs,
     });
+
+    if (res.isOk()) {
+      tableIds.push(tableId);
+    }
   };
 
   const content = await getFileContent(auth, file);
   if (!content) {
-    return new Err({
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
+      code: "internal_error",
       message:
         "There was an error upserting the document: failed to get file content.",
     });
+  }
+
+  // For Excel workbooks uploaded in a folder, we create a folder to store the worksheets.
+  let workbookFolderId: string | undefined;
+  if (file.useCase === "upsert_table") {
+    const workbookFolderRes = await upsertWorkbookToDatasource(
+      auth,
+      dataSource,
+      file
+    );
+
+    if (workbookFolderRes.isErr()) {
+      return new Err(workbookFolderRes.error);
+    }
+
+    workbookFolderId = workbookFolderRes.value.folderId;
   }
 
   for (const line of content.split("\n")) {
     if (line.startsWith(TABLE_PREFIX)) {
       if (worksheetName && worksheetContent) {
         // Create a file for each worksheet
-        await upsertWorksheet(worksheetName, worksheetContent);
+        await upsertWorksheet({
+          workbookFolderId,
+          worksheetContent,
+          worksheetName,
+        });
       }
       worksheetName = line.slice(TABLE_PREFIX.length);
       worksheetContent = "";
@@ -238,14 +362,28 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     }
   }
 
-  if (!worksheetName || !worksheetContent) {
-    return new Err({
+  if (!worksheetName) {
+    return new Err<DustError>({
       name: "dust_error",
-      code: "invalid_request_error",
-      message: "Invalid Excel file",
+      code: "invalid_content_error",
+      message:
+        "This Excel file doesn't contain any recognizable worksheets. " +
+        "Please check that your file has properly named worksheet tabs and try again.",
+    });
+  } else if (!worksheetContent) {
+    return new Err<DustError>({
+      name: "dust_error",
+      code: "invalid_content_error",
+      message:
+        "The worksheets in this Excel file appear to be empty. " +
+        "Please make sure your worksheets contain data and try again.",
     });
   } else {
-    await upsertWorksheet(worksheetName, worksheetContent);
+    await upsertWorksheet({
+      workbookFolderId,
+      worksheetContent,
+      worksheetName,
+    });
   }
 
   await updateUseCaseMetadata(file, tableIds);
@@ -264,7 +402,7 @@ type ProcessingFunction = (
     dataSource: DataSourceResource;
     upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
   }
-) => Promise<Result<undefined, Error>>;
+) => Promise<Result<undefined, DustError>>;
 
 const getProcessingFunction = ({
   contentType,
@@ -288,8 +426,17 @@ const getProcessingFunction = ({
         useCase === "upsert_table"
       ) {
         return upsertTableToDatasource;
-      } else if (useCase === "upsert_document") {
+      } else if (
+        useCase === "upsert_document" ||
+        useCase === "folders_document"
+      ) {
         return upsertDocumentToDatasource;
+      } else {
+        return undefined;
+      }
+    case "application/vnd.dust.section.json":
+      if (useCase === "tool_output") {
+        return upsertSectionDocumentToDatasource;
       } else {
         return undefined;
       }
@@ -297,7 +444,10 @@ const getProcessingFunction = ({
     case "application/vnd.ms-excel":
       if (useCase === "conversation" || useCase === "upsert_table") {
         return upsertExcelToDatasource;
-      } else if (useCase === "upsert_document") {
+      } else if (
+        useCase === "upsert_document" ||
+        useCase === "folders_document"
+      ) {
         return upsertDocumentToDatasource;
       } else {
         return undefined;
@@ -306,7 +456,12 @@ const getProcessingFunction = ({
 
   if (
     isSupportedPlainTextContentType(contentType) &&
-    ["conversation", "tool_output", "upsert_document"].includes(useCase)
+    [
+      "conversation",
+      "tool_output",
+      "upsert_document",
+      "folders_document",
+    ].includes(useCase)
   ) {
     return upsertDocumentToDatasource;
   }
@@ -315,15 +470,21 @@ const getProcessingFunction = ({
     return undefined;
   }
 
+  // Processing is assumed to be irrelevant for internal mime types.
+  if (isDustMimeType(contentType)) {
+    return undefined;
+  }
+
   assertNever(contentType);
 };
 
-export const isUpsertSupported = (arg: {
+export const isFileTypeUpsertableForUseCase = (arg: {
   contentType: SupportedFileContentType;
   useCase: FileUseCase;
 }): boolean => {
-  const processing = getProcessingFunction(arg);
-  return !!processing;
+  const processingFunction = getProcessingFunction(arg);
+
+  return processingFunction !== undefined;
 };
 
 const maybeApplyProcessing: ProcessingFunction = async (
@@ -366,32 +527,34 @@ export async function processAndUpsertToDataSource(
     file: FileResource;
     upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
   }
-): Promise<
-  Result<
-    FileResource,
-    Omit<DustError, "code"> & {
-      code:
-        | "internal_server_error"
-        | "invalid_request_error"
-        | "file_too_large"
-        | "file_type_not_supported";
-    }
-  >
-> {
+): Promise<Result<FileResource, DustError>> {
   if (file.status !== "ready") {
-    return new Err({
+    return new Err<DustError>({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "file_not_ready",
       message: "File is not ready for post processing.",
     });
   }
 
-  if (!isUpsertSupported(file)) {
+  if (!isFileTypeUpsertableForUseCase(file)) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "invalid_file",
       message: "File is not supported for upsert.",
     });
+  }
+
+  // When we upsert a file we don't want to be able to pass section or text in Upsert Args
+  // We want to return an Error in the future but we start by logging the error to see if there are
+  // places that are using it and need to be updated. first
+  if (upsertArgs && ("section" in upsertArgs || "text" in upsertArgs)) {
+    logger.error(
+      {
+        workspaceId: auth.workspace()?.sId,
+        fileId: file.sId,
+      },
+      "We should not pass section or text in Upsert Args anymore when upserting a file."
+    );
   }
 
   const [processingRes, snippetRes] = await Promise.all([
@@ -404,20 +567,15 @@ export async function processAndUpsertToDataSource(
   ]);
 
   if (processingRes.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: `Failed to process the file : ${processingRes.error.message}`,
-      processingError: processingRes.error,
-    });
+    return new Err<DustError>(processingRes.error);
   }
 
   if (snippetRes.isErr()) {
-    return new Err({
+    // TODO: Do the same for snippets?
+    return new Err<DustError>({
       name: "dust_error",
-      code: "internal_server_error",
+      code: "internal_error",
       message: `Failed to generate snippet: ${snippetRes.error.message}`,
-      snippetError: snippetRes.error,
     });
   }
 

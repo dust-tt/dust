@@ -1,5 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
 import * as fs from "fs";
 import type { Logger } from "pino";
 
@@ -11,6 +9,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
+import { removeNulls } from "@app/types";
 function searchInJson(
   obj: any,
   targetKey: string,

@@ -1,9 +1,9 @@
 import type { MenuItem } from "@dust-tt/sparkle";
-import { DataTable } from "@dust-tt/sparkle";
-import type { DataSourceViewContentNode } from "@dust-tt/types";
+import { DataTable, Tooltip } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { DataSourceViewContentNode } from "@app/types";
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
@@ -20,11 +20,14 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
       enableSorting: false,
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent icon={info.row.original.icon}>
-          <span>{info.getValue()}</span>
+          <Tooltip
+            label={info.getValue()}
+            trigger={<span>{info.getValue()}</span>}
+          />
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-3/6",
+        sizeRatio: 50,
       },
     },
     {
@@ -32,37 +35,47 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
       accessorKey: "location",
       id: "location",
       enableSorting: false,
-      meta: {
-        className: "w-2/6",
-      },
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.BasicCellContent label={info.getValue()} />
+        <DataTable.BasicCellContent
+          label={
+            // Displaying data source name for folders
+            info.row.original.dataSourceView.category === "folder"
+              ? info.row.original.dataSourceView.dataSource.name
+              : info.getValue()
+          }
+          className="pr-2"
+        />
       ),
+      meta: {
+        sizeRatio: 25,
+      },
     },
     {
       header: "Last updated",
       id: "lastUpdatedAt",
       accessorKey: "lastUpdatedAt",
       enableSorting: false,
-      meta: {
-        className: "w-20",
-      },
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
           className="justify-end"
           label={
             info.getValue()
-              ? formatTimestampToFriendlyDate(info.getValue(), "compact")
+              ? formatTimestampToFriendlyDate(info.getValue(), "short")
               : "-"
           }
         />
       ),
+      meta: {
+        sizeRatio: 15,
+      },
     },
     {
       id: "actions",
+      accessorKey: "actions",
+      header: "Actions",
       enableSorting: false,
       meta: {
-        className: "flex justify-end items-center w-12",
+        sizeRatio: 10,
       },
       cell: (info) =>
         info.row.original.menuItems && (

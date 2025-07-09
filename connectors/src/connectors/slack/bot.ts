@@ -1,26 +1,20 @@
 import type {
+  AgentMessageSuccessEvent,
+  APIError,
   ConversationPublicType,
+  LightAgentConfigurationType,
   PublicPostContentFragmentRequestBody,
+  Result,
   SupportedFileContentType,
   UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI, isSupportedFileContentType } from "@dust-tt/client";
-import type {
-  AgentMessageSuccessEvent,
-  APIError,
-  CoreAPIDataSourceDocumentSection,
-  LightAgentConfigurationType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
 import {
+  DustAPI,
   Err,
-  getHeaderFromGroupIds,
-  getHeaderFromUserEmail,
+  isSupportedFileContentType,
   Ok,
   removeNulls,
-  sectionFullText,
-} from "@dust-tt/types";
+} from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import removeMarkdown from "remove-markdown";
@@ -28,19 +22,27 @@ import jaroWinkler from "talisman/metrics/jaro-winkler";
 
 import {
   makeErrorBlock,
+  makeMarkdownBlock,
   makeMessageUpdateBlocksAndText,
 } from "@connectors/connectors/slack/chat/blocks";
 import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import {
+  getBotUserIdMemoized,
+  getUserName,
+} from "@connectors/connectors/slack/lib/bot_user_helpers";
+import {
+  isSlackWebAPIPlatformError,
   SlackExternalUserError,
   SlackMessageError,
 } from "@connectors/connectors/slack/lib/errors";
+import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messages";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackBotInfo,
   getSlackClient,
   getSlackUserInfo,
+  reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
@@ -49,29 +51,38 @@ import {
 } from "@connectors/connectors/slack/lib/workspace_limits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
+import { sectionFullText } from "@connectors/lib/data_sources";
+import { ProviderRateLimitError } from "@connectors/lib/error";
 import {
   SlackChannel,
   SlackChatBotMessage,
 } from "@connectors/lib/models/slack";
+import { createProxyAwareFetch } from "@connectors/lib/proxy";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-
+import type { ModelId } from "@connectors/types";
 import {
-  formatMessagesForUpsert,
-  getBotUserIdMemoized,
-  getUserName,
-} from "./temporal/activities";
+  getHeaderFromGroupIds,
+  getHeaderFromUserEmail,
+} from "@connectors/types";
+
+const SLACK_RATE_LIMIT_ERROR_MESSAGE =
+  "Slack has blocked the agent from continuing the conversation, due to new restrictive" +
+  " rate limits. You can retry the conversation later. Learn more about the new rate limits" +
+  " and how Dust is responding <https://dust-tt.notion.site/Slack-API-Changes-Impact-and-Response-Plan-21728599d94180f3b2b4e892e6d20af6?pvs=73|here>";
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
 type BotAnswerParams = {
+  responseUrl?: string;
   slackTeamId: string;
   slackChannel: string;
-  slackUserId: string | null;
-  slackBotId: string | null;
+  slackUserId: string;
+  slackBotId?: string;
   slackMessageTs: string;
-  slackThreadTs: string | null;
+  slackThreadTs?: string;
 };
 
 export async function getSlackConnector(params: BotAnswerParams) {
@@ -127,13 +138,34 @@ export async function botAnswerMessage(
       },
       "Unexpected exception answering to Slack Chat Bot message"
     );
-    const slackClient = await getSlackClient(connector.id);
+    if (isSlackWebAPIPlatformError(e) && e.data.error === "message_not_found") {
+      // This means that the message has been deleted, so we don't need to send an error message.
+      return new Ok(undefined);
+    }
+    const slackClient = await getSlackClient(connector.id, {
+      // Do not reject rate limited calls in bot answer message.
+      rejectRateLimitedCalls: false,
+    });
     try {
-      await slackClient.chat.postMessage({
-        channel: slackChannel,
-        text: "An unexpected error occurred. Our team has been notified",
-        thread_ts: slackMessageTs,
+      reportSlackUsage({
+        connectorId: connector.id,
+        method: "chat.postMessage",
+        channelId: slackChannel,
+        useCase: "bot",
       });
+      if (e instanceof ProviderRateLimitError) {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
+          thread_ts: slackMessageTs,
+        });
+      } else {
+        await slackClient.chat.postMessage({
+          channel: slackChannel,
+          text: "An unexpected error occurred. Our team has been notified",
+          thread_ts: slackMessageTs,
+        });
+      }
     } catch (e) {
       logger.error(
         {
@@ -188,10 +220,152 @@ export async function botReplaceMention(
       },
       "Unexpected exception updating mention on Chat Bot message"
     );
-    const slackClient = await getSlackClient(connector.id);
+    const slackClient = await getSlackClient(connector.id, {
+      // Do not reject rate limited calls in bot replace mention.
+      rejectRateLimitedCalls: false,
+    });
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "chat.postMessage",
+      channelId: slackChannel,
+      useCase: "bot",
+    });
+    if (e instanceof ProviderRateLimitError) {
+      await slackClient.chat.postMessage({
+        channel: slackChannel,
+        blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MESSAGE),
+        thread_ts: slackMessageTs,
+      });
+    } else {
+      await slackClient.chat.postMessage({
+        channel: slackChannel,
+        text: "An unexpected error occurred. Our team has been notified.",
+        thread_ts: slackMessageTs,
+      });
+    }
+    return new Err(new Error("An unexpected error occurred"));
+  }
+}
+
+type ToolValidationParams = {
+  actionId: string;
+  approved: "approved" | "rejected";
+  conversationId: string;
+  messageId: string;
+  slackChatBotMessageId: number;
+  text: string;
+};
+
+export async function botValidateToolExecution(
+  {
+    actionId,
+    approved,
+    conversationId,
+    messageId,
+    slackChatBotMessageId,
+    text,
+  }: ToolValidationParams,
+  params: BotAnswerParams
+) {
+  const { slackChannel, slackMessageTs, slackTeamId, responseUrl } = params;
+
+  const connectorRes = await getSlackConnector(params);
+  if (connectorRes.isErr()) {
+    return connectorRes;
+  }
+  const { connector } = connectorRes.value;
+
+  try {
+    const slackChatBotMessage = await SlackChatBotMessage.findOne({
+      where: { id: slackChatBotMessageId },
+    });
+    if (!slackChatBotMessage) {
+      throw new Error("Missing Slack message");
+    }
+
+    const dustAPI = new DustAPI(
+      { url: apiConfig.getDustFrontAPIUrl() },
+      {
+        apiKey: connector.workspaceAPIKey,
+        // We neither need group ids nor user email headers here because validate tool endpoint is not
+        // gated by group ids or user email headers.
+        extraHeaders: {},
+        workspaceId: connector.workspaceId,
+      },
+      logger
+    );
+
+    const res = await dustAPI.validateAction({
+      conversationId,
+      messageId,
+      actionId,
+      approved,
+    });
+
+    if (responseUrl) {
+      // Use response_url to delete the message
+      // Deleting is preferred over updating the message (see https://github.com/dust-tt/dust/pull/13268)
+      const proxyFetch = createProxyAwareFetch();
+      const response = await proxyFetch(responseUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          delete_original: true,
+        }),
+      });
+
+      if (!response.ok) {
+        logger.error(
+          {
+            responseUrl,
+            connectorId: connector.id,
+          },
+          "Failed to delete original message using response_url"
+        );
+      }
+    }
+    const slackClient = await getSlackClient(connector.id, {
+      // Do not reject rate limited calls in bot validate tool execution.
+      rejectRateLimitedCalls: false,
+    });
+
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "chat.postEphemeral",
+      channelId: slackChannel,
+      useCase: "bot",
+    });
+    await slackClient.chat.postEphemeral({
+      channel: slackChannel,
+      user: slackChatBotMessage.slackUserId,
+      text,
+      thread_ts: slackMessageTs,
+    });
+
+    return res;
+  } catch (e) {
+    logger.error(
+      {
+        error: e,
+        connectorId: connector.id,
+        slackTeamId,
+      },
+      "Unexpected exception validating tool execution"
+    );
+    const slackClient = await getSlackClient(connector.id, {
+      // Do not reject rate limited calls in bot validate tool execution.
+      rejectRateLimitedCalls: false,
+    });
+
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "chat.postMessage",
+      channelId: slackChannel,
+      useCase: "bot",
+    });
     await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: "An unexpected error occurred. Our team has been notified.",
+      text: "An unexpected error occurred while sending the validation. Our team has been notified.",
       thread_ts: slackMessageTs,
     });
 
@@ -230,7 +404,10 @@ async function processErrorResult(
       slackChatBotMessage?.conversationId
     );
 
-    const slackClient = await getSlackClient(connector.id);
+    const slackClient = await getSlackClient(connector.id, {
+      // Do not reject rate limited calls in process error result.
+      rejectRateLimitedCalls: false,
+    });
 
     const errorPost = makeErrorBlock(
       conversationUrl,
@@ -238,6 +415,12 @@ async function processErrorResult(
       errorMessage
     );
     if (mainMessage && mainMessage.ts) {
+      reportSlackUsage({
+        connectorId: connector.id,
+        method: "chat.update",
+        channelId: slackChannel,
+        useCase: "bot",
+      });
       await slackClient.chat.update({
         ...errorPost,
         channel: slackChannel,
@@ -245,6 +428,12 @@ async function processErrorResult(
         ts: mainMessage.ts,
       });
     } else {
+      reportSlackUsage({
+        connectorId: connector.id,
+        method: "chat.postMessage",
+        channelId: slackChannel,
+        useCase: "bot",
+      });
       await slackClient.chat.postMessage({
         ...errorPost,
         channel: slackChannel,
@@ -290,15 +479,48 @@ async function answerMessage(
   }
 
   // We start by retrieving the slack user info.
-  const slackClient = await getSlackClient(connector.id);
+  const slackClient = await getSlackClient(connector.id, {
+    // Do not reject rate limited calls in answer message.
+    rejectRateLimitedCalls: false,
+  });
 
   let slackUserInfo: SlackUserInfo | null = null;
+
   // The order is important here because we want to prioritize the user id over the bot id.
   // When a bot sends a message "as a user", we want to honor the user and not the bot.
   if (slackUserId) {
-    slackUserInfo = await getSlackUserInfo(slackClient, slackUserId);
+    slackUserInfo = await getSlackUserInfo(
+      connector.id,
+      slackClient,
+      slackUserId
+    );
   } else if (slackBotId) {
-    slackUserInfo = await getSlackBotInfo(slackClient, slackBotId);
+    try {
+      slackUserInfo = await getSlackBotInfo(
+        connector.id,
+        slackClient,
+        slackBotId
+      );
+    } catch (e) {
+      if (isSlackWebAPIPlatformError(e)) {
+        if (e.data.error === "bot_not_found") {
+          // We received a bot message from a bot that is not accessible to us. We log and ignore
+          // the message.
+          logger.warn(
+            {
+              error: e,
+              connectorId: connector.id,
+              slackUserId,
+              slackBotId,
+              slackTeamId,
+            },
+            "Received bot_not_found"
+          );
+          return new Ok(undefined);
+        }
+      }
+      throw e;
+    }
   }
 
   if (!slackUserInfo) {
@@ -370,7 +592,7 @@ async function answerMessage(
       : undefined;
 
   const dustAPI = new DustAPI(
-    apiConfig.getDustAPIConfig(),
+    { url: apiConfig.getDustFrontAPIUrl() },
     {
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
@@ -379,8 +601,7 @@ async function answerMessage(
         ...getHeaderFromUserEmail(userEmailHeader),
       },
     },
-    logger,
-    apiConfig.getDustFrontAPIUrl()
+    logger
   );
 
   // Do not await this promise, we want to continue the execution of the function in parallel.
@@ -422,7 +643,7 @@ async function answerMessage(
   // becomes: What is the command to upgrade a workspace in production (cc @julien) ?
   const matches = message.match(/<@[A-Z-0-9]+>/g);
   if (matches) {
-    const mySlackUser = await getBotUserIdMemoized(connector.id);
+    const mySlackUser = await getBotUserIdMemoized(slackClient, connector.id);
     for (const m of matches) {
       const userId = m.replace(/<|@|>/g, "");
       if (userId === mySlackUser) {
@@ -568,6 +789,45 @@ async function answerMessage(
     .splice(0, 100)
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  // Check if agent is from a restricted space
+  if (!slackConfig.restrictedSpaceAgentsEnabled) {
+    const isRestrictedRes = await isAgentAccessingRestrictedSpace(
+      dustAPI,
+      activeAgentConfigurations,
+      mention.assistantId
+    );
+
+    if (isRestrictedRes.isErr()) {
+      logger.error(
+        {
+          error: isRestrictedRes.error,
+          agentId: mention.assistantId,
+          connectorId: connector.id,
+        },
+        "Error determining if agent is from restricted space"
+      );
+      return isRestrictedRes;
+    }
+
+    // If agent is from a restricted space, we send an error message to Slack
+    if (isRestrictedRes.value) {
+      const errorMsg = new RestrictedSpaceAgentError();
+      const errorBlock = makeErrorBlock(
+        null, // No conversation URL for this error
+        connector.workspaceId,
+        errorMsg.message
+      );
+
+      await slackClient.chat.postMessage({
+        ...errorBlock,
+        channel: slackChannel,
+        thread_ts: slackMessageTs,
+      });
+
+      return new Ok(undefined);
+    }
+  }
+
   const mainMessage = await slackClient.chat.postMessage({
     ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
       assistantName: mention.assistantName,
@@ -701,6 +961,13 @@ async function answerMessage(
     conversation = convRes.value.conversation;
     userMessage = convRes.value.message;
 
+    if (!userMessage) {
+      return buildSlackMessageError(
+        new Err(new Error("Failed to retrieve the created message.")),
+        "createConversation"
+      );
+    }
+
     slackChatBotMessage.conversationId = conversation.sId;
     await slackChatBotMessage.save();
   }
@@ -764,11 +1031,15 @@ async function makeContentFragments(
       threadTs: threadTs,
     },
   });
+
   const replies = await getRepliesFromThread({
+    connectorId: connector.id,
     slackClient,
     channelId,
     threadTs,
+    useCase: "bot",
   });
+
   let shouldTake = false;
   for (const reply of replies) {
     if (reply.ts === startingAtTs) {
@@ -797,8 +1068,9 @@ async function makeContentFragments(
     logger.info({ conversationId }, "Found supported files, uploading them.");
 
     // Download the files and upload them to the conversation.
+    const proxyFetch = createProxyAwareFetch();
     for (const f of supportedFiles) {
-      const response = await fetch(f.url_private_download!, {
+      const response = await proxyFetch(f.url_private_download!, {
         headers: {
           Authorization: `Bearer ${slackClient.token}`,
         },
@@ -819,7 +1091,7 @@ async function makeContentFragments(
         continue;
       }
 
-      const fileContent = await response.blob();
+      const fileContent = Buffer.from(await response.arrayBuffer());
 
       const fileName = f.name || f.title || "notitle";
 
@@ -857,7 +1129,7 @@ async function makeContentFragments(
     }
   }
 
-  const botUserId = await getBotUserIdMemoized(connector.id);
+  const botUserId = await getBotUserIdMemoized(slackClient, connector.id);
   allMessages = allMessages.filter(
     (m) =>
       // If this message is from the bot, we don't send it as a content fragment.
@@ -868,20 +1140,30 @@ async function makeContentFragments(
 
   let channelName: string | null = null;
   try {
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "conversations.info",
+      channelId: channelId,
+      useCase: "bot",
+    });
     const channel = await slackClient.conversations.info({
       channel: channelId,
     });
 
     if (channel.error) {
-      return new Err(
-        new Error(`Could not retrieve channel name: ${channel.error}`)
-      );
+      throw new Error(`Could not retrieve channel name: ${channel.error}`);
     }
     if (!channel.channel || !channel.channel.name) {
-      return new Err(new Error("Could not retrieve channel name"));
+      if (channel.channel?.is_im || channel.channel?.is_mpim) {
+        channelName = "Direct Message";
+      } else {
+        throw new Error(
+          "Could not retrieve channel name while the response was successful"
+        );
+      }
+    } else {
+      channelName = channel.channel.name;
     }
-
-    channelName = channel.channel.name;
   } catch (e) {
     // We were missing the "im:read" scope, so we fallback to the "Unknown" channel name
     // because we would trigger an oauth error otherwise.
@@ -899,6 +1181,12 @@ async function makeContentFragments(
   let document: CoreAPIDataSourceDocumentSection | null = null;
   let url: string | null = null;
   if (allMessages.length === 0) {
+    reportSlackUsage({
+      connectorId: connector.id,
+      method: "chat.getPermalink",
+      channelId: channelId,
+      useCase: "bot",
+    });
     const permalinkRes = await slackClient.chat.getPermalink({
       channel: channelId,
       message_ts: threadTs,
@@ -918,6 +1206,12 @@ async function makeContentFragments(
     });
 
     if (allMessages[0]?.ts) {
+      reportSlackUsage({
+        connectorId: connector.id,
+        method: "chat.getPermalink",
+        channelId: channelId,
+        useCase: "bot",
+      });
       const permalinkRes = await slackClient.chat.getPermalink({
         channel: channelId,
         message_ts: allMessages[0].ts,
@@ -961,4 +1255,76 @@ async function makeContentFragments(
   });
 
   return new Ok(allContentFragments);
+}
+
+class RestrictedSpaceAgentError extends Error {
+  constructor() {
+    super(
+      "This agent belongs to a restricted space and cannot be invoked on Slack for this workspace. Contact your workspace administrator if you need access."
+    );
+    this.name = "RestrictedSpaceAgentError";
+  }
+}
+
+async function isAgentAccessingRestrictedSpace(
+  dustAPI: DustAPI,
+  activeAgentConfigurations: LightAgentConfigurationType[],
+  agentId: string
+): Promise<Result<boolean, Error>> {
+  try {
+    const agent = activeAgentConfigurations.find((ac) => ac.sId === agentId);
+    if (!agent) {
+      logger.warn(
+        { agentId },
+        "Agent not found when checking for restricted space"
+      );
+      return new Err(new Error(`Agent ${agentId} not found`));
+    }
+
+    // If the agent has no requestedGroupIds, it's not from a restricted space
+    if (!agent.requestedGroupIds || agent.requestedGroupIds.length === 0) {
+      return new Ok(false);
+    }
+
+    const agentGroupIds = agent.requestedGroupIds.flat();
+
+    const spacesRes = await dustAPI.getSpaces();
+    if (spacesRes.isErr()) {
+      logger.error(
+        { error: spacesRes.error, agentId },
+        "Error fetching spaces when checking for restricted space"
+      );
+      return new Err(
+        new Error(`Error fetching spaces: ${spacesRes.error.message}`)
+      );
+    }
+
+    // Check if any of the agent's group IDs match with groups from restricted spaces
+    const restrictedSpaces = spacesRes.value.filter(
+      (space) => space.isRestricted
+    );
+    const isFromRestrictedSpace = restrictedSpaces.some((space) => {
+      return space.groupIds.some((groupId) => agentGroupIds.includes(groupId));
+    });
+
+    logger.info(
+      {
+        agentId,
+        isRestricted: isFromRestrictedSpace,
+      },
+      "Checked if agent is from restricted space"
+    );
+
+    return new Ok(isFromRestrictedSpace);
+  } catch (error) {
+    logger.error(
+      { error, agentId },
+      "Error checking if agent is from restricted space"
+    );
+    return new Err(
+      new Error(
+        `Error checking if agent ${agentId} is from restricted space: ${error}`
+      )
+    );
+  }
 }

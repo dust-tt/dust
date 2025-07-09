@@ -1,14 +1,7 @@
-import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  ConnectorPermission,
-  ContentNodesViewType,
-  DataSourceType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   fetcher,
   getErrorFromResponse,
@@ -18,15 +11,25 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/connector";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
+import type {
+  APIError,
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  DataSourceType,
+  LightWorkspaceType,
+} from "@app/types";
 
-interface UseConnectorPermissionsReturn {
-  resources: GetDataSourcePermissionsResponseBody["resources"];
+interface UseConnectorPermissionsReturn<T extends ConnectorPermission | null> {
+  resources: T extends ConnectorPermission
+    ? GetDataSourcePermissionsResponseBody<T>["resources"]
+    : ContentNode[];
   isResourcesLoading: boolean;
   isResourcesError: boolean;
   resourcesError: APIError | null;
 }
 
-export function useConnectorPermissions({
+export function useConnectorPermissions<T extends ConnectorPermission | null>({
   owner,
   dataSource,
   parentId,
@@ -37,15 +40,18 @@ export function useConnectorPermissions({
   owner: LightWorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
-  filterPermission: ConnectorPermission | null;
+  filterPermission: T;
   disabled?: boolean;
   viewType?: ContentNodesViewType;
-}): UseConnectorPermissionsReturn {
+}): UseConnectorPermissionsReturn<T> {
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
-    fetcher;
+  const permissionsFetcher: Fetcher<
+    T extends ConnectorPermission
+      ? GetDataSourcePermissionsResponseBody<T>
+      : GetDataSourcePermissionsResponseBody
+  > = fetcher;
 
   let url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions?viewType=${viewType}`;
   if (parentId) {
@@ -74,7 +80,7 @@ export function useConnectorPermissions({
     isResourcesLoading: !error && !data,
     isResourcesError: error,
     resourcesError: error ? (error.error as APIError) : null,
-  };
+  } as UseConnectorPermissionsReturn<T>;
 }
 
 export function useConnectorConfig({
@@ -84,17 +90,17 @@ export function useConnectorConfig({
   owner,
 }: {
   configKey: string;
-  dataSource: DataSourceType;
+  dataSource: DataSourceType | null;
   disabled?: boolean;
   owner: LightWorkspaceType;
 }) {
   const configFetcher: Fetcher<GetOrPostManagedDataSourceConfigResponseBody> =
     fetcher;
 
-  const url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`;
+  const url = `/api/w/${owner.sId}/data_sources/${dataSource?.sId}/managed/config/${configKey}`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    disabled,
+    disabled: disabled || !dataSource,
   });
 
   return {
@@ -106,13 +112,13 @@ export function useConnectorConfig({
 }
 
 export function useConnector({
+  workspaceId,
   dataSource,
   disabled,
-  workspaceId,
 }: {
+  workspaceId: string;
   dataSource: DataSourceType;
   disabled?: boolean;
-  workspaceId: string;
 }) {
   const configFetcher: Fetcher<GetConnectorResponseBody> = fetcher;
 
@@ -154,7 +160,7 @@ export function useToggleSlackChatBot({
   dataSource,
   owner,
 }: {
-  dataSource: DataSourceType;
+  dataSource: DataSourceType | null;
   owner: LightWorkspaceType;
 }) {
   const sendNotification = useSendNotification();
@@ -165,6 +171,16 @@ export function useToggleSlackChatBot({
     configKey: "botEnabled",
     disabled: true, // Needed just to mutate
   });
+
+  if (!dataSource) {
+    return () => {
+      sendNotification({
+        type: "error",
+        title: "Failed to Enable Slack Bot",
+        description: "Tried to enable Slack Bot, but no data source was found.",
+      });
+    };
+  }
 
   const doToggle = async (botEnabled: boolean) => {
     const res = await fetch(
@@ -209,4 +225,81 @@ export function useToggleSlackChatBot({
   };
 
   return doToggle;
+}
+
+export function useTogglePdfEnabled({
+  dataSource,
+  owner,
+}: {
+  dataSource: DataSourceType | null;
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { mutateConfig } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: "pdfEnabled",
+    disabled: true, // Needed just to mutate
+  });
+
+  if (!dataSource) {
+    return {
+      doToggle: () => {
+        sendNotification({
+          type: "error",
+          title: "Failed to update PDF sync setting",
+          description:
+            "Tried to update PDF sync setting, but no data source was found.",
+        });
+      },
+      isLoading: false,
+    };
+  }
+
+  const doToggle = async (pdfEnabled: boolean) => {
+    setIsLoading(true);
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/pdfEnabled`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({ configValue: pdfEnabled.toString() }),
+      }
+    );
+
+    if (res.ok) {
+      void mutateConfig();
+
+      const response: GetOrPostManagedDataSourceConfigResponseBody =
+        await res.json();
+
+      const { configValue } = response;
+
+      sendNotification({
+        type: "success",
+        title: "PDF sync setting updated successfully",
+        description: pdfEnabled
+          ? "PDF syncing is now enabled."
+          : "PDF syncing has been disabled.",
+      });
+      setIsLoading(false);
+      return configValue;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: "Failed to update PDF sync setting",
+        description: errorData.message,
+      });
+      setIsLoading(false);
+      return null;
+    }
+  };
+
+  return { doToggle, isLoading };
 }

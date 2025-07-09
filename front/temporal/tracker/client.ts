@@ -1,4 +1,3 @@
-import type { ConnectorProvider, TrackerIdWorkspaceId } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 
 import { getTemporalClient } from "@app/lib/temporal";
@@ -7,6 +6,7 @@ import {
   RUN_QUEUE_NAME,
   TRACKER_NOTIFICATION_QUEUE_NAME,
 } from "@app/temporal/tracker/config";
+import type { ConnectorProvider, TrackerIdWorkspaceId } from "@app/types";
 
 import { newUpsertSignal, notifySignal } from "./signals";
 import {

@@ -1,4 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -12,6 +11,7 @@ import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resourc
 import { apiError } from "@app/logger/withlogging";
 import type { GetTrackersResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/trackers";
 import { PostTrackersRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[spaceId]/trackers";
+import type { WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,

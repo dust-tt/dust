@@ -1,4 +1,4 @@
-// import { CoreAPI } from "@dust-tt/types";
+// import { CoreAPI } from "@app/types";
 // import { Sequelize } from "sequelize";
 
 // import config from "@app/lib/api/config";

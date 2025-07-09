@@ -1,16 +1,6 @@
-import type {
-  DataSourceWithAgentsUsageType,
-  SpaceType,
-  UserType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  DATA_SOURCE_VIEW_CATEGORIES,
-  PatchSpaceRequestBodySchema,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-import { uniq } from "lodash";
+import { uniqBy } from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
@@ -21,10 +11,23 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  DataSourceWithAgentsUsageType,
+  SpaceType,
+  UserType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import {
+  DATA_SOURCE_VIEW_CATEGORIES,
+  isString,
+  PatchSpaceRequestBodySchema,
+} from "@app/types";
 
-type SpaceCategoryInfo = {
+export type SpaceCategoryInfo = {
   usage: DataSourceWithAgentsUsageType;
   count: number;
 };
@@ -55,6 +58,10 @@ async function handler(
         space
       );
       const apps = await AppResource.listBySpace(auth, space);
+      const actions = await MCPServerViewResource.listBySpace(auth, space);
+      const actionsCount = actions.filter(
+        (a) => a.toJSON().server.availability === "manual"
+      ).length;
 
       const categories: { [key: string]: SpaceCategoryInfo } = {};
       for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
@@ -62,7 +69,7 @@ async function handler(
           count: 0,
           usage: {
             count: 0,
-            agentNames: [],
+            agents: [],
           },
         };
 
@@ -79,29 +86,46 @@ async function handler(
 
           for (const dsView of dataSourceViewsInCategory) {
             categories[category].count += 1;
-
             const usage = usages[dsView.id];
 
             if (usage) {
-              categories[category].usage.agentNames = categories[
+              categories[category].usage.agents = categories[
                 category
-              ].usage.agentNames.concat(usage.agentNames);
-              categories[category].usage.agentNames = uniq(
-                categories[category].usage.agentNames
+              ].usage.agents.concat(usage.agents);
+              categories[category].usage.agents = uniqBy(
+                categories[category].usage.agents,
+                "sId"
               );
-              categories[category].usage.count += usage.count;
             }
           }
+          categories[category].usage.count =
+            categories[category].usage.agents.length;
         }
       }
 
       categories["apps"].count = apps.length;
+      categories["actions"].count = actionsCount;
 
-      const currentMembers = (
-        await Promise.all(
-          space.groups.map((group) => group.getActiveMembers(auth))
-        )
-      ).flat();
+      const currentMembers = uniqBy(
+        (
+          await concurrentExecutor(
+            // Filter the correct group, if we switch back and forth, the space will have 2 group
+            // one provisioned and one regular.
+            // If a user manully remove users from the regular group, they might still appear as they
+            // would still be in the provisioned group
+            space.groups.filter((g) => {
+              if (space.managementMode === "group") {
+                return g.kind === "provisioned";
+              }
+              return g.kind === "regular" || g.kind === "global";
+            }),
+            (group) => group.getActiveMembers(auth),
+            { concurrency: 10 }
+          )
+        ).flat(),
+        "sId"
+      );
+
       return res.status(200).json({
         space: {
           ...space.toJSON(),
@@ -202,10 +226,14 @@ async function handler(
         });
       }
 
+      const { force } = req.query;
+      const shouldForce = isString(force) && force === "true";
+
       try {
         const deleteRes = await softDeleteSpaceAndLaunchScrubWorkflow(
           auth,
-          space
+          space,
+          shouldForce
         );
         if (deleteRes.isErr()) {
           return apiError(req, res, {
@@ -234,7 +262,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET or PATCH is expected.",
+            "The method passed is not supported, GET, PATCH or DELETE is expected.",
         },
       });
   }

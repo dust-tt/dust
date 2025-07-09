@@ -6,6 +6,10 @@ on:
       - sparkle/**
       - .github/workflows/build-and-lint-sparkle.yml
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   check-eslint:
     runs-on: ubuntu-latest

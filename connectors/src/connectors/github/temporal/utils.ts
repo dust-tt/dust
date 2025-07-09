@@ -1,4 +1,4 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ModelId } from "@connectors/types";
 
 export function getFullSyncWorkflowId(connectorId: ModelId) {
   return `workflow-github-${connectorId}-full-sync`;
@@ -10,6 +10,13 @@ export function getReposSyncWorkflowId(connectorId: ModelId) {
 
 export function getCodeSyncWorkflowId(connectorId: ModelId, repoId: number) {
   return `workflow-github-${connectorId}-code-sync-${repoId}`;
+}
+
+export function getCodeSyncStatelessWorkflowId(
+  connectorId: ModelId,
+  repoId: number
+) {
+  return `workflow-github-${connectorId}-code-sync-stateless-${repoId}`;
 }
 
 export function getCodeSyncDailyCronWorkflowId(

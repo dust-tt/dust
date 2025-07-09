@@ -11,25 +11,21 @@ import {
   Markdown,
   MoreIcon,
   Page,
-  Spinner,
   Tabs,
   TabsList,
   TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AssistantBuilderRightPanelStatus,
-  AssistantBuilderRightPanelTab,
-  ModelConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
-import { useContext, useEffect } from "react";
+import assert from "assert";
+import { useContext, useEffect, useRef, useState } from "react";
 
+import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
+import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import {
   usePreviewAssistant,
   useTryAssistantCore,
@@ -38,13 +34,22 @@ import type {
   AssistantBuilderSetActionType,
   AssistantBuilderState,
   BuilderScreen,
-  TemplateActionType,
 } from "@app/components/assistant_builder/types";
-import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
+import { getDefaultMCPServerConfigurationWithId } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
-import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type {
+  AssistantBuilderRightPanelTabType,
+  TemplateActionPreset,
+  WorkspaceType,
+} from "@app/types";
+import type { LightAgentConfigurationType } from "@app/types";
+import { assertNever, isAssistantBuilderRightPanelTab } from "@app/types";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -53,12 +58,10 @@ interface AssistantBuilderRightPanelProps {
   resetToTemplateInstructions: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   owner: WorkspaceType;
-  rightPanelStatus: AssistantBuilderRightPanelStatus;
-  openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
   builderState: AssistantBuilderState;
-  agentConfigurationId: string | null;
+  agentConfiguration: LightAgentConfigurationType | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
-  reasoningModels: ModelConfigurationType[];
+  mcpServerViews: MCPServerViewType[];
 }
 
 export default function AssistantBuilderRightPanel({
@@ -68,55 +71,104 @@ export default function AssistantBuilderRightPanel({
   resetToTemplateInstructions,
   resetToTemplateActions,
   owner,
-  rightPanelStatus,
-  openRightPanelTab,
   builderState,
-  agentConfigurationId,
+  agentConfiguration,
   setAction,
-  reasoningModels,
+  mcpServerViews,
 }: AssistantBuilderRightPanelProps) {
-  const {
-    shouldAnimate: shouldAnimatePreviewDrawer,
-    draftAssistant,
-    isFading,
-  } = usePreviewAssistant({
-    owner,
-    builderState,
-    isPreviewOpened: rightPanelStatus.tab === "Preview",
-    reasoningModels,
-  });
+  const [rightPanelTab, setRightPanelTab] =
+    useState<AssistantBuilderRightPanelTabType>(
+      template ? "Template" : "Preview"
+    );
+
+  const { draftAssistant, isSavingDraftAgent, createDraftAgent } =
+    usePreviewAssistant({
+      owner,
+      builderState,
+    });
 
   const { user } = useUser();
-  const {
-    conversation,
-    setConversation,
-    stickyMentions,
-    setStickyMentions,
-    handleSubmit,
-  } = useTryAssistantCore({
-    owner,
-    user,
-    assistant: draftAssistant,
-  });
+  const { conversation, stickyMentions, setStickyMentions, handleSubmit } =
+    useTryAssistantCore({
+      owner,
+      user,
+      assistant: draftAssistant,
+      createDraftAgent,
+    });
+
+  const isBuilderStateEmpty =
+    !builderState.instructions?.trim() && !builderState.actions.length;
+
+  const previousDraftSId = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    setConversation(null);
-  }, [draftAssistant?.sId, setConversation]);
-
-  useEffect(() => {
-    if (rightPanelStatus.tab === "Template" && screen === "naming") {
-      openRightPanelTab("Preview");
+    if (
+      draftAssistant?.sId &&
+      previousDraftSId.current !== draftAssistant.sId
+    ) {
+      previousDraftSId.current = draftAssistant.sId;
+      // Update sticky mentions to use the new draft assistant
+      setStickyMentions([{ configurationId: draftAssistant.sId }]);
     }
-  }, [screen, rightPanelStatus.tab, openRightPanelTab]);
+  }, [draftAssistant?.sId, setStickyMentions]);
+
+  function getMCPServerViewFromPresetAction(
+    mcpServerViews: MCPServerViewType[],
+    type:
+      | "MCP"
+      | "RETRIEVAL_SEARCH"
+      | "RETRIEVAL_EXHAUSTIVE"
+      | "DUST_APP_RUN"
+      | "TABLES_QUERY"
+      | "PROCESS"
+      | "WEB_NAVIGATION"
+      | "REASONING"
+  ): MCPServerViewType {
+    const internalMcpServerName: InternalMCPServerNameType | undefined =
+      (() => {
+        switch (type) {
+          case "MCP":
+            throw new Error("MCP preset action not supported");
+          case "RETRIEVAL_SEARCH":
+            return "search";
+          case "RETRIEVAL_EXHAUSTIVE":
+            return "include_data";
+          case "DUST_APP_RUN":
+            return "run_dust_app";
+          case "TABLES_QUERY":
+            return "query_tables";
+          case "PROCESS":
+            return "extract_data";
+          case "WEB_NAVIGATION":
+            return "web_search_&_browse";
+          case "REASONING":
+            return "reasoning";
+          default:
+            assertNever(type);
+        }
+      })();
+    const mcpServerView = mcpServerViews.find(
+      (mcpServerView) =>
+        mcpServerView.server.sId ===
+        internalMCPServerNameToSId({
+          name: internalMcpServerName,
+          workspaceId: owner.id,
+        })
+    );
+    assert(mcpServerView);
+    return mcpServerView;
+  }
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 bg-white pt-5">
+      <div className="shrink-0 pt-4">
         <Tabs
-          value={rightPanelStatus.tab ?? "Preview"}
-          onValueChange={(t) =>
-            openRightPanelTab(t as AssistantBuilderRightPanelTab)
-          }
+          value={rightPanelTab ?? "Preview"}
+          onValueChange={(t) => {
+            if (isAssistantBuilderRightPanelTab(t)) {
+              setRightPanelTab(t);
+            }
+          }}
           className="hidden lg:block"
         >
           <TabsList>
@@ -129,7 +181,7 @@ export default function AssistantBuilderRightPanel({
               icon={ChatBubbleBottomCenterTextIcon}
             />
             {/* The agentConfigurationId is truthy if not a new agent */}
-            {agentConfigurationId && (
+            {agentConfiguration && (
               <TabsTrigger
                 value="Performance"
                 label="Performance"
@@ -142,66 +194,67 @@ export default function AssistantBuilderRightPanel({
       <div
         className={cn(
           "grow-1 mb-5 h-full overflow-y-auto",
-          rightPanelStatus.tab === "Preview" ? "" : "border-b border-border",
-          shouldAnimatePreviewDrawer &&
-            rightPanelStatus.tab === "Preview" &&
-            rightPanelStatus.openedAt != null &&
-            // Only animate the reload if the drawer has been open for at least 1 second.
-            // This is to prevent the animation from triggering right after the drawer is opened.
-            Date.now() - rightPanelStatus.openedAt > 1000
-            ? "animate-reload"
-            : ""
+          rightPanelTab === "Preview" ? "" : "border-b border-border"
         )}
       >
-        {(rightPanelStatus.tab === "Preview" || screen === "naming") &&
-          user && (
-            <div className="flex h-full w-full flex-1 flex-col justify-between overflow-x-hidden">
-              {draftAssistant ? (
-                <GenerationContextProvider>
-                  <div className="flex-grow overflow-y-auto">
-                    {conversation && (
-                      <ConversationViewer
-                        owner={owner}
-                        user={user}
-                        conversationId={conversation.sId}
-                        onStickyMentionsChange={setStickyMentions}
-                        isInModal
-                        isFading={isFading}
-                        key={conversation.sId}
-                      />
-                    )}
-                  </div>
-                  <div className="shrink-0">
-                    <AssistantInputBar
-                      owner={owner}
-                      onSubmit={handleSubmit}
-                      stickyMentions={stickyMentions}
-                      conversationId={conversation?.sId || null}
-                      additionalAgentConfiguration={draftAssistant}
-                      actions={["attachment"]}
-                      disableAutoFocus
-                      isFloating={false}
-                    />
-                  </div>
-                </GenerationContextProvider>
-              ) : (
-                <div className="flex h-full w-full items-center justify-center">
-                  <Spinner />
+        {rightPanelTab === "Preview" && user && (
+          <div className="flex h-full w-full flex-1 flex-col justify-between overflow-x-hidden">
+            {isBuilderStateEmpty ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <div className="text-center">
+                  <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-muted-foreground">
+                    Start configuring your assistant and try it out!
+                  </span>
                 </div>
-              )}
-            </div>
-          )}
-        {rightPanelStatus.tab === "Template" &&
+              </div>
+            ) : (
+              <ConversationsNavigationProvider>
+                <ActionValidationProvider owner={owner}>
+                  <GenerationContextProvider>
+                    <div className="flex-grow overflow-y-auto">
+                      {conversation && (
+                        <ConversationViewer
+                          owner={owner}
+                          user={user}
+                          conversationId={conversation.sId}
+                          onStickyMentionsChange={setStickyMentions}
+                          isInModal
+                          key={conversation.sId}
+                        />
+                      )}
+                    </div>
+                    <div className="shrink-0">
+                      <AssistantInputBar
+                        disableButton={isSavingDraftAgent}
+                        owner={owner}
+                        onSubmit={handleSubmit}
+                        stickyMentions={stickyMentions}
+                        conversationId={conversation?.sId || null}
+                        additionalAgentConfiguration={
+                          draftAssistant ?? undefined
+                        }
+                        actions={["attachment"]}
+                        disableAutoFocus
+                        isFloating={false}
+                      />
+                    </div>
+                  </GenerationContextProvider>
+                </ActionValidationProvider>
+              </ConversationsNavigationProvider>
+            )}
+          </div>
+        )}
+        {rightPanelTab === "Template" &&
           template &&
           screen === "instructions" && (
             <div className="mb-72 flex flex-col gap-4">
-              <div className="flex items-end justify-end justify-between pt-2">
+              <div className="flex items-end justify-end pt-2">
                 <TemplateDropDownMenu
                   screen={screen}
                   removeTemplate={removeTemplate}
                   resetToTemplateInstructions={resetToTemplateInstructions}
                   resetToTemplateActions={resetToTemplateActions}
-                  openRightPanelTab={openRightPanelTab}
+                  setRightPanelTab={setRightPanelTab}
                 />
               </div>
               {template?.helpInstructions && (
@@ -209,68 +262,72 @@ export default function AssistantBuilderRightPanel({
               )}
             </div>
           )}
-        {rightPanelStatus.tab === "Template" &&
-          template &&
-          screen === "actions" && (
-            <div className="mb-72 flex flex-col gap-4">
-              <div className="flex items-end justify-end justify-between pt-2">
-                <TemplateDropDownMenu
-                  screen={screen}
-                  removeTemplate={removeTemplate}
-                  resetToTemplateInstructions={resetToTemplateInstructions}
-                  resetToTemplateActions={resetToTemplateActions}
-                  openRightPanelTab={openRightPanelTab}
-                />
-              </div>
-              <Page.Separator />
-              <div className="flex flex-col gap-4">
-                {template && template.helpActions && (
-                  <>
-                    <div>
-                      <Markdown content={template?.helpActions ?? ""} />
-                    </div>
-                    <Separator />
-                  </>
-                )}
-                {template && template.presetActions.length > 0 && (
-                  <div className="flex flex-col gap-6">
-                    <Page.SectionHeader title="Add those tools" />
-                    {template.presetActions.map((presetAction, index) => (
-                      <div className="flex flex-col gap-2" key={index}>
-                        <div>{presetAction.help}</div>
-                        <TemplateAddActionButton
-                          action={presetAction}
-                          addAction={(presetAction) => {
-                            const action = getDefaultActionConfiguration(
+        {rightPanelTab === "Template" && template && screen === "actions" && (
+          <div className="mb-72 flex flex-col gap-4">
+            <div className="flex items-end justify-end pt-2">
+              <TemplateDropDownMenu
+                screen={screen}
+                removeTemplate={removeTemplate}
+                resetToTemplateInstructions={resetToTemplateInstructions}
+                resetToTemplateActions={resetToTemplateActions}
+                setRightPanelTab={setRightPanelTab}
+              />
+            </div>
+            <Page.Separator />
+            <div className="flex flex-col gap-4">
+              {template && template.helpActions && (
+                <>
+                  <div>
+                    <Markdown content={template?.helpActions ?? ""} />
+                  </div>
+                  <Separator />
+                </>
+              )}
+              {template && template.presetActions.length > 0 && (
+                <div className="flex flex-col gap-6">
+                  <Page.SectionHeader title="Add those tools" />
+                  {template.presetActions.map((presetAction, index) => (
+                    <div className="flex flex-col gap-2" key={index}>
+                      <div>{presetAction.help}</div>
+                      <TemplateAddActionButton
+                        action={presetAction}
+                        addAction={(presetAction) => {
+                          const defaultMcpServer =
+                            getMCPServerViewFromPresetAction(
+                              mcpServerViews,
                               presetAction.type
                             );
-                            if (!action) {
-                              // Unreachable
-                              return;
-                            }
-                            action.name = presetAction.name;
-                            action.description = presetAction.description;
-                            setAction({
-                              type: action.noConfigurationRequired
-                                ? "insert"
-                                : "pending",
-                              action,
-                            });
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                          const action =
+                            getDefaultMCPServerConfigurationWithId(
+                              defaultMcpServer
+                            );
+                          if (!action) {
+                            // Unreachable
+                            return;
+                          }
+                          action.name = presetAction.name;
+                          action.description = presetAction.description;
+                          setAction({
+                            type: action.noConfigurationRequired
+                              ? "insert"
+                              : "pending",
+                            action,
+                          });
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        {rightPanelStatus.tab === "Performance" && agentConfigurationId && (
-          <div className="ml-4 mt-4">
-            <Page.SectionHeader title="Feedback" />
-            <FeedbacksSection
+          </div>
+        )}
+        {rightPanelTab === "Performance" && agentConfiguration && (
+          <div className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
+            <AssistantDetailsPerformance
+              agentConfiguration={agentConfiguration}
               owner={owner}
-              agentConfigurationId={agentConfigurationId}
+              gridMode
             />
           </div>
         )}
@@ -283,14 +340,11 @@ const TemplateAddActionButton = ({
   action,
   addAction,
 }: {
-  action: TemplateActionType;
-  addAction: (action: TemplateActionType) => void;
+  action: TemplateActionPreset;
+  addAction: (action: TemplateActionPreset) => void;
 }) => {
-  const spec = ACTION_SPECIFICATIONS[action.type];
-  if (!spec) {
-    // Unreachable
-    return null;
-  }
+  const spec = MCP_SPECIFICATION;
+
   return (
     <div className="w-auto">
       <Button
@@ -305,7 +359,7 @@ const TemplateAddActionButton = ({
 };
 
 interface TemplateDropDownMenuProps {
-  openRightPanelTab: (tabName: AssistantBuilderRightPanelTab) => void;
+  setRightPanelTab: (tabName: AssistantBuilderRightPanelTabType) => void;
   removeTemplate: () => Promise<void>;
   resetToTemplateActions: () => Promise<void>;
   resetToTemplateInstructions: () => Promise<void>;
@@ -313,7 +367,7 @@ interface TemplateDropDownMenuProps {
 }
 
 const TemplateDropDownMenu = ({
-  openRightPanelTab,
+  setRightPanelTab,
   removeTemplate,
   resetToTemplateActions,
   resetToTemplateInstructions,
@@ -337,7 +391,7 @@ const TemplateDropDownMenu = ({
               validateVariant: "warning",
             });
             if (confirmed) {
-              openRightPanelTab("Preview");
+              setRightPanelTab("Preview");
               await removeTemplate();
             }
           }}

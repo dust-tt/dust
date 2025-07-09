@@ -9,6 +9,7 @@ const SvgMistral = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
+    <rect width={24} height={24} fill="#FEFAEC" rx={4} />
     <path
       fill="#1A1C20"
       d="M5 5.5h.977v13H5zM15.419 13.3h.977v5.2h-.977zM12.814 8.1h.977v2.6h-.977zM10.209 13.3h.977v2.6h-.977zM15.419 5.5h.977v2.6h-.977z"

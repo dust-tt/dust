@@ -1,4 +1,4 @@
-import type { BlockRunConfig, SpecificationType } from "@dust-tt/types";
+import type { BlockRunConfig, SpecificationType } from "@app/types";
 
 export function extractConfig(spec: SpecificationType): BlockRunConfig {
   const c = {} as { [key: string]: any };
@@ -32,6 +32,11 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
               ? spec[i].config.use_cache
               : false
             : false,
+          response_format: spec[i].config
+            ? spec[i].config.response_format
+              ? spec[i].config.response_format
+              : null
+            : null,
         };
         break;
       case "input":

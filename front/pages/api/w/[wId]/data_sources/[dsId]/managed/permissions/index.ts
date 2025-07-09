@@ -1,14 +1,3 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  DataSourceType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  ConnectorsAPI,
-  isValidContentNodesViewType,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -20,6 +9,18 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodeWithParent,
+  DataSourceType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import {
+  assertNever,
+  ConnectorsAPI,
+  isValidContentNodesViewType,
+} from "@app/types";
 
 const SetConnectorPermissionsRequestBodySchema = t.type({
   resources: t.array(
@@ -35,8 +36,10 @@ const SetConnectorPermissionsRequestBodySchema = t.type({
   ),
 });
 
-export type GetDataSourcePermissionsResponseBody = {
-  resources: ContentNode[];
+export type GetDataSourcePermissionsResponseBody<
+  T extends ConnectorPermission = ConnectorPermission,
+> = {
+  resources: (T extends "read" ? ContentNodeWithParent : ContentNode)[];
 };
 
 export type SetDataSourcePermissionsResponseBody = {

@@ -1,19 +1,20 @@
+import * as _ from "lodash";
+
+import config from "@app/lib/api/config";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import type {
   LightWorkspaceType,
   MembershipRoleType,
   UserType,
-} from "@dust-tt/types";
-import { rateLimiter } from "@dust-tt/types";
-import * as _ from "lodash";
-
-import config from "@app/lib/api/config";
-import { Workspace } from "@app/lib/models/workspace";
-import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
-import logger from "@app/logger/logger";
+} from "@app/types";
+import type { JobType } from "@app/types/job_type";
 
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";
 
@@ -62,6 +63,7 @@ export class CustomerioServerSideTracking {
           sId: workspace.sId,
           startAt,
           role,
+          endAt: null,
         },
       ],
     });
@@ -130,6 +132,32 @@ export class CustomerioServerSideTracking {
     });
   }
 
+  static async trackUpdateUser({
+    user,
+    workspace,
+    role,
+    jobType,
+  }: {
+    user: UserType;
+    workspace: LightWorkspaceType;
+    role: MembershipRoleType;
+    jobType?: JobType;
+  }) {
+    await CustomerioServerSideTracking._identifyWorkspace({
+      workspace,
+    });
+    await CustomerioServerSideTracking._identifyUser({
+      user,
+      workspaces: [
+        {
+          sId: workspace.sId,
+          role,
+          jobType,
+        },
+      ],
+    });
+  }
+
   static async backfillUser({ user }: { user: UserType }) {
     const u = await UserResource.fetchById(user.sId);
 
@@ -147,7 +175,7 @@ export class CustomerioServerSideTracking {
       });
 
     const workspaces = _.keyBy(
-      await Workspace.findAll({
+      await WorkspaceModel.findAll({
         where: {
           id: userMemberships.map((m) => m.workspaceId),
         },
@@ -194,12 +222,13 @@ export class CustomerioServerSideTracking {
     if (!config.getCustomerIoEnabled()) {
       return;
     }
-    const planCode =
-      workspace.planCode ??
-      (await subscriptionForWorkspace(workspace)).plan.code;
+
+    const subscription =
+      await SubscriptionResource.fetchActiveByWorkspace(workspace);
+
+    const planCode = workspace.planCode ?? subscription.getPlan().code;
     const seats =
-      workspace.seats ??
-      (await countActiveSeatsInWorkspaceCached(workspace.sId));
+      workspace.seats ?? (await countActiveSeatsInWorkspace(workspace.sId));
 
     // Unless the info changes, we only identify a given workspace once per day.
     const rateLimiterKey = `customerio_workspace:${workspace.sId}:${workspace.name}:${planCode}:${seats}`;
@@ -260,6 +289,7 @@ export class CustomerioServerSideTracking {
       startAt?: Date;
       endAt?: Date | null;
       role: MembershipRoleType;
+      jobType?: JobType;
     }>;
   }) {
     if (!config.getCustomerIoEnabled()) {
@@ -289,10 +319,13 @@ export class CustomerioServerSideTracking {
         if (w.startAt !== undefined) {
           relAttributes.start_at = Math.floor(w.startAt.getTime() / 1000);
         }
-        if (w.endAt !== undefined) {
+        if (w.endAt !== undefined && w.endAt !== null) {
           relAttributes.end_at = w.endAt
             ? Math.floor(w.endAt.getTime() / 1000)
             : null;
+        }
+        if (w.jobType !== undefined) {
+          relAttributes.job_type = w.jobType;
         }
         return {
           identifiers: {

@@ -1,11 +1,25 @@
-import React, { ComponentType, ReactNode, useState } from "react";
+import React, {
+  ComponentType,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
-import { Button, Spinner } from "@sparkle/components/";
-import { ArrowDownSIcon, ArrowRightSIcon } from "@sparkle/icons";
+import {
+  Button,
+  Icon,
+  Spinner,
+  TooltipContent,
+  TooltipPortal,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "@sparkle/components/";
+import { ArrowDownSIcon, ArrowRightSIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 import { Checkbox, CheckboxProps } from "./Checkbox";
-import { Icon } from "./Icon";
 
 export interface TreeProps {
   children?: ReactNode;
@@ -44,35 +58,40 @@ export function Tree({
     return child;
   });
 
-  return isLoading ? (
-    <div className={cn("s-py-2 s-pl-4", className)}>
-      <Spinner size="xs" variant="dark" />
-    </div>
-  ) : (
-    <div
-      className={cn(
-        "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
-        isBoxed &&
-          "s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4 dark:s-border-structure-200-night dark:s-bg-structure-50-night",
-        className
+  return (
+    <>
+      <div
+        className={cn(
+          "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
+          isBoxed &&
+            "s-rounded-xl s-border s-border-border s-bg-muted-background s-px-3 s-py-2 dark:s-border-border-night dark:s-bg-muted-background-night",
+          className
+        )}
+      >
+        {modifiedChildren}
+      </div>
+      {isLoading && (
+        // add the spinner below modifiedChildren to keep the layout
+        // thus preventing re-render in case of pagination
+        <div className={cn("s-py-2 s-pl-4", className)}>
+          <Spinner size="xs" variant="dark" />
+        </div>
       )}
-    >
-      {modifiedChildren}
-    </div>
+    </>
   );
 }
 
 const treeItemStyleClasses = {
   base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-2 s-h-9",
   isNavigatableBase:
-    "s-rounded-xl s-pl-1 s-pr-3 s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
+    "s-rounded-xl s-pl-1.5 s-pr-3 s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
   isNavigatableUnselected: cn(
-    "s-bg-structure-150/0 dark:s-bg-structure-150-night/0",
-    "hover:s-bg-structure-150 dark:hover:s-bg-structure-150-night"
+    "s-bg-primary-100/0 dark:s-bg-primary-100-night/0",
+    "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night"
   ),
   isNavigatableSelected: cn(
     "s-font-medium",
-    "s-bg-structure-150 dark:s-bg-structure-150-night"
+    "s-bg-primary-100 dark:s-bg-primary-100-night"
   ),
 };
 
@@ -115,7 +134,7 @@ Tree.Item = React.forwardRef<
       type = "node",
       className = "",
       labelClassName = "",
-      tailwindIconTextColor = "s-text-element-800 dark:s-text-element-800-night",
+      tailwindIconTextColor = "s-text-foreground dark:s-text-foreground-night",
       visual,
       checkbox,
       onChevronClick,
@@ -132,6 +151,9 @@ Tree.Item = React.forwardRef<
     },
     ref
   ) => {
+    const [isTruncated, setIsTruncated] = useState(false);
+    const labelRef = React.useRef<HTMLDivElement>(null);
+
     const [collapsedState, setCollapsedState] = useState<boolean>(
       defaultCollapsed ?? true
     );
@@ -145,6 +167,7 @@ Tree.Item = React.forwardRef<
       ? onChevronClick
       : () => setCollapsedState(!collapsedState);
 
+    const canExpand = effectiveOnChevronClick && type === "node";
     const getChildren = () => {
       if (effectiveCollapsed) {
         return [];
@@ -157,6 +180,23 @@ Tree.Item = React.forwardRef<
 
     const childrenToRender = getChildren();
 
+    const checkTruncation = useCallback(() => {
+      if (labelRef.current) {
+        setIsTruncated(
+          labelRef.current.scrollWidth > labelRef.current.clientWidth
+        );
+      }
+    }, []);
+
+    useEffect(() => {
+      const observer = new ResizeObserver(checkTruncation);
+      if (labelRef.current) {
+        observer.observe(labelRef.current);
+        checkTruncation();
+      }
+      return () => observer.disconnect();
+    }, [checkTruncation]);
+
     const isExpanded = childrenToRender && !effectiveCollapsed;
 
     return (
@@ -166,7 +206,9 @@ Tree.Item = React.forwardRef<
           id={id}
           className={cn(
             treeItemStyleClasses.base,
-            onItemClick ? "s-cursor-pointer" : "",
+            onItemClick || checkbox?.onCheckedChange || canExpand
+              ? "s-cursor-pointer"
+              : "",
             isNavigatable ? treeItemStyleClasses.isNavigatableBase : "",
             isNavigatable
               ? isSelected
@@ -177,13 +219,30 @@ Tree.Item = React.forwardRef<
             type,
             className
           )}
-          onClick={onItemClick}
+          onClick={
+            onItemClick ||
+            ((e) => {
+              // Skip if click on checkbox or any button
+              if (
+                e.target instanceof HTMLElement &&
+                e.target.tagName !== "BUTTON"
+              ) {
+                e.stopPropagation();
+                if (checkbox?.onCheckedChange) {
+                  checkbox.onCheckedChange?.(!checkbox.checked);
+                } else if (canExpand) {
+                  effectiveOnChevronClick();
+                }
+              }
+            })
+          }
         >
           {type === "node" && (
             <Button
               icon={isExpanded ? ArrowDownSIcon : ArrowRightSIcon}
-              size="xs"
+              size="xmini"
               variant="ghost-secondary"
+              disabled={!effectiveOnChevronClick}
               onClick={(e) => {
                 e.stopPropagation();
                 if (effectiveOnChevronClick) {
@@ -193,20 +252,46 @@ Tree.Item = React.forwardRef<
             />
           )}
           {type === "leaf" && (
-            <div className="s-w-[34px] s-flex-shrink-0"></div>
+            <div className="s-w-[24px] s-flex-shrink-0"></div>
           )}
           {checkbox && <Checkbox {...checkbox} size="xs" />}
           <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
-          <div
-            className={`s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night ${labelClassName}`}
-          >
-            {label}
-          </div>
-          <div className="s-grow" />
+          {isTruncated ? (
+            <TooltipProvider>
+              <TooltipRoot>
+                <TooltipTrigger asChild>
+                  <div
+                    ref={labelRef}
+                    className={cn(
+                      "s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night",
+                      labelClassName
+                    )}
+                  >
+                    {label}
+                  </div>
+                </TooltipTrigger>
+                <TooltipPortal>
+                  <TooltipContent side="top" align="start">
+                    {label}
+                  </TooltipContent>
+                </TooltipPortal>
+              </TooltipRoot>
+            </TooltipProvider>
+          ) : (
+            <div
+              ref={labelRef}
+              className={cn(
+                "s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night",
+                labelClassName
+              )}
+            >
+              {label}
+            </div>
+          )}
           {actions && (
             <div
               className={cn(
-                "s-flex s-gap-2 s-pl-4",
+                "s-flex s-grow s-gap-2",
                 areActionsFading &&
                   "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
               )}
@@ -232,7 +317,7 @@ Tree.Empty = function ({ label, onItemClick }: TreeEmptyProps) {
   return (
     <div
       className={cn(
-        "s-font-regular s-py-1.5 s-pl-6 s-text-sm",
+        "s-copy-sm s-py-1.5 s-pl-6 s-italic",
         "s-text-muted-foreground dark:s-text-muted-foreground-night",
         onItemClick ? "s-cursor-pointer" : ""
       )}

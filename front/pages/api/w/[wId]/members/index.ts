@@ -1,7 +1,3 @@
-import type {
-  UserTypeWithWorkspaces,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import { NumberFromString, withFallback } from "io-ts-types";
@@ -12,6 +8,7 @@ import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 
 export const DEFAULT_PAGE_LIMIT = 50;
 export const MAX_PAGE_LIMIT = 150;
@@ -68,6 +65,16 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Only workspace admins can access the members list.",
+          },
+        });
+      }
+
       const paginationRes = MembersPaginationCodec.decode(req.query);
       if (isLeft(paginationRes)) {
         return apiError(req, res, {
@@ -81,7 +88,7 @@ async function handler(
 
       const paginationParams = paginationRes.right;
 
-      if (auth.isBuilder() && req.query.role && req.query.role === "admin") {
+      if (req.query.role && req.query.role === "admin") {
         const { members, total, nextPageParams } = await getMembers(
           auth,
           {
@@ -95,17 +102,6 @@ async function handler(
           members,
           total,
           nextPageUrl: buildUrlWithParams(req, nextPageParams),
-        });
-      }
-
-      if (!auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Only users that are `admins` for the current workspace can see memberships or modify it.",
-          },
         });
       }
 

@@ -1,4 +1,3 @@
-import type { ModelIdType, ModelProviderIdType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -8,6 +7,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { ModelIdType, ModelProviderIdType } from "@app/types";
 
 export class TrackerConfigurationModel extends SoftDeletableWorkspaceAwareModel<TrackerConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -106,7 +106,16 @@ TrackerConfigurationModel.init(
   {
     modelName: "tracker_configuration",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId"] }],
+    indexes: [
+      {
+        fields: ["workspaceId", "status"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "vaultId"],
+        concurrently: true,
+      },
+    ],
   }
 );
 
@@ -185,8 +194,17 @@ TrackerDataSourceConfigurationModel.init(
         using: "gin",
         name: "tracker_data_source_configuration_parent_ids_gin_idx",
       },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       { fields: ["dataSourceId"] },
       { fields: ["dataSourceViewId"] },
+      {
+        fields: ["workspaceId", "dataSourceId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "trackerConfigurationId", "scope"],
+        name: "tracker_data_source_config_workspace_id_tracker_config_id_scope",
+      },
     ],
   }
 );
@@ -296,15 +314,14 @@ DataSourceModel.hasMany(TrackerGenerationModel, {
   onDelete: "RESTRICT",
 });
 TrackerGenerationModel.belongsTo(DataSourceModel, {
-  foreignKey: { allowNull: false },
+  foreignKey: { allowNull: false, name: "dataSourceId" },
   as: "dataSource",
 });
 
 DataSourceModel.hasMany(TrackerGenerationModel, {
   foreignKey: { allowNull: true },
-  as: "maintainedDocumentDataSource",
 });
 TrackerGenerationModel.belongsTo(DataSourceModel, {
-  foreignKey: { allowNull: true },
+  foreignKey: { allowNull: true, name: "maintainedDocumentDataSourceId" },
   as: "maintainedDocumentDataSource",
 });

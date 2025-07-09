@@ -107,6 +107,18 @@ export class FileStorage {
     return this.bucket.file(filename);
   }
 
+  async getFiles({
+    maxResults,
+    prefix,
+  }: {
+    prefix?: string;
+    maxResults: number;
+  }) {
+    const [files] = await this.bucket.getFiles({ prefix, maxResults });
+
+    return files;
+  }
+
   get name() {
     return this.bucket.name;
   }
@@ -151,3 +163,6 @@ export const getPublicUploadBucket = (options?: FileStorageOptions) =>
 
 export const getUpsertQueueBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getGcsUpsertQueueBucket(), options);
+
+export const getDustDataSourcesBucket = (options?: FileStorageOptions) =>
+  getBucketInstance(config.getDustDataSourcesBucket(), options);

@@ -1,4 +1,3 @@
-import type { AgentUsageType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentUsage } from "@app/lib/api/assistant/agent_usage";
@@ -6,6 +5,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { AgentUsageType, WithAPIErrorResponse } from "@app/types";
 
 export type GetAgentUsageResponseBody = {
   agentUsage: AgentUsageType | null;
@@ -22,7 +22,8 @@ async function handler(
     case "GET":
       const agentConfiguration = await getAgentConfiguration(
         auth,
-        req.query.aId as string
+        req.query.aId as string,
+        "light"
       );
       if (!agentConfiguration) {
         return apiError(req, res, {

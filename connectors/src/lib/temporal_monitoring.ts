@@ -1,3 +1,4 @@
+import { assertNever } from "@dust-tt/client";
 import type { Context } from "@temporalio/activity";
 import type {
   ActivityExecuteInput,
@@ -12,7 +13,11 @@ import type logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-import { DustConnectorWorkflowError, ExternalOAuthTokenError } from "./error";
+import {
+  DustConnectorWorkflowError,
+  ExternalOAuthTokenError,
+  WorkspaceQuotaExceededError,
+} from "./error";
 import { syncFailed } from "./sync_status";
 import { getConnectorId } from "./temporal";
 
@@ -117,19 +122,35 @@ export class ActivityInboundLogInterceptor
     } catch (err: unknown) {
       error = err;
 
-      if (err instanceof ExternalOAuthTokenError) {
+      // Log connection-related errors with more context
+      if (err instanceof Error && err.message.includes("other side closed")) {
+        this.logger.error(
+          {
+            error: err,
+            errorType: "grpc_connection_error",
+            errorMessage: err.message,
+            errorStack: err.stack,
+            activityType: this.context.info.activityType,
+            workflowType: this.context.info.workflowType,
+            workflowId: this.context.info.workflowExecution.workflowId,
+            workflowRunId: this.context.info.workflowExecution.runId,
+            attempt: this.context.info.attempt,
+            activityStartTime: startTime.toISOString(),
+            elapsedMs: new Date().getTime() - startTime.getTime(),
+          },
+          "gRPC connection error during activity execution"
+        );
+      }
+
+      if (
+        err instanceof ExternalOAuthTokenError ||
+        err instanceof WorkspaceQuotaExceededError
+      ) {
         // We have a connector working on an expired token, we need to cancel the workflow.
         const { workflowId } = this.context.info.workflowExecution;
 
         const connectorId = await getConnectorId(workflowId);
         if (connectorId) {
-          await syncFailed(connectorId, "oauth_token_revoked");
-
-          // In case of an invalid token, stop all workflows for the connector.
-          this.logger.info(
-            `Stopping connector manager because of expired token.`
-          );
-
           const connector = await ConnectorResource.fetchById(connectorId);
 
           if (!connector) {
@@ -138,13 +159,27 @@ export class ActivityInboundLogInterceptor
             );
           }
 
+          if (err instanceof ExternalOAuthTokenError) {
+            await syncFailed(connectorId, "oauth_token_revoked");
+            this.logger.info(
+              `Stopping connector manager because of expired token.`
+            );
+          } else if (err instanceof WorkspaceQuotaExceededError) {
+            await syncFailed(connectorId, "workspace_quota_exceeded");
+            this.logger.info(
+              `Stopping connector manager because of quota exceeded for the workspace.`
+            );
+          } else {
+            assertNever(err);
+          }
+
           const connectorManager = getConnectorManager({
             connectorId: connector.id,
             connectorProvider: connector.type,
           });
 
           if (connectorManager) {
-            await connectorManager.pause();
+            await connectorManager.pauseAndStop();
           } else {
             this.logger.error(
               {

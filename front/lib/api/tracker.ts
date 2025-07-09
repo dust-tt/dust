@@ -1,12 +1,14 @@
-import type { TrackerGenerationToProcess } from "@dust-tt/types";
-import { concurrentExecutor, CoreAPI, removeNulls } from "@dust-tt/types";
+import { escape } from "html-escaper";
 import _ from "lodash";
 
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
+import type { TrackerGenerationToProcess } from "@app/types";
+import { CoreAPI, removeNulls } from "@app/types";
 
 const TRACKER_FROM_EMAIL = "dev@dust.tt";
 const TRACKER_FROM_NAME = "Bob Tracker"; // 😬
@@ -107,9 +109,9 @@ const sendTrackerDefaultEmail = async ({
       name: TRACKER_FROM_NAME,
       email: TRACKER_FROM_EMAIL,
     },
-    subject: `[Dust] Tracker ${name} check complete: No updates required.`,
+    subject: `[Dust] Tracker ${escape(name)} check complete: No updates required.`,
     body: `
-        <p>Tracker: ${name}.</p>
+        <p>Tracker: ${escape(name)}.</p>
         <p>No changes detected in watched documents. All maintained documents are up to date.</p>
       `,
   });
@@ -231,7 +233,7 @@ export const sendTrackerWithGenerationEmail = async ({
   );
 
   const body = `
-<p>We have new suggestions for your tracker ${name}:</p>
+<p>We have new suggestions for your tracker ${escape(name)}:</p>
 <p>${generations.length} recommendations were generated due to changes in watched documents.</p>
 <br />
 <br />
@@ -244,7 +246,7 @@ ${generationBody.join("<hr />")}
       name: TRACKER_FROM_NAME,
       email: TRACKER_FROM_EMAIL,
     },
-    subject: `[Dust] Tracker ${name} check complete: Updates required.`,
+    subject: `[Dust] Tracker ${escape(name)} check complete: Updates required.`,
     body,
   });
 };

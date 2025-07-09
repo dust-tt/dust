@@ -1,5 +1,4 @@
 import {
-  Page,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -7,33 +6,53 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
 
 import { getActionSpecification } from "@app/components/actions/types";
+import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
+import { useConversationMessage } from "@app/lib/swr/conversations";
+import type {
+  AgentActionType,
+  LightAgentMessageType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface AgentMessageActionsDrawerProps {
-  actions: AgentActionType[];
+  conversationId: string;
+  message: LightAgentMessageType;
+  actionProgress: ActionProgressState;
   isOpened: boolean;
   isActing: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
 }
 export function AgentMessageActionsDrawer({
-  actions,
+  conversationId,
+  message,
+  actionProgress,
   isOpened,
   isActing,
   onClose,
   owner,
 }: AgentMessageActionsDrawerProps) {
-  const groupedActionsByStep = actions.reduce(
-    (acc, current) => {
-      const currentStep = current.step + 1;
-      acc[currentStep] = acc[currentStep] || [];
-      acc[currentStep].push(current);
-      return acc;
-    },
-    {} as Record<number, AgentActionType[]>
-  );
+  const { message: fullAgentMessage, isMessageLoading } =
+    useConversationMessage({
+      conversationId,
+      workspaceId: owner.sId,
+      messageId: isOpened ? message.sId : null,
+    });
+
+  const actions =
+    fullAgentMessage?.type === "agent_message" ? fullAgentMessage.actions : [];
+
+  const groupedActionsByStep = actions
+    ? actions.reduce<Record<number, AgentActionType[]>>((acc, current) => {
+        const currentStep = current.step + 1;
+        return {
+          ...acc,
+          [currentStep]: [...(acc[currentStep] || []), current],
+        };
+      }, {})
+    : {};
 
   return (
     <Sheet
@@ -49,40 +68,48 @@ export function AgentMessageActionsDrawer({
           <SheetTitle>Breakdown of the tools used</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="flex flex-col gap-4">
-            {Object.entries(groupedActionsByStep).map(([step, actions]) => (
-              <div
-                className="flex flex-col gap-4 pb-4 duration-1000 animate-in fade-in"
-                key={step}
-              >
-                <p className="text-xl font-bold text-foreground dark:text-foreground-night">
-                  Step {step}
-                </p>
-                {actions.map((action, idx) => {
-                  const actionSpecification = getActionSpecification(
-                    action.type
-                  );
-                  const ActionDetailsComponent =
-                    actionSpecification.detailsComponent;
-                  return (
-                    <div key={`action-${action.id}`}>
-                      {idx !== 0 && <Page.Separator />}
-                      <ActionDetailsComponent
-                        action={action}
-                        defaultOpen={idx === 0 && step === "1"}
-                        owner={owner}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-            {isActing && (
-              <div className="flex justify-center">
-                <Spinner variant="color" />
-              </div>
-            )}
-          </div>
+          {isMessageLoading ? (
+            <div className="flex justify-center">
+              <Spinner variant="color" />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {Object.entries(groupedActionsByStep).map(([step, actions]) => (
+                <div
+                  className="flex flex-col gap-4 pb-4 duration-1000 animate-in fade-in"
+                  key={step}
+                >
+                  <p className="heading-xl text-foreground dark:text-foreground-night">
+                    Step {step}
+                  </p>
+                  {actions.map((action, idx) => {
+                    const actionSpecification = getActionSpecification(
+                      action.type
+                    );
+                    const lastNotification =
+                      actionProgress.get(action.id)?.progress ?? null;
+                    const ActionDetailsComponent =
+                      actionSpecification.detailsComponent;
+                    return (
+                      <div key={`action-${action.id}`}>
+                        <ActionDetailsComponent
+                          action={action}
+                          lastNotification={lastNotification}
+                          defaultOpen={idx === 0 && step === "1"}
+                          owner={owner}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+              {isActing && (
+                <div className="flex justify-center">
+                  <Spinner variant="color" />
+                </div>
+              )}
+            </div>
+          )}
         </SheetContainer>
       </SheetContent>
     </Sheet>

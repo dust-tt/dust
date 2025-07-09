@@ -11,14 +11,27 @@ import {
 const meta = {
   title: "Components/Breadcrumbs",
   component: Breadcrumbs,
+  argTypes: {
+    size: {
+      control: "select",
+      options: ["xs", "sm"],
+      defaultValue: "sm",
+    },
+  },
 } satisfies Meta<typeof Breadcrumbs>;
 
 export default meta;
 
-export const BreadcrumbsExample = () => {
+type BreadcrumbsExampleProps = {
+  size?: "xs" | "sm";
+};
+
+export const BreadcrumbsExample = (args: BreadcrumbsExampleProps) => {
+  const items0 = [{ label: "Home", icon: HomeIcon }];
+
   const items1 = [
     { label: "Home", href: "#", icon: HomeIcon },
-    { label: "Spaces", href: ".." },
+    { label: "Spaces", onClick: () => alert("Spaces clicked!") },
     { label: "My Space" },
   ];
   const items2 = [
@@ -69,11 +82,12 @@ export const BreadcrumbsExample = () => {
 
   return (
     <div className="s-flex s-flex-col s-gap-4 s-pb-8">
-      <Breadcrumbs items={items1} />
-      <Breadcrumbs items={items2} />
-      <Breadcrumbs items={items4} />
-      <Breadcrumbs items={items3} />
-      <Breadcrumbs items={items5} />
+      <Breadcrumbs items={items0} {...args} />
+      <Breadcrumbs items={items1} {...args} />
+      <Breadcrumbs items={items2} {...args} />
+      <Breadcrumbs items={items4} {...args} />
+      <Breadcrumbs items={items3} {...args} />
+      <Breadcrumbs items={items5} {...args} />
     </div>
   );
 };

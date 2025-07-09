@@ -12,7 +12,7 @@ import {
 } from "@app/components/home/Particles";
 import { PricePlans } from "@app/components/plans/PlansTables";
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.bigSphere),
@@ -25,9 +25,7 @@ export default function Pricing() {
   return (
     <>
       <HeaderContentBlock
-        title="Meet our pricing plans."
-        from="from-emerald-200"
-        to="to-emerald-500"
+        title="Meet our pricing plans"
         hasCTA={false}
         subtitle={
           <>
@@ -41,7 +39,7 @@ export default function Pricing() {
               label="Start with Pro, 15 Days free"
               icon={RocketIcon}
               onClick={() => {
-                window.location.href = "/api/auth/login";
+                window.location.href = "/api/workos/login?screenHint=sign-up";
               }}
             />
           </>
@@ -52,7 +50,7 @@ export default function Pricing() {
           <PricePlans
             display="landing"
             onClickProPlan={() => {
-              window.location.href = "/api/auth/login";
+              window.location.href = "/api/workos/login?screenHint=sign-up";
             }}
           />
         </div>

@@ -28,8 +28,7 @@ export const pageSettings: pageSettingsProps = {
       Smart automations, <br></br>more deals
     </>
   ),
-  from: "from-emerald-200",
-  to: "to-emerald-500",
+  accentColor: "text-brand-red-rose",
   description: (
     <>
       Optimize every touchpoint, automate administrative overhead, and close
@@ -37,10 +36,10 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Generate instant account snapshots to prepare for meetings",
-    "Auto-complete RFPs and forms",
-    "Create personalized outreach and follow-ups",
-    "Coach sales reps with call insights",
+    "Generate instant account snapshots to prepare for meetings.",
+    "Auto-complete RFPs and forms.",
+    "Create personalized outreach and follow-ups.",
+    "Coach sales reps with call insights.",
   ],
   image: "/static/landing/sales/accountSnapshot.png",
 };
@@ -120,8 +119,7 @@ export const Metrics: MetricProps = {
       description: <> saved weekly per rep for selling</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -132,13 +130,13 @@ export const UseCases: UseCaseProps = {
     {
       title: "Account snapshot",
       content:
-        "Create account summaries with key historical interactions, data or news wherever they are hosted.",
+        "Craft account overviews with key past interactions, data, or news to prepare for meetings or account handovers.",
       images: ["/static/landing/sales/accountSnapshot.png"],
     },
     {
       title: "Engage and re-engage",
       content:
-        "Create targeted cold emails and re-engagement messages using call transcripts, CRM data and industry insights",
+        "Create targeted cold emails and automated meeting follow-ups using call transcripts, CRM data and industry insights.",
       images: ["/static/landing/sales/meetingSummary.png"],
     },
     {
@@ -148,9 +146,9 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/sales/prospectQuestions.png"],
     },
     {
-      title: "Sales coaching",
+      title: "Sales insights",
       content:
-        "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
+        "Extract winning narratives from calls and coach teams on pitch delivery and objection response.",
       images: ["/static/landing/sales/salesCoach.png"],
     },
   ],
@@ -161,16 +159,23 @@ export const Quote: QuoteProps = {
     "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
   name: "Everett Berry ",
   title: "Head of GTM Engineering at Clay",
-  logo: "/static/landing/logos/clay.png",
+  logo: "/static/landing/logos/color/clay.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/8q80neektv?web_component=true&seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/8q80neektv",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [
+  {
+    title: "Clay powers 4x sales team growth with Dust AI agents",
+    content:
+      "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity.",
+    href: "https://blog.dust.tt/clay-scaling-gtme-team/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+  },
   {
     title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
     content:
@@ -184,12 +189,5 @@ export const Stories: CustomerStory[] = [
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
-  },
-  {
-    title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
-    content:
-      "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-    href: "https://blog.dust.tt/customer-story-lifen/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   },
 ];

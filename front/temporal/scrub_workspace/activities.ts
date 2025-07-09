@@ -1,4 +1,3 @@
-import { ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import _ from "lodash";
 
 import {
@@ -6,7 +5,6 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
-import { isGlobalAgentId } from "@app/lib/api/assistant/global_agents";
 import config from "@app/lib/api/config";
 import {
   getDataSources,
@@ -20,20 +18,23 @@ import {
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { Conversation } from "@app/lib/models/assistant/conversation";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
-import { subscriptionForWorkspaces } from "@app/lib/plans/subscription";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { ConnectorsAPI, isGlobalAgentId, removeNulls } from "@app/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 export async function sendDataDeletionEmail({
   remainingDays,
@@ -95,6 +96,7 @@ export async function scrubWorkspaceData({
   });
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
+  await deleteTags(auth);
   await deleteTrackers(auth);
   await deleteDatasources(auth);
   await deleteSpaces(auth);
@@ -122,22 +124,25 @@ export async function pauseAllConnectors({
 
 export async function deleteAllConversations(auth: Authenticator) {
   const workspace = auth.getNonNullableWorkspace();
-  const conversations = await Conversation.findAll({
-    where: { workspaceId: workspace.id },
+  const conversations = await ConversationResource.listAll(auth, {
+    includeDeleted: true,
+    includeTest: true,
   });
   logger.info(
     { workspaceId: workspace.sId, conversationsCount: conversations.length },
     "Deleting all conversations for workspace."
   );
-
-  const conversationChunks = _.chunk(conversations, 4);
-  for (const conversationChunk of conversationChunks) {
-    await Promise.all(
-      conversationChunk.map(async (c) => {
-        await destroyConversation(auth, { conversationId: c.sId });
-      })
-    );
-  }
+  // unique conversations
+  const uniqueConversations = _.uniqBy(conversations, (c) => c.sId);
+  await concurrentExecutor(
+    uniqueConversations,
+    async (conversation) => {
+      await destroyConversation(auth, { conversationId: conversation.sId });
+    },
+    {
+      concurrency: 16,
+    }
+  );
 }
 
 async function archiveAssistants(auth: Authenticator) {
@@ -152,6 +157,13 @@ async function archiveAssistants(auth: Authenticator) {
   );
   for (const agentConfiguration of agentConfigurationsToArchive) {
     await archiveAgentConfiguration(auth, agentConfiguration.sId);
+  }
+}
+
+async function deleteTags(auth: Authenticator) {
+  const tags = await TagResource.findAll(auth);
+  for (const tag of tags) {
+    await tag.delete(auth);
   }
 }
 
@@ -246,9 +258,10 @@ async function cleanupCustomerio(auth: Authenticator) {
   );
 
   // Finally, fetch all the subscriptions for the workspaces.
-  const subscriptionsByWorkspaceSid = await subscriptionForWorkspaces(
-    Object.values(workspaceById)
-  );
+  const subscriptionsByWorkspaceSid =
+    await SubscriptionResource.fetchActiveByWorkspaces(
+      Object.values(workspaceById)
+    );
 
   // Process the workspace users in chunks of 4.
   const chunks = _.chunk(users, 4);
@@ -271,7 +284,7 @@ async function cleanupCustomerio(auth: Authenticator) {
             return (
               subscription &&
               ![FREE_TEST_PLAN_CODE, FREE_NO_PLAN_CODE].includes(
-                subscription.plan.code
+                subscription.getPlan().code
               )
             );
           })

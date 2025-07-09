@@ -1,10 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import {
-  Err,
-  getZendeskGarbageCollectionWorkflowId,
-  getZendeskSyncWorkflowId,
-  Ok,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { WorkflowHandle } from "@temporalio/client";
 import {
   WorkflowExecutionAlreadyStartedError,
@@ -29,6 +24,11 @@ import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
+import {
+  getZendeskGarbageCollectionWorkflowId,
+  getZendeskSyncWorkflowId,
+  normalizeError,
+} from "@connectors/types";
 
 export async function launchZendeskSyncWorkflow(
   connector: ConnectorResource,
@@ -94,7 +94,7 @@ export async function launchZendeskSyncWorkflow(
       cronSchedule: `${minute},${30 + minute} * * * *`, // Every 30 minutes.
     });
   } catch (err) {
-    return new Err(err as Error);
+    return new Err(normalizeError(err));
   }
 
   return new Ok(undefined);
@@ -125,7 +125,7 @@ export async function stopZendeskWorkflows(
         { workflowId, error: e },
         "[Zendesk] Failed to stop the workflow."
       );
-      return new Err(e as Error);
+      return new Err(normalizeError(e));
     }
   }
   return new Ok(undefined);
@@ -189,7 +189,7 @@ export async function launchZendeskGarbageCollectionWorkflow(
   } catch (err: unknown) {
     // ignoring errors caused by relaunching the gc workflow
     if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 

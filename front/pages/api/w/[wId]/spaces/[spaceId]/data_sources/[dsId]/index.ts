@@ -1,4 +1,3 @@
-import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -13,6 +12,7 @@ import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { DataSourceType, WithAPIErrorResponse } from "@app/types";
 
 const PatchDataSourceWithoutProviderRequestBodySchema = t.type({
   description: t.string,

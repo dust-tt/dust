@@ -2,8 +2,8 @@ import type {
   LightWorkspaceType,
   UserType,
   WhitelistableFeature,
-} from "@dust-tt/types";
-import { Err, isDevelopment, Ok } from "@dust-tt/types";
+} from "@app/types";
+import { Err, isDevelopment, Ok } from "@app/types";
 
 export function showDebugTools(flags: WhitelistableFeature[]) {
   return isDevelopment() || flags.includes("show_debug_tools");

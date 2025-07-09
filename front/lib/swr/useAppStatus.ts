@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -13,7 +12,7 @@ export function useAppStatus() {
   );
 
   return {
-    appStatus: useMemo(() => (data ? data : null), [data]),
+    appStatus: data ? data : null,
     isAppStatusLoading: !error && !data,
     isAppStatusError: !!error,
   };

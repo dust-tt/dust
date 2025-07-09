@@ -1,7 +1,5 @@
 import type { PostParentsResponseType } from "@dust-tt/client";
 import { PostTableParentsRequestSchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -12,6 +10,8 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 /**
  * @ignoreswagger

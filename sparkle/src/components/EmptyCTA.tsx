@@ -5,7 +5,7 @@ import { cn } from "@sparkle/lib/utils";
 
 interface EmptyCTAProps extends React.HTMLAttributes<HTMLDivElement> {
   action: React.ReactNode;
-  message: string;
+  message?: string;
 }
 
 const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
@@ -14,19 +14,22 @@ const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
       ref={ref}
       className={cn(
         "s-flex s-w-full s-flex-col s-items-center s-justify-center s-gap-2 s-rounded-xl s-p-12",
-        "s-bg-structure-100 dark:s-bg-structure-100-night",
+        "s-border s-border-border s-bg-muted-background",
+        "dark:s-border-border-night dark:s-bg-muted-background-night",
         className
       )}
       {...props}
     >
-      <div
-        className={cn(
-          "s-text-center s-text-sm",
-          "s-text-muted-foreground dark:s-text-muted-foreground-night"
-        )}
-      >
-        {message}
-      </div>
+      {message && (
+        <div
+          className={cn(
+            "s-text-center s-text-sm",
+            "s-text-muted-foreground dark:s-text-muted-foreground-night"
+          )}
+        >
+          {message}
+        </div>
+      )}
       <div>{action}</div>
     </div>
   )

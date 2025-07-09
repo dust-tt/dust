@@ -1,10 +1,9 @@
-import { useSendNotification } from "@dust-tt/sparkle";
-import type { WhitelistableFeature, WorkspaceType } from "@dust-tt/types";
-import { useRouter } from "next/router";
-
 import { makeColumnsForFeatureFlags } from "@app/components/poke/features/columns";
+import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeFeatureFlags } from "@app/lib/swr/poke";
+import type { WhitelistableFeature, WorkspaceType } from "@app/types";
+import { WHITELISTABLE_FEATURES_CONFIG } from "@app/types";
 
 interface FeatureFlagsDataTableProps {
   owner: WorkspaceType;
@@ -12,15 +11,17 @@ interface FeatureFlagsDataTableProps {
 }
 
 function prepareFeatureFlagsForDisplay(
-  workspaceFlags: WhitelistableFeature[],
+  workspaceFlags: { name: WhitelistableFeature; createdAt: string }[],
   whitelistableFeatures: WhitelistableFeature[]
 ) {
   return whitelistableFeatures.map((ff) => {
-    const isEnabledForWorkspace = workspaceFlags.some((f) => f === ff);
-
+    const enabledFlag = workspaceFlags.find((f) => f.name === ff);
     return {
       name: ff,
-      enabled: isEnabledForWorkspace,
+      description:
+        WHITELISTABLE_FEATURES_CONFIG[ff]?.description ?? "[Unknown feature]",
+      enabled: !!enabledFlag,
+      enabledAt: enabledFlag?.createdAt || null,
     };
   });
 }
@@ -29,24 +30,18 @@ export function FeatureFlagsDataTable({
   owner,
   whitelistableFeatures,
 }: FeatureFlagsDataTableProps) {
-  const router = useRouter();
-  const { featureFlags } = usePokeFeatureFlags({ workspaceId: owner.sId });
-  const sendNotification = useSendNotification();
-
   return (
-    <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
-      <h2 className="text-md mb-4 font-bold">Feature flags:</h2>
-      <PokeDataTable
-        columns={makeColumnsForFeatureFlags(
-          owner,
-          router.reload,
-          sendNotification
-        )}
-        data={prepareFeatureFlagsForDisplay(
-          featureFlags,
-          whitelistableFeatures
-        )}
-      />
-    </div>
+    <PokeDataTableConditionalFetch
+      header="Feature Flags"
+      owner={owner}
+      useSWRHook={usePokeFeatureFlags}
+    >
+      {(data) => (
+        <PokeDataTable
+          columns={makeColumnsForFeatureFlags()}
+          data={prepareFeatureFlagsForDisplay(data, whitelistableFeatures)}
+        />
+      )}
+    </PokeDataTableConditionalFetch>
   );
 }

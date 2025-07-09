@@ -7,58 +7,83 @@ import {
   DialogHeader,
   DialogTitle,
   Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
+import * as _ from "lodash";
+import { useState } from "react";
+
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import type {
   DataSourceViewType,
   LightContentNode,
   LightWorkspaceType,
-} from "@dust-tt/types";
-import * as _ from "lodash";
-import { useState } from "react";
+} from "@app/types";
+import { DocumentDeletionKey } from "@app/types";
 
 interface DocumentOrTableDeleteDialogProps {
-  dataSourceView: DataSourceViewType;
-  isOpen: boolean;
-  onClose: (save: boolean) => void;
+  dataSourceView: DataSourceViewType | null;
   owner: LightWorkspaceType;
-  contentNode: LightContentNode;
+  contentNode: LightContentNode | null;
 }
 
 export const DocumentOrTableDeleteDialog = ({
   dataSourceView,
-  isOpen,
-  onClose,
   owner,
   contentNode,
 }: DocumentOrTableDeleteDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const params = useQueryParams(["viewType", DocumentDeletionKey]);
+  const isOpen =
+    params[DocumentDeletionKey].value === "true" &&
+    !!dataSourceView &&
+    !!contentNode;
+
   const sendNotification = useSendNotification();
 
-  const isTable = contentNode.type === "table";
-  const itemType = isTable ? "table" : "document";
+  const openDialog = () => {
+    params.setParams({
+      [DocumentDeletionKey]: "true",
+    });
+  };
+
+  const closeDialog = () => {
+    params.setParams({
+      contentNodeId: undefined,
+      contentNodeName: undefined,
+      [DocumentDeletionKey]: undefined,
+    });
+  };
 
   const handleDelete = async () => {
+    if (
+      !contentNode ||
+      !dataSourceView ||
+      !["table", "document"].includes(contentNode.type)
+    ) {
+      return;
+    }
     try {
       setIsLoading(true);
-      const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/${itemType}s/${encodeURIComponent(contentNode.internalId)}`;
+      const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/${contentNode.type}s/${encodeURIComponent(contentNode.internalId)}`;
 
       const res = await fetch(endpoint, { method: "DELETE" });
       if (!res.ok) {
-        throw new Error(`Failed to delete ${itemType}`);
+        throw new Error(`Failed to delete ${contentNode.type}`);
       }
 
       sendNotification({
         type: "success",
-        title: `${_.capitalize(itemType)} deletion submitted`,
-        description: `Deletion of ${itemType} ${contentNode.title} ongoing, it will complete shortly.`,
+        title: `${_.capitalize(contentNode.type)} deletion submitted`,
+        description:
+          `Deletion of ${contentNode.type} ${contentNode.title} is ongoing, ` +
+          `it will complete shortly.`,
       });
-      onClose(true);
+      closeDialog();
     } catch (error) {
       sendNotification({
         type: "error",
-        title: `Error deleting ${itemType}`,
-        description: `An error occurred while deleting your ${itemType}.`,
+        title: `Error deleting ${contentNode.type}`,
+        description: `An error occurred while deleting your ${contentNode.type}.`,
       });
     } finally {
       setIsLoading(false);
@@ -70,7 +95,9 @@ export const DocumentOrTableDeleteDialog = ({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          onClose(false);
+          closeDialog();
+        } else {
+          openDialog();
         }
       }}
     >
@@ -78,8 +105,9 @@ export const DocumentOrTableDeleteDialog = ({
         <DialogHeader>
           <DialogTitle>Confirm deletion</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete {isTable ? "table" : "document"} '
-            {contentNode.title}'?
+            Are you sure you want to delete
+            {contentNode?.type ? ` ${contentNode.type}` : ""}
+            {contentNode?.title ? ` '${contentNode.title}'` : ""}?
           </DialogDescription>
         </DialogHeader>
         {isLoading ? (

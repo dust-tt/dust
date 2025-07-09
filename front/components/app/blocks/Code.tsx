@@ -1,19 +1,19 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Label } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import dynamic from "next/dynamic";
+
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { shallowBlockClone } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
 import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
-} from "@dust-tt/types";
-import type { BlockType, RunType } from "@dust-tt/types";
-import dynamic from "next/dynamic";
-
-import { shallowBlockClone } from "@app/lib/utils";
+} from "@app/types";
+import type { BlockType, RunType } from "@app/types";
 
 import Block from "./Block";
-
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
   { ssr: false }
@@ -56,7 +56,7 @@ export default function Code({
     onBlockUpdate(b);
   };
 
-  const theme = localStorage.getItem("theme");
+  const { isDark } = useTheme();
 
   return (
     <Block
@@ -82,7 +82,7 @@ export default function Code({
           <div className="flex w-full font-normal">
             <div className="w-full">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.code}
                 language="js"
@@ -90,7 +90,7 @@ export default function Code({
                 onChange={(e) => handleCodeChange(e.target.value)}
                 padding={15}
                 minHeight={80}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
                   fontSize: 12,
                   fontFamily:

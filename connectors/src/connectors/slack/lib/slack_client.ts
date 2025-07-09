@@ -1,29 +1,120 @@
-import type { ModelId } from "@dust-tt/types";
 import type {
   CodedError,
   WebAPIHTTPError,
   WebAPIPlatformError,
+  WebAPIRateLimitedError,
 } from "@slack/web-api";
 import { ErrorCode, WebClient } from "@slack/web-api";
-import { Context } from "@temporalio/activity";
 
 import {
   ExternalOAuthTokenError,
+  ProviderRateLimitError,
   ProviderWorkflowError,
 } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
 
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;
 
-export async function getSlackClient(connectorId: ModelId): Promise<WebClient>;
+function isCodedError(error: unknown): error is CodedError {
+  return error != null && typeof error === "object" && "code" in error;
+}
+
+export function reportSlackUsage({
+  connectorId,
+  method,
+  channelId,
+  limit,
+  useCase,
+}: {
+  connectorId: ModelId;
+  method: string;
+  channelId?: string;
+  limit?: number;
+  useCase?: "batch_sync" | "incremental_sync" | "bot";
+}) {
+  logger.info(
+    { connectorId, method, channelId, limit, useCase },
+    "Slack API call"
+  );
+  const tags = [`connector:${connectorId}`, `method:${method}`];
+  if (useCase) {
+    tags.push(`use_case:${useCase}`);
+  }
+  statsDClient.increment("slack_api_call.count", 1, tags);
+}
+
+// Type guards for Slack errors
+// See https://github.com/slackapi/node-slack-sdk/blob/main/packages/web-api/src/errors.ts.
+function isWebAPIRateLimitedError(
+  error: unknown
+): error is WebAPIRateLimitedError {
+  return (
+    isCodedError(error) &&
+    error.code === ErrorCode.RateLimitedError &&
+    "retryAfter" in error &&
+    typeof error.retryAfter === "number"
+  );
+}
+
+function isWebAPIHTTPError(error: unknown): error is WebAPIHTTPError {
+  return (
+    isCodedError(error) &&
+    error.code === ErrorCode.HTTPError &&
+    "statusCode" in error &&
+    typeof error.statusCode === "number"
+  );
+}
+
+function isWebAPIPlatformError(error: unknown): error is WebAPIPlatformError {
+  return (
+    isCodedError(error) &&
+    error.code === ErrorCode.PlatformError &&
+    "data" in error &&
+    error.data != null &&
+    typeof error.data === "object" &&
+    "error" in error.data &&
+    typeof error.data.error === "string"
+  );
+}
+
+/**
+ * Creates a Slack WebClient instance for making API calls.
+ *
+ * IMPORTANT: When using this client in Temporal activities, wrap all API calls
+ * with `withSlackErrorHandling()` to properly convert Slack errors to workflow errors
+ * (rate limits, auth errors, etc.) that can be handled by Temporal interceptors.
+ *
+ * @example
+ * ```typescript
+ * const slackClient = await getSlackClient(connectorId);
+ *
+ * // ✅ Correct usage in Temporal activities:
+ * const result = await withSlackErrorHandling(() =>
+ *   slackClient.conversations.list({ types: "public_channel" })
+ * );
+ *
+ * // ❌ Incorrect usage in Temporal activities (raw Slack errors won't be converted):
+ * const result = await slackClient.conversations.list({ types: "public_channel" });
+ * ```
+ */
 export async function getSlackClient(
-  slackAccessToken: string
+  connectorId: ModelId,
+  options?: { rejectRateLimitedCalls?: boolean }
 ): Promise<WebClient>;
 export async function getSlackClient(
-  connectorIdOrAccessToken: string | ModelId
+  slackAccessToken: string,
+  options?: { rejectRateLimitedCalls?: boolean }
+): Promise<WebClient>;
+export async function getSlackClient(
+  connectorIdOrAccessToken: string | ModelId,
+  options: { rejectRateLimitedCalls?: boolean } = {
+    rejectRateLimitedCalls: true,
+  }
 ): Promise<WebClient> {
   let slackAccessToken: string | undefined = undefined;
   if (typeof connectorIdOrAccessToken === "number") {
@@ -39,81 +130,57 @@ export async function getSlackClient(
   }
   const slackClient = new WebClient(slackAccessToken, {
     timeout: SLACK_NETWORK_TIMEOUT_MS,
+    rejectRateLimitedCalls: options.rejectRateLimitedCalls ?? true,
     retryConfig: {
       retries: 1,
       factor: 1,
     },
   });
 
-  const handler: ProxyHandler<WebClient> = {
-    get: function (target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver);
-      if (["function", "object"].indexOf(typeof value) > -1) {
-        return new Proxy(value, handler);
-      }
+  return slackClient;
+}
 
-      return Reflect.get(target, prop, receiver);
-    },
-    apply: async function (target, thisArg, argumentsList) {
-      let remainingTries = 3;
-      while (remainingTries > 0) {
-        try {
-          // @ts-expect-error can't get typescript to be happy with this, but it works.
-          // eslint-disable-next-line @typescript-eslint/return-await
-          return await Reflect.apply(target, thisArg, argumentsList);
-        } catch (e) {
-          // If we get rate limited, we throw a known error.
-          // Note: a previous version using slackError.code === ErrorCode.RateLimitedError failed
-          // see PR #2689 for details
-          if (e instanceof Error && e.message.includes("rate limit")) {
-            try {
-              Context.current().heartbeat();
-              await Context.current().sleep("1 minute");
-              remainingTries--;
-              continue;
-            } catch (temporalError) {
-              // Not in an activity, ignore
-            }
+export async function withSlackErrorHandling<T>(
+  operation: () => Promise<T>
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (e) {
+    // Convert Slack errors to proper workflow errors.
 
-            throw new ProviderWorkflowError(
-              "slack",
-              `Rate limited: ${e.message}`,
-              "rate_limit_error",
-              e
-            );
-          }
+    // Rate limit errors.
+    if (isWebAPIRateLimitedError(e)) {
+      throw new ProviderRateLimitError(
+        `Rate limited: ${e.message} (retry after ${e.retryAfter}s)`,
+        e,
+        // Slack returns retryAfter in seconds, but Temporal expects milliseconds.
+        e.retryAfter * 1000
+      );
+    }
 
-          const slackError = e as CodedError;
-          if (slackError.code === ErrorCode.HTTPError) {
-            const httpError = slackError as WebAPIHTTPError;
-            if (httpError.statusCode === 503) {
-              throw new ProviderWorkflowError(
-                "slack",
-                `Slack is down: ${httpError.message}`,
-                "transient_upstream_activity_error",
-                httpError
-              );
-            }
-          }
-          if (slackError.code === ErrorCode.PlatformError) {
-            const platformError = e as WebAPIPlatformError;
-            if (
-              ["account_inactive", "invalid_auth", "missing_scope"].includes(
-                platformError.data.error
-              )
-            ) {
-              throw new ExternalOAuthTokenError();
-            }
-          }
-          throw e;
-        }
-      }
-    },
-  };
+    // HTTP 503 errors (Slack is down).
+    if (isWebAPIHTTPError(e) && e.statusCode === 503) {
+      throw new ProviderWorkflowError(
+        "slack",
+        `Slack is down: ${e.statusMessage}`,
+        "transient_upstream_activity_error",
+        e
+      );
+    }
 
-  const proxied = new Proxy(slackClient, handler);
+    // Platform errors (auth issues).
+    if (
+      isWebAPIPlatformError(e) &&
+      ["account_inactive", "invalid_auth", "missing_scope"].includes(
+        e.data.error
+      )
+    ) {
+      throw new ExternalOAuthTokenError();
+    }
 
-  return proxied;
+    // Pass through everything else unchanged.
+    throw e;
+  }
 }
 
 export type SlackUserInfo = {
@@ -130,9 +197,14 @@ export type SlackUserInfo = {
 };
 
 export async function getSlackUserInfo(
+  connectorId: ModelId,
   slackClient: WebClient,
   userId: string
 ): Promise<SlackUserInfo> {
+  reportSlackUsage({
+    connectorId,
+    method: "users.info",
+  });
   const res = await slackClient.users.info({ user: userId });
 
   if (!res.ok) {
@@ -164,9 +236,14 @@ export async function getSlackUserInfo(
 }
 
 export async function getSlackBotInfo(
+  connectorId: ModelId,
   slackClient: WebClient,
   botId: string
 ): Promise<SlackUserInfo> {
+  reportSlackUsage({
+    connectorId,
+    method: "bots.info",
+  });
   const slackBot = await slackClient.bots.info({ bot: botId });
   if (slackBot.error) {
     throw slackBot.error;
@@ -190,9 +267,15 @@ export async function getSlackBotInfo(
 }
 
 export async function getSlackConversationInfo(
+  connectorId: ModelId,
   slackClient: WebClient,
   channelId: string
 ) {
+  reportSlackUsage({
+    connectorId,
+    method: "conversations.info",
+    channelId,
+  });
   return slackClient.conversations.info({ channel: channelId });
 }
 

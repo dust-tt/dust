@@ -1,3 +1,27 @@
+import type { Result } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
+import PQueue from "p-queue";
+import readline from "readline";
+
+import { getConnectorManager } from "@connectors/connectors";
+import { confluence } from "@connectors/connectors/confluence/lib/cli";
+import { github } from "@connectors/connectors/github/lib/cli";
+import { gong } from "@connectors/connectors/gong/lib/cli";
+import { google_drive } from "@connectors/connectors/google_drive/lib/cli";
+import { intercom } from "@connectors/connectors/intercom/lib/cli";
+import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
+import { notion } from "@connectors/connectors/notion/lib/cli";
+import { salesforce } from "@connectors/connectors/salesforce/lib/cli";
+import { slack } from "@connectors/connectors/slack/lib/cli";
+import { snowflake } from "@connectors/connectors/snowflake/lib/cli";
+import {
+  launchCrawlWebsiteScheduler,
+  updateCrawlerCrawlFrequency,
+} from "@connectors/connectors/webcrawler/temporal/client";
+import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
+import { getTemporalClient } from "@connectors/lib/temporal";
+import { default as topLogger } from "@connectors/logger/logger";
+import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
   AdminCommandType,
   AdminSuccessResponseType,
@@ -5,59 +29,47 @@ import type {
   BatchCommandType,
   ConnectorPermission,
   ConnectorsCommandType,
-  GetParentsResponseType,
-  Result,
   TemporalCheckQueueResponseType,
   TemporalCommandType,
   TemporalUnprocessedWorkflowsResponseType,
   WebcrawlerCommandType,
-} from "@dust-tt/types";
-import { assertNever, isConnectorError } from "@dust-tt/types";
-import PQueue from "p-queue";
-import readline from "readline";
-
-import { getConnectorManager } from "@connectors/connectors";
-import { confluence } from "@connectors/connectors/confluence/lib/cli";
-import { github } from "@connectors/connectors/github/lib/cli";
-import { google_drive } from "@connectors/connectors/google_drive/lib/cli";
-import { intercom } from "@connectors/connectors/intercom/lib/cli";
-import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
-import { notion } from "@connectors/connectors/notion/lib/cli";
-import { slack } from "@connectors/connectors/slack/lib/cli";
-import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
-import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
-import { getTemporalClient } from "@connectors/lib/temporal";
-import { default as topLogger } from "@connectors/logger/logger";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+} from "@connectors/types";
+import { isConnectorError } from "@connectors/types";
 
 const { INTERACTIVE_CLI } = process.env;
 
 export async function runCommand(adminCommand: AdminCommandType) {
   switch (adminCommand.majorCommand) {
-    case "connectors":
-      return connectors(adminCommand);
-    case "confluence":
-      return confluence(adminCommand);
     case "batch":
       return batch(adminCommand);
-    case "notion":
-      return notion(adminCommand);
+    case "confluence":
+      return confluence(adminCommand);
+    case "connectors":
+      return connectors(adminCommand);
     case "github":
       return github(adminCommand);
+    case "gong":
+      return gong(adminCommand);
     case "google_drive":
       return google_drive(adminCommand);
-    case "slack":
-      return slack(adminCommand);
-    case "webcrawler":
-      return webcrawler(adminCommand);
-    case "temporal":
-      return temporal(adminCommand);
     case "intercom":
       return intercom(adminCommand);
     case "microsoft":
       return microsoft(adminCommand);
+    case "notion":
+      return notion(adminCommand);
+    case "slack":
+      return slack(adminCommand);
+    case "snowflake":
+      return snowflake(adminCommand);
+    case "temporal":
+      return temporal(adminCommand);
+    case "webcrawler":
+      return webcrawler(adminCommand);
     case "zendesk":
       return zendesk(adminCommand);
+    case "salesforce":
+      return salesforce(adminCommand);
     default:
       assertNever(adminCommand);
   }
@@ -101,9 +113,7 @@ export async function throwOnError<T>(p: Promise<Result<T, Error>>) {
 export const connectors = async ({
   command,
   args,
-}: ConnectorsCommandType): Promise<
-  AdminSuccessResponseType | GetParentsResponseType
-> => {
+}: ConnectorsCommandType): Promise<AdminSuccessResponseType> => {
   if (!args.wId) {
     throw new Error("Missing --wId argument");
   }
@@ -137,11 +147,11 @@ export const connectors = async ({
       return { success: true };
     }
     case "pause": {
-      await throwOnError(manager.pause());
+      await throwOnError(manager.pauseAndStop());
       return { success: true };
     }
     case "unpause": {
-      await throwOnError(manager.unpause());
+      await throwOnError(manager.unpauseAndResume());
       return { success: true };
     }
     case "resume": {
@@ -374,10 +384,26 @@ export const batch = async ({
 
 export const webcrawler = async ({
   command,
+  args,
 }: WebcrawlerCommandType): Promise<AdminSuccessResponseType> => {
   switch (command) {
     case "start-scheduler": {
-      await throwOnError(launchCrawlWebsiteSchedulerWorkflow());
+      await throwOnError(launchCrawlWebsiteScheduler());
+      return { success: true };
+    }
+    case "update-frequency": {
+      if (!args.connectorId) {
+        throw new Error("Missing --connectorId argument");
+      }
+
+      if (!args.crawlFrequency) {
+        throw new Error("Missing --crawlFrequency argument");
+      }
+
+      await throwOnError(
+        updateCrawlerCrawlFrequency(args.connectorId, args.crawlFrequency)
+      );
+
       return { success: true };
     }
   }

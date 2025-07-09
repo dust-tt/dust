@@ -1,8 +1,3 @@
-import type {
-  UserTypeWithWorkspaces,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { assertNever, isMembershipRoleType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -15,6 +10,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
+import { assertNever, isMembershipRoleType } from "@app/types";
 
 export type PostMemberResponseBody = {
   member: UserTypeWithWorkspaces;
@@ -108,6 +105,29 @@ async function handler(
                 "The request body is invalid, expects { role: 'admin' | 'builder' | 'user' }.",
             },
           });
+        }
+
+        // Check if this is an admin trying to change their own role and they are the sole admin
+        const currentUser = auth.user();
+        if (currentUser && currentUser.id === user.id && auth.isAdmin()) {
+          // Count active admins to prevent sole admin from changing their own role
+          const adminsCount =
+            await MembershipResource.getMembersCountForWorkspace({
+              workspace: owner,
+              activeOnly: true,
+              rolesFilter: ["admin"],
+            });
+
+          if (adminsCount < 2 && role !== "admin") {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Cannot change your role as you are the sole admin of this workspace.",
+              },
+            });
+          }
         }
 
         const featureFlags = await getFeatureFlags(owner);

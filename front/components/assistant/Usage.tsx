@@ -1,6 +1,7 @@
-import type { AgentUsageType } from "@dust-tt/types";
-import { pluralize } from "@dust-tt/types";
 import type { ReactNode } from "react";
+
+import type { AgentUsageType } from "@app/types";
+import { pluralize } from "@app/types";
 
 export function assistantUsageMessage<T extends boolean>({
   assistantName,

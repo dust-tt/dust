@@ -1,47 +1,43 @@
 import {
+  ArrowPathIcon,
   Button,
-  ContentMessage,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  Label,
   Page,
-  ScrollArea,
-  Spinner,
+  Separator,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  BuilderSuggestionsType,
-  LightAgentConfigurationType,
-  ModelConfigurationType,
-  Result,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, md5, Ok } from "@dust-tt/types";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
 import Text from "@tiptap/extension-text";
-import type { Editor, JSONContent } from "@tiptap/react";
+import type { Editor, Extensions, JSONContent } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
+import {
+  AGENT_BUILDER_INSTRUCTIONS_AUTO_COMPLETE_EXTENSION_NAME,
+  AgentBuilderInstructionsAutoCompleteExtension,
+} from "@app/components/assistant/conversation/input_bar/editor/extensions/AgentBuilderInstructionsAutoCompleteExtension";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
+import { InstructionDiffExtension } from "@app/components/assistant_builder/instructions/InstructionDiffExtension";
+import { InstructionHistory } from "@app/components/assistant_builder/instructions/InstructionsHistory";
+import { InstructionSuggestions } from "@app/components/assistant_builder/instructions/InstructionSuggestions";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
-import { debounce } from "@app/lib/utils/debounce";
+import type {
+  LightAgentConfigurationType,
+  ModelConfigurationType,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@app/types";
+import { isSupportingResponseFormat } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -57,6 +53,17 @@ const useInstructionEditorService = (editor: Editor | null) => {
   return editorService;
 };
 
+const BASE_EXTENSIONS: Extensions = [
+  Document,
+  Text,
+  ParagraphExtension,
+  History,
+  InstructionDiffExtension,
+  CharacterCount.configure({
+    limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+  }),
+];
+
 export function InstructionScreen({
   owner,
   builderState,
@@ -69,6 +76,8 @@ export function InstructionScreen({
   setDoTypewriterEffect,
   agentConfigurationId,
   models,
+  isInstructionDiffMode,
+  setIsInstructionDiffMode,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -83,23 +92,28 @@ export function InstructionScreen({
   setDoTypewriterEffect: (doTypewriterEffect: boolean) => void;
   agentConfigurationId: string | null;
   models: ModelConfigurationType[];
+  isInstructionDiffMode: boolean;
+  setIsInstructionDiffMode: (isDiffMode: boolean) => void;
 }) {
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const extensions = useMemo(() => {
+    return getAgentBuilderInstructionsExtensionsForWorkspace(
+      owner,
+      featureFlags
+    );
+  }, [owner, featureFlags]);
+
   const editor = useEditor({
-    extensions: [
-      Document,
-      Text,
-      ParagraphExtension,
-      History,
-      CharacterCount.configure({
-        limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-      }),
-    ],
+    extensions,
     editable: !doTypewriterEffect,
     content: tipTapContentFromPlainText(
       (!doTypewriterEffect && builderState.instructions) || ""
     ),
     onUpdate: ({ editor }) => {
-      if (!doTypewriterEffect) {
+      if (!doTypewriterEffect && !isInstructionDiffMode) {
         const json = editor.getJSON();
         const plainText = plainTextFromTipTapContent(json);
         setEdited(true);
@@ -112,43 +126,15 @@ export function InstructionScreen({
   });
   const editorService = useInstructionEditorService(editor);
 
+  const [compareVersion, setCompareVersion] =
+    useState<LightAgentConfigurationType | null>(null);
+
   const { agentConfigurationHistory } = useAgentConfigurationHistory({
     workspaceId: owner.sId,
     agentConfigurationId,
     disabled: !agentConfigurationId,
     limit: 30,
   });
-  // Keep a memory of overriden versions, to not lose them when switching back and forth
-  const [currentConfig, setCurrentConfig] =
-    useState<LightAgentConfigurationType | null>(null);
-  // versionNumber -> instructions
-  const [overridenConfigInstructions, setOverridenConfigInstructions] =
-    useState<{
-      [key: string]: string;
-    }>({});
-
-  // Deduplicate configs based on instructions
-  const configsWithUniqueInstructions: LightAgentConfigurationType[] =
-    useMemo(() => {
-      const uniqueInstructions = new Set<string>();
-      const configs: LightAgentConfigurationType[] = [];
-      agentConfigurationHistory?.forEach((config) => {
-        if (
-          !config.instructions ||
-          uniqueInstructions.has(config.instructions)
-        ) {
-          return;
-        } else {
-          uniqueInstructions.add(config.instructions);
-          configs.push(config);
-        }
-      });
-      return configs;
-    }, [agentConfigurationHistory]);
-
-  useEffect(() => {
-    setCurrentConfig(agentConfigurationHistory?.[0] || null);
-  }, [agentConfigurationHistory]);
 
   const [letterIndex, setLetterIndex] = useState(0);
 
@@ -203,19 +189,19 @@ export function InstructionScreen({
           class: classNames(
             "overflow-auto min-h-60 h-full border rounded-xl p-2",
             "transition-all duration-200 ",
-            "bg-structure-50 dark:bg-structure-50-night",
+            "bg-muted-background dark:bg-muted-background-night",
             displayError
               ? "border-warning-500 dark:border-warning-500-night"
-              : "border-structure-200 dark:border-structure-200-night",
+              : "border-border dark:border-border-night",
             displayError
               ? "focus:ring-warning-500 dark:focus:ring-warning-500-night"
-              : "focus:ring-action-300 dark:focus:ring-action-300-night",
+              : "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
             displayError
               ? "focus:outline-warning-500 dark:focus:outline-warning-500-night"
-              : "focus:outline-action-200 dark:focus:outline-action-200-night",
+              : "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
             displayError
               ? "focus:border-warning-500 dark:focus:border-warning-500-night"
-              : "focus:border-action-300 dark:focus:border-action-300-night"
+              : "focus:border-highlight-300 dark:focus:border-highlight-300-night"
           ),
         },
       },
@@ -231,72 +217,156 @@ export function InstructionScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetAt]);
 
-  return (
-    <div className="flex grow flex-col gap-4">
-      <div className="flex flex-col sm:flex-row">
-        <div className="flex flex-col gap-2">
-          <Page.Header title="Instructions" />
-          <Page.P>
-            <span className="text-sm text-element-700 dark:text-element-700-night">
-              Command or guideline you provide to your agent to direct its
-              responses.
-            </span>
-          </Page.P>
-        </div>
-        <div className="flex-grow" />
-        {configsWithUniqueInstructions &&
-          configsWithUniqueInstructions.length > 1 &&
-          currentConfig && (
-            <div className="mr-2 mt-2 self-end">
-              <PromptHistory
-                history={configsWithUniqueInstructions}
-                onConfigChange={(config) => {
-                  // Remember the instructions of the version we're leaving, if overriden
-                  if (
-                    currentConfig &&
-                    currentConfig.instructions !== builderState.instructions
-                  ) {
-                    setOverridenConfigInstructions((prev) => ({
-                      ...prev,
-                      [currentConfig.version]: builderState.instructions,
-                    }));
-                  }
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
 
-                  // Bring new version's instructions to the editor, fetch overriden instructions if any
-                  setCurrentConfig(config);
-                  editorService.resetContent(
-                    tipTapContentFromPlainText(
-                      overridenConfigInstructions[config.version] ||
-                        config.instructions ||
-                        ""
-                    )
-                  );
+    if (isInstructionDiffMode && compareVersion) {
+      if (editor.storage.instructionDiff?.isDiffMode) {
+        editor.commands.exitDiff();
+      }
+
+      const currentText = plainTextFromTipTapContent(editor.getJSON());
+      const compareText = compareVersion.instructions || "";
+
+      editor.commands.applyDiff(compareText, currentText);
+      editor.setEditable(false);
+    } else if (!isInstructionDiffMode && editor) {
+      if (editor.storage.instructionDiff?.isDiffMode) {
+        editor.commands.exitDiff();
+        editor.setEditable(true);
+      }
+    }
+  }, [isInstructionDiffMode, compareVersion, editor]);
+
+  // Update the autocomplete extension storage (if present) with current builder state.
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const extension = editor.extensionManager.extensions.find(
+      (ext) =>
+        ext.name === AGENT_BUILDER_INSTRUCTIONS_AUTO_COMPLETE_EXTENSION_NAME
+    );
+    if (extension) {
+      extension.storage.builderState = builderState;
+    }
+  }, [editor, builderState]);
+
+  const dateFormatter = new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: true,
+  });
+
+  const restoreVersion = () => {
+    const text = compareVersion?.instructions;
+    if (!editor || !text) {
+      return;
+    }
+
+    setEdited(true);
+    setBuilderState((state) => ({
+      ...state,
+      instructions: text,
+    }));
+
+    if (editor.storage.instructionDiff?.isDiffMode) {
+      editor.commands.exitDiff();
+    }
+
+    editorService.resetContent(tipTapContentFromPlainText(text));
+
+    setCompareVersion(null);
+    setIsInstructionDiffMode(false);
+  };
+
+  return (
+    <div className="flex h-full flex-col gap-4">
+      <div className="flex flex-col items-center justify-between sm:flex-row">
+        <Page.P>
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Command or guideline you provide to your agent to direct its
+            responses.
+          </span>
+        </Page.P>
+        <div className="flex w-full flex-col gap-2 sm:w-auto">
+          <div className="flex items-center gap-2">
+            {!isInstructionDiffMode && (
+              <AdvancedSettings
+                generationSettings={builderState.generationSettings}
+                setGenerationSettings={(generationSettings) => {
+                  setEdited(true);
                   setBuilderState((state) => ({
                     ...state,
-                    instructions:
-                      overridenConfigInstructions[config.version] ||
-                      config.instructions ||
-                      "",
+                    generationSettings: {
+                      ...generationSettings,
+                      responseFormat: isSupportingResponseFormat(
+                        generationSettings.modelSettings.modelId
+                      )
+                        ? generationSettings.responseFormat
+                        : undefined,
+                    },
                   }));
                 }}
-                currentConfig={currentConfig}
+                models={models}
               />
-            </div>
-          )}
-        <div className="mt-2 self-end">
-          <AdvancedSettings
-            generationSettings={builderState.generationSettings}
-            setGenerationSettings={(generationSettings) => {
-              setEdited(true);
-              setBuilderState((state) => ({
-                ...state,
-                generationSettings,
-              }));
-            }}
-            models={models}
-          />
+            )}
+
+            {agentConfigurationHistory &&
+              agentConfigurationHistory.length > 1 && (
+                <InstructionHistory
+                  history={agentConfigurationHistory}
+                  selectedConfig={compareVersion}
+                  onSelect={(config) => {
+                    setCompareVersion(config);
+                    setIsInstructionDiffMode(true);
+                  }}
+                  owner={owner}
+                  agentConfigurationId={agentConfigurationId}
+                />
+              )}
+          </div>
         </div>
       </div>
+
+      {isInstructionDiffMode && compareVersion && (
+        <>
+          <Separator />
+          {compareVersion?.versionCreatedAt && (
+            <Label>
+              Comparing current version with{" "}
+              {dateFormatter.format(new Date(compareVersion.versionCreatedAt))}
+            </Label>
+          )}
+          <div className="flex gap-2">
+            <Button
+              icon={XMarkIcon}
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setIsInstructionDiffMode(false);
+                setCompareVersion(null);
+              }}
+              label="Leave comparison mode"
+            />
+
+            <Button
+              variant="warning"
+              size="sm"
+              icon={ArrowPathIcon}
+              onClick={restoreVersion}
+              label="Restore this version"
+            />
+          </div>
+        </>
+      )}
+
       <div className="flex h-full flex-col gap-1">
         <div className="relative h-full min-h-60 grow gap-1 p-px">
           <EditorContent
@@ -317,7 +387,7 @@ export function InstructionScreen({
         </div>
       )}
       {!isUsingTemplate && (
-        <Suggestions
+        <InstructionSuggestions
           owner={owner}
           instructions={builderState.instructions || ""}
         />
@@ -343,7 +413,7 @@ const InstructionsCharacterCount = ({
       className={classNames(
         "text-end text-xs",
         count >= maxCount
-          ? "text-red-500"
+          ? "text-warning"
           : "text-muted-foreground dark:text-muted-foreground-night"
       )}
     >
@@ -352,362 +422,18 @@ const InstructionsCharacterCount = ({
   );
 };
 
-function PromptHistory({
-  history,
-  onConfigChange,
-  currentConfig,
-}: {
-  history: LightAgentConfigurationType[];
-  onConfigChange: (config: LightAgentConfigurationType) => void;
-  currentConfig: LightAgentConfigurationType;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const latestConfig = history[0];
-
-  const getStringRepresentation = useCallback(
-    (config: LightAgentConfigurationType) => {
-      const dateFormatter = new Intl.DateTimeFormat(navigator.language, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-      });
-      return config.version === latestConfig?.version
-        ? "Latest Version"
-        : config.versionCreatedAt
-          ? dateFormatter.format(new Date(config.versionCreatedAt))
-          : `v${config.version}`;
-    },
-    [latestConfig]
-  );
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          label={getStringRepresentation(currentConfig)}
-          variant="outline"
-          size="sm"
-          isSelect
-          onClick={() => setIsOpen(!isOpen)}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <ScrollArea className="flex max-h-72 flex-col">
-          {history.map((config) => (
-            <DropdownMenuItem
-              key={config.version}
-              label={getStringRepresentation(config)}
-              onClick={() => {
-                onConfigChange(config);
-              }}
-            />
-          ))}
-        </ScrollArea>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-const STATIC_SUGGESTIONS = [
-  "Break down your instructions into steps to leverage the model's reasoning capabilities.",
-  "Give context on how you'd like the agent to act, e.g. 'Act like a senior analyst'.",
-  "Add instructions on the format of the answer: tone of voice, answer in bullet points, in code blocks, etc...",
-  "Try to be specific: tailor prompts with precise language to avoid ambiguity.",
-];
-
-type SuggestionStatus =
-  | "no_suggestions"
-  | "loading"
-  | "suggestions_available"
-  | "instructions_are_good"
-  | "error";
-
-function Suggestions({
-  owner,
-  instructions,
-}: {
-  owner: WorkspaceType;
-  instructions: string;
-}) {
-  // history of all suggestions. The first two are displayed.
-  const [suggestions, setSuggestions] = useState<string[]>(
-    !instructions ? STATIC_SUGGESTIONS : []
-  );
-  const [suggestionsStatus, setSuggestionsStatus] = useState<SuggestionStatus>(
-    !instructions ? "suggestions_available" : "no_suggestions"
-  );
-
-  const horinzontallyScrollableDiv = useRef<HTMLDivElement | null>(null);
-  const [error, setError] = useState<APIError | null>(null);
-
-  const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  // the ref allows comparing previous instructions to current instructions
-  // in the effect below
-  const previousInstructions = useRef<string | null>(instructions);
-
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    if (suggestionsStatus !== "no_suggestions") {
-      setIsVisible(true);
-    } else {
-      setIsVisible(false);
-    }
-  }, [suggestionsStatus]);
-
-  useEffect(() => {
-    // update suggestions when (and only when) instructions change
-    if (instructions === previousInstructions.current) {
-      return;
-    }
-    previousInstructions.current = instructions;
-
-    if (!instructions.trim()) {
-      setError(null);
-      setSuggestionsStatus(
-        suggestions.length > 0 ? "suggestions_available" : "no_suggestions"
-      );
-      clearTimeout(debounceHandle.current);
-      return;
-    }
-
-    const updateSuggestions = async () => {
-      setSuggestionsStatus("loading");
-      // suggestions that are shown by default when no instructions are typed,
-      // are not considered as former suggestions. This way, the model will
-      // always generate tailored suggestions on the first input, which is preferable:
-      // - the user is more likely to be interested (since they likely saw the static suggestions before)
-      // - the model is not biased by static suggestions to generate new ones.
-      const formerSuggestions =
-        suggestions === STATIC_SUGGESTIONS ? [] : suggestions.slice(0, 2);
-      const updatedSuggestions = await getRankedSuggestions({
+function getAgentBuilderInstructionsExtensionsForWorkspace(
+  owner: WorkspaceType,
+  featureFlags: WhitelistableFeature[]
+): Extensions {
+  if (featureFlags.includes("agent_builder_instructions_autocomplete")) {
+    return [
+      ...BASE_EXTENSIONS,
+      AgentBuilderInstructionsAutoCompleteExtension.configure({
         owner,
-        currentInstructions: instructions,
-        formerSuggestions,
-      });
-      if (updatedSuggestions.isErr()) {
-        setError(updatedSuggestions.error);
-        setSuggestionsStatus("error");
-        return;
-      }
-      if (
-        updatedSuggestions.value.status === "ok" &&
-        !updatedSuggestions.value.suggestions?.length
-      ) {
-        setSuggestionsStatus("instructions_are_good");
-        return;
-      }
-      const newSuggestions = mergeSuggestions(
-        suggestions,
-        updatedSuggestions.value
-      );
-      if (newSuggestions.length > suggestions.length) {
-        // only update suggestions if they have changed, & reset scroll
-        setSuggestions(newSuggestions);
-        horinzontallyScrollableDiv.current?.scrollTo(0, 0);
-      }
-      setError(null);
-      setSuggestionsStatus("suggestions_available");
-    };
-
-    debounce(debounceHandle, updateSuggestions);
-    return () => {
-      if (debounceHandle.current) {
-        clearTimeout(debounceHandle.current);
-        debounceHandle.current = undefined;
-      }
-    };
-  }, [instructions, owner, suggestions]);
-
-  const [showLeftGradients, setshowLeftGradients] = useState(false);
-  const [showRightGradients, setshowRightGradients] = useState(false);
-
-  const showCorrectGradients = () => {
-    const scrollableDiv = horinzontallyScrollableDiv.current;
-    if (!scrollableDiv) {
-      return;
-    }
-    const scrollLeft = scrollableDiv.scrollLeft;
-    const isScrollable = scrollableDiv.scrollWidth > scrollableDiv.clientWidth;
-
-    setshowLeftGradients(scrollLeft > 0);
-    setshowRightGradients(
-      isScrollable &&
-        scrollLeft < scrollableDiv.scrollWidth - scrollableDiv.clientWidth
-    );
-  };
-
-  return (
-    <div
-      className={classNames(
-        "transition-all duration-1000 ease-in-out",
-        isVisible ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
-      )}
-    >
-      <div className="relative flex flex-col">
-        <div
-          className={classNames(
-            "flex items-center gap-2 text-base font-bold",
-            "text-element-800 dark:text-element-800-night"
-          )}
-        >
-          <div>Tips</div>
-          {suggestionsStatus === "loading" && <Spinner size="xs" />}
-        </div>
-        <div
-          className="overflow-y-auto pt-2 scrollbar-hide"
-          ref={horinzontallyScrollableDiv}
-          onScroll={showCorrectGradients}
-        >
-          <div
-            className={classNames(
-              "absolute bottom-0 left-0 top-8 w-8 border-l bg-gradient-to-l transition-opacity duration-700 ease-out",
-              "border-structure-200/80 dark:border-structure-200-night/80",
-              "from-white/0 to-white/70 dark:from-black/0 dark:to-black/70",
-              showLeftGradients ? "opacity-100" : "opacity-0"
-            )}
-          />
-          <div
-            className={classNames(
-              "absolute bottom-0 right-0 top-8 w-8 border-r bg-gradient-to-r transition-opacity duration-700 ease-out",
-              "border-structure-200/80 dark:border-structure-200-night/80",
-              "from-white/0 to-white/70 dark:from-black/0 dark:to-black/70",
-              showRightGradients ? "opacity-100" : "opacity-0"
-            )}
-          />
-          {(() => {
-            if (error) {
-              return (
-                <AnimatedSuggestion
-                  variant="red"
-                  suggestion={`Error loading new suggestions:\n${error.message}`}
-                />
-              );
-            }
-            if (suggestionsStatus === "instructions_are_good") {
-              return (
-                <AnimatedSuggestion
-                  variant="slate"
-                  suggestion="Looking good! 🎉"
-                />
-              );
-            }
-            return (
-              <div className="flex w-max gap-2">
-                {suggestions.map((suggestion) => (
-                  <AnimatedSuggestion
-                    suggestion={suggestion}
-                    key={md5(suggestion)}
-                    afterEnter={showCorrectGradients}
-                  />
-                ))}
-              </div>
-            );
-          })()}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AnimatedSuggestion({
-  suggestion,
-  variant = "sky",
-  afterEnter,
-}: {
-  suggestion: string;
-  variant?: React.ComponentProps<typeof ContentMessage>["variant"];
-  afterEnter?: () => void;
-}) {
-  return (
-    <div
-      className="w-80 animate-[appear_0.3s_ease-out]"
-      onAnimationEnd={afterEnter}
-    >
-      <ContentMessage
-        size="sm"
-        title=""
-        variant={variant}
-        className="h-full w-80"
-      >
-        {suggestion}
-      </ContentMessage>
-    </div>
-  );
-}
-
-/*  Returns suggestions as per the dust app:
- * - empty array if the instructions are good;
- * - otherwise, 2 former suggestions + 2 new suggestions, ranked by order of relevance.
- */
-async function getRankedSuggestions({
-  owner,
-  currentInstructions,
-  formerSuggestions,
-}: {
-  owner: WorkspaceType;
-  currentInstructions: string;
-  formerSuggestions: string[];
-}): Promise<Result<BuilderSuggestionsType, APIError>> {
-  const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      type: "instructions",
-      inputs: {
-        current_instructions: currentInstructions,
-        former_suggestions: formerSuggestions,
-      },
-    }),
-  });
-  if (!res.ok) {
-    return new Err({
-      type: "internal_server_error",
-      message: "Failed to get suggestions",
-    });
-  }
-  return new Ok(await res.json());
-}
-
-const VISIBLE_SUGGESTIONS_NUMBER = 2;
-/**
- *
- * @param suggestions existing suggestions
- * @param dustAppSuggestions suggestions returned by the dust app via getRankedSuggestions
- * @returns suggestions updated with the new ones that ranked better than the visible ones if any
- */
-function mergeSuggestions(
-  suggestions: string[],
-  dustAppSuggestions: BuilderSuggestionsType
-): string[] {
-  if (dustAppSuggestions.status === "ok") {
-    const visibleSuggestions = suggestions.slice(0, VISIBLE_SUGGESTIONS_NUMBER);
-    const bestRankedSuggestions = (dustAppSuggestions.suggestions ?? []).slice(
-      0,
-      VISIBLE_SUGGESTIONS_NUMBER
-    );
-
-    // Reorder existing suggestions with best ranked first
-    const mergedSuggestions = [
-      ...suggestions.filter((suggestion) =>
-        bestRankedSuggestions.includes(suggestion)
-      ),
-      ...suggestions.filter(
-        (suggestion) => !bestRankedSuggestions.includes(suggestion)
-      ),
+      }),
     ];
-    // insert new good ones
-    for (const suggestion of bestRankedSuggestions) {
-      if (!visibleSuggestions.includes(suggestion)) {
-        mergedSuggestions.unshift(suggestion);
-      }
-    }
-    return mergedSuggestions;
   }
-  return suggestions;
+
+  return BASE_EXTENSIONS;
 }

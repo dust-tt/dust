@@ -1,21 +1,29 @@
-import type { ConnectorPermission, ModelId, Result } from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
-import type { CodedError, WebAPIPlatformError } from "@slack/web-api";
-import { ErrorCode } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import type { WebClient } from "@slack/web-api";
+import type {
+  Channel,
+  ConversationsListResponse,
+} from "@slack/web-api/dist/response/ConversationsListResponse";
+import { Op } from "sequelize";
 
+import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
 } from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import { ProviderWorkflowError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { ConnectorPermission } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 
-import { getSlackClient } from "./slack_client";
+import { getSlackClient, reportSlackUsage } from "./slack_client";
 
 export type SlackChannelType = {
   id: number;
@@ -32,10 +40,15 @@ export async function updateSlackChannelInConnectorsDb({
   slackChannelId,
   slackChannelName,
   connectorId,
+  createIfNotExistsWithParams,
 }: {
   slackChannelId: string;
   slackChannelName: string;
   connectorId: number;
+  createIfNotExistsWithParams?: {
+    permission: ConnectorPermission;
+    private: boolean;
+  };
 }): Promise<SlackChannelType> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -50,9 +63,19 @@ export async function updateSlackChannelInConnectorsDb({
   });
 
   if (!channel) {
-    throw new Error(
-      `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
-    );
+    if (createIfNotExistsWithParams) {
+      channel = await SlackChannel.create({
+        connectorId,
+        slackChannelId,
+        slackChannelName,
+        permission: createIfNotExistsWithParams.permission,
+        private: createIfNotExistsWithParams.private,
+      });
+    } else {
+      throw new Error(
+        `Could not find channel: connectorId=${connectorId} slackChannelId=${slackChannelId}`
+      );
+    }
   } else {
     if (channel.slackChannelName !== slackChannelName) {
       channel = await channel.update({
@@ -97,9 +120,14 @@ export async function updateSlackChannelInCoreDb(
     },
   });
   if (!channelOnDb) {
-    throw new Error(
-      `Could not find channel ${channelId} in connectors db for connector ${connectorId}`
+    logger.warn(
+      {
+        connectorId,
+        channelId,
+      },
+      "Could not find channel in connectors db, skipping for now."
     );
+    return;
   }
 
   const folderId = slackChannelInternalIdFromSlackChannelId(channelId);
@@ -110,7 +138,7 @@ export async function updateSlackChannelInCoreDb(
     title: `#${channelOnDb.slackChannelName}`,
     parentId: null,
     parents: [folderId],
-    mimeType: MIME_TYPES.SLACK.CHANNEL,
+    mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
     sourceUrl: getSlackChannelSourceUrl(channelId, slackConfiguration),
     providerVisibility: channelOnDb.private ? "private" : "public",
     timestampMs,
@@ -131,9 +159,20 @@ export async function joinChannel(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const client = await getSlackClient(connector.id);
+  const client = await getSlackClient(connector.id, {
+    // Do not reject rate limited calls in join channel.
+    rejectRateLimitedCalls: false,
+  });
   try {
+    reportSlackUsage({
+      connectorId,
+      method: "conversations.info",
+      channelId,
+    });
     const channelInfo = await client.conversations.info({ channel: channelId });
+    if (!channelInfo.ok || !channelInfo.channel?.name) {
+      return new Err(new Error("Could not get the Slack channel information."));
+    }
     if (!channelInfo.channel) {
       return new Err(new Error("Channel not found."));
     }
@@ -143,6 +182,12 @@ export async function joinChannel(
     if (channelInfo.channel?.is_archived) {
       return new Ok({ result: "is_archived", channel: channelInfo.channel });
     }
+
+    reportSlackUsage({
+      connectorId,
+      method: "conversations.join",
+      channelId,
+    });
     const joinRes = await client.conversations.join({ channel: channelId });
     if (joinRes.ok) {
       return new Ok({ result: "ok", channel: channelInfo.channel });
@@ -150,21 +195,34 @@ export async function joinChannel(
       return new Ok({ result: "already_joined", channel: channelInfo.channel });
     }
   } catch (e) {
-    const slackError = e as CodedError;
-    if (slackError.code === ErrorCode.PlatformError) {
-      const platformError = slackError as WebAPIPlatformError;
-      if (platformError.data.error === "missing_scope") {
+    if (isSlackWebAPIPlatformError(e)) {
+      if (e.data.error === "missing_scope") {
         logger.error(
           {
             channelId,
             connectorId,
-            error: platformError,
+            error: e,
           },
-          "Could not join the channel because of a missing scope. Please re-authorize your Slack connection and try again."
+          "Slack can't join the channel. Missing scope."
         );
         return new Err(
           new Error(
-            "Could not join the channel because of a missing scope. Please re-authorize your Slack connection and try again."
+            `@Dust could not join the channel ${channelId} because of a missing scope. Please re-authorize your Slack connection and try again.`
+          )
+        );
+      }
+      if (e.data.error === "ratelimited") {
+        logger.error(
+          {
+            connectorId,
+            channelId,
+            error: e,
+          },
+          "Slack can't join the channel. Rate limit exceeded."
+        );
+        return new Err(
+          new Error(
+            `@Dust could not join the channel ${channelId} because of a rate limit exceeded. Please try again in a few minutes.`
           )
         );
       }
@@ -174,11 +232,183 @@ export async function joinChannel(
           channelId,
           error: e,
         },
-        "Can't join the channel"
+        `Slack can't join the channel. Unknown Slack API Platform error.`
       );
-      return new Err(e as Error);
+
+      return new Err(e);
     }
+
+    logger.error(
+      {
+        connectorId,
+        channelId,
+        error: e,
+      },
+      "Slack can't join the channel. Unknown error."
+    );
+
+    return new Err(new Error(`Can't join the channel`));
+  }
+}
+
+/**
+ * Slack API rate limit TLDR:
+ * Slack has different rate limits for different endpoints.
+ * Broadly, you'll encounter limits like these, applied on a
+ * "per API method per app per workspace" basis.
+ * Tier 1: ~1 request per minute
+ * Tier 2: ~20 request per minute (conversations.history, conversation.list)
+ * Tier 3: ~50 request per minute (conversations.replies)
+ */
+
+/**
+ *  Call cached to avoid rate limits
+ *  ON RATE LIMIT ERRORS PERTAINING TO THIS FUNCTION:
+ * - the next step will be to paginate (overkill at time of writing)
+ * - see issue https://github.com/dust-tt/tasks/issues/1655
+ * - and related PR https://github.com/dust-tt/dust/pull/8709
+ * @param connectorId
+ * @param joinedOnly
+ */
+export const getChannels = cacheWithRedis(
+  _getChannelsUncached,
+  (slackClient, connectorId, joinedOnly) =>
+    `slack-channels-${connectorId}-${joinedOnly}`,
+  5 * 60 * 1000
+);
+
+async function _getChannelsUncached(
+  slackClient: WebClient,
+  connectorId: ModelId,
+  joinedOnly: boolean
+): Promise<Channel[]> {
+  return Promise.all([
+    _getTypedChannelsUncached(
+      slackClient,
+      connectorId,
+      joinedOnly,
+      "public_channel"
+    ),
+    _getTypedChannelsUncached(
+      slackClient,
+      connectorId,
+      joinedOnly,
+      "private_channel"
+    ),
+  ]).then(([publicChannels, privateChannels]) => [
+    ...publicChannels,
+    ...privateChannels,
+  ]);
+}
+
+async function _getTypedChannelsUncached(
+  slackClient: WebClient,
+  connectorId: ModelId,
+  joinedOnly: boolean,
+  types: "public_channel" | "private_channel"
+): Promise<Channel[]> {
+  const allChannels = [];
+  let nextCursor: string | undefined = undefined;
+  let nbCalls = 0;
+  do {
+    reportSlackUsage({
+      connectorId,
+      method: "conversations.list",
+      useCase: "batch_sync",
+    });
+    const c: ConversationsListResponse = await slackClient.conversations.list({
+      types,
+      // despite the limit being 1000, slack may return fewer channels
+      // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
+      limit: 999,
+      cursor: nextCursor,
+      exclude_archived: true,
+    });
+    nbCalls++;
+
+    logger.info(
+      {
+        connectorId,
+        returnedChannels: allChannels.length,
+        currentCursor: nextCursor,
+        nbCalls,
+      },
+      `[Slack] conversations.list called for getChannels (${nbCalls} calls)`
+    );
+
+    nextCursor = c?.response_metadata?.next_cursor;
+
+    if (c.error) {
+      throw new Error(c.error);
+    }
+    if (c.channels === undefined) {
+      throw new Error(
+        "The channels list was undefined." +
+          c?.response_metadata?.next_cursor +
+          ""
+      );
+    }
+    for (const channel of c.channels) {
+      if (channel && channel.id) {
+        if (!joinedOnly || channel.is_member) {
+          allChannels.push(channel);
+        }
+      }
+    }
+  } while (nextCursor);
+
+  return allChannels;
+}
+
+export async function getChannelsToSync(
+  slackClient: WebClient,
+  connectorId: number
+) {
+  const [remoteChannels, localChannels] = await Promise.all([
+    getChannels(slackClient, connectorId, true),
+    SlackChannel.findAll({
+      where: {
+        connectorId,
+        permission: {
+          [Op.or]: ["read", "read_write"],
+        },
+        skipReason: null,
+      },
+    }),
+  ]);
+  const readAllowedChannels = new Set(
+    localChannels.map((c) => c.slackChannelId)
+  );
+
+  return remoteChannels.filter((c) => c.id && readAllowedChannels.has(c.id));
+}
+
+export async function getChannelById(
+  slackClient: WebClient,
+  connectorId: ModelId,
+  channelId: string
+): Promise<Channel> {
+  reportSlackUsage({
+    connectorId,
+    method: "conversations.info",
+    channelId,
+  });
+  const res = await slackClient.conversations.info({ channel: channelId });
+
+  // Despite the typing, in practice `conversations.info` can be undefined at times.
+  if (!res) {
+    throw new ProviderWorkflowError(
+      "slack",
+      "Received unexpected undefined replies from Slack API in getChannel (generally transient)",
+      "transient_upstream_activity_error"
+    );
+  }
+  if (res.error) {
+    throw new Error(res.error);
+  }
+  if (!res.channel) {
+    throw new Error(`No channel found for id ${channelId}`);
   }
 
-  return new Err(new Error(`Can't join the channel`));
+  return res.channel;
 }

@@ -105,7 +105,7 @@ const ButtonBySize = ({
 }) => (
   <>
     <Separator />
-    <h3 className="s-text-primary dark:s-text-slate-50">
+    <h3 className="s-text-primary dark:s-text-primary-50">
       {size?.toUpperCase()}
     </h3>
     <div className="s-flex s-items-center s-gap-4">

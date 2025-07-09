@@ -1,10 +1,14 @@
 import { IconButton, TrashIcon } from "@dust-tt/sparkle";
-import type { ActiveRoleType, RoleType } from "@dust-tt/types";
-import { ACTIVE_ROLES } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type {
+  ActiveRoleType,
+  MembershipOriginType,
+  RoleType,
+} from "@app/types";
+import { ACTIVE_ROLES } from "@app/types";
 
 export type MemberDisplayType = {
   createdAt: number;
@@ -13,6 +17,7 @@ export type MemberDisplayType = {
   provider: string | null;
   role: RoleType;
   sId: string;
+  origin?: MembershipOriginType;
 };
 
 export function makeColumnsForMembers({
@@ -140,7 +145,8 @@ export function makeColumnsForMembers({
       cell: ({ row }) => {
         const member = row.original;
 
-        return member.role !== "none" ? (
+        // Hide the revoke button for provisioned users and users with no role.
+        return member.role !== "none" && member.origin !== "provisioned" ? (
           <IconButton
             icon={TrashIcon}
             size="xs"

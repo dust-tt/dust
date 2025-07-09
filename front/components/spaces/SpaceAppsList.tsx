@@ -1,5 +1,4 @@
 import {
-  BracesIcon,
   Button,
   CommandLineIcon,
   DataTable,
@@ -7,35 +6,31 @@ import {
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  ConnectorType,
-  LightWorkspaceType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { sortBy } from "lodash";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import * as React from "react";
-import { useContext, useState } from "react";
+import { useState } from "react";
 
-import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
+import type {
+  AppType,
+  LightWorkspaceType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
 
 type RowData = {
   app: AppType;
-  category: string;
   name: string;
+  description: string;
   icon: ComponentType;
-  connector?: ConnectorType;
-  fetchConnectorError?: string;
   workspaceId: string;
   onClick?: () => void;
 };
@@ -50,6 +45,16 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
         </DataTable.CellContent>
       ),
       accessorFn: (row: RowData) => row.name,
+      meta: {
+        className: "w-80",
+      },
+    },
+    {
+      id: "description",
+      cell: (info: CellContext<RowData, string>) => (
+        <DataTable.CellContent>{info.getValue()}</DataTable.CellContent>
+      ),
+      accessorFn: (row: RowData) => row.description,
       meta: {
         className: "w-full",
       },
@@ -139,7 +144,7 @@ const AppHashChecker = ({ owner, app, registryApp }: AppHashCheckerProps) => {
 };
 
 interface SpaceAppsListProps {
-  canWriteInSpace: boolean;
+  isBuilder: boolean;
   onSelect: (sId: string) => void;
   owner: LightWorkspaceType;
   space: SpaceType;
@@ -148,15 +153,15 @@ interface SpaceAppsListProps {
 
 export const SpaceAppsList = ({
   owner,
-  canWriteInSpace,
+  isBuilder,
   space,
   onSelect,
   registryApps,
 }: SpaceAppsListProps) => {
-  const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
-  const { searchTerm: appSearch } = useContext(SpaceSearchContext);
+  const { q: searchParam } = useQueryParams(["q"]);
+  const searchTerm = searchParam.value || "";
 
   const { apps, isAppsLoading } = useApps({ owner, space });
 
@@ -171,6 +176,7 @@ export const SpaceAppsList = ({
         sId: app.sId,
         category: "apps",
         name: app.name,
+        description: app.description ?? "",
         icon: CommandLineIcon,
         workspaceId: owner.sId,
         onClick: () => onSelect(app.sId),
@@ -199,27 +205,16 @@ export const SpaceAppsList = ({
 
   const actionButtons = (
     <>
-      {canWriteInSpace && (
-        <>
-          <Button
-            label="New App"
-            variant="primary"
-            icon={PlusIcon}
-            size="sm"
-            onClick={() => {
-              setIsCreateAppModalOpened(true);
-            }}
-          />
-          <Button
-            label="Dev secrets"
-            variant="primary"
-            icon={BracesIcon}
-            size="sm"
-            onClick={() => {
-              void router.push(`/w/${owner.sId}/developers/dev-secrets`);
-            }}
-          />
-        </>
+      {isBuilder && (
+        <Button
+          label="New App"
+          variant="primary"
+          icon={PlusIcon}
+          size="sm"
+          onClick={() => {
+            setIsCreateAppModalOpened(true);
+          }}
+        />
       )}
     </>
   );
@@ -228,10 +223,10 @@ export const SpaceAppsList = ({
     <>
       {!isEmpty && portalToHeader(actionButtons)}
       {isEmpty ? (
-        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-structure-50 dark:bg-structure-50-night">
+        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-muted-background dark:bg-muted-background-night">
           <Button
             label="Create App"
-            disabled={!canWriteInSpace}
+            disabled={!isBuilder}
             onClick={() => {
               setIsCreateAppModalOpened(true);
             }}
@@ -242,7 +237,7 @@ export const SpaceAppsList = ({
           data={rows}
           columns={columns}
           className="pb-4"
-          filter={appSearch}
+          filter={searchTerm}
           filterColumn="name"
           pagination={pagination}
           setPagination={setPagination}

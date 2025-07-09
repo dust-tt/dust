@@ -1,28 +1,9 @@
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  Result,
-  RoleType,
-  SubscriptionType,
-  UserTypeWithWorkspaces,
-  WorkspaceDomain,
-  WorkspaceSegmentationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  ACTIVE_ROLES,
-  assertNever,
-  Err,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
+import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -31,16 +12,43 @@ import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
+import type {
+  GroupKind,
+  LightWorkspaceType,
+  MembershipOriginType,
+  MembershipRoleType,
+  PublicAPILimitsType,
+  Result,
+  RoleType,
+  SubscriptionType,
+  UserTypeWithWorkspace,
+  UserTypeWithWorkspaces,
+  WorkspaceSegmentationType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  ACTIVE_ROLES,
+  assertNever,
+  Err,
+  md5,
+  Ok,
+  removeNulls,
+} from "@app/types";
+
+import { GroupResource } from "../resources/group_resource";
+import { frontSequelize } from "../resources/storage";
 
 export async function getWorkspaceInfos(
   wId: string
 ): Promise<LightWorkspaceType | null> {
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       sId: wId,
     },
@@ -53,32 +61,20 @@ export async function getWorkspaceInfos(
   return renderLightWorkspaceType({ workspace });
 }
 
-export async function getWorkspaceVerifiedDomain(
+export async function removeAllWorkspaceDomains(
   workspace: LightWorkspaceType
-): Promise<WorkspaceDomain | null> {
-  const workspaceDomain = await WorkspaceHasDomain.findOne({
-    attributes: ["domain", "domainAutoJoinEnabled"],
+): Promise<void> {
+  await WorkspaceHasDomainModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
-    // For now, one workspace can only have one domain.
-    limit: 1,
   });
-
-  if (workspaceDomain) {
-    return {
-      domain: workspaceDomain.domain,
-      domainAutoJoinEnabled: workspaceDomain.domainAutoJoinEnabled,
-    };
-  }
-
-  return null;
 }
 
 export async function getWorkspaceCreationDate(
   workspaceId: string
 ): Promise<Date> {
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       sId: workspaceId,
     },
@@ -102,7 +98,7 @@ export async function setInternalWorkspaceSegmentation(
     throw new Error("Forbidden update to workspace segmentation.");
   }
 
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       id: owner.id,
     },
@@ -132,9 +128,11 @@ export async function getMembers(
   {
     roles,
     activeOnly,
+    transaction,
   }: {
     roles?: MembershipRoleType[];
     activeOnly?: boolean;
+    transaction?: Transaction;
   } = {},
   paginationParams?: MembershipsPaginationParams
 ): Promise<{
@@ -152,16 +150,19 @@ export async function getMembers(
         workspace: owner,
         roles,
         paginationParams,
+        transaction,
       })
     : await MembershipResource.getLatestMemberships({
         workspace: owner,
         roles,
         paginationParams,
+        transaction,
       });
 
   const usersWithWorkspaces = await Promise.all(
     memberships.map(async (m) => {
       let role = "none" as RoleType;
+      let origin: MembershipOriginType | undefined = undefined;
       if (m && !m.isRevoked()) {
         switch (m.role) {
           case "admin":
@@ -172,11 +173,12 @@ export async function getMembers(
           default:
             role = "none";
         }
+        origin = m.origin;
       }
 
       let user: UserResource | null;
       if (!m.user) {
-        user = await UserResource.fetchByModelId(m.userId);
+        user = await UserResource.fetchByModelId(m.userId, transaction);
       } else {
         user = new UserResource(UserModel, m.user);
       }
@@ -188,6 +190,7 @@ export async function getMembers(
       return {
         ...user.toJSON(),
         workspaces: [{ ...owner, role, flags: null }],
+        origin,
       };
     })
   );
@@ -204,9 +207,10 @@ export async function searchMembers(
   options: {
     searchTerm?: string;
     searchEmails?: string[];
+    groupKind?: Omit<GroupKind, "system">;
   },
   paginationParams: SearchMembersPaginationParams
-): Promise<{ members: UserTypeWithWorkspaces[]; total: number }> {
+): Promise<{ members: UserTypeWithWorkspace[]; total: number }> {
   const owner = auth.workspace();
   if (!owner) {
     return { members: [], total: 0 };
@@ -238,29 +242,47 @@ export async function searchMembers(
     total = results.total;
   }
 
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    users,
-    workspace: owner,
-  });
+  const usersWithWorkspace = await Promise.all(
+    users.map(async (u) => {
+      const [m] = u.memberships ?? [];
+      let role: RoleType = "none";
+      let groups: string[] | undefined;
+      let origin: MembershipOriginType | undefined = undefined;
 
-  const usersWithWorkspaces = users.map((u) => {
-    const membership = memberships.find(
-      (m) => m.userId === u.id && m.workspaceId === owner.id
-    );
-    const role =
-      membership && !membership.isRevoked()
-        ? ACTIVE_ROLES.includes(membership.role)
-          ? membership.role
-          : ("none" as RoleType)
-        : ("none" as RoleType);
+      if (m) {
+        const membership = new MembershipResource(
+          MembershipResource.model,
+          m.get()
+        );
 
-    return {
-      ...u.toJSON(),
-      workspaces: [{ ...owner, role, flags: null }],
-    };
-  });
+        role = !membership.isRevoked()
+          ? ACTIVE_ROLES.includes(membership.role)
+            ? membership.role
+            : "none"
+          : "none";
 
-  return { members: usersWithWorkspaces, total };
+        origin = membership.origin;
+      }
+
+      if (options.groupKind) {
+        const groupsResult = await GroupResource.listUserGroupsInWorkspace({
+          user: u,
+          workspace: owner,
+          groupKinds: [options.groupKind],
+        });
+
+        groups = groupsResult.map((g) => g.toJSON()).map((g) => g.name);
+      }
+
+      return {
+        ...u.toJSON(),
+        workspace: { ...owner, role, groups, flags: null },
+        origin,
+      };
+    })
+  );
+
+  return { members: usersWithWorkspace, total };
 }
 
 export async function getMembersCount(
@@ -291,7 +313,7 @@ export async function checkWorkspaceSeatAvailabilityUsingAuth(
 }
 
 export async function evaluateWorkspaceSeatAvailability(
-  workspace: WorkspaceType | Workspace,
+  workspace: WorkspaceType | WorkspaceModel,
   subscription: SubscriptionType
 ): Promise<boolean> {
   const { maxUsers } = subscription.plan.limits.users;
@@ -315,7 +337,7 @@ export async function unsafeGetWorkspacesByModelId(
     return [];
   }
   return (
-    await Workspace.findAll({
+    await WorkspaceModel.findAll({
       where: {
         id: modelIds,
       },
@@ -360,18 +382,31 @@ export async function areAllSubscriptionsCanceled(
 }
 
 export async function deleteWorkspace(
-  owner: LightWorkspaceType
+  owner: LightWorkspaceType,
+  {
+    workspaceHasBeenRelocated = false,
+  }: { workspaceHasBeenRelocated?: boolean } = {}
 ): Promise<Result<void, Error>> {
-  const allSubscriptionsCanceled = await areAllSubscriptionsCanceled(owner);
-  if (!allSubscriptionsCanceled) {
-    return new Err(
-      new Error(
-        "The workspace cannot be deleted because there are active subscriptions."
-      )
-    );
+  // If the workspace has not been relocated, we expect all subscriptions to be canceled.
+  if (!workspaceHasBeenRelocated) {
+    const allSubscriptionsCanceled = await areAllSubscriptionsCanceled(owner);
+    if (!allSubscriptionsCanceled) {
+      return new Err(
+        new Error(
+          "The workspace cannot be deleted because there are active subscriptions."
+        )
+      );
+    }
   }
 
-  await launchDeleteWorkspaceWorkflow({ workspaceId: owner.sId });
+  const res = await launchDeleteWorkspaceWorkflow({
+    workspaceId: owner.sId,
+    workspaceHasBeenRelocated,
+  });
+
+  if (res.isErr()) {
+    return new Err(res.error);
+  }
 
   return new Ok(undefined);
 }
@@ -380,7 +415,7 @@ export async function changeWorkspaceName(
   owner: LightWorkspaceType,
   newName: string
 ): Promise<Result<void, Error>> {
-  const [affectedCount] = await Workspace.update(
+  const [affectedCount] = await WorkspaceModel.update(
     { name: newName },
     {
       where: {
@@ -400,7 +435,7 @@ export async function updateWorkspaceConversationsRetention(
   owner: LightWorkspaceType,
   nbDays: number
 ): Promise<Result<void, Error>> {
-  const [affectedCount] = await Workspace.update(
+  const [affectedCount] = await WorkspaceModel.update(
     { conversationsRetentionDays: nbDays === -1 ? null : nbDays },
     {
       where: {
@@ -419,7 +454,7 @@ export async function updateWorkspaceConversationsRetention(
 export async function disableSSOEnforcement(
   owner: LightWorkspaceType
 ): Promise<Result<void, Error>> {
-  const [affectedCount] = await Workspace.update(
+  const [affectedCount] = await WorkspaceModel.update(
     { ssoEnforced: false },
     {
       where: {
@@ -438,6 +473,7 @@ export async function disableSSOEnforcement(
 
 interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
+  publicApiLimits?: PublicAPILimitsType;
 }
 
 export async function updateWorkspaceMetadata(
@@ -446,7 +482,7 @@ export async function updateWorkspaceMetadata(
 ): Promise<Result<void, Error>> {
   const previousMetadata = owner.metadata || {};
   const newMetadata = { ...previousMetadata, ...metadata };
-  const [affectedCount] = await Workspace.update(
+  const [affectedCount] = await WorkspaceModel.update(
     { metadata: newMetadata },
     {
       where: {
@@ -474,8 +510,27 @@ export async function setWorkspaceRelocated(
   return updateWorkspaceMetadata(owner, { maintenance: "relocation-done" });
 }
 
+export function isWorkspaceRelocationOngoing(
+  owner: LightWorkspaceType
+): boolean {
+  return owner.metadata?.maintenance === "relocation";
+}
+
 export function isWorkspaceRelocationDone(owner: LightWorkspaceType): boolean {
   return owner.metadata?.maintenance === "relocation-done";
+}
+
+export function getWorkspacePublicAPILimits(
+  owner: LightWorkspaceType
+): PublicAPILimitsType | null {
+  return owner.metadata?.publicApiLimits || null;
+}
+
+export async function setWorkspacePublicAPILimits(
+  owner: LightWorkspaceType,
+  limits: PublicAPILimitsType
+): Promise<Result<void, Error>> {
+  return updateWorkspaceMetadata(owner, { publicApiLimits: limits });
 }
 
 export async function updateExtensionConfiguration(
@@ -517,7 +572,7 @@ export async function upgradeWorkspaceToBusinessPlan(
     return new Err(new Error("Workspace is already on business plan."));
   }
 
-  await Workspace.update(
+  await WorkspaceModel.update(
     {
       metadata: {
         ...workspace.metadata,
@@ -598,4 +653,51 @@ export async function checkSeatCountForWorkspace(
     return new Ok(`Correctly found ${activeSeats} active seats on Stripe.`);
   }
   return new Err(new Error(`${REPORT_USAGE_METADATA_KEY} metadata not found.`));
+}
+
+/**
+ * Advisory lock to be used in admin related request on workspace
+ *
+ * To avoid deadlocks when using Postgresql advisory locks, please make sure to not issue any other
+ * SQL query outside of the transaction `t` that is holding the lock.
+ * Otherwise, the other query will be competing for a connection in the database connection pool,
+ * resulting in a potential deadlock when the pool is fully occupied.
+ */
+export async function getWorkspaceAdministrationVersionLock(
+  workspace: WorkspaceType,
+  t: Transaction
+) {
+  const now = new Date();
+
+  const hash = md5(`workspace_administration_${workspace.id}`);
+  const lockKey = parseInt(hash, 16) % 9999999999;
+  // OK because we need to setup a lock
+  // eslint-disable-next-line dust/no-raw-sql
+  await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
+    transaction: t,
+    replacements: { key: lockKey },
+  });
+
+  logger.info(
+    {
+      workspaceId: workspace.id,
+      duration: new Date().getTime() - now.getTime(),
+      lockKey,
+    },
+    "[WORKSPACE_TRACE] Advisory lock acquired"
+  );
+}
+
+export async function findWorkspaceByWorkOSOrganizationId(
+  workOSOrganizationId: string
+): Promise<LightWorkspaceType | null> {
+  const workspace = await WorkspaceModel.findOne({
+    where: { workOSOrganizationId },
+  });
+
+  if (!workspace) {
+    return null;
+  }
+
+  return renderLightWorkspaceType({ workspace });
 }

@@ -7,7 +7,6 @@ import {
   handleLogout,
   IdentityProviderError,
 } from "@auth0/nextjs-auth0";
-import { isString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getRegionForUserSession, setRegionForUser } from "@app/lib/api/auth0";
@@ -20,7 +19,8 @@ import {
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/withlogging";
+import { statsDClient } from "@app/logger/statsDClient";
+import { isString } from "@app/types";
 
 const afterCallback: AfterCallbackPageRoute = async (
   req,
@@ -110,16 +110,22 @@ const afterCallback: AfterCallbackPageRoute = async (
     return;
   }
 
+  res.setHeader("Set-Cookie", [
+    `sessionType=auth0; Path=/; Secure; SameSite=Lax; Max-Age=2592000`,
+  ]);
+
   return session;
 };
 
 type QueryParam = string | string[] | undefined;
 type AuthQuery = Record<
-  "connection" | "screen_hint" | "login_hint" | "prompt",
+  "connection" | "screen_hint" | "login_hint" | "prompt" | "returnTo",
   QueryParam
 >;
 
-export default handleAuth({
+const HANDLED_ERROR_REASONS = ["email_not_verified"];
+
+const auth0Handler = handleAuth({
   login: handleLogin((req) => {
     // req.query is defined on NextApiRequest (page-router), but not on NextRequest (app-router).
     const query = ("query" in req ? req.query : {}) as Partial<AuthQuery>;
@@ -150,7 +156,10 @@ export default handleAuth({
 
     return {
       authorizationParams: defaultAuthorizationParams,
-      returnTo: "/api/login", // Note from seb, I think this is not used
+      returnTo:
+        query.returnTo && typeof query.returnTo === "string"
+          ? query.returnTo
+          : "/api/login",
     };
   }),
   callback: async (req: NextApiRequest, res: NextApiResponse) => {
@@ -174,24 +183,45 @@ export default handleAuth({
           "login error in auth0 callback"
         );
 
-        statsDClient.increment("login.callback.error", 1, [
-          `error:${error.cause?.message}`,
-        ]);
+        // Only increment errors that are not handled by the afterCallback.
+        if (reason && !HANDLED_ERROR_REASONS.includes(reason)) {
+          statsDClient.increment("login.callback.error", 1, [
+            `error:${error.cause?.message}`,
+          ]);
+        }
 
-        return res.redirect(`/login-error?reason=${reason}`);
+        return res.redirect(
+          `/login-error?type=auth0-callback&reason=${reason}`
+        );
       }
 
       statsDClient.increment("login.callback.error", 1, ["error:unknow"]);
 
-      return res.redirect("/login-error");
+      return res.redirect("/login-error?type=auth0-callback");
     }
   },
-  logout: handleLogout((req) => {
-    return {
+  logout: async (req: NextApiRequest, res: NextApiResponse) => {
+    res.setHeader("Set-Cookie", [
+      "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+      "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+    ]);
+    return handleLogout(req, res, {
       returnTo:
         "query" in req
           ? (req.query.returnTo as string)
           : config.getClientFacingUrl(),
-    };
-  }),
+    });
+  },
 });
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const { auth0, connection } = req.query;
+  if (auth0 === "login" && !connection) {
+    return res.redirect("/api/workos/login");
+  }
+
+  return auth0Handler(req, res);
+}

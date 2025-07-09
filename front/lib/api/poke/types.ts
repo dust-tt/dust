@@ -1,11 +1,22 @@
+import type { ResourceTypeMap } from "@app/lib/api/poke/utils";
+import type { Authenticator } from "@app/lib/auth";
 import type {
+  AsyncFieldKeys,
+  EnumValue,
+  HasAsyncFields,
   PluginArgDefinition,
   PluginArgs,
   PluginManifest,
   Result,
-} from "@dust-tt/types";
+  SupportedResourceType,
+} from "@app/types";
 
-import type { Authenticator } from "@app/lib/auth";
+interface FormidableFile {
+  filepath: string;
+  originalFilename: string;
+  mimetype: string;
+  size: number;
+}
 
 // Helper type to infer the correct TypeScript type from SupportedArgType.
 type InferArgType<
@@ -19,50 +30,137 @@ type InferArgType<
       ? number
       : T extends "boolean"
         ? boolean
-        : T extends "enum"
-          ? V
+        : T extends "file"
+          ? FormidableFile
+          : T extends "enum"
+            ? V
+            : never;
+
+// Helper type to extract string values from enum values
+type ExtractEnumValue<T> = T extends { value: infer V }
+  ? V extends string
+    ? V
+    : never
+  : never;
+
+// Helper type to map field types to their async value types
+type AsyncValueType<T extends PluginArgDefinition> = T["type"] extends "enum"
+  ? EnumValue[] // Only enums return arrays (options to choose from)
+  : T["type"] extends "string"
+    ? string
+    : T["type"] extends "number"
+      ? number
+      : T["type"] extends "boolean"
+        ? boolean
+        : T["type"] extends "text"
+          ? string
           : never;
 
-type InferPluginArgs<T extends PluginArgs> = {
+// Type for async args that maps each field to its correct async value type
+export type AsyncArgsType<T extends PluginArgs> = {
+  [K in keyof T]?: T[K] extends { async: true } ? AsyncValueType<T[K]> : never;
+};
+
+export type InferPluginArgs<T extends PluginArgs> = {
   [K in keyof T]: InferArgType<
     T[K]["type"],
-    T[K] extends { values: readonly any[] } ? T[K]["values"][number] : never
+    T[K] extends { values: readonly any[] }
+      ? ExtractEnumValue<T[K]["values"][number]>
+      : never
   >;
 };
 
 export type PluginResponse =
   | { display: "text"; value: string }
-  | { display: "json"; value: Record<string, unknown> };
+  | { display: "json"; value: Record<string, unknown> }
+  | { display: "markdown"; value: string }
+  | { display: "textWithLink"; value: string; link: string; linkText: string };
 
-export interface Plugin<T extends PluginArgs> {
-  manifest: PluginManifest<T>;
+// Base plugin interface.
+interface BasePlugin<
+  T extends PluginArgs,
+  R extends SupportedResourceType = SupportedResourceType,
+> {
+  manifest: PluginManifest<T, R>;
   execute: (
     auth: Authenticator,
-    resourceId: string | undefined,
+    resource: ResourceTypeMap[R] | null,
     args: InferPluginArgs<T>
   ) => Promise<Result<PluginResponse, Error>>;
-  isVisible: (
+  isApplicableTo: (
     auth: Authenticator,
-    resourceId: string | undefined
-  ) => Promise<boolean>;
+    resource: ResourceTypeMap[R] | null
+  ) => boolean;
 }
 
-export function createPlugin<T extends PluginArgs>({
+// Plugin with required async args function.
+interface PluginWithAsyncArgs<
+  T extends PluginArgs,
+  R extends SupportedResourceType = SupportedResourceType,
+> extends BasePlugin<T, R> {
+  populateAsyncArgs: (
+    auth: Authenticator,
+    resource: ResourceTypeMap[R] | null
+  ) => Promise<Result<Record<AsyncFieldKeys<T>, string[]>, Error>>;
+}
+
+// Plugin without async args function.
+interface PluginWithoutAsyncArgs<
+  T extends PluginArgs,
+  R extends SupportedResourceType = SupportedResourceType,
+> extends BasePlugin<T, R> {
+  populateAsyncArgs?: never;
+}
+
+// Conditional Plugin type based on whether manifest has async fields.
+export type Plugin<
+  T extends PluginArgs,
+  R extends SupportedResourceType = SupportedResourceType,
+> =
+  HasAsyncFields<T> extends true
+    ? PluginWithAsyncArgs<T, R>
+    : PluginWithoutAsyncArgs<T, R>;
+
+export type AllPlugins =
+  | PluginWithAsyncArgs<PluginArgs, SupportedResourceType>
+  | PluginWithoutAsyncArgs<PluginArgs, SupportedResourceType>;
+
+export function createPlugin<
+  T extends PluginArgs,
+  R extends SupportedResourceType,
+>({
   manifest,
   execute,
-  isVisible = () => Promise.resolve(true),
+  isApplicableTo = () => true,
+  populateAsyncArgs,
 }: {
-  manifest: PluginManifest<T>;
-  execute: Plugin<T>["execute"];
-  isVisible?: (
+  manifest: PluginManifest<T, R>;
+  execute: (
     auth: Authenticator,
-    resourceId: string | undefined
-  ) => Promise<boolean>;
-}): Plugin<T> {
-  return { manifest, execute, isVisible };
+    resource: ResourceTypeMap[R] | null,
+    args: InferPluginArgs<T>
+  ) => Promise<Result<PluginResponse, Error>>;
+  isApplicableTo?: (
+    auth: Authenticator,
+    resource: ResourceTypeMap[R] | null
+  ) => boolean;
+} & (HasAsyncFields<T> extends true
+  ? {
+      populateAsyncArgs: (
+        auth: Authenticator,
+        resource: ResourceTypeMap[R] | null
+      ) => Promise<Result<AsyncArgsType<T>, Error>>;
+    }
+  : {
+      populateAsyncArgs?: never;
+    })): Plugin<T, R> {
+  return { manifest, execute, isApplicableTo, populateAsyncArgs } as Plugin<
+    T,
+    R
+  >;
 }
 
 export type PluginListItem = Pick<
-  PluginManifest<PluginArgs>,
+  PluginManifest<PluginArgs, SupportedResourceType>,
   "id" | "name" | "description"
 >;

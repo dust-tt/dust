@@ -1,4 +1,3 @@
-import { isDevelopment } from "@dust-tt/types";
 import type { Attributes } from "sequelize";
 
 import { Plan } from "@app/lib/models/plan";
@@ -6,6 +5,7 @@ import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
+import { isDevelopment, isTest } from "@app/types";
 
 export type PlanAttributes = Omit<
   Attributes<Plan>,
@@ -29,12 +29,13 @@ export type PlanAttributes = Omit<
 
 const PRO_PLANS_DATA: PlanAttributes[] = [];
 
-if (isDevelopment()) {
+if (isDevelopment() || isTest()) {
   PRO_PLANS_DATA.push({
     code: PRO_PLAN_SEAT_29_CODE,
     name: "Pro",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    maxImagesPerWeek: 100,
     maxUsersInWorkspace: 1000,
     maxVaultsInWorkspace: 1,
     isSlackbotAllowed: true,
@@ -45,6 +46,7 @@ if (isDevelopment()) {
     isManagedGithubAllowed: true,
     isManagedIntercomAllowed: true,
     isManagedWebCrawlerAllowed: true,
+    isManagedSalesforceAllowed: false,
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
@@ -56,6 +58,7 @@ if (isDevelopment()) {
     name: "Pro Business",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    maxImagesPerWeek: 100,
     maxUsersInWorkspace: 1000,
     maxVaultsInWorkspace: 5,
     isSlackbotAllowed: true,
@@ -66,6 +69,7 @@ if (isDevelopment()) {
     isManagedGithubAllowed: true,
     isManagedIntercomAllowed: true,
     isManagedWebCrawlerAllowed: true,
+    isManagedSalesforceAllowed: false,
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
@@ -86,10 +90,10 @@ export const upsertProPlans = async () => {
     });
     if (plan === null) {
       await Plan.create(planData);
-      console.log(`Pro plan ${planData.code} created.`);
+      // console.log(`Pro plan ${planData.code} created.`);
     } else {
       await plan.update(planData);
-      console.log(`Pro plan ${planData.code} updated.`);
+      // console.log(`Pro plan ${planData.code} updated.`);
     }
   }
 };

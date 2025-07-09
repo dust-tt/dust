@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";
 
@@ -8,6 +7,7 @@ import {
 } from "@app/lib/production_checks/utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import type { ModelId } from "@app/types";
 
 const BATCH_SIZE = 1024;
 

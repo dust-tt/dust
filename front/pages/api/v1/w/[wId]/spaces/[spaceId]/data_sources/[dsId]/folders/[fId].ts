@@ -4,8 +4,6 @@ import type {
   UpsertFolderResponseType,
 } from "@dust-tt/client";
 import { UpsertDataSourceFolderRequestSchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
@@ -15,6 +13,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -174,7 +174,7 @@ async function handler(
         timestamp: timestamp || null,
         parentId: parentId || null,
         parents: parents || [fId],
-        title: title,
+        title: title.trim() || "Untitled Folder",
         mimeType: mime_type,
         sourceUrl: source_url ?? null,
         providerVisibility: provider_visibility,

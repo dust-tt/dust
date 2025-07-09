@@ -3,31 +3,42 @@ import type {
   PostConversationsResponseType,
 } from "@dust-tt/client";
 import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { fromError } from "zod-validation-error";
+
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
+import {
+  createConversation,
+  getConversation,
+  postNewContentFragment,
+} from "@app/lib/api/assistant/conversation";
+import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import {
+  apiErrorForConversation,
+  isUserMessageContextOverflowing,
+} from "@app/lib/api/assistant/conversation/helper";
+import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
+import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { apiError } from "@app/logger/withlogging";
 import type {
   ContentFragmentType,
   UserMessageType,
   WithAPIErrorResponse,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   ConversationError,
-  isContentFragmentInputWithContentType,
+  isContentFragmentInput,
+  isContentFragmentInputWithContentNode,
+  isContentFragmentInputWithFileId,
+  isContentFragmentInputWithInlinedContent,
   isEmptyString,
-} from "@dust-tt/types";
-import type { NextApiRequest, NextApiResponse } from "next";
-import { fromError } from "zod-validation-error";
+} from "@app/types";
 
-import {
-  createConversation,
-  getConversation,
-  getUserConversations,
-  postNewContentFragment,
-} from "@app/lib/api/assistant/conversation";
-import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
+const MAX_CONVERSATION_DEPTH = 4;
 
 /**
  * @swagger
@@ -62,21 +73,18 @@ import { apiError } from "@app/logger/withlogging";
  *                 items:
  *                   $ref: '#/components/schemas/ContentFragment'
  *                 description: The list of content fragments to attach to this conversation (optional)
- *               blocking:
- *                 type: boolean
- *                 description: Whether to wait for the agent to generate the initial message (if blocking = false, you will need to use streaming events to get the messages)
- *                 example: true
  *               title:
  *                 type: string
  *                 description: The title of the conversation
  *                 example: My conversation
- *               visibility:
- *                 type: string
- *                 description: The visibility of the conversation (The API only accepts `unlisted`)
- *                 enum:
- *                   - workspace
- *                   - unlisted
- *                 example: unlisted
+ *               skipToolsValidation:
+ *                 type: boolean
+ *                 description: Whether to skip the tools validation of the agent messages triggered by this user message (optional, defaults to false)
+ *                 example: false
+ *               blocking:
+ *                 type: boolean
+ *                 description: Whether to wait for the agent to generate the initial message (if false, you will need to use streaming events to get the messages, defaults to false).
+ *                 example: true
  *     responses:
  *       200:
  *         description: Conversation created successfully.
@@ -88,6 +96,8 @@ import { apiError } from "@app/logger/withlogging";
  *         description: Bad Request
  *       401:
  *         description: Unauthorized
+ *       429:
+ *         description: Rate limit exceeded.
  *       500:
  *         description: Internal Server Error
  */
@@ -118,13 +128,40 @@ async function handler(
       const {
         title,
         visibility,
+        depth,
         message,
         contentFragment,
         contentFragments,
+        skipToolsValidation,
         blocking,
       } = r.data;
 
+      const hasReachedLimits = await hasReachedPublicAPILimits(auth);
+      if (hasReachedLimits) {
+        return apiError(req, res, {
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message:
+              "Monthly API usage limit exceeded. Please upgrade your plan or wait until your " +
+              "limit resets next billing period.",
+          },
+        });
+      }
+
       if (message) {
+        if (isUserMessageContextOverflowing(message.context)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The message.context properties (username, timezone, fullName, and email) " +
+                "must be less than 255 characters.",
+            },
+          });
+        }
+
         if (isEmptyString(message.context.username)) {
           return apiError(req, res, {
             status_code: 400,
@@ -135,6 +172,49 @@ async function handler(
             },
           });
         }
+
+        // Local MCP servers are only available to authenticated users (not API keys).
+        if (message.context.clientSideMCPServerIds) {
+          if (!auth.user()) {
+            return apiError(req, res, {
+              status_code: 401,
+              api_error: {
+                type: "invalid_request_error",
+                message:
+                  "Local MCP servers are only available to authenticated users.",
+              },
+            });
+          }
+
+          const hasServerAccess = await concurrentExecutor(
+            message.context.clientSideMCPServerIds,
+            async (serverId) =>
+              validateMCPServerAccess(auth, {
+                serverId,
+              }),
+            { concurrency: 10 }
+          );
+
+          if (hasServerAccess.some((r) => r === false)) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "invalid_request_error",
+                message: "User does not have access to the local MCP servers.",
+              },
+            });
+          }
+        }
+      }
+
+      if (depth && depth >= MAX_CONVERSATION_DEPTH) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Recursive run_agent calls exceeded depth of ${MAX_CONVERSATION_DEPTH}`,
+          },
+        });
       }
 
       const resolvedFragments = contentFragments ?? [];
@@ -160,9 +240,23 @@ async function handler(
         }
       }
 
+      for (const fragment of resolvedFragments) {
+        if (!isContentFragmentInput(fragment)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid content fragment type.",
+            },
+          });
+        }
+      }
+
       let conversation = await createConversation(auth, {
         title: title ?? null,
-        visibility,
+        // Temporary translation layer for deprecated "workspace" visibility.
+        visibility: visibility === "workspace" ? "unlisted" : visibility,
+        depth,
       });
 
       let newContentFragment: ContentFragmentType | null = null;
@@ -172,38 +266,51 @@ async function handler(
         const { context, ...rest } = resolvedFragment;
         let contentFragment = rest;
 
-        if (isContentFragmentInputWithContentType(contentFragment)) {
+        if (isContentFragmentInputWithInlinedContent(contentFragment)) {
           const contentFragmentRes = await toFileContentFragment(auth, {
             contentFragment,
           });
           if (contentFragmentRes.isErr()) {
+            if (contentFragmentRes.error.code === "file_type_not_supported") {
+              return apiError(req, res, {
+                status_code: 400,
+                api_error: {
+                  type: "invalid_request_error",
+                  message: contentFragmentRes.error.message,
+                },
+              });
+            }
             throw new Error(contentFragmentRes.error.message);
           }
           contentFragment = contentFragmentRes.value;
         }
-
-        const cfRes = await postNewContentFragment(
-          auth,
-          conversation,
-          contentFragment,
-          {
-            username: context?.username ?? null,
-            fullName: context?.fullName ?? null,
-            email: context?.email ?? null,
-            profilePictureUrl: context?.profilePictureUrl ?? null,
+        if (
+          isContentFragmentInputWithFileId(contentFragment) ||
+          isContentFragmentInputWithContentNode(contentFragment)
+        ) {
+          const cfRes = await postNewContentFragment(
+            auth,
+            conversation,
+            contentFragment,
+            {
+              username: context?.username ?? null,
+              fullName: context?.fullName ?? null,
+              email: context?.email ?? null,
+              profilePictureUrl: context?.profilePictureUrl ?? null,
+            }
+          );
+          if (cfRes.isErr()) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: cfRes.error.message,
+              },
+            });
           }
-        );
-        if (cfRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: cfRes.error.message,
-            },
-          });
+          newContentFragment = cfRes.value;
         }
 
-        newContentFragment = cfRes.value;
         const updatedConversationRes = await getConversation(
           auth,
           conversation.sId
@@ -229,10 +336,9 @@ async function handler(
       }
 
       if (message) {
-        // If a message was provided we do await for the message to be created
-        // before returning the conversation along with the message.
-        // PostUserMessageWithPubSub returns swiftly since it only waits for the
-        // initial message creation event (or error)
+        // If a message was provided we do await for the message to be created before returning the
+        // conversation along with the message. PostUserMessageWithPubSub returns swiftly since it
+        // only waits for the initial message creation event (or error)
         const messageRes = await postUserMessageWithPubSub(
           auth,
           {
@@ -246,7 +352,10 @@ async function handler(
               email: message.context.email ?? null,
               profilePictureUrl: message.context.profilePictureUrl ?? null,
               origin: message.context.origin ?? "api",
+              clientSideMCPServerIds:
+                message.context.clientSideMCPServerIds ?? [],
             },
+            skipToolsValidation: skipToolsValidation ?? false,
           },
           { resolveAfterFullGeneration: blocking === true }
         );
@@ -279,7 +388,18 @@ async function handler(
       });
       return;
     case "GET":
-      const conversations = await getUserConversations(auth);
+      if (!auth.user()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "user_not_found",
+            message:
+              "Getting conversations is only available when authenticated as a user.",
+          },
+        });
+      }
+      const conversations =
+        await ConversationResource.listConversationsForUser(auth);
       res.status(200).json({ conversations });
       return;
 

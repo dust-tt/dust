@@ -1,5 +1,6 @@
 import {
   Dialog,
+  DialogContainer,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -7,7 +8,6 @@ import {
   DialogTitle,
 } from "@dust-tt/sparkle";
 import React from "react";
-import { createPortal } from "react-dom";
 
 export type ConfirmDataType = {
   title: string;
@@ -39,36 +39,26 @@ export function ConfirmPopupArea({ children }: { children: React.ReactNode }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
-      {typeof window === "object" ? (
-        createPortal(
-          <ConfirmDialog
-            confirmData={confirmData}
-            resolveConfirm={resolveConfirmRef.current}
-            closeDialogFn={() => setConfirmData(null)}
-          />,
-          document.body
-        )
-      ) : (
-        // SSR (otherwise hydration issues)
-        <ConfirmDialog
-          confirmData={confirmData}
-          resolveConfirm={resolveConfirmRef.current}
-          closeDialogFn={() => setConfirmData(null)}
-        />
-      )}
+      <ConfirmDialog
+        confirmData={confirmData}
+        resolveConfirm={resolveConfirmRef.current}
+        closeDialogFn={() => setConfirmData(null)}
+      />
     </ConfirmContext.Provider>
   );
+}
+
+interface ConfirmDialogProps {
+  closeDialogFn: () => void;
+  confirmData: ConfirmDataType | null;
+  resolveConfirm: (result: boolean) => void;
 }
 
 export function ConfirmDialog({
   confirmData,
   resolveConfirm,
   closeDialogFn,
-}: {
-  confirmData: ConfirmDataType | null;
-  resolveConfirm: (result: boolean) => void;
-  closeDialogFn: () => void;
-}) {
+}: ConfirmDialogProps) {
   return (
     <Dialog
       open={confirmData != null}
@@ -82,8 +72,12 @@ export function ConfirmDialog({
       <DialogContent size="md">
         <DialogHeader hideButton>
           <DialogTitle>{confirmData?.title ?? ""}</DialogTitle>
-          <DialogDescription>{confirmData?.message ?? ""}</DialogDescription>
         </DialogHeader>
+        <DialogContainer>
+          <DialogDescription className="whitespace-normal break-words">
+            {confirmData?.message ?? ""}
+          </DialogDescription>
+        </DialogContainer>
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",
@@ -95,7 +89,7 @@ export function ConfirmDialog({
           }}
           rightButtonProps={{
             label: confirmData?.validateLabel ?? "OK",
-            variant: "warning",
+            variant: confirmData?.validateVariant ?? "warning",
             onClick: async () => {
               resolveConfirm(true);
               closeDialogFn();

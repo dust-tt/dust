@@ -38,14 +38,14 @@ describe("GET /api/v1/w/[wId]/feature_flags", () => {
 
     // Add features flag
     await FeatureFlagFactory.basic("deepseek_feature", workspace);
-    await FeatureFlagFactory.basic("document_tracker", workspace);
+    await FeatureFlagFactory.basic("labs_trackers", workspace);
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual(
       expect.objectContaining({
-        feature_flags: ["deepseek_feature", "document_tracker"],
+        feature_flags: ["deepseek_feature", "labs_trackers"],
       })
     );
   });

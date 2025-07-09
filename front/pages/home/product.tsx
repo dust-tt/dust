@@ -10,11 +10,12 @@ import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySe
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { QuoteSection } from "@app/components/home/ContentBlocks";
+import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { classNames } from "@app/lib/utils";
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   return {
     props: {
       shape: 0,
@@ -25,7 +26,7 @@ export async function getServerSideProps() {
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Dust in motion",
   videoUrl:
-    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true",
+    "https://fast.wistia.net/embed/iframe/qtnvwgyt0o?seo=true&videoFoam=true",
 };
 
 export function Landing() {
@@ -33,20 +34,17 @@ export function Landing() {
     <>
       <ProductIntroSection />
       <CapabilitySection />
-      <DemoVideoSection
-        demoVideo={DemoVideo}
-        fromColor="from-sky-200"
-        toColor="to-sky-500"
-      />
+      <DemoVideoSection demoVideo={DemoVideo} />
       <UbiquitySection />
-      <ExtensibilitySection />
+      <ExtensibilitySection page="default" />
       <SecuritySection />
       <QuoteSection
         quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
         name="Everett Berry"
         title="Head of GTM Engineering at Clay"
-        logo="/static/landing/logos/clay.png"
+        logo="/static/landing/logos/color/clay.png"
       />
+      <FunctionsSection />
       <div
         className={classNames(
           "col-span-12 flex flex-col items-center",
@@ -55,11 +53,11 @@ export function Landing() {
         )}
       >
         <div className="mt-4 flex justify-center gap-4">
-          <Link href="home/contact" shallow={true}>
+          <Link href="/home/contact" shallow={true}>
             <Button variant="outline" size="md" label="Request a demo" />
           </Link>
 
-          <Link href="home/pricing" shallow={true}>
+          <Link href="/home/pricing" shallow={true}>
             <Button
               variant="highlight"
               size="md"
@@ -69,7 +67,6 @@ export function Landing() {
           </Link>
         </div>
       </div>
-      {/* <VerticalSection /> */}
     </>
   );
 }

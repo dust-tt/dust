@@ -65,18 +65,18 @@ describe("GET /api/poke/region", () => {
     });
   });
 
-  itInTransaction("returns 404 when the user is not a super user", async () => {
+  itInTransaction("returns 401 when the user is not a super user", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       isSuperUser: false,
     });
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(404);
+    expect(res._getStatusCode()).toBe(401);
     expect(res._getJSONData()).toEqual({
       error: {
-        type: "user_not_found",
-        message: "Could not find the user.",
+        type: "not_authenticated",
+        message: "The user does not have permission",
       },
     });
   });

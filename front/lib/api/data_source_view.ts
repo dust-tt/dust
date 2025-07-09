@@ -1,14 +1,3 @@
-import type {
-  ContentNodesViewType,
-  CoreAPIContentNode,
-  CoreAPIDatasourceViewFilter,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  PatchDataSourceViewType,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, CoreAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import {
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
@@ -19,6 +8,16 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
+import type {
+  ContentNodesViewType,
+  CoreAPIContentNode,
+  CoreAPIDatasourceViewFilter,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  PatchDataSourceViewType,
+  Result,
+} from "@app/types";
+import { assertNever, CoreAPI, Err, Ok } from "@app/types";
 
 const DEFAULT_PAGINATION_LIMIT = 1000;
 
@@ -80,7 +79,54 @@ function makeCoreDataSourceViewFilter(
   };
 }
 
-const ROOT_PARENT_ID = "root";
+export const ROOT_PARENT_ID = "root";
+
+export async function getFlattenedContentNodesOfViewTypeForDataSourceView(
+  dataSourceView: DataSourceViewResource | DataSourceViewType,
+  {
+    viewType,
+    pagination,
+  }: {
+    viewType: Exclude<ContentNodesViewType, "all">;
+    pagination?: CursorPaginationParams;
+  }
+): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
+  const limit = pagination?.limit ?? DEFAULT_PAGINATION_LIMIT;
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  let nextPageCursor: string | null = pagination ? pagination.cursor : null;
+
+  const coreRes = await coreAPI.searchNodes({
+    filter: {
+      data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
+      node_types: [viewType],
+    },
+    options: { limit, cursor: nextPageCursor ?? undefined },
+  });
+
+  if (coreRes.isErr()) {
+    return new Err(new Error(coreRes.error.message));
+  }
+
+  const resultNodes: CoreAPIContentNode[] = coreRes.value.nodes;
+  nextPageCursor = coreRes.value.next_page_cursor;
+
+  const nodes = resultNodes.map((node) => ({
+    ...getContentNodeFromCoreNode(node, viewType),
+    dataSourceView:
+      dataSourceView instanceof DataSourceViewResource
+        ? dataSourceView.toJSON()
+        : dataSourceView,
+  }));
+
+  return new Ok({
+    nodes,
+    total: coreRes.value.hit_count,
+    totalIsAccurate: coreRes.value.hit_count_is_accurate,
+    nextPageCursor: nextPageCursor,
+  });
+}
 
 export async function getContentNodesForDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
@@ -158,15 +204,13 @@ export async function getContentNodesForDataSourceView(
     nextPageCursor = coreRes.value.next_page_cursor;
   } while (resultNodes.length < limit && nextPageCursor);
 
-  const nodes = resultNodes.map((node) =>
-    getContentNodeFromCoreNode(
+  const nodes = resultNodes.map((node) => ({
+    ...getContentNodeFromCoreNode(node, viewType),
+    dataSourceView:
       dataSourceView instanceof DataSourceViewResource
         ? dataSourceView.toJSON()
         : dataSourceView,
-      node,
-      viewType
-    )
-  );
+  }));
   const sortedNodes = !internalIds
     ? nodes
     : internalIds.flatMap((id) =>

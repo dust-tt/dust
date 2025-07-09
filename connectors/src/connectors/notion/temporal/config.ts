@@ -1,4 +1,4 @@
-const WORKFLOW_VERSION = 44;
+const WORKFLOW_VERSION = 47;
 export const QUEUE_NAME = `notion-queue-v${WORKFLOW_VERSION}`;
 export const GARBAGE_COLLECT_QUEUE_NAME = `notion-gc-queue-v${WORKFLOW_VERSION}`;
 
@@ -31,3 +31,7 @@ export const GARBAGE_COLLECT_MAX_DURATION_MS = Math.floor(
 // The only workaround is to limit the search pages.
 export const MAX_SEARCH_PAGE_INDEX = 50_000;
 export const MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX = 25_000;
+
+// How long we wait before processing a database again.
+// This avoids continuously processing the same huge databases over and over.
+export const DATABASE_PROCESSING_INTERVAL_MS = 1000 * 60 * 60 * 24; // 24 hours

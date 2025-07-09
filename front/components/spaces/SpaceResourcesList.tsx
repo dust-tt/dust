@@ -12,16 +12,6 @@ import {
   TrashIcon,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorProvider,
-  DataSourceViewCategory,
-  DataSourceViewsWithDetails,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import React, {
@@ -33,7 +23,7 @@ import React, {
 } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
@@ -51,11 +41,21 @@ import {
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
-import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
 import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import type {
+  ConnectorProvider,
+  DataSourceViewCategoryWithoutApps,
+  DataSourceViewsWithDetails,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { isWebsiteOrFolderCategory } from "@app/types";
 
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;
@@ -75,10 +75,11 @@ type NumberColumnDef = ColumnDef<RowData, number>;
 type TableColumnDef = StringColumnDef | NumberColumnDef;
 
 function getTableColumns(
-  setAssistantName: (a: string | null) => void,
+  setAssistantSId: (a: string | null) => void,
   isManaged: boolean,
   isWebsite: boolean,
-  space: SpaceType
+  space: SpaceType,
+  activeSeats: number
 ): TableColumnDef[] {
   const isGlobalOrSystemSpace = ["global", "system"].includes(space.kind);
   const nameColumn: ColumnDef<RowData, string> = {
@@ -125,7 +126,7 @@ function getTableColumns(
       const usage = ctx.row.original.dataSourceView.usage;
       return (
         <DataTable.CellContent>
-          <UsedByButton usage={usage} onItemClick={setAssistantName} />
+          <UsedByButton usage={usage} onItemClick={setAssistantSId} />
         </DataTable.CellContent>
       );
     },
@@ -144,7 +145,7 @@ function getTableColumns(
       return (
         <DataTable.CellContent className="pr-2">
           {!ds.connector && !ds.fetchConnectorError && (
-            <Chip color="amber">Never</Chip>
+            <Chip color="info">Never</Chip>
           )}
           {ds.fetchConnectorError && (
             <Chip color="warning">Retry in a few minutes</Chip>
@@ -154,6 +155,7 @@ function getTableColumns(
               initialState={ds.connector}
               workspaceId={info.row.original.workspaceId}
               dataSource={ds}
+              activeSeats={activeSeats}
             />
           )}
         </DataTable.CellContent>
@@ -237,9 +239,11 @@ interface SpaceResourcesListProps {
   canWriteInSpace: boolean;
   space: SpaceType;
   systemSpace: SpaceType;
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
   onSelect: (sId: string) => void;
   integrations: DataSourceIntegration[];
+  user: UserType;
+  activeSeats: number;
 }
 
 export const SpaceResourcesList = ({
@@ -252,13 +256,11 @@ export const SpaceResourcesList = ({
   category,
   onSelect,
   integrations,
+  user,
+  activeSeats,
 }: SpaceResourcesListProps) => {
   const { isDark } = useTheme();
-  const [assistantName, setAssistantName] = useState<string | null>(null);
-  const { sId: assistantSId } = useAgentConfigurationSIdLookup({
-    workspaceId: owner.sId,
-    agentConfigurationName: assistantName,
-  });
+  const [assistantSId, setAssistantSId] = useState<string | null>(null);
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
@@ -300,73 +302,75 @@ export const SpaceResourcesList = ({
     category,
   });
 
-  const {
-    searchTerm: dataSourceSearch,
-    setIsSearchDisabled,
-    setTargetDataSourceViews,
-  } = useContext(SpaceSearchContext);
+  const { setIsSearchDisabled, setTargetDataSourceViews } =
+    useContext(SpaceSearchContext);
 
   const rows: RowData[] = useMemo(() => {
     if (!spaceDataSourceViews) {
       return [];
     }
 
-    return spaceDataSourceViews.map((dataSourceView) => {
-      const provider = dataSourceView.dataSource.connectorProvider;
+    return spaceDataSourceViews
+      .filter(
+        (dataSourceView) =>
+          dataSourceView.dataSource.connectorProvider !== "slack_bot"
+      )
+      .map((dataSourceView) => {
+        const provider = dataSourceView.dataSource.connectorProvider;
 
-      const menuItems: MenuItem[] = [];
-      if (isWebsiteOrFolder && canWriteInSpace) {
-        menuItems.push({
-          label: "Edit",
-          kind: "item",
-          icon: PencilSquareIcon,
-          onClick: (e) => {
-            e.stopPropagation();
-            setSelectedDataSourceView(dataSourceView);
-            setShowFolderOrWebsiteModal(true);
-          },
-        });
-        if (isFolder) {
+        const menuItems: MenuItem[] = [];
+        if (isWebsiteOrFolder && canWriteInSpace) {
           menuItems.push({
-            label: "Use from API",
+            label: "Edit",
             kind: "item",
-            icon: CubeIcon,
+            icon: PencilSquareIcon,
             onClick: (e) => {
               e.stopPropagation();
               setSelectedDataSourceView(dataSourceView);
-              setShowViewFolderAPIModal(true);
+              setShowFolderOrWebsiteModal(true);
+            },
+          });
+          if (isFolder) {
+            menuItems.push({
+              label: "Use from API",
+              kind: "item",
+              icon: CubeIcon,
+              onClick: (e) => {
+                e.stopPropagation();
+                setSelectedDataSourceView(dataSourceView);
+                setShowViewFolderAPIModal(true);
+              },
+            });
+          }
+          menuItems.push({
+            label: "Delete",
+            icon: TrashIcon,
+            kind: "item",
+            variant: "warning",
+            onClick: (e) => {
+              e.stopPropagation();
+              setSelectedDataSourceView(dataSourceView);
+              setShowDeleteConfirmDialog(true);
             },
           });
         }
-        menuItems.push({
-          label: "Delete",
-          icon: TrashIcon,
-          kind: "item",
-          variant: "warning",
-          onClick: (e) => {
+
+        return {
+          dataSourceView,
+          label: getDataSourceNameFromView(dataSourceView),
+          icon: getConnectorProviderLogoWithFallback({ provider, isDark }),
+          workspaceId: owner.sId,
+          isAdmin,
+          isLoading: provider ? isLoadingByProvider[provider] : false,
+          menuItems,
+          buttonOnClick: (e) => {
             e.stopPropagation();
             setSelectedDataSourceView(dataSourceView);
-            setShowDeleteConfirmDialog(true);
+            setShowConnectorPermissionsModal(true);
           },
-        });
-      }
-
-      return {
-        dataSourceView,
-        label: getDataSourceNameFromView(dataSourceView),
-        icon: getConnectorProviderLogoWithFallback({ provider, isDark }),
-        workspaceId: owner.sId,
-        isAdmin,
-        isLoading: provider ? isLoadingByProvider[provider] : false,
-        menuItems,
-        buttonOnClick: (e) => {
-          e.stopPropagation();
-          setSelectedDataSourceView(dataSourceView);
-          setShowConnectorPermissionsModal(true);
-        },
-        onClick: () => onSelect(dataSourceView.sId),
-      };
-    });
+          onClick: () => onSelect(dataSourceView.sId),
+        };
+      });
   }, [
     spaceDataSourceViews,
     owner.sId,
@@ -509,8 +513,9 @@ export const SpaceResourcesList = ({
     <>
       <AssistantDetails
         owner={owner}
+        user={user}
         assistantId={assistantSId}
-        onClose={() => setAssistantName(null)}
+        onClose={() => setAssistantSId(null)}
       />
 
       {isEmpty && (
@@ -531,13 +536,12 @@ export const SpaceResourcesList = ({
         <DataTable<RowData>
           data={rows}
           columns={getTableColumns(
-            setAssistantName,
+            setAssistantSId,
             isManagedCategory,
             isWebsite,
-            space
+            space,
+            activeSeats
           )}
-          filter={dataSourceSearch}
-          filterColumn="name"
           sorting={sorting}
           setSorting={setSorting}
           pagination={pagination}

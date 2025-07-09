@@ -1,4 +1,3 @@
-import { getGoogleSheetTableId } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
@@ -19,7 +18,8 @@ import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { NotionDatabase } from "@connectors/lib/models/notion";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types";
+import { getGoogleSheetTableId } from "@connectors/types";
 
 async function updateParents({
   dataSourceConfig,

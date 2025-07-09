@@ -1,9 +1,12 @@
 import { danger, fail, warn } from "danger";
+import fs from "fs";
 
 const sdkAckLabel = "sdk-ack";
 const migrationAckLabel = "migration-ack";
 const documentationAckLabel = "documentation-ack";
 const auth0UpdateLabelAck = "auth0-update-ack";
+const rawSqlAckLabel = "raw-sql-ack";
+const sparkleVersionAckLabel = "sparkle-version-ack";
 
 const hasLabel = (label: string) => {
   return danger.github.issue.labels.some((l) => l.name === label);
@@ -115,8 +118,108 @@ function warnDocumentationAck(documentationAckLabel: string) {
   );
 }
 
-function checkModifiedFiles() {
-  const modifiedModelFiles = danger.git.modified_files.filter((path) => {
+function checkAppsRegistry() {
+  warn(
+    `File \`front/lib/registry.ts\` has been modified.
+    Please check [Runbook: Update Assistant dust-apps](https://www.notion.so/dust-tt/Runbook-Update-Assistant-dust-apps-18c28599d94180d78dabe92f445157a8)
+    `
+  );
+}
+
+async function checkSparkleVersionConsistency() {
+  const frontPackageJsonDiff =
+    await danger.git.diffForFile("front/package.json");
+
+  const extensionPackageJsonDiff = await danger.git.diffForFile(
+    "extension/package.json"
+  );
+
+  if (!frontPackageJsonDiff && !extensionPackageJsonDiff) {
+    return;
+  }
+
+  const frontPackageJson = JSON.parse(fs.readFileSync("package.json", "utf8"));
+
+  const extensionPackageJson = JSON.parse(
+    fs.readFileSync("../extension/package.json", "utf8")
+  );
+
+  const frontVersion = frontPackageJson.dependencies?.["@dust-tt/sparkle"];
+  const extensionVersion =
+    extensionPackageJson.dependencies?.["@dust-tt/sparkle"];
+
+  if (!frontVersion || !extensionVersion) {
+    return;
+  }
+
+  const normalizeVersion = (v: string) => v.replace(/^[~^]/, "");
+
+  if (normalizeVersion(frontVersion) !== normalizeVersion(extensionVersion)) {
+    const message = `Sparkle versions must be kept in sync:\n- front: ${frontVersion}\n- extension: ${extensionVersion}`;
+
+    if (hasLabel(sparkleVersionAckLabel)) {
+      warn(
+        `${message}\nPR has "${sparkleVersionAckLabel}" label. Ensure both are updated together.`
+      );
+    } else {
+      fail(`${message}\nUpdate both or add "${sparkleVersionAckLabel}" label.`);
+    }
+  }
+}
+
+/**
+ * Check if added lines have raw SQL
+ */
+async function checkRawSqlRegistry(filePaths: string[]) {
+  const sqlPatterns = [
+    /\b(SELECT|SELECT\s+DISTINCT)\s+.+?\s+FROM\s+[^\s;]+(WHERE|GROUP BY|HAVING|ORDER BY|LIMIT)?/i,
+    /\bINSERT\s+INTO\s+[^\s;]+\s+(\([^)]+\)\s+)?VALUES\s*\(/i,
+    /\bUPDATE\s+[^\s;]+\s+SET\s+[^\s;]+(WHERE|RETURNING)?/i,
+    /\bDELETE\s+FROM\s+[^\s;]+(WHERE|RETURNING)?/i,
+  ];
+
+  const filesWithRawSql: string[] = [];
+
+  // Check each file for raw SQL
+  await Promise.all(
+    filePaths.map(async (file) => {
+      try {
+        const content = await danger.git.diffForFile(file);
+
+        if (content !== null) {
+          // Check if the file contains raw SQL
+          if (sqlPatterns.some((pattern) => pattern.test(content.added))) {
+            filesWithRawSql.push(file);
+          }
+        }
+      } catch (error) {
+        console.error(`Error checking file ${file}:`, error);
+      }
+    })
+  );
+
+  if (filesWithRawSql.length > 0) {
+    if (hasLabel(rawSqlAckLabel)) {
+      for (const file of filesWithRawSql) {
+        warn(`File "${file}" has been modified and contains raw sql code.`);
+      }
+    } else {
+      for (const file of filesWithRawSql) {
+        fail(
+          `File "${file}" has been modified and contains raw sql code. Please add "${rawSqlAckLabel}" label and verify that those query cannot be made without Sequelize Model.`
+        );
+      }
+    }
+  }
+}
+
+async function checkDiffFiles() {
+  const diffFiles = danger.git.modified_files
+    .concat(danger.git.created_files)
+    .concat(danger.git.deleted_files);
+
+  // Model files
+  const modifiedModelFiles = diffFiles.filter((path) => {
     return (
       path.startsWith("front/lib/models/") ||
       path.startsWith("front/lib/resources/storage/models/") ||
@@ -130,7 +233,8 @@ function checkModifiedFiles() {
     checkDeployPlanSection();
   }
 
-  const modifiedPublicApiFiles = danger.git.modified_files.filter((path) => {
+  // Public API files
+  const modifiedPublicApiFiles = diffFiles.filter((path) => {
     return path.startsWith("front/pages/api/v1/");
   });
 
@@ -138,7 +242,8 @@ function checkModifiedFiles() {
     checkDocumentationLabel();
   }
 
-  const modifiedAuth0Files = danger.git.modified_files.filter((path) => {
+  // Auth0 files
+  const modifiedAuth0Files = diffFiles.filter((path) => {
     return path.startsWith("front/lib/utils/blacklisted_email_domains.ts");
   });
 
@@ -146,13 +251,39 @@ function checkModifiedFiles() {
     checkAuth0UpdateLabel();
   }
 
-  const modifiedSdksFiles = danger.git.modified_files.filter((path) => {
+  // SDK files
+  const modifiedSdksFiles = diffFiles.filter((path) => {
     return path.startsWith("sdks/js/");
   });
 
   if (modifiedSdksFiles.length > 0) {
     checkSDKLabel();
   }
+
+  // dust-apps registry
+  const modifiedAppsRegistry = diffFiles.filter((path) => {
+    return path === "front/lib/registry.ts";
+  });
+
+  if (modifiedAppsRegistry.length > 0) {
+    checkAppsRegistry();
+  }
+
+  const modifiedFrontFiles = diffFiles.filter((path) => {
+    return path.startsWith("front/lib/");
+  });
+  if (modifiedFrontFiles.length > 0) {
+    await checkRawSqlRegistry(modifiedFrontFiles);
+  }
+
+  // Sparkle version consistency check
+  const modifiedPackageJsonFiles = diffFiles.filter((path) => {
+    return path === "front/package.json" || path === "extension/package.json";
+  });
+
+  if (modifiedPackageJsonFiles.length > 0) {
+    await checkSparkleVersionConsistency();
+  }
 }
 
-checkModifiedFiles();
+void checkDiffFiles();

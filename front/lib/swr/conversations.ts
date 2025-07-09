@@ -1,24 +1,26 @@
-import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  ConversationError,
-  ConversationType,
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { deleteConversation } from "@app/components/assistant/conversation/lib";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import {
+  emptyArray,
   fetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+import type { FetchConversationMessageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
+import type {
+  ConversationError,
+  ConversationType,
+  ConversationWithoutContentType,
+  FetchConversationMessagesResponse,
+  LightWorkspaceType,
+} from "@app/types";
 
 export function useConversation({
   conversationId,
@@ -69,7 +71,7 @@ export function useConversations({
   );
 
   return {
-    conversations: useMemo(() => (data ? data.conversations : []), [data]),
+    conversations: data?.conversations ?? emptyArray(),
     isConversationsLoading: !error && !data,
     isConversationsError: error,
     mutateConversations: mutate,
@@ -93,7 +95,7 @@ export function useConversationFeedbacks({
   );
 
   return {
-    feedbacks: useMemo(() => (data ? data.feedbacks : []), [data]),
+    feedbacks: data?.feedbacks ?? emptyArray(),
     isFeedbacksLoading: !error && !data,
     isFeedbacksError: error,
     mutateReactions: mutate,
@@ -266,4 +268,36 @@ export function useVisualizationRetry({
   );
 
   return handleVisualizationRetry;
+}
+
+export function useConversationMessage({
+  conversationId,
+  workspaceId,
+  messageId,
+  options,
+}: {
+  conversationId: string | null;
+  workspaceId: string;
+  messageId: string | null;
+  options?: {
+    disabled: boolean;
+  };
+}) {
+  const messageFetcher: Fetcher<FetchConversationMessageResponse> = fetcher;
+
+  const { data, error, mutate, isLoading, isValidating } = useSWRWithDefaults(
+    messageId
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}`
+      : null,
+    messageFetcher,
+    options
+  );
+
+  return {
+    message: data?.message,
+    isMessageError: error,
+    isMessageLoading: isLoading,
+    isValidating,
+    mutateMessage: mutate,
+  };
 }

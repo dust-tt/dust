@@ -1,7 +1,5 @@
 import type { PostContentFragmentResponseType } from "@dust-tt/client";
 import { PublicPostContentFragmentRequestBodySchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { isContentFragmentInputWithContentType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -14,6 +12,11 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import {
+  isContentFragmentInput,
+  isContentFragmentInputWithInlinedContent,
+} from "@app/types";
 
 /**
  * @swagger
@@ -116,18 +119,36 @@ async function handler(
       const { context, ...rest } = r.data;
       let contentFragment = rest;
 
+      if (!isContentFragmentInput(contentFragment)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Unsupported content fragment type.",
+          },
+        });
+      }
+
       // If we receive a content fragment that is not file based, we transform it to a file-based
       // one.
-      if (isContentFragmentInputWithContentType(contentFragment)) {
+      if (isContentFragmentInputWithInlinedContent(contentFragment)) {
         const contentFragmentRes = await toFileContentFragment(auth, {
           contentFragment,
         });
         if (contentFragmentRes.isErr()) {
+          if (contentFragmentRes.error.code === "file_type_not_supported") {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: contentFragmentRes.error.message,
+              },
+            });
+          }
           throw new Error(contentFragmentRes.error.message);
         }
         contentFragment = contentFragmentRes.value;
       }
-
       const contentFragmentRes = await postNewContentFragment(
         auth,
         conversation,
@@ -149,6 +170,7 @@ async function handler(
           },
         });
       }
+
       res.status(200).json({ contentFragment: contentFragmentRes.value });
       return;
     default:

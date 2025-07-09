@@ -2,12 +2,12 @@
  * This file contains functions related to sending emails, as well as the
  * content of emails themselves.
  */
-import type { Result } from "@dust-tt/types";
-import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
 let sgMailClient: sgMail.MailService | null = null;
 
@@ -188,16 +188,17 @@ interface sendEmailWithTemplateParams {
     email: string;
     name: string;
   };
+  replyTo?: string;
   subject: string;
   body: string;
 }
 
-// This function sends an email using a predefined template.
-// Note: The salutation and footer are automatically included by the template,
-// so do not add them manually to the email body.
+// This function sends an email using a predefined template. Note: The salutation and footer are
+// automatically included by the template, so do not add them manually to the email body.
 export async function sendEmailWithTemplate({
   to,
   from,
+  replyTo,
   subject,
   body,
 }: sendEmailWithTemplateParams): Promise<Result<void, Error>> {
@@ -205,6 +206,7 @@ export async function sendEmailWithTemplate({
   const message = {
     to,
     from,
+    replyTo,
     templateId,
     dynamic_template_data: {
       subject,
@@ -224,6 +226,6 @@ export async function sendEmailWithTemplate({
       },
       "Error sending email."
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

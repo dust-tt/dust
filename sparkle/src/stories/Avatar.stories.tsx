@@ -1,7 +1,25 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Avatar } from "../index_with_tw_base";
+import {
+  ActionBeerIcon,
+  ActionFlagIcon,
+  ActionImageIcon,
+  ActionMagnifyingGlassIcon,
+  ActionScanIcon,
+  ActionShirtIcon,
+  ActionTableIcon,
+  ActionUmbrellaIcon,
+} from "@sparkle/icons/actions";
+import SvgHome from "@sparkle/icons/actions/Home";
+import { StarStrokeIcon } from "@sparkle/icons/app";
+
+import {
+  Avatar,
+  DriveLogo,
+  NotionLogo,
+  SlackLogo,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Components/Avatar",
@@ -47,11 +65,11 @@ export const AvatarExample = () => (
     <div>With emoji</div>
     <div className="s-flex s-gap-4">
       <Avatar size="xs" emoji="❤️" backgroundColor="s-bg-red-100" />
-      <Avatar size="sm" emoji="💀" backgroundColor="s-bg-slate-800" />
-      <Avatar size="md" emoji="😂" backgroundColor="s-bg-amber-200" />
-      <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s-bg-slate-200" />
-      <Avatar size="xl" emoji="👕" backgroundColor="s-bg-sky-200" />
-      <Avatar size="xxl" emoji="👕" backgroundColor="s-bg-sky-200" />
+      <Avatar size="sm" emoji="💀" backgroundColor="s-bg-gray-800" />
+      <Avatar size="md" emoji="😂" backgroundColor="s-bg-info-200" />
+      <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s-bg-gray-200" />
+      <Avatar size="xl" emoji="👕" backgroundColor="s-bg-blue-200" />
+      <Avatar size="xxl" emoji="👕" backgroundColor="s-bg-blue-200" />
     </div>
     <div className="s-flex s-gap-4">
       <Avatar size="sm" name="Eleanor Wright" />
@@ -98,129 +116,237 @@ export const AvatarExample = () => (
         visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
       />
     </div>
+    <div>With icon</div>
+    <div className="s-flex s-gap-4">
+      <Avatar size="xs" icon={SvgHome} />
+      <Avatar size="xs" icon={DriveLogo} />
+      <Avatar size="sm" icon={ActionBeerIcon} />
+      <Avatar size="sm" icon={NotionLogo} backgroundColor="s-bg-blue-50" />
+      <Avatar size="md" icon={ActionUmbrellaIcon} />
+      <Avatar size="lg" icon={ActionFlagIcon} />
+      <Avatar size="lg" icon={SlackLogo} hexBgColor="#421D51" />
+      <Avatar size="xl" icon={ActionShirtIcon} />
+      <Avatar size="xxl" icon={StarStrokeIcon} />
+    </div>
+    <div className="heading-2xl">Tools example</div>
+    <div>Remote MCP Servers</div>
+    <div className="s-flex s-gap-4">
+      <Avatar size="md" icon={SvgHome} />
+      <Avatar size="md" icon={ActionBeerIcon} />
+      <Avatar size="md" icon={ActionUmbrellaIcon} />
+      <Avatar size="md" icon={ActionFlagIcon} />
+      <Avatar size="md" icon={ActionShirtIcon} />
+      <Avatar size="md" icon={StarStrokeIcon} />
+    </div>
+    <div>Internal Tools Servers</div>
+    <div className="s-flex s-gap-4">
+      <Avatar
+        size="md"
+        icon={ActionTableIcon}
+        backgroundColor="s-bg-gray-700"
+        iconColor="s-text-gray-50"
+      />
+      <Avatar
+        size="md"
+        icon={ActionMagnifyingGlassIcon}
+        backgroundColor="s-bg-gray-700"
+        iconColor="s-text-gray-50"
+      />
+      <Avatar
+        size="md"
+        icon={ActionImageIcon}
+        backgroundColor="s-bg-gray-700"
+        iconColor="s-text-gray-50"
+      />
+      <Avatar
+        size="md"
+        icon={ActionScanIcon}
+        backgroundColor="s-bg-gray-700"
+        iconColor="s-text-gray-50"
+      />
+    </div>
+    <div>Platforms integrations</div>
+    <div className="s-flex s-gap-4">
+      <Avatar size="md" icon={DriveLogo} backgroundColor="s-bg-gray-900" />
+      <Avatar size="md" icon={NotionLogo} backgroundColor="s-bg-white" />
+      <Avatar size="md" icon={SlackLogo} hexBgColor="#421D51" />
+    </div>
   </div>
 );
 
 export const AvatarStackExample = () => (
   <div className="s-flex s-flex-col s-gap-6">
     <div className="s-flex s-flex-row s-gap-2">
-      <Avatar.Stack size="xs" nbMoreItems={0} isRounded>
-        <Avatar
-          name="Isabelle Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-        />
-        <Avatar
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-        />
-        <Avatar
-          name="Aria Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
-        />
-        <Avatar
-          name="Omar Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-        />
-      </Avatar.Stack>
+      <Avatar.Stack
+        size="xs"
+        nbVisibleItems={3}
+        isRounded
+        avatars={[
+          {
+            name: "Isabelle Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+          },
+          {
+            name: "Rafael Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+          },
+          {
+            name: "Aria Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+          },
+          {
+            name: "Omar Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+          },
+        ]}
+      />
 
-      <Avatar.Stack size="xs" nbMoreItems={8}>
-        <Avatar
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-        />
-        <Avatar size="sm" name="Mason Johnson" />
-        <Avatar
-          size="sm"
-          name="Omar Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-        />
-        <Avatar size="sm" name="Eleanor Wright" />
-      </Avatar.Stack>
-      <Avatar.Stack size="xs" nbMoreItems={0}>
-        <Avatar
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-        />
-      </Avatar.Stack>
+      <Avatar.Stack
+        size="xs"
+        nbVisibleItems={6}
+        avatars={[
+          {
+            name: "Rafael Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+          },
+          { name: "Mason Johnson" },
+          {
+            name: "Omar Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+          },
+          { name: "Eleanor Wright" },
+          {
+            name: "Rafael Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+          },
+          { name: "Mason Johnson" },
+          {
+            name: "Omar Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+          },
+          { name: "Eleanor Wright" },
+        ]}
+      />
+
+      <Avatar.Stack
+        size="xs"
+        nbVisibleItems={1}
+        avatars={[
+          {
+            name: "Rafael Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+          },
+        ]}
+      />
     </div>
+
     <div className="s-flex s-flex-row s-gap-2">
-      <Avatar.Stack size="sm" nbMoreItems={0} isRounded>
-        <Avatar
-          name="Isabelle Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-        />
-        <Avatar
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-        />
-        <Avatar
-          name="Aria Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
-        />
-        <Avatar
-          name="Omar Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-        />
-      </Avatar.Stack>
+      <Avatar.Stack
+        size="sm"
+        nbVisibleItems={4}
+        isRounded
+        avatars={[
+          {
+            name: "Isabelle Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+          },
+          {
+            name: "Rafael Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+          },
+          {
+            name: "Aria Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+          },
+          {
+            name: "Omar Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+          },
+        ]}
+      />
 
-      <Avatar.Stack size="sm" nbMoreItems={8}>
-        <Avatar
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-        />
-        <Avatar size="sm" name="Mason Johnson" />
-        <Avatar
-          size="sm"
-          name="Omar Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-        />
-        <Avatar size="sm" name="Eleanor Wright" />
-      </Avatar.Stack>
-      <Avatar.Stack nbMoreItems={0}>
-        <Avatar
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-        />
-      </Avatar.Stack>
+      <Avatar.Stack
+        size="sm"
+        nbVisibleItems={3}
+        avatars={[
+          {
+            name: "Rafael Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+          },
+          { name: "Mason Johnson" },
+          {
+            name: "Omar Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+          },
+          { name: "Eleanor Wright" },
+        ]}
+      />
+
+      <Avatar.Stack
+        nbVisibleItems={1}
+        avatars={[
+          {
+            name: "Rafael Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+          },
+        ]}
+      />
     </div>
-    <div className="s-flex s-flex-row s-gap-4">
-      <Avatar.Stack nbMoreItems={0} size="md">
-        <Avatar
-          name="Isabelle Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-        />
-        <Avatar
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-        />
-        <Avatar
-          name="Aria Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Red_3.jpg"
-        />
-        <Avatar
-          name="Omar Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-        />
-      </Avatar.Stack>
 
-      <Avatar.Stack nbMoreItems={8} size="md">
-        <Avatar
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-        />
-        <Avatar size="md" name="Mason Johnson" />
-        <Avatar
-          name="Omar Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
-        />
-        <Avatar size="md" name="Eleanor Wright" />
-      </Avatar.Stack>
-      <Avatar.Stack nbMoreItems={0} size="md">
-        <Avatar
-          name="Rafael Doe"
-          visual="https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg"
-        />
-      </Avatar.Stack>
+    <div className="s-flex s-flex-row s-gap-4">
+      <Avatar.Stack
+        nbVisibleItems={4}
+        size="md"
+        avatars={[
+          {
+            name: "Isabelle Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+          },
+          {
+            name: "Rafael Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+          },
+          {
+            name: "Aria Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+          },
+          {
+            name: "Omar Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+          },
+        ]}
+      />
+      <Avatar.Stack
+        size="md"
+        nbVisibleItems={3}
+        avatars={[
+          {
+            name: "Isabelle Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+          },
+          {
+            name: "Rafael Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+          },
+          {
+            name: "Aria Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Red_3.jpg",
+          },
+          {
+            name: "Omar Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Pink_3.jpg",
+          },
+        ]}
+      />
+      <Avatar.Stack
+        size="md"
+        avatars={[
+          {
+            name: "Rafael Doe",
+            visual: "https://dust.tt/static/droidavatar/Droid_Yellow_3.jpg",
+          },
+        ]}
+      />
     </div>
   </div>
 );

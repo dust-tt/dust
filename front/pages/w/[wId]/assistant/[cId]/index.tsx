@@ -1,14 +1,13 @@
-import type { UserType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
+import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { ConversationContainer } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -16,13 +15,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {
     // Here, override conversationId.
     conversationId: string | null;
-    user: UserType;
-    isBuilder: boolean;
   }
 >(async (context, auth) => {
   const owner = auth.workspace();
-  const user = auth.user();
+  const user = auth.user()?.toJSON();
   const subscription = auth.subscription();
+  const isAdmin = auth.isAdmin();
 
   if (!owner || !user || !auth.isUser() || !subscription) {
     const { cId } = context.query;
@@ -49,8 +47,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   return {
     props: {
       user,
-      isBuilder: auth.isBuilder(),
       owner,
+      isAdmin,
       subscription,
       baseUrl: config.getClientFacingUrl(),
       conversationId: getValidConversationId(cId),
@@ -63,7 +61,6 @@ export default function AssistantConversation({
   owner,
   subscription,
   user,
-  isBuilder,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
   const [agentIdToMention, setAgentIdToMention] = useState<string | null>(null);
@@ -85,14 +82,7 @@ export default function AssistantConversation({
       // Force re-render by setting a new key with a random number.
       setConversationKey(`new_${Math.random() * 1000}`);
 
-      // Scroll to the top of the conversation container when clicking on "new".
-      const mainTag = document.getElementById(
-        CONVERSATION_PARENT_SCROLL_DIV_ID["page"]
-      );
-
-      if (mainTag) {
-        mainTag.scrollTo(0, 0);
-      }
+      document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
     }
 
     const agentId = assistant ?? null;
@@ -115,14 +105,20 @@ export default function AssistantConversation({
       owner={owner}
       subscription={subscription}
       user={user}
-      isBuilder={isBuilder}
       agentIdToMention={agentIdToMention}
     />
   );
 }
 
-AssistantConversation.getLayout = (page: ReactElement, pageProps: any) => {
-  return <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>;
+AssistantConversation.getLayout = (
+  page: React.ReactElement,
+  pageProps: any
+) => {
+  return (
+    <AppRootLayout>
+      <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
+    </AppRootLayout>
+  );
 };
 
 function getValidConversationId(cId: unknown) {

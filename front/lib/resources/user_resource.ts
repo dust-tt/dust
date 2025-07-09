@@ -1,19 +1,29 @@
+import { escape } from "html-escaper";
+import type {
+  Attributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
+
+import type { Authenticator } from "@app/lib/auth";
+import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
+import { BaseResource } from "@app/lib/resources/base_resource";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import {
+  UserMetadataModel,
+  UserModel,
+} from "@app/lib/resources/storage/models/user";
+import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type {
   LightWorkspaceType,
   ModelId,
   Result,
   UserProviderType,
   UserType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-import type { Attributes, ModelStatic, Transaction } from "sequelize";
-import { Op } from "sequelize";
-
-import type { Authenticator } from "@app/lib/auth";
-import { BaseResource } from "@app/lib/resources/base_resource";
-import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { UserModel } from "@app/lib/resources/storage/models/user";
-import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+} from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 export interface SearchMembersPaginationParams {
   orderColumn: "name";
@@ -22,6 +32,8 @@ export interface SearchMembersPaginationParams {
   limit: number;
 }
 
+const USER_METADATA_COMMA_SEPARATOR = ",";
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface UserResource extends ReadonlyAttributesType<UserModel> {}
@@ -29,6 +41,8 @@ export interface UserResource extends ReadonlyAttributesType<UserModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class UserResource extends BaseResource<UserModel> {
   static model: ModelStatic<UserModel> = UserModel;
+
+  readonly memberships?: MembershipModel[];
 
   constructor(model: ModelStatic<UserModel>, blob: Attributes<UserModel>) {
     super(UserModel, blob);
@@ -91,27 +105,54 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
-  static async fetchById(userId: string): Promise<UserResource | null> {
+  static async fetchById(
+    userId: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
     const user = await UserModel.findOne({
       where: {
         sId: userId,
       },
+      transaction,
     });
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  static async fetchByAuth0Sub(sub: string): Promise<UserResource | null> {
+  static async fetchByAuth0Sub(
+    sub: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
     const user = await UserModel.findOne({
       where: {
         auth0Sub: sub,
       },
+      transaction,
+    });
+    return user ? new UserResource(UserModel, user.get()) : null;
+  }
+
+  static async fetchByWorkOSUserId(
+    workOSUserId: string,
+    transaction?: Transaction
+  ): Promise<UserResource | null> {
+    const user = await UserModel.findOne({
+      where: {
+        workOSUserId,
+      },
+      transaction,
     });
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
   static async fetchByEmail(email: string): Promise<UserResource | null> {
     const users = await this.listByEmail(email.toLowerCase());
-    return users.length > 0 ? users[0] : null;
+    const sortedUsers = users.sort((a, b) => {
+      // Best effort strategy as user db entries are not updated often.
+      return b.updatedAt.getTime() - a.updatedAt.getTime();
+    });
+
+    // Most recently updated user if any.
+    return sortedUsers[0] ?? null;
   }
 
   static async fetchByProvider(
@@ -148,13 +189,30 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  async updateAuth0Sub(sub: string) {
+  async updateAuth0Sub({
+    sub,
+    provider,
+  }: {
+    sub: string;
+    provider: UserProviderType;
+  }) {
     return this.update({
       auth0Sub: sub,
+      provider,
+    });
+  }
+
+  async updateWorkOSUserId({ workOSUserId }: { workOSUserId: string }) {
+    return this.update({
+      workOSUserId,
     });
   }
 
   async updateName(firstName: string, lastName: string | null) {
+    firstName = escape(firstName);
+    if (lastName) {
+      lastName = escape(lastName);
+    }
     return this.update({
       firstName,
       lastName,
@@ -165,21 +223,35 @@ export class UserResource extends BaseResource<UserModel> {
     username: string,
     firstName: string,
     lastName: string | null,
-    email: string
+    email: string,
+    workOSUserId: string | null
   ) {
+    firstName = escape(firstName);
+    if (lastName) {
+      lastName = escape(lastName);
+    }
     const lowerCaseEmail = email.toLowerCase();
     return this.update({
       username,
       firstName,
       lastName,
       email: lowerCaseEmail,
+      workOSUserId,
+    });
+  }
+
+  async recordLoginActivity(date?: Date) {
+    return this.update({
+      lastLoginAt: date ?? new Date(),
     });
   }
 
   async delete(
     auth: Authenticator,
-    { transaction }: { transaction?: Transaction }
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
+    await this.deleteAllMetadata();
+
     try {
       await this.model.destroy({
         where: {
@@ -190,7 +262,7 @@ export class UserResource extends BaseResource<UserModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -207,8 +279,73 @@ export class UserResource extends BaseResource<UserModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
+  }
+
+  async getMetadata(key: string) {
+    return UserMetadataModel.findOne({
+      where: {
+        userId: this.id,
+        key,
+      },
+    });
+  }
+
+  async setMetadata(key: string, value: string) {
+    const metadata = await UserMetadataModel.findOne({
+      where: {
+        userId: this.id,
+        key,
+      },
+    });
+
+    if (!metadata) {
+      await UserMetadataModel.create({
+        userId: this.id,
+        key,
+        value,
+      });
+      return;
+    }
+
+    await metadata.update({ value });
+  }
+
+  async deleteMetadata(where: WhereOptions<UserMetadataModel>) {
+    return UserMetadataModel.destroy({
+      where: {
+        ...where,
+        userId: this.id,
+      },
+    });
+  }
+
+  async appendToMetadata(key: string, value: string) {
+    const metadata = await UserMetadataModel.findOne({
+      where: {
+        userId: this.id,
+        key,
+      },
+    });
+    if (!metadata) {
+      await UserMetadataModel.create({
+        userId: this.id,
+        key,
+        value,
+      });
+      return;
+    }
+    const newValue = `${metadata.value}${USER_METADATA_COMMA_SEPARATOR}${value}`;
+    await metadata.update({ value: newValue });
+  }
+
+  async deleteAllMetadata() {
+    return UserMetadataModel.destroy({
+      where: {
+        userId: this.id,
+      },
+    });
   }
 
   fullName(): string {
@@ -227,6 +364,7 @@ export class UserResource extends BaseResource<UserModel> {
       lastName: this.lastName,
       fullName: this.fullName(),
       image: this.imageUrl,
+      lastLoginAt: this.lastLoginAt?.getTime() ?? null,
     };
   }
 
@@ -291,6 +429,12 @@ export class UserResource extends BaseResource<UserModel> {
     return {
       users: users.map((u) => new UserResource(UserModel, u.get())),
       total: count,
+    };
+  }
+
+  toLogJSON(): ResourceLogJSON {
+    return {
+      sId: this.sId,
     };
   }
 }

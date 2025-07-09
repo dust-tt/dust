@@ -6,6 +6,10 @@ on:
       - core/**
       - .github/workflows/build-and-test-core.yml
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   test:
     runs-on: ubuntu-latest

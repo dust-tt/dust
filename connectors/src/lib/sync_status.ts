@@ -1,12 +1,12 @@
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   ConnectorErrorType,
   ConnectorSyncStatus,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-
-import { ConnectorResource } from "@connectors/resources/connector_resource";
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
 
 async function syncFinished({
   connectorId,
@@ -54,7 +54,6 @@ export async function reportInitialSyncProgress(
 
   await connector.update({
     firstSyncProgress: progress,
-    lastSyncSuccessfulTime: null,
   });
 
   return new Ok(undefined);

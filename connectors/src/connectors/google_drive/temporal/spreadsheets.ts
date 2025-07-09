@@ -1,16 +1,9 @@
-import type { ModelId } from "@dust-tt/types";
-import {
-  getGoogleSheetTableId,
-  InvalidStructuredDataHeaderError,
-  MIME_TYPES,
-  slugify,
-} from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { stringify } from "csv-stringify/sync";
 import tracer from "dd-trace";
 import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
-import type { OAuth2Client } from "googleapis-common";
+import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 
 import {
   getSourceUrlForGoogleDriveFiles,
@@ -34,7 +27,14 @@ import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
+import type { ModelId } from "@connectors/types";
+import type { GoogleDriveObjectType } from "@connectors/types";
+import {
+  getGoogleSheetTableId,
+  INTERNAL_MIME_TYPES,
+  InvalidStructuredDataHeaderError,
+  slugify,
+} from "@connectors/types";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 50000;
 
@@ -272,11 +272,22 @@ async function batchGetSheets(
   for (const chunk of chunks) {
     // Query the API using the previously constructed sheet ranges to fetch
     // the desired data from each corresponding sheet range.
-    const sheetRanges = await sheetsAPI.spreadsheets.values.batchGet({
-      ranges: chunk,
-      spreadsheetId,
-      valueRenderOption: "FORMATTED_VALUE",
-    });
+
+    let sheetRanges: GaxiosResponse<sheets_v4.Schema$BatchGetValuesResponse>;
+    try {
+      sheetRanges = await sheetsAPI.spreadsheets.values.batchGet({
+        ranges: chunk,
+        spreadsheetId,
+        valueRenderOption: "FORMATTED_VALUE",
+      });
+    } catch (err) {
+      if (isStringTooLongError(err)) {
+        // Ignore when the string is too long.
+        continue;
+      } else {
+        throw err;
+      }
+    }
 
     const { valueRanges } = sheetRanges.data;
     if (!valueRanges) {
@@ -528,7 +539,7 @@ export async function syncSpreadSheet(
         parents,
         parentId: parents[1] || null,
         title: spreadsheet.data.properties?.title ?? "Untitled Spreadsheet",
-        mimeType: MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
+        mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
         sourceUrl: getSourceUrlForGoogleDriveFiles(file),
       });
 
@@ -650,4 +661,12 @@ export async function deleteSpreadsheet(
 
 function isGAxiosServiceUnavailablError(err: unknown): err is Error {
   return err instanceof Error && "code" in err && err.code === 503;
+}
+
+function isStringTooLongError(
+  err: unknown
+): err is Error & { code: "ERR_STRING_TOO_LONG" } {
+  return (
+    err instanceof Error && "code" in err && err.code === "ERR_STRING_TOO_LONG"
+  );
 }

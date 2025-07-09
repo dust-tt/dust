@@ -7,8 +7,17 @@ import {
   SheetHeader,
   SheetTitle,
   TrashIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import { useEffect, useReducer, useState } from "react";
+
+import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
+import { SpaceWebsiteForm } from "@app/components/spaces/websites/SpaceWebsiteForm";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { createWebsite, updateWebsite } from "@app/lib/api/website";
+import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
+import { urlToDataSourceName } from "@app/lib/webcrawler";
 import type {
   DataSourceViewType,
   SpaceType,
@@ -16,23 +25,14 @@ import type {
   WebsiteFormAction,
   WebsiteFormState,
   WorkspaceType,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   isDataSourceNameValid,
   isWebCrawlerConfiguration,
+  validateUrl,
   WEBCRAWLER_DEFAULT_CONFIGURATION,
   WEBCRAWLER_MAX_PAGES,
-} from "@dust-tt/types";
-import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
-import { useRouter } from "next/router";
-import { useEffect, useReducer, useState } from "react";
-
-import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
-import { SpaceWebsiteForm } from "@app/components/spaces/websites/SpaceWebsiteForm";
-import { createWebsite, updateWebsite } from "@app/lib/api/website";
-import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
-import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
-import { urlToDataSourceName } from "@app/lib/webcrawler";
+} from "@app/types";
 
 const WEBSITE_CAT = "website";
 
@@ -314,6 +314,7 @@ export default function SpaceWebsiteModal({
             dispatch={dispatch}
             isConfigurationLoading={isConfigurationLoading}
             webCrawlerConfiguration={webCrawlerConfiguration}
+            owner={owner}
           />
           {webCrawlerConfiguration && dataSourceView && (
             <DeleteSection

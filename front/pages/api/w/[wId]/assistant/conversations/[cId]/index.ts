@@ -1,7 +1,3 @@
-import type {
-  ConversationWithoutContentType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -9,22 +5,20 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   deleteConversation,
-  updateConversation,
+  updateConversationTitle,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  ConversationWithoutContentType,
+  WithAPIErrorResponse,
+} from "@app/types";
 
 export const PatchConversationsRequestBodySchema = t.type({
-  title: t.union([t.string, t.null]),
-  visibility: t.union([
-    t.literal("unlisted"),
-    t.literal("workspace"),
-    t.literal("deleted"),
-    t.literal("test"),
-  ]),
+  title: t.string,
 });
 
 export type GetConversationsResponseBody = {
@@ -48,10 +42,11 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversationWithoutContent(
-    auth,
-    req.query.cId
-  );
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      req.query.cId
+    );
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
@@ -93,11 +88,11 @@ async function handler(
         });
       }
 
-      const { title, visibility } = bodyValidation.right;
+      const { title } = bodyValidation.right;
 
-      const result = await updateConversation(auth, conversation.sId, {
+      const result = await updateConversationTitle(auth, {
+        conversationId: conversation.sId,
         title,
-        visibility,
       });
 
       if (result.isErr()) {

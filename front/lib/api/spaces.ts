@@ -1,19 +1,13 @@
-import type {
-  ContentNodesViewType,
-  CoreAPIError,
-  CoreAPISearchScope,
-  DataSourceViewContentNode,
-  DataSourceWithAgentsUsageType,
-  Result,
-  SearchWarningCode,
-} from "@dust-tt/types";
-import { assertNever, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import { uniq } from "lodash";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
-import config from "@app/lib/api/config";
-import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
+import {
+  getAgentConfigurations,
+  updateAgentRequestedGroupIds,
+} from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
+import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -23,21 +17,26 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
+import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
-  space: SpaceResource
+  space: SpaceResource,
+  force?: boolean
 ) {
   assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(space.isRegular(), "Cannot delete non regular spaces.");
 
-  const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
-
   const usages: DataSourceWithAgentsUsageType[] = [];
+
+  const dataSourceViews = await DataSourceViewResource.listBySpace(auth, space);
   for (const view of dataSourceViews) {
     const usage = await view.getUsagesByAgents(auth);
     if (usage.isErr()) {
@@ -57,11 +56,23 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     }
   }
 
-  if (usages.length > 0) {
-    const agentNames = uniq(usages.map((u) => u.agentNames).flat());
+  const apps = await AppResource.listBySpace(auth, space);
+  for (const app of apps) {
+    const usage = await app.getUsagesByAgents(auth);
+    if (usage.isErr()) {
+      throw usage.error;
+    } else if (usage.value.count > 0) {
+      usages.push(usage.value);
+    }
+  }
+
+  if (!force && usages.length > 0) {
+    const agentNames = uniq(
+      usages.flatMap((u) => u.agents).map((agent) => agent.name)
+    );
     return new Err(
       new Error(
-        `Cannot delete space with data source in use by agent(s): ${agentNames.join(", ")}.`
+        `Cannot delete space with data source or app in use by agent(s): ${agentNames.join(", ")}. If you'd like to continue set the force query parameter to true.`
       )
     );
   }
@@ -80,23 +91,84 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
 
   await frontSequelize.transaction(async (t) => {
     // Soft delete all data source views.
-    for (const view of dataSourceViews) {
-      // Soft delete view, they will be hard deleted when the data source scrubbing job runs.
-      const res = await view.delete(auth, {
-        transaction: t,
-        hardDelete: false,
-      });
-      if (res.isErr()) {
-        throw res.error;
-      }
-    }
+    await concurrentExecutor(
+      dataSourceViews,
+      async (view) => {
+        // Soft delete view, they will be hard deleted when the data source scrubbing job runs.
+        const res = await view.delete(auth, {
+          transaction: t,
+          hardDelete: false,
+        });
+        if (res.isErr()) {
+          throw res.error;
+        }
+      },
+      { concurrency: 4 }
+    );
 
     // Soft delete data sources they will be hard deleted in the scrubbing job.
-    for (const ds of dataSources) {
-      const res = await ds.delete(auth, { hardDelete: false, transaction: t });
-      if (res.isErr()) {
-        throw res.error;
-      }
+    await concurrentExecutor(
+      dataSources,
+      async (ds) => {
+        const res = await ds.delete(auth, {
+          hardDelete: false,
+          transaction: t,
+        });
+        if (res.isErr()) {
+          throw res.error;
+        }
+      },
+      { concurrency: 4 }
+    );
+
+    // Soft delete the apps, which will be hard deleted in the scrubbing job.
+    await concurrentExecutor(
+      apps,
+      async (app) => {
+        const res = await app.delete(auth, {
+          hardDelete: false,
+          transaction: t,
+        });
+        if (res.isErr()) {
+          throw res.error;
+        }
+      },
+      { concurrency: 4 }
+    );
+
+    if (force) {
+      const agentIds = uniq(
+        usages.flatMap((u) => u.agents).map((agent) => agent.sId)
+      );
+      await concurrentExecutor(
+        agentIds,
+        async (agentId) => {
+          const [agentConfig] = await getAgentConfigurations({
+            auth,
+            agentsGetView: { agentIds: [agentId] },
+            variant: "full",
+            dangerouslySkipPermissionFiltering: true,
+          });
+
+          // Get the required group IDs from the agent's actions
+          const requestedGroupIds =
+            await getAgentConfigurationGroupIdsFromActions(auth, {
+              actions: agentConfig.actions,
+              ignoreSpaces: [space],
+            });
+
+          const res = await updateAgentRequestedGroupIds(
+            auth,
+            { agentId, newGroupIds: requestedGroupIds },
+            { transaction: t }
+          );
+
+          if (res.isErr()) {
+            throw res.error;
+          }
+        },
+        { concurrency: 4 }
+      );
     }
 
     // Finally, soft delete the space.
@@ -169,205 +241,145 @@ export async function hardDeleteSpace(
 
 export async function createRegularSpaceAndGroup(
   auth: Authenticator,
-  {
-    name,
-    memberIds,
-    isRestricted,
-  }: { name: string; memberIds: string[] | null; isRestricted: boolean },
+  params:
+    | {
+        name: string;
+        isRestricted: true;
+        memberIds: string[];
+        managementMode: "manual";
+      }
+    | {
+        name: string;
+        isRestricted: true;
+        groupIds: string[];
+        managementMode: "group";
+      }
+    | { name: string; isRestricted: false },
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
-): Promise<Result<SpaceResource, DustError | Error>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const plan = auth.getNonNullablePlan();
-  const all = await SpaceResource.listWorkspaceSpaces(auth);
-  const isLimitReached = isPrivateSpacesLimitReached(
-    all.map((v) => v.toJSON()),
-    plan
-  );
-
-  if (isLimitReached && !ignoreWorkspaceLimit) {
-    return new Err(
-      new DustError(
-        "limit_reached",
-        "The maximum number of spaces has been reached."
-      )
-    );
-  }
-
-  const nameAvailable = await SpaceResource.isNameAvailable(auth, name);
-  if (!nameAvailable) {
-    return new Err(
-      new DustError("space_already_exists", "This space name is already used.")
-    );
-  }
-
-  const group = await GroupResource.makeNew({
-    name: `Group for space ${name}`,
-    workspaceId: owner.id,
-    kind: "regular",
-  });
-
-  const globalGroupRes = isRestricted
-    ? null
-    : await GroupResource.fetchWorkspaceGlobalGroup(auth);
-
-  const groups = removeNulls([
-    group,
-    globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
-  ]);
-
-  const space = await SpaceResource.makeNew(
-    {
-      name,
-      kind: "regular",
-      workspaceId: owner.id,
-    },
-    groups
-  );
-
-  if (memberIds) {
-    const users = (await UserResource.fetchByIds(memberIds)).map((user) =>
-      user.toJSON()
-    );
-    const groupsResult = await group.addMembers(auth, users);
-    if (groupsResult.isErr()) {
-      logger.error(
-        {
-          error: groupsResult.error,
-        },
-        "The space cannot be created - group members could not be added"
-      );
-
-      return new Err(new Error("The space cannot be created."));
-    }
-  }
-
-  return new Ok(space);
-}
-
-function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
-  switch (viewType) {
-    case "document":
-      return ["folder", "document"];
-    case "table":
-      return ["folder", "table"];
-    case "all":
-      return ["folder", "table", "document"];
-    default:
-      assertNever(viewType);
-  }
-}
-
-function searchScopeForDsv({
-  dsv,
-  includeDataSources,
-  isSingleDsv,
-}: {
-  dsv: DataSourceViewResource;
-  includeDataSources: boolean;
-  isSingleDsv: boolean;
-}): CoreAPISearchScope {
-  // On a single datasource view, we never want to match the datasource name.
-  if (isSingleDsv) {
-    return "nodes_titles";
-  }
-
-  if (includeDataSources) {
-    // For webcrawler datasources, we want to search the only datasource
-    // title, not the nodes titles.
-    if (dsv.dataSource.connectorProvider === "webcrawler") {
-      return "data_source_name";
-    }
-
-    return "both";
-  }
-
-  return "nodes_titles";
-}
-
-export async function searchContenNodesInSpace(
-  auth: Authenticator,
-  space: SpaceResource,
-  dataSourceViews: DataSourceViewResource[],
-  {
-    excludedNodeMimeTypes,
-    includeDataSources,
-    limit,
-    query,
-    viewType,
-  }: {
-    excludedNodeMimeTypes: readonly string[];
-    includeDataSources: boolean;
-    limit: number;
-    query: string;
-    viewType: ContentNodesViewType;
-  }
 ): Promise<
   Result<
-    {
-      nodes: DataSourceViewContentNode[];
-      total: number;
-      warningCode: SearchWarningCode | null;
-    },
-    DustError | CoreAPIError
+    SpaceResource,
+    DustError<"limit_reached" | "space_already_exists" | "internal_error">
   >
 > {
-  if (!space.canReadOrAdministrate(auth)) {
-    return new Err(new DustError("unauthorized", "Unauthorized"));
-  }
+  const owner = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
 
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const result = await frontSequelize.transaction(async (t) => {
+    await getWorkspaceAdministrationVersionLock(owner, t);
 
-  const isSingleDsv = dataSourceViews.length === 1;
-  const searchRes = await coreAPI.searchNodes({
-    query,
-    filter: {
-      data_source_views: dataSourceViews.map((dsv) => ({
-        data_source_id: dsv.dataSource.dustAPIDataSourceId,
-        view_filter: dsv.parentsIn ?? [],
-        search_scope: searchScopeForDsv({
-          dsv,
-          includeDataSources,
-          isSingleDsv,
-        }),
-      })),
-      excluded_node_mime_types: excludedNodeMimeTypes,
-      node_types: getCoreViewTypeFilter(viewType),
-    },
-    options: {
-      limit,
-    },
-  });
+    const all = await SpaceResource.listWorkspaceSpaces(auth, undefined, t);
+    const isLimitReached = isPrivateSpacesLimitReached(
+      all.map((v) => v.toJSON()),
+      plan
+    );
 
-  if (searchRes.isErr()) {
-    return searchRes;
-  }
-
-  const dataSourceViewById = new Map(
-    dataSourceViews.map((dsv) => [dsv.dataSource.dustAPIDataSourceId, dsv])
-  );
-
-  const nodes = searchRes.value.nodes.flatMap((node) => {
-    const dataSourceView = dataSourceViewById.get(node.data_source_id);
-    if (!dataSourceView) {
-      logger.error(
-        {
-          nodeId: node.node_id,
-          expectedDataSourceId: node.data_source_id,
-          availableDataSourceIds: Array.from(dataSourceViewById.keys()),
-        },
-        "DataSourceView lookup failed for node"
+    if (isLimitReached && !ignoreWorkspaceLimit) {
+      return new Err(
+        new DustError(
+          "limit_reached",
+          "The maximum number of spaces has been reached."
+        )
       );
-
-      return [];
     }
 
-    return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
+    const { name, isRestricted } = params;
+    const managementMode = isRestricted ? params.managementMode : "manual";
+    const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
+    if (!nameAvailable) {
+      return new Err(
+        new DustError(
+          "space_already_exists",
+          "This space name is already used."
+        )
+      );
+    }
+
+    const group = await GroupResource.makeNew(
+      {
+        name: `Group for space ${name}`,
+        workspaceId: owner.id,
+        kind: "regular",
+      },
+      { transaction: t }
+    );
+
+    const globalGroupRes = isRestricted
+      ? null
+      : await GroupResource.fetchWorkspaceGlobalGroup(auth);
+
+    const groups = removeNulls([
+      group,
+      globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
+    ]);
+
+    const space = await SpaceResource.makeNew(
+      {
+        name,
+        kind: "regular",
+        managementMode,
+        workspaceId: owner.id,
+      },
+      groups,
+      t
+    );
+
+    // Handle member-based space creation
+    if ("memberIds" in params && params.memberIds) {
+      const users = (await UserResource.fetchByIds(params.memberIds)).map(
+        (user) => user.toJSON()
+      );
+      const groupsResult = await group.addMembers(auth, users, {
+        transaction: t,
+      });
+      if (groupsResult.isErr()) {
+        logger.error(
+          {
+            error: groupsResult.error,
+          },
+          "The space cannot be created - group members could not be added"
+        );
+
+        return new Err(
+          new DustError("internal_error", "The space cannot be created.")
+        );
+      }
+    }
+
+    // Handle group-based space creation
+    if ("groupIds" in params && params.groupIds.length > 0) {
+      // For group-based spaces, we need to associate the selected groups with the space
+      const selectedGroupsResult = await GroupResource.fetchByIds(
+        auth,
+        params.groupIds
+      );
+      if (selectedGroupsResult.isErr()) {
+        logger.error(
+          {
+            error: selectedGroupsResult.error,
+          },
+          "The space cannot be created - failed to fetch groups"
+        );
+        return new Err(
+          new DustError("internal_error", "The space cannot be created.")
+        );
+      }
+
+      const selectedGroups = selectedGroupsResult.value;
+      for (const selectedGroup of selectedGroups) {
+        await GroupSpaceModel.create(
+          {
+            groupId: selectedGroup.id,
+            vaultId: space.id,
+            workspaceId: space.workspaceId,
+          },
+          { transaction: t }
+        );
+      }
+    }
+
+    return new Ok(space);
   });
 
-  return new Ok({
-    nodes,
-    total: searchRes.value.hit_count,
-    warningCode: searchRes.value.warning_code,
-  });
+  return result;
 }

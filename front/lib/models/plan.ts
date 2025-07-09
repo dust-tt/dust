@@ -1,9 +1,4 @@
 import type {
-  MaxMessagesTimeframeType,
-  SubscriptionStatusType,
-} from "@dust-tt/types";
-import { SUBSCRIPTION_STATUSES } from "@dust-tt/types";
-import type {
   CreationOptional,
   ForeignKey,
   NonAttribute,
@@ -14,6 +9,11 @@ import { DataTypes } from "sequelize";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type {
+  MaxMessagesTimeframeType,
+  SubscriptionStatusType,
+} from "@app/types";
+import { SUBSCRIPTION_STATUSES } from "@app/types";
 
 export class Plan extends BaseModel<Plan> {
   declare createdAt: CreationOptional<Date>;
@@ -28,6 +28,7 @@ export class Plan extends BaseModel<Plan> {
   declare maxMessages: number;
   declare maxMessagesTimeframe: MaxMessagesTimeframeType;
   declare maxUsersInWorkspace: number;
+  declare maxImagesPerWeek: number;
   declare maxVaultsInWorkspace: number;
   declare isSlackbotAllowed: boolean;
   declare isManagedConfluenceAllowed: boolean;
@@ -37,6 +38,7 @@ export class Plan extends BaseModel<Plan> {
   declare isManagedGithubAllowed: boolean;
   declare isManagedIntercomAllowed: boolean;
   declare isManagedWebCrawlerAllowed: boolean;
+  declare isManagedSalesforceAllowed: boolean;
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
@@ -79,6 +81,11 @@ Plan.init(
       type: DataTypes.ENUM("day", "lifetime"),
       allowNull: false,
     },
+    maxImagesPerWeek: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
     maxUsersInWorkspace: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -117,6 +124,10 @@ Plan.init(
       defaultValue: false,
     },
     isManagedWebCrawlerAllowed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isManagedSalesforceAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
@@ -219,6 +230,7 @@ Subscription.init(
     indexes: [
       { unique: true, fields: ["sId"] },
       { fields: ["workspaceId", "status"] },
+      { fields: ["workspaceId", "status", "planId"] },
     ],
   }
 );

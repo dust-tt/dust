@@ -1,12 +1,9 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
-
-import type { ZendeskFetchedCategory } from "@connectors/@types/node-zendesk";
 import {
   getArticleInternalId,
   getCategoryInternalId,
   getHelpCenterInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
+import type { ZendeskFetchedCategory } from "@connectors/connectors/zendesk/lib/types";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
   deleteDataSourceDocument,
@@ -17,7 +14,8 @@ import {
   ZendeskArticleResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Deletes all the data stored in the db and in the data source relative to a category (articles).
@@ -132,7 +130,7 @@ export async function syncCategory({
     parents,
     parentId: parentId,
     title: category.name,
-    mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+    mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
     sourceUrl: category.html_url,
     timestampMs: currentSyncDateMs,
   });

@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -9,7 +9,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 /**
- * Configuration of Datasources used for Retrieval Action.
+ * Configuration of Data Sources used for Retrieval, Process and MCP server actions.
  */
 export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataSourceConfiguration> {
   declare createdAt: CreationOptional<Date>;
@@ -25,13 +25,13 @@ export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataS
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
 
-  // AgentDataSourceConfiguration can be used by both the retrieval and the process actions'
-  // configurations.
+  // AgentDataSourceConfiguration can be used by both the retrieval
+  // and the MCP actions' configurations.
   declare retrievalConfigurationId: ForeignKey<
     AgentRetrievalConfiguration["id"]
   > | null;
-  declare processConfigurationId: ForeignKey<
-    AgentRetrievalConfiguration["id"]
+  declare mcpServerConfigurationId: ForeignKey<
+    AgentMCPServerConfiguration["id"]
   > | null;
 
   declare dataSource: NonAttribute<DataSourceModel>;
@@ -73,10 +73,38 @@ AgentDataSourceConfiguration.init(
   {
     modelName: "agent_data_source_configuration",
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       { fields: ["retrievalConfigurationId"] },
-      { fields: ["processConfigurationId"] },
+      {
+        fields: ["workspaceId", "retrievalConfigurationId"],
+        concurrently: true,
+        name: "agent_data_source_config_workspace_id_retrieval_config_id",
+      },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
+      { fields: ["mcpServerConfigurationId"] },
+      {
+        fields: ["workspaceId", "mcpServerConfigurationId"],
+        name: "agent_data_source_config_workspace_id_mcp_srv_config_id",
+        concurrently: true,
+      },
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-14): Remove index
       { fields: ["dataSourceId"] },
+      {
+        fields: ["workspaceId", "dataSourceId"],
+        concurrently: true,
+      },
+
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-14): Remove index
       { fields: ["dataSourceViewId"] },
+      {
+        fields: ["workspaceId", "dataSourceViewId"],
+        concurrently: true,
+        name: "agent_data_source_config_workspace_id_data_source_view_id",
+      },
+      {
+        fields: ["workspaceId"],
+        concurrently: true,
+      },
     ],
     sequelize: frontSequelize,
     hooks: {
@@ -123,13 +151,13 @@ AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
   foreignKey: { name: "retrievalConfigurationId", allowNull: true },
 });
 
-// Process config <> Data source config
-AgentProcessConfiguration.hasMany(AgentDataSourceConfiguration, {
-  foreignKey: { name: "processConfigurationId", allowNull: true },
+// MCP server config <> Data source config
+AgentMCPServerConfiguration.hasMany(AgentDataSourceConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
   onDelete: "RESTRICT",
 });
-AgentDataSourceConfiguration.belongsTo(AgentProcessConfiguration, {
-  foreignKey: { name: "processConfigurationId", allowNull: true },
+AgentDataSourceConfiguration.belongsTo(AgentMCPServerConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
 });
 
 // Data source config <> Data source

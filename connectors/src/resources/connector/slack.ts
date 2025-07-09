@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
@@ -10,6 +9,7 @@ import type {
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { ModelId } from "@connectors/types";
 
 export class SlackConnectorStrategy
   implements ConnectorProviderStrategy<"slack">
@@ -19,12 +19,16 @@ export class SlackConnectorStrategy
     blob: WithCreationAttributes<SlackConfigurationModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["slack"] | null> {
-    await SlackConfigurationResource.makeNew({
+    return SlackConfigurationResource.makeNew({
       slackTeamId: blob.slackTeamId,
+      autoReadChannelPatterns: blob.autoReadChannelPatterns,
+      whitelistedDomains: blob.whitelistedDomains
+        ? [...blob.whitelistedDomains] // Ensure it's a readonly string[]
+        : undefined,
+      restrictedSpaceAgentsEnabled: blob.restrictedSpaceAgentsEnabled,
       connectorId,
       transaction,
     });
-    return null;
   }
 
   async delete(

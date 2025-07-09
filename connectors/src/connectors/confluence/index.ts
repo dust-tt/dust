@@ -1,5 +1,5 @@
-import type { ConnectorPermission, ContentNode, Result } from "@dust-tt/types";
-import { ConfluenceClientError, Err, Ok } from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import {
   getConfluenceAccessToken,
@@ -35,13 +35,17 @@ import {
 } from "@connectors/lib/models/confluence";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorPermission, ContentNode } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { ConfluenceClientError, normalizeError } from "@connectors/types";
 
 const logger = mainLogger.child({
   connector: "confluence",
 });
 
 export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "confluence";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -139,7 +143,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
 
         // If connector was previously paused, unpause it.
         if (connector.isPaused()) {
-          await this.unpause();
+          await this.unpauseAndResume();
         }
       } else {
         logger.info(
@@ -218,7 +222,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -316,7 +320,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
           )
         );
       }
-      // Unanhdled error, throwing to get a 500.
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
   }
@@ -405,36 +409,13 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found.");
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsPaused();
-    const r = await stopConfluenceSyncWorkflow(this.connectorId);
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found.");
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsUnpaused();
-    const r = await launchConfluenceSyncWorkflow(this.connectorId, null);
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // Confluence only let you select spaces (root nodes).
+    return new Ok([internalId]);
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {

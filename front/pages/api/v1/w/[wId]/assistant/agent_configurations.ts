@@ -1,5 +1,4 @@
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -10,6 +9,7 @@ import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 export const GetAgentConfigurationsQuerySchema = t.type({
   view: t.union([
@@ -49,7 +49,6 @@ const viewRequiresUser = (view?: string): boolean =>
  *           The view to use when retrieving agents:
  *           - all: Retrieves all non-private agents (default if not authenticated)
  *           - list: Retrieves all active agents accessible to the user (default if authenticated)
- *           - workspace: Retrieves all agents with workspace scope
  *           - published: Retrieves all agents with published scope
  *           - global: Retrieves all global agents
  *           - favorites: Retrieves all agents marked as favorites by the user (only available to authenticated users)
@@ -130,7 +129,10 @@ async function handler(
 
       let agentConfigurations = await getAgentConfigurations({
         auth,
-        agentsGetView,
+        agentsGetView:
+          agentsGetView === "workspace"
+            ? "published" // workspace is deprecated, return all visible agents
+            : agentsGetView,
         variant: "light",
       });
 

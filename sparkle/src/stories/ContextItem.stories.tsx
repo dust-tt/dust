@@ -37,7 +37,7 @@ export const ListItemExample = () => (
         subElement={
           <>
             Added by: Edouard Wautier
-            <span className="s-h-3 s-w-0.5 s-bg-element-500" />
+            <span className="s-h-3 s-w-0.5 s-bg-primary-500" />
             <div className="s-flex s-items-center s-gap-1">
               Used by: 3
               <Icon visual={RobotIcon} size="xs" />
@@ -47,7 +47,7 @@ export const ListItemExample = () => (
         visual={<Icon visual={FolderIcon} size="md" />}
       >
         <div className="s-py-2">
-          <Chip size="xs" label="Last Sync ~7 days ago" color="pink" />
+          <Chip size="xs" label="Last Sync ~7 days ago" color="green" />
         </div>
         <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
       </ContextItem>
@@ -99,7 +99,7 @@ export const ListItemExample = () => (
       >
         <>
           <div className="s-py-2">
-            <Chip label="Syncing…" color="amber" size="sm" isBusy />
+            <Chip label="Syncing…" color="info" size="sm" isBusy />
           </div>
           <ContextItem.Description description="Teamspaces “General” and “Public”, pages “Engineering”, “Team Life”, “Marketing”, “Brand”, “Getting Started at Dust”, “Brand”, “Design”, “Product Decisions”, “Hiring”, “Man" />
         </>

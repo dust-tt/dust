@@ -1,13 +1,16 @@
-import type { MembershipInvitationType, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import type {
+  MembershipInvitationTypeWithLink,
+  WorkspaceType,
+} from "@app/types";
 
 import { makeColumnsForInvitations } from "./columns";
 
 interface InvitationsDataTableProps {
   owner: WorkspaceType;
-  invitations: MembershipInvitationType[];
+  invitations: MembershipInvitationTypeWithLink[];
 }
 
 export function InvitationsDataTable({

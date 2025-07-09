@@ -1,18 +1,17 @@
-import { concurrentExecutor, isDevelopment } from "@dust-tt/types";
-import _ from "lodash";
 import parseArgs from "minimist";
 
 import { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
-import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types";
 
 const DEFAULT_WORKSPACE_NAME = "dust-apps";
 const DEFAULT_SPACE_NAME = "Public Dust Apps";
@@ -20,21 +19,26 @@ const DEFAULT_SPACE_NAME = "Public Dust Apps";
 async function main() {
   const argv = parseArgs(process.argv.slice(2));
 
-  const where = _.pick(argv, ["name", "sId"]);
-  if (!where.name && !where.sId) {
-    throw new Error("Please provide name and/or sId for the workspace");
+  let w: WorkspaceResource | null;
+  if (argv.sId) {
+    w = await WorkspaceResource.fetchById(argv.sId);
+  } else if (argv.name) {
+    w = await WorkspaceResource.fetchByName(argv.name);
+  } else {
+    throw new Error("Please provide the name or sId for the workspace");
   }
-  let w = await Workspace.findOne({ where });
+
   if (!w) {
     console.log("Creating workspace");
-    w = await Workspace.create({
+    w = await WorkspaceResource.makeNew({
       sId: argv.sId || generateRandomModelSId(),
       name: argv.name || DEFAULT_WORKSPACE_NAME,
     });
 
-    await internalSubscribeWorkspaceToFreePlan({
+    await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
       workspaceId: w.sId,
       planCode: "FREE_UPGRADED_PLAN",
+      endDate: null,
     });
   }
   const lightWorkspace = renderLightWorkspaceType({ workspace: w });
@@ -69,6 +73,7 @@ async function main() {
             user: new UserResource(UserModel, user.get()),
             workspace: lightWorkspace,
             role: "admin",
+            origin: "invited",
           }),
         { concurrency: 5 }
       );
@@ -83,6 +88,12 @@ async function main() {
 
   console.log(`export DUST_APPS_WORKSPACE_ID=${w.sId}`);
   console.log(`export DUST_APPS_SPACE_ID=${space.sId}`);
+  console.log(`---`);
+  console.log(`- Restart front with the new env variables`);
+  console.log(
+    `- Navigate to: http://localhost:3000/poke/${w.sId}/spaces/${space.sId}`
+  );
+  console.log(`- Run the "Sync dust-apps" plugin`);
 }
 
 main()

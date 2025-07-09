@@ -1,4 +1,3 @@
-import type { KeyType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -7,7 +6,12 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { KeyType, WithAPIErrorResponse } from "@app/types";
+
+const MAX_API_KEY_CREATION_PER_DAY = 30;
 
 export type GetKeysResponseBody = {
   keys: KeyType[];
@@ -80,6 +84,26 @@ async function handler(
         });
       }
 
+      const rateLimitKey = `api_key_creation_${owner.sId}`;
+      const remaining = await rateLimiter({
+        key: rateLimitKey,
+        maxPerTimeframe: MAX_API_KEY_CREATION_PER_DAY,
+        timeframeSeconds: 24 * 60 * 60, // 1 day
+        logger,
+      });
+
+      if (remaining === 0) {
+        return apiError(req, res, {
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message:
+              `You have reached the limit of ${MAX_API_KEY_CREATION_PER_DAY} API keys ` +
+              "creations per day. Please try again later.",
+          },
+        });
+      }
+
       const key = await KeyResource.makeNew(
         {
           name: name,
@@ -87,6 +111,7 @@ async function handler(
           userId: user.id,
           workspaceId: owner.id,
           isSystem: false,
+          role: "builder",
         },
         group.value
       );

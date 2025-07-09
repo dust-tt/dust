@@ -1,15 +1,15 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { useMemo } from "react";
+
+import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
+import { useRunBlock } from "@app/lib/swr/apps";
 import type {
   AppType,
   RunType,
   SpecificationType,
   WorkspaceType,
-} from "@dust-tt/types";
-import { useMemo } from "react";
-
-import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
-import { useRunBlock } from "@app/lib/swr/apps";
+} from "@app/types";
 
 interface CopyRunProps {
   app: AppType;

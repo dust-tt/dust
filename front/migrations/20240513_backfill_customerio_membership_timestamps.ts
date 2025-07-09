@@ -1,18 +1,18 @@
-import { removeNulls } from "@dust-tt/types";
 import * as _ from "lodash";
 
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { removeNulls } from "@app/types";
 
 const backfillCustomerIo = async (execute: boolean) => {
   const allActiveSubscriptions = await Subscription.findAll({
@@ -34,7 +34,7 @@ const backfillCustomerIo = async (execute: boolean) => {
   const workpsaceIds = allActiveSubscriptions.map((s) => s.workspaceId);
   const workspaceById = _.keyBy(
     workpsaceIds.length
-      ? await Workspace.findAll({
+      ? await WorkspaceModel.findAll({
           where: {
             id: workpsaceIds,
           },

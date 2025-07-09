@@ -7,7 +7,7 @@ import {
   Spinner,
   Tooltip,
 } from "@sparkle/components/";
-import { XMarkIcon } from "@sparkle/icons";
+import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 type CitationProps = CardProps & {
@@ -52,7 +52,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
         variant={variant}
         size="sm"
         className={cn(
-          "s-min-w-24 s-relative s-flex s-flex-none s-flex-col s-justify-end s-overflow-hidden s-pt-[8%]",
+          "s-min-w-24 s-relative s-flex s-flex-none s-flex-col s-overflow-hidden s-pt-[8%]",
           className
         )}
         {...props}
@@ -81,7 +81,7 @@ const CitationIndex = React.forwardRef<
       ref={ref}
       className={cn(
         "s-z-10",
-        "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-text-xs s-font-medium",
+        "s-flex s-h-4 s-w-4 s-items-center s-justify-center s-rounded-full s-text-xs s-font-semibold",
         "s-text-primary-200 dark:s-text-primary-200-night",
         "s-bg-primary-600 dark:s-bg-primary-600-night",
         className
@@ -99,7 +99,11 @@ const CitationGrid = React.forwardRef<
   React.HTMLAttributes<HTMLDivElement>
 >(({ children, className, ...props }, ref) => {
   return (
-    <div ref={ref} className={cn("s-@container", className)} {...props}>
+    <div
+      ref={ref}
+      className={cn("s-min-w-[240px] s-@container", className)}
+      {...props}
+    >
       <div className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4 @md:s-grid-cols-5 @lg:s-grid-cols-6">
         {children}
       </div>
@@ -223,7 +227,7 @@ const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
         className={cn(
           "s-z-10",
           "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all",
-          "s-text-sm s-font-medium",
+          "s-text-sm s-font-semibold",
           "s-text-foreground dark:s-text-foreground-night",
           className
         )}

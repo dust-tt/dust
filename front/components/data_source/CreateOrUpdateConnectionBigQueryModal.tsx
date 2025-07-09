@@ -1,7 +1,7 @@
+import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,
   Button,
-  CloudArrowLeftRightIcon,
   ContentMessage,
   Icon,
   InformationCircleIcon,
@@ -18,6 +18,14 @@ import {
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { isRight } from "fp-ts/lib/Either";
+import { formatValidationErrors } from "io-ts-reporters";
+import { useEffect, useMemo, useState } from "react";
+
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+import { useBigQueryLocations } from "@app/lib/swr/bigquery";
+import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
 import type {
   BigQueryCredentialsWithLocation,
   CheckBigQueryCredentials,
@@ -25,19 +33,8 @@ import type {
   ConnectorType,
   DataSourceType,
   WorkspaceType,
-} from "@dust-tt/types";
-import {
-  CheckBigQueryCredentialsSchema,
-  isConnectorsAPIError,
-} from "@dust-tt/types";
-import { isRight } from "fp-ts/lib/Either";
-import { formatValidationErrors } from "io-ts-reporters";
-import React, { useEffect, useMemo, useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
-import { useBigQueryLocations } from "@app/lib/swr/bigquery";
-import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
+} from "@app/types";
+import { CheckBigQueryCredentialsSchema } from "@app/types";
 
 type CreateOrUpdateConnectionBigQueryModalProps = {
   owner: WorkspaceType;
@@ -138,9 +135,10 @@ export function CreateOrUpdateConnectionBigQueryModal({
   function onSuccess(ds: DataSourceType) {
     setCredentials("");
     _onSuccess(ds);
+    setError(null);
   }
 
-  const createBigQueryConnection = async () => {
+  const createBigQueryConnection = async (): Promise<boolean> => {
     if (!onSuccess || !createDatasource) {
       // Should never happen.
       throw new Error("onCreated and createDatasource are required");
@@ -169,7 +167,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
     if (!createCredentialsRes.ok) {
       setError("Failed to create connection: cannot verify those credentials.");
       setIsLoading(false);
-      return;
+      return false;
     }
 
     // Then we can try to create the connector.
@@ -196,7 +194,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
       }
 
       setIsLoading(false);
-      return;
+      return false;
     }
 
     const createdManagedDataSource: {
@@ -206,9 +204,10 @@ export function CreateOrUpdateConnectionBigQueryModal({
 
     onSuccess(createdManagedDataSource.dataSource);
     setIsLoading(false);
+    return true;
   };
 
-  const updateBigQueryConnection = async () => {
+  const updateBigQueryConnection = async (): Promise<boolean> => {
     if (!dataSourceToUpdate) {
       // Should never happen.
       throw new Error("dataSourceToUpdate is required");
@@ -239,7 +238,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
     if (!credentialsRes.ok) {
       setError("Failed to update connection: cannot verify those credentials.");
       setIsLoading(false);
-      return;
+      return false;
     }
 
     const data = await credentialsRes.json();
@@ -274,10 +273,11 @@ export function CreateOrUpdateConnectionBigQueryModal({
         setError(`Failed to update BigQuery connection: ${err.error.message}`);
       }
 
-      return;
+      return false;
     }
 
     onSuccess(dataSourceToUpdate);
+    return true;
   };
 
   return (
@@ -308,7 +308,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
 
               {connectorProviderConfiguration.limitations && (
                 <ContentMessage
-                  variant="slate"
+                  variant="primary"
                   title="Limitations"
                   className="border-none"
                 >
@@ -318,14 +318,14 @@ export function CreateOrUpdateConnectionBigQueryModal({
             </div>
 
             {error && (
-              <ContentMessage variant="red" title="Connection Error">
+              <ContentMessage variant="warning" title="Connection Error">
                 {error}
               </ContentMessage>
             )}
 
             <Page.SectionHeader title="BigQuery Credentials" />
             <TextArea
-              className="font-mono min-h-[300px] text-[13px]"
+              className="min-h-[300px] font-mono text-[13px]"
               name="service_account_json"
               value={credentials}
               placeholder="Paste service account JSON here"
@@ -347,19 +347,22 @@ export function CreateOrUpdateConnectionBigQueryModal({
                       customItem={
                         <Tooltip
                           label={
-                            <Label htmlFor={location}>
+                            <>
                               This location contains {tables.length} tables that
                               can be connected :{" "}
                               <span className="text-xs text-gray-500">
                                 {tables.join(", ")}
                               </span>
-                            </Label>
+                            </>
                           }
                           trigger={
-                            <div className="flex items-center gap-1">
-                              <b>{location}</b> - {tables.length} tables{" "}
-                              <InformationCircleIcon />
-                            </div>
+                            <Label
+                              htmlFor={location}
+                              className="flex cursor-pointer items-center gap-1"
+                            >
+                              <span className="font-semibold">{location}</span>{" "}
+                              - {tables.length} tables <InformationCircleIcon />
+                            </Label>
                           }
                         />
                       }
@@ -376,24 +379,26 @@ export function CreateOrUpdateConnectionBigQueryModal({
             variant: "outline",
           }}
           rightButtonProps={{
-            label: isLoading
-              ? "Connecting..."
-              : dataSourceToUpdate
-                ? "Update Connection"
-                : "Connect Tables",
-            icon: CloudArrowLeftRightIcon,
-            onClick: () => {
+            label: isLoading ? "Saving..." : "Save",
+            onClick: async (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              e.stopPropagation();
               setIsLoading(true);
-              dataSourceToUpdate
-                ? void updateBigQueryConnection()
-                : void createBigQueryConnection();
+              const success = dataSourceToUpdate
+                ? await updateBigQueryConnection()
+                : await createBigQueryConnection();
+              setIsLoading(false);
+
+              if (success) {
+                onClose();
+              }
             },
+            isLoading: isLoading || isLocationsLoading,
             disabled:
               isLoading ||
               isLocationsLoading ||
               !credentialsState.valid ||
               !selectedLocation,
-            size: "md",
           }}
         />
       </SheetContent>

@@ -15,27 +15,29 @@ import {
   RadioGroupItem,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useCallback } from "react";
+
+import { AdvancedSettingsSection } from "@app/components/spaces/websites/AdvancedSettingsSection";
 import type {
+  LightWorkspaceType,
   WebCrawlerConfigurationType,
   WebsiteFormAction,
   WebsiteFormState,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   CrawlingFrequencies,
   DEPTH_DISPLAY_TEXT,
   DepthOptions,
   FREQUENCY_DISPLAY_TEXT,
   WEBCRAWLER_MAX_PAGES,
-} from "@dust-tt/types";
-import { useCallback } from "react";
-
-import { AdvancedSettingsSection } from "@app/components/spaces/websites/AdvancedSettingsSection";
+} from "@app/types";
 
 type SpaceWebsiteFormProps = {
   state: WebsiteFormState;
   dispatch: React.Dispatch<WebsiteFormAction>;
   isConfigurationLoading: boolean;
   webCrawlerConfiguration: WebCrawlerConfigurationType | null;
+  owner: LightWorkspaceType;
 };
 
 export function SpaceWebsiteForm({
@@ -43,6 +45,7 @@ export function SpaceWebsiteForm({
   dispatch,
   isConfigurationLoading,
   webCrawlerConfiguration,
+  owner,
 }: SpaceWebsiteFormProps) {
   const handleHeadersChange = useCallback(
     (newHeaders: WebsiteFormState["headers"]) => {
@@ -77,7 +80,7 @@ export function SpaceWebsiteForm({
         <ContentMessage
           title="Ensure the website is public"
           icon={InformationCircleIcon}
-          variant="pink"
+          variant="warning"
         >
           Only public websites accessible without authentication will work.
         </ContentMessage>
@@ -135,11 +138,15 @@ export function SpaceWebsiteForm({
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuRadioGroup>
-                {CrawlingFrequencies.map((frequency) => (
+                {CrawlingFrequencies.filter(
+                  (freq) =>
+                    state.crawlFrequency === "daily" ? true : freq !== "daily" // Only display the 'daily' option if the crawler has it
+                ).map((frequency) => (
                   <DropdownMenuRadioItem
                     key={frequency}
                     value={frequency}
                     label={FREQUENCY_DISPLAY_TEXT[frequency]}
+                    disabled={frequency === "daily"}
                     onClick={() =>
                       dispatch({
                         type: "SET_FIELD",
@@ -246,6 +253,7 @@ export function SpaceWebsiteForm({
       <AdvancedSettingsSection
         headers={state.headers}
         onHeadersChange={handleHeadersChange}
+        owner={owner}
       />
     </Page.Layout>
   );

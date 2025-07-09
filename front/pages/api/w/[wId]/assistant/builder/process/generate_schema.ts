@@ -1,14 +1,3 @@
-import type {
-  ProcessSchemaPropertyType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-  InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema,
-  ioTsParsePayload,
-  PROCESS_SCHEMA_ALLOWED_TYPES,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
@@ -16,12 +5,19 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  InternalPostBuilderGenerateSchemaRequestBodySchema,
+  ioTsParsePayload,
+} from "@app/types";
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<{
-      schema: ProcessSchemaPropertyType[];
+      schema: Record<string, unknown>;
     }>
   >,
   auth: Authenticator
@@ -32,7 +28,7 @@ async function handler(
     case "POST":
       const bodyRes = ioTsParsePayload(
         req.body,
-        InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema
+        InternalPostBuilderGenerateSchemaRequestBodySchema
       );
       if (bodyRes.isErr()) {
         return apiError(req, res, {
@@ -103,19 +99,7 @@ async function handler(
         });
       }
 
-      const rawSchema = actionRes.value.results[0][0].value as any;
-
-      const schema: ProcessSchemaPropertyType[] = [];
-      for (const key in rawSchema) {
-        schema.push({
-          name: key,
-          type: PROCESS_SCHEMA_ALLOWED_TYPES.includes(rawSchema[key].type)
-            ? rawSchema[key].type
-            : "string",
-          description: rawSchema[key].description || "",
-        });
-      }
-
+      const schema = actionRes.value.results[0][0].value as any;
       return res.status(200).json({ schema });
     default:
       return apiError(req, res, {

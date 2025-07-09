@@ -1,5 +1,4 @@
 import { Button, Logo } from "@dust-tt/sparkle";
-import { isDevelopment } from "@dust-tt/types";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -13,6 +12,7 @@ import {
 import type { RegionType } from "@app/lib/api/regions/config";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearch } from "@app/poke/swr/search";
+import { isDevelopment } from "@app/types";
 
 interface PokeNavbarProps {
   currentRegion?: RegionType;
@@ -80,7 +80,7 @@ export function PokeSearchCommand() {
       <PokeCommandDialog
         open={open}
         onOpenChange={setOpen}
-        className="bg-structure-50 sm:max-w-[600px]"
+        className="bg-muted-background sm:max-w-[600px]"
         shouldFilter={false}
       >
         <PokeCommandInput

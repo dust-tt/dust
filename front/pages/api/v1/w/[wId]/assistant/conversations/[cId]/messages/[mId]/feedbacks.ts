@@ -1,4 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -6,14 +5,15 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import {
   deleteMessageFeedback,
   upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 export const MessageFeedbackRequestBodySchema = t.type({
   thumbDirection: t.string,
@@ -154,10 +154,11 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversationRes = await getConversationWithoutContent(
-    auth,
-    conversationId
-  );
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      conversationId
+    );
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
@@ -194,7 +195,7 @@ async function handler(
       const created = await upsertMessageFeedback(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
         thumbDirection: bodyValidation.right
           .thumbDirection as AgentMessageFeedbackDirection,
         content: bodyValidation.right.feedbackContent || "",
@@ -217,7 +218,7 @@ async function handler(
       const deleted = await deleteMessageFeedback(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
       });
 
       if (deleted) {

@@ -1,13 +1,13 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever } from "@app/types";
 
 export type RevokeUserResponseBody = {
   success: true;
@@ -100,4 +100,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForPoke(handler);

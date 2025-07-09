@@ -20,6 +20,9 @@ inputs:
   commit_sha:
     description: "Commit SHA"
     required: true
+  commit_sha_long:
+    description: "Commit SHA long"
+    required: false
 
 runs:
   using: "composite"
@@ -70,14 +73,22 @@ runs:
           [[ -n "$key" ]] && build_args+=("--build-arg" "$(echo "$key" | xargs)=$(echo "$value" | xargs)")
         done < "$CONFIG_FILE"
 
+        # Only set the Datadog client token for front and front-edge builds
+        if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" ]]; then
+          build_args+=("--build-arg NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=${{ inputs.dd_client_token }}")
+          build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
+        fi
+
         depot build \
           --project 3vz0lnf16v \
           --platform linux/amd64 \
+          --provenance=false \
           --cache-from type=gha,scope=${{ inputs.component }} \
           --cache-to type=gha,mode=max,scope=${{ inputs.component }} \
           -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
           -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${{ inputs.commit_sha }} \
           --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
+          --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
           ${build_args[@]} \
           --push \
           .

@@ -1,16 +1,16 @@
+import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { cleanTimestamp } from "@app/lib/utils/timestamps";
+import logger from "@app/logger/logger";
 import type {
   CoreAPIError,
   CoreAPITable,
   Result,
   WorkspaceType,
-} from "@dust-tt/types";
-import { CoreAPI, Err, Ok } from "@dust-tt/types";
-
-import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
-import logger from "@app/logger/logger";
+} from "@app/types";
+import { CoreAPI, Err, Ok } from "@app/types";
 
 type NotFoundError = {
   type: "table_not_found" | "file_not_found";
@@ -54,7 +54,7 @@ export async function deleteTable({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         dataSourceName: dataSource.name,
-        workspaceId: owner.id,
+        workspaceId: owner.sId,
         error: deleteRes.error,
       },
       "Failed to delete table."
@@ -161,7 +161,7 @@ export async function upsertTableFromCsv({
     tableId,
     name: tableName,
     description: tableDescription,
-    timestamp: tableTimestamp,
+    timestamp: cleanTimestamp(tableTimestamp),
     tags: tableTags,
     parentId: tableParentId,
     parents: tableParents,
@@ -182,7 +182,7 @@ export async function upsertTableFromCsv({
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         dataSourceName: dataSource.name,
-        workspaceId: owner.id,
+        workspaceId: owner.sId,
         tableId,
         tableName,
       },
@@ -205,7 +205,8 @@ export async function upsertTableFromCsv({
       const errorDetails = {
         type: "internal_server_error" as const,
         coreAPIError: csvRes.error,
-        message: "Failed to upsert CSV.",
+        truncate,
+        message: `Failed to upsert CSV.`,
       };
       logger.error(
         {
@@ -213,33 +214,37 @@ export async function upsertTableFromCsv({
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
           dataSourceName: dataSource.name,
-          workspaceId: owner.id,
+          workspaceId: owner.sId,
           tableId,
           tableName,
         },
         "Error upserting CSV in CoreAPI."
       );
 
-      const delRes = await coreAPI.deleteTable({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        tableId,
-      });
+      // Only delete the table if we are truncating.
+      // Otherwise, we will delete the whole previous data while we just failed an upsert.
+      if (truncate) {
+        const delRes = await coreAPI.deleteTable({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          tableId,
+        });
 
-      if (delRes.isErr()) {
-        logger.error(
-          {
-            type: "internal_server_error",
-            coreAPIError: delRes.error,
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceId: dataSource.dustAPIDataSourceId,
-            dataSourceName: dataSource.name,
-            workspaceId: owner.id,
-            tableId,
-            tableName,
-          },
-          "Failed to delete table after failed CSV upsert."
-        );
+        if (delRes.isErr()) {
+          logger.error(
+            {
+              type: "internal_server_error",
+              coreAPIError: delRes.error,
+              projectId: dataSource.dustAPIProjectId,
+              dataSourceId: dataSource.dustAPIDataSourceId,
+              dataSourceName: dataSource.name,
+              workspaceId: owner.sId,
+              tableId,
+              tableName,
+            },
+            "Failed to delete table after failed CSV upsert."
+          );
+        }
       }
       return new Err(errorDetails);
     }

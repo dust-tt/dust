@@ -1,10 +1,10 @@
-import type { AgentMention, LightAgentConfigurationType } from "@dust-tt/types";
 import { useEffect, useRef } from "react";
 
 import type {
   EditorMention,
   EditorService,
 } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
+import type { AgentMention, LightAgentConfigurationType } from "@app/types";
 
 const useHandleMentions = (
   editorService: EditorService,

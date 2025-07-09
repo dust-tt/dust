@@ -1,3 +1,14 @@
+import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
+import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
+import type { RedisUsageTagsType } from "@app/lib/api/redis";
+import { getRedisClient } from "@app/lib/api/redis";
+import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import type { Authenticator } from "@app/lib/auth";
+import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import { createCallbackReader } from "@app/lib/utils";
+import { wakeLock } from "@app/lib/wake_lock";
+import logger from "@app/logger/logger";
 import type {
   AgentDisabledErrorEvent,
   AgentMessageType,
@@ -7,35 +18,21 @@ import type {
   PubSubError,
   UserMessageContext,
   UserMessageType,
-} from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
+} from "@app/types";
+import type { Result } from "@app/types";
 import type {
-  AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
-} from "@dust-tt/types";
+} from "@app/types";
 import type {
   AgentMessageNewEvent,
   ConversationTitleEvent,
   UserMessageErrorEvent,
   UserMessageNewEvent,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
-import type { RedisClientType } from "redis";
-import { commandOptions } from "redis";
-
-import type { RedisUsageTagsType } from "@app/lib/api/redis";
-import { getRedisClient } from "@app/lib/api/redis";
-import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
-import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
-import type { Authenticator } from "@app/lib/auth";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
-import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
-import { createCallbackPromise } from "@app/lib/utils";
-import { wakeLock } from "@app/lib/wake_lock";
-import logger from "@app/logger/logger";
+} from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 import {
   editUserMessage,
@@ -50,11 +47,13 @@ export async function postUserMessageWithPubSub(
     content,
     mentions,
     context,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
+    skipToolsValidation: boolean;
   },
   { resolveAfterFullGeneration }: { resolveAfterFullGeneration: boolean }
 ): Promise<
@@ -71,7 +70,9 @@ export async function postUserMessageWithPubSub(
     content,
     mentions,
     context,
+    skipToolsValidation,
   });
+
   return handleUserMessageEvents(auth, {
     conversation,
     generator: postMessageEvents,
@@ -86,11 +87,13 @@ export async function editUserMessageWithPubSub(
     message,
     content,
     mentions,
+    skipToolsValidation,
   }: {
     conversation: ConversationType;
     message: UserMessageType;
     content: string;
     mentions: MentionType[];
+    skipToolsValidation: boolean;
   }
 ): Promise<
   Result<
@@ -106,6 +109,7 @@ export async function editUserMessageWithPubSub(
     message,
     content,
     mentions,
+    skipToolsValidation,
   });
   return handleUserMessageEvents(auth, {
     conversation,
@@ -114,14 +118,30 @@ export async function editUserMessageWithPubSub(
   });
 }
 
-const END_OF_STREAM_EVENTS = ["agent_message_success", "agent_error"];
+type AgentMessageAsyncEvents =
+  | AgentErrorEvent
+  | AgentActionSpecificEvent
+  | AgentActionSuccessEvent
+  | GenerationTokensEvent
+  | AgentGenerationCancelledEvent
+  | AgentMessageSuccessEvent;
 
-function addEndOfStreamToMessageChannel(
-  auth: Authenticator,
-  { redis, channel }: { redis: RedisClientType; channel: string }
-) {
-  return publishEvent(auth, {
-    redis,
+type ConversationAsyncEvents =
+  | AgentMessageAsyncEvents
+  | UserMessageErrorEvent
+  | UserMessageNewEvent
+  | AgentMessageNewEvent
+  | AgentDisabledErrorEvent
+  | ConversationTitleEvent;
+
+function isEndOfStreamEvent(
+  event: ConversationAsyncEvents
+): event is AgentMessageSuccessEvent | AgentErrorEvent {
+  return ["agent_message_success", "agent_error"].includes(event.type);
+}
+
+function addEndOfStreamToMessageChannel({ channel }: { channel: string }) {
+  return publishEvent({
     origin: "message_events",
     channel,
     event: JSON.stringify({ type: "end-of-stream" }),
@@ -136,20 +156,7 @@ async function handleUserMessageEvents(
     resolveAfterFullGeneration = false,
   }: {
     conversation: ConversationType;
-    generator: AsyncGenerator<
-      | UserMessageErrorEvent
-      | UserMessageNewEvent
-      | AgentMessageNewEvent
-      | AgentErrorEvent
-      | AgentDisabledErrorEvent
-      | AgentActionSpecificEvent
-      | AgentActionSuccessEvent
-      | GenerationTokensEvent
-      | AgentGenerationCancelledEvent
-      | AgentMessageSuccessEvent
-      | ConversationTitleEvent,
-      void
-    >;
+    generator: AsyncGenerator<ConversationAsyncEvents, void>;
     resolveAfterFullGeneration?: boolean;
   }
 ): Promise<
@@ -171,7 +178,6 @@ async function handleUserMessageEvents(
     >
   > = new Promise((resolve) => {
     void wakeLock(async () => {
-      const redis = await getRedisClient({ origin: "user_message_events" });
       let didResolve = false;
 
       let userMessage: UserMessageType | undefined = undefined;
@@ -184,8 +190,7 @@ async function handleUserMessageEvents(
             case "conversation_title": {
               const pubsubChannel = getConversationChannelId(conversation.sId);
 
-              await publishEvent(auth, {
-                redis,
+              await publishEvent({
                 origin: "user_message_events",
                 channel: pubsubChannel,
                 event: JSON.stringify(event),
@@ -204,30 +209,17 @@ async function handleUserMessageEvents(
               }
               break;
             }
-            case "retrieval_params":
-            case "dust_app_run_params":
-            case "dust_app_run_block":
-            case "tables_query_started":
-            case "tables_query_model_output":
-            case "tables_query_output":
-            case "process_params":
-            case "websearch_params":
-            case "browse_params":
-            case "conversation_include_file_params":
-            case "github_get_pull_request_params":
-            case "github_create_issue_params":
-            case "reasoning_started":
-            case "reasoning_thinking":
-            case "reasoning_tokens":
-            case "agent_error":
             case "agent_action_success":
-            case "generation_tokens":
+            case "agent_error":
             case "agent_generation_cancelled":
-            case "agent_message_success": {
-              const pubsubChannel = getMessageChannelId(event.messageId);
+            case "agent_message_success":
+            case "generation_tokens":
+            case "tool_approve_execution":
+            case "tool_notification":
+            case "tool_params": {
+              const pubsubChannel = getEventMessageChannelId(event);
 
-              await publishEvent(auth, {
-                redis,
+              await publishEvent({
                 origin: "user_message_events",
                 channel: pubsubChannel,
                 event: JSON.stringify(event),
@@ -240,9 +232,15 @@ async function handleUserMessageEvents(
                 agentMessages.push(event.message);
               }
 
-              if (END_OF_STREAM_EVENTS.includes(event.type)) {
-                await addEndOfStreamToMessageChannel(auth, {
-                  redis,
+              if (isEndOfStreamEvent(event)) {
+                // Maybe compute tokens consumed by the runs.
+                if (event.type === "agent_message_success") {
+                  const { runIds } = event;
+
+                  await maybeTrackTokenUsageCost(auth, { dustRunIds: runIds });
+                }
+
+                await addEndOfStreamToMessageChannel({
                   channel: pubsubChannel,
                 });
               }
@@ -336,7 +334,6 @@ export async function retryAgentMessageWithPubSub(
   const promise: Promise<Result<AgentMessageType, PubSubError>> = new Promise(
     (resolve) => {
       void wakeLock(async () => {
-        const redis = await getRedisClient({ origin: "retry_agent_message" });
         let didResolve = false;
         try {
           for await (const event of retryAgentMessage(auth, {
@@ -349,8 +346,7 @@ export async function retryAgentMessageWithPubSub(
                   conversation.sId
                 );
 
-                await publishEvent(auth, {
-                  redis,
+                await publishEvent({
                   origin: "retry_agent_message",
                   channel: pubsubChannel,
                   event: JSON.stringify(event),
@@ -373,37 +369,32 @@ export async function retryAgentMessageWithPubSub(
                 );
                 break;
               }
-              case "retrieval_params":
-              case "dust_app_run_params":
-              case "dust_app_run_block":
-              case "tables_query_started":
-              case "tables_query_model_output":
-              case "tables_query_output":
-              case "process_params":
-              case "websearch_params":
-              case "browse_params":
-              case "conversation_include_file_params":
-              case "github_get_pull_request_params":
-              case "github_create_issue_params":
-              case "reasoning_started":
-              case "reasoning_thinking":
-              case "reasoning_tokens":
-              case "agent_error":
               case "agent_action_success":
-              case "generation_tokens":
+              case "agent_error":
               case "agent_generation_cancelled":
-              case "agent_message_success": {
-                const pubsubChannel = getMessageChannelId(event.messageId);
-                await publishEvent(auth, {
-                  redis,
+              case "agent_message_success":
+              case "generation_tokens":
+              case "tool_approve_execution":
+              case "tool_notification":
+              case "tool_params": {
+                const pubsubChannel = getEventMessageChannelId(event);
+                await publishEvent({
                   origin: "retry_agent_message",
                   channel: pubsubChannel,
                   event: JSON.stringify(event),
                 });
 
-                if (END_OF_STREAM_EVENTS.includes(event.type)) {
-                  await addEndOfStreamToMessageChannel(auth, {
-                    redis,
+                if (isEndOfStreamEvent(event)) {
+                  // Maybe compute tokens consumed by the runs.
+                  if (event.type === "agent_message_success") {
+                    const { runIds } = event;
+
+                    await maybeTrackTokenUsageCost(auth, {
+                      dustRunIds: runIds,
+                    });
+                  }
+
+                  await addEndOfStreamToMessageChannel({
                     channel: pubsubChannel,
                   });
                 }
@@ -445,18 +436,15 @@ export async function retryAgentMessageWithPubSub(
   return promise;
 }
 
-export async function* getConversationEvents(
-  auth: Authenticator,
-  {
-    conversationId,
-    lastEventId,
-    signal,
-  }: {
-    conversationId: string;
-    lastEventId: string | null;
-    signal: AbortSignal;
-  }
-): AsyncGenerator<
+export async function* getConversationEvents({
+  conversationId,
+  lastEventId,
+  signal,
+}: {
+  conversationId: string;
+  lastEventId: string | null;
+  signal: AbortSignal;
+}): AsyncGenerator<
   {
     eventId: string;
     data:
@@ -469,100 +457,67 @@ export async function* getConversationEvents(
 > {
   const pubsubChannel = getConversationChannelId(conversationId);
 
-  const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
-  const useHybridEvents = !killSwitches.includes("disable_hybrid_events");
+  const callbackReader = createCallbackReader<EventPayload | "close">();
+  const { history, unsubscribe } = await getRedisHybridManager().subscribe(
+    pubsubChannel,
+    callbackReader.callback,
+    lastEventId,
+    "conversation_events"
+  );
 
-  if (useHybridEvents) {
-    const callbackPromise = createCallbackPromise<EventPayload | "close">();
-    const { history, unsubscribe } = await getRedisHybridManager().subscribe(
-      pubsubChannel,
-      callbackPromise.callback,
-      lastEventId,
-      "conversation_events"
-    );
+  // Unsubscribe if the signal is aborted
+  signal.addEventListener("abort", unsubscribe, { once: true });
 
-    // Unsubscribe if the signal is aborted
-    signal.addEventListener("abort", unsubscribe, { once: true });
+  for (const event of history) {
+    yield {
+      eventId: event.id,
+      data: JSON.parse(event.message.payload),
+    };
+  }
 
-    for (const event of history) {
-      yield {
-        eventId: event.id,
-        data: JSON.parse(event.message.payload),
-      };
-    }
+  try {
+    const TIMEOUT = 60000; // 1 minute
 
-    try {
-      const TIMEOUT = 60000; // 1 minute
-
-      // Do not loop forever, we will timeout after some time to avoid blocking the load balancer
-      while (true) {
-        if (signal.aborted) {
-          break;
-        }
-        const timeoutPromise = new Promise<"timeout">((resolve) => {
-          setTimeout(() => {
-            resolve("timeout");
-          }, TIMEOUT);
-        });
-        const rawEvent = await Promise.race([
-          callbackPromise.promise,
-          timeoutPromise,
-        ]);
-
-        // Determine if we timeouted
-        if (rawEvent === "timeout") {
-          break;
-        }
-
-        // to reset the promise for the next event
-        callbackPromise.reset();
-
-        if (rawEvent === "close") {
-          break;
-        }
-
-        const event = {
-          eventId: rawEvent.id,
-          data: JSON.parse(rawEvent.message.payload),
-        };
-
-        yield event;
-      }
-    } catch (e) {
-      logger.error({ error: e }, "Error getting conversation events");
-    } finally {
-      unsubscribe();
-    }
-  } else {
-    const redis = await getRedisClient({ origin: "conversation_events" });
+    // Do not loop forever, we will timeout after some time to avoid blocking the load balancer
     while (true) {
-      // Use an isolated connection to avoid blocking the main connection.
-      const events = await redis.xRead(
-        commandOptions({ isolated: true }),
-        { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
-        { COUNT: 32, BLOCK: 60 * 1000 }
-      );
-      if (!events) {
-        return;
+      if (signal.aborted) {
+        break;
+      }
+      const timeoutPromise = new Promise<"timeout">((resolve) => {
+        setTimeout(() => {
+          resolve("timeout");
+        }, TIMEOUT);
+      });
+      const rawEvent = await Promise.race([
+        callbackReader.next(),
+        timeoutPromise,
+      ]);
+
+      // Determine if we timeouted
+      if (rawEvent === "timeout") {
+        break;
       }
 
-      for (const event of events) {
-        for (const message of event.messages) {
-          const payloadStr = message.message["payload"];
-          const messageId = message.id;
-          const payload = JSON.parse(payloadStr);
-          lastEventId = messageId;
-          yield {
-            eventId: messageId,
-            data: payload,
-          };
-        }
+      if (rawEvent === "close") {
+        break;
       }
+
+      const event = {
+        eventId: rawEvent.id,
+        data: JSON.parse(rawEvent.message.payload),
+      };
+
+      yield event;
     }
+  } catch (e) {
+    logger.error({ error: e }, "Error getting conversation events");
+  } finally {
+    unsubscribe();
   }
 }
 
 export async function cancelMessageGenerationEvent(
+  auth: Authenticator,
   messageIds: string[]
 ): Promise<void> {
   const redis = await getRedisClient({ origin: "cancel_message_generation" });
@@ -580,7 +535,10 @@ export async function cancelMessageGenerationEvent(
 
       // Already set the status to cancel
       const dbTask = Message.findOne({
-        where: { sId: messageId },
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          sId: messageId,
+        },
       }).then(async (message) => {
         if (message && message.agentMessageId) {
           await AgentMessage.update(
@@ -621,95 +579,56 @@ export async function* getMessagesEvents(
 > {
   const pubsubChannel = getMessageChannelId(messageId);
 
-  const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
-  const useHybridEvents = !killSwitches.includes("disable_hybrid_events");
+  const start = Date.now();
+  const TIMEOUT = 60000; // 1 minute
 
-  if (useHybridEvents) {
-    const start = Date.now();
-    const TIMEOUT = 60000; // 1 minute
+  const callbackReader = createCallbackReader<EventPayload | "close">();
+  const { history, unsubscribe } = await getRedisHybridManager().subscribe(
+    pubsubChannel,
+    callbackReader.callback,
+    lastEventId,
+    "message_events"
+  );
 
-    const callbackPromise = createCallbackPromise<EventPayload | "close">();
-    const { history, unsubscribe } = await getRedisHybridManager().subscribe(
-      pubsubChannel,
-      callbackPromise.callback,
-      lastEventId,
-      "message_events"
-    );
+  // Unsubscribe if the signal is aborted
+  signal.addEventListener("abort", unsubscribe, { once: true });
 
-    // Unsubscribe if the signal is aborted
-    signal.addEventListener("abort", unsubscribe, { once: true });
-
-    try {
-      for (const event of history) {
-        yield {
-          eventId: event.id,
-          data: JSON.parse(event.message.payload),
-        };
-      }
-
-      // Do not loop forever, we will timeout after some time to avoid blocking the load balancer
-      while (Date.now() - start < TIMEOUT) {
-        if (signal.aborted) {
-          break;
-        }
-
-        const rawEvent = await callbackPromise.promise;
-        // to reset the promise for the next event
-        callbackPromise.reset();
-
-        if (rawEvent === "close") {
-          break;
-        }
-
-        const event = {
-          eventId: rawEvent.id,
-          data: JSON.parse(rawEvent.message.payload),
-        };
-
-        // If the payload is an end-of-stream event, we stop the generator.
-        if (event.data.type === "end-of-stream") {
-          break;
-        }
-
-        yield event;
-      }
-    } catch (e) {
-      logger.error({ error: e }, "Error getting messages events");
-    } finally {
-      unsubscribe();
+  try {
+    for (const event of history) {
+      yield {
+        eventId: event.id,
+        data: JSON.parse(event.message.payload),
+      };
     }
-  } else {
-    const redis = await getRedisClient({ origin: "message_events" });
-    while (true) {
-      // Use an isolated connection to avoid blocking the main connection.
-      const events = await redis.xRead(
-        commandOptions({ isolated: true }),
-        { key: pubsubChannel, id: lastEventId ? lastEventId : "0-0" },
-        { COUNT: 32, BLOCK: 60 * 1000 }
-      );
-      if (!events) {
-        return;
+
+    // Do not loop forever, we will timeout after some time to avoid blocking the load balancer
+    while (Date.now() - start < TIMEOUT) {
+      if (signal.aborted) {
+        break;
       }
 
-      for (const event of events) {
-        for (const message of event.messages) {
-          const payloadStr = message.message["payload"];
-          const messageId = message.id;
-          const payload = JSON.parse(payloadStr);
-          lastEventId = messageId;
+      const rawEvent = await callbackReader.next();
 
-          // If the payload is an end-of-stream event, we stop the generator.
-          if (payload.type === "end-of-stream") {
-            return;
-          }
-
-          yield {
-            eventId: messageId,
-            data: payload,
-          };
-        }
+      if (rawEvent === "close") {
+        break;
       }
+
+      const event = {
+        eventId: rawEvent.id,
+        data: JSON.parse(rawEvent.message.payload),
+      };
+
+      // If the payload is an end-of-stream event, we stop the generator.
+      if (event.data.type === "end-of-stream") {
+        break;
+      }
+
+      yield event;
     }
+  } catch (e) {
+    logger.error({ error: e }, "Error getting messages events");
+  } finally {
+    unsubscribe();
   }
 }
 
@@ -717,33 +636,29 @@ function getConversationChannelId(channelId: string) {
   return `conversation-${channelId}`;
 }
 
-function getMessageChannelId(messageId: string) {
+export function getEventMessageChannelId(event: AgentMessageAsyncEvents) {
+  // Tool approve execution can come from a sub agent, and in that case we want to send an event
+  // to the main conversation.
+  if (event.type === "tool_approve_execution") {
+    return getMessageChannelId(
+      event.metadata.pubsubMessageId ?? event.messageId
+    );
+  }
+  return getMessageChannelId(event.messageId);
+}
+
+export function getMessageChannelId(messageId: string) {
   return `message-${messageId}`;
 }
 
-async function publishEvent(
-  auth: Authenticator,
-  {
-    redis,
-    origin,
-    channel,
-    event,
-  }: {
-    redis: RedisClientType;
-    origin: RedisUsageTagsType;
-    channel: string;
-    event: string;
-  }
-) {
-  const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
-  const useHybridEvents = !killSwitches.includes("disable_hybrid_events");
-
-  if (useHybridEvents) {
-    await getRedisHybridManager().publish(channel, event, origin);
-  } else {
-    await redis.xAdd(channel, "*", {
-      payload: event,
-    });
-    await redis.expire(channel, 60 * 10);
-  }
+export async function publishEvent({
+  origin,
+  channel,
+  event,
+}: {
+  origin: RedisUsageTagsType;
+  channel: string;
+  event: string;
+}) {
+  await getRedisHybridManager().publish(channel, event, origin);
 }

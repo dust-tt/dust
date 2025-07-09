@@ -3,19 +3,21 @@ import {
   BracesIcon,
   Button,
   ExternalLinkIcon,
+  HistoryIcon,
+  Icon,
   IconButton,
   ListCheckIcon,
   SearchInput,
   Tooltip,
   Tree,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import type { APIError, ContentNode } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useContext, useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import type { APIError, ContentNode } from "@app/types";
 
 const unselectedChildren = (
   selection: Record<string, ContentNodeTreeItemStatus>,
@@ -53,16 +55,15 @@ export type UseResourcesHook = (parentId: string | null) => {
   isResourcesError: boolean;
   isResourcesTruncated?: boolean;
   resourcesError?: APIError | null;
+  nextPageCursor?: string | null;
+  loadMore?: () => void;
+  isLoadingMore?: boolean;
 };
 
-export type ContentNodeTreeItemStatus = {
+export type ContentNodeTreeItemStatus<T extends ContentNode = ContentNode> = {
   isSelected: boolean;
-  node: ContentNode;
-  // when setting permissions on a connector, nodes that are to be selected /
-  // unselected may not be synced yet so we cannot easily access their parents
-  // In that case parents is null
-  // It is not an issue for this component(see ConnectorPermissionsModal.tsx)
-  parents: string[] | null;
+  node: T;
+  parents: string[];
 };
 
 export type TreeSelectionModelUpdater = (
@@ -110,7 +111,7 @@ const useContentNodeTreeContext = () => {
 interface ContentNodeTreeChildrenProps {
   depth: number;
   isRoundedBackground?: boolean;
-  isSearchEnabled?: boolean;
+  isTitleFilterEnabled?: boolean;
   parentId: string | null;
   parentIds: string[];
   parentIsSelected?: boolean;
@@ -119,7 +120,7 @@ interface ContentNodeTreeChildrenProps {
 function ContentNodeTreeChildren({
   depth,
   isRoundedBackground,
-  isSearchEnabled,
+  isTitleFilterEnabled,
   parentId,
   parentIds,
   parentIsSelected,
@@ -128,7 +129,7 @@ function ContentNodeTreeChildren({
     useContentNodeTreeContext();
 
   const sendNotification = useSendNotification();
-  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("");
   // This is to control when to display the "Select All" vs "unselect All" button.
   // If the user pressed "select all", we want to display "unselect all" and vice versa.
   // But if the user types in the search bar, we want to reset the button to "select all".
@@ -142,17 +143,15 @@ function ContentNodeTreeChildren({
     isResourcesLoading,
     isResourcesError,
     resourcesError,
-    isResourcesTruncated,
     totalResourceCount,
+    nextPageCursor,
+    loadMore,
+    isLoadingMore,
   } = useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
-    (n) => search.trim().length === 0 || n.title.includes(search)
+    (n) => filter.trim().length === 0 || n.title.includes(filter)
   );
-  // The count below does not take into account the search, it's: total number of nodes - number of nodes displayed.
-  const hiddenNodesCount = totalResourceCount
-    ? Math.max(0, totalResourceCount - filteredNodes.length)
-    : 0;
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {
@@ -200,7 +199,7 @@ function ContentNodeTreeChildren({
   }
 
   const tree = (
-    <Tree isLoading={isResourcesLoading}>
+    <Tree isLoading={isResourcesLoading} isBoxed={isRoundedBackground}>
       {filteredNodes &&
         filteredNodes.length === 0 &&
         (emptyComponent || <Tree.Empty label="No documents" />)}
@@ -217,7 +216,7 @@ function ContentNodeTreeChildren({
             label={n.title}
             labelClassName={
               n.providerVisibility === "private"
-                ? "after:content-['(private)'] after:text-red-500 after:ml-1"
+                ? "after:content-['(private)'] after:text-warning after:ml-1"
                 : ""
             }
             visual={getVisualForContentNode(n)}
@@ -254,7 +253,15 @@ function ContentNodeTreeChildren({
                 : undefined
             }
             actions={
-              <div className="mr-8 flex flex-row gap-2">
+              <div className="mr-8 flex grow flex-row justify-between gap-2">
+                {n.sourceUrl && (
+                  <Button
+                    href={n.sourceUrl}
+                    icon={ExternalLinkIcon}
+                    size="xs"
+                    variant="outline"
+                  />
+                )}
                 {n.lastUpdatedAt ? (
                   <Tooltip
                     label={
@@ -262,26 +269,15 @@ function ContentNodeTreeChildren({
                     }
                     side={i === 0 ? "bottom" : "top"}
                     trigger={
-                      <span className="text-xs text-gray-500">
-                        {timeAgoFrom(n.lastUpdatedAt)} ago
-                      </span>
+                      <div className="flex flex-row gap-1 text-gray-600">
+                        <Icon visual={HistoryIcon} size="xs" />
+                        <span className="text-xs">
+                          {timeAgoFrom(n.lastUpdatedAt)} ago
+                        </span>
+                      </div>
                     }
                   />
                 ) : null}
-                <IconButton
-                  size="xs"
-                  icon={ExternalLinkIcon}
-                  onClick={() => {
-                    if (n.sourceUrl) {
-                      window.open(n.sourceUrl, "_blank");
-                    }
-                  }}
-                  className={classNames(
-                    n.sourceUrl ? "" : "pointer-events-none opacity-0"
-                  )}
-                  disabled={!n.sourceUrl}
-                  variant="outline"
-                />
                 {onDocumentViewClick && (
                   <IconButton
                     size="xs"
@@ -315,32 +311,27 @@ function ContentNodeTreeChildren({
           />
         );
       })}
-      {hiddenNodesCount > 0 && (
-        <Tree.Empty
-          label={`${filteredNodes.length > 0 ? "and " : ""}${hiddenNodesCount}${isResourcesTruncated ? "+" : ""} item${hiddenNodesCount > 1 ? "s" : ""}`}
-        />
-      )}
     </Tree>
   );
 
   return (
     <>
-      {isSearchEnabled && setSelectedNodes && (
+      {isTitleFilterEnabled && setSelectedNodes && (
         <>
           <div className="flex w-full flex-row items-center">
             <div className="flex-grow p-1">
               <SearchInput
                 name="search"
-                placeholder="Search..."
-                value={search}
+                placeholder="Search"
+                value={filter}
                 onChange={(v) => {
-                  setSearch(v);
+                  setFilter(v);
                   setSelectAllClicked(false);
                 }}
               />
             </div>
 
-            {search.trim().length > 0 && (
+            {filter.trim().length > 0 && (
               <Button
                 icon={ListCheckIcon}
                 label={selectAllClicked ? "Unselect All" : "Select All"}
@@ -368,12 +359,24 @@ function ContentNodeTreeChildren({
         </>
       )}
       <div className="overflow-y-auto p-1">
-        {isRoundedBackground ? (
-          <div className="rounded-xl border bg-structure-50 p-4 dark:bg-structure-50-night">
-            {tree}
+        {tree}
+        {nextPageCursor && (
+          <div className="mt-2 flex flex-col items-center py-2">
+            <div className="mb-2 text-center text-xs text-gray-500">
+              {`Showing ${filteredNodes.length} of ${totalResourceCount ?? filteredNodes.length} items`}
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              label={isLoadingMore ? "Loading..." : "Load More"}
+              disabled={isResourcesLoading || isLoadingMore}
+              onClick={() => {
+                if (loadMore) {
+                  loadMore();
+                }
+              }}
+            />
           </div>
-        ) : (
-          tree
         )}
       </div>
     </>
@@ -388,7 +391,7 @@ interface ContentNodeTreeProps {
   /**
    * If true, a search bar will be displayed at the top of the tree.
    */
-  isSearchEnabled?: boolean;
+  isTitleFilterEnabled?: boolean;
   /**
    * Whole tree will be considered selected and disabled.
    */
@@ -428,7 +431,7 @@ interface ContentNodeTreeProps {
 
 export function ContentNodeTree({
   isRoundedBackground,
-  isSearchEnabled,
+  isTitleFilterEnabled,
   onDocumentViewClick,
   parentIsSelected,
   selectedNodes,
@@ -453,7 +456,7 @@ export function ContentNodeTree({
       <ContentNodeTreeChildren
         depth={0}
         isRoundedBackground={isRoundedBackground}
-        isSearchEnabled={isSearchEnabled}
+        isTitleFilterEnabled={isTitleFilterEnabled}
         parentId={null}
         parentIds={[]}
         parentIsSelected={parentIsSelected ?? false}

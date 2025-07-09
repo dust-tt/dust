@@ -1,38 +1,70 @@
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-  ModelConfigurationType,
-  PostOrPatchAgentConfigurationRequestBody,
-  Result,
-  RetrievalTimeframe,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/client";
 
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
-import { removeLeadingAt } from "@app/components/assistant_builder/NamingScreen";
+import { removeLeadingAt } from "@app/components/assistant_builder/SettingsScreen";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import type {
-  AssistantBuilderActionConfiguration,
+  AssistantBuilderActionAndDataVisualizationConfiguration,
   AssistantBuilderState,
 } from "@app/components/assistant_builder/types";
-import {
-  DEFAULT_BROWSE_ACTION_DESCRIPTION,
-  DEFAULT_BROWSE_ACTION_NAME,
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
-  DEFAULT_REASONING_ACTION_DESCRIPTION,
-  DEFAULT_REASONING_ACTION_NAME,
-  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/constants";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  AgentConfigurationType,
+  DataSourceViewSelectionConfigurations,
+  LightAgentConfigurationType,
+  PostOrPatchAgentConfigurationRequestBody,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;
 };
+
+function processDataSourcesSelection({
+  owner,
+  dataSourceConfigurations,
+}: {
+  owner: WorkspaceType;
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
+}): DataSourceConfiguration[] {
+  return Object.values(dataSourceConfigurations).map(
+    ({ dataSourceView, selectedResources, isSelectAll, tagsFilter }) => ({
+      dataSourceViewId: dataSourceView.sId,
+      workspaceId: owner.sId,
+      filter: {
+        parents: !isSelectAll
+          ? {
+              in: selectedResources.map((resource) => resource.internalId),
+              not: [],
+            }
+          : null,
+        tags: tagsFilter,
+      },
+    })
+  );
+}
+
+function processTableSelection({
+  owner,
+  tablesConfigurations,
+}: {
+  owner: WorkspaceType;
+  tablesConfigurations: DataSourceViewSelectionConfigurations;
+}): TableDataSourceConfiguration[] {
+  return Object.values(tablesConfigurations).flatMap(
+    ({ dataSourceView, selectedResources }) => {
+      return selectedResources.map((resource) => ({
+        dataSourceViewId: dataSourceView.sId,
+        workspaceId: owner.sId,
+        tableId: getTableIdForContentNode(dataSourceView.dataSource, resource),
+      }));
+    }
+  );
+}
 
 export async function submitAssistantBuilderForm({
   owner,
@@ -40,31 +72,32 @@ export async function submitAssistantBuilderForm({
   agentConfigurationId,
   slackData,
   isDraft,
-  reasoningModels,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   agentConfigurationId: string | null;
   slackData: {
+    provider: Extract<ConnectorProvider, "slack" | "slack_bot">;
     selectedSlackChannels: SlackChannel[];
     slackChannelsLinkedWithAgent: SlackChannelLinkedWithAgent[];
   };
   isDraft?: boolean;
-  reasoningModels: ModelConfigurationType[];
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
-  const { selectedSlackChannels, slackChannelsLinkedWithAgent } = slackData;
-  let { handle, description, instructions, avatarUrl } = builderState;
-  if (!handle || !description || !instructions || !avatarUrl) {
+  const { provider, selectedSlackChannels, slackChannelsLinkedWithAgent } =
+    slackData;
+  let { handle, description, instructions, avatarUrl, editors } = builderState;
+  if (!handle || !description || !instructions || !avatarUrl || !editors) {
     if (!isDraft) {
-      // Should be unreachable we keep this for TS
+      // Should be unreachable, we keep this for TS
       throw new Error("Form not valid (unreachable)");
     } else {
       handle = handle?.trim() || "Preview";
       description = description?.trim() || "Preview";
       instructions = instructions?.trim() || "Preview";
       avatarUrl = avatarUrl ?? "";
+      editors = [];
     }
   }
 
@@ -72,197 +105,55 @@ export async function submitAssistantBuilderForm({
     PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"]
   >;
 
-  const map: (a: AssistantBuilderActionConfiguration) => ActionsType = (a) => {
-    let timeFrame: RetrievalTimeframe = "auto";
-
-    if (a.type === "RETRIEVAL_EXHAUSTIVE") {
-      if (a.configuration.timeFrame) {
-        timeFrame = {
-          duration: a.configuration.timeFrame.value,
-          unit: a.configuration.timeFrame.unit,
-        };
-      } else {
-        timeFrame = "none";
-      }
-    } else if (a.type === "PROCESS") {
-      timeFrame = {
-        duration: a.configuration.timeFrame.value,
-        unit: a.configuration.timeFrame.unit,
-      };
-    }
-
+  const map: (
+    a: AssistantBuilderActionAndDataVisualizationConfiguration
+  ) => ActionsType = (a) => {
     switch (a.type) {
-      case "RETRIEVAL_SEARCH":
-      case "RETRIEVAL_EXHAUSTIVE":
+      case "MCP":
+        const {
+          configuration: {
+            tablesConfigurations,
+            dataSourceConfigurations,
+            childAgentId,
+            reasoningModel: mcpReasoningModel,
+            additionalConfiguration,
+            dustAppConfiguration,
+            timeFrame,
+            jsonSchema,
+          },
+        } = a;
+
         return [
           {
-            type: "retrieval_configuration",
+            type: "mcp_server_configuration",
             name: a.name,
             description: a.description,
-            query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
-            relativeTimeFrame: timeFrame,
-            topK: "auto",
-            dataSources: Object.values(
-              a.configuration.dataSourceConfigurations
-            ).map(
-              ({
-                dataSourceView,
-                selectedResources,
-                isSelectAll,
-                tagsFilter,
-              }) => ({
-                dataSourceViewId: dataSourceView.sId,
-                workspaceId: owner.sId,
-                filter: {
-                  parents: !isSelectAll
-                    ? {
-                        in: selectedResources.map(
-                          (resource) => resource.internalId
-                        ),
-                        not: [],
-                      }
-                    : null,
-                  tags: tagsFilter,
-                },
-              })
-            ),
+            mcpServerViewId: a.configuration.mcpServerViewId,
+            dataSources: dataSourceConfigurations
+              ? processDataSourcesSelection({ owner, dataSourceConfigurations })
+              : null,
+            tables: tablesConfigurations
+              ? processTableSelection({ owner, tablesConfigurations })
+              : null,
+            childAgentId,
+            reasoningModel: mcpReasoningModel
+              ? {
+                  providerId: mcpReasoningModel.providerId,
+                  reasoningEffort: mcpReasoningModel.reasoningEffort ?? null,
+                  modelId: mcpReasoningModel.modelId,
+                }
+              : null,
+            timeFrame,
+            additionalConfiguration,
+            dustAppConfiguration,
+            jsonSchema,
           },
         ];
 
-      case "DUST_APP_RUN":
-        if (!a.configuration.app) {
-          return [];
-        }
-        return [
-          {
-            type: "dust_app_run_configuration",
-            appWorkspaceId: owner.sId,
-            appId: a.configuration.app.sId,
-            // These field are required by the API (`name` and `description`) but will be overriden
-            // with the app name and description.
-            name: a.configuration.app.name,
-            description: a.configuration.app.description,
-          },
-        ];
-
-      case "TABLES_QUERY":
-        return [
-          {
-            type: "tables_query_configuration",
-            name: a.name,
-            description: a.description,
-            tables: Object.values(a.configuration).flatMap(
-              ({ dataSourceView, selectedResources }) => {
-                return selectedResources.map((resource) => ({
-                  dataSourceViewId: dataSourceView.sId,
-                  workspaceId: owner.sId,
-                  tableId: getTableIdForContentNode(
-                    dataSourceView.dataSource,
-                    resource
-                  ),
-                }));
-              }
-            ),
-          },
-        ];
-
-      case "WEB_NAVIGATION":
-        return [
-          {
-            type: "websearch_configuration",
-            name: DEFAULT_WEBSEARCH_ACTION_NAME,
-            description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-          },
-          {
-            type: "browse_configuration",
-            name: DEFAULT_BROWSE_ACTION_NAME,
-            description: DEFAULT_BROWSE_ACTION_DESCRIPTION,
-          },
-        ];
-
-      case "PROCESS":
-        return [
-          {
-            type: "process_configuration",
-            name: a.name,
-            description: a.description,
-            dataSources: Object.values(
-              a.configuration.dataSourceConfigurations
-            ).map(
-              ({
-                dataSourceView,
-                selectedResources,
-                isSelectAll,
-                tagsFilter,
-              }) => ({
-                dataSourceViewId: dataSourceView.sId,
-                workspaceId: owner.sId,
-                filter: {
-                  parents: !isSelectAll
-                    ? {
-                        in: selectedResources.map(
-                          (resource) => resource.internalId
-                        ),
-                        not: [],
-                      }
-                    : null,
-                  tags: tagsFilter,
-                },
-              })
-            ),
-            tagsFilter: a.configuration.tagsFilter,
-            relativeTimeFrame: timeFrame,
-            schema: a.configuration.schema,
-          },
-        ];
-
-      case "GITHUB_GET_PULL_REQUEST":
-        return [
-          {
-            type: "github_get_pull_request_configuration",
-            name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
-            description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-          },
-        ];
-
-      case "GITHUB_CREATE_ISSUE":
-        return [
-          {
-            type: "github_create_issue_configuration",
-            name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-            description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
-          },
-        ];
-
-      case "REASONING":
-        // User doesn't have any reasoning models available.
-        if (!reasoningModels.length) {
-          return [];
-        }
-
-        const selectedSupportedReasoningModel = reasoningModels.find(
-          (m) =>
-            m.modelId === a.configuration.modelId &&
-            m.providerId === a.configuration.providerId &&
-            (m.reasoningEffort ?? null) ===
-              (a.configuration.reasoningEffort ?? null)
-        );
-
-        // If the selected model is no longer available, we switch to the first available model.
-        const reasoningModel =
-          selectedSupportedReasoningModel || reasoningModels[0];
-
-        return [
-          {
-            type: "reasoning_configuration",
-            name: DEFAULT_REASONING_ACTION_NAME,
-            description: DEFAULT_REASONING_ACTION_DESCRIPTION,
-            modelId: reasoningModel.modelId,
-            providerId: reasoningModel.providerId,
-            temperature: a.configuration.temperature,
-            reasoningEffort: reasoningModel.reasoningEffort ?? null,
-          },
-        ];
+      // Data visaulization is boolean value (visualizationEnabled), but in UI we display it
+      // like an action. We need to remove it before sending the request to the API.
+      case "DATA_VISUALIZATION":
+        return [];
 
       default:
         assertNever(a);
@@ -289,12 +180,14 @@ export async function submitAssistantBuilderForm({
         modelId: builderState.generationSettings.modelSettings.modelId,
         providerId: builderState.generationSettings.modelSettings.providerId,
         temperature: builderState.generationSettings.temperature,
-        reasoningEffort:
-          builderState.generationSettings.modelSettings.reasoningEffort,
+        reasoningEffort: builderState.generationSettings.reasoningEffort,
+        responseFormat: builderState.generationSettings.responseFormat,
       },
       maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,
       templateId: builderState.templateId,
+      tags: builderState.tags,
+      editors: editors.map((e) => ({ sId: e.sId })),
     },
   };
 
@@ -327,11 +220,11 @@ export async function submitAssistantBuilderForm({
   } = await res.json();
   const agentConfigurationSid = newAgentConfiguration.agentConfiguration.sId;
 
-  // PATCH the linked slack channels if either:
+  // PATCH the linked Slack channels if either:
   // - there were already linked channels
   // - there are newly selected channels
   // If the user selected channels that were already routed to a different agent, the current behavior is to
-  // unlink them from the previous agent and link them to the this one.
+  // unlink them from the previous agent and link them to this one.
   if (
     selectedSlackChannels.length ||
     slackChannelsLinkedWithAgent.filter(
@@ -346,6 +239,7 @@ export async function submitAssistantBuilderForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          provider,
           slack_channel_internal_ids: selectedSlackChannels.map(
             ({ slackChannelId }) => slackChannelId
           ),

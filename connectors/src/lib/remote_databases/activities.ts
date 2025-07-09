@@ -1,6 +1,3 @@
-import type { MIME_TYPES } from "@dust-tt/types";
-import { heartbeat } from "@temporalio/activity";
-
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceFolder,
@@ -18,9 +15,12 @@ import type {
   RemoteDBTable,
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
+import { buildInternalId } from "@connectors/lib/remote_databases/utils";
+import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { INTERNAL_MIME_TYPES } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 const isDatabaseReadGranted = ({
   readGrantedInternalIds,
@@ -34,24 +34,27 @@ const isDatabaseReadGranted = ({
 
 const createDatabase = async ({
   dataSourceConfig,
-  databaseInternalId,
+  databaseName,
   allDatabases,
   connector,
   mimeTypes,
 }: {
   dataSourceConfig: DataSourceConfig;
-  databaseInternalId: string;
+  databaseName: string;
 
   allDatabases: RemoteDatabaseModel[];
   connector: ConnectorResource;
   mimeTypes:
-    | typeof MIME_TYPES.BIGQUERY
-    | typeof MIME_TYPES.SNOWFLAKE
-    | typeof MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.BIGQUERY
+    | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   usedInternalIds: Set<string>;
 }> => {
+  const databaseInternalId = buildInternalId({
+    databaseName,
+  });
   const usedInternalIds = new Set<string>();
   usedInternalIds.add(databaseInternalId);
 
@@ -68,7 +71,7 @@ const createDatabase = async ({
       newDatabase = await RemoteDatabaseModel.create({
         connectorId: connector.id,
         internalId: databaseInternalId,
-        name: databaseInternalId,
+        name: databaseName,
         permission: "inherited",
         lastUpsertedAt: new Date(),
       });
@@ -84,7 +87,7 @@ const createDatabase = async ({
     await upsertDataSourceFolder({
       dataSourceConfig,
       folderId: databaseInternalId,
-      title: databaseInternalId,
+      title: databaseName,
       parents: [databaseInternalId],
       parentId: null,
       mimeType: mimeTypes.DATABASE,
@@ -104,9 +107,12 @@ const isSchemaReadGranted = ({
   schema: RemoteDBSchema;
 }) => {
   const { database_name } = schema;
+  const databaseInternalId = buildInternalId({
+    databaseName: database_name,
+  });
 
   return (
-    readGrantedInternalIds.has(database_name) ||
+    readGrantedInternalIds.has(databaseInternalId) ||
     readGrantedInternalIds.has(internalId)
   );
 };
@@ -125,9 +131,9 @@ const createSchemaAndHierarchy = async ({
   allSchemas: RemoteSchemaModel[];
   connector: ConnectorResource;
   mimeTypes:
-    | typeof MIME_TYPES.BIGQUERY
-    | typeof MIME_TYPES.SNOWFLAKE
-    | typeof MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.BIGQUERY
+    | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   newSchema: RemoteSchemaModel | null;
@@ -137,12 +143,16 @@ const createSchemaAndHierarchy = async ({
   let newSchema: RemoteSchemaModel | null = null;
 
   const { database_name, name } = schema;
-  const schemaInternalId = `${database_name}.${name}`;
+
+  const schemaInternalId = buildInternalId({
+    databaseName: database_name,
+    schemaName: name,
+  });
 
   const { newDatabase, usedInternalIds: newDatabaseUsedInternalIds } =
     await createDatabase({
       dataSourceConfig,
-      databaseInternalId: database_name,
+      databaseName: database_name,
       allDatabases,
       connector,
       mimeTypes,
@@ -177,13 +187,17 @@ const createSchemaAndHierarchy = async ({
       });
     }
 
+    const databaseInternalId = buildInternalId({
+      databaseName: database_name,
+    });
+
     // ...upsert the schema in core
     await upsertDataSourceFolder({
       dataSourceConfig,
       folderId: schemaInternalId,
       title: name,
-      parents: [schemaInternalId, database_name],
-      parentId: database_name,
+      parents: [schemaInternalId, databaseInternalId],
+      parentId: databaseInternalId,
       mimeType: mimeTypes.SCHEMA,
     });
   }
@@ -201,10 +215,16 @@ const isTableReadGranted = ({
   table: RemoteDBTable;
 }) => {
   const { database_name, schema_name } = table;
-  const schemaInternalId = [database_name, schema_name].join(".");
+  const databaseInternalId = buildInternalId({
+    databaseName: database_name,
+  });
+  const schemaInternalId = buildInternalId({
+    databaseName: database_name,
+    schemaName: schema_name,
+  });
 
   return (
-    readGrantedInternalIds.has(database_name) ||
+    readGrantedInternalIds.has(databaseInternalId) ||
     readGrantedInternalIds.has(schemaInternalId) ||
     readGrantedInternalIds.has(tableInternalId)
   );
@@ -219,6 +239,7 @@ const createTableAndHierarchy = async ({
   connector,
   mimeTypes,
   internalTableIdToRemoteTableId,
+  tags,
 }: {
   tableInternalId: string;
   table: RemoteDBTable;
@@ -227,10 +248,11 @@ const createTableAndHierarchy = async ({
   allDatabases: RemoteDatabaseModel[];
   connector: ConnectorResource;
   mimeTypes:
-    | typeof MIME_TYPES.BIGQUERY
-    | typeof MIME_TYPES.SNOWFLAKE
-    | typeof MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.BIGQUERY
+    | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
   internalTableIdToRemoteTableId: (internalTableId: string) => string;
+  tags: string[];
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   newSchema: RemoteSchemaModel | null;
@@ -249,7 +271,10 @@ const createTableAndHierarchy = async ({
   } = table;
 
   const schema = { name: schemaName, database_name: dbName };
-  const schemaInternalId = `${dbName}.${schemaName}`;
+  const schemaInternalId = buildInternalId({
+    databaseName: dbName,
+    schemaName,
+  });
   const {
     newDatabase,
     newSchema,
@@ -298,17 +323,21 @@ const createTableAndHierarchy = async ({
       });
     }
     // ...upsert the table in core
+    const databaseInternalId = buildInternalId({
+      databaseName: dbName,
+    });
     await upsertDataSourceRemoteTable({
       dataSourceConfig,
       tableId: tableInternalId,
       tableName: tableInternalId,
       remoteDatabaseTableId: internalTableIdToRemoteTableId(tableInternalId),
       remoteDatabaseSecretId: connector.connectionId,
-      tableDescription: "",
-      parents: [tableInternalId, schemaInternalId, dbName],
+      tableDescription: table.description ?? "",
+      parents: [tableInternalId, schemaInternalId, databaseInternalId],
       parentId: schemaInternalId,
       title: tableName,
       mimeType: mimeTypes.TABLE,
+      tags,
     });
   }
 
@@ -320,14 +349,16 @@ export async function sync({
   connector,
   mimeTypes,
   internalTableIdToRemoteTableId = (internalTableId: string) => internalTableId,
+  tags,
 }: {
   remoteDBTree?: RemoteDBTree;
   connector: ConnectorResource;
   mimeTypes:
-    | typeof MIME_TYPES.BIGQUERY
-    | typeof MIME_TYPES.SNOWFLAKE
-    | typeof MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.BIGQUERY
+    | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
   internalTableIdToRemoteTableId?: (internalTableId: string) => string;
+  tags: string[];
 }) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -399,13 +430,15 @@ export async function sync({
     if (
       isDatabaseReadGranted({
         readGrantedInternalIds,
-        internalId: db.name,
+        internalId: buildInternalId({
+          databaseName: db.name,
+        }),
       })
     ) {
       const { newDatabase, usedInternalIds: newDatabaseUsedInternalIds } =
         await createDatabase({
           dataSourceConfig,
-          databaseInternalId: db.name,
+          databaseName: db.name,
           allDatabases,
           connector,
           mimeTypes,
@@ -421,7 +454,10 @@ export async function sync({
 
     // Loop through the schemas and create them if they are read granted
     for (const schema of db.schemas) {
-      const schemaInternalId = `${db.name}.${schema.name}`;
+      const schemaInternalId = buildInternalId({
+        databaseName: db.name,
+        schemaName: schema.name,
+      });
       if (
         isSchemaReadGranted({
           readGrantedInternalIds,
@@ -457,7 +493,11 @@ export async function sync({
       let i = 0;
       // Loop through the tables and create them if they are read granted
       for (const table of schema.tables) {
-        const tableInternalId = `${table.database_name}.${table.schema_name}.${table.name}`;
+        const tableInternalId = buildInternalId({
+          databaseName: table.database_name,
+          schemaName: table.schema_name,
+          tableName: table.name,
+        });
         if (
           isTableReadGranted({
             readGrantedInternalIds,
@@ -479,6 +519,7 @@ export async function sync({
             connector,
             mimeTypes,
             internalTableIdToRemoteTableId,
+            tags,
           });
           for (const usedInternalId of newTableUsedInternalIds) {
             usedInternalIds.add(usedInternalId);

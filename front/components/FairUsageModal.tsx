@@ -49,7 +49,7 @@ export function FairUsageModal({ isOpened, onClose }: FairUsageModalProps) {
           <Icon
             visual={AttachmentIcon}
             size="lg"
-            className="text-emerald-500"
+            className="text-success-500"
           />
           <Markdown content={FAIR_USE_CONTENT} forcedTextSize="text-sm" />
         </SheetContainer>

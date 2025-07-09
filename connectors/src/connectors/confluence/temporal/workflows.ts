@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import type { WorkflowInfo } from "@temporalio/workflow";
 import {
   continueAsNew,
@@ -7,6 +6,7 @@ import {
   setHandler,
   workflowInfo,
 } from "@temporalio/workflow";
+import { chunk } from "lodash";
 
 import type { ConfluencePageRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import type * as activities from "@connectors/connectors/confluence/temporal/activities";
@@ -19,6 +19,8 @@ import {
   makeConfluenceSpaceSyncWorkflowIdFromParentId,
   makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId,
 } from "@connectors/connectors/confluence/temporal/workflow_ids";
+import type * as syncStatusActivities from "@connectors/lib/sync_status";
+import type { ModelId } from "@connectors/types";
 
 const {
   confluenceGetSpaceBlobActivity,
@@ -52,6 +54,12 @@ const {
   },
 });
 
+const { reportInitialSyncProgress } = proxyActivities<
+  typeof syncStatusActivities
+>({
+  startToCloseTimeout: "10 minutes",
+});
+
 // Set a conservative threshold to start a new workflow and
 // avoid exceeding Temporal's max workflow size limit,
 // since a Confluence page can have an unbounded number of pages.
@@ -59,6 +67,8 @@ const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 10;
 
 const MAX_LEAF_PAGES_PER_BATCH = 50;
+
+const TOP_LEVEL_PAGE_REFS_CHUNK_SIZE = 100;
 
 export async function confluenceSyncWorkflow({
   connectorId,
@@ -93,12 +103,23 @@ export async function confluenceSyncWorkflow({
     memo,
   } = workflowInfo();
 
+  let processedSpaces = 0;
+
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
   while (spaceIdsMap.size > 0) {
     // Create a copy of the map to iterate over, to avoid issues with concurrent modification.
     const spaceIdsToProcess = new Map(spaceIdsMap);
     for (const [spaceId, opts] of spaceIdsToProcess) {
+      // Report progress before processing each space.
+      await reportInitialSyncProgress(
+        connectorId,
+        // At this point, the map was cleared from the processed spaces so we have to do
+        // processedSpaces + spaceIdsMap.size to get the actual total, updated when we
+        // get a signal.
+        `${processedSpaces + 1}/${spaceIdsMap.size + processedSpaces} spaces`
+      );
+
       // Async operation yielding control to the Temporal runtime.
       await executeChild(confluenceSpaceSyncWorkflow, {
         workflowId: makeConfluenceSpaceSyncWorkflowIdFromParentId(
@@ -119,6 +140,7 @@ export async function confluenceSyncWorkflow({
 
       // Remove the processed space from the original set after the async operation.
       spaceIdsMap.delete(spaceId);
+      processedSpaces++;
     }
   }
 
@@ -197,12 +219,23 @@ export async function confluenceSpaceSyncWorkflow(
   }
 
   const { workflowId, searchAttributes: parentSearchAttributes, memo } = wInfo;
-  for (const pageRef of uniqueTopLevelPageRefs.values()) {
+
+  const uniqueTopLevelPageRefsArray = Array.from(
+    uniqueTopLevelPageRefs.values()
+  );
+  // For small spaces, process each page individually; for large spaces, chunk them to be
+  // conservative.
+  const topLevelPageRefsToProcess =
+    uniqueTopLevelPageRefsArray.length > TOP_LEVEL_PAGE_REFS_CHUNK_SIZE
+      ? chunk(uniqueTopLevelPageRefsArray, TOP_LEVEL_PAGE_REFS_CHUNK_SIZE)
+      : uniqueTopLevelPageRefsArray.map((page) => [page]);
+
+  for (const pageRefChunk of topLevelPageRefsToProcess) {
     // Start a new workflow to import the child pages.
     await executeChild(confluenceSyncTopLevelChildPagesWorkflow, {
       workflowId: makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId(
         workflowId,
-        pageRef.id
+        pageRefChunk[0]?.id ?? ""
       ),
       searchAttributes: parentSearchAttributes,
       args: [
@@ -211,7 +244,7 @@ export async function confluenceSpaceSyncWorkflow(
           space,
           confluenceCloudId,
           visitedAtMs,
-          topLevelPageRefs: [pageRef],
+          topLevelPageRefs: pageRefChunk,
         },
       ],
       memo,

@@ -1,19 +1,6 @@
-import type {
-  FileUseCase,
-  Result,
-  SupportedFileContentType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isSupportedDelimitedTextContentType,
-  isSupportedImageContentType,
-  isTextExtractionSupportedContentType,
-  Ok,
-  TextExtraction,
-} from "@dust-tt/types";
+import { isDustMimeType } from "@dust-tt/client";
+import ConvertAPI from "convertapi";
 import type { IncomingMessage } from "http";
-import sharp from "sharp";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
@@ -21,8 +8,28 @@ import config from "@app/lib/api/config";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type {
+  FileUseCase,
+  FileUseCaseMetadata,
+  Result,
+  SupportedFileContentType,
+  SupportedImageContentType,
+} from "@app/types";
+import { normalizeError } from "@app/types";
+import {
+  assertNever,
+  Err,
+  extensionsForContentType,
+  isSupportedDelimitedTextContentType,
+  isSupportedFileContentType,
+  isSupportedImageContentType,
+  isTextExtractionSupportedContentType,
+  Ok,
+  TextExtraction,
+  validateUrl,
+} from "@app/types";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 
@@ -64,28 +71,78 @@ const uploadToPublicBucket: ProcessingFunction = async (
 
 // Images processing.
 
+const createReadableFromUrl = async (url: string): Promise<Readable> => {
+  const response = await fetch(url);
+  if (!response.ok || !response.body) {
+    throw new Error(`Failed to fetch from URL: ${response.statusText}`);
+  }
+  return Readable.fromWeb(response.body as any); // Type assertion needed due to Node.js types mismatch
+};
+
 const resizeAndUploadToFileStorage: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  /* Skipping sharp() to check if it's the cause of high CPU / memory usage.
   const readStream = file.getReadStream({
     auth,
     version: "original",
   });
 
+  // Explicitly disable Sharp's cache to prevent memory accumulation.
+  sharp.cache(false);
+
+  // Set global concurrency limit to prevent too many parallel operations.
+  sharp.concurrency(2);
+
   // Anthropic https://docs.anthropic.com/en/docs/build-with-claude/vision#evaluate-image-size
   // OpenAI https://platform.openai.com/docs/guides/vision#calculating-costs
 
   // Anthropic recommends <= 1568px on any side.
-  // OpenAI recommends <= 2048px on the longuest side, 768px on the shortest side.
+  // OpenAI recommends <= 2048px on the longest side, 768px on the shortest side.
 
   // Resize the image, preserving the aspect ratio based on the longest side compatible with both
-  // models. In case of GPT, it might incure a resize on their side as well but doing the math here
+  // models. In the case of GPT, it might incur a resize on their side as well, but doing the math here
   // would mean downloading the file first instead of streaming it.
+
   const resizedImageStream = sharp().resize(1568, 1568, {
-    fit: sharp.fit.inside, // Ensure longest side is 1568px.
-    withoutEnlargement: true, // Avoid upscaling if image is smaller than 1568px.
+    fit: sharp.fit.inside, // Ensure the longest side is 1568px.
+    withoutEnlargement: true, // Avoid upscaling if the image is smaller than 1568px.
   });
+  */
+
+  if (!process.env.CONVERTAPI_API_KEY) {
+    throw new Error("CONVERTAPI_API_KEY is not set");
+  }
+
+  const originalFormat = extensionsForContentType(file.contentType)[0].replace(
+    ".",
+    ""
+  );
+  const originalUrl = await file.getSignedUrlForDownload(auth, "original");
+  const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
+
+  let result;
+  try {
+    result = await convertapi.convert(
+      originalFormat,
+      {
+        File: originalUrl,
+        ScaleProportions: true,
+        ImageResolution: "72",
+        ScaleImage: "true",
+        ScaleIfLarger: "true",
+        ImageHeight: "1538",
+        ImageWidth: "1538",
+      },
+      originalFormat,
+      30
+    );
+  } catch (e) {
+    return new Err(
+      new Error(`Failed resizing image: ${normalizeError(e).message}`)
+    );
+  }
 
   const writeStream = file.getWriteStream({
     auth,
@@ -93,8 +150,9 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
   });
 
   try {
-    await pipeline(readStream, resizedImageStream, writeStream);
+    const stream = await createReadableFromUrl(result.file.url);
 
+    await pipeline(stream, writeStream);
     return new Ok(undefined);
   } catch (err) {
     logger.error(
@@ -117,17 +175,23 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  if (!isTextExtractionSupportedContentType(file.contentType)) {
+    return new Err(
+      new Error(
+        "Failed extracting text from file. Cannot extract text from this file type " +
+          +`${file.contentType}. Action: check than caller filters out unsupported file types.`
+      )
+    );
+  }
   try {
-    if (!isTextExtractionSupportedContentType(file.contentType)) {
-      throw new Error(
-        `Cannot extract text from this file type ${file.contentType}. Action: check than caller filters out unsupported file types.`
-      );
-    }
     const readStream = file.getReadStream({
       auth,
       version: "original",
     });
-    const writeStream = file.getWriteStream({ auth, version: "processed" });
+    const writeStream = file.getWriteStream({
+      auth,
+      version: "processed",
+    });
 
     const processedStream = await new TextExtraction(
       config.getTextExtractionUrl(),
@@ -221,13 +285,14 @@ const getProcessingFunction = ({
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
       contentType === "application/vnd.ms-excel"
     ) {
-      // We use tika to extract from excel files, it will turn into a html table
-      // We will upsert from the html table later
+      // We use Tika to extract from Excel files, it will turn into an HTML table
+      // We will upsert from the HTML table later
       return extractTextFromFileAndUpload;
     } else if (
       [
         "conversation",
         "upsert_document",
+        "folders_document",
         "upsert_table",
         "tool_output",
       ].includes(useCase)
@@ -242,11 +307,18 @@ const getProcessingFunction = ({
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
     case "application/vnd.ms-powerpoint":
     case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    case "application/vnd.google-apps.document":
+    case "application/vnd.google-apps.presentation":
     case "application/pdf":
-      if (["conversation", "upsert_document"].includes(useCase)) {
+      if (
+        ["conversation", "upsert_document", "folders_document"].includes(
+          useCase
+        )
+      ) {
         return extractTextFromFileAndUpload;
       }
       break;
+    case "application/octet-stream":
     case "text/plain":
     case "text/markdown":
     case "text/html":
@@ -279,7 +351,12 @@ const getProcessingFunction = ({
     case "text/x-perl":
     case "text/x-perl-script":
       if (
-        ["conversation", "upsert_document", "tool_output"].includes(useCase)
+        [
+          "conversation",
+          "upsert_document",
+          "tool_output",
+          "folders_document",
+        ].includes(useCase)
       ) {
         return storeRawText;
       }
@@ -289,8 +366,16 @@ const getProcessingFunction = ({
         return storeRawText;
       }
       break;
-
+    case "application/vnd.dust.section.json":
+      if (useCase === "tool_output") {
+        return storeRawText;
+      }
+      break;
+    // Processing is assumed to be irrelevant for internal mime types.
     default:
+      if (isDustMimeType(contentType)) {
+        break;
+      }
       assertNever(contentType);
   }
 
@@ -309,6 +394,8 @@ const maybeApplyProcessing: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
+  const start = performance.now();
+
   const processing = getProcessingFunction(file);
   if (!processing) {
     return new Err(
@@ -319,6 +406,17 @@ const maybeApplyProcessing: ProcessingFunction = async (
   }
 
   const res = await processing(auth, file);
+
+  const elapsed = performance.now() - start;
+  logger.info(
+    {
+      file: file.toPublicJSON(auth),
+      elapsed,
+      error: res.isErr() ? res.error : undefined,
+    },
+    "Processed file"
+  );
+
   if (res.isErr()) {
     return res;
   } else {
@@ -326,25 +424,38 @@ const maybeApplyProcessing: ProcessingFunction = async (
   }
 };
 
+type ProcessAndStoreFileContent =
+  | {
+      type: "incoming_message";
+      value: IncomingMessage;
+    }
+  | {
+      type: "string";
+      value: string;
+    }
+  | {
+      type: "readable";
+      value: Readable;
+    };
+
+export type ProcessAndStoreFileError = Omit<DustError, "code"> & {
+  code:
+    | "internal_server_error"
+    | "invalid_request_error"
+    | "file_too_large"
+    | "file_type_not_supported"
+    | "file_is_empty";
+};
 export async function processAndStoreFile(
   auth: Authenticator,
   {
     file,
-    reqOrString,
-  }: { file: FileResource; reqOrString: IncomingMessage | string }
-): Promise<
-  Result<
-    FileResource,
-    Omit<DustError, "code"> & {
-      code:
-        | "internal_server_error"
-        | "invalid_request_error"
-        | "file_too_large"
-        | "file_type_not_supported"
-        | "file_is_empty";
-    }
-  >
-> {
+    content,
+  }: {
+    file: FileResource;
+    content: ProcessAndStoreFileContent;
+  }
+): Promise<Result<FileResource, ProcessAndStoreFileError>> {
   if (file.isReady || file.isFailed) {
     return new Err({
       name: "dust_error",
@@ -362,15 +473,20 @@ export async function processAndStoreFile(
     });
   }
 
-  if (typeof reqOrString === "string") {
+  if (content.type === "string") {
     await pipeline(
-      Readable.from(reqOrString),
+      Readable.from(content.value),
+      file.getWriteStream({ auth, version: "original" })
+    );
+  } else if (content.type === "readable") {
+    await pipeline(
+      content.value,
       file.getWriteStream({ auth, version: "original" })
     );
   } else {
     const r = await parseUploadRequest(
       file,
-      reqOrString,
+      content.value,
       file.getWriteStream({ auth, version: "original" })
     );
     if (r.isErr()) {
@@ -382,14 +498,177 @@ export async function processAndStoreFile(
   const processingRes = await maybeApplyProcessing(auth, file);
   if (processingRes.isErr()) {
     await file.markAsFailed();
+    // Unfortunately, there is no better way to catch this image format error.
+    const code = processingRes.error.message.includes(
+      "Input buffer contains unsupported image format"
+    )
+      ? "file_type_not_supported"
+      : "internal_server_error";
 
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code,
       message: `Failed to process the file : ${processingRes.error}`,
     });
   }
 
   await file.markAsReady();
+  return new Ok(file);
+}
+
+export async function processAndStoreFromUrl(
+  auth: Authenticator,
+  {
+    url,
+    useCase,
+    useCaseMetadata,
+    fileName,
+    contentType,
+  }: {
+    url: string;
+    useCase: FileUseCase;
+    useCaseMetadata?: FileUseCaseMetadata;
+    fileName?: string;
+    contentType?: string;
+  }
+): ReturnType<typeof processAndStoreFile> {
+  const validUrl = validateUrl(url);
+  if (!validUrl.valid) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Invalid URL",
+    });
+  }
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: `Failed to fetch URL: ${response.statusText}`,
+      });
+    }
+
+    if (!response.body) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: "Response body is null",
+      });
+    }
+
+    const contentLength = response.headers.get("content-length");
+    const finalContentType =
+      contentType ||
+      response.headers.get("content-type") ||
+      "application/octet-stream";
+
+    if (!isSupportedFileContentType(finalContentType)) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: "Unsupported content type",
+      });
+    }
+
+    const file = await FileResource.makeNew({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      userId: auth.user()?.id ?? null,
+      contentType: finalContentType,
+      fileName: fileName || new URL(url).pathname.split("/").pop() || "file",
+      fileSize: contentLength ? parseInt(contentLength) : 1024 * 1024 * 10, // Default 10MB if no content-length
+      useCase,
+      useCaseMetadata,
+    });
+
+    return await processAndStoreFile(auth, {
+      file,
+      content: {
+        type: "readable",
+        value: Readable.fromWeb(response.body as any),
+      },
+    });
+  } catch (error) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Failed to create file from URL: ${error}`,
+    });
+  }
+}
+
+interface UploadBase64DataToFileStorageArgs {
+  base64: string;
+  contentType: SupportedFileContentType | SupportedImageContentType;
+  fileName: string;
+  useCase: FileUseCase;
+  useCaseMetadata?: FileUseCaseMetadata;
+}
+
+export async function uploadBase64ImageToFileStorage(
+  auth: Authenticator,
+  {
+    base64,
+    contentType,
+    fileName,
+    useCase,
+    useCaseMetadata,
+  }: UploadBase64DataToFileStorageArgs & {
+    contentType: SupportedImageContentType;
+  }
+): Promise<Result<FileResource, ProcessAndStoreFileError>> {
+  // Remove data URL prefix for any supported image type.
+  const base64Data = base64.replace(/^data:image\/[a-z]+;base64,/, "");
+
+  return uploadBase64DataToFileStorage(auth, {
+    base64: base64Data,
+    contentType,
+    fileName,
+    useCase,
+    useCaseMetadata,
+  });
+}
+
+export async function uploadBase64DataToFileStorage(
+  auth: Authenticator,
+  {
+    base64,
+    contentType,
+    fileName,
+    useCase,
+    useCaseMetadata,
+  }: UploadBase64DataToFileStorageArgs
+): Promise<Result<FileResource, ProcessAndStoreFileError>> {
+  // Convert base64 to buffer.
+  const buffer = Buffer.from(base64, "base64");
+
+  const fileSizeInBytes = buffer.length;
+
+  // Upload the buffer to the file storage.
+  const file = await FileResource.makeNew({
+    workspaceId: auth.getNonNullableWorkspace().id,
+    userId: auth.user()?.id ?? null,
+    contentType,
+    fileName,
+    fileSize: fileSizeInBytes,
+    useCase,
+    useCaseMetadata,
+  });
+
+  const res = await processAndStoreFile(auth, {
+    file,
+    content: {
+      type: "readable",
+      value: Readable.from(buffer),
+    },
+  });
+
+  if (res.isErr()) {
+    await file.markAsFailed();
+    return res;
+  }
+
   return new Ok(file);
 }

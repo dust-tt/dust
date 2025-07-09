@@ -1,7 +1,7 @@
 import { PaginationState } from "@tanstack/react-table";
 import React, { useCallback } from "react";
 
-import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/solid";
+import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
 import { classNames } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";

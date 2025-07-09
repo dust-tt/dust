@@ -2,17 +2,20 @@ import type {
   AgentActionPublicType,
   ConversationPublicType,
   DustAPI,
+  LightAgentConfigurationType,
+  Result,
   UserMessageType,
 } from "@dust-tt/client";
-import type { LightAgentConfigurationType, Result } from "@dust-tt/types";
-import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/types";
+import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
+import * as t from "io-ts";
 import slackifyMarkdown from "slackify-markdown";
 
 import type { SlackMessageUpdate } from "@connectors/connectors/slack/chat/blocks";
 import {
   makeAssistantSelectionBlock,
   makeMessageUpdateBlocksAndText,
+  makeToolValidationBlock,
   MAX_SLACK_MESSAGE_LENGTH,
 } from "@connectors/connectors/slack/chat/blocks";
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
@@ -21,6 +24,23 @@ import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_clien
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+
+export const SlackBlockIdStaticAgentConfigSchema = t.type({
+  slackChatBotMessageId: t.number,
+  messageTs: t.union([t.string, t.undefined]),
+  slackThreadTs: t.union([t.string, t.undefined]),
+  botId: t.union([t.string, t.undefined]),
+});
+
+export const SlackBlockIdToolValidationSchema = t.intersection([
+  SlackBlockIdStaticAgentConfigSchema,
+  t.type({
+    actionId: t.string,
+    conversationId: t.string,
+    messageId: t.string,
+    workspaceId: t.string,
+  }),
+]);
 
 interface StreamConversationToSlackParams {
   assistantName: string;
@@ -45,17 +65,48 @@ const initialBackoffTime = 1_000;
 
 export async function streamConversationToSlack(
   dustAPI: DustAPI,
-  {
+  conversationData: StreamConversationToSlackParams
+): Promise<Result<undefined, Error>> {
+  const { assistantName, agentConfigurations } = conversationData;
+
+  // Immediately post the conversation URL once available.
+  await postSlackMessageUpdate(
+    {
+      messageUpdate: {
+        isComplete: false,
+        isThinking: true,
+        assistantName,
+        agentConfigurations,
+      },
+      ...conversationData,
+    },
+    { adhereToRateLimit: false }
+  );
+
+  return streamAgentAnswerToSlack(dustAPI, conversationData);
+}
+
+class SlackAnswerRetryableError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+async function streamAgentAnswerToSlack(
+  dustAPI: DustAPI,
+  conversationData: StreamConversationToSlackParams
+) {
+  const {
     assistantName,
-    connector,
     conversation,
     mainMessage,
-    slack,
     userMessage,
     slackChatBotMessage,
     agentConfigurations,
-  }: StreamConversationToSlackParams
-): Promise<Result<undefined, Error>> {
+    slack,
+    connector,
+  } = conversationData;
+
   const {
     slackChannelId,
     slackClient,
@@ -63,62 +114,6 @@ export async function streamConversationToSlack(
     slackUserInfo,
     slackUserId,
   } = slack;
-
-  let lastSentDate = new Date();
-  let backoffTime = initialBackoffTime;
-
-  const postSlackMessageUpdate = async (
-    messageUpdate: SlackMessageUpdate,
-    { adhereToRateLimit }: { adhereToRateLimit: boolean } = {
-      adhereToRateLimit: true,
-    }
-  ) => {
-    if (
-      lastSentDate.getTime() + backoffTime > new Date().getTime() &&
-      adhereToRateLimit
-    ) {
-      return;
-    }
-
-    lastSentDate = new Date();
-    if (adhereToRateLimit) {
-      // Linear increase of backoff time.
-      backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
-    }
-
-    const response = await slackClient.chat.update({
-      ...makeMessageUpdateBlocksAndText(
-        conversationUrl,
-        connector.workspaceId,
-        messageUpdate
-      ),
-      channel: slackChannelId,
-      thread_ts: slackMessageTs,
-      ts: mainMessage.ts as string,
-    });
-
-    if (response.error) {
-      logger.error(
-        {
-          connectorId: connector.id,
-          conversationId: conversation.sId,
-          err: response.error,
-        },
-        "Failed to update Slack message."
-      );
-    }
-  };
-
-  const conversationUrl = makeConversationUrl(
-    connector.workspaceId,
-    conversation.sId
-  );
-
-  // Immediately post the conversation URL once available.
-  await postSlackMessageUpdate(
-    { isComplete: false, isThinking: true, assistantName, agentConfigurations },
-    { adhereToRateLimit: false }
-  );
 
   const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
@@ -133,34 +128,66 @@ export async function streamConversationToSlack(
   const actions: AgentActionPublicType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
-      case "retrieval_params":
-      case "dust_app_run_params":
-      case "dust_app_run_block":
-      case "tables_query_started":
-      case "tables_query_model_output":
-      case "tables_query_output":
-      case "process_params":
-      case "websearch_params":
-      case "browse_params":
       case "conversation_include_file_params":
-      case "github_get_pull_request_params":
-      case "github_create_issue_params":
-      case "reasoning_started":
-      case "reasoning_thinking":
-      case "reasoning_tokens":
+      case "process_params":
+      case "tool_params":
+      case "tool_notification":
         await postSlackMessageUpdate(
           {
-            isComplete: false,
-            isThinking: true,
-            assistantName,
-            agentConfigurations,
-            text: answer,
-            thinkingAction: ACTION_RUNNING_LABELS[event.action.type],
+            messageUpdate: {
+              isComplete: false,
+              isThinking: true,
+              assistantName,
+              agentConfigurations,
+              text: answer,
+              thinkingAction: ACTION_RUNNING_LABELS[event.action.type],
+            },
+            ...conversationData,
           },
           { adhereToRateLimit: false }
         );
 
         break;
+
+      case "tool_approve_execution": {
+        logger.info(
+          {
+            connectorId: connector.id,
+            conversationId: conversation.sId,
+            messageId: event.messageId,
+            actionId: event.actionId,
+            toolName: event.metadata.toolName,
+            agentName: event.metadata.agentName,
+          },
+          "Tool validation request"
+        );
+
+        const blockId = SlackBlockIdToolValidationSchema.encode({
+          workspaceId: connector.workspaceId,
+          conversationId: conversation.sId,
+          messageId: event.messageId,
+          actionId: event.actionId,
+          slackThreadTs: mainMessage.message?.thread_ts,
+          messageTs: mainMessage.message?.ts,
+          botId: mainMessage.message?.bot_id,
+          slackChatBotMessageId: slackChatBotMessage.id,
+        });
+
+        if (slackUserId && !slackUserInfo.is_bot) {
+          await slackClient.chat.postEphemeral({
+            channel: slackChannelId,
+            user: slackUserId,
+            text: "Approve tool execution",
+            blocks: makeToolValidationBlock({
+              agentName: event.metadata.agentName,
+              toolName: event.metadata.toolName,
+              id: JSON.stringify(blockId),
+            }),
+            thread_ts: slackMessageTs,
+          });
+        }
+        break;
+      }
 
       case "user_message_error": {
         return new Err(
@@ -173,13 +200,6 @@ export async function streamConversationToSlack(
         return new Err(
           new Error(
             `Agent message error: code: ${event.error.code} message: ${event.error.message}`
-          )
-        );
-      }
-      case "error": {
-        return new Err(
-          new Error(
-            `Error: code: ${event.content.code} message: ${event.content.message}`
           )
         );
       }
@@ -212,11 +232,14 @@ export async function streamConversationToSlack(
           break;
         }
         await postSlackMessageUpdate({
-          isComplete: false,
-          text: slackContent,
-          assistantName,
-          agentConfigurations,
-          footnotes,
+          messageUpdate: {
+            isComplete: false,
+            text: slackContent,
+            assistantName,
+            agentConfigurations,
+            footnotes,
+          },
+          ...conversationData,
         });
         break;
       }
@@ -234,11 +257,14 @@ export async function streamConversationToSlack(
 
         await postSlackMessageUpdate(
           {
-            isComplete: true,
-            text: slackContent,
-            assistantName,
-            agentConfigurations,
-            footnotes,
+            messageUpdate: {
+              isComplete: true,
+              text: slackContent,
+              assistantName,
+              agentConfigurations,
+              footnotes,
+            },
+            ...conversationData,
           },
           { adhereToRateLimit: false }
         );
@@ -247,18 +273,19 @@ export async function streamConversationToSlack(
           !slackUserInfo.is_bot &&
           agentConfigurations.length > 0
         ) {
+          const blockId = SlackBlockIdStaticAgentConfigSchema.encode({
+            slackChatBotMessageId: slackChatBotMessage.id,
+            slackThreadTs: mainMessage.message?.thread_ts,
+            messageTs: mainMessage.message?.ts,
+            botId: mainMessage.message?.bot_id,
+          });
           await slackClient.chat.postEphemeral({
             channel: slackChannelId,
             user: slackUserId,
             text: "You can use another agent by using the dropdown in slack.",
             blocks: makeAssistantSelectionBlock(
               agentConfigurations,
-              JSON.stringify({
-                slackChatBotMessage: slackChatBotMessage.id,
-                slackThreadTs: mainMessage.message?.thread_ts,
-                messageTs: mainMessage.message?.ts,
-                botId: mainMessage.message?.bot_id,
-              })
+              JSON.stringify(blockId)
             ),
             thread_ts: slackMessageTs,
           });
@@ -272,7 +299,78 @@ export async function streamConversationToSlack(
     }
   }
 
-  return new Err(new Error("Failed to get the final answer from Dust"));
+  return new Err(
+    new SlackAnswerRetryableError("Failed to get the final answer from Dust")
+  );
+}
+
+async function postSlackMessageUpdate(
+  {
+    messageUpdate,
+    slack,
+    connector,
+    conversation,
+    mainMessage,
+  }: {
+    messageUpdate: SlackMessageUpdate;
+    slack: {
+      slackChannelId: string;
+      slackClient: WebClient;
+      slackMessageTs: string;
+      slackUserInfo: SlackUserInfo;
+      slackUserId: string | null;
+    };
+    connector: ConnectorResource;
+    conversation: ConversationPublicType;
+    mainMessage: ChatPostMessageResponse;
+  },
+  { adhereToRateLimit }: { adhereToRateLimit: boolean } = {
+    adhereToRateLimit: true,
+  }
+) {
+  let lastSentDate = new Date();
+  let backoffTime = initialBackoffTime;
+
+  const { slackChannelId, slackMessageTs, slackClient } = slack;
+  const conversationUrl = makeConversationUrl(
+    connector.workspaceId,
+    conversation.sId
+  );
+
+  if (
+    lastSentDate.getTime() + backoffTime > new Date().getTime() &&
+    adhereToRateLimit
+  ) {
+    return;
+  }
+
+  lastSentDate = new Date();
+  if (adhereToRateLimit) {
+    // Linear increase of backoff time.
+    backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
+  }
+
+  const response = await slackClient.chat.update({
+    ...makeMessageUpdateBlocksAndText(
+      conversationUrl,
+      connector.workspaceId,
+      messageUpdate
+    ),
+    channel: slackChannelId,
+    thread_ts: slackMessageTs,
+    ts: mainMessage.ts as string,
+  });
+
+  if (response.error) {
+    logger.error(
+      {
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        err: response.error,
+      },
+      "Failed to update Slack message."
+    );
+  }
 }
 
 /**

@@ -1,9 +1,13 @@
-import { assertNever, ConnectorsAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger, { auditLog } from "@app/logger/logger";
+import {
+  assertNever,
+  ConnectorsAPI,
+  Err,
+  mapToEnumValues,
+  Ok,
+} from "@app/types";
 
 const OPERATIONS = ["STOP", "PAUSE", "UNPAUSE", "RESUME", "SYNC"] as const;
 
@@ -42,16 +46,14 @@ export const connectorOperationsPlugin = createPlugin({
         type: "enum",
         label: "Operation",
         description: "Select operation to execute",
-        values: OPERATIONS,
+        values: mapToEnumValues(OPERATIONS, (op) => ({
+          label: op,
+          value: op,
+        })),
       },
     },
   },
-  execute: async (auth, dataSourceId, args) => {
-    if (!dataSourceId) {
-      return new Err(new Error("Data source not found."));
-    }
-
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+  execute: async (auth, dataSource, args) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
     }
@@ -71,7 +73,7 @@ export const connectorOperationsPlugin = createPlugin({
       },
       "Executing operation on connector"
     );
-    const res = await doOperation(op, connectorId.toString());
+    const res = await doOperation(op as OperationType, connectorId.toString());
     if (res.isErr()) {
       return new Err(new Error(res.error.message));
     }

@@ -1,9 +1,8 @@
-import type { ConnectorProvider, UpsertContext } from "@dust-tt/types";
-
 import type { Authenticator } from "@app/lib/auth";
 import { trackerUpsertHook } from "@app/lib/document_upsert_hooks/hooks/tracker";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
+import type { ConnectorProvider, UpsertContext } from "@app/types";
 
 const _hooks = {
   tracker: trackerUpsertHook,

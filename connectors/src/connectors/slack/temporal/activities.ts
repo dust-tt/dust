@@ -1,44 +1,50 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { cacheWithRedis, MIME_TYPES, safeSubstring } from "@dust-tt/types";
 import type {
   CodedError,
   WebAPIPlatformError,
   WebClient,
 } from "@slack/web-api";
 import { ErrorCode } from "@slack/web-api";
+import type { Channel } from "@slack/web-api/dist/response/ChannelsInfoResponse";
 import type {
   ConversationsHistoryResponse,
   MessageElement,
 } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import type {
-  Channel,
-  ConversationsListResponse,
-} from "@slack/web-api/dist/response/ConversationsListResponse";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
 import {
+  getBotUserIdMemoized,
+  getUserCacheKey,
+  shouldIndexSlackMessage,
+} from "@connectors/connectors/slack/lib/bot_user_helpers";
+import {
+  getChannelById,
+  getChannels,
   joinChannel,
   updateSlackChannelInConnectorsDb,
   updateSlackChannelInCoreDb,
 } from "@connectors/connectors/slack/lib/channels";
-import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messages";
+import {
+  getSlackClient,
+  reportSlackUsage,
+  withSlackErrorHandling,
+} from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
   getSlackChannelSourceUrl,
   getWeekEnd,
   getWeekStart,
+  MAX_SYNC_NON_THREAD_MESSAGES,
   slackChannelInternalIdFromSlackChannelId,
   slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier,
   slackThreadInternalIdFromSlackThreadIdentifier,
 } from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { cacheGet, cacheSet } from "@connectors/lib/cache";
+import { cacheSet } from "@connectors/lib/cache";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
-  renderDocumentTitleAndContent,
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
@@ -52,150 +58,18 @@ import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "slack" });
 
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
 const MAX_CONCURRENCY_LEVEL = 2;
-// Maximum number of messages we process in a single syncNonThreaded call (1 week of unthreaded
-// messages). Some channels have integrations that post a lot of messages. Beyond this number (more
-// that 500 messages per week), the information is very likely useless.
-const MAX_SYNC_NON_THREAD_MESSAGES = 4000;
+// Adaptive chunking constants for syncNonThreaded optimization
+const MAX_API_CALLS_PER_CHUNK = 20; // Stop processing if we hit this many API calls in a chunk.
 
-/**
- * Slack API rate limit TLDR:
- * Slack has different rate limits for different endpoints.
- * Broadly, you'll encounter limits like these, applied on a
- * "per API method per app per workspace" basis.
- * Tier 1: ~1 request per minute
- * Tier 2: ~20 request per minute (conversations.history, conversation.list)
- * Tier 3: ~50 request per minute (conversations.replies)
- */
-
-/**
- *  Call cached to avoid rate limits
- *  ON RATE LIMIT ERRORS PERTAINING TO THIS FUNCTION:
- * - the next step will be to paginate (overkill at time of writing)
- * - see issue https://github.com/dust-tt/tasks/issues/1655
- * - and related PR https://github.com/dust-tt/dust/pull/8709
- * @param connectorId
- * @param joinedOnly
- */
-export const getChannels = cacheWithRedis(
-  _getChannelsUncached,
-  (connectorId, joinedOnly) => `slack-channels-${connectorId}-${joinedOnly}`,
-  5 * 60 * 1000
-);
-
-async function _getChannelsUncached(
-  connectorId: ModelId,
-  joinedOnly: boolean
-): Promise<Channel[]> {
-  return Promise.all([
-    _getTypedChannelsUncached(connectorId, joinedOnly, "public_channel"),
-    _getTypedChannelsUncached(connectorId, joinedOnly, "private_channel"),
-  ]).then(([publicChannels, privateChannels]) => [
-    ...publicChannels,
-    ...privateChannels,
-  ]);
-}
-
-async function _getTypedChannelsUncached(
-  connectorId: ModelId,
-  joinedOnly: boolean,
-  types: "public_channel" | "private_channel"
-): Promise<Channel[]> {
-  const client = await getSlackClient(connectorId);
-  const allChannels = [];
-  let nextCursor: string | undefined = undefined;
-  let nbCalls = 0;
-  do {
-    const c: ConversationsListResponse = await client.conversations.list({
-      types,
-      // despite the limit being 1000, slack may return fewer channels
-      // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655
-      limit: 999,
-      cursor: nextCursor,
-      exclude_archived: true,
-    });
-    nbCalls++;
-
-    logger.info(
-      {
-        connectorId,
-        returnedChannels: allChannels.length,
-        currentCursor: nextCursor,
-        nbCalls,
-      },
-      `[Slack] conversations.list called for getChannels (${nbCalls} calls)`
-    );
-
-    nextCursor = c?.response_metadata?.next_cursor;
-
-    if (c.error) {
-      throw new Error(c.error);
-    }
-    if (c.channels === undefined) {
-      throw new Error(
-        "The channels list was undefined." +
-          c?.response_metadata?.next_cursor +
-          ""
-      );
-    }
-    for (const channel of c.channels) {
-      if (channel && channel.id) {
-        if (!joinedOnly || channel.is_member) {
-          allChannels.push(channel);
-        }
-      }
-    }
-  } while (nextCursor);
-
-  return allChannels;
-}
-
-export async function getChannelsToSync(connectorId: number) {
-  const [remoteChannels, localChannels] = await Promise.all([
-    await getChannels(connectorId, true),
-    await SlackChannel.findAll({
-      where: {
-        connectorId: connectorId,
-        permission: {
-          [Op.or]: ["read", "read_write"],
-        },
-      },
-    }),
-  ]);
-  const readAllowedChannels = new Set(
-    localChannels.map((c) => c.slackChannelId)
-  );
-  return remoteChannels.filter((c) => c.id && readAllowedChannels.has(c.id));
-}
-
-export async function getChannel(
-  connectorId: ModelId,
-  channelId: string
-): Promise<Channel> {
-  const client = await getSlackClient(connectorId);
-  const res = await client.conversations.info({ channel: channelId });
-  // Despite the typing, in practice `conversations.info` can be undefined at times.
-  if (!res) {
-    throw new ProviderWorkflowError(
-      "slack",
-      "Received unexpected undefined replies from Slack API in getChannel (generally transient)",
-      "transient_upstream_activity_error"
-    );
-  }
-  if (res.error) {
-    throw new Error(res.error);
-  }
-  if (!res.channel) {
-    throw new Error(`No channel found for id ${channelId}`);
-  }
-
-  return res.channel;
-}
+const CONVERSATION_HISTORY_LIMIT = 100;
 
 interface SyncChannelRes {
   nextCursor?: string;
@@ -214,7 +88,15 @@ export async function syncChannel(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const remoteChannel = await getChannel(connectorId, channelId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
+
+  const remoteChannel = await withSlackErrorHandling(() =>
+    getChannelById(slackClient, connectorId, channelId)
+  );
   if (!remoteChannel.name) {
     throw new Error(`Could not find channel name for channel ${channelId}`);
   }
@@ -233,6 +115,27 @@ export async function syncChannel(
     throw new Error(
       `Could not find slack configuration for connector ${connectorId}`
     );
+  }
+
+  // Check if channel has a skipReason
+  const slackChannel = await SlackChannel.findOne({
+    where: {
+      connectorId,
+      slackChannelId: channelId,
+    },
+  });
+
+  if (slackChannel?.skipReason) {
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        channelName: remoteChannel.name,
+        skipReason: slackChannel.skipReason,
+      },
+      `Skipping channel sync: ${slackChannel.skipReason}`
+    );
+    return;
   }
 
   if (!["read", "read_write"].includes(channel.permission)) {
@@ -256,7 +159,7 @@ export async function syncChannel(
       title: `#${channel.name}`,
       parentId: null,
       parents: [slackChannelInternalIdFromSlackChannelId(channelId)],
-      mimeType: MIME_TYPES.SLACK.CHANNEL,
+      mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
       sourceUrl: getSlackChannelSourceUrl(channelId, slackConfiguration),
       providerVisibility: channel.private ? "private" : "public",
     });
@@ -283,16 +186,28 @@ export async function syncChannel(
   // first).
   let allSkip = true;
   for (const message of messages.messages) {
-    if (
-      !message.user &&
-      !(
-        message.bot_profile?.name &&
-        (await slackConfiguration.isBotWhitelistedToIndexMessages(
-          message.bot_profile.name
-        ))
-      )
-    ) {
-      // We do not support messages not posted by users for now, unless it's a whitelisted bot
+    const isIndexable = await shouldIndexSlackMessage(
+      slackConfiguration,
+      message,
+      slackClient
+    );
+
+    if (!isIndexable) {
+      // Skip non-user messages unless from whitelisted bot/workflow.
+
+      logger.info(
+        {
+          connectorId,
+          channelId,
+          message: {
+            bot_id: message.bot_id,
+            thread_ts: message.thread_ts,
+            ts: message.ts,
+            user: message.user,
+          },
+        },
+        "Skipping message - not from a user or whitelisted bot/workflow"
+      );
       continue;
     }
     let skip = false;
@@ -366,7 +281,7 @@ export async function syncChannel(
     connectorId
   );
 
-  await syncMultipleNoNThreaded(
+  await syncMultipleNonThreaded(
     dataSourceConfig,
     channelId,
     remoteChannel.name,
@@ -395,13 +310,25 @@ export async function getMessagesForChannel(
   limit = 100,
   nextCursor?: string
 ): Promise<ConversationsHistoryResponse> {
-  const client = await getSlackClient(connectorId);
-
-  const c: ConversationsHistoryResponse = await client.conversations.history({
-    channel: channelId,
-    limit: limit,
-    cursor: nextCursor,
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
   });
+
+  reportSlackUsage({
+    connectorId,
+    method: "conversations.history",
+    channelId,
+    limit,
+  });
+  const c: ConversationsHistoryResponse = await withSlackErrorHandling(() =>
+    slackClient.conversations.history({
+      channel: channelId,
+      limit: limit,
+      cursor: nextCursor,
+    })
+  );
   // Despite the typing, in practice `conversations.history` can be undefined at times.
   if (!c) {
     throw new ProviderWorkflowError(
@@ -427,40 +354,38 @@ export async function getMessagesForChannel(
   return c;
 }
 
-export async function syncMultipleNoNThreaded(
-  dataSourceConfig: DataSourceConfig,
-  channelId: string,
-  channelName: string,
-  timestampsMs: number[],
-  connectorId: ModelId
-) {
-  const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
-
-  const promises = [];
-  for (const startTsMs of timestampsMs) {
-    const p = queue.add(() =>
-      syncNonThreaded(
-        channelId,
-        channelName,
-        startTsMs,
-        getWeekEnd(new Date(startTsMs)).getTime(),
-        connectorId,
-        true // isBatchSync
-      )
-    );
-    promises.push(p);
-  }
-  return Promise.all(promises);
+interface SyncNonThreadedChunkResult {
+  completed: boolean;
+  nextCursor?: string;
+  messagesProcessed: number;
 }
 
-export async function syncNonThreaded(
-  channelId: string,
-  channelName: string,
-  startTsMs: number,
-  endTsMs: number,
-  connectorId: ModelId,
-  isBatchSync = false
-) {
+export async function syncNonThreadedChunk({
+  channelId,
+  channelName,
+  connectorId,
+  cursor,
+  endTsMs,
+  // Name is confusing, but kept to avoid breaking changes in Temporal activities.
+  ignoreMessageLimit = false,
+  isBatchSync = false,
+  maxTotalMessages = MAX_SYNC_NON_THREAD_MESSAGES,
+  startTsMs,
+  weekEndTsMs,
+  weekStartTsMs,
+}: {
+  channelId: string;
+  channelName: string;
+  connectorId: ModelId;
+  cursor?: string;
+  endTsMs: number;
+  ignoreMessageLimit?: boolean;
+  isBatchSync: boolean;
+  maxTotalMessages?: number;
+  startTsMs: number;
+  weekEndTsMs: number;
+  weekStartTsMs: number;
+}): Promise<SyncNonThreadedChunkResult> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
@@ -475,25 +400,40 @@ export async function syncNonThreaded(
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const client = await getSlackClient(connectorId);
-  const nextCursor: string | undefined = undefined;
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
   const messages: MessageElement[] = [];
 
   const startTsSec = Math.round(startTsMs / 1000);
   const endTsSec = Math.round(endTsMs / 1000);
 
   let hasMore: boolean | undefined = undefined;
-  let latestTsSec = endTsSec;
+  let nextCursor: string | undefined = cursor;
+  let apiCallCount = 0;
+
   do {
+    apiCallCount++;
     let c: ConversationsHistoryResponse | undefined = undefined;
     try {
-      c = await client.conversations.history({
-        channel: channelId,
-        limit: 100,
-        oldest: `${startTsSec}`,
-        latest: `${latestTsSec}`,
-        cursor: nextCursor,
+      reportSlackUsage({
+        connectorId,
+        method: "conversations.history",
+        channelId,
+        limit: CONVERSATION_HISTORY_LIMIT,
+        useCase: isBatchSync ? "batch_sync" : "incremental_sync",
       });
+      c = await withSlackErrorHandling(() =>
+        slackClient.conversations.history({
+          channel: channelId,
+          limit: CONVERSATION_HISTORY_LIMIT,
+          oldest: `${startTsSec}`,
+          latest: `${endTsSec}`,
+          cursor: nextCursor,
+        })
+      );
     } catch (e) {
       const maybeSlackPlatformError = e as WebAPIPlatformError;
       if (
@@ -501,37 +441,59 @@ export async function syncNonThreaded(
         maybeSlackPlatformError.data?.error === "not_in_channel"
       ) {
         // If the bot is no longer in the channel, we don't upsert anything.
-        return;
+        return { completed: true, messagesProcessed: 0 };
       }
-
       throw e;
     }
 
-    if (c.error) {
+    if (c?.error) {
       throw new Error(
         `Failed getting messages for channel ${channelId}: ${c.error}`
       );
     }
-    if (c.messages === undefined) {
+
+    if (c?.messages === undefined) {
+      logger.error(
+        {
+          channelId,
+          channelName,
+          connectorId,
+          cursor,
+          error: c?.error,
+          oldest: startTsSec,
+        },
+        "Failed getting messages for channel"
+      );
       throw new Error(
         `Failed getting messages for channel ${channelId}: messages is undefined`
       );
     }
 
+    await heartbeat();
+
     for (const message of c.messages) {
-      if (message.ts) {
-        latestTsSec = parseInt(message.ts);
-      }
-      if (
-        !message.user &&
-        !(
-          message.bot_profile?.name &&
-          (await slackConfiguration.isBotWhitelistedToIndexMessages(
-            message.bot_profile.name
-          ))
-        )
-      ) {
-        // We do not support messages not posted by users for now, unless it's a whitelisted bot
+      const isIndexable = await shouldIndexSlackMessage(
+        slackConfiguration,
+        message,
+        slackClient
+      );
+
+      if (!isIndexable) {
+        // Skip non-user messages unless from whitelisted bot/workflow.
+        logger.info(
+          {
+            connectorId,
+            channelId,
+            message: {
+              bot_id: message.bot_id,
+              thread_ts: message.thread_ts,
+              ts: message.ts,
+              user: message.user,
+            },
+          },
+          "Skipping message - not from a user or whitelisted bot/workflow"
+        );
+
         continue;
       }
       if (!message.thread_ts && message.ts) {
@@ -539,42 +501,125 @@ export async function syncNonThreaded(
       }
     }
     hasMore = c.has_more;
+    nextCursor = c.response_metadata?.next_cursor;
 
-    if (messages.length > MAX_SYNC_NON_THREAD_MESSAGES) {
-      logger.warn(
+    // Stop if we've made enough API calls for this chunk (unless ignoring limit).
+    if (!ignoreMessageLimit && apiCallCount >= MAX_API_CALLS_PER_CHUNK) {
+      logger.info(
         {
+          apiCallCount,
           messagesCount: messages.length,
           connectorId,
           channelName,
           channelId,
           startTsMs,
           endTsMs,
-          latestTsSec,
-          nextCursor,
+          latestTsSec: c.messages?.at(-1)?.ts,
         },
-        "Giving up on syncNonThreaded: too many messages"
+        "Chunk reached max API calls, splitting work"
       );
-      break;
+
+      await processAndUpsertNonThreadedMessages({
+        channelId,
+        channelName,
+        connectorId,
+        dataSourceConfig,
+        isBatchSync,
+        messages,
+        slackClient,
+        weekEndTsMs,
+        weekStartTsMs,
+      });
+
+      return {
+        completed: false,
+        nextCursor,
+        messagesProcessed: messages.length,
+      };
     }
   } while (hasMore);
 
+  // Apply total message limit.
+  if (messages.length > maxTotalMessages) {
+    logger.warn(
+      {
+        messagesCount: messages.length,
+        maxTotalMessages,
+        connectorId,
+        channelName,
+        channelId,
+        startTsMs,
+        endTsMs,
+      },
+      "Giving up on syncNonThreadedChunk: too many messages"
+    );
+    // Process only up to the limit.
+    messages.splice(maxTotalMessages);
+  }
+
+  if (messages.length > 0) {
+    await processAndUpsertNonThreadedMessages({
+      channelId,
+      channelName,
+      connectorId,
+      dataSourceConfig,
+      isBatchSync,
+      messages,
+      slackClient,
+      weekEndTsMs,
+      weekStartTsMs,
+    });
+  }
+
+  return {
+    completed: true,
+    messagesProcessed: messages.length,
+  };
+}
+
+async function processAndUpsertNonThreadedMessages({
+  channelId,
+  channelName,
+  connectorId,
+  dataSourceConfig,
+  isBatchSync,
+  messages,
+  slackClient,
+  weekEndTsMs,
+  weekStartTsMs,
+}: {
+  channelId: string;
+  channelName: string;
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  isBatchSync: boolean;
+  messages: MessageElement[];
+  slackClient: WebClient;
+  weekEndTsMs: number;
+  weekStartTsMs: number;
+}) {
   if (messages.length === 0) {
-    // no non threaded messages, so we're done
     return;
   }
+
   messages.reverse();
 
-  const content = await formatMessagesForUpsert({
-    dataSourceConfig,
-    channelName,
-    messages,
-    isThread: false,
-    connectorId,
-    slackClient: client,
-  });
+  const content = await withSlackErrorHandling(() =>
+    formatMessagesForUpsert({
+      dataSourceConfig,
+      channelName,
+      messages,
+      isThread: false,
+      connectorId,
+      slackClient,
+    })
+  );
 
-  const startDate = new Date(startTsMs);
-  const endDate = new Date(endTsMs);
+  const startDate = new Date(weekStartTsMs);
+  const endDate = new Date(weekEndTsMs);
+
+  // IMPORTANT: Document ID generation relies on weekly start/end dates, not chunk boundaries.
+  // This ensures all chunks processing the same week contribute to the same document.
   const documentId =
     slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier({
       channelId,
@@ -585,10 +630,19 @@ export async function syncNonThreaded(
   let sourceUrl: string | undefined = undefined;
 
   if (firstMessage && firstMessage.ts) {
-    const linkRes = await client.chat.getPermalink({
-      channel: channelId,
-      message_ts: firstMessage.ts,
+    const { ts } = firstMessage;
+
+    reportSlackUsage({
+      connectorId,
+      method: "chat.getPermalink",
+      channelId,
     });
+    const linkRes = await withSlackErrorHandling(() =>
+      slackClient.chat.getPermalink({
+        channel: channelId,
+        message_ts: ts,
+      })
+    );
     if (linkRes.ok && linkRes.permalink) {
       sourceUrl = linkRes.permalink;
     } else {
@@ -649,9 +703,45 @@ export async function syncNonThreaded(
         ?.split(":")
         .slice(1)
         .join(":") ?? "",
-    mimeType: MIME_TYPES.SLACK.MESSAGES,
+    mimeType: INTERNAL_MIME_TYPES.SLACK.MESSAGES,
     async: true,
   });
+}
+
+export async function syncMultipleNonThreaded(
+  dataSourceConfig: DataSourceConfig,
+  channelId: string,
+  channelName: string,
+  timestampsMs: number[],
+  connectorId: ModelId,
+  maxTotalMessages = MAX_SYNC_NON_THREAD_MESSAGES
+) {
+  const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
+
+  const promises = [];
+
+  for (const startTsMs of timestampsMs) {
+    const weekEndTsMs = getWeekEnd(new Date(startTsMs)).getTime();
+
+    const p = queue.add(() =>
+      syncNonThreadedChunk({
+        channelId,
+        channelName,
+        startTsMs,
+        endTsMs: weekEndTsMs,
+        connectorId,
+        isBatchSync: true,
+        // Ignore API call limit to process entire week as single chunk.
+        ignoreMessageLimit: true,
+        maxTotalMessages,
+        weekStartTsMs: startTsMs,
+        weekEndTsMs: weekEndTsMs,
+      })
+    );
+    promises.push(p);
+  }
+
+  return Promise.all(promises);
 }
 
 export async function syncThreads(
@@ -682,6 +772,19 @@ export async function syncThreads(
         );
       }
 
+      if (channel.skipReason) {
+        logger.info(
+          {
+            connectorId,
+            channelId,
+            channelName,
+            skipReason: channel.skipReason,
+          },
+          `Skipping thread sync: ${channel.skipReason}`
+        );
+        return;
+      }
+
       if (!["read", "read_write"].includes(channel.permission)) {
         logger.info(
           {
@@ -693,6 +796,8 @@ export async function syncThreads(
         );
         return;
       }
+
+      await heartbeat();
 
       return syncThread(
         channelId,
@@ -719,7 +824,11 @@ export async function syncThread(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
 
   let allMessages: MessageElement[] = [];
 
@@ -736,11 +845,15 @@ export async function syncThread(
   const now = new Date();
 
   try {
-    allMessages = await getRepliesFromThread({
-      slackClient,
-      channelId,
-      threadTs,
-    });
+    allMessages = await withSlackErrorHandling(() =>
+      getRepliesFromThread({
+        connectorId,
+        slackClient,
+        channelId,
+        threadTs,
+        useCase: isBatchSync ? "batch_sync" : "incremental_sync",
+      })
+    );
     allMessages = allMessages.filter((m) => !!m.user);
   } catch (e) {
     const slackError = e as CodedError;
@@ -779,7 +892,9 @@ export async function syncThread(
     threadTs,
   });
 
-  const botUserId = await getBotUserIdMemoized(connectorId);
+  const botUserId = await withSlackErrorHandling(() =>
+    getBotUserIdMemoized(slackClient, connectorId)
+  );
   allMessages = allMessages.filter((m) => m.user !== botUserId);
 
   if (allMessages.length === 0) {
@@ -787,23 +902,34 @@ export async function syncThread(
     return;
   }
 
-  const content = await formatMessagesForUpsert({
-    dataSourceConfig,
-    channelName,
-    messages: allMessages,
-    isThread: true,
-    connectorId,
-    slackClient,
-  });
+  const content = await withSlackErrorHandling(() =>
+    formatMessagesForUpsert({
+      dataSourceConfig,
+      channelName,
+      messages: allMessages,
+      isThread: true,
+      connectorId,
+      slackClient,
+    })
+  );
 
   const firstMessage = allMessages[0];
   let sourceUrl: string | undefined = undefined;
 
   if (firstMessage && firstMessage.ts) {
-    const linkRes = await slackClient.chat.getPermalink({
-      channel: channelId,
-      message_ts: firstMessage.ts,
+    const { ts } = firstMessage;
+
+    reportSlackUsage({
+      connectorId,
+      method: "chat.getPermalink",
+      channelId,
     });
+    const linkRes = await withSlackErrorHandling(() =>
+      slackClient.chat.getPermalink({
+        channel: channelId,
+        message_ts: ts,
+      })
+    );
     if (linkRes.ok && linkRes.permalink) {
       sourceUrl = linkRes.permalink;
     } else {
@@ -826,6 +952,26 @@ export async function syncThread(
     : undefined;
 
   const tags = getTagsForPage(documentId, channelId, channelName, threadTs);
+
+  const firstMessageObject = await SlackMessages.findOne({
+    where: {
+      connectorId: connectorId,
+      channelId: channelId,
+      messageTs: threadTs,
+    },
+  });
+  if (firstMessageObject && firstMessageObject.skipReason) {
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        threadTs,
+        skipReason: firstMessageObject.skipReason,
+      },
+      `Skipping thread : ${firstMessageObject.skipReason}`
+    );
+    return;
+  }
 
   // Only create the document if it doesn't already exist based on the documentId
   const existingMessages = await SlackMessages.findAll({
@@ -868,123 +1014,30 @@ export async function syncThread(
         ?.split(":")
         .slice(1)
         .join(":") ?? "",
-    mimeType: MIME_TYPES.SLACK.THREAD,
+    mimeType: INTERNAL_MIME_TYPES.SLACK.THREAD,
     async: true,
-  });
-}
-
-async function processMessageForMentions(
-  message: string,
-  connectorId: ModelId,
-  slackClient: WebClient
-): Promise<string> {
-  const matches = message.match(/<@[A-Z-0-9]+>/g);
-  if (!matches) {
-    return message;
-  }
-  for (const m of matches) {
-    const userId = m.replace(/<|@|>/g, "");
-    const userName = await getUserName(userId, connectorId, slackClient);
-    if (!userName) {
-      continue;
-    }
-
-    message = message.replace(m, `@${userName}`);
-
-    continue;
-  }
-
-  return message;
-}
-
-export async function formatMessagesForUpsert({
-  dataSourceConfig,
-  channelName,
-  messages,
-  isThread,
-  connectorId,
-  slackClient,
-}: {
-  dataSourceConfig: DataSourceConfig;
-  channelName: string;
-  messages: MessageElement[];
-  isThread: boolean;
-  connectorId: ModelId;
-  slackClient: WebClient;
-}): Promise<CoreAPIDataSourceDocumentSection> {
-  const data = await Promise.all(
-    messages.map(async (message) => {
-      const text = await processMessageForMentions(
-        message.text as string,
-        connectorId,
-        slackClient
-      );
-
-      const userName = await getUserName(
-        message.user as string,
-        connectorId,
-        slackClient
-      );
-      const messageDate = new Date(parseInt(message.ts as string, 10) * 1000);
-      const messageDateStr = formatDateForUpsert(messageDate);
-
-      const filesInfo = message.files
-        ? "\n" +
-          message.files
-            .map((file) => {
-              return `Attached file : ${file.name} ( ${file.mimetype} )`;
-            })
-            .join("\n")
-        : "";
-
-      return {
-        messageDate,
-        dateStr: messageDateStr,
-        userName,
-        text: text + filesInfo,
-        content: text + "\n",
-        sections: [],
-      };
-    })
-  );
-
-  const first = data.at(0);
-  const last = data.at(-1);
-  if (!last || !first) {
-    throw new Error("Cannot format empty list of messages");
-  }
-
-  const title = isThread
-    ? `Thread in #${channelName}: ${
-        safeSubstring(first.text.replace(/\s+/g, " ").trim(), 0, 128) + "..."
-      }`
-    : `Messages in #${channelName}`;
-
-  return renderDocumentTitleAndContent({
-    dataSourceConfig,
-    title,
-    createdAt: first.messageDate,
-    updatedAt: last.messageDate,
-    content: {
-      prefix: null,
-      content: null,
-      sections: data.map((d) => ({
-        prefix: `>> @${d.userName} [${d.dateStr}]:\n`,
-        content: d.text + "\n",
-        sections: [],
-      })),
-    },
   });
 }
 
 export async function fetchUsers(connectorId: ModelId) {
   let cursor: string | undefined;
-  const client = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
   do {
-    const res = await client.users.list({
-      cursor: cursor,
+    reportSlackUsage({
+      connectorId,
+      method: "users.list",
       limit: 100,
     });
+    const res = await withSlackErrorHandling(() =>
+      slackClient.users.list({
+        cursor: cursor,
+        limit: 100,
+      })
+    );
     if (res.error) {
       throw new Error(`Failed to fetch users: ${res.error}`);
     }
@@ -999,28 +1052,6 @@ export async function fetchUsers(connectorId: ModelId) {
     cursor = res.response_metadata?.next_cursor;
   } while (cursor);
 }
-
-export async function getBotUserId(connectorId: ModelId): Promise<string> {
-  let client: WebClient | undefined = undefined;
-
-  client = await getSlackClient(connectorId);
-
-  const authRes = await client.auth.test({});
-  if (authRes.error) {
-    throw new Error(`Failed to fetch auth info: ${authRes.error}`);
-  }
-  if (!authRes.user_id) {
-    throw new Error(`Failed to fetch auth info: user_id is undefined`);
-  }
-
-  return authRes.user_id;
-}
-
-export const getBotUserIdMemoized = cacheWithRedis(
-  getBotUserId,
-  (id) => id.toString(),
-  60 * 10 * 1000
-);
 
 export async function saveSuccessSyncActivity(connectorId: ModelId) {
   logger.info(
@@ -1039,56 +1070,17 @@ export async function reportInitialSyncProgressActivity(
   await reportInitialSyncProgress(connectorId, progress);
 }
 
-export async function getUserName(
-  slackUserId: string,
+export async function getChannel(
   connectorId: ModelId,
-  slackClient: WebClient
-): Promise<string | undefined> {
-  const fromCache = await cacheGet(getUserCacheKey(slackUserId, connectorId));
-  if (fromCache) {
-    return fromCache;
-  }
+  channelId: string
+): Promise<Channel> {
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
 
-  try {
-    const info = await slackClient.users.info({ user: slackUserId });
-
-    if (info && info.user) {
-      const displayName = info.user.profile?.display_name;
-      const realName = info.user.profile?.real_name;
-      const userName = displayName || realName || info.user.name;
-
-      if (userName) {
-        await cacheSet(getUserCacheKey(slackUserId, connectorId), userName);
-        return info.user.name;
-      }
-    }
-
-    return undefined;
-  } catch (err) {
-    if (isSlackWebAPIPlatformError(err)) {
-      if (err.data.error === "user_not_found") {
-        logger.info({ connectorId, slackUserId }, "Slack user not found.");
-
-        return undefined;
-      }
-    }
-
-    throw err;
-  }
-}
-
-function getUserCacheKey(userId: string, connectorId: ModelId) {
-  return `slack-userid2name-${connectorId}-${userId}`;
-}
-
-export function formatDateForUpsert(date: Date) {
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-
-  return `${year}${month}${day} ${hours}:${minutes}`;
+  return getChannelById(slackClient, connectorId, channelId);
 }
 
 function getTagsForPage(
@@ -1143,12 +1135,26 @@ export async function getChannelsToGarbageCollect(
   });
   const channelIdsWithoutReadPermission = new Set(
     channelsInConnectorsDb
-      .filter((c) => !["read", "read_write"].includes(c.permission))
+      .filter(
+        (c) =>
+          !["read", "read_write"].includes(c.permission) ||
+          c.skipReason !== null
+      )
       .map((c) => c.slackChannelId)
   );
 
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
+
   const remoteChannels = new Set(
-    (await getChannels(connectorId, true))
+    (
+      await withSlackErrorHandling(() =>
+        getChannels(slackClient, connectorId, true)
+      )
+    )
       .filter((c) => c.id)
       .map((c) => c.id as string)
   );

@@ -1,13 +1,9 @@
-import {
-  ContextItem,
-  IntercomLogo,
-  SliderToggle,
-  useSendNotification,
-} from "@dust-tt/sparkle";
-import type { APIError, DataSourceType, WorkspaceType } from "@dust-tt/types";
+import { ContextItem, IntercomLogo, SliderToggle } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import type { APIError, DataSourceType, WorkspaceType } from "@app/types";
 
 export function IntercomConfigView({
   owner,
@@ -78,7 +74,7 @@ export function IntercomConfigView({
         }
       >
         <ContextItem.Description>
-          <div className="text-element-700">
+          <div className="text-muted-foreground dark:text-muted-foreground-night">
             If activated, Dust will also sync the notes from the conversations
             you've selected.
           </div>

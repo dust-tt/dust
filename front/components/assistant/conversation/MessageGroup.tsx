@@ -1,13 +1,13 @@
+import React, { useEffect, useRef } from "react";
+
+import MessageItem from "@app/components/assistant/conversation/MessageItem";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type {
   FetchConversationMessagesResponse,
   MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
-} from "@dust-tt/types";
-import React, { useEffect, useRef } from "react";
-
-import MessageItem from "@app/components/assistant/conversation/MessageItem";
-import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
+} from "@app/types";
 
 interface MessageGroupProps {
   messages: MessageWithContentFragmentsType[];
@@ -59,7 +59,6 @@ export default function MessageGroup({
       id={isLastMessageGroup ? LAST_MESSAGE_GROUP_ID : ""}
       ref={isLastMessageGroup ? lastMessageGroupRef : undefined}
       style={{ minHeight }}
-      className="flex flex-col items-end gap-6"
     >
       {messages.map((message) => (
         <MessageItem

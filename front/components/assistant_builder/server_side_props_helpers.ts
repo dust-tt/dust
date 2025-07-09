@@ -1,87 +1,89 @@
+import assert from "assert";
+import { tracer } from "dd-trace";
+
+import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
+import { getDefaultMCPServerActionConfiguration } from "@app/components/assistant_builder/types";
+import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type {
-  AgentActionConfigurationType,
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration";
+import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { Authenticator } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
+import type {
   AgentConfigurationType,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
-  DustAppRunConfigurationType,
-  ProcessConfigurationType,
-  ReasoningConfigurationType,
-  RetrievalConfigurationType,
-  TablesQueryConfigurationType,
   TemplateAgentConfigurationType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  isBrowseConfiguration,
-  isDustAppRunConfiguration,
-  isGithubCreateIssueConfiguration,
-  isGithubGetPullRequestConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
-  slugify,
-} from "@dust-tt/types";
+} from "@app/types";
 
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
-import {
-  getDefaultDustAppRunActionConfiguration,
-  getDefaultGithubCreateIssueActionConfiguration,
-  getDefaultGithubGetPullRequestActionConfiguration,
-  getDefaultProcessActionConfiguration,
-  getDefaultReasoningActionConfiguration,
-  getDefaultRetrievalExhaustiveActionConfiguration,
-  getDefaultRetrievalSearchActionConfiguration,
-  getDefaultTablesQueryActionConfiguration,
-  getDefaultWebsearchActionConfiguration,
-} from "@app/components/assistant_builder/types";
-import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
-import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
-import type { Authenticator } from "@app/lib/auth";
-import { AppResource } from "@app/lib/resources/app_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
+// We are moving resource fetch to the client side. Until we finish,
+// we will keep this duplicated version for fetching actions.
+export const getAccessibleSourcesAndAppsForActions = async (
+  auth: Authenticator
+) => {
+  return tracer.trace("getAccessibleSourcesAndAppsForActions", async () => {
+    const accessibleSpaces = (
+      await SpaceResource.listWorkspaceSpaces(auth)
+    ).filter((space) => !space.isSystem() && space.canRead(auth));
 
-export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
-  const accessibleSpaces = (
-    await SpaceResource.listWorkspaceSpaces(auth)
-  ).filter((space) => !space.isSystem() && space.canRead(auth));
+    const [dsViews, allMCPServerViews] = await Promise.all([
+      DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
+        includeEditedBy: true,
+      }),
+      MCPServerViewResource.listBySpaces(auth, accessibleSpaces),
+    ]);
 
-  const [dsViews, allDustApps] = await Promise.all([
-    DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
-      includeEditedBy: true,
-    }),
-    AppResource.listByWorkspace(auth),
-  ]);
-
-  return {
-    spaces: accessibleSpaces,
-    dataSourceViews: dsViews,
-    dustApps: allDustApps,
-  };
+    return {
+      spaces: accessibleSpaces,
+      dataSourceViews: dsViews,
+      mcpServerViews: allMCPServerViews,
+    };
+  });
 };
 
 export async function buildInitialActions({
   dataSourceViews,
-  dustApps,
   configuration,
+  mcpServerViews = [],
 }: {
   dataSourceViews: DataSourceViewResource[];
-  dustApps: AppResource[];
   configuration: AgentConfigurationType | TemplateAgentConfigurationType;
-}): Promise<AssistantBuilderActionConfiguration[]> {
-  const builderActions: AssistantBuilderActionConfiguration[] = [];
+  mcpServerViews?: MCPServerViewType[];
+}): Promise<AssistantBuilderMCPConfiguration[]> {
+  const builderActions: AssistantBuilderMCPConfiguration[] = [];
 
   for (const action of configuration.actions) {
-    const builderAction = await initializeBuilderAction(
+    assert(
+      action.type === "mcp_server_configuration",
+      "Legacy action type, non-MCP, are no longer supported."
+    );
+    const mcpServerView = mcpServerViews.find(
+      (mcpServerView) => mcpServerView.server.name === action.name
+    );
+
+    const builderAction = await getMCPServerActionConfiguration(
       action,
       dataSourceViews,
-      dustApps
+      mcpServerView
     );
 
     if (builderAction) {
+      // TODO(durable agents, 2025-06-24): remove this once we have a proper
+      // type for the builder action. Namely, initializeBuilderAction return
+      // type should be AssistantBuilderMCPConfiguration.
+      assert(
+        builderAction.type === "MCP",
+        "Builder action is not a MCP server configuration"
+      );
+
       if (action.name) {
         builderAction.name = action.name;
       }
@@ -96,136 +98,77 @@ export async function buildInitialActions({
   return builderActions;
 }
 
-async function initializeBuilderAction(
-  action: AgentActionConfigurationType,
+async function getMCPServerActionConfiguration(
+  action: MCPServerConfigurationType,
   dataSourceViews: DataSourceViewResource[],
-  dustApps: AppResource[]
-): Promise<AssistantBuilderActionConfiguration | null> {
-  if (isRetrievalConfiguration(action)) {
-    return getRetrievalActionConfiguration(action, dataSourceViews);
-  } else if (isDustAppRunConfiguration(action)) {
-    return getDustAppRunActionConfiguration(action, dustApps);
-  } else if (isTablesQueryConfiguration(action)) {
-    return getTablesQueryActionConfiguration(action, dataSourceViews);
-  } else if (isProcessConfiguration(action)) {
-    return getProcessActionConfiguration(action, dataSourceViews);
-  } else if (isWebsearchConfiguration(action)) {
-    return getDefaultWebsearchActionConfiguration();
-  } else if (isBrowseConfiguration(action)) {
-    return null; // Ignore browse actions
-  } else if (isGithubGetPullRequestConfiguration(action)) {
-    return getDefaultGithubGetPullRequestActionConfiguration();
-  } else if (isGithubCreateIssueConfiguration(action)) {
-    return getDefaultGithubCreateIssueActionConfiguration();
-  } else if (isReasoningConfiguration(action)) {
-    return getReasoningActionConfiguration(action);
-  } else {
-    assertNever(action);
-  }
-}
+  mcpServerView?: MCPServerViewType
+): Promise<AssistantBuilderMCPConfiguration> {
+  assert(isServerSideMCPServerConfiguration(action));
 
-async function getRetrievalActionConfiguration(
-  action: RetrievalConfigurationType,
-  dataSourceViews: DataSourceViewResource[]
-): Promise<AssistantBuilderActionConfiguration> {
-  const retrievalConfiguration =
-    action.query !== "none"
-      ? getDefaultRetrievalSearchActionConfiguration()
-      : getDefaultRetrievalExhaustiveActionConfiguration();
-  if (
-    "timeFrame" in retrievalConfiguration.configuration &&
-    action.relativeTimeFrame !== "auto" &&
-    action.relativeTimeFrame !== "none"
-  ) {
-    retrievalConfiguration.configuration.timeFrame = {
-      value: action.relativeTimeFrame.duration,
-      unit: action.relativeTimeFrame.unit,
-    };
+  const builderAction = getDefaultMCPServerActionConfiguration(mcpServerView);
+  if (builderAction.type !== "MCP") {
+    throw new Error("MCP action configuration is not valid");
   }
 
-  retrievalConfiguration.configuration.dataSourceConfigurations =
-    await renderDataSourcesConfigurations(action, dataSourceViews);
+  builderAction.configuration.mcpServerViewId = action.mcpServerViewId;
 
-  return retrievalConfiguration;
-}
+  builderAction.name = "";
+  builderAction.description = "";
 
-async function getDustAppRunActionConfiguration(
-  action: DustAppRunConfigurationType,
-  dustApps: AppResource[]
-): Promise<AssistantBuilderActionConfiguration> {
-  const dustAppConfiguration = getDefaultDustAppRunActionConfiguration();
-  const app = dustApps.find((app) => app.sId === action.appId);
+  builderAction.configuration.dataSourceConfigurations = action.dataSources
+    ? await renderDataSourcesConfigurations(
+        { ...action, dataSources: action.dataSources }, // repeating action.dataSources to satisfy the typing
+        dataSourceViews
+      )
+    : null;
 
-  if (app) {
-    dustAppConfiguration.configuration.app = app.toJSON();
-    dustAppConfiguration.name = slugify(app.name);
-    dustAppConfiguration.description = app.description ?? "";
+  builderAction.configuration.tablesConfigurations = action.tables
+    ? await renderTableDataSourcesConfigurations(
+        { ...action, tables: action.tables },
+        dataSourceViews
+      )
+    : null;
+
+  builderAction.configuration.dustAppConfiguration =
+    action.dustAppConfiguration;
+
+  builderAction.configuration.childAgentId = action.childAgentId;
+
+  const { reasoningModel } = action;
+  if (reasoningModel) {
+    const supportedReasoningModel = REASONING_MODEL_CONFIGS.find(
+      (m) =>
+        m.modelId === reasoningModel.modelId &&
+        m.providerId === reasoningModel.providerId
+    );
+    if (supportedReasoningModel) {
+      const { modelId, providerId } = supportedReasoningModel;
+      builderAction.configuration.reasoningModel = {
+        modelId,
+        providerId,
+        temperature: null,
+        reasoningEffort:
+          reasoningModel.reasoningEffort ??
+          supportedReasoningModel.defaultReasoningEffort,
+      };
+    }
   }
 
-  return dustAppConfiguration;
-}
-
-async function getTablesQueryActionConfiguration(
-  action: TablesQueryConfigurationType,
-  dataSourceViews: DataSourceViewResource[]
-): Promise<AssistantBuilderActionConfiguration> {
-  const tablesQueryConfiguration = getDefaultTablesQueryActionConfiguration();
-  tablesQueryConfiguration.configuration =
-    await renderTableDataSourcesConfigurations(action, dataSourceViews);
-
-  return tablesQueryConfiguration;
-}
-
-async function getProcessActionConfiguration(
-  action: ProcessConfigurationType,
-  dataSourceViews: DataSourceViewResource[]
-): Promise<AssistantBuilderActionConfiguration> {
-  const processConfiguration = getDefaultProcessActionConfiguration();
-
-  if (
-    action.relativeTimeFrame !== "auto" &&
-    action.relativeTimeFrame !== "none"
-  ) {
-    processConfiguration.configuration.timeFrame = {
-      value: action.relativeTimeFrame.duration,
-      unit: action.relativeTimeFrame.unit,
-    };
-  }
-
-  processConfiguration.configuration.dataSourceConfigurations =
-    await renderDataSourcesConfigurations(action, dataSourceViews);
-  processConfiguration.configuration.schema = action.schema;
-
-  return processConfiguration;
-}
-
-async function getReasoningActionConfiguration(
-  action: ReasoningConfigurationType
-): Promise<AssistantBuilderActionConfiguration> {
-  const builderAction = getDefaultReasoningActionConfiguration();
-  if (builderAction.type !== "REASONING") {
-    throw new Error("Reasoning action configuration is not valid");
-  }
-
-  const supportedReasoningModel = await REASONING_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === action.modelId &&
-      m.providerId === action.providerId &&
-      (m.reasoningEffort ?? null) === (action.reasoningEffort ?? null)
-  );
-
-  if (supportedReasoningModel) {
-    builderAction.configuration.modelId = supportedReasoningModel.modelId;
-    builderAction.configuration.providerId = supportedReasoningModel.providerId;
-    builderAction.configuration.reasoningEffort =
-      supportedReasoningModel.reasoningEffort ?? null;
-  }
+  builderAction.configuration.timeFrame = action.timeFrame;
+  builderAction.configuration.jsonSchema = action.jsonSchema;
+  builderAction.configuration._jsonSchemaString = action.jsonSchema
+    ? JSON.stringify(action.jsonSchema, null, 2)
+    : null;
+  builderAction.configuration.additionalConfiguration =
+    action.additionalConfiguration;
 
   return builderAction;
 }
 
 async function renderDataSourcesConfigurations(
-  action: RetrievalConfigurationType | ProcessConfigurationType,
+  action: MCPServerConfigurationType & {
+    dataSources: DataSourceConfiguration[];
+  },
   dataSourceViews: DataSourceViewResource[]
 ): Promise<DataSourceViewSelectionConfigurations> {
   const selectedResources = action.dataSources.map((ds) => ({
@@ -248,7 +191,7 @@ async function renderDataSourcesConfigurations(
 
       const serializedDataSourceView = dataSourceView.toJSON();
 
-      if (!dataSourceView.dataSource.connectorId || !sr.resources) {
+      if (!sr.resources) {
         return {
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
@@ -309,7 +252,9 @@ async function renderDataSourcesConfigurations(
 }
 
 async function renderTableDataSourcesConfigurations(
-  action: TablesQueryConfigurationType,
+  action: MCPServerConfigurationType & {
+    tables: TableDataSourceConfiguration[];
+  },
   dataSourceViews: DataSourceViewResource[]
 ): Promise<DataSourceViewSelectionConfigurations> {
   const selectedResources = action.tables.map((table) => ({

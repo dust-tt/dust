@@ -9,22 +9,22 @@ import { itInTransaction } from "@app/tests/utils/utils";
 import handler from "./search";
 
 describe("GET /api/w/[wId]/members/search", () => {
-  itInTransaction("returns 403 for non-admin users", async () => {
-    const { req, res } = await createPrivateApiMockRequest({
+  // We need search to work for all users as they can be added as editors of an agent by anyone.
+  itInTransaction("allows users to search members", async () => {
+    const { req, res, user } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
     });
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can search memberships.",
-      },
-    });
+    expect(res._getStatusCode()).toBe(200);
+
+    const data = res._getJSONData();
+    expect(data.total).toBe(1);
+    expect(data.members).toHaveLength(1);
+    expect(data.members[0].id).toBe(user.id);
+    expect(data.members[0].workspace.role).toBe("user");
   });
 
   itInTransaction("returns 405 for non-GET methods", async () => {
@@ -60,7 +60,9 @@ describe("GET /api/w/[wId]/members/search", () => {
     ]);
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
     );
 
     req.query.searchTerm = users[0].email;
@@ -87,7 +89,9 @@ describe("GET /api/w/[wId]/members/search", () => {
     ]);
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
     );
 
     req.query.searchEmails = users[0].email + "," + users[1].email;
@@ -141,7 +145,9 @@ describe("GET /api/w/[wId]/members/search", () => {
     );
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
     );
 
     req.query.limit = "20";

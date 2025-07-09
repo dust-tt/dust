@@ -52,13 +52,13 @@ async function queryIntercomAPI({
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // We get the text and attempt to parse so that we can log the raw text in case of error (the
-  // body is already consumed by response.json() if used otherwise).
-  const text = await rawResponse.text();
-
-  let response = null;
+  let text;
   try {
-    response = JSON.parse(text);
+    // We get the text and attempt to parse so that we can log the raw text in case of error (the
+    // body is already consumed by response.json() if used otherwise).
+    text = await rawResponse.text();
+
+    const response = JSON.parse(text);
 
     if (!rawResponse.ok) {
       if (
@@ -72,7 +72,7 @@ async function queryIntercomAPI({
           throw new ExternalOAuthTokenError();
         }
         // We return null for 404 errors.
-        if (error.code === "not_found") {
+        if (error.code.toLowerCase() === "not_found") {
           return null;
         }
       }
@@ -81,7 +81,7 @@ async function queryIntercomAPI({
     return response;
   } catch (e) {
     if (rawResponse.status === 405) {
-      const isCaptchaError = text.includes("captcha-container");
+      const isCaptchaError = text?.includes("captcha-container");
 
       throw new ProviderWorkflowError(
         "intercom",

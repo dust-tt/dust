@@ -1,31 +1,51 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { mergeUserIdentities } from "@app/lib/iam/users";
+import { Err, Ok } from "@app/types";
 
 export const userIdentityMergePlugin = createPlugin({
   manifest: {
     id: "merge-user-identities",
     name: "Merge user identities",
     description:
-      "Merge two user identities with the same email into a single identity, consolidating all related data.",
+      "Merge two user identities with the same email (or not) into a single identity, " +
+      "consolidating all related data.",
     resourceTypes: ["workspaces"],
     args: {
       primaryUserId: {
         type: "string",
         label: "Primary user ID",
         description:
-          "User ID of the primary user (the one that will remain after the merge)",
+          "User ID of the primary user (the one that will remain after the merge - likely the one with all the conversations history)",
       },
       secondaryUserId: {
         type: "string",
         label: "Secondary user ID",
         description:
-          "User ID of the secondary user (the one that won't be kept after the merge)",
+          "User ID of the secondary user (the one that won't be kept after the merge - likely the new SSO one)",
+      },
+      ignoreEmailMatch: {
+        type: "boolean",
+        label: "Ignore email match",
+        description:
+          "If true, the secondary user's email will not be checked against the primary user's email.",
+        default: false,
+      },
+      revokeSecondaryUser: {
+        type: "boolean",
+        label: "Revoke secondary user",
+        description:
+          "If true, the secondary user will be revoked from the workspace after the merge.",
+        default: false,
+      },
+      skipAuth0: {
+        type: "boolean",
+        label: "Skip Auth0",
+        description: "If true, the Auth0 merge will be skipped.",
+        default: false,
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const primaryUserId = args.primaryUserId.trim();
     const secondaryUserId = args.secondaryUserId.trim();
 
@@ -37,6 +57,9 @@ export const userIdentityMergePlugin = createPlugin({
       auth,
       primaryUserId,
       secondaryUserId,
+      enforceEmailMatch: !args.ignoreEmailMatch,
+      revokeSecondaryUser: args.revokeSecondaryUser,
+      skipAuth0: args.skipAuth0,
     });
 
     if (mergeResult.isErr()) {

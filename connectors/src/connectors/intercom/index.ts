@@ -1,10 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import {
   allowSyncTeam,
@@ -43,15 +38,23 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
-  IntercomHelpCenter,
-  IntercomTeam,
-  IntercomWorkspace,
+  DEFAULT_CONVERSATIONS_SLIDING_WINDOW,
+  IntercomHelpCenterModel,
+  IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 export class IntercomConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "intercom";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -75,7 +78,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     const intercomConfigurationBlob = {
       intercomWorkspaceId: intercomWorkspace.id,
       name: intercomWorkspace.name,
-      conversationsSlidingWindow: 90,
+      conversationsSlidingWindow: DEFAULT_CONVERSATIONS_SLIDING_WINDOW,
       region: intercomWorkspace.region,
       syncAllConversations: "disabled" as const,
       shouldSyncNotes: true,
@@ -125,7 +128,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       throw new Error(`Connector ${this.connectorId} not found`);
     }
 
-    const intercomWorkspace = await IntercomWorkspace.findOne({
+    const intercomWorkspace = await IntercomWorkspaceModel.findOne({
       where: { connectorId: connector.id },
     });
 
@@ -158,10 +161,10 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
 
       // If connector was previously paused, unpause it.
       if (connector.isPaused()) {
-        await this.unpause();
+        await this.unpauseAndResume();
       }
 
-      await IntercomWorkspace.update(
+      await IntercomWorkspaceModel.update(
         {
           intercomWorkspaceId: newIntercomWorkspace.id,
           name: newIntercomWorkspace.name,
@@ -243,9 +246,17 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     }
 
     const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    const teamsIds = await IntercomTeamModel.findAll({
+      where: {
+        connectorId: this.connectorId,
+      },
+      attributes: ["teamId"],
+    });
+    const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
     try {
       await launchIntercomSyncWorkflow({
         connectorId: this.connectorId,
+        teamIds: toBeSignaledTeamIds,
       });
     } catch (e) {
       logger.error(
@@ -271,13 +282,13 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const helpCentersIds = await IntercomHelpCenter.findAll({
+    const helpCentersIds = await IntercomHelpCenterModel.findAll({
       where: {
         connectorId: this.connectorId,
       },
       attributes: ["helpCenterId"],
     });
-    const teamsIds = await IntercomTeam.findAll({
+    const teamsIds = await IntercomTeamModel.findAll({
       where: {
         connectorId: this.connectorId,
       },
@@ -359,6 +370,15 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
+  }
+
   async setPermissions({
     permissions,
   }: {
@@ -373,7 +393,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const intercomWorkspace = await IntercomWorkspace.findOne({
+    const intercomWorkspace = await IntercomWorkspaceModel.findOne({
       where: {
         connectorId: this.connectorId,
       },
@@ -534,7 +554,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
 
     switch (configKey) {
       case "intercomConversationsNotesSyncEnabled": {
-        const connectorState = await IntercomWorkspace.findOne({
+        const connectorState = await IntercomWorkspaceModel.findOne({
           where: {
             connectorId: connector.id,
           },
@@ -551,7 +571,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           shouldSyncNotes: configValue === "true",
         });
 
-        const teamsIds = await IntercomTeam.findAll({
+        const teamsIds = await IntercomTeamModel.findAll({
           where: {
             connectorId: this.connectorId,
           },
@@ -590,7 +610,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
 
     switch (configKey) {
       case "intercomConversationsNotesSyncEnabled": {
-        const connectorState = await IntercomWorkspace.findOne({
+        const connectorState = await IntercomWorkspaceModel.findOne({
           where: {
             connectorId: connector.id,
           },
@@ -608,54 +628,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "[Intercom] Connector not found."
-      );
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsPaused();
-    const stopRes = await this.stop();
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "[Intercom] Connector not found."
-      );
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsUnpaused();
-    const teamsIds = await IntercomTeam.findAll({
-      where: {
-        connectorId: this.connectorId,
-      },
-      attributes: ["teamId"],
-    });
-    const toBeSignaledTeamIds = teamsIds.map((team) => team.teamId);
-    const r = await launchIntercomSyncWorkflow({
-      connectorId: this.connectorId,
-      teamIds: toBeSignaledTeamIds,
-    });
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

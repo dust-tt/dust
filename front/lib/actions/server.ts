@@ -1,6 +1,6 @@
 import type { DustAppConfigType, DustAppType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import { Err, getHeaderFromGroupIds, Ok } from "@dust-tt/types";
+import { z } from "zod";
 
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -8,7 +8,8 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import type { DustRegistryActionName } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/withlogging";
+import { statsDClient } from "@app/logger/statsDClient";
+import { Err, getHeaderFromGroupIds, getHeaderFromRole, Ok } from "@app/types";
 
 // Record an event and a log for the action error.
 const logActionError = (
@@ -34,6 +35,49 @@ const logActionError = (
     },
     "Action run error"
   );
+};
+
+const DustAppChatBlockFunctionCallSchema = z.object({
+  arguments: z.string(),
+  id: z.string(),
+  name: z.string(),
+});
+
+const DustAppChatBlockSchema = z.object({
+  message: z.object({
+    content: z.string().optional(),
+    function_calls: z.array(DustAppChatBlockFunctionCallSchema).optional(),
+    role: z.string(),
+    contents: z
+      .array(
+        z.union([
+          z.object({
+            type: z.literal("text_content"),
+            value: z.string(),
+          }),
+          z.object({
+            type: z.literal("function_call"),
+            value: DustAppChatBlockFunctionCallSchema,
+          }),
+          z.object({
+            type: z.literal("reasoning"),
+            value: z.object({
+              reasoning: z.string().optional(),
+              metadata: z.string(),
+            }),
+          }),
+        ])
+      )
+      .optional(),
+  }),
+});
+
+export type DustAppChatBlockType = z.infer<typeof DustAppChatBlockSchema>;
+
+export const isDustAppChatBlockType = (
+  block: unknown
+): block is DustAppChatBlockType => {
+  return DustAppChatBlockSchema.safeParse(block).success;
 };
 
 /**
@@ -85,13 +129,17 @@ export async function runActionStreamed(
   statsDClient.increment("use_actions.count", 1, tags);
   const now = new Date();
 
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
   const requestedGroupIds = auth.groups().map((g) => g.sId);
+
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
     {
       ...prodCredentials,
-      extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+      extraHeaders: {
+        ...getHeaderFromGroupIds(requestedGroupIds),
+        ...getHeaderFromRole(auth.role()),
+      },
     },
     logger
   );
@@ -201,13 +249,17 @@ export async function runAction(
   statsDClient.increment("use_actions.count", 1, tags);
   const now = new Date();
 
-  const prodCredentials = await prodAPICredentialsForOwner(owner);
   const requestedGroupIds = auth.groups().map((g) => g.sId);
+
+  const prodCredentials = await prodAPICredentialsForOwner(owner);
   const api = new DustAPI(
     apiConfig.getDustAPIConfig(),
     {
       ...prodCredentials,
-      extraHeaders: getHeaderFromGroupIds(requestedGroupIds),
+      extraHeaders: {
+        ...getHeaderFromGroupIds(requestedGroupIds),
+        ...getHeaderFromRole(auth.role()),
+      },
     },
     logger
   );

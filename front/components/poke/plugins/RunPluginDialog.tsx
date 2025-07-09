@@ -1,13 +1,15 @@
 import {
+  Button,
+  cn,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { PluginWorkspaceResource } from "@dust-tt/types";
 import { AlertCircle } from "lucide-react";
 import { useCallback, useState } from "react";
 
@@ -18,18 +20,23 @@ import {
   PokeAlertTitle,
 } from "@app/components/poke/shadcn/ui/alert";
 import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
-import { usePokePluginManifest, useRunPokePlugin } from "@app/poke/swr/plugins";
+import {
+  usePokePluginAsyncArgs,
+  usePokePluginManifest,
+  useRunPokePlugin,
+} from "@app/poke/swr/plugins";
+import type { PluginResourceTarget } from "@app/types";
 
 type ExecutePluginDialogProps = {
   onClose: () => void;
   plugin: PluginListItem;
-  workspaceResource?: PluginWorkspaceResource;
+  pluginResourceTarget: PluginResourceTarget;
 };
 
 export function RunPluginDialog({
   onClose,
   plugin,
-  workspaceResource,
+  pluginResourceTarget,
 }: ExecutePluginDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PluginResponse | null>(null);
@@ -37,12 +44,22 @@ export function RunPluginDialog({
   const { isLoading, manifest } = usePokePluginManifest({
     disabled: !open,
     pluginId: plugin?.id,
-    workspaceResource,
+  });
+
+  // Check if any args are marked as async
+  const hasAsyncArgs = manifest
+    ? Object.values(manifest.args).some((arg) => arg.async)
+    : false;
+
+  const { asyncArgs, isLoading: isLoadingAsyncArgs } = usePokePluginAsyncArgs({
+    disabled: !manifest || !hasAsyncArgs,
+    pluginId: plugin.id,
+    pluginResourceTarget,
   });
 
   const { doRunPlugin } = useRunPokePlugin({
     pluginId: plugin.id,
-    workspaceResource,
+    pluginResourceTarget,
   });
 
   const handleClose = () => {
@@ -68,13 +85,19 @@ export function RunPluginDialog({
 
   return (
     <Dialog open={true} onOpenChange={handleClose}>
-      <DialogContent className="w-auto bg-structure-50 sm:min-w-[600px] sm:max-w-[1000px]">
+      <DialogContent
+        className={cn(
+          "w-auto overflow-visible",
+          "bg-muted-background dark:bg-muted-background-night",
+          "sm:min-w-[600px] sm:max-w-[1000px]"
+        )}
+      >
         <DialogHeader>
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
           <DialogDescription>{plugin.description}</DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          {isLoading ? (
+          {isLoading || (hasAsyncArgs && isLoadingAsyncArgs) ? (
             <Spinner />
           ) : !manifest ? (
             <PokeAlert variant="destructive">
@@ -100,21 +123,55 @@ export function RunPluginDialog({
                   </PokeAlertDescription>
                 </PokeAlert>
               )}
+              {result && result.display === "textWithLink" && (
+                <>
+                  <PokeAlert variant="success">
+                    <PokeAlertTitle>Success</PokeAlertTitle>
+                    <PokeAlertDescription>
+                      <p>{result.value} - Make sure to reload.</p>
+                      <Button
+                        onClick={() => {
+                          window.open(result.link, "_blank");
+                        }}
+                        label={result.linkText}
+                        variant="highlight"
+                        className="mt-2"
+                      />
+                    </PokeAlertDescription>
+                  </PokeAlert>
+                </>
+              )}
               {result && result.display === "json" && (
                 <div className="mb-4 mt-4">
                   <div className="mb-2 font-medium">Result:</div>
-                  <div className="max-h-[400px] overflow-auto rounded-lg bg-slate-800 p-4">
-                    <pre className="font-mono whitespace-pre-wrap break-words text-sm text-slate-200">
+                  <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
+                    <pre className="copy-sm whitespace-pre-wrap break-words font-mono text-gray-200">
                       {JSON.stringify(result.value, null, 2)}
                     </pre>
                   </div>
                 </div>
               )}
-              <PluginForm
-                disabled={result !== null}
-                manifest={manifest}
-                onSubmit={onSubmit}
-              />
+              {result && result.display === "markdown" && (
+                <div className="mb-4 mt-4">
+                  <div className="mb-2 font-medium">Result:</div>
+                  <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
+                    <Markdown
+                      content={result.value}
+                      textColor="text-slate-500 dark:text-foreground-night"
+                    />
+                  </div>
+                </div>
+              )}
+              {isLoadingAsyncArgs ? (
+                <Spinner />
+              ) : (
+                <PluginForm
+                  disabled={result !== null}
+                  manifest={manifest}
+                  asyncArgs={asyncArgs}
+                  onSubmit={onSubmit}
+                />
+              )}
               {manifest.warning && (
                 <PokeAlert variant="destructive">
                   <PokeAlertTitle>Warning</PokeAlertTitle>

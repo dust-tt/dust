@@ -1,13 +1,14 @@
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
   ConnectorConfiguration,
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 export type CreateConnectorErrorCode = "INVALID_CONFIGURATION";
 
@@ -35,6 +36,8 @@ export class ConnectorManagerError<T extends string> extends Error {
 
 export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
   readonly connectorId: ModelId;
+
+  abstract get provider(): ConnectorProvider;
 
   constructor(connectorId: ModelId) {
     this.connectorId = connectorId;
@@ -71,6 +74,15 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   >;
 
+  /**
+   * Retrieves the parent IDs of a content node in hierarchical order.
+   * The first ID is the internal ID of the content node itself.
+   */
+  abstract retrieveContentNodeParents(params: {
+    internalId: string;
+    memoizationKey?: string;
+  }): Promise<Result<string[], Error>>;
+
   abstract setPermissions(params: {
     permissions: Record<string, ConnectorPermission>;
   }): Promise<Result<void, Error>>;
@@ -86,9 +98,27 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
 
   abstract garbageCollect(): Promise<Result<string, Error>>;
 
-  abstract pause(): Promise<Result<undefined, Error>>;
+  async pauseAndStop(): Promise<Result<undefined, Error>> {
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      throw new Error(
+        `Connector ID ${this.connectorId} on provider ${this.provider} not found.`
+      );
+    }
+    await connector.markAsPaused();
+    return this.stop();
+  }
 
-  abstract unpause(): Promise<Result<undefined, Error>>;
+  async unpauseAndResume(): Promise<Result<undefined, Error>> {
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      throw new Error(
+        `Connector ID ${this.connectorId} on provider ${this.provider} not found.`
+      );
+    }
+    await connector.markAsUnpaused();
+    return this.resume();
+  }
 
   abstract configure(params: {
     configuration: T;

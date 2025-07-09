@@ -1,6 +1,9 @@
 import type { AgentActionPublicType } from "@dust-tt/client";
-import { isRetrievalActionType, isWebsearchActionType } from "@dust-tt/client";
-import { getTitleFromRetrievedDocument } from "@dust-tt/types";
+import {
+  isMCPActionType,
+  isSearchResultResourceType,
+  isWebsearchResultResourceType,
+} from "@dust-tt/client";
 
 interface SlackMessageFootnote {
   index: number;
@@ -23,25 +26,35 @@ export function annotateCitations(
   } = {};
 
   for (const action of actions) {
-    if (action && isRetrievalActionType(action) && action.documents) {
-      action.documents.forEach((d) => {
-        // If the document has no sourceUrl we skip the citation.
-        if (d.sourceUrl) {
-          references[d.reference] = {
-            reference: d.reference,
-            link: d.sourceUrl,
-            title: getTitleFromRetrievedDocument(d),
-          };
+    if (action && isMCPActionType(action) && action.output) {
+      // Handle MCP search results
+      action.output?.filter(isSearchResultResourceType).forEach((o) => {
+        if (o.type === "resource" && o.resource.ref) {
+          const r = o.resource;
+          const ref = r.ref;
+          if (ref) {
+            references[ref] = {
+              reference: ref,
+              link: r.uri,
+              title: r.text,
+            };
+          }
         }
       });
-    }
-    if (action && isWebsearchActionType(action) && action.output) {
-      action.output.results.forEach((r) => {
-        references[r.reference] = {
-          reference: r.reference,
-          link: r.link,
-          title: r.title,
-        };
+
+      // Handle MCP websearch results
+      action.output?.filter(isWebsearchResultResourceType).forEach((o) => {
+        if (o.type === "resource" && o.resource.reference) {
+          const r = o.resource;
+          const ref = r.reference;
+          if (ref) {
+            references[ref] = {
+              reference: ref,
+              link: r.uri,
+              title: r.title,
+            };
+          }
+        }
       });
     }
   }

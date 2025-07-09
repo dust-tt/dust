@@ -1,10 +1,10 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import Sqids from "sqids";
 import { v4 as uuidv4 } from "uuid";
 
 import logger from "@app/logger/logger";
+import type { ModelId, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const RESOURCE_S_ID_MIN_LENGTH = 10;
 
@@ -29,6 +29,22 @@ const RESOURCES_PREFIX = {
   tracker: "trk",
   template: "tpl",
   extension: "ext",
+  mcp_server_connection: "msc",
+  mcp_server_view: "msv",
+  remote_mcp_server: "rms",
+  tag: "tag",
+  transcripts_configuration: "tsc",
+
+  // Action (used for tool approval currently).
+  mcp_action: "act",
+
+  // Resources relative to the configuration of an MCP server.
+  data_source_configuration: "dsc",
+  table_configuration: "tbc",
+  agent_configuration: "cac",
+
+  // Virtual resources (no database models associated).
+  internal_mcp_server: "ims",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
@@ -36,6 +52,8 @@ export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
 const ALL_RESOURCES_PREFIXES = Object.values(RESOURCES_PREFIX);
 
 type ResourceNameType = keyof typeof RESOURCES_PREFIX;
+
+const sIdCache = new Map<string, string>();
 
 export function makeSId(
   resourceName: ResourceNameType,
@@ -49,13 +67,28 @@ export function makeSId(
 ): string {
   const idsToEncode = [LEGACY_REGION_BIT, LEGACY_SHARD_BIT, workspaceId, id];
 
-  return `${RESOURCES_PREFIX[resourceName]}_${sqids.encode(idsToEncode)}`;
+  // Computing the sId is relatively expensive and we have a lot of them.
+  // We cache them in memory to avoid recomputing them, they are immutable.
+  const key = `${resourceName}_${idsToEncode.join("_")}`;
+  const cached = sIdCache.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  const prefix = RESOURCES_PREFIX[resourceName];
+  if (!prefix) {
+    throw new Error(`Invalid resource name: ${resourceName}`);
+  }
+
+  const sId = `${prefix}_${sqids.encode(idsToEncode)}`;
+  sIdCache.set(key, sId);
+  return sId;
 }
 
 function getIdsFromSId(sId: string): Result<
   {
-    workspaceId: ModelId;
-    resourceId: ModelId;
+    workspaceModelId: ModelId;
+    resourceModelId: ModelId;
   },
   Error
 > {
@@ -78,7 +111,10 @@ function getIdsFromSId(sId: string): Result<
 
     const [, , workspaceId, resourceId] = ids;
 
-    return new Ok({ workspaceId, resourceId });
+    return new Ok({
+      workspaceModelId: workspaceId,
+      resourceModelId: resourceId,
+    });
   } catch (error) {
     return new Err(
       error instanceof Error ? error : new Error("Failed to decode string Id")
@@ -97,7 +133,7 @@ export function getResourceIdFromSId(sId: string): ModelId | null {
     return null;
   }
 
-  return sIdsRes.value.resourceId;
+  return sIdsRes.value.resourceModelId;
 }
 
 export function isResourceSId(
@@ -107,9 +143,12 @@ export function isResourceSId(
   return sId.startsWith(`${RESOURCES_PREFIX[resourceName]}_`);
 }
 
-export function getResourceNameAndIdFromSId(
-  sId: string
-): { resourceName: ResourceNameType; sId: string } | null {
+export function getResourceNameAndIdFromSId(sId: string): {
+  resourceName: ResourceNameType;
+  sId: string;
+  workspaceModelId: ModelId;
+  resourceModelId: ModelId;
+} | null {
   const resourceName = (
     Object.keys(RESOURCES_PREFIX) as ResourceNameType[]
   ).find((name) => isResourceSId(name, sId));
@@ -124,7 +163,7 @@ export function getResourceNameAndIdFromSId(
     return null;
   }
 
-  return { resourceName, sId };
+  return { resourceName, sId, ...sIdRes.value };
 }
 
 // Legacy behavior.

@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   ParentClosePolicy,
@@ -7,13 +6,21 @@ import {
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
+import { chunk } from "lodash";
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/github/temporal/activities";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type * as activitiesSyncCode from "@connectors/connectors/github/temporal/activities/sync_code";
+import type { DirectoryListing } from "@connectors/connectors/github/temporal/activities/sync_code";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 import { newWebhookSignal } from "./signals";
-import { getFullSyncWorkflowId, getReposSyncWorkflowId } from "./utils";
+import {
+  getCodeSyncStatelessWorkflowId,
+  getFullSyncWorkflowId,
+  getReposSyncWorkflowId,
+} from "./utils";
 
 const {
   githubSaveStartSyncActivity,
@@ -47,19 +54,27 @@ const { githubUpsertIssueActivity, githubUpsertDiscussionActivity } =
     startToCloseTimeout: "60 minute",
   });
 
-const { githubCodeSyncActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "180 minute",
-  // We use a rather large heartbeat as we have to allow enough time for the initial code tar
-  // download to complete (should be less than a few GB). But this is nonetheless valuable compared
-  // to just relying on startToCloseTimeout (which has to be large enough to allow the full initial
-  // sync, which can only be done in one activity since it is stateful (download of tar file to
-  // local temp storage)). Basically In case of a deploy or crash of the worker node we will retry
-  // the activity after 15mn and not 180 as defined by the startToCloseTimeout.
-  heartbeatTimeout: "15 minute",
+const {
+  githubCleanupCodeSyncActivity,
+  githubEnsureCodeSyncEnabledActivity,
+  githubGetGcsFilesActivity,
+  githubProcessDirectoryChunkActivity,
+  githubProcessFileChunkActivity,
+} = proxyActivities<typeof activitiesSyncCode>({
+  startToCloseTimeout: "10 minute",
+});
+
+const { githubExtractToGcsActivity } = proxyActivities<
+  typeof activitiesSyncCode
+>({
+  startToCloseTimeout: "60 minute",
 });
 
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
 const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
+
+const FILE_CHUNK_SIZE = 200;
+const DIRECTORY_CHUNK_SIZE = 100;
 
 /**
  * This workflow is used to fetch and sync all the repositories of a GitHub connector.
@@ -264,14 +279,20 @@ export async function githubRepoDiscussionsSyncWorkflow({
   });
   const promises: Promise<void>[] = [];
 
-  const { cursor, discussionNumbers } =
-    await githubGetRepoDiscussionsResultPageActivity(
-      connectorId,
-      repoName,
-      repoLogin,
-      nextCursor,
-      { repoId }
-    );
+  const result = await githubGetRepoDiscussionsResultPageActivity(
+    connectorId,
+    repoName,
+    repoLogin,
+    nextCursor,
+    { repoId }
+  );
+
+  if (!result) {
+    // Repository not found, skip
+    return null;
+  }
+
+  const { cursor, discussionNumbers } = result;
 
   for (const discussionNumber of discussionNumbers) {
     promises.push(
@@ -394,16 +415,22 @@ export async function githubRepoSyncWorkflow({
     }
   }
 
-  // Start code syncing activity.
-  await githubCodeSyncActivity({
-    dataSourceConfig,
-    connectorId,
-    repoLogin,
-    repoName,
-    repoId,
-    loggerArgs: { syncCodeOnly: syncCodeOnly ? "true" : "false" },
-    isBatchSync: true,
-    forceResync: forceCodeResync,
+  await executeChild(githubCodeSyncStatelessWorkflow, {
+    workflowId: getCodeSyncStatelessWorkflowId(connectorId, repoId),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    args: [
+      {
+        connectorId,
+        dataSourceConfig,
+        forceResync: forceCodeResync,
+        repoId,
+        repoLogin,
+        repoName,
+      },
+    ],
+    memo: workflowInfo().memo,
   });
 }
 
@@ -415,7 +442,6 @@ export async function githubCodeSyncWorkflow(
   repoLogin: string
 ) {
   let signaled = false;
-  let debounceCount = 0;
 
   setHandler(newWebhookSignal, () => {
     signaled = true;
@@ -429,24 +455,152 @@ export async function githubCodeSyncWorkflow(
     // at this layer for a few seconds, hence the use of signals here.
     await sleep(10000);
     if (signaled) {
-      debounceCount += 1;
       continue;
     }
 
-    await githubCodeSyncActivity({
-      dataSourceConfig,
-      connectorId,
-      repoLogin,
-      repoName,
-      repoId,
-      loggerArgs: {
-        debounceCount,
-        activity: "githubCodeSync",
+    await executeChild(githubCodeSyncStatelessWorkflow, {
+      workflowId: getCodeSyncStatelessWorkflowId(connectorId, repoId),
+      searchAttributes: {
+        connectorId: [connectorId],
       },
-      isBatchSync: true,
+      args: [
+        {
+          connectorId,
+          dataSourceConfig,
+          repoId,
+          repoLogin,
+          repoName,
+        },
+      ],
+      memo: workflowInfo().memo,
     });
-    await githubSaveSuccessSyncActivity(dataSourceConfig);
   }
+}
+
+export async function githubCodeSyncStatelessWorkflow({
+  connectorId,
+  dataSourceConfig,
+  repoId,
+  repoLogin,
+  repoName,
+  forceResync = false,
+}: {
+  connectorId: ModelId;
+  dataSourceConfig: DataSourceConfig;
+  repoId: number;
+  repoLogin: string;
+  repoName: string;
+  forceResync?: boolean;
+}) {
+  const codeSyncStartedAtMs = Date.now();
+
+  const shouldSyncCode = await githubEnsureCodeSyncEnabledActivity({
+    codeSyncStartedAtMs,
+    connectorId,
+    dataSourceConfig,
+    repoId,
+    repoLogin,
+    repoName,
+  });
+
+  if (!shouldSyncCode) {
+    return;
+  }
+
+  // First, get the tar file from the GitHub API and upload it to GCS.
+  const extractResult = await githubExtractToGcsActivity({
+    connectorId,
+    dataSourceConfig,
+    repoId,
+    repoLogin,
+    repoName,
+  });
+
+  // If the repo is too large, we don't want to try to sync the code.
+  if (!extractResult) {
+    return;
+  }
+
+  // Process files and directories with pagination to avoid Temporal return size limits.
+  const allUpdatedDirectoryIds = new Set<string>();
+  const allDirectories: DirectoryListing[] = [];
+
+  // Process all pages of files and directories.
+  let pageToken: string | undefined;
+  do {
+    const { directories, files, nextPageToken } =
+      await githubGetGcsFilesActivity({
+        gcsBasePath: extractResult.gcsBasePath,
+        repoId,
+        pageToken,
+      });
+
+    // 1. Process files in this page to accumulate updatedDirectoryIds.
+    const fileChunkPromises = [];
+    const fileChunks = chunk(files, FILE_CHUNK_SIZE);
+    for (const fileChunk of fileChunks) {
+      fileChunkPromises.push(
+        githubProcessFileChunkActivity({
+          codeSyncStartedAtMs,
+          connectorId,
+          dataSourceConfig,
+          defaultBranch: extractResult.repoInfo.default_branch,
+          files: fileChunk,
+          forceResync,
+          gcsBasePath: extractResult.gcsBasePath,
+          isBatchSync: true,
+          repoId,
+          repoLogin,
+          repoName,
+        })
+      );
+    }
+
+    // Wait for file processing and collect updated directory IDs.
+    const fileResults = await Promise.all(fileChunkPromises);
+    for (const result of fileResults) {
+      for (const dirId of result.updatedDirectoryIds) {
+        allUpdatedDirectoryIds.add(dirId);
+      }
+    }
+
+    // Collect directories for later processing
+    allDirectories.push(...directories);
+
+    pageToken = nextPageToken;
+  } while (pageToken);
+
+  // 2. Process all collected directories with updated directory info.
+  const directoryChunkPromises = [];
+  const directoryChunks = chunk(allDirectories, DIRECTORY_CHUNK_SIZE);
+  for (const directoryChunk of directoryChunks) {
+    directoryChunkPromises.push(
+      githubProcessDirectoryChunkActivity({
+        codeSyncStartedAtMs,
+        connectorId,
+        dataSourceConfig,
+        defaultBranch: extractResult.repoInfo.default_branch,
+        directories: directoryChunk,
+        repoId,
+        repoLogin,
+        repoName,
+        // Temporal does not support Sets in activity arguments, so we convert to an array.
+        updatedDirectoryIdsArray: Array.from(allUpdatedDirectoryIds),
+      })
+    );
+  }
+
+  await Promise.all(directoryChunkPromises);
+
+  await githubCleanupCodeSyncActivity({
+    connectorId,
+    repoId,
+    dataSourceConfig,
+    codeSyncStartedAtMs,
+    repoUpdatedAt: allUpdatedDirectoryIds.size > 0 ? new Date() : undefined,
+  });
+
+  await githubSaveSuccessSyncActivity(dataSourceConfig);
 }
 
 // This workflow simply signals `githubCodeSyncWorkflow` for repos that have `forceDailySync` set to

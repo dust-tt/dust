@@ -1,27 +1,21 @@
-import {
-  Avatar,
-  Citation,
-  CitationIcons,
-  CitationImage,
-  CitationTitle,
-  DocumentTextIcon,
-  Icon,
-  SlackLogo,
-} from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  MessageWithContentFragmentsType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import React from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
+import {
+  AttachmentCitation,
+  contentFragmentToAttachmentCitation,
+} from "@app/components/assistant/conversation/AttachmentCitation";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import type {
+  MessageWithContentFragmentsType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 
 interface MessageItemProps {
   conversationId: string;
@@ -92,10 +86,6 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         }
       );
 
-    if (message.visibility === "deleted") {
-      return null;
-    }
-
     const messageFeedbackWithSubmit: FeedbackSelectorProps = {
       feedback: messageFeedback
         ? {
@@ -112,46 +102,14 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       case "user_message":
         const citations = message.contenFragments
           ? message.contenFragments.map((contentFragment) => {
-              const citationType = [
-                "dust-application/slack",
-                "text/vnd.dust.attachment.slack.thread",
-              ].includes(contentFragment.contentType)
-                ? "slack"
-                : "document";
-
-              const icon =
-                citationType === "slack" ? SlackLogo : DocumentTextIcon;
+              const attachmentCitation =
+                contentFragmentToAttachmentCitation(contentFragment);
 
               return (
-                <Citation
-                  key={contentFragment.sId}
-                  href={contentFragment.sourceUrl ?? undefined}
-                  tooltip={contentFragment.title}
-                >
-                  <div className="flex gap-2">
-                    {contentFragment.context.profilePictureUrl && (
-                      <CitationIcons>
-                        <Avatar
-                          visual={contentFragment.context.profilePictureUrl}
-                          size="xs"
-                        />
-                      </CitationIcons>
-                    )}
-                    {contentFragment.sourceUrl ? (
-                      <>
-                        <CitationImage imgSrc={contentFragment.sourceUrl} />
-                        <CitationIcons>
-                          <Icon visual={icon} />
-                        </CitationIcons>
-                      </>
-                    ) : (
-                      <CitationIcons>
-                        <Icon visual={icon} />
-                      </CitationIcons>
-                    )}
-                  </div>
-                  <CitationTitle>{contentFragment.title}</CitationTitle>
-                </Citation>
+                <AttachmentCitation
+                  key={attachmentCitation.id}
+                  attachmentCitation={attachmentCitation}
+                />
               );
             })
           : undefined;
@@ -160,7 +118,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           <div
             key={`message-id-${sId}`}
             ref={ref}
-            className="w-fit min-w-60 max-w-full"
+            className="min-w-60 max-w-full"
           >
             <UserMessage
               citations={citations}

@@ -1,18 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  ModelId,
-  Result,
-  SlackConfigurationType,
-} from "@dust-tt/types";
-import {
-  Err,
-  isSlackAutoReadPatterns,
-  MIME_TYPES,
-  Ok,
-  safeParseJSON,
-} from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
@@ -25,32 +12,42 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
-import { getChannels } from "@connectors/connectors/slack//temporal/activities";
 import { getBotEnabled } from "@connectors/connectors/slack/bot";
-import { joinChannel } from "@connectors/connectors/slack/lib/channels";
+import {
+  getChannels,
+  joinChannel,
+} from "@connectors/connectors/slack/lib/channels";
+import { slackConfig } from "@connectors/connectors/slack/lib/config";
+import { retrievePermissions } from "@connectors/connectors/slack/lib/retrieve_permissions";
 import {
   getSlackAccessToken,
   getSlackClient,
+  reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
-import {
-  slackChannelIdFromInternalId,
-  slackChannelInternalIdFromSlackChannelId,
-} from "@connectors/connectors/slack/lib/utils";
+import { slackChannelIdFromInternalId } from "@connectors/connectors/slack/lib/utils";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
-import {
-  ExternalOAuthTokenError,
-  ProviderWorkflowError,
-} from "@connectors/lib/error";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-
-const { SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } = process.env;
+import type {
+  ConnectorPermission,
+  ContentNode,
+  DataSourceConfig,
+  ModelId,
+  SlackConfigurationType,
+} from "@connectors/types";
+import {
+  isSlackAutoReadPatterns,
+  normalizeError,
+  safeParseJSON,
+} from "@connectors/types";
 
 export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurationType> {
+  readonly provider: ConnectorProvider = "slack";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -92,6 +89,8 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         botEnabled: configuration.botEnabled,
         slackTeamId: teamInfo.team.id,
         whitelistedDomains: configuration.whitelistedDomains,
+        restrictedSpaceAgentsEnabled:
+          configuration.restrictedSpaceAgentsEnabled ?? true,
       }
     );
 
@@ -125,7 +124,15 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
     if (connectionId) {
       const accessToken = await getSlackAccessToken(connectionId);
-      const slackClient = await getSlackClient(accessToken);
+      const slackClient = await getSlackClient(accessToken, {
+        // Do not reject rate limited calls in update connector. Called from the API.
+        rejectRateLimitedCalls: false,
+      });
+
+      reportSlackUsage({
+        connectorId: c.id,
+        method: "team.info",
+      });
       const teamInfoRes = await slackClient.team.info();
       if (!teamInfoRes.ok || !teamInfoRes.team?.id) {
         throw new Error("Can't get the Slack team information.");
@@ -146,7 +153,11 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
             },
             `Attempting Slack app deactivation [updateSlackConnector/team_id_mismatch]`
           );
-          const uninstallRes = await uninstallSlack(connectionId);
+          const uninstallRes = await uninstallSlack(
+            connectionId,
+            slackConfig.getRequiredSlackClientId(),
+            slackConfig.getRequiredSlackClientSecret()
+          );
 
           if (uninstallRes.isErr()) {
             throw new Error("Failed to deactivate the mismatching Slack app");
@@ -184,7 +195,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
     // If connector was previously paused, unpause it.
     if (c.isPaused()) {
-      await this.unpause();
+      await this.unpauseAndResume();
     }
 
     return new Ok(c.id.toString());
@@ -229,7 +240,11 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       );
 
       try {
-        const uninstallRes = await uninstallSlack(connector.connectionId);
+        const uninstallRes = await uninstallSlack(
+          connector.connectionId,
+          slackConfig.getRequiredSlackClientId(),
+          slackConfig.getRequiredSlackClientSecret()
+        );
 
         if (uninstallRes.isErr() && !force) {
           return uninstallRes;
@@ -284,159 +299,24 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
   }: {
     parentInternalId: string | null;
     filterPermission: ConnectorPermission | null;
-    viewType: ContentNodesViewType;
   }): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
-    if (parentInternalId) {
-      return new Err(
-        new ConnectorManagerError(
-          "INVALID_PARENT_INTERNAL_ID",
-          "Slack connector does not support permission retrieval with non null `parentInternalId`"
-        )
-      );
-    }
+    return retrievePermissions({
+      connectorId: this.connectorId,
+      parentInternalId,
+      filterPermission,
+      getFilteredChannels,
+    });
+  }
 
-    const c = await ConnectorResource.fetchById(this.connectorId);
-    if (!c) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(
-        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
-      );
-    }
-    const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
-      this.connectorId
-    );
-    if (!slackConfig) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "Slack configuration not found"
-      );
-      // This is unexpected let's throw to return a 500.
-      throw new Error("Slack configuration not found");
-    }
-
-    let permissionToFilter: ConnectorPermission[] = [];
-
-    switch (filterPermission) {
-      case "read":
-        permissionToFilter = ["read", "read_write"];
-        break;
-      case "write":
-        permissionToFilter = ["write", "read_write"];
-        break;
-      case "read_write":
-        permissionToFilter = ["read_write"];
-        break;
-    }
-
-    const slackChannels: {
-      slackChannelId: string;
-      slackChannelName: string;
-      permission: ConnectorPermission;
-      private: boolean;
-    }[] = [];
-
-    try {
-      if (filterPermission === "read") {
-        const localChannels = await SlackChannel.findAll({
-          where: {
-            connectorId: this.connectorId,
-            permission: permissionToFilter,
-          },
-        });
-        slackChannels.push(
-          ...localChannels.map((channel) => ({
-            slackChannelId: channel.slackChannelId,
-            slackChannelName: channel.slackChannelName,
-            permission: channel.permission,
-            private: channel.private,
-          }))
-        );
-      } else {
-        const [remoteChannels, localChannels] = await Promise.all([
-          getChannels(c.id, false),
-          SlackChannel.findAll({
-            where: {
-              connectorId: this.connectorId,
-            },
-          }),
-        ]);
-
-        const localChannelsById = localChannels.reduce(
-          (acc, ch) => {
-            acc[ch.slackChannelId] = ch;
-            return acc;
-          },
-          {} as Record<string, SlackChannel>
-        );
-
-        for (const remoteChannel of remoteChannels) {
-          if (!remoteChannel.id || !remoteChannel.name) {
-            continue;
-          }
-
-          const permissions =
-            localChannelsById[remoteChannel.id]?.permission ||
-            (remoteChannel.is_member ? "write" : "none");
-
-          if (
-            permissionToFilter.length === 0 ||
-            permissionToFilter.includes(permissions)
-          ) {
-            slackChannels.push({
-              slackChannelId: remoteChannel.id,
-              slackChannelName: remoteChannel.name,
-              permission: permissions,
-              private: !!remoteChannel.is_private,
-            });
-          }
-        }
-      }
-
-      const resources: ContentNode[] = slackChannels.map((ch) => ({
-        internalId: slackChannelInternalIdFromSlackChannelId(ch.slackChannelId),
-        parentInternalId: null,
-        type: "folder",
-        title: `#${ch.slackChannelName}`,
-        sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
-        expandable: false,
-        permission: ch.permission,
-        lastUpdatedAt: null,
-        providerVisibility: ch.private ? "private" : "public",
-        mimeType: MIME_TYPES.SLACK.CHANNEL,
-      }));
-
-      resources.sort((a, b) => {
-        return a.title.localeCompare(b.title);
-      });
-
-      return new Ok(resources);
-    } catch (e) {
-      if (e instanceof ExternalOAuthTokenError) {
-        logger.error({ connectorId: this.connectorId }, "Slack token invalid");
-        return new Err(
-          new ConnectorManagerError(
-            "EXTERNAL_OAUTH_TOKEN_ERROR",
-            "Slack authorization error, please re-authorize."
-          )
-        );
-      }
-      if (e instanceof ProviderWorkflowError && e.type === "rate_limit_error") {
-        logger.error(
-          { connectorId: this.connectorId, error: e },
-          "Slack rate limit when retrieving permissions."
-        );
-        return new Err(
-          new ConnectorManagerError(
-            "RATE_LIMIT_ERROR",
-            `Slack rate limit error when retrieving content nodes.`
-          )
-        );
-      }
-      // Unanhdled error, throwing to get a 500.
-      throw e;
-    }
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
   }
 
   async setPermissions({
@@ -482,50 +362,29 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     const promises: Promise<void>[] = [];
 
     const slackChannelsToSync: string[] = [];
+
     try {
       for (const [internalId, permission] of Object.entries(permissions)) {
         const slackChannelId = slackChannelIdFromInternalId(internalId);
         let channel = channels[slackChannelId];
-        const slackClient = await getSlackClient(connector.id);
         if (!channel) {
-          const remoteChannel = await slackClient.conversations.info({
-            channel: slackChannelId,
-          });
-          if (!remoteChannel.ok || !remoteChannel.channel?.name) {
-            logger.error(
-              {
-                connectorId: this.connectorId,
-                channelId: slackChannelId,
-                error: remoteChannel.error,
-              },
-              "Could not get the Slack channel information"
-            );
-            return new Err(
-              new Error("Could not get the Slack channel information.")
-            );
-          }
           const joinRes = await joinChannel(this.connectorId, slackChannelId);
           if (joinRes.isErr()) {
-            logger.error(
-              {
-                connectorId: this.connectorId,
-                channelId: slackChannelId,
-                error: joinRes.error,
-              },
-              "Could not join the Slack channel"
-            );
-            return new Err(
-              new Error(
-                `Our Slack bot (@Dust) was not able to join the Slack channel #${remoteChannel.channel.name}. Please re-authorize Slack or invite @Dust from #${remoteChannel.channel.name} on Slack.`
-              )
+            return new Err(joinRes.error);
+          }
+          const channelInfo = joinRes.value.channel;
+          if (!channelInfo.name) {
+            // Checked in the joinChannel function.
+            throw new Error(
+              `Could not get the Slack channel name for #${slackChannelId}.`
             );
           }
           const slackChannel = await SlackChannel.create({
             connectorId: this.connectorId,
             slackChannelId: slackChannelId,
-            slackChannelName: remoteChannel.channel.name,
+            slackChannelName: channelInfo.name,
             permission: "none",
-            private: !!remoteChannel.channel.is_private,
+            private: !!channelInfo.is_private,
           });
           channels[slackChannelId] = slackChannel;
           channel = slackChannel;
@@ -583,7 +442,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return new Err(workflowRes.error);
       }
     } catch (e) {
-      return new Err(e as Error);
+      return new Err(normalizeError(e));
     }
 
     return new Ok(undefined);
@@ -647,6 +506,15 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return slackConfig.setAutoReadChannelPatterns(autoReadChannelPatterns);
       }
 
+      case "restrictedSpaceAgentsEnabled": {
+        const enabled = configValue === "true";
+        await slackConfig.model.update(
+          { restrictedSpaceAgentsEnabled: enabled },
+          { where: { id: slackConfig.id } }
+        );
+        return new Ok(undefined);
+      }
+
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
@@ -682,43 +550,27 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         return autoReadChannelPatterns;
       }
 
+      case "restrictedSpaceAgentsEnabled": {
+        const restrictedSpaceAgentsEnabled =
+          await getRestrictedSpaceAgentsEnabled(this.connectorId);
+        return restrictedSpaceAgentsEnabled;
+      }
+
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
   }
 
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsPaused();
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsUnpaused();
-    const r = await launchSlackSyncWorkflow(this.connectorId, null);
-    if (r.isErr()) {
-      return r;
-    }
-    return new Ok(undefined);
-  }
-
   async stop(): Promise<Result<undefined, Error>> {
-    logger.info(
-      { connectorId: this.connectorId },
-      `Stopping Slack connector is a no-op.`
-    );
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found with id ${this.connectorId}`)
+      );
+    }
+
+    await terminateAllWorkflowsForConnectorId(this.connectorId);
+
     return new Ok(undefined);
   }
 
@@ -739,21 +591,36 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
   }
 }
 
-export async function uninstallSlack(connectionId: string) {
-  if (!SLACK_CLIENT_ID) {
+export async function uninstallSlack(
+  connectionId: string,
+  slackClientId: string | undefined,
+  slackClientSecret: string | undefined
+) {
+  if (!slackClientId) {
     throw new Error("SLACK_CLIENT_ID is not defined");
   }
-  if (!SLACK_CLIENT_SECRET) {
+  if (!slackClientSecret) {
     throw new Error("SLACK_CLIENT_SECRET is not defined");
   }
 
   try {
     const slackAccessToken = await getSlackAccessToken(connectionId);
-    const slackClient = await getSlackClient(slackAccessToken);
+    const slackClient = await getSlackClient(slackAccessToken, {
+      // Do not reject rate limited calls in uninstall slack. Called from the API.
+      rejectRateLimitedCalls: false,
+    });
+    reportSlackUsage({
+      connectorId: Number(connectionId),
+      method: "auth.test",
+    });
     await slackClient.auth.test();
+    reportSlackUsage({
+      connectorId: Number(connectionId),
+      method: "apps.uninstall",
+    });
     const deleteRes = await slackClient.apps.uninstall({
-      client_id: SLACK_CLIENT_ID,
-      client_secret: SLACK_CLIENT_SECRET,
+      client_id: slackClientId,
+      client_secret: slackClientSecret,
     });
     if (deleteRes && !deleteRes.ok) {
       return new Err(
@@ -798,4 +665,117 @@ export async function getAutoReadChannelPatterns(
   }
 
   return new Ok(JSON.stringify(slackConfiguration.autoReadChannelPatterns));
+}
+
+export async function getRestrictedSpaceAgentsEnabled(
+  connectorId: ModelId
+): Promise<Result<string | null, Error>> {
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+  if (!slackConfiguration) {
+    return new Err(
+      new Error(
+        `Failed to find a Slack configuration for connector ${connectorId}`
+      )
+    );
+  }
+
+  return new Ok(slackConfiguration.restrictedSpaceAgentsEnabled.toString());
+}
+
+async function getFilteredChannels(
+  connectorId: number,
+  filterPermission: ConnectorPermission | null
+) {
+  let permissionToFilter: ConnectorPermission[] = [];
+
+  switch (filterPermission) {
+    case "read":
+      permissionToFilter = ["read", "read_write"];
+      break;
+    case "write":
+      permissionToFilter = ["write", "read_write"];
+      break;
+    case "read_write":
+      permissionToFilter = ["read_write"];
+      break;
+  }
+
+  const slackChannels: {
+    slackChannelId: string;
+    slackChannelName: string;
+    permission: ConnectorPermission;
+    private: boolean;
+  }[] = [];
+
+  if (filterPermission === "read") {
+    const localChannels = await SlackChannel.findAll({
+      where: {
+        connectorId,
+        permission: permissionToFilter,
+        skipReason: null, // We hide skipped channels from the UI.
+      },
+    });
+    slackChannels.push(
+      ...localChannels.map((channel) => ({
+        slackChannelId: channel.slackChannelId,
+        slackChannelName: channel.slackChannelName,
+        permission: channel.permission,
+        private: channel.private,
+      }))
+    );
+  } else {
+    const slackClient = await getSlackClient(connectorId, {
+      // Do not reject rate limited calls in update connector. Called from the API.
+      rejectRateLimitedCalls: false,
+    });
+
+    const [remoteChannels, localChannels] = await Promise.all([
+      getChannels(slackClient, connectorId, false),
+      SlackChannel.findAll({
+        where: {
+          connectorId,
+          // Here we do not filter out channels with skipReason because we need to know the ones that are skipped.
+        },
+      }),
+    ]);
+
+    const localChannelsById = localChannels.reduce(
+      (acc: Record<string, SlackChannel>, ch: SlackChannel) => {
+        acc[ch.slackChannelId] = ch;
+        return acc;
+      },
+      {} as Record<string, SlackChannel>
+    );
+
+    for (const remoteChannel of remoteChannels) {
+      if (!remoteChannel.id || !remoteChannel.name) {
+        continue;
+      }
+
+      const localChannel = localChannelsById[remoteChannel.id];
+
+      // Skip channels with skipReason
+      if (localChannel?.skipReason) {
+        continue;
+      }
+
+      const permissions =
+        localChannel?.permission ||
+        (remoteChannel.is_member ? "write" : "none");
+
+      if (
+        permissionToFilter.length === 0 ||
+        permissionToFilter.includes(permissions)
+      ) {
+        slackChannels.push({
+          slackChannelId: remoteChannel.id,
+          slackChannelName: remoteChannel.name,
+          permission: permissions,
+          private: !!remoteChannel.is_private,
+        });
+      }
+    }
+  }
+  return slackChannels;
 }

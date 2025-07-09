@@ -1,6 +1,3 @@
-import type { AppType, SpecificationType } from "@dust-tt/types";
-import type { RunConfig, RunType } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import fs from "fs";
 import path from "path";
 import peg from "pegjs";
@@ -8,6 +5,9 @@ import peg from "pegjs";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { AppType, SpecificationType } from "@app/types";
+import type { RunConfig, RunType } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 import { recomputeIndents, restoreTripleBackticks } from "../specification";
 

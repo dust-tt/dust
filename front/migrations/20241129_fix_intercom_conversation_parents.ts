@@ -1,4 +1,3 @@
-import { CoreAPI } from "@dust-tt/types";
 import assert from "assert";
 import _ from "lodash";
 import { QueryTypes } from "sequelize";
@@ -7,6 +6,7 @@ import config from "@app/lib/api/config";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { makeScript } from "@app/scripts/helpers";
+import { CoreAPI } from "@app/types";
 
 const { CORE_DATABASE_URI } = process.env;
 const SELECT_CHUNK_SIZE = 1000;

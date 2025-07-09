@@ -1,10 +1,5 @@
-import type { ConnectorPermission, ContentNode, Result } from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isBigQueryWithLocationCredentials,
-  Ok,
-} from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import type { TestConnectionError } from "@connectors/connectors/bigquery/lib/bigquery_api";
 import { testConnection } from "@connectors/connectors/bigquery/lib/bigquery_api";
@@ -36,7 +31,9 @@ import {
 } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorPermission, ContentNode } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { isBigQueryWithLocationCredentials } from "@connectors/types";
 
 const logger = mainLogger.child({
   connector: "bigquery",
@@ -56,6 +53,8 @@ function handleTestConnectionError(
 }
 
 export class BigQueryConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "bigquery";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -85,7 +84,9 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     }
 
     // We can create the connector.
-    const configBlob = {};
+    const configBlob = {
+      useMetadataForDBML: false,
+    };
     const connector = await ConnectorResource.makeNew(
       "bigquery",
       {
@@ -348,34 +349,99 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async pause(): Promise<Result<undefined, Error>> {
+  /**
+   * Retrieves the parent IDs of a content node in hierarchical order.
+   * The first ID is the internal ID of the content node itself.
+   */
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+    memoizationKey?: string;
+  }): Promise<Result<string[], Error>> {
+    return new Ok([internalId]);
+  }
+
+  async setConfigurationKey({
+    configKey,
+    configValue,
+  }: {
+    configKey: "useMetadataForDBML";
+    configValue: string;
+  }): Promise<Result<void, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
+        new Error(`Connector not found (connectorId: ${this.connectorId})`)
       );
     }
-    await connector.markAsPaused();
-    return this.stop();
+
+    switch (configKey) {
+      case "useMetadataForDBML": {
+        const connectorConfig = await BigQueryConfigurationModel.findOne({
+          where: {
+            connectorId: connector.id,
+          },
+        });
+        if (!connectorConfig) {
+          return new Err(
+            new Error(
+              `Connector configuration not found (connectorId: ${connector.id})`
+            )
+          );
+        }
+
+        await connectorConfig.update({
+          useMetadataForDBML: configValue === "true",
+        });
+
+        // Clean lastUpsertedAt for all remote tables to force a full sync with the appropriate tags
+        await RemoteTableModel.update(
+          {
+            lastUpsertedAt: null,
+          },
+          { where: { connectorId: connector.id } }
+        );
+
+        await launchBigQuerySyncWorkflow(connector.id);
+
+        return new Ok(void 0);
+      }
+    }
   }
 
-  async unpause(): Promise<Result<undefined, Error>> {
+  async getConfigurationKey({
+    configKey,
+  }: {
+    configKey: "useMetadataForDBML";
+  }): Promise<Result<string | null, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
+        new Error(`Connector not found (connectorId: ${this.connectorId})`)
       );
     }
-    await connector.markAsUnpaused();
-    return this.resume();
-  }
 
-  async setConfigurationKey(): Promise<Result<void, Error>> {
-    throw new Error("Method setConfigurationKey not implemented.");
-  }
+    switch (configKey) {
+      case "useMetadataForDBML": {
+        const connectorConfig = await BigQueryConfigurationModel.findOne({
+          where: {
+            connectorId: connector.id,
+          },
+        });
+        if (!connectorConfig) {
+          return new Err(
+            new Error(
+              `Connector configuration not found (connectorId: ${connector.id})`
+            )
+          );
+        }
 
-  async getConfigurationKey(): Promise<Result<string | null, Error>> {
-    throw new Error("Method getConfigurationKey not implemented.");
+        return new Ok(connectorConfig.useMetadataForDBML.toString());
+      }
+      default:
+        return new Err(new Error(`Invalid config key ${configKey}`));
+    }
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

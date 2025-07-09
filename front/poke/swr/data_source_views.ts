@@ -1,16 +1,24 @@
-import type {
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
-import { fetcher, fetcherWithBody, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeListDataSourceViews } from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
+import {
+  emptyArray,
+  fetcher,
+  fetcherWithBody,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
+import type {
+  DataSourceViewWithUsage,
+  PokeListDataSourceViews,
+} from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
 import type { PokeGetDataSourceViewContentNodes } from "@app/pages/api/poke/workspaces/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type {
+  ContentNodesViewType,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
 
 export function usePokeDataSourceViews({
   disabled,
@@ -24,7 +32,7 @@ export function usePokeDataSourceViews({
   );
 
   return {
-    data: useMemo(() => (data ? data.data_source_views : []), [data]),
+    data: data?.data_source_views ?? emptyArray<DataSourceViewWithUsage>(),
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
@@ -111,7 +119,7 @@ export function usePokeDataSourceViewContentNodes({
     isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,
-    nodes: useMemo(() => (data ? data.nodes : []), [data]),
+    nodes: data?.nodes ?? emptyArray(),
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
     nextPageCursor: data?.nextPageCursor || null,

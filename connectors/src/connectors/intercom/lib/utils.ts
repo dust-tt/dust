@@ -1,10 +1,9 @@
-import type { ModelId } from "@dust-tt/types";
-
 import type {
   IntercomArticleType,
   IntercomCollectionType,
 } from "@connectors/connectors/intercom/lib/types";
-import { IntercomCollection } from "@connectors/lib/models/intercom";
+import { IntercomCollectionModel } from "@connectors/lib/models/intercom";
+import type { ModelId } from "@connectors/types";
 
 /**
  * From id to internalId
@@ -156,7 +155,7 @@ export async function getParentIdsForCollection({
   // The user can only select top level collections; every collection found
   // here should be added to the parents (the last one in this loop will be the one selected).
   for (let i = 0; i < 2; i++) {
-    const currentParent = await IntercomCollection.findOne({
+    const currentParent = await IntercomCollectionModel.findOne({
       where: {
         connectorId,
         collectionId: currentParentId,

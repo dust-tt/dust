@@ -1,13 +1,16 @@
-import type { ModelId } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/client";
 
+import { getChannelsToSync } from "@connectors/connectors/slack/lib/channels";
+import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { SlackMessages } from "@connectors/lib/models/slack";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 import { getWeekStart } from "../lib/utils";
-import { getChannelsToSync } from "./activities";
 import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
 import {
@@ -32,9 +35,15 @@ export async function launchSlackSyncWorkflow(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
+
   if (channelsToSync === null) {
+    const slackClient = await getSlackClient(connectorId, {
+      rejectRateLimitedCalls: false,
+    });
     channelsToSync = removeNulls(
-      (await getChannelsToSync(connectorId)).map((c) => c.id || null)
+      (await getChannelsToSync(slackClient, connectorId)).map(
+        (c) => c.id || null
+      )
     );
   }
   const client = await getTemporalClient();
@@ -73,7 +82,7 @@ export async function launchSlackSyncWorkflow(
       },
       `Failed starting the Slack sync.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -95,6 +104,26 @@ export async function launchSlackSyncOneThreadWorkflow(
       "Skipping webhook for Slack connector because it is paused (thread sync)."
     );
 
+    return new Ok(undefined);
+  }
+
+  const thread = await SlackMessages.findOne({
+    where: {
+      connectorId: connectorId,
+      channelId: channelId,
+      messageTs: threadTs,
+    },
+  });
+  if (thread && thread.skipReason) {
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        threadTs,
+        skipReason: thread.skipReason,
+      },
+      `Skipping thread : ${thread.skipReason}`
+    );
     return new Ok(undefined);
   }
 
@@ -129,7 +158,7 @@ export async function launchSlackSyncOneThreadWorkflow(
       { error: e, connectorId, channelId, threadTs, workflowId },
       "Failed launchSlackSyncOneThreadWorkflow"
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -151,6 +180,26 @@ export async function launchSlackSyncOneMessageWorkflow(
       "Skipping webhook for Slack connector because it is paused (message sync)."
     );
 
+    return new Ok(undefined);
+  }
+
+  const thread = await SlackMessages.findOne({
+    where: {
+      connectorId: connectorId,
+      channelId: channelId,
+      messageTs: threadTs,
+    },
+  });
+  if (thread && thread.skipReason) {
+    logger.info(
+      {
+        connectorId,
+        channelId,
+        threadTs,
+        skipReason: thread.skipReason,
+      },
+      `Skipping thread : ${thread.skipReason}`
+    );
     return new Ok(undefined);
   }
 
@@ -187,7 +236,7 @@ export async function launchSlackSyncOneMessageWorkflow(
       { error: e, connectorId, channelId, threadTs, workflowId },
       "Failed launchSlackSyncOneMessageWorkflow"
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -226,6 +275,6 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
       },
       `Failed starting slackGarbageCollector workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

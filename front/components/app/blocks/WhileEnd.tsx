@@ -1,13 +1,14 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import type { WorkspaceType } from "@dust-tt/types";
-import type { SpecificationBlockType, SpecificationType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { BlockType } from "@dust-tt/types";
-import type { RunType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
+import type { SpecificationBlockType, SpecificationType } from "@app/types";
+import type { AppType } from "@app/types";
+import type { BlockType } from "@app/types";
+import type { RunType } from "@app/types";
 
 import Block from "./Block";
 
@@ -59,6 +60,8 @@ export function While({
     onBlockUpdate(b);
   };
 
+  const { isDark } = useTheme();
+
   return (
     <Block
       owner={owner}
@@ -102,28 +105,21 @@ export function While({
           <div className="flex flex-initial items-center">condition :</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
-              <div
-                className={classNames(
-                  "border bg-slate-100",
-                  "border-slate-100"
-                )}
-              >
-                <CodeEditor
-                  data-color-mode="light"
-                  readOnly={readOnly}
-                  value={block.spec.condition_code}
-                  language="js"
-                  placeholder=""
-                  onChange={(e) => handleConditionCodeChange(e.target.value)}
-                  padding={15}
-                  style={{
-                    fontSize: 12,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                    backgroundColor: "rgb(241 245 249)",
-                  }}
-                />
-              </div>
+              <CodeEditor
+                data-color-mode={isDark ? "dark" : "light"}
+                readOnly={readOnly}
+                value={block.spec.condition_code}
+                language="js"
+                placeholder=""
+                onChange={(e) => handleConditionCodeChange(e.target.value)}
+                padding={15}
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                style={{
+                  fontSize: 12,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                }}
+              />
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
-import type { MessageWithContentFragmentsType } from "@dust-tt/types";
 import { useEffect } from "react";
 
 import { LAST_MESSAGE_GROUP_ID } from "@app/components/assistant/conversation/MessageGroup";
+import type { MessageWithContentFragmentsType } from "@app/types";
 
 /**
  * A custom hook to observe when the last message group element becomes visible or not.

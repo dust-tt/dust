@@ -1,13 +1,9 @@
-import {
-  ContextItem,
-  GithubLogo,
-  SliderToggle,
-  useSendNotification,
-} from "@dust-tt/sparkle";
-import type { APIError, DataSourceType, WorkspaceType } from "@dust-tt/types";
+import { ContextItem, GithubLogo, SliderToggle } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import type { APIError, DataSourceType, WorkspaceType } from "@app/types";
 
 export function GithubCodeEnableView({
   owner,
@@ -76,7 +72,7 @@ export function GithubCodeEnableView({
         }
       >
         <ContextItem.Description>
-          <div className="text-element-700">
+          <div className="text-muted-foreground dark:text-muted-foreground-night">
             Your GitHub repositories code is synced with Dust every 8h.
           </div>
         </ContextItem.Description>

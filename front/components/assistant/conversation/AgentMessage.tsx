@@ -1,68 +1,46 @@
-import { CitationIndex, Separator } from "@dust-tt/sparkle";
-import { Citation, CitationIcons, CitationTitle } from "@dust-tt/sparkle";
+import { datadogLogs } from "@datadog/browser-logs";
 import {
   ArrowPathIcon,
   Button,
   Chip,
+  Citation,
+  CitationIcons,
+  CitationIndex,
+  CitationTitle,
+  ClipboardCheckIcon,
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
-  DocumentDuplicateIcon,
-  EyeIcon,
+  DocumentIcon,
+  InteractiveImageGrid,
   Markdown,
-  Page,
-  Popover,
+  Separator,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
-import type {
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
-  AgentActionType,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
-  AgentMessageType,
-  GenerationTokensEvent,
-  LightAgentConfigurationType,
-  RetrievalActionType,
-  UserType,
-  WebsearchActionType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  GLOBAL_AGENTS_SID,
-  isRetrievalActionType,
-  isWebsearchActionType,
-  removeNulls,
-} from "@dust-tt/types";
 import { marked } from "marked";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
-import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
-import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
+import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
+import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
+import { getImgPlugin, imgDirective } from "@app/components/markdown/Image";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
+import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
 import {
-  MentionBlock,
+  getMentionPlugin,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import {
@@ -70,61 +48,52 @@ import {
   sanitizeVisualizationContent,
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
-
-function cleanUpCitations(message: string): string {
-  const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
-  return message.replace(regex, "");
-}
-
-export const FeedbackSelectorPopoverContent = ({
-  owner,
-  agentMessageToRender,
-}: {
-  owner: WorkspaceType;
-  agentMessageToRender: AgentMessageType;
-}) => {
-  const { agentLastAuthor } = useAgentConfigurationLastAuthor({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentMessageToRender.configuration.sId,
-  });
-
-  return (
-    agentLastAuthor && (
-      <div className="mb-4 mt-2 flex flex-col gap-2">
-        <Page.P variant="secondary">
-          Your feedback is available to editors of the agent. The last agent
-          editor is:
-        </Page.P>
-        <div className="flex flex-row items-center gap-2">
-          {agentLastAuthor.image && (
-            <img
-              src={agentLastAuthor.image}
-              alt={agentLastAuthor.firstName}
-              className="h-8 w-8 rounded-full"
-            />
-          )}
-          <Page.P variant="primary">
-            {agentLastAuthor.firstName} {agentLastAuthor.lastName}
-          </Page.P>
-        </div>
-      </div>
-    )
-  );
-};
+import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  AgentMessageStateEvent,
+  MessageTemporaryState,
+} from "@app/lib/assistant/state/messageReducer";
+import { messageReducer } from "@app/lib/assistant/state/messageReducer";
+import { useConversationMessage } from "@app/lib/swr/conversations";
+import type {
+  LightAgentMessageType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  GLOBAL_AGENTS_SID,
+  isOAuthProvider,
+  isSupportedImageContentType,
+  isValidScope,
+} from "@app/types";
 
 interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
-  message: AgentMessageType;
+  message: LightAgentMessageType;
   messageFeedback: FeedbackSelectorProps;
   owner: WorkspaceType;
   user: UserType;
 }
 
-export type AgentStateClassification = "thinking" | "acting" | "done";
+type AgentMessageStateWithControlEvent =
+  | AgentMessageStateEvent
+  | { type: "end-of-stream" };
+
+function makeInitialMessageStreamState(
+  message: LightAgentMessageType
+): MessageTemporaryState {
+  return {
+    actionProgress: new Map(),
+    agentState: message.status === "created" ? "thinking" : "done",
+    isRetrying: false,
+    lastUpdated: new Date(),
+    message,
+  };
+}
 
 /**
  *
@@ -138,34 +107,21 @@ export function AgentMessage({
   message,
   messageFeedback,
   owner,
-  user,
 }: AgentMessageProps) {
-  const [streamedAgentMessage, setStreamedAgentMessage] =
-    useState<AgentMessageType>(message);
+  const { isDark } = useTheme();
 
-  const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
-    useState<boolean>(false);
+  const [messageStreamState, dispatch] = React.useReducer(
+    messageReducer,
+    message,
+    makeInitialMessageStreamState
+  );
 
-  const [references, setReferences] = useState<{
-    [key: string]: MarkdownCitation;
-  }>({});
-
-  const [activeReferences, setActiveReferences] = useState<
-    { index: number; document: MarkdownCitation }[]
-  >([]);
-
-  const isGlobalAgent = useMemo(() => {
-    return Object.values(GLOBAL_AGENTS_SID).includes(
-      message.configuration.sId as GLOBAL_AGENTS_SID
-    );
-  }, [message.configuration.sId]);
-
-  const shouldStream = (() => {
+  const shouldStream = React.useMemo(() => {
     if (message.status !== "created") {
       return false;
     }
 
-    switch (streamedAgentMessage.status) {
+    switch (messageStreamState.message.status) {
       case "succeeded":
       case "failed":
       case "cancelled":
@@ -173,23 +129,23 @@ export function AgentMessage({
       case "created":
         return true;
       default:
-        assertNever(streamedAgentMessage.status);
+        assertNever(messageStreamState.message.status);
     }
-  })();
+  }, [message.status, messageStreamState.message.status]);
 
-  const [lastAgentStateClassification, setLastAgentStateClassification] =
-    useState<AgentStateClassification>(shouldStream ? "thinking" : "done");
-  const [lastTokenClassification, setLastTokenClassification] = useState<
-    null | "tokens" | "chain_of_thought"
-  >(null);
+  const [isRetryHandlerProcessing, setIsRetryHandlerProcessing] =
+    React.useState<boolean>(false);
 
-  useEffect(() => {
-    if (message.status !== "created") {
-      setLastAgentStateClassification("done");
-    }
-  }, [message.status]);
+  const [activeReferences, setActiveReferences] = React.useState<
+    { index: number; document: MarkdownCitation }[]
+  >([]);
+  const [isCopied, copy] = useCopyToClipboard();
 
-  const buildEventSourceURL = useCallback(
+  const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
+    message.configuration.sId as GLOBAL_AGENTS_SID
+  );
+
+  const buildEventSourceURL = React.useCallback(
     (lastEvent: string | null) => {
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
       let lastEventId = "";
@@ -206,116 +162,61 @@ export function AgentMessage({
     [conversationId, message.sId, owner.sId]
   );
 
-  const onEventCallback = useCallback((eventStr: string) => {
-    const eventPayload: {
-      eventId: string;
-      data:
-        | AgentErrorEvent
-        | AgentActionSpecificEvent
-        | AgentActionSuccessEvent
-        | GenerationTokensEvent
-        | AgentGenerationCancelledEvent
-        | AgentMessageSuccessEvent;
-    } = JSON.parse(eventStr);
+  const { showValidationDialog } = React.useContext(ActionValidationContext);
 
-    const updateMessageWithAction = (
-      m: AgentMessageType,
-      action: AgentActionType
-    ): AgentMessageType => {
-      return {
-        ...m,
-        actions: m.actions
-          ? [...m.actions.filter((a) => a.id !== action.id), action]
-          : [action],
-      };
-    };
+  const { mutateMessage } = useConversationMessage({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: message.sId,
+    options: { disabled: true },
+  });
 
-    const event = eventPayload.data;
-    switch (event.type) {
-      case "agent_action_success":
-        setStreamedAgentMessage((m) => {
-          return { ...updateMessageWithAction(m, event.action) };
-        });
-        setLastAgentStateClassification("thinking");
-        break;
-      case "retrieval_params":
-      case "dust_app_run_params":
-      case "dust_app_run_block":
-      case "tables_query_started":
-      case "tables_query_model_output":
-      case "tables_query_output":
-      case "process_params":
-      case "websearch_params":
-      case "browse_params":
-      case "conversation_include_file_params":
-      case "github_get_pull_request_params":
-      case "github_create_issue_params":
-      case "reasoning_started":
-      case "reasoning_thinking":
-      case "reasoning_tokens":
-        setStreamedAgentMessage((m) => {
-          return updateMessageWithAction(m, event.action);
-        });
-        setLastAgentStateClassification("acting");
-        break;
-      case "agent_error":
-        setStreamedAgentMessage((m) => {
-          return { ...m, status: "failed", error: event.error };
-        });
-        setLastAgentStateClassification("done");
-        break;
+  const onEventCallback = React.useCallback(
+    (eventStr: string) => {
+      const eventPayload: {
+        eventId: string;
+        data: AgentMessageStateWithControlEvent;
+      } = JSON.parse(eventStr);
+      const eventType = eventPayload.data.type;
 
-      case "agent_generation_cancelled":
-        setStreamedAgentMessage((m) => {
-          return { ...m, status: "cancelled" };
+      // Handle validation dialog separately.
+      if (eventType === "tool_approve_execution") {
+        showValidationDialog({
+          messageId: eventPayload.data.messageId,
+          conversationId: eventPayload.data.conversationId,
+          actionId: eventPayload.data.actionId,
+          inputs: eventPayload.data.inputs,
+          stake: eventPayload.data.stake,
+          metadata: eventPayload.data.metadata,
+          // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
+          action: eventPayload.data.action,
         });
-        setLastAgentStateClassification("done");
-        break;
-      case "agent_message_success": {
-        setStreamedAgentMessage((m) => {
-          return {
-            ...m,
-            ...event.message,
-          };
-        });
-        setLastAgentStateClassification("done");
-        break;
+
+        return;
       }
 
-      case "generation_tokens": {
-        switch (event.classification) {
-          case "closing_delimiter":
-            break;
-          case "opening_delimiter":
-            break;
-          case "tokens":
-            setLastTokenClassification("tokens");
-            setStreamedAgentMessage((m) => {
-              const previousContent = m.content || "";
-              return { ...m, content: previousContent + event.text };
-            });
-            break;
-          case "chain_of_thought":
-            setLastTokenClassification("chain_of_thought");
-            setStreamedAgentMessage((m) => {
-              const currentChainOfThought = m.chainOfThought ?? "";
-              return {
-                ...m,
-                chainOfThought: currentChainOfThought + event.text,
-              };
-            });
-            break;
-          default:
-            assertNever(event);
-        }
-        setLastAgentStateClassification("thinking");
-        break;
+      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
+      // end of the stream to the client. The message reducer does not, and should not, handle this
+      // event, so we just return.
+      if (eventType === "end-of-stream") {
+        return;
       }
 
-      default:
-        assertNever(event);
-    }
-  }, []);
+      const shouldRefresh = [
+        "agent_action_success",
+        "agent_error",
+        "agent_message_success",
+        "agent_generation_cancelled",
+      ].includes(eventType);
+
+      if (shouldRefresh) {
+        void mutateMessage();
+      }
+
+      dispatch(eventPayload.data);
+    },
+    [showValidationDialog, mutateMessage]
+  );
 
   useEventSource(
     buildEventSourceURL,
@@ -324,22 +225,40 @@ export function AgentMessage({
     { isReadyToConsumeStream: shouldStream }
   );
 
-  const agentMessageToRender = ((): AgentMessageType => {
+  const agentMessageToRender = ((): LightAgentMessageType => {
     switch (message.status) {
       case "succeeded":
       case "failed":
         return message;
       case "cancelled":
-        if (streamedAgentMessage.status === "created") {
-          return { ...streamedAgentMessage, status: "cancelled" };
+        if (messageStreamState.message.status === "created") {
+          return { ...messageStreamState.message, status: "cancelled" };
         }
-        return message;
+        return messageStreamState.message;
       case "created":
-        return streamedAgentMessage;
+        return messageStreamState.message;
       default:
         assertNever(message.status);
     }
   })();
+
+  const references = Object.entries(
+    agentMessageToRender.citations ?? {}
+  ).reduce<Record<string, MarkdownCitation>>((acc, [key, citation]) => {
+    if (citation) {
+      const IconComponent = getCitationIcon(citation.provider, isDark);
+      return {
+        ...acc,
+        [key]: {
+          href: citation.href,
+          title: citation.title,
+          description: citation.description,
+          icon: <IconComponent />,
+        },
+      };
+    }
+    return acc;
+  }, {});
 
   // Autoscroll is performed when a message is generating and the page is
   // already scrolled down; but if the user has scrolled the page up after the
@@ -350,9 +269,9 @@ export function AgentMessage({
   // prevents user from scrolling up when the message continues generating
   // (forces it back down), but it cannot be zero otherwise the scroll does not
   // happen.
-  const isAtBottom = useRef(true);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  const isAtBottom = React.useRef(true);
+  const bottomRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         isAtBottom.current = entry.isIntersecting;
@@ -373,14 +292,14 @@ export function AgentMessage({
     };
   }, []);
 
-  // GenerationContext: to know if we are generating or not
-  const generationContext = useContext(GenerationContext);
+  // GenerationContext: to know if we are generating or not.
+  const generationContext = React.useContext(GenerationContext);
   if (!generationContext) {
     throw new Error(
       "AgentMessage must be used within a GenerationContextProvider"
     );
   }
-  useEffect(() => {
+  React.useEffect(() => {
     const isInArray = generationContext.generatingMessages.some(
       (m) => m.messageId === message.sId
     );
@@ -401,7 +320,7 @@ export function AgentMessage({
     conversationId,
   ]);
 
-  const PopoverContent = useCallback(
+  const PopoverContent = React.useCallback(
     () => (
       <FeedbackSelectorPopoverContent
         owner={owner}
@@ -411,32 +330,81 @@ export function AgentMessage({
     [owner, agentMessageToRender]
   );
 
+  async function handleCopyToClipboard() {
+    const messageContent = agentMessageToRender.content || "";
+    let footnotesMarkdown = "";
+    let footnotesHtml = "";
+
+    // 1. Build Key-to-Index Map
+    const keyToIndexMap = new Map<string, number>();
+    if (references && activeReferences) {
+      Object.entries(references).forEach(([key, mdCitation]) => {
+        const activeRefEntry = activeReferences.find(
+          (ar) =>
+            ar.document.href === mdCitation.href &&
+            ar.document.title === mdCitation.title
+        );
+        if (activeRefEntry) {
+          keyToIndexMap.set(key, activeRefEntry.index);
+        }
+      });
+    }
+
+    // 2. Process Message Content for Plain Text numerical citations
+    let processedMessageContent = messageContent;
+    if (keyToIndexMap.size > 0) {
+      const citeDirectiveRegex = /:cite\[([a-zA-Z0-9_,-]+)\]/g;
+      processedMessageContent = messageContent.replace(
+        citeDirectiveRegex,
+        (_match, keysString: string) => {
+          const keys = keysString.split(",").map((k) => k.trim());
+          const resolvedIndices = keys
+            .map((k) => keyToIndexMap.get(k))
+            .filter((idx) => idx !== undefined) as number[];
+
+          if (resolvedIndices.length > 0) {
+            resolvedIndices.sort((a, b) => a - b);
+            return `[${resolvedIndices.join(",")}]`;
+          }
+          return _match;
+        }
+      );
+    }
+
+    if (activeReferences.length > 0) {
+      footnotesMarkdown = "\n\nReferences:\n";
+      footnotesHtml = "<br/><br/><div>References:</div>";
+      const sortedActiveReferences = [...activeReferences].sort(
+        (a, b) => a.index - b.index
+      );
+      for (const ref of sortedActiveReferences) {
+        footnotesMarkdown += `[${ref.index}] ${ref.document.href}\n`;
+        footnotesHtml += `<div>[${ref.index}] <a href="${ref.document.href}">${ref.document.title}</a></div>`;
+      }
+    }
+
+    const markdownText = processedMessageContent + footnotesMarkdown;
+    const htmlContent = (await marked(processedMessageContent)) + footnotesHtml;
+
+    await copy(
+      new ClipboardItem({
+        "text/plain": new Blob([markdownText], { type: "text/plain" }),
+        "text/html": new Blob([htmlContent], { type: "text/html" }),
+      })
+    );
+  }
+
   const buttons =
-    message.status === "failed"
+    message.status === "failed" || messageStreamState.agentState === "thinking"
       ? []
       : [
           <Button
             key="copy-msg-button"
-            tooltip="Copy to clipboard"
+            tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
             variant="outline"
             size="xs"
-            onClick={async () => {
-              const markdownText = cleanUpCitations(
-                agentMessageToRender.content || ""
-              );
-              // Convert markdown to HTML
-              const htmlContent = await marked(markdownText);
-
-              void navigator.clipboard.write([
-                new ClipboardItem({
-                  "text/plain": new Blob([markdownText], {
-                    type: "text/plain",
-                  }),
-                  "text/html": new Blob([htmlContent], { type: "text/html" }),
-                }),
-              ]);
-            }}
-            icon={ClipboardIcon}
+            onClick={handleCopyToClipboard}
+            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
             className="text-muted-foreground"
           />,
           <Button
@@ -473,45 +441,9 @@ export function AgentMessage({
     }
   }
 
-  useEffect(() => {
-    // Retrieval actions
-    const retrievalActionsWithDocs = agentMessageToRender.actions
-      .filter((a) => isRetrievalActionType(a) && a.documents)
-      .sort((a, b) => a.id - b.id) as RetrievalActionType[];
-    const allDocs = removeNulls(
-      retrievalActionsWithDocs.map((a) => a.documents).flat()
-    );
-    const allDocsReferences = allDocs.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, d) => {
-      acc[d.reference] = makeDocumentCitation(d);
-      return acc;
-    }, {});
-
-    // Websearch actions
-    const websearchActionsWithResults = agentMessageToRender.actions
-      .filter((a) => isWebsearchActionType(a) && a.output?.results?.length)
-      .sort((a, b) => a.id - b.id) as WebsearchActionType[];
-    const allWebResults = removeNulls(
-      websearchActionsWithResults.map((a) => a.output?.results).flat()
-    );
-    const allWebReferences = allWebResults.reduce<{
-      [key: string]: MarkdownCitation;
-    }>((acc, l) => {
-      acc[l.reference] = makeWebsearchResultsCitation(l);
-      return acc;
-    }, {});
-
-    // Merge all references
-    setReferences({ ...allDocsReferences, ...allWebReferences });
-  }, [
-    agentMessageToRender.actions,
-    agentMessageToRender.status,
-    agentMessageToRender.sId,
-  ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
 
-  const additionalMarkdownComponents: Components = useMemo(
+  const additionalMarkdownComponents: Components = React.useMemo(
     () => ({
       visualization: getVisualizationPlugin(
         owner,
@@ -520,40 +452,47 @@ export function AgentMessage({
         message.sId
       ),
       sup: CiteBlock,
-      mention: MentionBlock,
+      mention: getMentionPlugin(owner),
+      dustimg: getImgPlugin(owner),
     }),
     [owner, conversationId, message.sId, agentConfiguration.sId]
   );
 
-  const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [mentionDirective, getCiteDirective(), visualizationDirective],
+  const additionalMarkdownPlugins: PluggableList = React.useMemo(
+    () => [
+      mentionDirective,
+      getCiteDirective(),
+      visualizationDirective,
+      imgDirective,
+    ],
     []
   );
 
-  const citations = useMemo(
+  const citations = React.useMemo(
     () => getCitations({ activeReferences }),
     [activeReferences]
   );
 
-  const canMention =
-    agentConfiguration.scope !== "private" ||
-    agentConfiguration.versionAuthorId === user.id;
+  const canMention = agentConfiguration.canRead;
+  const isArchived = agentConfiguration.status === "archived";
 
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
-      name={`@${agentConfiguration.name}`}
+      name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      renderName={() => {
-        return (
-          <div className="flex flex-row items-center gap-2">
-            <div className="text-base font-medium">
-              {AssitantName(agentConfiguration, canMention)}
-            </div>
-          </div>
-        );
-      }}
+      isDisabled={isArchived}
+      renderName={() => (
+        <AssistantHandle
+          assistant={{
+            sId: agentConfiguration.sId,
+            name: agentConfiguration.name + (isArchived ? " (archived)" : ""),
+          }}
+          canMention={canMention}
+          isDisabled={isArchived}
+        />
+      )}
       type="agent"
       citations={citations}
     >
@@ -562,7 +501,8 @@ export function AgentMessage({
           agentMessage: agentMessageToRender,
           references: references,
           streaming: shouldStream,
-          lastTokenClassification: lastTokenClassification,
+          lastTokenClassification:
+            messageStreamState.agentState === "thinking" ? "tokens" : null,
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
@@ -576,12 +516,34 @@ export function AgentMessage({
     streaming,
     lastTokenClassification,
   }: {
-    agentMessage: AgentMessageType;
+    agentMessage: LightAgentMessageType;
     references: { [key: string]: MarkdownCitation };
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
     if (agentMessage.status === "failed") {
+      datadogLogs.logger.info("Failed agent message rendered", {
+        agentMessage,
+      });
+      if (
+        agentMessage.error &&
+        agentMessage.error.code ===
+          "mcp_server_personal_authentication_required" &&
+        typeof agentMessage.error.metadata?.mcp_server_id === "string" &&
+        agentMessage.error.metadata?.mcp_server_id.length > 0 &&
+        isOAuthProvider(agentMessage.error.metadata?.provider) &&
+        isValidScope(agentMessage.error.metadata?.scope)
+      ) {
+        return (
+          <MCPServerPersonalAuthenticationRequired
+            owner={owner}
+            mcpServerId={agentMessage.error.metadata.mcp_server_id}
+            provider={agentMessage.error.metadata.provider}
+            scope={agentMessage.error.metadata.scope}
+            retryHandler={async () => retryHandler(agentMessage)}
+          />
+        );
+      }
       return (
         <ErrorMessage
           error={
@@ -595,17 +557,41 @@ export function AgentMessage({
       );
     }
 
+    // Get in-progress images.
+    const inProgressImages = Array.from(
+      messageStreamState.actionProgress.entries()
+    )
+      .filter(([, progress]) =>
+        isImageProgressOutput(progress.progress?.data.output)
+      )
+      .map(([actionId, progress]) => ({
+        id: actionId,
+        isLoading: true,
+        progress: progress.progress?.progress,
+      }));
+
+    // Get completed images.
+    const completedImages = messageStreamState.message.generatedFiles.filter(
+      (file) => isSupportedImageContentType(file.contentType)
+    );
+
+    const generatedFiles = agentMessage.generatedFiles.filter(
+      (file) => !isSupportedImageContentType(file.contentType)
+    );
+
     return (
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-col gap-2">
           <AgentMessageActions
+            conversationId={conversationId}
             agentMessage={agentMessage}
-            lastAgentStateClassification={lastAgentStateClassification}
+            lastAgentStateClassification={messageStreamState.agentState}
+            actionProgress={messageStreamState.actionProgress}
             owner={owner}
           />
 
           {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Agent thoughts" variant="slate">
+            <ContentMessage title="Agent thoughts" variant="primary">
               <Markdown
                 content={agentMessage.chainOfThought}
                 isStreaming={false}
@@ -616,6 +602,25 @@ export function AgentMessage({
             </ContentMessage>
           ) : null}
         </div>
+        {(inProgressImages.length > 0 || completedImages.length > 0) && (
+          <InteractiveImageGrid
+            images={[
+              ...completedImages.map((image) => ({
+                imageUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=view`,
+                downloadUrl: `/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+                alt: `${image.title}`,
+                title: `${image.title}`,
+                isLoading: false,
+              })),
+              ...inProgressImages.map(() => ({
+                alt: "",
+                title: "",
+                isLoading: true,
+              })),
+            ]}
+          />
+        )}
+
         {agentMessage.content !== null && (
           <div>
             {lastTokenClassification !== "chain_of_thought" &&
@@ -643,6 +648,20 @@ export function AgentMessage({
             )}
           </div>
         )}
+        {generatedFiles.length > 0 && (
+          <div className="mt-2 grid grid-cols-5 gap-1">
+            {getCitations({
+              activeReferences: generatedFiles.map((file) => ({
+                index: -1,
+                document: {
+                  href: `/api/w/${owner.sId}/files/${file.fileId}`,
+                  title: file.title,
+                  icon: <DocumentIcon />,
+                },
+              })),
+            })}
+          </div>
+        )}
         {agentMessage.status === "cancelled" && (
           <div>
             <Chip
@@ -656,7 +675,7 @@ export function AgentMessage({
     );
   }
 
-  async function retryHandler(agentMessage: AgentMessageType) {
+  async function retryHandler(agentMessage: LightAgentMessageType) {
     setIsRetryHandlerProcessing(true);
     await fetch(
       `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessage.sId}/retry`,
@@ -669,31 +688,6 @@ export function AgentMessage({
     );
     setIsRetryHandlerProcessing(false);
   }
-}
-
-function AssitantName(
-  assistant: LightAgentConfigurationType,
-  canMention: boolean = true
-) {
-  const router = useRouter();
-  const href = {
-    pathname: router.pathname,
-    query: { ...router.query, assistantDetails: assistant.sId },
-  };
-
-  if (!canMention) {
-    return <span>@{assistant.name}</span>;
-  }
-
-  return (
-    <Link
-      href={href}
-      shallow
-      className="cursor-pointer transition duration-200 hover:text-highlight active:text-highlight-600"
-    >
-      @{assistant.name}
-    </Link>
-  );
 }
 
 function getCitations({
@@ -709,80 +703,11 @@ function getCitations({
     return (
       <Citation key={index} href={document.href} tooltip={document.title}>
         <CitationIcons>
-          <CitationIndex>{index}</CitationIndex>
+          {index !== -1 && <CitationIndex>{index}</CitationIndex>}
           {document.icon}
         </CitationIcons>
         <CitationTitle>{document.title}</CitationTitle>
       </Citation>
     );
   });
-}
-
-function ErrorMessage({
-  error,
-  retryHandler,
-}: {
-  error: { code: string; message: string };
-  retryHandler: () => void;
-}) {
-  const fullMessage =
-    "ERROR: " + error.message + (error.code ? ` (code: ${error.code})` : "");
-
-  const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
-    async () => retryHandler()
-  );
-
-  return (
-    <div className="flex flex-col gap-9">
-      <div className="flex flex-col gap-1 sm:flex-row">
-        <Chip
-          color="warning"
-          label={"ERROR: " + shortText(error.message)}
-          size="xs"
-        />
-        <Popover
-          trigger={
-            <Button
-              variant="outline"
-              size="xs"
-              icon={EyeIcon}
-              label="See the error"
-            />
-          }
-          content={
-            <div className="flex flex-col gap-3">
-              <div className="text-sm font-normal text-warning-800">
-                {fullMessage}
-              </div>
-              <div className="self-end">
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  icon={DocumentDuplicateIcon}
-                  label={"Copy"}
-                  onClick={() =>
-                    void navigator.clipboard.writeText(fullMessage)
-                  }
-                />
-              </div>
-            </div>
-          }
-        />
-      </div>
-      <div>
-        <Button
-          variant="outline"
-          size="sm"
-          icon={ArrowPathIcon}
-          label="Retry"
-          onClick={retry}
-          disabled={isRetrying}
-        />
-      </div>
-    </div>
-  );
-}
-
-function shortText(text: string, maxLength = 30) {
-  return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
 }

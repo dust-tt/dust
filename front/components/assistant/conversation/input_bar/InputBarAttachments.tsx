@@ -1,133 +1,118 @@
+import { isFolder, isWebsite } from "@dust-tt/client";
+import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { useMemo } from "react";
+
+import type {
+  Attachment,
+  FileAttachment,
+  NodeAttachment,
+} from "@app/components/assistant/conversation/AttachmentCitation";
 import {
-  AttachmentIcon,
-  Button,
-  cn,
-  Icon,
-  PlusIcon,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-  SearchInputWithPopover,
-  Separator,
-} from "@dust-tt/sparkle";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
-import { useEffect, useMemo, useRef, useState } from "react";
-
+  AttachmentCitation,
+  attachmentToAttachmentCitation,
+} from "@app/components/assistant/conversation/AttachmentCitation";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import {
+  getLocationForDataSourceViewContentNode,
+  getVisualForDataSourceViewContentNode,
+} from "@app/lib/content_nodes";
+import type { DataSourceViewContentNode } from "@app/types";
 
-interface InputBarAttachmentsProps {
-  fileUploaderService: FileUploaderService;
-  onConnectedFileSelect: (fileId: string) => void;
-  isLoading?: boolean;
+interface FileAttachmentsProps {
+  service: FileUploaderService;
 }
 
-// TODO(attach from input bar): use component with spaces wide search
-export const InputBarAttachments = ({
-  fileUploaderService,
-  onConnectedFileSelect,
-  isLoading = false,
-}: InputBarAttachmentsProps) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
-
-  const items = Array.from({ length: 50 }).map((_, i) => ({
-    id: `${i}`,
-    title: `Document ${i + 1}`,
-    path: "Github",
-  }));
-
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => item.title.includes(debouncedSearch));
-  }, [debouncedSearch, items]);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setDebouncedSearch(search.length >= MIN_SEARCH_QUERY_SIZE ? search : "");
-    }, 300);
-    return () => {
-      clearTimeout(timeout);
+interface NodeAttachmentsProps {
+  items: DataSourceViewContentNode[];
+  spacesMap: {
+    [k: string]: {
+      name: string;
+      icon: React.ComponentType;
     };
-  }, [search]);
+  };
+  onRemove: (node: DataSourceViewContentNode) => void;
+}
+
+interface InputBarAttachmentsProps {
+  files?: FileAttachmentsProps;
+  nodes?: NodeAttachmentsProps;
+}
+
+export function InputBarAttachments({
+  files,
+  nodes,
+}: InputBarAttachmentsProps) {
+  // Convert file blobs to FileAttachment objects
+  const fileAttachments: FileAttachment[] = useMemo(() => {
+    return (
+      files?.service.fileBlobs.map((blob) => ({
+        type: "file",
+        id: blob.id,
+        title: blob.id,
+        preview: blob.preview,
+        isUploading: blob.isUploading,
+        onRemove: () => files.service.removeFile(blob.id),
+      })) || []
+    );
+  }, [files?.service]);
+
+  // Convert content nodes to NodeAttachment objects
+  const nodeAttachments: NodeAttachment[] = useMemo(() => {
+    return (
+      nodes?.items.map((node) => {
+        const logo = getConnectorProviderLogoWithFallback({
+          provider: node.dataSourceView.dataSource.connectorProvider,
+        });
+
+        const spaceName =
+          nodes.spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
+        const { dataSource } = node.dataSourceView;
+
+        const isWebsiteOrFolder = isWebsite(dataSource) || isFolder(dataSource);
+        const visual = isWebsiteOrFolder ? (
+          <Icon visual={logo} size="md" />
+        ) : (
+          <DoubleIcon
+            mainIcon={getVisualForDataSourceViewContentNode(node)}
+            secondaryIcon={logo}
+            size="md"
+          />
+        );
+
+        return {
+          type: "node",
+          id: `${node.dataSourceView.dataSource.sId}-${node.internalId}`,
+          title: node.title,
+          url: node.sourceUrl,
+          spaceName,
+          spaceIcon: nodes.spacesMap[node.dataSourceView.spaceId].icon,
+          path: getLocationForDataSourceViewContentNode(node),
+          visual,
+          onRemove: () => nodes.onRemove(node),
+        };
+      }) || []
+    );
+  }, [nodes]);
+
+  const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
+
+  if (allAttachments.length === 0) {
+    return null;
+  }
 
   return (
-    <PopoverRoot>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          icon={PlusIcon}
-          size="xs"
-          disabled={isLoading}
-        />
-      </PopoverTrigger>
-      <PopoverContent className="w-[400px]" fullWidth align="start">
-        <div className="flex flex-col gap-4">
-          <div className="px-4 pt-4">
-            <h2 className="text-lg font-semibold">Local file</h2>
-            <div className="mt-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                onChange={async (e) => {
-                  await fileUploaderService.handleFileChange(e);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                  }
-                }}
-                multiple={true}
-              />
-              <button
-                className="flex w-fit items-center gap-2 rounded-lg border border-structure-200 px-4 py-2 text-sm hover:bg-structure-50"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
-              >
-                <Icon
-                  visual={AttachmentIcon}
-                  size="xs"
-                  className="text-element-600"
-                />
-                Attach local file
-              </button>
-            </div>
-          </div>
-          <Separator />
-          <div className="px-4 pb-2">
-            <h2 className="text-lg font-semibold">From knowledge</h2>
-            <div className="mt-2">
-              <SearchInputWithPopover
-                name="search-files"
-                placeholder="Search connected files"
-                value={search}
-                onChange={setSearch}
-                open={search.length >= MIN_SEARCH_QUERY_SIZE}
-                onOpenChange={() => {}}
-                items={filteredItems}
-                renderItem={(item, selected) => (
-                  <div
-                    className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded-lg px-1 py-2 hover:bg-structure-50",
-                      selected && "bg-structure-50"
-                    )}
-                    onClick={() => {
-                      onConnectedFileSelect(item.id);
-                      setSearch("");
-                    }}
-                  >
-                    <Icon visual={AttachmentIcon} size="xs" />
-                    <span className="text-sm">{item.title}</span>
-                    <span className="ml-auto text-sm text-slate-500">
-                      {item.path}
-                    </span>
-                  </div>
-                )}
-                noResults="No results found"
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-        </div>
-      </PopoverContent>
-    </PopoverRoot>
+    <CitationGrid className="mr-3 border-b border-separator pb-3 pt-3">
+      {allAttachments.map((attachment) => {
+        const attachmentCitation = attachmentToAttachmentCitation(attachment);
+        return (
+          <AttachmentCitation
+            key={attachmentCitation.id}
+            attachmentCitation={attachmentCitation}
+            onRemove={attachment.onRemove}
+          />
+        );
+      })}
+    </CitationGrid>
   );
-};
+}

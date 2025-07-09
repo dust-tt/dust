@@ -1,33 +1,37 @@
 import {
   Button,
-  ContextItem,
   DocumentIcon,
+  Icon,
   MagicIcon,
   Page,
   PencilSquareIcon,
   SearchInput,
 } from "@dust-tt/sparkle";
-import type {
-  SubscriptionType,
-  TemplateTagCodeType,
-  TemplateTagsType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { createRef, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AssistantTemplateModal } from "@app/components/assistant_builder/AssistantTemplateModal";
 import { TemplateGrid } from "@app/components/assistant_builder/TemplateGrid";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
-import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
+import AppContentLayout, {
+  appLayoutBack,
+} from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
+import type {
+  SubscriptionType,
+  TemplateTagCodeType,
+  TemplateTagsType,
+  WorkspaceType,
+} from "@app/types";
+import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
@@ -39,6 +43,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const plan = auth.plan();
   const subscription = auth.subscription();
   if (!owner || !plan || !auth.isUser() || !subscription) {
+    return {
+      notFound: true,
+    };
+  }
+
+  if (await isRestrictedFromAgentCreation(owner)) {
     return {
       notFound: true,
     };
@@ -71,6 +81,7 @@ export default function CreateAssistant({
   const [templateSearchTerm, setTemplateSearchTerm] = useState<string | null>(
     null
   );
+  const [selectedTags, setSelectedTags] = useState<TemplateTagCodeType[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     router.query.templateId ? (router.query.templateId as string) : null
   );
@@ -82,15 +93,48 @@ export default function CreateAssistant({
     tags: TemplateTagCodeType[];
   }>({ templates: [], tags: [] });
 
+  const filterTemplates = useCallback(
+    (searchTerm = templateSearchTerm) => {
+      const templatesToDisplay = assistantTemplates.filter((template) => {
+        // Check if template has valid tags
+        if (!isTemplateTagCodeArray(template.tags)) {
+          return false;
+        }
+
+        // Filter by selected tags (show templates that match ANY selected tag)
+        if (
+          selectedTags.length > 0 &&
+          !selectedTags.some((tag) => template.tags.includes(tag))
+        ) {
+          return false;
+        }
+
+        // Filter by search term
+        if (searchTerm) {
+          const searchLower = searchTerm.toLowerCase();
+          return (
+            template.handle.toLowerCase().includes(searchLower) ||
+            template.description?.toLowerCase().includes(searchLower) ||
+            false
+          );
+        }
+
+        return true;
+      });
+
+      setFilteredTemplates({
+        templates: templatesToDisplay,
+        tags: _.uniq(
+          assistantTemplates.map((template) => template.tags).flat()
+        ),
+      });
+    },
+    [assistantTemplates, selectedTags, templateSearchTerm]
+  );
+
   useEffect(() => {
-    const templatesToDisplay = assistantTemplates.filter((template) => {
-      return isTemplateTagCodeArray(template.tags);
-    });
-    setFilteredTemplates({
-      templates: templatesToDisplay,
-      tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
-    });
-  }, [assistantTemplates]);
+    filterTemplates();
+  }, [assistantTemplates, filterTemplates, selectedTags]);
 
   const openTemplateModal = useCallback(
     async (templateId: string) => {
@@ -117,74 +161,19 @@ export default function CreateAssistant({
 
   const handleSearch = (searchTerm: string) => {
     setTemplateSearchTerm(searchTerm);
-    const templatesFilteredFromSearch =
-      searchTerm === ""
-        ? assistantTemplates
-        : assistantTemplates.filter(
-            (template) =>
-              template.handle
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase()) ||
-              template.description
-                ?.toLowerCase()
-                .includes(searchTerm.toLowerCase())
-          );
-    const templatesToDisplay = templatesFilteredFromSearch.filter(
-      (template) => {
-        return isTemplateTagCodeArray(template.tags);
-      }
+    filterTemplates(searchTerm);
+  };
+
+  const handleTagClick = (tagName: TemplateTagCodeType) => {
+    setSelectedTags((prevTags) =>
+      prevTags.includes(tagName)
+        ? prevTags.filter((tag) => tag !== tagName)
+        : [...prevTags, tagName]
     );
-    setFilteredTemplates({
-      templates: templatesToDisplay,
-      tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
-    });
-  };
-
-  const tagsRefsMap = useRef<{
-    [key: string]: React.MutableRefObject<HTMLDivElement | null>;
-  }>({});
-
-  useEffect(() => {
-    Object.keys(templateTagsMapping).forEach((tag: string) => {
-      tagsRefsMap.current[tag] = tagsRefsMap.current[tag] || createRef();
-    });
-  }, [templateTagsMapping]);
-
-  const scrollToTag = (tagName: string) => {
-    const SCROLL_OFFSET = 64; // Header size
-    const scrollToElement = tagsRefsMap.current[tagName]?.current;
-    const scrollContainerElement = document.getElementById("main-content");
-
-    if (!scrollToElement || !scrollContainerElement) {
-      return;
-    }
-    const scrollToElementRect = scrollToElement.getBoundingClientRect();
-    const scrollContainerRect = scrollContainerElement.getBoundingClientRect();
-    const scrollTargetPosition =
-      scrollToElementRect.top -
-      scrollContainerRect.top +
-      scrollContainerElement.scrollTop -
-      SCROLL_OFFSET;
-
-    scrollContainerElement.scrollTo({
-      top: scrollTargetPosition,
-      behavior: "smooth",
-    });
-
-    setTimeout(() => {
-      triggerShakeAnimation(scrollToElement);
-    }, 1000);
-  };
-
-  const triggerShakeAnimation = (element: HTMLElement): void => {
-    element.classList.add("animate-shake");
-    setTimeout(() => {
-      element.classList.remove("animate-shake");
-    }, 500);
   };
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       hideSidebar
       owner={owner}
@@ -201,7 +190,15 @@ export default function CreateAssistant({
         <Page variant="modal">
           <div className="flex flex-col gap-6 pt-9">
             <div className="flex min-h-[20vh] flex-col justify-end gap-6">
-              <Page.Header title="Start new" icon={PencilSquareIcon} />
+              <div className="flex flex-row items-center gap-2">
+                <Icon
+                  visual={PencilSquareIcon}
+                  size="lg"
+                  className="text-primary-400 dark:text-primary-500"
+                />
+
+                <h2 className="heading-2xl font-semibold">Start new</h2>
+              </div>
               <Link
                 href={`/w/${owner.sId}/builder/assistants/new?flow=${flow}`}
               >
@@ -217,7 +214,17 @@ export default function CreateAssistant({
             </div>
             <Page.Separator />
 
-            <Page.Header title="Start from a template" icon={MagicIcon} />
+            <div className="flex flex-row items-center gap-2">
+              <Icon
+                visual={MagicIcon}
+                size="lg"
+                className="text-primary-400 dark:text-primary-500"
+              />
+
+              <h2 className="heading-2xl font-semibold">
+                Start from a template
+              </h2>
+            </div>
             <div className="flex flex-col gap-6">
               <SearchInput
                 placeholder="Search templates"
@@ -233,45 +240,29 @@ export default function CreateAssistant({
                   .map((tagName) => (
                     <Button
                       label={templateTagsMapping[tagName].label}
-                      variant="outline"
+                      variant={
+                        selectedTags.includes(tagName) ? "primary" : "outline"
+                      }
                       key={tagName}
                       size="xs"
-                      onClick={() => scrollToTag(tagName)}
+                      onClick={() => handleTagClick(tagName)}
                     />
                   ))}
               </div>
             </div>
-            <Page.Separator />
-            <div className="flex flex-col pb-56">
-              {templateSearchTerm?.length ? (
-                <>
+            {filteredTemplates.templates.length > 0 && (
+              <>
+                <Page.Separator />
+                <div className="flex flex-col pb-56">
                   <TemplateGrid
                     templates={filteredTemplates.templates}
                     openTemplateModal={openTemplateModal}
+                    templateTagsMapping={templateTagsMapping}
+                    selectedTags={selectedTags}
                   />
-                </>
-              ) : (
-                <>
-                  {filteredTemplates.tags.map((tagName) => {
-                    const templatesForTag = filteredTemplates.templates.filter(
-                      (item) => item.tags.includes(tagName)
-                    );
-                    return (
-                      <div key={tagName} ref={tagsRefsMap.current[tagName]}>
-                        <ContextItem.SectionHeader
-                          title={templateTagsMapping[tagName].label}
-                          hasBorder={false}
-                        />
-                        <TemplateGrid
-                          templates={templatesForTag}
-                          openTemplateModal={openTemplateModal}
-                        />
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            )}
           </div>
         </Page>
         <AssistantTemplateModal
@@ -281,6 +272,10 @@ export default function CreateAssistant({
           onClose={() => closeTemplateModal()}
         />
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+CreateAssistant.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

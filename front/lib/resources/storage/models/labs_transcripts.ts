@@ -1,4 +1,3 @@
-import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -7,6 +6,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { LabsTranscriptsProviderType } from "@app/types";
 
 export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsTranscriptsConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -18,11 +18,11 @@ export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsT
   declare isActive: boolean;
 
   declare isDefaultWorkspaceConfiguration: boolean; // For default provider
-  declare isDefaultFullStorage: boolean;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
   declare credentialId: string | null;
+  declare useConnectorConnection: boolean;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -59,14 +59,14 @@ LabsTranscriptsConfigurationModel.init(
       allowNull: false,
       defaultValue: false,
     },
-    isDefaultFullStorage: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
     credentialId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    useConnectorConnection: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
@@ -145,10 +145,16 @@ LabsTranscriptsHistoryModel.init(
     modelName: "labs_transcripts_history",
     sequelize: frontSequelize,
     indexes: [
+      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove this index.
       {
         fields: ["fileId", "configurationId"],
         unique: true,
         name: "labs_transcripts_histories_file_configuration_id",
+      },
+      {
+        fields: ["workspaceId", "configurationId", "fileId"],
+        unique: true,
+        name: "labs_transcripts_histories_workspace_configuration_file_id",
       },
     ],
   }

@@ -1,13 +1,4 @@
 import type {
-  ConnectorProvider,
-  ConversationWithoutContentType,
-  DataSourceType,
-  ModelId,
-  Result,
-  UserType,
-} from "@dust-tt/types";
-import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
-import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
@@ -32,6 +23,15 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import type {
+  ConnectorProvider,
+  ConversationWithoutContentType,
+  DataSourceType,
+  ModelId,
+  Result,
+  UserType,
+} from "@app/types";
+import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 
@@ -132,15 +132,20 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   private static async baseFetch(
     auth: Authenticator,
     fetchDataSourceOptions?: FetchDataSourceOptions,
-    options?: ResourceFindOptions<DataSourceModel>
+    options?: ResourceFindOptions<DataSourceModel>,
+    transaction?: Transaction
   ) {
     const { includeDeleted } = fetchDataSourceOptions ?? {};
 
-    return this.baseFetchWithAuthorization(auth, {
-      ...this.getOptions(fetchDataSourceOptions),
-      ...options,
-      includeDeleted,
-    });
+    return this.baseFetchWithAuthorization(
+      auth,
+      {
+        ...this.getOptions(fetchDataSourceOptions),
+        ...options,
+        includeDeleted,
+      },
+      transaction
+    );
   }
 
   static async fetchById(
@@ -204,17 +209,6 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         return null;
       }
 
-      logger.info(
-        {
-          workspaceId: auth.workspace()?.sId,
-          nameOrId: nameOrId,
-          type: "sid",
-          sId: nameOrId,
-          origin: options?.origin,
-          success: true,
-        },
-        "fetchByNameOrId"
-      );
       return dataSources[0];
     } else {
       // Fetch by name
@@ -337,7 +331,8 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   static async listByWorkspace(
     auth: Authenticator,
     options?: FetchDataSourceOptions,
-    includeConversationDataSources?: boolean
+    includeConversationDataSources?: boolean,
+    transaction?: Transaction
   ): Promise<DataSourceResource[]> {
     const where: WhereOptions<DataSourceModel> = {
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -347,9 +342,14 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         [Op.is]: undefined,
       };
     }
-    return this.baseFetch(auth, options, {
-      where,
-    });
+    return this.baseFetch(
+      auth,
+      options,
+      {
+        where,
+      },
+      transaction
+    );
   }
 
   static async listByConnectorProvider(
@@ -386,30 +386,46 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   }
 
   static async fetchByModelIdWithAuth(auth: Authenticator, id: ModelId) {
-    const [dataSource] = await this.baseFetch(auth, undefined, {
+    const r = await this.baseFetch(auth, undefined, {
       where: { id },
     });
 
-    return dataSource ?? null;
+    return r.length > 0 ? r[0] : null;
   }
 
   protected async softDelete(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
-    // Directly delete the DataSourceViewModel here to avoid a circular dependency.
-    await DataSourceViewModel.destroy({
+    // We assume the data source views are already soft-deleted here.
+    const dataSourceViews = await DataSourceViewModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: this.id,
+        deletedAt: {
+          [Op.is]: null,
+        },
       },
       transaction,
-      hardDelete: false,
     });
+
+    if (dataSourceViews.length > 0) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          dataSourceId: this.id,
+          viewIds: dataSourceViews.map((v) => v.id),
+          error: "data_source_views_still_exist",
+        },
+        "Can't delete data source with views"
+      );
+      return new Err(new Error("Data source views still exist"));
+    }
 
     const deletedCount = await this.model.destroy({
       where: {
         id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });

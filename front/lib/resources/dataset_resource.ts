@@ -1,5 +1,3 @@
-import type { DatasetType, Result } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -12,6 +10,8 @@ import type { AppResource } from "@app/lib/resources/app_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { Dataset } from "@app/lib/resources/storage/models/apps";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { DatasetType, Result } from "@app/types";
+import { Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

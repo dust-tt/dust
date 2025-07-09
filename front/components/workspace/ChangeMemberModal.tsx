@@ -16,17 +16,17 @@ import {
   SheetHeader,
   SheetTitle,
   Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import type { ActiveRoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
-import { isActiveRoleType } from "@dust-tt/types";
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+import type { ActiveRoleType, UserTypeWithWorkspace } from "@app/types";
+import { isActiveRoleType } from "@app/types";
 
 export function ChangeMemberModal({
   onClose,
@@ -34,10 +34,10 @@ export function ChangeMemberModal({
   mutateMembers,
 }: {
   onClose: () => void;
-  member: UserTypeWithWorkspaces | null;
+  member: UserTypeWithWorkspace | null;
   mutateMembers: KeyedMutator<SearchMembersResponseBody>;
 }) {
-  const { role = null } = member?.workspaces[0] ?? {};
+  const { role = null } = member?.workspace ?? {};
 
   const sendNotification = useSendNotification();
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
@@ -77,7 +77,7 @@ export function ChangeMemberModal({
               <SheetTitle>{member.fullName || "Unreachable"}</SheetTitle>
             </SheetHeader>
             <SheetContainer>
-              <div className="flex flex-col gap-9 text-sm text-element-700">
+              <div className="flex flex-col gap-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 <div className="flex items-center gap-4">
                   <Avatar
                     size="lg"
@@ -85,7 +85,7 @@ export function ChangeMemberModal({
                     name={member.fullName}
                   />
                   <div className="flex grow flex-col">
-                    <div className="font-semibold text-foreground dark:text-foreground-night">
+                    <div className="heading-base text-foreground dark:text-foreground-night">
                       {member.fullName}
                     </div>
                     <div className="font-normal">{member.email}</div>
@@ -94,7 +94,7 @@ export function ChangeMemberModal({
 
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
-                    <div className="font-bold text-foreground dark:text-foreground-night">
+                    <div className="heading-base text-foreground dark:text-foreground-night">
                       Role:
                     </div>
                     <RoleDropDown
@@ -116,6 +116,12 @@ export function ChangeMemberModal({
                           variant="warning"
                           label="Revoke member access"
                           size="sm"
+                          disabled={member.origin === "provisioned"}
+                          tooltip={
+                            member.origin === "provisioned"
+                              ? "This user is managed by your identity provider."
+                              : undefined
+                          }
                         />
                       </DialogTrigger>
                       <DialogContent>
@@ -161,10 +167,13 @@ export function ChangeMemberModal({
                       </DialogContent>
                     </Dialog>
                   </div>
-                  <Page.P>
-                    Deleting a member will remove them from the workspace. They
-                    will be able to rejoin if they have an invitation link.
-                  </Page.P>
+                  {member.origin !== "provisioned" && (
+                    <Page.P>
+                      Deleting a member will remove them from the workspace.
+                      They will be able to rejoin if they have an invitation
+                      link.
+                    </Page.P>
+                  )}
                 </div>
               </div>
             </SheetContainer>
@@ -172,8 +181,7 @@ export function ChangeMemberModal({
               rightButtonProps={{
                 label: "Update role",
                 onClick: handleSave,
-                disabled:
-                  selectedRole === member.workspaces[0].role || isSaving,
+                disabled: selectedRole === member.workspace.role || isSaving,
                 loading: isSaving,
               }}
             />

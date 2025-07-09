@@ -1,20 +1,16 @@
 import {
+  ArrowPathIcon,
   Avatar,
   BarChartIcon,
   Button,
-  CardGrid,
-  ChatBubbleLeftRightIcon,
-  ChatBubbleThoughtIcon,
+  Chip,
+  Cog6ToothIcon,
   ContentMessage,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
+  DustIcon,
   InformationCircleIcon,
   LockIcon,
   Page,
+  PlusIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -24,41 +20,68 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  Tooltip,
-  ValueCard,
+  UserGroupIcon,
 } from "@dust-tt/sparkle";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useEffect, useState } from "react";
+
+import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
+import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
+import { AssistantEditedSection } from "@app/components/assistant/details/AssistantEditedSection";
+import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
+import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
+import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
+import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
+  UserType,
+  UserTypeWithWorkspace,
   WorkspaceType,
-} from "@dust-tt/types";
-import { isBuilder, removeNulls } from "@dust-tt/types";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
-import { useCallback, useState } from "react";
+} from "@app/types";
+import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
 
-import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
-import { AssistantActionsSection } from "@app/components/assistant/details/AssistantActionsSection";
-import { AssistantUsageSection } from "@app/components/assistant/details/AssistantUsageSection";
-import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
-import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
-import { SharingDropdown } from "@app/components/assistant_builder/Sharing";
-import {
-  useAgentAnalytics,
-  useAgentConfiguration,
-  useUpdateAgentScope,
-} from "@app/lib/swr/assistants";
-import { classNames } from "@app/lib/utils";
+import { AddEditorDropdown } from "../members/AddEditorsDropdown";
+import { MembersList } from "../members/MembersList";
 
-const PERIODS = [
-  { value: 7, label: "Last 7 days" },
-  { value: 15, label: "Last 15 days" },
-  { value: 30, label: "Last 30 days" },
-];
+export const SCOPE_INFO: Record<
+  AgentConfigurationScope,
+  {
+    shortLabel: string;
+    label: string;
+    color: "green" | "golden" | "blue" | "primary";
+    icon?: typeof UserGroupIcon | undefined;
+    text: string;
+  }
+> = {
+  global: {
+    shortLabel: "Default",
+    label: "Default Agent",
+    color: "primary",
+    icon: DustIcon,
+    text: "Default agents provided by Dust.",
+  },
+  hidden: {
+    shortLabel: "Not published",
+    label: "Not published",
+    color: "primary",
+    text: "Hidden agents.",
+  },
+  visible: {
+    shortLabel: "Published",
+    label: "Published",
+    color: "green",
+    text: "Visible agents.",
+  },
+} as const;
 
 type AssistantDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
   assistantId: string | null;
+  user: UserType;
 };
 
 function AssistantDetailsInfo({
@@ -70,199 +93,131 @@ function AssistantDetailsInfo({
 }) {
   return (
     <>
+      {agentConfiguration.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {agentConfiguration.tags.map((tag) => (
+            <Chip key={tag.sId} color="golden" label={tag.name} size="xs" />
+          ))}
+        </div>
+      )}
+
       <div className="text-sm text-foreground dark:text-foreground-night">
-        {agentConfiguration?.description}
+        {agentConfiguration.description}
       </div>
       {agentConfiguration && (
-        <AssistantUsageSection
-          agentConfiguration={agentConfiguration}
-          owner={owner}
-        />
+        <AssistantEditedSection agentConfiguration={agentConfiguration} />
+      )}
+      {agentConfiguration.sId === "dust" && (
+        <div className="text-sm text-foreground dark:text-foreground-night">
+          {isAdmin(owner) ? (
+            <Button
+              label="Manage Dust Agent's Knowledge"
+              icon={Cog6ToothIcon}
+              href={`/w/${owner.sId}/builder/assistants/dust`}
+            />
+          ) : (
+            <Chip
+              color="blue"
+              label="Your admin(s) can manage Dust Agent's Knowledge."
+            />
+          )}
+        </div>
       )}
       <Page.Separator />
 
-      <AssistantActionsSection
+      {agentConfiguration.scope !== "global" && (
+        <>
+          <AssistantKnowledgeSection
+            agentConfiguration={agentConfiguration}
+            owner={owner}
+          />
+
+          {agentConfiguration?.instructions ? (
+            <div className="flex flex-col gap-5">
+              <div className="heading-lg text-foreground dark:text-foreground-night">
+                Instructions
+              </div>
+              <ReadOnlyTextArea content={agentConfiguration.instructions} />
+            </div>
+          ) : (
+            "This agent has no instructions."
+          )}
+        </>
+      )}
+      <AssistantToolsSection
         agentConfiguration={agentConfiguration}
         owner={owner}
       />
-
-      {agentConfiguration?.instructions ? (
-        <div className="flex flex-col gap-5">
-          <div className="text-lg font-bold text-foreground dark:text-foreground-night">
-            Instructions
-          </div>
-          <ReadOnlyTextArea content={agentConfiguration.instructions} />
-        </div>
-      ) : (
-        "This agent has no instructions."
-      )}
     </>
   );
 }
 
-function AssistantDetailsPerformance({
-  agentConfiguration,
-  owner,
-}: {
-  agentConfiguration: AgentConfigurationType;
+type AssistantDetailsEditorsProps = {
   owner: WorkspaceType;
-}) {
-  const [period, setPeriod] = useState(30);
-  const { agentAnalytics, isAgentAnayticsLoading } = useAgentAnalytics({
-    workspaceId: owner.sId,
+  user: UserType;
+  agentConfiguration: AgentConfigurationType;
+};
+
+function AssistantDetailsEditors({
+  owner,
+  user,
+  agentConfiguration,
+}: AssistantDetailsEditorsProps) {
+  const updateEditors = useUpdateEditors({
+    owner,
     agentConfigurationId: agentConfiguration.sId,
-    period,
+  });
+  const { editors, isEditorsLoading } = useEditors({
+    owner,
+    agentConfigurationId: agentConfiguration.sId,
   });
 
+  const isCurrentUserEditor =
+    editors.findIndex((u) => u.sId === user.sId) !== -1;
+
+  const onRemoveMember = async (user: UserTypeWithWorkspace) => {
+    if (isCurrentUserEditor) {
+      await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
+    }
+  };
+
+  const onAddEditor = async (user: UserType) => {
+    if (isCurrentUserEditor) {
+      await updateEditors({ removeEditorIds: [], addEditorIds: [user.sId] });
+    }
+  };
+
   return (
-    <>
-      <div className="flex flex-row justify-between gap-3">
-        <Page.H variant="h5">Analytics</Page.H>
-        <div className="self-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label={PERIODS.find((p) => p.value === period)?.label}
-                variant="outline"
-                isSelect
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {PERIODS.map((p) => (
-                <DropdownMenuItem
-                  key={p.value}
-                  label={p.label}
-                  onClick={() => {
-                    setPeriod(p.value);
-                  }}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+    <div>
+      <MembersList
+        currentUser={user}
+        membersData={{
+          members: editors.map((user) => ({
+            ...user,
+            workspace: owner,
+          })),
+          isLoading: isEditorsLoading,
+          totalMembersCount: editors.length,
+          mutateRegardlessOfQueryParams: () => Promise.resolve(undefined),
+        }}
+        showColumns={isCurrentUserEditor ? ["name", "remove"] : ["name"]}
+        onRemoveMemberClick={onRemoveMember}
+        onRowClick={function noRefCheck() {}}
+      />
 
-      {isAgentAnayticsLoading ? (
-        <div className="w-full p-6">
-          <Spinner variant="dark" />
-        </div>
-      ) : (
-        <CardGrid>
-          <ValueCard
-            title="Active Users"
-            content={
-              <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
-                <div className="flex flex-col gap-1 text-lg font-bold">
-                  {agentAnalytics?.users ? (
-                    <>
-                      <div className="truncate text-foreground dark:text-foreground-night">
-                        {agentAnalytics.users.length}
-                      </div>
-
-                      <Avatar.Stack size="md" hasMagnifier={false}>
-                        {removeNulls(
-                          agentAnalytics.users.map((top) => top.user)
-                        )
-                          .slice(0, 5)
-                          .map((user) => (
-                            <Tooltip
-                              key={user.id}
-                              trigger={
-                                <Avatar
-                                  size="sm"
-                                  name={user.fullName}
-                                  visual={user.image}
-                                />
-                              }
-                              label={user.fullName}
-                            />
-                          ))}
-                      </Avatar.Stack>
-                    </>
-                  ) : (
-                    "-"
-                  )}
-                </div>
-              </div>
-            }
-            className="h-32"
-          />
-
-          <ValueCard
-            title="Reactions"
-            content={
-              <div className="flex flex-row gap-2 text-lg font-bold">
-                {agentConfiguration.scope !== "global" &&
-                agentAnalytics?.feedbacks ? (
-                  <>
-                    <div className="flex flex-row items-center">
-                      <div>
-                        <HandThumbUpIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
-                      </div>
-                      <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
-                    </div>
-                    <div className="flex flex-row items-center">
-                      <div>
-                        <HandThumbDownIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
-                      </div>
-                      <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
-                    </div>
-                  </>
-                ) : (
-                  "-"
-                )}
-              </div>
-            }
-            className="h-32"
-          />
-          <ValueCard
-            title="Conversations"
-            content={
-              <div className="flex flex-row gap-2 text-lg font-bold">
-                <div className="flex flex-row items-center">
-                  <div>
-                    <ChatBubbleLeftRightIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
-                  </div>
-                  <div>
-                    {agentAnalytics?.mentions
-                      ? `${agentAnalytics.mentions.conversationCount}`
-                      : "-"}
-                  </div>
-                </div>
-              </div>
-            }
-            className="h-32"
-          />
-          <ValueCard
-            title="Messages"
-            content={
-              <div className="flex flex-row gap-2 text-lg font-bold">
-                <div className="flex flex-row items-center">
-                  <div>
-                    <ChatBubbleThoughtIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
-                  </div>
-                  <div>
-                    {agentAnalytics?.mentions
-                      ? `${agentAnalytics.mentions.messageCount}`
-                      : "-"}
-                  </div>
-                </div>
-              </div>
-            }
-            className="h-32"
-          />
-        </CardGrid>
-      )}
-      {agentConfiguration.scope !== "global" && (
-        <div>
-          <Page.SectionHeader title="Feedback" />
-          <FeedbacksSection
+      {isCurrentUserEditor && (
+        <div className="mt-4">
+          <AddEditorDropdown
             owner={owner}
-            agentConfigurationId={agentConfiguration.sId}
+            editors={editors}
+            onAddEditor={onAddEditor}
+            trigger={
+              <Button label="Add editors" icon={PlusIcon} onClick={() => {}} />
+            }
           />
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -270,11 +225,14 @@ export function AssistantDetails({
   assistantId,
   onClose,
   owner,
+  user,
 }: AssistantDetailsProps) {
-  const [isUpdatingScope, setIsUpdatingScope] = useState(false);
-  const [selectedTab, setSelectedTab] = useState("info");
+  const [selectedTab, setSelectedTab] = useState<
+    "info" | "performance" | "editors"
+  >("info");
   const {
     agentConfiguration,
+    isAgentConfigurationLoading,
     isAgentConfigurationValidating,
     isAgentConfigurationError,
   } = useAgentConfiguration({
@@ -282,19 +240,22 @@ export function AssistantDetails({
     agentConfigurationId: assistantId,
   });
 
-  const doUpdateScope = useUpdateAgentScope({
-    owner,
-    agentConfigurationId: assistantId,
-  });
+  useEffect(() => {
+    // Reset to info tab when we open/close the modal
+    setSelectedTab("info");
+  }, [assistantId]);
 
-  const updateScope = useCallback(
-    async (scope: Exclude<AgentConfigurationScope, "global">) => {
-      setIsUpdatingScope(true);
-      await doUpdateScope(scope);
-      setIsUpdatingScope(false);
-    },
-    [doUpdateScope]
+  const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
+    agentConfiguration?.sId as GLOBAL_AGENTS_SID
   );
+
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const showEditorsTabs = assistantId != null && !isGlobalAgent;
+
+  const showPerformanceTabs =
+    (agentConfiguration?.canEdit || isAdmin(owner)) &&
+    assistantId != null &&
+    !isGlobalAgent;
 
   const DescriptionSection = () => (
     <div className="flex flex-col gap-5">
@@ -305,24 +266,16 @@ export function AssistantDetails({
           size="lg"
         />
         <div className="flex grow flex-col gap-1">
-          <div
-            className={classNames(
-              "font-bold text-foreground dark:text-foreground-night",
-              agentConfiguration?.name && agentConfiguration.name.length > 20
-                ? "text-md"
-                : "text-lg"
-            )}
-          >{`@${agentConfiguration?.name ?? ""}`}</div>
+          <div className="heading-lg line-clamp-1 text-foreground dark:text-foreground-night">{`${agentConfiguration?.name ?? ""}`}</div>
           {agentConfiguration?.status === "active" && (
-            <SharingDropdown
-              owner={owner}
-              agentConfiguration={agentConfiguration}
-              initialScope={agentConfiguration.scope}
-              newScope={agentConfiguration.scope}
-              disabled={isUpdatingScope}
-              setNewScope={(scope) => updateScope(scope)}
-              origin="modal"
-            />
+            <div>
+              <Chip
+                color={SCOPE_INFO[agentConfiguration.scope].color}
+                icon={SCOPE_INFO[agentConfiguration.scope].icon || undefined}
+              >
+                {SCOPE_INFO[agentConfiguration.scope].label}
+              </Chip>
+            </div>
           )}
         </div>
       </div>
@@ -335,14 +288,39 @@ export function AssistantDetails({
       )}
 
       {agentConfiguration?.status === "archived" && (
-        <ContentMessage
-          variant="amber"
-          title="This agent has been deleted."
-          icon={InformationCircleIcon}
-          size="md"
-        >
-          It is no longer active and cannot be used.
-        </ContentMessage>
+        <>
+          <ContentMessage
+            title="This agent has been archived."
+            variant="warning"
+            icon={InformationCircleIcon}
+            size="sm"
+          >
+            It is no longer active and cannot be used.
+            <br />
+            <div className="mt-2">
+              <Button
+                variant="outline"
+                label="Restore"
+                onClick={() => {
+                  setShowRestoreModal(true);
+                }}
+                classname="mt-2"
+                icon={ArrowPathIcon}
+              />
+            </div>
+          </ContentMessage>
+
+          <RestoreAssistantDialog
+            owner={owner}
+            isOpen={showRestoreModal}
+            agentConfiguration={agentConfiguration}
+            onClose={() => {
+              setShowRestoreModal(false);
+            }}
+          />
+
+          <div className="flex justify-center"></div>
+        </>
       )}
     </div>
   );
@@ -350,60 +328,82 @@ export function AssistantDetails({
   return (
     <Sheet open={!!assistantId} onOpenChange={onClose}>
       <SheetContent size="lg">
-        <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
-          <VisuallyHidden>
-            <SheetTitle />
-          </VisuallyHidden>
-          <DescriptionSection />
-          {isBuilder(owner) && (
-            <Tabs value={selectedTab}>
-              <TabsList border={false}>
-                <TabsTrigger
-                  value="info"
-                  label="Info"
-                  icon={InformationCircleIcon}
-                  onClick={() => setSelectedTab("info")}
-                />
-                <TabsTrigger
-                  value="performance"
-                  label="Performance"
-                  icon={BarChartIcon}
-                  onClick={() => setSelectedTab("performance")}
-                />
-              </TabsList>
-            </Tabs>
-          )}
-        </SheetHeader>
-        <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
-          {agentConfiguration && (
-            <>
-              {selectedTab === "info" && (
-                <AssistantDetailsInfo
-                  agentConfiguration={agentConfiguration}
-                  owner={owner}
-                />
+        <VisuallyHidden>
+          <SheetTitle />
+        </VisuallyHidden>
+        {isAgentConfigurationLoading ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <Spinner size="lg" />
+          </div>
+        ) : (
+          <>
+            <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
+              <DescriptionSection />
+              {showEditorsTabs || showPerformanceTabs ? (
+                <Tabs value={selectedTab}>
+                  <TabsList border={false}>
+                    <TabsTrigger
+                      value="info"
+                      label="Info"
+                      icon={InformationCircleIcon}
+                      onClick={() => setSelectedTab("info")}
+                    />
+                    {showPerformanceTabs && (
+                      <TabsTrigger
+                        value="performance"
+                        label="Performance"
+                        icon={BarChartIcon}
+                        onClick={() => setSelectedTab("performance")}
+                      />
+                    )}
+                    {showEditorsTabs && (
+                      <TabsTrigger
+                        value="editors"
+                        label="Editors"
+                        icon={UserGroupIcon}
+                        onClick={() => setSelectedTab("editors")}
+                      />
+                    )}
+                  </TabsList>
+                </Tabs>
+              ) : (
+                <div />
               )}
-              {selectedTab === "performance" && (
-                <AssistantDetailsPerformance
-                  agentConfiguration={agentConfiguration}
-                  owner={owner}
-                />
+            </SheetHeader>
+            <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
+              {agentConfiguration && (
+                <>
+                  {selectedTab === "info" && (
+                    <AssistantDetailsInfo
+                      agentConfiguration={agentConfiguration}
+                      owner={owner}
+                    />
+                  )}
+                  {selectedTab === "performance" && (
+                    <AssistantDetailsPerformance
+                      agentConfiguration={agentConfiguration}
+                      owner={owner}
+                      gridMode={false}
+                    />
+                  )}
+                  {showEditorsTabs && selectedTab === "editors" && (
+                    <AssistantDetailsEditors
+                      owner={owner}
+                      user={user}
+                      agentConfiguration={agentConfiguration}
+                    />
+                  )}
+                </>
               )}
-            </>
-          )}
-          {isAgentConfigurationError?.error.type ===
-            "agent_configuration_not_found" && (
-            <ContentMessage
-              variant="amber"
-              title="Not Available"
-              icon={LockIcon}
-              size="md"
-            >
-              This is a private agent that can't be shared with other workspace
-              members.
-            </ContentMessage>
-          )}
-        </SheetContainer>
+              {isAgentConfigurationError?.error.type ===
+                "agent_configuration_not_found" && (
+                <ContentMessage title="Not Available" icon={LockIcon} size="md">
+                  This agent is not available.
+                </ContentMessage>
+              )}
+            </SheetContainer>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );

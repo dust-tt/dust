@@ -10,10 +10,20 @@ import React, {
 const Hover3DContext = createContext<{
   isHovered: boolean;
   setHovered?: (state: boolean) => void;
-}>({ isHovered: false });
+  isTouchDevice: boolean;
+}>({ isHovered: false, isTouchDevice: false });
 
 // Custom hook to use the context
 export const useHover3D = () => useContext(Hover3DContext);
+
+// Function to detect touch devices
+const isTouchDevice = () => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return "ontouchstart" in window || navigator.maxTouchPoints > 0;
+};
 
 interface Hover3DProps {
   children: React.ReactNode;
@@ -44,6 +54,7 @@ function Hover3D({
 }: Hover3DProps) {
   const elementRef = useRef<HTMLDivElement>(null);
   const [isHovered, setHovered] = useState(fullscreenSensible);
+  const [isTouch, setIsTouch] = useState(false);
   const [transform, setTransform] = useState(
     `perspective(${perspective}px) translateZ(${
       fullscreenSensible ? depth : 0
@@ -63,7 +74,17 @@ function Hover3D({
     return ostart + (ostop - ostart) * ((value - istart) / (istop - istart));
   };
 
+  // Detect touch device on mount
   useEffect(() => {
+    setIsTouch(isTouchDevice());
+  }, []);
+
+  useEffect(() => {
+    // Skip 3D effect setup if on a touch device
+    if (isTouch) {
+      return;
+    }
+
     const element = elementRef.current;
 
     const handleMouseEnter = () => {
@@ -117,16 +138,29 @@ function Hover3D({
         element?.removeEventListener("mouseleave", handleMouseLeave);
       };
     }
-  }, [attack, release, perspective, xOffset, yOffset]);
+  }, [
+    attack,
+    release,
+    perspective,
+    xOffset,
+    yOffset,
+    isTouch,
+    fullscreenSensible,
+    reference,
+    depth,
+    range,
+  ]);
 
   return (
-    <Hover3DContext.Provider value={{ isHovered, setHovered }}>
+    <Hover3DContext.Provider
+      value={{ isHovered, setHovered, isTouchDevice: isTouch }}
+    >
       <div
         ref={elementRef}
         style={{
-          transform: transform,
-          transition: transition,
-          transformStyle: "preserve-3d",
+          transform: isTouch ? "none" : transform,
+          transition: isTouch ? "none" : transition,
+          transformStyle: isTouch ? "flat" : "preserve-3d",
         }}
         className={className}
       >
@@ -143,10 +177,12 @@ interface divProps {
 }
 
 const Div3D = ({ depth, children, className = "" }: divProps) => {
-  const { isHovered } = useHover3D();
+  const { isHovered, isTouchDevice } = useHover3D();
   const style = {
-    transform: `translateZ(${isHovered ? depth : 0}px)`,
-    transition: "transform 0.5s",
+    transform: isTouchDevice
+      ? "none"
+      : `translateZ(${isHovered ? depth : 0}px)`,
+    transition: isTouchDevice ? "none" : "transform 0.5s",
   };
 
   return (

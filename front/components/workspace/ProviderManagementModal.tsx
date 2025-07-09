@@ -1,10 +1,12 @@
 import {
   Button,
+  Cog6ToothIcon,
   ContextItem,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Icon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -13,12 +15,9 @@ import {
   SheetTitle,
   SheetTrigger,
   SliderToggle,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
-import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import { isEqual, uniqBy } from "lodash";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   getModelProviderLogo,
@@ -26,6 +25,10 @@ import {
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useWorkspace } from "@app/lib/swr/workspaces";
+import type { ModelProviderIdType, WorkspaceType } from "@app/types";
+import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@app/types";
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;
 
@@ -37,6 +40,7 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   togetherai: "TogetherAI",
   deepseek: "Deepseek",
   fireworks: "Fireworks",
+  xai: "xAI",
 };
 
 const modelProviders: Record<ModelProviderIdType, string[]> = uniqBy(
@@ -63,21 +67,42 @@ export function ProviderManagementModal({
   const { isDark } = useTheme();
   const sendNotifications = useSendNotification();
 
-  const initialProviderStates: ProviderStates = useMemo(() => {
+  const [open, setOpen] = useState(false);
+
+  const {
+    workspace,
+    isWorkspaceLoading,
+    isWorkspaceValidating,
+    mutateWorkspace,
+  } = useWorkspace({
+    owner,
+    disabled: !open,
+  });
+
+  // These two represent the local state
+  const [providerStates, setProviderStates] = useState<ProviderStates>(
+    {} as ProviderStates
+  );
+  const [embeddingProvider, setDefaultEmbeddingProvider] =
+    useState<ModelProviderIdType | null>(null);
+
+  // This is the initial state, and reflects what in the database
+  const initialProviderStates = useMemo(() => {
     const enabledProviders: ModelProviderIdType[] =
-      owner.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
-    return MODEL_PROVIDER_IDS.reduce((acc, provider) => {
+      workspace?.whiteListedProviders ?? [...MODEL_PROVIDER_IDS];
+    const states = MODEL_PROVIDER_IDS.reduce((acc, provider) => {
       acc[provider] = enabledProviders.includes(provider);
       return acc;
     }, {} as ProviderStates);
-  }, [owner.whiteListedProviders]);
+    return states;
+  }, [workspace]);
 
-  const [providerStates, setProviderStates] = useState<ProviderStates>(
-    initialProviderStates
-  );
-  const [embeddingProvider, setDefaultEmbeddingProvider] = useState(
-    owner.defaultEmbeddingProvider
-  );
+  useEffect(() => {
+    if (open) {
+      setProviderStates(initialProviderStates);
+      setDefaultEmbeddingProvider(workspace?.defaultEmbeddingProvider ?? null);
+    }
+  }, [open, initialProviderStates, workspace?.defaultEmbeddingProvider]);
 
   const allToggleEnabled = useMemo(
     () => Object.values(providerStates).every(Boolean),
@@ -131,6 +156,9 @@ export function ProviderManagementModal({
           title: "Providers Updated",
           description: "The list of providers has been successfully updated.",
         });
+
+        // Retrigger a server fetch after a successful update
+        await mutateWorkspace();
       } catch (error) {
         sendNotifications({
           type: "error",
@@ -143,25 +171,30 @@ export function ProviderManagementModal({
 
   const hasChanges =
     !isEqual(providerStates, initialProviderStates) ||
-    embeddingProvider !== owner.defaultEmbeddingProvider;
+    embeddingProvider !== workspace?.defaultEmbeddingProvider;
 
   return (
-    <Sheet>
+    <Sheet
+      open={open}
+      onOpenChange={(open) => {
+        setOpen(open);
+      }}
+    >
       <SheetTrigger asChild>
-        <Button variant="primary" label="Manage providers" className="grow-0" />
+        <Button variant="outline" label="Manage Models" icon={Cog6ToothIcon} />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader hideButton>
           <SheetTitle>Manage Providers</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="dark:divide-gray-200-night mt-8 divide-y divide-gray-200">
+          <div className="mt-8 divide-y divide-gray-200 dark:divide-gray-200-night">
             <div className="flex items-center justify-between px-4 pb-4">
               <span className="text-left font-bold text-foreground dark:text-foreground-night">
                 Make all providers available
               </span>
               <SliderToggle
-                size="sm"
+                size="xs"
                 selected={allToggleEnabled}
                 disabled={masterToggleDisabled}
                 onClick={() => {
@@ -186,17 +219,18 @@ export function ProviderManagementModal({
                   <ContextItem
                     key={provider}
                     title={prettyfiedProviderNames[provider]}
-                    visual={<LogoComponent />}
+                    visual={<Icon visual={LogoComponent} size="lg" />}
                     action={
                       <SliderToggle
-                        size="sm"
+                        size="xs"
                         selected={providerStates[provider]}
                         onClick={() => handleToggleChange(provider)}
+                        disabled={isWorkspaceLoading || isWorkspaceValidating}
                       />
                     }
                   >
                     <ContextItem.Description>
-                      <span className="text-sm text-element-700">
+                      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                         {modelProviders[provider].join(", ")}
                       </span>
                     </ContextItem.Description>

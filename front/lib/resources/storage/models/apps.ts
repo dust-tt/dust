@@ -1,4 +1,3 @@
-import type { AppVisibility, DatasetSchema } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -8,6 +7,7 @@ import {
   SoftDeletableWorkspaceAwareModel,
   WorkspaceAwareModel,
 } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { AppVisibility, DatasetSchema } from "@app/types";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
 export class AppModel extends SoftDeletableWorkspaceAwareModel<AppModel> {
@@ -78,6 +78,8 @@ AppModel.init(
       { unique: true, fields: ["sId"] },
       { fields: ["workspaceId", "visibility"] },
       { fields: ["workspaceId", "sId", "visibility"] },
+      { fields: ["workspaceId", "sId"] },
+      { fields: ["workspaceId", "vaultId"] },
     ],
   }
 );

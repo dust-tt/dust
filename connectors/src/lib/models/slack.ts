@@ -1,19 +1,20 @@
-import type {
-  ConnectorPermission,
-  SlackAutoReadPattern,
-  SlackbotWhitelistType,
-} from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
+import type {
+  ConnectorPermission,
+  SlackAutoReadPattern,
+  SlackbotWhitelistType,
+} from "@connectors/types";
 
 export class SlackConfigurationModel extends ConnectorBaseModel<SlackConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare slackTeamId: string;
   declare botEnabled: boolean;
+  declare restrictedSpaceAgentsEnabled: boolean;
   // Whitelisted domains are in the format "domain:group_id".
   declare whitelistedDomains?: readonly string[];
   declare autoReadChannelPatterns: SlackAutoReadPattern[];
@@ -49,6 +50,11 @@ SlackConfigurationModel.init(
       allowNull: true,
       defaultValue: [],
     },
+    restrictedSpaceAgentsEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
   },
   {
     sequelize: sequelizeConnection,
@@ -72,6 +78,7 @@ export class SlackMessages extends ConnectorBaseModel<SlackMessages> {
   declare channelId: string;
   declare messageTs?: string;
   declare documentId: string;
+  declare skipReason?: string;
 }
 SlackMessages.init(
   {
@@ -97,6 +104,10 @@ SlackMessages.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     sequelize: sequelizeConnection,
@@ -113,6 +124,8 @@ export class SlackChannel extends ConnectorBaseModel<SlackChannel> {
 
   declare slackChannelId: string;
   declare slackChannelName: string;
+
+  declare skipReason: string | null;
 
   declare private: boolean;
 
@@ -138,6 +151,10 @@ SlackChannel.init(
     slackChannelName: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    skipReason: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     private: {
       type: DataTypes.BOOLEAN,

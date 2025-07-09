@@ -1,17 +1,8 @@
 import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  ModelId,
-  RequireAtLeastOne,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
-import type {
   Attributes,
   FindOptions,
   IncludeOptions,
   InferAttributes,
-  ModelStatic,
   Transaction,
   WhereOptions,
 } from "sequelize";
@@ -24,6 +15,17 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger, { auditLog } from "@app/logger/logger";
+import type {
+  LightWorkspaceType,
+  MembershipOriginType,
+  MembershipRoleType,
+  ModelId,
+  RequireAtLeastOne,
+  Result,
+} from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
+
+import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -53,12 +55,12 @@ export interface MembershipResource
   extends ReadonlyAttributesType<MembershipModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MembershipResource extends BaseResource<MembershipModel> {
-  static model: ModelStatic<MembershipModel> = MembershipModel;
+  static model: ModelStaticWorkspaceAware<MembershipModel> = MembershipModel;
 
   readonly user?: Attributes<UserModel>;
 
   constructor(
-    model: ModelStatic<MembershipModel>,
+    model: ModelStaticWorkspaceAware<MembershipModel>,
     blob: Attributes<MembershipModel>,
     { user }: { user?: Attributes<UserModel> } = {}
   ) {
@@ -70,15 +72,20 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   static async getMembershipsForWorkspace({
     workspace,
     transaction,
+    includeUser = false,
   }: {
     workspace: LightWorkspaceType;
     transaction?: Transaction;
+    includeUser?: boolean;
   }): Promise<MembershipsWithTotal> {
     const orderedResourcesFromModels = (resources: MembershipModel[]) =>
       resources
         .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
         .map(
-          (resource) => new MembershipResource(MembershipModel, resource.get())
+          (resource) =>
+            new MembershipResource(MembershipModel, resource.get(), {
+              user: resource.user?.get(),
+            })
         );
 
     const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
@@ -88,6 +95,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     const findOptions: FindOptions<InferAttributes<MembershipModel>> = {
       where: whereClause,
       transaction,
+      include: includeUser ? [{ model: UserModel, required: true }] : [],
     };
 
     const { rows, count } = await MembershipModel.findAndCountAll(findOptions);
@@ -170,13 +178,20 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       findOptions.limit = limit;
     }
 
-    const rows = await MembershipModel.findAll({
+    const rows = await this.model.findAll({
       ...findOptions,
       where: { ...findOptions.where, ...paginationWhereClause },
+      // WORKSPACE_ISOLATION_BYPASS: We could fetch via workspaceId or via userIds, check is done above
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
-    // Need a separate query to get the total count, findAndCountAll does not support pagination based on where clause.
-    const count = await MembershipModel.count(findOptions);
+    let count = rows.length;
+
+    // Only do the count if we are paginating, otherwise we can use the length of the rows as there is no limit by default
+    if (paginationParams) {
+      // Need a separate query to get the total count, findAndCountAll does not support pagination based on where clause.
+      count = await MembershipModel.count(findOptions);
+    }
 
     let nextPageParams: MembershipsPaginationParams | undefined;
     if (paginationParams?.limit && rows.length === paginationParams.limit) {
@@ -324,6 +339,33 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return memberships[0];
   }
 
+  static async getActiveRoleForUserInWorkspace({
+    user,
+    workspace,
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<Attributes<MembershipModel>["role"] | "none"> {
+    const membership = await this.model.findOne({
+      attributes: ["role"],
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: {
+          [Op.lte]: new Date(),
+        },
+        endAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
+        },
+      },
+      transaction,
+    });
+
+    return membership?.role ?? "none";
+  }
+
   static async getActiveMembershipOfUserInWorkspace({
     user,
     workspace,
@@ -392,6 +434,17 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       where,
       distinct: true,
       col: "userId",
+      include: [
+        {
+          model: UserModel,
+          required: true,
+          where: {
+            lastLoginAt: {
+              [Op.ne]: null,
+            },
+          },
+        },
+      ],
       transaction,
     });
   }
@@ -413,12 +466,14 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     user,
     workspace,
     role,
+    origin = "invited",
     startAt = new Date(),
     transaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     role: MembershipRoleType;
+    origin?: MembershipOriginType;
     startAt?: Date;
     transaction?: Transaction;
   }): Promise<MembershipResource> {
@@ -447,6 +502,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         userId: user.id,
         workspaceId: workspace.id,
         role,
+        origin,
       },
       { transaction }
     );
@@ -457,13 +513,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   static async fetchByUserIds(
     userIds: ModelId[]
   ): Promise<MembershipResource[]> {
-    const membershipModels = await MembershipModel.findAll({
+    const membershipModels = await this.model.findAll({
       where: {
         userId: userIds,
       },
+      // WORKSPACE_ISOLATION_BYPASS: fetch by userIds
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return membershipModels.map(
-      (m) => new MembershipResource(MembershipModel, m.get())
+      (m) => new MembershipResource(this.model, m.get())
     );
   }
 
@@ -596,10 +654,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       );
     } else {
       // If the last membership was terminated, we create a new membership with the new role.
+      // Preserve the origin from the previous membership.
       await this.createMembership({
         user,
         workspace,
         role: newRole,
+        origin: membership.origin,
         startAt: new Date(),
         transaction,
       });
@@ -617,6 +677,40 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return new Ok({ previousRole, newRole });
   }
 
+  /**
+   * Update the origin of an active membership.
+   */
+  async updateOrigin({
+    user,
+    workspace,
+    newOrigin,
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    newOrigin: MembershipOriginType;
+    transaction?: Transaction;
+  }): Promise<{
+    previousOrigin: MembershipOriginType;
+    newOrigin: MembershipOriginType;
+  }> {
+    const previousOrigin = this.origin;
+
+    await this.update({ origin: newOrigin }, transaction);
+
+    auditLog(
+      {
+        userId: user.id,
+        workspaceId: workspace.id,
+        previousOrigin,
+        newOrigin,
+      },
+      "Membership origin updated"
+    );
+
+    return { previousOrigin, newOrigin };
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
@@ -631,7 +725,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 

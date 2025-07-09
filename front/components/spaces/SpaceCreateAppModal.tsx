@@ -9,16 +9,16 @@ import {
   SheetHeader,
   SheetTitle,
   TextArea,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import type { APIError, SpaceType, WorkspaceType } from "@dust-tt/types";
-import { APP_NAME_REGEXP } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useApps } from "@app/lib/swr/apps";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
+import type { APIError, SpaceType, WorkspaceType } from "@app/types";
+import { APP_NAME_REGEXP } from "@app/types";
 
 interface SpaceCreateAppModalProps {
   isOpen: boolean;

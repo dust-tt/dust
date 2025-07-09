@@ -1,7 +1,6 @@
 import { UserProvider } from "@auth0/nextjs-auth0/client";
 import { SparkleContext } from "@dust-tt/sparkle";
 import { Notification } from "@dust-tt/sparkle";
-import { isAPIErrorResponse } from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { MouseEvent } from "react";
@@ -10,6 +9,7 @@ import type { UrlObject } from "url";
 
 import { ConfirmPopupArea } from "@app/components/Confirm";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
+import { isAPIErrorResponse } from "@app/types";
 
 function NextLinkWrapper({
   href,
@@ -82,7 +82,7 @@ export default function RootLayout({
               error.error.type === "not_authenticated"
             ) {
               // Redirect to login page.
-              await router.push("/api/auth/login");
+              await router.push("/api/workos/login");
             }
           },
         }}

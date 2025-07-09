@@ -1,10 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import {
-  EnvironmentConfig,
-  Err,
-  getOAuthConnectionAccessToken,
-  Ok,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import { createWriteStream } from "fs";
 import { mkdtemp, readdir, rm } from "fs/promises";
@@ -12,7 +7,7 @@ import fs from "fs-extra";
 import * as reporter from "io-ts-reporters";
 import { Octokit, RequestError } from "octokit";
 import { tmpdir } from "os";
-import { basename, extname, join, resolve } from "path";
+import { basename, join, resolve } from "path";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import type { ReadEntry } from "tar";
@@ -24,9 +19,16 @@ import type {
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import {
+  isSupportedDirectory,
+  isSupportedFile,
+} from "@connectors/connectors/github/lib/code/supported_files";
+import {
   isBadCredentials,
   isGithubRequestErrorNotFound,
+  isGithubRequestErrorRepositoryAccessBlocked,
   isGithubRequestRedirectCountExceededError,
+  RepositoryAccessBlockedError,
+  RepositoryNotFoundError,
 } from "@connectors/connectors/github/lib/errors";
 import type {
   DiscussionCommentNode,
@@ -55,8 +57,15 @@ import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  EnvironmentConfig,
+  getOAuthConnectionAccessToken,
+} from "@connectors/types";
 
 const API_PAGE_SIZE = 100;
+const REPOSITORIES_API_PAGE_SIZE = 25;
+const MAX_ISSUES_PAGE_SIZE = 100;
+export const MAX_REPOSITORIES_PAGE_SIZE = 100;
 
 type GithubOrg = {
   id: number;
@@ -125,7 +134,8 @@ export async function installationIdFromConnectionId(
 
 export async function getReposPage(
   connector: ConnectorResource,
-  page: number
+  page: number,
+  perPage: number = REPOSITORIES_API_PAGE_SIZE
 ): Promise<Result<GithubRepo[], ExternalOAuthTokenError>> {
   try {
     const octokit = await getOctokit(connector);
@@ -133,7 +143,7 @@ export async function getReposPage(
     return new Ok(
       (
         await octokit.request("GET /installation/repositories", {
-          per_page: API_PAGE_SIZE,
+          per_page: perPage,
           page: page,
         })
       ).data.repositories.map((r) => ({
@@ -200,6 +210,19 @@ export async function getRepoIssuesPage(
   try {
     const octokit = await getOctokit(connector);
 
+    if (page >= MAX_ISSUES_PAGE_SIZE) {
+      logger.warn(
+        {
+          repoName,
+          login,
+          connectorId: connector.id,
+          page,
+        },
+        `We cannot obtain more than ${MAX_ISSUES_PAGE_SIZE} pages of issues with the GitHub REST API.`
+      );
+      return [];
+    }
+
     const issues = (
       await octokit.rest.issues.listForRepo({
         owner: login,
@@ -235,6 +258,11 @@ export async function getRepoIssuesPage(
         "transient_upstream_activity_error"
       );
     }
+
+    if (isGithubRequestErrorNotFound(err)) {
+      return [];
+    }
+
     // Handle disabled issues case - GitHub returns 410 Gone when issues are disabled
     if (
       err instanceof RequestError &&
@@ -552,11 +580,13 @@ export async function getDiscussion(
   repoName: string,
   login: string,
   discussionNumber: number
-): Promise<DiscussionNode> {
+): Promise<Result<DiscussionNode, Error>> {
   const octokit = await getOctokit(connector);
 
-  const d = await octokit.graphql(
-    `
+  let d;
+  try {
+    d = await octokit.graphql(
+      `
     query getDiscussion(
       $owner: String!
       $repo: String!
@@ -578,16 +608,22 @@ export async function getDiscussion(
       }
     }
     `,
-    {
-      owner: login,
-      repo: repoName,
-      discussionNumber,
+      {
+        owner: login,
+        repo: repoName,
+        discussionNumber,
+      }
+    );
+  } catch (err) {
+    if (err instanceof Error) {
+      return new Err(err);
     }
-  );
+    return new Err(new Error(String(err)));
+  }
 
   const errorPayloadValidation = ErrorPayloadSchema.decode(d);
   if (!isLeft(errorPayloadValidation)) {
-    throw new Error(JSON.stringify(errorPayloadValidation.right));
+    return new Err(new Error(JSON.stringify(errorPayloadValidation.right)));
   }
 
   const getDiscussionPayloadValidation = GetDiscussionPayloadSchema.decode(d);
@@ -596,12 +632,12 @@ export async function getDiscussion(
     const pathError = reporter.formatValidationErrors(
       getDiscussionPayloadValidation.left
     );
-    throw new Error(`Unexpected payload: ${pathError.join(", ")}`);
+    return new Err(new Error(`Unexpected payload: ${pathError.join(", ")}`));
   }
 
   const payload = getDiscussionPayloadValidation.right;
 
-  return payload.repository.discussion;
+  return new Ok(payload.repository.discussion);
 }
 
 export async function getOctokit(
@@ -639,134 +675,13 @@ export async function getOctokit(
 
 // Repository processing
 
-const EXTENSION_WHITELIST = [
-  // Programming Languages - General Purpose
-  ".js",
-  ".ts",
-  ".tsx",
-  ".jsx",
-  ".py",
-  ".rb",
-  ".rs",
-  ".go",
-  ".swift",
-  ".java",
-  ".c",
-  ".h",
-  ".cc",
-  ".cpp",
-  ".hpp",
-  ".php",
-
-  // .NET Ecosystem
-  ".cs",
-  ".csproj", // XML-based
-  ".sln", // Text-based solution file
-  ".cshtml", // Razor template
-  ".razor", // Razor component
-  ".resx", // XML-based resource
-  ".vb", // Visual Basic
-  ".fs", // F#
-  ".fsproj", // XML-based F# project
-  ".props", // MSBuild properties (XML)
-  ".targets", // MSBuild targets (XML)
-  ".nuspec", // NuGet specification (XML)
-
-  // Web Technologies
-  ".html",
-  ".htm",
-  ".css",
-  ".scss",
-  ".sass",
-  ".less",
-
-  // Data & Configuration
-  ".json",
-  ".yaml",
-  ".yml",
-  ".toml",
-  ".ini",
-  ".env",
-  ".conf",
-  ".config",
-
-  // Build & Dependencies
-  ".gradle",
-  ".lock", // Text-based lock files
-  ".mk", // Makefile
-  ".just", // Justfile
-  ".dockerfile",
-  ".editorconfig",
-
-  // Infrastructure as Code
-  ".tf", // Terraform
-  ".hcl", // HashiCorp Configuration Language
-  ".nix", // Nix expressions
-
-  // Documentation
-  ".md", // Markdown
-  ".mdx", // Markdown with JSX
-  ".rst", // ReStructured Text
-  ".adoc", // AsciiDoc
-  ".tex", // LaTeX
-  ".txt",
-
-  // Shell & Scripts
-  ".sh",
-  ".sql",
-  ".kt", // Kotlin
-  ".kts", // Kotlin script
-
-  // Version Control
-  ".gitignore",
-  ".dockerignore",
-
-  // Testing
-  ".test.cs",
-  ".spec.cs",
-  ".tests.cs",
-
-  // Templates
-  ".liquid",
-  ".mustache",
-  ".handlebars",
-];
-
-const SUFFIX_BLACKLIST = [".min.js", ".min.css"];
-
-const FILENAME_WHITELIST = [
-  "README",
-  "Dockerfile",
-  "package.json",
-  "Cargo.toml",
-];
-
-const DIRECTORY_BLACKLIST = [
-  "node_modules",
-  "vendor",
-  "dist",
-  "build",
-  "coverage",
-  "pkg",
-  "bundle",
-  "built",
-  "eggs",
-  "downloads",
-  "env",
-  "venv",
-  "tmp",
-  "temp",
-  "debug",
-  "target",
-];
-
 async function* getFiles(dir: string): AsyncGenerator<string> {
   const dirents = await readdir(dir, { withFileTypes: true });
   for (const dirent of dirents) {
     const res = resolve(dir, dirent.name);
     if (dirent.isDirectory()) {
       // blacklist
-      if (DIRECTORY_BLACKLIST.includes(dirent.name)) {
+      if (!isSupportedDirectory(dirent.name)) {
         continue;
       }
       yield* getFiles(res);
@@ -793,13 +708,49 @@ export async function processRepository({
   repoId: number;
   onEntry: (entry: ReadEntry) => void;
   logger: Logger;
-}) {
+}): Promise<
+  Result<
+    {
+      tempDir: string;
+      files: {
+        fileName: string;
+        filePath: string[];
+        sourceUrl: string;
+        sizeBytes: number;
+        documentId: string;
+        parentInternalId: string | null;
+        parents: string[];
+        localFilePath: string;
+      }[];
+      directories: {
+        dirName: string;
+        dirPath: string[];
+        sourceUrl: string;
+        internalId: string;
+        parentInternalId: string | null;
+        parents: string[];
+      }[];
+    },
+    | RepositoryAccessBlockedError
+    | ExternalOAuthTokenError
+    | RepositoryNotFoundError
+  >
+> {
   const octokit = await getOctokit(connector);
 
-  const { data } = await octokit.rest.repos.get({
-    owner: repoLogin,
-    repo: repoName,
-  });
+  let data;
+  try {
+    const response = await octokit.rest.repos.get({
+      owner: repoLogin,
+      repo: repoName,
+    });
+    data = response.data;
+  } catch (err) {
+    if (isGithubRequestErrorNotFound(err)) {
+      return new Err(new RepositoryNotFoundError(err));
+    }
+    throw err;
+  }
   const defaultBranch = data.default_branch;
 
   logger.info({ defaultBranch, size: data.size }, "Retrieved repository info");
@@ -807,11 +758,25 @@ export async function processRepository({
   // `data.size` is the whole repo size in KB, we use it to filter repos > 10GB download size. There
   // is further filtering by file type + for "extracted size" per file to 1MB.
   if (data.size > 10 * 1024 * 1024) {
-    // For now we throw an error, we'll figure out as we go how we want to handle (likely a typed
-    // error to return a syncFailed to the user, or increase this limit if we want some largers
+    // For now we throw a panic log, so we are able to report the issue to the
+    // user, and continue with the rest of the sync. See runbook for future
+    // improvements
+    // https://www.notion.so/dust-tt/Panic-Log-Github-repository-too-large-to-sync-1bf28599d9418061a396d2378bdd77de?pvs=4
+
+    // Later on, we might want to build capabilities to handle this (likely a
+    // typed error to return a syncFailed to the user, when we are able to
+    // display granular failure, or increase this limit if we want some largers
     // repositories).
-    throw new Error(
-      `Repository is too large to sync (size: ${data.size}KB, max: 10GB)`
+
+    logger.error(
+      {
+        repoLogin,
+        repoName,
+        size: data.size,
+        connectorId: connector.id,
+        panic: true,
+      },
+      `Github Repository is too large to sync (size: ${data.size}KB, max: 10GB)`
     );
   }
 
@@ -836,6 +801,9 @@ export async function processRepository({
   } catch (err) {
     if (isGithubRequestErrorNotFound(err)) {
       return new Err(new ExternalOAuthTokenError(err));
+    }
+    if (isGithubRequestErrorRepositoryAccessBlocked(err)) {
+      return new Err(new RepositoryAccessBlockedError(err));
     }
 
     throw err;
@@ -872,14 +840,10 @@ export async function processRepository({
           logger.info({ path, size }, "File is over the size limit, skipping.");
           return false;
         }
-        const ext = extname(path).toLowerCase();
 
-        const isWithelisted =
-          (EXTENSION_WHITELIST.includes(ext) ||
-            FILENAME_WHITELIST.includes(path)) &&
-          !SUFFIX_BLACKLIST.some((suffix) => path.endsWith(suffix));
+        const isWhitelisted = isSupportedFile(path);
 
-        if (!isWithelisted) {
+        if (!isWhitelisted) {
           return false;
         }
 

@@ -1,59 +1,36 @@
-import { sendInitDbMessage } from "@dust-tt/types";
-
-import {
-  AgentBrowseAction,
-  AgentBrowseConfiguration,
-} from "@app/lib/models/assistant/actions/browse";
-import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
-  AgentDustAppRunAction,
-  AgentDustAppRunConfiguration,
-} from "@app/lib/models/assistant/actions/dust_app_run";
-import {
-  AgentGithubCreateIssueAction,
-  AgentGithubGetPullRequestAction,
-} from "@app/lib/models/assistant/actions/github";
-import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
-import {
-  AgentProcessAction,
-  AgentProcessConfiguration,
-} from "@app/lib/models/assistant/actions/process";
-import {
-  AgentReasoningAction,
-  AgentReasoningConfiguration,
-} from "@app/lib/models/assistant/actions/reasoning";
-import {
-  AgentRetrievalAction,
-  AgentRetrievalConfiguration,
-  RetrievalDocument,
-  RetrievalDocumentChunk,
-} from "@app/lib/models/assistant/actions/retrieval";
-import {
-  AgentTablesQueryAction,
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
-import {
-  AgentWebsearchAction,
-  AgentWebsearchConfiguration,
-} from "@app/lib/models/assistant/actions/websearch";
+  AgentChildAgentConfiguration,
+  AgentMCPAction,
+  AgentMCPActionOutputItem,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
+import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
+import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
+import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
   AgentUserRelation,
   GlobalAgentSettings,
 } from "@app/lib/models/assistant/agent";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
   AgentMessageFeedback,
-  Conversation,
-  ConversationParticipant,
+  ConversationModel,
+  ConversationParticipantModel,
   Mention,
   Message,
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
+import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import {
   TrackerConfigurationModel,
   TrackerDataSourceConfigurationModel,
@@ -62,10 +39,9 @@ import {
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { MembershipInvitation } from "@app/lib/models/membership_invitation";
+import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { Workspace } from "@app/lib/models/workspace";
-import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { TagModel } from "@app/lib/models/tags";
 import {
   AppModel,
   Clone,
@@ -87,7 +63,7 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
+import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import {
   RunModel,
   RunUsageModel,
@@ -98,7 +74,10 @@ import {
   UserMetadataModel,
   UserModel,
 } from "@app/lib/resources/storage/models/user";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import logger from "@app/logger/logger";
+import { sendInitDbMessage } from "@app/types";
 
 async function main() {
   await sendInitDbMessage({
@@ -107,12 +86,13 @@ async function main() {
   });
   await UserModel.sync({ alter: true });
   await UserMetadataModel.sync({ alter: true });
-  await Workspace.sync({ alter: true });
-  await WorkspaceHasDomain.sync({ alter: true });
+  await WorkspaceModel.sync({ alter: true });
+  await WorkspaceHasDomainModel.sync({ alter: true });
   await MembershipModel.sync({ alter: true });
-  await MembershipInvitation.sync({ alter: true });
+  await MembershipInvitationModel.sync({ alter: true });
   await GroupModel.sync({ alter: true });
   await GroupMembershipModel.sync({ alter: true });
+  await TagModel.sync({ alter: true });
 
   await SpaceModel.sync({ alter: true });
   await AppModel.sync({ alter: true });
@@ -124,8 +104,8 @@ async function main() {
   await DustAppSecret.sync({ alter: true });
   await GroupSpaceModel.sync({ alter: true });
 
-  await Conversation.sync({ alter: true });
-  await ConversationParticipant.sync({ alter: true });
+  await ConversationModel.sync({ alter: true });
+  await ConversationParticipantModel.sync({ alter: true });
 
   await DataSourceModel.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });
@@ -146,15 +126,17 @@ async function main() {
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
   await GlobalAgentSettings.sync({ alter: true });
+  await TagAgentModel.sync({ alter: true });
+  await GroupAgentModel.sync({ alter: true });
 
+  await RemoteMCPServerModel.sync({ alter: true });
+  await MCPServerViewModel.sync({ alter: true });
+  await MCPServerConnection.sync({ alter: true });
+  await RemoteMCPServerToolMetadataModel.sync({ alter: true });
+
+  await AgentMCPServerConfiguration.sync({ alter: true });
   await AgentRetrievalConfiguration.sync({ alter: true });
-  await AgentDustAppRunConfiguration.sync({ alter: true });
-  await AgentTablesQueryConfiguration.sync({ alter: true });
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
-  await AgentProcessConfiguration.sync({ alter: true });
-  await AgentWebsearchConfiguration.sync({ alter: true });
-  await AgentBrowseConfiguration.sync({ alter: true });
-  await AgentGithubConfiguration.sync({ alter: true });
   await AgentReasoningConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
@@ -167,29 +149,19 @@ async function main() {
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });
 
-  await AgentRetrievalAction.sync({ alter: true });
-  await AgentTablesQueryAction.sync({ alter: true });
-  await AgentDustAppRunAction.sync({ alter: true });
-  await AgentProcessAction.sync({ alter: true });
-  await AgentWebsearchAction.sync({ alter: true });
-  await AgentBrowseAction.sync({ alter: true });
-  await AgentConversationIncludeFileAction.sync({ alter: true });
-  await AgentMessageContent.sync({ alter: true });
-  await AgentGithubGetPullRequestAction.sync({ alter: true });
-  await AgentGithubCreateIssueAction.sync({ alter: true });
-  await AgentReasoningAction.sync({ alter: true });
-
-  await RetrievalDocument.sync({ alter: true });
-  await RetrievalDocumentChunk.sync({ alter: true });
+  await AgentDataRetentionModel.sync({ alter: true });
+  await AgentStepContentModel.sync({ alter: true });
+  await AgentMCPAction.sync({ alter: true });
+  await AgentMCPActionOutputItem.sync({ alter: true });
+  await AgentChildAgentConfiguration.sync({ alter: true });
 
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });
 
-  await PlatformActionsConfigurationModel.sync({ alter: true });
-
-  // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
   await LabsTranscriptsHistoryModel.sync({ alter: true });
+
+  await PluginRunModel.sync({ alter: true });
 
   process.exit(0);
 }

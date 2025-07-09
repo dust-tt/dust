@@ -1,5 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
-
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -8,6 +6,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
 async function backfillDefaultViewForDataSource(
   workspace: LightWorkspaceType,
   vault: SpaceResource,

@@ -26,6 +26,7 @@ describe("GET /api/user", () => {
         image: user.imageUrl,
         createdAt: user.createdAt.getTime(),
         provider: user.provider,
+        lastLoginAt: user.lastLoginAt?.getTime(),
         workspaces: [
           {
             id: workspace.id,
@@ -37,6 +38,7 @@ describe("GET /api/user", () => {
             whiteListedProviders: workspace.whiteListedProviders,
             defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
             ssoEnforced: workspace.ssoEnforced,
+            workOSOrganizationId: workspace.workOSOrganizationId,
           },
         ],
       },

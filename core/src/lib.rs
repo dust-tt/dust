@@ -34,16 +34,17 @@ pub mod databases {
         pub mod get_remote_database;
         pub mod remote_database;
 
-        pub mod snowflake;
-
-        pub mod salesforce {
-            pub mod salesforce;
-            pub mod sandbox {
-                pub mod convert;
+        pub mod snowflake {
+            pub mod api {
+                pub mod auth;
+                pub mod chunk;
+                pub mod client;
                 pub mod error;
-                pub mod extract;
-                pub mod structured_query;
+                pub mod query;
+                pub mod row;
+                pub mod session;
             }
+            pub mod snowflake;
         }
     }
     pub mod transient_database;
@@ -67,15 +68,24 @@ pub mod providers {
     pub mod sentencepiece {
         pub mod sentencepiece;
     }
-    pub mod anthropic;
+    pub mod anthropic {
+        pub mod anthropic;
+        pub mod helpers;
+        pub mod streaming;
+        pub mod types;
+    }
     pub mod deepseek;
     pub mod fireworks;
     pub mod google_ai_studio;
     pub mod helpers;
     pub mod openai_compatible_helpers;
+    pub mod openai_responses_api_helpers;
     pub mod togetherai;
+    pub mod xai;
 }
 pub mod http {
+    pub mod network;
+    pub mod proxy_client;
     pub mod request;
 }
 pub mod blocks {
@@ -108,6 +118,8 @@ pub mod deno {
 }
 
 pub mod databases_store {
+    pub mod gcs;
+    pub mod postgres;
     pub mod store;
 }
 
@@ -126,9 +138,12 @@ pub mod oauth {
     pub mod providers {
         pub mod confluence;
         pub mod github;
+        pub mod gmail;
         pub mod gong;
         pub mod google_drive;
+        pub mod hubspot;
         pub mod intercom;
+        pub mod mcp;
         pub mod microsoft;
         pub mod mock;
         pub mod notion;

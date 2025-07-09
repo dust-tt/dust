@@ -8,8 +8,11 @@ use axum::{
 use dust::{
     databases::table::{LocalTable, Table},
     databases_store::{self},
-    sqlite_workers::sqlite_database::{SqliteDatabase, SqliteDatabaseError},
-    utils::{error_response, APIResponse, CoreRequestMakeSpan},
+    sqlite_workers::{
+        client::HEARTBEAT_INTERVAL_MS,
+        sqlite_database::{SqliteDatabase, SqliteDatabaseError},
+    },
+    utils::{self, error_response, APIResponse, CoreRequestMakeSpan},
 };
 use hyper::StatusCode;
 use lazy_static::lazy_static;
@@ -19,7 +22,7 @@ use serde_json::json;
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc,
     },
     time::{Duration, Instant},
@@ -55,6 +58,9 @@ const DATABASE_TIMEOUT_DURATION: Duration = std::time::Duration::from_secs(5 * 6
 // Default number of milliseconds after which a query execution is considered timed out.
 const DEFAULT_QUERY_TIMEOUT_MS: u64 = 10_000;
 
+// Cleanup databases every 30 seconds instead of every loop iteration.
+const DATABASE_CLEANUP_INTERVAL: Duration = Duration::from_secs(30);
+
 struct DatabaseEntry {
     database: Arc<Mutex<SqliteDatabase>>,
     last_accessed: Instant,
@@ -65,7 +71,7 @@ struct WorkerState {
 
     registry: Arc<Mutex<HashMap<String, DatabaseEntry>>>,
     is_shutting_down: Arc<AtomicBool>,
-    first_heartbeat_success: Arc<AtomicBool>,
+    last_successful_heartbeat: Arc<AtomicU64>,
 }
 
 impl WorkerState {
@@ -76,11 +82,14 @@ impl WorkerState {
             // TODO: store an instant of the last access for each DB.
             registry: Arc::new(Mutex::new(HashMap::new())),
             is_shutting_down: Arc::new(AtomicBool::new(false)),
-            first_heartbeat_success: Arc::new(AtomicBool::new(false)),
+            // Initialize with 0 timestamp to indicate no heartbeat has been sent yet
+            last_successful_heartbeat: Arc::new(AtomicU64::new(0)),
         }
     }
 
     async fn run_loop(&self) {
+        let mut last_cleanup = Instant::now();
+
         loop {
             if self.is_shutting_down.load(Ordering::SeqCst) {
                 break;
@@ -96,7 +105,19 @@ impl WorkerState {
                 }
             }
 
-            self.cleanup_inactive_databases().await;
+            // Run cleanup in background if enough time has passed.
+            if last_cleanup.elapsed() >= DATABASE_CLEANUP_INTERVAL {
+                let registry = self.registry.clone();
+                tokio::task::spawn_blocking(move || {
+                    let rt = tokio::runtime::Handle::current();
+                    rt.block_on(async move {
+                        registry.lock().await.retain(|_, entry| {
+                            entry.last_accessed.elapsed() < DATABASE_TIMEOUT_DURATION
+                        });
+                    });
+                });
+                last_cleanup = Instant::now();
+            }
 
             tokio::time::sleep(std::time::Duration::from_millis(1024)).await;
         }
@@ -114,7 +135,8 @@ impl WorkerState {
     async fn heartbeat(&self) -> Result<()> {
         match self._core_request("POST").await {
             Ok(response) => {
-                self.first_heartbeat_success.store(true, Ordering::SeqCst);
+                self.last_successful_heartbeat
+                    .store(utils::now(), Ordering::SeqCst);
                 Ok(response)
             }
             Err(e) => Err(e),
@@ -137,11 +159,6 @@ impl WorkerState {
             }
             None => (),
         }
-    }
-
-    async fn cleanup_inactive_databases(&self) {
-        let mut registry = self.registry.lock().await;
-        registry.retain(|_, entry| entry.last_accessed.elapsed() < DATABASE_TIMEOUT_DURATION);
     }
 
     async fn _core_request(&self, method: &str) -> Result<()> {
@@ -168,9 +185,25 @@ impl WorkerState {
 /// Index
 
 async fn index(State(state): State<Arc<WorkerState>>) -> Result<&'static str, StatusCode> {
-    if state.first_heartbeat_success.load(Ordering::SeqCst) {
+    let now = utils::now();
+    let last_heartbeat = state.last_successful_heartbeat.load(Ordering::SeqCst);
+
+    // If last_heartbeat is 0, no successful heartbeat has been sent yet
+    if last_heartbeat == 0 {
+        error!("Health check failed: no successful heartbeat yet");
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    let elapsed = now - last_heartbeat;
+
+    if elapsed < HEARTBEAT_INTERVAL_MS * 2 {
         Ok("sqlite_worker server ready")
     } else {
+        error!(
+            "Health check failed: last heartbeat was {} ms ago (threshold: {} ms)",
+            elapsed,
+            HEARTBEAT_INTERVAL_MS * 2
+        );
         Err(StatusCode::SERVICE_UNAVAILABLE)
     }
 }
@@ -317,16 +350,17 @@ fn main() {
             .with(tracing_subscriber::EnvFilter::new("info"))
             .init();
 
-        let s = databases_store::store::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
-            .await?;
+        let s =
+            databases_store::postgres::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
+                .await?;
         let databases_store = Box::new(s);
 
         let state = Arc::new(WorkerState::new(databases_store));
 
         let router = Router::new()
             .route("/databases", delete(expire_all))
-            .route("/databases/:database_id", post(databases_query))
-            .route("/databases/:database_id", delete(databases_delete))
+            .route("/databases/{database_id}", post(databases_query))
+            .route("/databases/{database_id}", delete(databases_delete))
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(CoreRequestMakeSpan::new())

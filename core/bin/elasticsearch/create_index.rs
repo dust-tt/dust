@@ -124,7 +124,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // create index with settings and mappings
-    let response = search_store
+    let index_creation_response = search_store
         .client
         .indices()
         .create(IndicesCreateParts::Index(index_fullname.as_str()))
@@ -132,10 +132,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .send()
         .await?;
 
-    match response.status_code() {
+    match index_creation_response.status_code() {
         StatusCode::OK => println!("Index created: {}", index_fullname),
         _ => {
-            let body = response.json::<serde_json::Value>().await?;
+            let body = index_creation_response.json::<serde_json::Value>().await?;
             eprintln!("{:?}", body);
             return Err(anyhow::anyhow!("Failed to create index").into());
         }
@@ -152,12 +152,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         false => serde_json::json!({
             "actions": [
                 { "add": { "index": index_fullname, "alias": index_alias, "is_write_index": true } },
-                { "add": { "index": index_previous_fullname, "alias": index_alias, "is_write_index": false } }
             ]
         }),
     };
 
-    search_store
+    let alias_creation_response = search_store
         .client
         .indices()
         .update_aliases()
@@ -165,10 +164,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .send()
         .await?;
 
-    match response.status_code() {
+    match alias_creation_response.status_code() {
         StatusCode::OK => Ok(()),
         _ => {
-            let body = response.json::<serde_json::Value>().await?;
+            let body = alias_creation_response.json::<serde_json::Value>().await?;
             eprintln!("{:?}", body);
             Err(anyhow::anyhow!("Failed to create alias").into())
         }

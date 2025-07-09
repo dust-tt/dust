@@ -1,25 +1,19 @@
-import type {
-  AdminSuccessResponseType,
-  ModelId,
-  NotionCheckUrlResponseType,
-  NotionCommandType,
-  NotionDeleteUrlResponseType,
-  NotionFindUrlResponseType,
-  NotionMeResponseType,
-  NotionSearchPagesResponseType,
-  NotionUpsertResponseType,
-} from "@dust-tt/types";
 import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
 import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parents";
+import { pageOrDbIdFromUrl } from "@connectors/connectors/notion/lib/utils";
 import {
+  clearParentsLastUpdatedAt,
   deleteDatabase,
   deletePage,
   getNotionAccessToken,
   updateParentsFields,
 } from "@connectors/connectors/notion/temporal/activities";
-import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
+import {
+  launchUpdateOrphanedResourcesParentsWorkflow,
+  stopNotionGarbageCollectorWorkflow,
+} from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import {
   getUpsertDatabaseWorkflowId,
@@ -33,6 +27,17 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type {
+  AdminSuccessResponseType,
+  NotionCheckUrlResponseType,
+  NotionCommandType,
+  NotionDeleteUrlResponseType,
+  NotionFindUrlResponseType,
+  NotionMeResponseType,
+  NotionSearchPagesResponseType,
+  NotionUpsertResponseType,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
 
 import { getParsedDatabase, retrievePage } from "./notion_api";
 
@@ -107,32 +112,6 @@ export async function searchNotionPagesForQuery({
     isSkipped: p.object === "database" && skippedDatabaseIds.has(p.id),
     isFull: p.object === "database" ? isFullDatabase(p) : isFullPage(p),
   }));
-}
-
-function pageOrDbIdFromUrl(url: string) {
-  // parse URL
-  const u = new URL(url);
-  const last = u.pathname.split("/").pop();
-  if (!last) {
-    throw new Error(`Unhandled URL (could not get "last"): ${url}`);
-  }
-  const id = last.split("-").pop();
-  if (!id || id.length !== 32) {
-    throw new Error(`Unhandled URL (could not get 32 char ID): ${url}`);
-  }
-
-  const pageOrDbId =
-    id.slice(0, 8) +
-    "-" +
-    id.slice(8, 12) +
-    "-" +
-    id.slice(12, 16) +
-    "-" +
-    id.slice(16, 20) +
-    "-" +
-    id.slice(20);
-
-  return pageOrDbId;
 }
 
 export async function findNotionUrl({
@@ -504,12 +483,53 @@ export const notion = async ({
       };
     }
 
+    // To use when we have many nodes in "syncing" state for a connector that have a
+    // You can check with the following SQL query on core:
+    // SELECT count(*) FROM data_sources_nodes dsn JOIN data_sources ds ON (dsn.data_source = ds.id) WHERE 'notion-syncing' = ANY(parents)
+    // AND mime_type != 'application/vnd.dust.notion.syncing-folder' AND ds.data_source_id = 'XXX'
+    // Clearing the parentsLastUpdatedAt field will force a resync of all parents at the end of the next sync
+    case "clear-parents-last-updated-at": {
+      const connector = await getConnector(args);
+      await clearParentsLastUpdatedAt({ connectorId: connector.id });
+      return { success: true };
+    }
+
+    // Update the parents of all orphaned resources of a notion connector.
+    case "update-orphaned-resources-parents": {
+      const connectors = await (async () => {
+        if (args.all) {
+          logger.info(
+            "[Admin] Updating orphaned resources parents for all active notion connectors"
+          );
+          return ConnectorModel.findAll({
+            where: {
+              type: "notion",
+              errorType: null,
+              pausedAt: null,
+            },
+          });
+        }
+        logger.info(
+          "[Admin] Updating orphaned resources parents for notion connector",
+          { connectorId: args.connectorId }
+        );
+        const connector = await getConnector(args);
+        return [connector];
+      })();
+      for (const connector of connectors) {
+        await launchUpdateOrphanedResourcesParentsWorkflow(connector.id);
+      }
+      return { success: true };
+    }
+
     case "update-core-parents": {
       const connector = await getConnector(args);
 
       // if no pageId or databaseId is provided, we update all parents fields for
       // all pages and databases for the connector
       if (args.all) {
+        // Note from seb: I am not sure the "all" case is working as expected without clearing the parentsLastUpdatedAt field first
+        // As updateParentsFields() only run on nodes moved or created after the last parentsLastUpdatedAt
         let cursors:
           | {
               pageCursor: string | null;

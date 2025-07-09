@@ -19,7 +19,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "0e9889c787",
       appHash:
-        "4e896f08ef6c2c69c97610c861cd444e3d34c839eab44f9b4fd7dd1d166c40a2",
+        "5c66228f878608ea3f74d26c4adabf10e4efe93756b39d82e52a14fe27460b30",
     },
     config: {
       MODEL: {
@@ -63,7 +63,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "953b79fe89",
       appHash:
-        "3240c3804948d0587b1f4051e0101b9f2731c212856b8c3cd46d5268b3479fb0",
+        "689c0cde9d4962a57b5a38caab6244fdd4b30ce5e52af0f40333a03a847a91f1",
     },
     config: {
       DATASOURCE: {
@@ -131,7 +131,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "b4f205e453",
       appHash:
-        "744630c61e399d2e984f9a1c69a8530d4ece5aaa6b8cebe9ccbc74727eed0b2e",
+        "b4b51a1910a4f52e1c89c6b8cbb1d56e3ce155ce6c043f9ffd39fd7489399b52",
     },
     config: {
       MODEL: {
@@ -173,6 +173,20 @@ export const BaseDustProdActionRegistry = {
       CREATE_SUGGESTIONS: {
         // `provider_id` and `model_id` must be set by caller.
         function_call: "send_ranked_suggestions",
+        use_cache: false,
+      },
+    },
+  },
+  "assistant-builder-autocompletion-suggestions": {
+    app: {
+      appId: "eDoafmNqwn",
+      appHash:
+        "79ff579ada29a0e2726ee038890fba38e61082e30e11dac7a1fb2bf2dc035d80",
+    },
+    config: {
+      CREATE_SUGGESTIONS: {
+        // `provider_id` and `model_id` must be set by caller.
+        function_call: "autocomplete_instructions",
         use_cache: false,
       },
     },
@@ -219,11 +233,25 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
+  "assistant-builder-tags-suggestions": {
+    app: {
+      appId: "7mjFTd4e45",
+      appHash:
+        "7f1b2f6b514d2309954dd9a92ef01761ff500f81d600eeb716a2ff8d13a76c67",
+    },
+    config: {
+      CREATE_SUGGESTIONS: {
+        // `provider_id` and `model_id` must be set by caller.
+        function_call: "send_suggestions",
+        use_cache: false,
+      },
+    },
+  },
   "assistant-builder-process-action-schema-generator": {
     app: {
       appId: "b36c7416bd",
       appHash:
-        "1ca7b9568681b06ef6cc0830239a479644a3ecc203c812983f3386a72e214d48",
+        "decdb1f2c554b78fee580f826adefc06fac9c936a3c71980d5cdf81aa33bdcc8",
     },
     config: {
       MODEL: {
@@ -270,6 +298,35 @@ export const BaseDustProdActionRegistry = {
     config: {
       MODEL: {
         // `provider_id` and `model_id` must be set by caller.
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
+  "suggest-agent-from-message": {
+    app: {
+      appId: "fcYLVzSHdU",
+      appHash:
+        "5764c8eb5d325e01213b3af3cc2230c88f5264ac6ebf438d1ad64e4c71b3a296",
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        function_call: "suggest_agents",
+        use_cache: false,
+        use_stream: true,
+      },
+    },
+  },
+  "tag-manager-initial-suggestions": {
+    app: {
+      appId: "Huz76iC3FJ",
+      appHash:
+        "4c86322b20fa685fcbd87b23c5220e9be14fd56014a3f356a6cfe07b3573ab5d",
+    },
+    config: {
+      CREATE_SUGGESTIONS: {
+        function_call: "send_tags",
         use_cache: false,
         use_stream: true,
       },

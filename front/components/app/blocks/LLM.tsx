@@ -1,20 +1,21 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Input, Label } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type {
-  AppType,
-  SpecificationBlockType,
-  SpecificationType,
-} from "@dust-tt/types";
-import type { BlockType, RunType } from "@dust-tt/types";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import ModelPicker from "@app/components/app/ModelPicker";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
+import type {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types";
+import type { BlockType, RunType } from "@app/types";
 
 import Block from "./Block";
 
@@ -152,7 +153,7 @@ export default function LLM({
 
   const [newStop, setNewStop] = useState("");
 
-  const theme = localStorage.getItem("theme");
+  const { isDark } = useTheme();
 
   return (
     <Block
@@ -227,7 +228,7 @@ export default function LLM({
                     (stop: string, i: number) => (
                       <div
                         key={i}
-                        className="flex rounded-md bg-slate-100 px-1"
+                        className="flex rounded-md bg-muted-background px-1"
                       >
                         {stop}
                       </div>
@@ -380,7 +381,7 @@ export default function LLM({
                     <TextareaAutosize
                       minRows={1}
                       className={classNames(
-                        "font-mono block w-full resize-none rounded-md bg-slate-100 px-1 py-1 text-[13px] font-normal",
+                        "block w-full resize-none rounded-md bg-muted-background px-1 py-1 font-mono text-[13px] font-normal",
                         readOnly
                           ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
@@ -402,7 +403,7 @@ export default function LLM({
                     <TextareaAutosize
                       minRows={1}
                       className={classNames(
-                        "font-mono block w-full resize-none rounded-md bg-slate-100 px-1 py-1 text-[13px] font-normal",
+                        "block w-full resize-none rounded-md bg-muted-background px-1 py-1 font-mono text-[13px] font-normal",
                         readOnly
                           ? "border-white ring-0 focus:border-white focus:ring-0"
                           : "border-white focus:border-gray-300 focus:ring-0"
@@ -438,7 +439,7 @@ export default function LLM({
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.prompt}
                 language="jinja2"
@@ -446,13 +447,11 @@ export default function LLM({
                 onChange={(e) => handlePromptChange(e.target.value)}
                 padding={3}
                 minHeight={80}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
-                  color: "rgb(55 65 81)",
                   fontSize: 13,
                   fontFamily:
                     "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  backgroundColor: "rgb(241 245 249)",
                 }}
               />
             </div>

@@ -3,27 +3,25 @@ import {
   Button,
   CheckIcon,
   ClipboardCheckIcon,
-  IconButton,
+  Input,
   LinkIcon,
   PencilSquareIcon,
   Popover,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { MouseEvent } from "react";
 import React, { useCallback, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { ConversationParticipants } from "@app/components/assistant/conversation/ConversationParticipants";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import {
   useConversation,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { classNames } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
 
 export function ConversationTitle({
   owner,
@@ -78,10 +76,7 @@ export function ConversationTitle({
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              title,
-              visibility: conversation?.visibility,
-            }),
+            body: JSON.stringify({ title }),
           }
         );
         await mutate(
@@ -97,7 +92,7 @@ export function ConversationTitle({
         alert("Failed to update title");
       }
     },
-    [activeConversationId, conversation?.visibility, mutate, owner.sId]
+    [activeConversationId, mutate, owner.sId]
   );
 
   if (!activeConversationId) {
@@ -117,24 +112,16 @@ export function ConversationTitle({
         }}
       />
       <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
-        <div className="flex min-w-0 flex-row items-center gap-4">
+        <div className="flex min-w-0 flex-row items-center gap-4 text-muted-foreground dark:text-muted-foreground-night">
           {!isEditingTitle ? (
             <div className="min-w-0 overflow-hidden truncate">
-              <span className="font-bold">{conversation?.title || ""}</span>
+              {conversation?.title || ""}
             </div>
           ) : (
             <div className="w-[84%]">
-              <input
-                className={classNames(
-                  "border-0 bg-transparent outline-none ring-1 ring-structure-200 focus:outline-none focus:ring-2",
-                  "w-full rounded-md py-1.5 pl-4 pr-8 placeholder-element-600",
-                  "transition-all duration-300 ease-out focus:ring-action-300"
-                )}
+              <Input
                 value={editedTitle}
                 onChange={(e) => setEditedTitle(e.target.value)}
-                // We need to make sure the click on the save button below
-                // is registered before the onBlur event, so we keep track of the
-                // focus state of both the input and the save button.
                 onFocus={() => (titleInputFocused.current = true)}
                 onBlur={() => {
                   setTimeout(() => {
@@ -173,87 +160,78 @@ export function ConversationTitle({
                 }}
                 className="flex items-center"
               >
-                <IconButton icon={CheckIcon} variant="highlight" />
+                <Button size="mini" icon={CheckIcon} variant="primary" />
               </div>
-              <IconButton
+              <Button
                 icon={XMarkIcon}
+                size="mini"
                 onClick={() => {
                   setIsEditingTitle(false);
                   setEditedTitle("");
                 }}
-                variant="highlight"
+                variant="outline"
               />
             </div>
           ) : (
-            <IconButton
+            <Button
               icon={PencilSquareIcon}
               onClick={() => {
                 setEditedTitle(conversation?.title || "");
                 setIsEditingTitle(true);
               }}
-              size="sm"
-              variant="outline"
+              size="mini"
+              variant="ghost-secondary"
             />
           )}
         </div>
-        <div className="flex items-center">
-          <div className="hidden pr-6 lg:flex">
-            <ConversationParticipants
-              conversationId={activeConversationId}
-              owner={owner}
-            />
-          </div>
-          <div className="flex gap-2">
-            <div className="hidden lg:flex">
-              <Button
-                size="sm"
-                variant="ghost"
-                tooltip="Delete Conversation"
-                icon={TrashIcon}
-                onClick={() => setShowDeleteDialog(true)}
-              />
-            </div>
-            <Popover
-              popoverTriggerAsChild
-              trigger={
-                <div>
-                  <div className="hidden sm:flex">
-                    <Button
-                      size="sm"
-                      label="Share"
-                      icon={ArrowUpOnSquareIcon}
-                      variant="ghost"
-                    />
-                  </div>
-                  <div className="flex sm:hidden">
-                    <Button
-                      size="sm"
-                      tooltip="Share"
-                      icon={ArrowUpOnSquareIcon}
-                      variant="ghost"
-                    />
-                  </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            tooltip="Delete Conversation"
+            icon={TrashIcon}
+            onClick={() => setShowDeleteDialog(true)}
+          />
+          <Popover
+            popoverTriggerAsChild
+            trigger={
+              <div>
+                <div className="hidden sm:flex">
+                  <Button
+                    size="sm"
+                    label="Share"
+                    icon={ArrowUpOnSquareIcon}
+                    variant="ghost"
+                  />
                 </div>
-              }
-              content={
-                <div className="flex flex-col gap-y-4 py-4">
-                  <div className="text-sm font-normal text-element-700 dark:text-element-700-night">
-                    Share the conversation link with other members of your
-                    workspace to invite them to contribute.
-                  </div>
-                  <div className="flex">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      label={copyLinkSuccess ? "Copied!" : "Copy the link"}
-                      icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
-                      onClick={handleClick}
-                    />
-                  </div>
+                <div className="flex sm:hidden">
+                  <Button
+                    size="sm"
+                    tooltip="Share"
+                    icon={ArrowUpOnSquareIcon}
+                    variant="ghost"
+                  />
                 </div>
-              }
-            />
-          </div>
+              </div>
+            }
+            content={
+              <div className="flex flex-col gap-y-4">
+                <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                  Share the conversation link with other members of your
+                  workspace to invite them to contribute.
+                </div>
+                <div className="flex">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    label={copyLinkSuccess ? "Copied!" : "Copy the link"}
+                    icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
+                    onClick={handleClick}
+                  />
+                </div>
+              </div>
+            }
+          />
         </div>
       </div>
     </>

@@ -1,21 +1,14 @@
-import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  AgentConfigurationScope,
-  AgentConfigurationType,
-  AgentsGetViewType,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  UserType,
-} from "@dust-tt/types";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
 import {
+  emptyArray,
   fetcher,
   getErrorFromResponse,
   useSWRInfiniteWithDefaults,
@@ -25,10 +18,17 @@ import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
-import type { PostAgentScopeRequestBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/scope";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
+import type {
+  AgentConfigurationType,
+  AgentsGetViewType,
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+  UserType,
+} from "@app/types";
+import { normalizeError } from "@app/types";
 
 export function useAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
@@ -40,7 +40,7 @@ export function useAssistantTemplates() {
   );
 
   return {
-    assistantTemplates: useMemo(() => (data ? data.templates : []), [data]),
+    assistantTemplates: data?.templates ?? emptyArray(),
     isAssistantTemplatesLoading: !error && !data,
     isAssistantTemplatesError: error,
     mutateAssistantTemplates: mutate,
@@ -61,7 +61,7 @@ export function useAssistantTemplate({
   );
 
   return {
-    assistantTemplate: useMemo(() => (data ? data : null), [data]),
+    assistantTemplate: data ? data : null,
     isAssistantTemplateLoading: !error && !data,
     isAssistantTemplateError: error,
     mutateAssistantTemplate: mutate,
@@ -124,7 +124,7 @@ export function useAgentConfigurations({
   const { cache } = useSWRConfig();
   const inCache = typeof cache.get(key) !== "undefined";
 
-  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+  const { data, error, mutate, mutateRegardlessOfQueryParams, isValidating } =
     useSWRWithDefaults(agentsGetView ? key : null, agentConfigurationsFetcher, {
       disabled,
       revalidateOnMount: !inCache || revalidate,
@@ -132,12 +132,49 @@ export function useAgentConfigurations({
     });
 
   return {
-    agentConfigurations: useMemo(
-      () => (data ? data.agentConfigurations : []),
-      [data]
-    ),
-    isAgentConfigurationsLoading: !error && !data,
+    agentConfigurations: data
+      ? data.agentConfigurations
+      : emptyArray<LightAgentConfigurationType>(),
+    isAgentConfigurationsLoading: !error && !data && !disabled,
     isAgentConfigurationsError: error,
+    mutate,
+    mutateRegardlessOfQueryParams,
+    isAgentConfigurationsValidating: isValidating,
+  };
+}
+
+export function useSuggestedAgentConfigurations({
+  workspaceId,
+  conversationId,
+  messageId,
+  disabled,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+  disabled?: boolean;
+}) {
+  const agentConfigurationsFetcher: Fetcher<GetAgentConfigurationsResponseBody> =
+    fetcher;
+
+  const key = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/suggest?messageId=${messageId}`;
+  const { cache } = useSWRConfig();
+  const cachedData: GetAgentConfigurationsResponseBody | undefined =
+    cache.get(key)?.data;
+  const inCache = typeof cachedData !== "undefined";
+
+  const { data, error, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(key, agentConfigurationsFetcher, {
+      disabled: inCache || disabled,
+    });
+
+  const dataToUse = cachedData || data;
+
+  return {
+    suggestedAgentConfigurations:
+      dataToUse?.agentConfigurations ?? emptyArray(),
+    isSuggestedAgentConfigurationsLoading: !error && !dataToUse && !disabled,
+    isSuggestedAgentConfigurationsError: error,
     mutate,
     mutateRegardlessOfQueryParams,
   };
@@ -156,6 +193,7 @@ export function useUnifiedAgentConfigurations({
   const {
     agentConfigurations: agentConfigurationsWithAuthors,
     isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
+    isAgentConfigurationsValidating,
     mutate,
     mutateRegardlessOfQueryParams,
   } = useAgentConfigurations({
@@ -167,34 +205,11 @@ export function useUnifiedAgentConfigurations({
 
   return {
     agentConfigurations: agentConfigurationsWithAuthors,
-    isLoading: isAgentConfigurationsWithAuthorsLoading,
+    isLoading:
+      isAgentConfigurationsWithAuthorsLoading ||
+      isAgentConfigurationsValidating,
     mutate,
     mutateRegardlessOfQueryParams,
-  };
-}
-
-export function useAgentConfigurationSIdLookup({
-  workspaceId,
-  agentConfigurationName,
-}: {
-  workspaceId: string;
-  agentConfigurationName: string | null;
-}) {
-  const sIdFetcher: Fetcher<{
-    sId: string;
-  }> = fetcher;
-
-  const { data, error } = useSWRWithDefaults(
-    agentConfigurationName
-      ? `/api/w/${workspaceId}/assistant/agent_configurations/lookup?handle=${agentConfigurationName}`
-      : null,
-    sIdFetcher
-  );
-
-  return {
-    sId: data ? data.sId : null,
-    isLoading: !error && !data,
-    isError: error,
   };
 }
 
@@ -221,7 +236,7 @@ export function useAgentConfiguration({
 
   return {
     agentConfiguration: data ? data.agentConfiguration : null,
-    isAgentConfigurationLoading: !error && !data,
+    isAgentConfigurationLoading: !error && !data && !disabled,
     isAgentConfigurationError: error,
     isAgentConfigurationValidating: isValidating,
     mutateAgentConfiguration: mutate,
@@ -402,8 +417,8 @@ export function useAgentAnalytics({
 
   return {
     agentAnalytics: data ? data : null,
-    isAgentAnayticsLoading: !error && !data && !disabled,
-    isAgentAnayticsError: error,
+    isAgentAnalyticsLoading: !error && !data && !disabled,
+    isAgentAnalyticsError: error,
   };
 }
 
@@ -426,7 +441,8 @@ export function useSlackChannelsLinkedWithAgent({
   );
 
   return {
-    slackChannels: useMemo(() => (data ? data.slackChannels : []), [data]),
+    provider: data?.provider ?? "slack",
+    slackChannels: data?.slackChannels ?? emptyArray(),
     slackDataSource: data?.slackDataSource,
     isSlackChannelsLoading: !error && !data,
     isSlackChannelsError: error,
@@ -475,14 +491,14 @@ export function useDeleteAgentConfiguration({
       sendNotification({
         type: "success",
         title: `Successfully deleted ${agentConfiguration.name}`,
-        description: `${agentConfiguration.name} was successfully deleted.`,
+        description: `${agentConfiguration.name} was successfully archived.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendNotification({
         type: "error",
-        title: `Error deleting ${agentConfiguration.name}`,
+        title: `Error archiving ${agentConfiguration.name}`,
         description: `Error: ${errorData.message}`,
       });
     }
@@ -492,84 +508,59 @@ export function useDeleteAgentConfiguration({
   return doDelete;
 }
 
-export function useUpdateAgentScope({
+export function useBatchDeleteAgentConfigurations({
   owner,
-  agentConfigurationId,
+  agentConfigurationIds,
 }: {
   owner: LightWorkspaceType;
-  agentConfigurationId: string | null;
+  agentConfigurationIds: string[];
 }) {
   const sendNotification = useSendNotification();
-  const { mutateAgentConfiguration: mutateCurrentAgentConfiguration } =
-    useAgentConfiguration({
+  const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
+    useAgentConfigurations({
       workspaceId: owner.sId,
-      agentConfigurationId,
-      disabled: true,
+      agentsGetView: "list", // Anything would work
+      disabled: true, // We only use the hook to mutate the cache
     });
-  const { mutate: mutateAgentConfigurations } = useUnifiedAgentConfigurations({
-    workspaceId: owner.sId,
-    disabled: true,
-  });
 
-  const doUpdate = useCallback(
-    async (scope: Exclude<AgentConfigurationScope, "global">) => {
-      const body: PostAgentScopeRequestBody = {
-        scope,
-      };
-
-      try {
-        if (!agentConfigurationId) {
-          throw new Error(
-            "Cannot update scope of a non-existing agent. Action: make sure agentConfigurationId is not null."
-          );
-        }
-
-        const res = await fetch(
-          `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/scope`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-          }
-        );
-
-        if (res.ok) {
-          sendNotification({
-            title: `Agent sharing updated.`,
-            type: "success",
-          });
-          await mutateAgentConfigurations();
-          await mutateCurrentAgentConfiguration();
-          return true;
-        } else {
-          const data = await res.json();
-          sendNotification({
-            title: `Error updating agent sharing.`,
-            description: data.error.message,
-            type: "error",
-          });
-          return false;
-        }
-      } catch (error) {
-        sendNotification({
-          title: `Error updating agent sharing.`,
-          description: (error as Error).message || "An unknown error occurred",
-          type: "error",
-        });
-        return false;
+  const doDelete = async () => {
+    if (agentConfigurationIds.length === 0) {
+      return;
+    }
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/delete`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          agentConfigurationIds,
+        }),
       }
-    },
-    [
-      agentConfigurationId,
-      mutateAgentConfigurations,
-      mutateCurrentAgentConfiguration,
-      owner.sId,
-      sendNotification,
-    ]
-  );
-  return doUpdate;
+    );
+
+    if (res.ok) {
+      void mutateAgentConfigurations();
+
+      sendNotification({
+        type: "success",
+        title: `Successfully archived agents`,
+        description: `${agentConfigurationIds.length} agents were successfully archived.`,
+      });
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: `Error archiving agents`,
+        description: `Error: ${errorData.message}`,
+      });
+    }
+    return res.ok;
+  };
+
+  return doDelete;
 }
 
 export function useUpdateUserFavorite({
@@ -635,7 +626,8 @@ export function useUpdateUserFavorite({
       } catch (error) {
         sendNotification({
           title: `Error updating agent list.`,
-          description: (error as Error).message || "An unknown error occurred",
+          description:
+            normalizeError(error).message || "An unknown error occurred",
           type: "error",
         });
         return false;
@@ -652,4 +644,117 @@ export function useUpdateUserFavorite({
     ]
   );
   return { updateUserFavorite: doUpdate, isUpdatingFavorite };
+}
+
+export function useRestoreAgentConfiguration({
+  owner,
+  agentConfiguration,
+}: {
+  owner: LightWorkspaceType;
+  agentConfiguration?: LightAgentConfigurationType;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list", // Anything would work
+      disabled: true, // We only use the hook to mutate the cache
+    });
+
+  const { mutateAgentConfiguration } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfiguration?.sId ?? null,
+    disabled: true, // We only use the hook to mutate the cache
+  });
+
+  const doRestore = async () => {
+    if (!agentConfiguration) {
+      return;
+    }
+    const res = await fetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/restore`,
+      {
+        method: "POST",
+      }
+    );
+
+    if (res.ok) {
+      void mutateAgentConfiguration();
+      void mutateAgentConfigurations();
+
+      sendNotification({
+        type: "success",
+        title: `Successfully restored ${agentConfiguration.name}`,
+        description: `${agentConfiguration.name} was successfully restored.`,
+      });
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: `Error restoring ${agentConfiguration.name}`,
+        description: `Error: ${errorData.message}`,
+      });
+    }
+    return res.ok;
+  };
+
+  return doRestore;
+}
+
+export function useBatchUpdateAgentTags({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const batchUpdateAgentTags = useCallback(
+    async (
+      agentIds: string[],
+      body: { addTagIds?: string[]; removeTagIds?: string[] }
+    ) => {
+      await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_tags`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            agentIds,
+            ...body,
+          }),
+        }
+      );
+    },
+    [owner]
+  );
+
+  return batchUpdateAgentTags;
+}
+
+export function useBatchUpdateAgentScope({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const batchUpdateAgentScope = useCallback(
+    async (agentIds: string[], body: { scope: "visible" | "hidden" }) => {
+      await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_scope`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            agentIds,
+            ...body,
+          }),
+        }
+      );
+    },
+    [owner]
+  );
+
+  return batchUpdateAgentScope;
 }

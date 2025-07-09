@@ -10,7 +10,7 @@ import {
 } from "@app/components/home/Particles";
 import TrustedBy from "@app/components/home/TrustedBy";
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.bigSphere),
@@ -24,8 +24,6 @@ export default function Contact() {
     <div className="flex w-full flex-col justify-center gap-12">
       <HeaderContentBlock
         title="Contact Dust"
-        from="from-emerald-200"
-        to="to-emerald-500"
         hasCTA={false}
         subtitle={
           <>
@@ -36,7 +34,7 @@ export default function Contact() {
       />
       <div className="grid grid-cols-12 items-start sm:gap-8 md:gap-y-12">
         <div className="col-span-12 flex flex-col justify-end gap-12 sm:col-span-12 lg:col-span-8 lg:col-start-2 xl:col-span-8 xl:col-start-2 2xl:col-start-3">
-          <div className="max-w-150 w-full">
+          <div className="w-full max-w-150">
             <HubSpotForm />
           </div>
         </div>

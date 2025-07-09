@@ -1,3 +1,11 @@
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import { DataTypes } from "sequelize";
+
+import type { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import { frontSequelize } from "@app/lib/resources/storage";
+import { TemplateModel } from "@app/lib/resources/storage/models/templates";
+import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentConfigurationScope,
   AgentReasoningEffort,
@@ -5,14 +13,7 @@ import type {
   GlobalAgentStatus,
   ModelIdType,
   ModelProviderIdType,
-} from "@dust-tt/types";
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
-
-import { frontSequelize } from "@app/lib/resources/storage";
-import { TemplateModel } from "@app/lib/resources/storage/models/templates";
-import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+} from "@app/types";
 
 /**
  * Agent configuration
@@ -35,6 +36,7 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
   declare modelId: ModelIdType;
   declare temperature: number;
   declare reasoningEffort: AgentReasoningEffort | null;
+  declare responseFormat?: string;
 
   declare pictureUrl: string;
 
@@ -47,10 +49,9 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
 
   declare requestedGroupIds: number[][];
 
-  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-  declare groupIds?: number[];
-
   declare author: NonAttribute<UserModel>;
+
+  declare mcpServerConfigurations: NonAttribute<AgentMCPServerConfiguration[]>;
 }
 
 AgentConfiguration.init(
@@ -113,6 +114,25 @@ AgentConfiguration.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    responseFormat: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isValidJSON(value: string) {
+          if (value) {
+            try {
+              const parsed = JSON.parse(value);
+              if (parsed && typeof parsed !== "object") {
+                throw new Error("Response format is invalid JSON");
+              }
+            } catch (e) {
+              throw new Error("Response format is invalid JSON");
+            }
+          }
+        },
+      },
+    },
     maxStepsPerRun: {
       type: DataTypes.INTEGER,
       allowNull: true,
@@ -128,13 +148,6 @@ AgentConfiguration.init(
     },
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
-      allowNull: false,
-      defaultValue: [],
-    },
-
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: {
-      type: DataTypes.ARRAY(DataTypes.INTEGER),
       allowNull: false,
       defaultValue: [],
     },
@@ -155,7 +168,7 @@ AgentConfiguration.init(
       },
       { fields: ["sId"] },
       { fields: ["sId", "version"], unique: true },
-      { fields: ["authorId"] },
+      { fields: ["workspaceId", "authorId", "sId"] },
       {
         name: "agent_configuration_unique_active_name",
         fields: ["workspaceId", "name"],

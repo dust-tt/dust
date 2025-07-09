@@ -25,7 +25,9 @@ describe("GET /api/w/[wId]/members", () => {
     ]);
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
     );
 
     await handler(req, res);
@@ -51,18 +53,34 @@ describe("GET /api/w/[wId]/members", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "workspace_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can see memberships or modify it.",
+        message: "Only workspace admins can access the members list.",
+      },
+    });
+  });
+
+  itInTransaction("returns 403 for builder users", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "builder",
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "Only workspace admins can access the members list.",
       },
     });
   });
 
   itInTransaction(
-    "returns only admin members for builder with admin role query",
+    "returns only admin members for admin with admin role query",
     async () => {
       const { req, res, workspace } = await createPrivateApiMockRequest({
         method: "GET",
-        role: "builder",
+        role: "admin",
       });
 
       // Create additional members with different roles
@@ -73,9 +91,9 @@ describe("GET /api/w/[wId]/members", () => {
       ]);
 
       await Promise.all([
-        MembershipFactory.associate(workspace, users[0], "admin"),
-        MembershipFactory.associate(workspace, users[1], "admin"),
-        MembershipFactory.associate(workspace, users[2], "user"),
+        MembershipFactory.associate(workspace, users[0], { role: "admin" }),
+        MembershipFactory.associate(workspace, users[1], { role: "admin" }),
+        MembershipFactory.associate(workspace, users[2], { role: "user" }),
       ]);
 
       // Add admin role query parameter
@@ -85,8 +103,8 @@ describe("GET /api/w/[wId]/members", () => {
 
       expect(res._getStatusCode()).toBe(200);
       const data = res._getJSONData();
-      expect(data.members).toHaveLength(2); // Only admin users
-      expect(data.total).toBe(2);
+      expect(data.members).toHaveLength(3); // 2 created admin users + 1 from createPrivateApiMockRequest
+      expect(data.total).toBe(3);
       expect(data.nextPageUrl).toBeUndefined();
       data.members.forEach((member: any) => {
         expect(member.workspaces[0].role).toBe("admin");
@@ -127,7 +145,9 @@ describe("GET /api/w/[wId]/members", () => {
     );
 
     await Promise.all(
-      users.map((user) => MembershipFactory.associate(workspace, user, "user"))
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
     );
 
     await handler(req, res);
@@ -156,7 +176,7 @@ describe("GET /api/w/[wId]/members", () => {
 
       await Promise.all(
         users.map((user) =>
-          MembershipFactory.associate(workspace, user, "user")
+          MembershipFactory.associate(workspace, user, { role: "user" })
         )
       );
 
@@ -188,7 +208,7 @@ describe("GET /api/w/[wId]/members", () => {
 
       vi.useFakeTimers();
       vi.setSystemTime(createdAt);
-      await MembershipFactory.associate(workspace, user, "user");
+      await MembershipFactory.associate(workspace, user, { role: "user" });
       vi.useRealTimers();
 
       users.push(user);
@@ -230,7 +250,7 @@ describe("GET /api/w/[wId]/members", () => {
       const user = await UserFactory.withCreatedAt(createdAt);
       vi.useFakeTimers();
       vi.setSystemTime(createdAt);
-      await MembershipFactory.associate(workspace, user, "user");
+      await MembershipFactory.associate(workspace, user, { role: "user" });
       vi.useRealTimers();
 
       users.push(user);

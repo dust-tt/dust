@@ -1,13 +1,13 @@
-import type { DataSourceViewType } from "@dust-tt/types";
-import type {
-  DataSourceViewCategory,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
 import Link from "next/dist/client/link";
 import React from "react";
 
 import { SpaceBreadCrumbs } from "@app/components/spaces/SpaceBreadcrumb";
+import type { DataSourceViewType } from "@app/types";
+import type {
+  DataSourceViewCategory,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 export const ACTION_BUTTONS_CONTAINER_ID = "space-action-buttons-container";
 
@@ -27,24 +27,28 @@ export function SpacePageHeader({
   space,
 }: SpacePageToolsProps) {
   const description = React.useMemo(() => {
-    if (category === "managed" && space.kind === "system" && !dataSourceView) {
-      return (
-        <>
-          Here you can authorize Connections and control what data Dust can
-          access. Once connected, data can be distributed to Open Spaces
-          (accessible to all workspace members) or Restricted Spaces (limited
-          access). <br />
-          Need help? Check out our{" "}
-          <Link
-            href="https://docs.dust.tt/docs/data"
-            className="text-highlight"
-            target="_blank"
-          >
-            guide
-          </Link>
-          .
-        </>
-      );
+    if (space.kind === "system") {
+      if (category === "managed" && !dataSourceView) {
+        return (
+          <>
+            Here you can authorize Connections and control what data Dust can
+            access. Once connected, data can be distributed to Open Spaces
+            (accessible to all workspace members) or Restricted Spaces (limited
+            access). <br />
+            Need help? Check out our{" "}
+            <Link
+              href="https://docs.dust.tt/docs/data"
+              className="text-highlight"
+              target="_blank"
+            >
+              guide
+            </Link>
+            .
+          </>
+        );
+      } else {
+        return null;
+      }
     }
 
     return null;

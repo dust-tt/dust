@@ -2,6 +2,7 @@ import {
   Button,
   CardIcon,
   Chip,
+  ContentMessage,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -9,21 +10,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  MoreIcon,
   Page,
   ShapesIcon,
   Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  SubscriptionPerSeatPricing,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -32,15 +22,21 @@ import React, { useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { PricePlans } from "@app/components/plans/PlansTables";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
+import type {
+  SubscriptionPerSeatPricing,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -50,15 +46,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   perSeatPricing: SubscriptionPerSeatPricing | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
-  const subscription = auth.subscription();
+  const subscriptionResource = auth.subscriptionResource();
   const user = auth.user();
-  if (!owner || !auth.isAdmin() || !subscription || !user) {
+  if (!owner || !auth.isAdmin() || !user || !subscriptionResource) {
     return {
       notFound: true,
     };
   }
 
   let trialDaysRemaining = null;
+  const subscription = subscriptionResource.toJSON();
+
   if (subscription.trialing && subscription.stripeSubscriptionId) {
     const stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
@@ -78,8 +76,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const workspaceSeats = await countActiveSeatsInWorkspace(owner.sId);
-  const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
-
+  const perSeatPricing = await subscriptionResource.getPerSeatPricing();
   return {
     props: {
       owner,
@@ -173,27 +170,7 @@ export default function Subscription({
     submit: handleGoToStripePortal,
     isSubmitting: isGoingToStripePortal,
   } = useSubmitFunction(async () => {
-    const res = await fetch("/api/stripe/portal", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        workspaceId: owner.sId,
-      }),
-    });
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Failed to open billing dashboard",
-        description: "Failed to open billing dashboard.",
-      });
-    } else {
-      const content = await res.json();
-      if (content.portalUrl) {
-        window.open(content.portalUrl, "_blank");
-      }
-    }
+    window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
   });
 
   const { submit: skipFreeTrial, isSubmitting: skipFreeTrialIsSubmitting } =
@@ -252,7 +229,7 @@ export default function Subscription({
             title: "Free trial cancelled",
             description: "Redirecting...",
           });
-          await router.push(`/w/${owner.sId}/subscribe`);
+          await router.push(`/w/${owner.sId}/subscription`);
         }
       } finally {
         setShowCancelFreeTrialDialog(false);
@@ -262,7 +239,7 @@ export default function Subscription({
   const isProcessing = isSubscribingPlan || isGoingToStripePortal;
 
   const plan = subscription.plan;
-  const chipColor = !isUpgraded(plan) ? "emerald" : "sky";
+  const chipColor = !isUpgraded(plan) ? "green" : "blue";
 
   const onClickProPlan = async () => handleSubscribePlan();
 
@@ -273,8 +250,16 @@ export default function Subscription({
 
   const displayPricingTable = subscription.stripeSubscriptionId === null;
 
+  const endDate = subscription.endDate
+    ? new Date(subscription.endDate).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
@@ -310,6 +295,26 @@ export default function Subscription({
         />
         <Page.Vertical align="stretch" gap="md">
           <Page.H variant="h5">Your plan </Page.H>
+
+          {endDate && (
+            <ContentMessage
+              title={`Your subscription ends on ${endDate}.`}
+              variant="warning"
+            >
+              <>
+                Connections will be deleted and members will be revoked. Details{" "}
+                <Link
+                  href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
+                  target="_blank"
+                  className="underline"
+                >
+                  here
+                </Link>
+                .
+              </>
+            </ContentMessage>
+          )}
+
           <div>
             {isWebhookProcessing ? (
               <Spinner />
@@ -319,17 +324,11 @@ export default function Subscription({
                   <Chip size="sm" color={chipColor} label={planLabel} />
                   {!subscription.trialing &&
                     subscription.stripeSubscriptionId && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button icon={MoreIcon} variant="ghost" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            label="Manage my subscription"
-                            onClick={handleGoToStripePortal}
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button
+                        label="Manage my subscription"
+                        onClick={handleGoToStripePortal}
+                        variant="outline"
+                      />
                     )}
                 </Page.Horizontal>
               </>
@@ -420,7 +419,7 @@ export default function Subscription({
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
-    </AppLayout>
+    </AppContentLayout>
   );
 }
 
@@ -561,3 +560,7 @@ function CancelFreeTrialDialog({
     </Dialog>
   );
 }
+
+Subscription.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

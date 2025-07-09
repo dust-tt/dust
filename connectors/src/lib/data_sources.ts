@@ -1,23 +1,12 @@
 import type {
+  GetDocumentsResponseType,
+  GetFolderResponseType,
+  GetTableResponseType,
+  PostDataSourceDocumentRequestType,
   UpsertDatabaseTableRequestType,
   UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import type {
-  CoreAPIDataSourceDocumentSection,
-  CoreAPIDocument,
-  CoreAPIFolder,
-  CoreAPITable,
-  PostDataSourceDocumentRequestBody,
-  ProviderVisibility,
-} from "@dust-tt/types";
-import {
-  isValidDate,
-  MAX_CHUNK_SIZE,
-  safeSubstring,
-  sectionFullText,
-} from "@dust-tt/types";
-import { withRetries } from "@dust-tt/types";
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
@@ -33,7 +22,10 @@ import { apiConfig } from "@connectors/lib/api/config";
 import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ProviderVisibility } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { isValidDate, safeSubstring } from "@connectors/types";
+import { withRetries } from "@connectors/types";
 
 const MAX_CSV_SIZE = 50 * 1024 * 1024;
 
@@ -77,17 +69,16 @@ export type UpsertDataSourceDocumentParams = {
   async: boolean;
 };
 
-export function getDustAPI(dataSourceConfig: DataSourceConfig) {
-  const config = apiConfig.getDustAPIConfig();
-
+function getDustAPI(dataSourceConfig: DataSourceConfig) {
   return new DustAPI(
-    config,
+    {
+      url: apiConfig.getDustFrontInternalAPIUrl(),
+    },
     {
       apiKey: dataSourceConfig.workspaceAPIKey,
       workspaceId: dataSourceConfig.workspaceId,
     },
-    logger,
-    config.nodeEnv === "development" ? "http://localhost:3000" : null
+    logger
   );
 }
 
@@ -127,7 +118,7 @@ async function _upsertDataSourceDocument({
       });
 
       const endpoint =
-        `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+        `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
         `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
 
       const localLogger = logger.child({
@@ -158,7 +149,7 @@ async function _upsertDataSourceDocument({
         ? (Math.floor(timestampMs) as Branded<number, IntBrand>)
         : null;
 
-      const dustRequestPayload: PostDataSourceDocumentRequestBody = {
+      const dustRequestPayload: PostDataSourceDocumentRequestType = {
         text: null,
         section: documentContent,
         source_url: documentUrl ?? null,
@@ -255,13 +246,13 @@ export async function getDataSourceDocument({
 }: {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
-}): Promise<CoreAPIDocument | undefined> {
+}): Promise<GetDocumentsResponseType["documents"][number] | undefined> {
   const localLogger = logger.child({
     documentId,
   });
 
   const endpoint =
-    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/documents?document_ids=${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -269,7 +260,7 @@ export async function getDataSourceDocument({
     },
   };
 
-  let dustRequestResult: AxiosResponse;
+  let dustRequestResult: AxiosResponse<GetDocumentsResponseType>;
   try {
     dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
   } catch (e) {
@@ -292,7 +283,7 @@ export async function deleteDataSourceDocument(
   const localLogger = logger.child({ ...loggerArgs, documentId });
 
   const endpoint =
-    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -390,7 +381,7 @@ async function _updateDocumentOrTableParentsField({
       ? logger.child({ ...loggerArgs, documentId: id })
       : logger.child({ ...loggerArgs, tableId: id });
   const endpoint =
-    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/${tableOrDocument}s/${id}/parents`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -434,6 +425,7 @@ async function _updateDocumentOrTableParentsField({
 
 // allows for 4 full prefixes before hitting half of the max chunk size (approx.
 // 256 chars for 512 token chunks)
+const MAX_CHUNK_SIZE = 512;
 export const MAX_PREFIX_TOKENS = MAX_CHUNK_SIZE / 8;
 // Limit on chars to avoid tokenizing too much text uselessly on documents with
 // large prefixes. The final truncating will rely on MAX_PREFIX_TOKENS so this
@@ -627,6 +619,21 @@ export async function renderDocumentTitleAndContent({
   return c;
 }
 
+export type CoreAPIDataSourceDocumentSection = {
+  prefix: string | null;
+  content: string | null;
+  sections: CoreAPIDataSourceDocumentSection[];
+};
+
+export function sectionFullText(
+  section: CoreAPIDataSourceDocumentSection
+): string {
+  return (
+    `${section.prefix || ""}${section.content || ""}` +
+    section.sections.map(sectionFullText).join("")
+  );
+}
+
 /* Compute document length by summing all prefix and content sizes for each section */
 export function sectionLength(
   section: CoreAPIDataSourceDocumentSection
@@ -636,6 +643,122 @@ export function sectionLength(
     (section.content ? section.content.length : 0) +
     section.sections.reduce((acc, s) => acc + sectionLength(s), 0)
   );
+}
+
+// Truncate a CoreAPIDataSourceDocumentSection to a given length
+// Strategy:
+// - If there are children sections, start the very last leaf section
+// - Truncate the content until the total length is <= maxLength
+// - If the total length is still > maxLength, truncate the prefix until the total length is <= maxLength
+// - If the total length is still > maxLength, remove the last child section and try again
+export function truncateSection(
+  section: CoreAPIDataSourceDocumentSection,
+  maxLength: number
+): CoreAPIDataSourceDocumentSection {
+  // Calculate current length
+  const currentLength = sectionLength(section);
+  const excessLength = currentLength - maxLength;
+
+  // If already within limit, return unchanged
+  if (excessLength <= 0) {
+    return section;
+  }
+  const [result] = truncateSectionHelper(section, excessLength);
+
+  return result;
+}
+
+function truncateSectionHelper(
+  section: CoreAPIDataSourceDocumentSection,
+  excessLength: number
+): [CoreAPIDataSourceDocumentSection, number] {
+  // Create a deep copy to avoid mutating the original
+  const result: CoreAPIDataSourceDocumentSection = {
+    prefix: section.prefix,
+    content: section.content,
+    sections: [...section.sections],
+  };
+  let currentExcessLength = excessLength;
+  let truncatedLength = 0;
+
+  // If there are child sections, start with truncating from the last leaf
+  while (result.sections.length > 0 && currentExcessLength > 0) {
+    // Work on the last child section
+    const lastIndex = result.sections.length - 1;
+    const lastSection = result.sections[lastIndex];
+
+    if (!lastSection) {
+      throw new Error("Unreachable");
+    }
+
+    // If the last section has children, recursively truncate it
+    if (lastSection.sections.length > 0) {
+      const [truncated, truncatedExcessLength] = truncateSectionHelper(
+        lastSection,
+        excessLength
+      );
+
+      truncatedLength += truncatedExcessLength;
+      currentExcessLength -= truncatedExcessLength;
+
+      // If the truncated section is empty (all content was removed), remove it entirely
+      if (
+        !truncated.prefix &&
+        !truncated.content &&
+        truncated.sections.length === 0
+      ) {
+        result.sections.pop();
+      } else {
+        result.sections[lastIndex] = truncated;
+      }
+    } else {
+      // This is a leaf section, truncate its content first
+      if (currentExcessLength > 0 && lastSection.content) {
+        const len = lastSection.content.length;
+        const toRemove = Math.min(len, currentExcessLength);
+        lastSection.content = lastSection.content.slice(0, len - toRemove);
+        truncatedLength += toRemove;
+        currentExcessLength -= toRemove;
+      }
+
+      // If still exceeding after content truncation, truncate prefix
+      if (currentExcessLength > 0 && lastSection.prefix) {
+        const len = lastSection.prefix.length;
+        const toRemove = Math.min(len, currentExcessLength);
+        lastSection.prefix = lastSection.prefix.slice(0, len - toRemove);
+        truncatedLength += toRemove;
+        currentExcessLength -= toRemove;
+      }
+
+      // If still exceeding after both truncations, remove this leaf section entirely
+      if (currentExcessLength > 0) {
+        result.sections.pop();
+      }
+    }
+  }
+
+  // If we've removed all child sections but still exceed the limit,
+  // truncate this section's content and prefix
+
+  // Truncate content first
+  if (currentExcessLength > 0 && result.content) {
+    const len = result.content.length;
+    const toRemove = Math.min(len, currentExcessLength);
+    result.content = result.content.slice(0, len - toRemove);
+    truncatedLength += toRemove;
+    currentExcessLength -= toRemove;
+  }
+
+  // If still exceeding, truncate prefix
+  if (currentExcessLength > 0 && result.prefix) {
+    const len = result.prefix.length;
+    const toRemove = Math.min(len, currentExcessLength);
+    result.prefix = result.prefix.slice(0, len - toRemove);
+    truncatedLength += toRemove;
+    currentExcessLength -= toRemove;
+  }
+
+  return [result, truncatedLength];
 }
 
 export async function upsertDataSourceRemoteTable({
@@ -650,6 +773,7 @@ export async function upsertDataSourceRemoteTable({
   parentId,
   title,
   mimeType,
+  tags,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -662,6 +786,7 @@ export async function upsertDataSourceRemoteTable({
   parentId: string | null;
   title: string;
   mimeType: string;
+  tags?: string[];
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -679,7 +804,7 @@ export async function upsertDataSourceRemoteTable({
   const now = new Date();
 
   const endpoint =
-    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables`;
   const dustRequestPayload: UpsertDatabaseTableRequestType = {
     name: tableName,
@@ -691,6 +816,7 @@ export async function upsertDataSourceRemoteTable({
     remote_database_secret_id: remoteDatabaseSecretId,
     title: safeSubstring(title, 0, MAX_TITLE_LENGTH),
     mime_type: mimeType,
+    tags: tags,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -838,6 +964,7 @@ export async function upsertDataSourceTableFromCsv({
   mimeType,
   sourceUrl,
   tags,
+  allowEmptySchema,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
@@ -852,6 +979,7 @@ export async function upsertDataSourceTableFromCsv({
   mimeType: string;
   sourceUrl?: string;
   tags?: string[];
+  allowEmptySchema?: boolean;
 }) {
   const localLogger = logger.child({ ...loggerArgs, tableId, tableName });
   const statsDTags = [
@@ -876,15 +1004,7 @@ export async function upsertDataSourceTableFromCsv({
     );
   }
 
-  const dustAPI = new DustAPI(
-    apiConfig.getDustAPIConfig(),
-    {
-      workspaceId: dataSourceConfig.workspaceId,
-      apiKey: dataSourceConfig.workspaceAPIKey,
-    },
-    logger,
-    apiConfig.getDustFrontAPIUrl()
-  );
+  const dustAPI = getDustAPI(dataSourceConfig);
 
   const fileRes = await dustAPI.uploadFile({
     contentType: "text/csv",
@@ -898,7 +1018,7 @@ export async function upsertDataSourceTableFromCsv({
   }
 
   const endpoint =
-    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/csv`;
   const dustRequestPayload: UpsertTableFromCsvRequestType = {
     name: tableName,
@@ -914,6 +1034,7 @@ export async function upsertDataSourceTableFromCsv({
     timestamp: null,
     tags: tags ?? null,
     sourceUrl: sourceUrl ?? null,
+    allowEmptySchema,
   };
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1061,7 +1182,7 @@ export async function deleteDataSourceTableRow({
   const now = new Date();
 
   const endpoint =
-    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}/rows/${rowId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1133,19 +1254,19 @@ export const getDataSourceTable = withRetries(logger, _getDataSourceTable, {
   retries: 3,
 });
 
-export async function _getDataSourceTable({
+async function _getDataSourceTable({
   dataSourceConfig,
   tableId,
 }: {
   dataSourceConfig: DataSourceConfig;
   tableId: string;
-}): Promise<CoreAPITable | undefined> {
+}): Promise<GetTableResponseType["table"] | undefined> {
   const localLogger = logger.child({
     tableId,
   });
 
   const endpoint =
-    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1153,9 +1274,12 @@ export async function _getDataSourceTable({
     },
   };
 
-  let dustRequestResult: AxiosResponse;
+  let dustRequestResult: AxiosResponse<GetTableResponseType>;
   try {
-    dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
+    dustRequestResult = await axiosWithTimeout.get<GetTableResponseType>(
+      endpoint,
+      dustRequestConfig
+    );
   } catch (e) {
     const axiosError = e as AxiosError;
     if (axiosError?.response?.status === 404) {
@@ -1197,7 +1321,7 @@ export async function deleteDataSourceTable({
   const now = new Date();
 
   const endpoint =
-    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1275,13 +1399,13 @@ export async function _getDataSourceFolder({
 }: {
   dataSourceConfig: DataSourceConfig;
   folderId: string;
-}): Promise<CoreAPIFolder | undefined> {
+}): Promise<GetFolderResponseType["folder"] | undefined> {
   const localLogger = logger.child({
     folderId,
   });
 
   const endpoint =
-    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/folders/${folderId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1289,7 +1413,7 @@ export async function _getDataSourceFolder({
     },
   };
 
-  let dustRequestResult: AxiosResponse;
+  let dustRequestResult: AxiosResponse<GetFolderResponseType>;
   try {
     dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
   } catch (e) {

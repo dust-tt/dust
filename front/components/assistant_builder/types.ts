@@ -1,41 +1,40 @@
+import type { Icon } from "@dust-tt/sparkle";
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { uniqueId } from "lodash";
+import type React from "react";
+import type { SVGProps } from "react";
+
+import type { DustAppRunConfigurationType } from "@app/components/actions/dust_app_run/utils";
+import {
+  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+  DEFAULT_DATA_VISUALIZATION_NAME,
+  DEFAULT_MCP_ACTION_NAME,
+} from "@app/lib/actions/constants";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AgentConfigurationScope,
+  AgentConfigurationType,
   AgentReasoningEffort,
-  AppType,
   DataSourceViewSelectionConfigurations,
-  ModelIdType,
-  ModelProviderIdType,
+  LightAgentConfigurationType,
   PlanType,
-  ProcessSchemaPropertyType,
+  ReasoningModelConfigurationType,
   SubscriptionType,
   SupportedModel,
+  TimeFrame,
   TimeframeUnit,
+  UserType,
+  WhitelistableFeature,
   WorkspaceType,
-} from "@dust-tt/types";
-import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@dust-tt/types";
+} from "@app/types";
 import {
-  assertNever,
-  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-} from "@dust-tt/types";
-import { uniqueId } from "lodash";
-import type { SVGProps } from "react";
-import type React from "react";
-
-import {
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
-  DEFAULT_PROCESS_ACTION_NAME,
-  DEFAULT_REASONING_ACTION_DESCRIPTION,
-  DEFAULT_REASONING_ACTION_NAME,
-  DEFAULT_RETRIEVAL_ACTION_NAME,
-  DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
-  DEFAULT_TABLES_QUERY_ACTION_NAME,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/constants";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  DEFAULT_MAX_STEPS_USE_PER_RUN,
+} from "@app/types";
+import type { TagType } from "@app/types/tag";
 
 export const ACTION_MODES = [
   "GENERIC",
@@ -46,29 +45,8 @@ export const ACTION_MODES = [
   "PROCESS",
 ] as const;
 
-export function isDefaultActionName(
-  action: AssistantBuilderActionConfiguration
-) {
-  switch (action.type) {
-    case "RETRIEVAL_SEARCH":
-      return action.name.includes(DEFAULT_RETRIEVAL_ACTION_NAME);
-    case "RETRIEVAL_EXHAUSTIVE":
-      return action.name.includes(DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME);
-    case "DUST_APP_RUN":
-      return action.name.includes(
-        ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME
-      );
-    case "TABLES_QUERY":
-      return action.name.includes(DEFAULT_TABLES_QUERY_ACTION_NAME);
-    case "PROCESS":
-      return action.name.includes(DEFAULT_PROCESS_ACTION_NAME);
-    case "WEB_NAVIGATION":
-      return action.name.includes(DEFAULT_WEBSEARCH_ACTION_NAME);
-    case "REASONING":
-      return action.name.includes(DEFAULT_REASONING_ACTION_NAME);
-    default:
-      return false;
-  }
+export function isDefaultActionName(action: AssistantBuilderMCPConfiguration) {
+  return action.name.includes(DEFAULT_MCP_ACTION_NAME);
 }
 
 // Retrieval configuration
@@ -82,116 +60,77 @@ export type AssistantBuilderTagsFilter = {
   in: string[];
 };
 
-export type AssistantBuilderRetrievalConfiguration = {
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-};
-
-export type AssistantBuilderRetrievalExhaustiveConfiguration = {
-  timeFrame?: AssistantBuilderTimeFrame | null;
-} & AssistantBuilderRetrievalConfiguration;
-
-// DustAppRun configuration
-
-export type AssistantBuilderDustAppConfiguration = {
-  app: AppType | null;
-};
-
-// TablesQuery configuration
-
-export type AssistantBuilderTableConfiguration =
-  DataSourceViewSelectionConfigurations;
-
-// Process configuration
-
-export type AssistantBuilderProcessConfiguration = {
-  timeFrame: AssistantBuilderTimeFrame;
-} & {
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
-  tagsFilter: AssistantBuilderTagsFilter | null;
-  schema: ProcessSchemaPropertyType[];
-};
-
-// Websearch configuration (no configuraiton)
-export type AssistantBuilderWebNavigationConfiguration = Record<string, never>;
-
-// Github configuration (no configuraiton)
-export type AssistantBuilderGithubConfiguration = Record<string, never>;
-
-// Reasoning configuration
-export type AssistantBuilderReasoningConfiguration = {
-  modelId: ModelIdType | null;
-  providerId: ModelProviderIdType | null;
-  temperature: number | null;
-  reasoningEffort: AgentReasoningEffort | null;
+// MCP configuration
+export type AssistantBuilderMCPServerConfiguration = {
+  mcpServerViewId: string;
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
+  tablesConfigurations: DataSourceViewSelectionConfigurations | null;
+  childAgentId: string | null;
+  reasoningModel: ReasoningModelConfigurationType | null;
+  timeFrame: TimeFrame | null;
+  additionalConfiguration: Record<string, boolean | number | string>;
+  dustAppConfiguration: DustAppRunConfigurationType | null;
+  jsonSchema: JSONSchema | null;
+  _jsonSchemaString: string | null;
 };
 
 // Builder State
 
-export type AssistantBuilderActionConfiguration = (
-  | {
-      type: "RETRIEVAL_SEARCH";
-      configuration: AssistantBuilderRetrievalConfiguration;
-    }
-  | {
-      type: "RETRIEVAL_EXHAUSTIVE";
-      configuration: AssistantBuilderRetrievalExhaustiveConfiguration;
-    }
-  | {
-      type: "DUST_APP_RUN";
-      configuration: AssistantBuilderDustAppConfiguration;
-    }
-  | {
-      type: "TABLES_QUERY";
-      configuration: AssistantBuilderTableConfiguration;
-    }
-  | {
-      type: "PROCESS";
-      configuration: AssistantBuilderProcessConfiguration;
-    }
-  | {
-      type: "WEB_NAVIGATION";
-      configuration: AssistantBuilderWebNavigationConfiguration;
-    }
-  | {
-      type: "GITHUB_GET_PULL_REQUEST";
-      configuration: AssistantBuilderGithubConfiguration;
-    }
-  | {
-      type: "GITHUB_CREATE_ISSUE";
-      configuration: AssistantBuilderGithubConfiguration;
-    }
-  | {
-      type: "REASONING";
-      configuration: AssistantBuilderReasoningConfiguration;
-    }
-) & {
+export type AssistantBuilderMCPConfiguration = {
+  type: "MCP";
+  configuration: AssistantBuilderMCPServerConfiguration;
   name: string;
   description: string;
   noConfigurationRequired?: boolean;
 };
 
-export type AssistantBuilderActionConfigurationWithId =
-  AssistantBuilderActionConfiguration & {
+export type AssistantBuilderMCPConfigurationWithId =
+  AssistantBuilderMCPConfiguration & {
     id: string;
   };
 
+export interface AssistantBuilderDataVisualizationConfiguration {
+  type: "DATA_VISUALIZATION";
+  configuration: Record<string, never>;
+  name: string;
+  description: string;
+  noConfigurationRequired: true;
+}
+
+// DATA_VISUALIZATION is not an action, but we need to show it in the UI like an action.
+export type AssistantBuilderDataVisualizationConfigurationWithId =
+  AssistantBuilderDataVisualizationConfiguration & {
+    id: string;
+  };
+
+export type AssistantBuilderActionAndDataVisualizationConfiguration =
+  | AssistantBuilderMCPConfiguration
+  | AssistantBuilderDataVisualizationConfiguration;
+
 export type TemplateActionType = Omit<
-  AssistantBuilderActionConfiguration,
+  AssistantBuilderMCPConfiguration,
   "configuration"
 > & {
   help: string;
 };
 
-export type AssistantBuilderActionType =
-  AssistantBuilderActionConfiguration["type"];
+export type AssistantBuilderMCPServerType =
+  AssistantBuilderMCPConfiguration["type"];
+
+export type AssistantBuilderDataVisualizationType =
+  AssistantBuilderDataVisualizationConfiguration["type"];
+
+export type AssistantBuilderMCPOrVizState =
+  | AssistantBuilderMCPConfigurationWithId
+  | AssistantBuilderDataVisualizationConfigurationWithId;
 
 export type AssistantBuilderSetActionType =
   | {
-      action: AssistantBuilderActionConfigurationWithId;
+      action: AssistantBuilderMCPOrVizState;
       type: "insert" | "edit" | "pending";
     }
   | {
-      action: AssistantBuilderActionConfigurationWithId;
+      action: AssistantBuilderMCPConfigurationWithId;
       type: "pending";
     }
   | {
@@ -200,11 +139,12 @@ export type AssistantBuilderSetActionType =
 
 export type AssistantBuilderPendingAction =
   | {
-      action: AssistantBuilderActionConfigurationWithId;
+      action: AssistantBuilderMCPOrVizState;
       previousActionName: string | null;
     }
   | {
       action: null;
+      previousActionName: null;
     };
 
 export type AssistantBuilderState = {
@@ -216,11 +156,15 @@ export type AssistantBuilderState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    reasoningEffort: AgentReasoningEffort;
+    responseFormat?: string;
   };
-  actions: Array<AssistantBuilderActionConfigurationWithId>;
+  actions: AssistantBuilderMCPOrVizState[];
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
+  tags: TagType[];
+  editors: UserType[];
 };
 
 export type AssistantBuilderInitialState = {
@@ -232,60 +176,55 @@ export type AssistantBuilderInitialState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    reasoningEffort: AgentReasoningEffort;
+    responseFormat?: string;
   } | null;
-  actions: Array<AssistantBuilderActionConfiguration>;
+  actions: AssistantBuilderActionAndDataVisualizationConfiguration[];
   maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
+  tags: TagType[];
+  editors: UserType[];
+};
+
+export interface ActionSpecification {
+  label: string;
+  description: string;
+  dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  flag: WhitelistableFeature | null;
+}
+
+export type ActionSpecificationWithType = ActionSpecification & {
+  type: AssistantBuilderMCPServerType | "DATA_VISUALIZATION";
 };
 
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
 export function getDefaultAssistantState() {
   return {
-    actions: [],
+    // Data Visualization is not an action but we show it like an action.
+    // We enable it by default so we should push it to actions list.
+    actions: [getDataVisualizationActionConfiguration()],
     handle: null,
-    scope: "private",
+    scope: "hidden",
     description: null,
     instructions: null,
     avatarUrl: null,
     generationSettings: {
       modelSettings: {
-        modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-        providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       },
       temperature: 0.7,
+      reasoningEffort:
+        CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
     templateId: null,
+    tags: [],
+    editors: [],
   } satisfies AssistantBuilderState;
-}
-
-export function getDefaultRetrievalSearchActionConfiguration() {
-  return {
-    type: "RETRIEVAL_SEARCH",
-    configuration: {
-      dataSourceConfigurations: {},
-      timeFrame: {
-        value: 1,
-        unit: "month",
-      },
-    } as AssistantBuilderRetrievalConfiguration,
-    name: DEFAULT_RETRIEVAL_ACTION_NAME,
-    description: "",
-  } satisfies AssistantBuilderActionConfiguration;
-}
-
-export function getDefaultRetrievalExhaustiveActionConfiguration() {
-  return {
-    type: "RETRIEVAL_EXHAUSTIVE",
-    configuration: {
-      dataSourceConfigurations: {},
-      timeFrame: null,
-    } as AssistantBuilderRetrievalExhaustiveConfiguration,
-    name: DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
-    description: "",
-  } satisfies AssistantBuilderActionConfiguration;
 }
 
 export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME =
@@ -293,127 +232,61 @@ export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME =
 export const ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION =
   "Run a Dust app.";
 
-export function getDefaultDustAppRunActionConfiguration() {
+export function getDataVisualizationConfiguration(): AssistantBuilderDataVisualizationConfiguration {
   return {
-    type: "DUST_APP_RUN",
-    configuration: {
-      app: null,
-    } as AssistantBuilderDustAppConfiguration,
-    name: ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_NAME,
-    description:
-      ASSISTANT_BUILDER_DUST_APP_RUN_ACTION_CONFIGURATION_DEFAULT_DESCRIPTION,
-  } satisfies AssistantBuilderActionConfiguration;
-}
-
-export function getDefaultTablesQueryActionConfiguration() {
-  return {
-    type: "TABLES_QUERY",
-    configuration: {} as AssistantBuilderTableConfiguration,
-    name: DEFAULT_TABLES_QUERY_ACTION_NAME,
-    description: "",
-  } satisfies AssistantBuilderActionConfiguration;
-}
-
-export function getDefaultProcessActionConfiguration() {
-  return {
-    type: "PROCESS",
-    configuration: {
-      dataSourceConfigurations: {},
-      timeFrame: {
-        value: 1,
-        unit: "day",
-      },
-      tagsFilter: null,
-      schema: [],
-    } as AssistantBuilderProcessConfiguration,
-    name: DEFAULT_PROCESS_ACTION_NAME,
-    description: "",
-  } satisfies AssistantBuilderActionConfiguration;
-}
-
-export function getDefaultWebsearchActionConfiguration(): AssistantBuilderActionConfiguration {
-  return {
-    type: "WEB_NAVIGATION",
+    type: "DATA_VISUALIZATION",
     configuration: {},
-    name: DEFAULT_WEBSEARCH_ACTION_NAME,
-    description: "Perform a web search and/or browse a page content.",
+    name: DEFAULT_DATA_VISUALIZATION_NAME,
+    description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
     noConfigurationRequired: true,
-  };
+  } satisfies AssistantBuilderDataVisualizationConfiguration;
 }
 
-export function getDefaultGithubGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
-  return {
-    type: "GITHUB_GET_PULL_REQUEST",
-    configuration: {},
-    name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
-    description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-    noConfigurationRequired: true,
-  };
-}
+export function getDefaultMCPServerActionConfiguration(
+  mcpServerView?: MCPServerViewType
+): AssistantBuilderMCPConfiguration {
+  const requirements = getMCPServerRequirements(mcpServerView);
 
-export function getDefaultGithubCreateIssueActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
-    type: "GITHUB_CREATE_ISSUE",
-    configuration: {},
-    name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-    description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
-    noConfigurationRequired: true,
-  };
-}
-
-export function getDefaultReasoningActionConfiguration(): AssistantBuilderActionConfiguration {
-  return {
-    type: "REASONING",
+    type: "MCP",
     configuration: {
-      providerId: null,
-      modelId: null,
-      temperature: null,
-      reasoningEffort: null,
+      mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
+      dataSourceConfigurations: null,
+      tablesConfigurations: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      additionalConfiguration: {},
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      _jsonSchemaString: null,
     },
-    name: DEFAULT_REASONING_ACTION_NAME,
-    description: DEFAULT_REASONING_ACTION_DESCRIPTION,
-    noConfigurationRequired: false,
-  } satisfies AssistantBuilderActionConfiguration;
+    name: mcpServerView?.server.name ?? "",
+    description:
+      requirements.requiresDataSourceConfiguration ||
+      requirements.requiresTableConfiguration
+        ? ""
+        : mcpServerView?.server.description ?? "",
+    noConfigurationRequired: requirements.noRequirement,
+  };
 }
 
-export function getDefaultActionConfiguration(
-  actionType: AssistantBuilderActionType | null
-): AssistantBuilderActionConfigurationWithId | null {
-  const config = (() => {
-    switch (actionType) {
-      case null:
-        return null;
-      case "RETRIEVAL_SEARCH":
-        return getDefaultRetrievalSearchActionConfiguration();
-      case "RETRIEVAL_EXHAUSTIVE":
-        return getDefaultRetrievalExhaustiveActionConfiguration();
-      case "DUST_APP_RUN":
-        return getDefaultDustAppRunActionConfiguration();
-      case "TABLES_QUERY":
-        return getDefaultTablesQueryActionConfiguration();
-      case "PROCESS":
-        return getDefaultProcessActionConfiguration();
-      case "WEB_NAVIGATION":
-        return getDefaultWebsearchActionConfiguration();
-      case "GITHUB_GET_PULL_REQUEST":
-        return getDefaultGithubGetPullRequestActionConfiguration();
-      case "GITHUB_CREATE_ISSUE":
-        return getDefaultGithubCreateIssueActionConfiguration();
-      case "REASONING":
-        return getDefaultReasoningActionConfiguration();
-      default:
-        assertNever(actionType);
-    }
-  })();
+export function getDefaultMCPServerConfigurationWithId(
+  mcpServerView?: MCPServerViewType
+): AssistantBuilderMCPConfigurationWithId {
+  const config = getDefaultMCPServerActionConfiguration(mcpServerView);
 
-  if (config) {
-    return {
-      id: uniqueId(),
-      ...config,
-    };
-  }
+  return {
+    id: uniqueId(),
+    ...config,
+  };
+}
 
-  return null;
+export function getDataVisualizationActionConfiguration() {
+  return {
+    id: uniqueId(),
+    ...getDataVisualizationConfiguration(),
+  };
 }
 
 export const BUILDER_FLOWS = [
@@ -422,8 +295,8 @@ export const BUILDER_FLOWS = [
 ] as const;
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
-export type AssistantBuilderProps = {
-  agentConfigurationId: string | null;
+type AssistantBuilderPropsBase<T> = {
+  agentConfiguration: T | null;
   baseUrl: string;
   defaultIsEdited?: boolean;
   defaultTemplate: FetchAssistantTemplateResponse | null;
@@ -432,9 +305,15 @@ export type AssistantBuilderProps = {
   owner: WorkspaceType;
   plan: PlanType;
   subscription: SubscriptionType;
+  duplicateAgentId?: string | null;
 };
 
-export const BUILDER_SCREENS = ["instructions", "actions", "naming"] as const;
+export type AssistantBuilderProps =
+  AssistantBuilderPropsBase<AgentConfigurationType>;
+export type AssistantBuilderLightProps =
+  AssistantBuilderPropsBase<LightAgentConfigurationType>;
+
+export const BUILDER_SCREENS = ["instructions", "actions", "settings"] as const;
 
 export type BuilderScreen = (typeof BUILDER_SCREENS)[number];
 
@@ -461,16 +340,16 @@ export const BUILDER_SCREENS_INFOS: Record<BuilderScreen, BuilderScreenInfos> =
     },
     actions: {
       id: "actions",
-      label: "Tools & Data sources",
+      label: "Tools & Knowledge",
       dataGtm: {
         label: "assistantToolsButton",
         location: "assistantBuilder",
       },
       icon: SquareIcon,
     },
-    naming: {
-      id: "naming",
-      label: "Naming",
+    settings: {
+      id: "settings",
+      label: "Settings",
       dataGtm: {
         label: "assistantNamingButton",
         location: "assistantBuilder",

@@ -1,0 +1,4 @@
+-- Migration created on Mar 06, 2025
+CREATE TABLE IF NOT EXISTS "agent_search_labels_actions" ("createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "runId" VARCHAR(255), "functionCallId" VARCHAR(255), "functionCallName" VARCHAR(255), "output" JSONB, "searchText" TEXT NOT NULL, "step" INTEGER NOT NULL, "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, "id"  BIGSERIAL , "agentMessageId" BIGINT NOT NULL REFERENCES "agent_messages" ("id") ON DELETE NO ACTION ON UPDATE CASCADE, "parentTool" VARCHAR(255) NOT NULL, PRIMARY KEY ("id"));
+
+CREATE INDEX CONCURRENTLY "agent_search_labels_actions_agent_message_id" ON "agent_search_labels_actions" ("agentMessageId");

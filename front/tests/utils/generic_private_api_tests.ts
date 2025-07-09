@@ -1,4 +1,3 @@
-import type { MembershipRoleType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { RequestMethod } from "node-mocks-http";
 import { createMocks } from "node-mocks-http";
@@ -8,6 +7,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { MembershipRoleType } from "@app/types";
 
 vi.mock(import("../../lib/auth"), async (importOriginal) => {
   const mod = await importOriginal();
@@ -17,7 +17,7 @@ vi.mock(import("../../lib/auth"), async (importOriginal) => {
   };
 });
 
-import { getSession } from "../../lib/auth";
+import { Authenticator, getSession } from "../../lib/auth";
 
 /**
  * Creates a mock request with authentication for testing private API endpoints.
@@ -52,18 +52,27 @@ export const createPrivateApiMockRequest = async ({
     : UserFactory.basic());
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
 
-  const membership = await MembershipFactory.associate(workspace, user, role);
+  const membership = await MembershipFactory.associate(workspace, user, {
+    role,
+  });
 
   // Mock the getSession function to return the user without going through the auth0 session
   vi.mocked(getSession).mockReturnValue(
     Promise.resolve({
+      type: "auth0",
+      sessionId: "test-session-id",
       user: {
-        sub: user.auth0Sub!,
+        auth0Sub: user.auth0Sub!,
+        workOSUserId: null,
         email: user.email!,
         email_verified: true,
         name: user.username!,
         nickname: user.username!,
       },
+      authenticationMethod: "GoogleOAuth",
+      isSSO: false,
+      workspaceId: workspace.sId,
+      organizationId: workspace.workOSOrganizationId || undefined,
     })
   );
 
@@ -81,5 +90,9 @@ export const createPrivateApiMockRequest = async ({
     membership,
     globalGroup,
     systemGroup,
+    authenticator: await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    ),
   };
 };

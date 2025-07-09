@@ -41,7 +41,7 @@ const SocialMenuConfig: MenuConfig = {
   items: [
     {
       title: "X",
-      href: "https://x.com/dust4ai",
+      href: "https://x.com/DustHQ",
       isExternal: true,
     },
     {
@@ -92,9 +92,38 @@ const LegalMenuConfig: MenuConfig = {
   ],
 };
 
+const IndustriesMenuConfig: MenuConfig = {
+  title: "Industries",
+  items: [
+    {
+      title: "B2B SaaS",
+      href: "/home/industry/b2b-saas",
+    },
+    {
+      title: "Financial Services",
+      href: "/home/industry/financial-services",
+    },
+    {
+      title: "Insurance",
+      href: "/home/industry/insurance",
+    },
+    {
+      title: "Marketplaces",
+      href: "/home/industry/marketplace",
+    },
+    {
+      title: "Retail & E-commerce",
+      href: "/home/industry/retail-ecommerce",
+    },
+  ],
+};
+
 const SolutionsMenuConfig: MenuConfig = {
   title: "Solutions",
   items: [
+    {
+      title: "Departments",
+    },
     {
       title: "Sales",
       href: "/home/solutions/sales",
@@ -116,6 +145,9 @@ const SolutionsMenuConfig: MenuConfig = {
       href: "/home/solutions/data-analytics",
     },
     {
+      title: "",
+    },
+    {
       title: "Knowledge",
       href: "/home/solutions/knowledge",
     },
@@ -127,16 +159,22 @@ const SolutionsMenuConfig: MenuConfig = {
       title: "Legal",
       href: "/home/solutions/legal",
     },
-
     {
       title: "People",
       href: "/home/solutions/recruiting-people",
     },
-
     {
       title: "Productivity",
       href: "/home/solutions/productivity",
     },
+    {
+      title: IndustriesMenuConfig.title,
+    },
+    IndustriesMenuConfig.items[0],
+    IndustriesMenuConfig.items[1],
+    IndustriesMenuConfig.items[2],
+    IndustriesMenuConfig.items[3],
+    IndustriesMenuConfig.items[4],
   ],
 };
 
@@ -144,7 +182,7 @@ const DevelopersMenuConfig: MenuConfig = {
   title: "Developers",
   items: [
     {
-      title: "Dust Apps & API",
+      title: "Developer Platform",
       href: "/home/solutions/dust-platform",
     },
     {
@@ -195,7 +233,7 @@ const ExploreMenuConfig: MenuConfig = {
     },
     {
       title: "Events",
-      href: "https://www.youtube.com/playlist?list=PLv-ZZddHqz5B7ORswb588oAtRHMYAMVDb",
+      href: "https://lu.ma/dust",
       isExternal: true,
     },
     {
@@ -211,14 +249,14 @@ const ConnectMenuConfig: MenuConfig = {
   items: [
     {
       title: "Slack Community",
-      href: "https://bit.ly/dust-slack",
+      href: "https://dust-community.tightknit.community/join",
       isExternal: true,
     },
 
     {
-      title: "Contact Support",
-      href: "mailto:support@dust.tt",
-      isExternal: true,
+      title: "Support",
+      href: "/home/support",
+      isExternal: false,
     },
     {
       title: "Become a Partner",
@@ -288,12 +326,12 @@ export const menuConfig: DocsConfig = {
   mainNav: [
     {
       title: "Product",
-      href: "/home",
+      href: "/home/product",
     },
     {
       title: SolutionsMenuConfig.title,
       label: "Dust for...",
-      rows: 5,
+      rows: 6,
       items: SolutionsMenuConfig.items,
     },
     {
@@ -326,7 +364,7 @@ export const menuConfig: DocsConfig = {
   mobileNav: [
     {
       title: "Product",
-      href: "/home",
+      href: "/home/product",
     },
     {
       title: "Pricing",
@@ -371,7 +409,11 @@ export const menuConfig: DocsConfig = {
       items: [
         {
           title: "Product",
-          href: "/home",
+          href: "/home/product",
+        },
+        {
+          title: "Chrome Extension",
+          href: "/home/chrome-extension",
         },
         {
           title: "Pricing",
@@ -392,16 +434,76 @@ export const menuConfig: DocsConfig = {
       items: DevelopersMenuConfig.items,
     },
     {
-      title: CareersMenuConfig.title,
-      items: CareersMenuConfig.items,
+      title: "Company",
+      items: [
+        {
+          title: "About Us",
+          href: "/home/about",
+        },
+        {
+          title: "Jobs",
+          href: "/jobs",
+          isExternal: true,
+        },
+        {
+          title: "Support",
+          href: "/home/support",
+        },
+        {
+          title: "Become a Partner",
+          href: "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3",
+          isExternal: true,
+        },
+      ],
     },
     {
-      title: SocialMenuConfig.title,
-      items: SocialMenuConfig.items,
+      title: "Connect",
+      items: [
+        {
+          title: "Slack Community",
+          href: "https://dust-community.tightknit.community/join",
+          isExternal: true,
+        },
+        {
+          title: "X",
+          href: "https://x.com/DustHQ",
+          isExternal: true,
+        },
+        {
+          title: "LinkedIn",
+          href: "https://www.linkedin.com/company/dust-tt/",
+          isExternal: true,
+        },
+        {
+          title: "YouTube",
+          href: "https://www.youtube.com/@dust-tt",
+          isExternal: true,
+        },
+      ],
     },
     {
-      title: LegalMenuConfig.title,
-      items: LegalMenuConfig.items,
+      title: "Legal",
+      items: [
+        {
+          title: "Terms & Policies",
+          href: "/terms",
+          isExternal: true,
+        },
+        {
+          title: "Privacy Policy",
+          href: "/platform-privacy",
+          isExternal: true,
+        },
+        {
+          title: "Trust Center",
+          href: "https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto",
+          isExternal: true,
+        },
+        {
+          title: "Vulnerability Disclosure",
+          href: "/home/vulnerability",
+        },
+      ],
     },
   ],
 };

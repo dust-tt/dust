@@ -1,19 +1,22 @@
 import { Chip, Tooltip } from "@dust-tt/sparkle";
-import type { ConnectorType, DataSourceType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { useConnector } from "@app/lib/swr/connectors";
 import { timeAgoFrom } from "@app/lib/utils";
+import type { ConnectorType, DataSourceType } from "@app/types";
+import { assertNever, fileSizeToHumanReadable } from "@app/types";
 
 export default function ConnectorSyncingChip({
   workspaceId,
   dataSource,
   initialState,
+  activeSeats,
 }: {
   workspaceId: string;
   dataSource: DataSourceType;
   initialState: ConnectorType;
+  activeSeats: number;
 }) {
   const {
     connector: refreshedConnector,
@@ -32,7 +35,7 @@ export default function ConnectorSyncingChip({
       );
     } else if (isConnectorLoading) {
       return (
-        <Chip color="amber" isBusy>
+        <Chip color="info" isBusy>
           Loading
         </Chip>
       );
@@ -98,7 +101,7 @@ export default function ConnectorSyncingChip({
               "The website synchronization reached the maximum page limit."
             }
             className="max-w-md"
-            trigger={<Chip color="amber">Limit reached</Chip>}
+            trigger={<Chip color="info">Limit reached</Chip>}
           />
         );
       case "webcrawling_error":
@@ -123,12 +126,19 @@ export default function ConnectorSyncingChip({
             trigger={<Chip color="warning">Synchronization failed</Chip>}
           />
         );
+      case "workspace_quota_exceeded":
+        return (
+          <Tooltip
+            label={`You've exceeded the total storage quota of ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} for your workspace. Contact support@dust.tt to upgrade your plan.`}
+            trigger={<Chip color="warning">Quota exceeded</Chip>}
+          />
+        );
       default:
         assertNever(connector.errorType);
     }
   } else if (!connector.lastSyncSuccessfulTime) {
     return (
-      <Chip color="amber" isBusy>
+      <Chip color="info" isBusy>
         Synchronizing
         {connector.firstSyncProgress
           ? ` (${connector.firstSyncProgress})`
@@ -137,7 +147,7 @@ export default function ConnectorSyncingChip({
     );
   } else {
     return (
-      <Chip color="slate">
+      <Chip>
         Last Sync ~ {timeAgoFrom(connector.lastSyncSuccessfulTime)} ago
       </Chip>
     );

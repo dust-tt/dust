@@ -1,10 +1,5 @@
-import type { ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
-import {
-  Err,
-  getOAuthConnectionAccessToken,
-  MIME_TYPES,
-  Ok,
-} from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import _ from "lodash";
 
 import type {
@@ -32,7 +27,13 @@ import {
 } from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ContentNode, ContentNodesViewType } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  getOAuthConnectionAccessToken,
+  INTERNAL_MIME_TYPES,
+  normalizeError,
+} from "@connectors/types";
 
 import { getOrphanedCount, hasChildren } from "./lib/parents";
 
@@ -77,6 +78,8 @@ export async function workspaceIdFromConnectionId(connectionId: string) {
 }
 
 export class NotionConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "notion";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -130,7 +133,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       parents: [nodeIdFromNotionId("unknown")],
       parentId: null,
       title: "Orphaned Resources",
-      mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
+      mimeType: INTERNAL_MIME_TYPES.NOTION.UNKNOWN_FOLDER,
     });
     // Upsert to data_sources_folders (core) a top-level folder for the syncing resources.
     await upsertDataSourceFolder({
@@ -139,7 +142,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       parents: [nodeIdFromNotionId("syncing")],
       parentId: null,
       title: "Syncing",
-      mimeType: MIME_TYPES.NOTION.SYNCING_FOLDER,
+      mimeType: INTERNAL_MIME_TYPES.NOTION.SYNCING_FOLDER,
     });
 
     try {
@@ -215,7 +218,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
       // If connector was previously paused, unpause it.
       if (c.isPaused()) {
-        await this.unpause();
+        await this.unpauseAndResume();
       }
 
       const dataSourceConfig = dataSourceConfigFromConnector(c);
@@ -264,7 +267,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         "Error stopping notion sync workflow"
       );
 
-      return new Err(e as Error);
+      return new Err(normalizeError(e));
     }
 
     return new Ok(undefined);
@@ -327,52 +330,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-
-    if (!connector) {
-      logger.error(
-        {
-          connectorId: this.connectorId,
-        },
-        "Notion connector not found."
-      );
-
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsPaused();
-    const stopRes = await this.stop();
-    if (stopRes.isErr()) {
-      return stopRes;
-    }
-
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-
-    if (!connector) {
-      logger.error(
-        {
-          connectorId: this.connectorId,
-        },
-        "Notion connector not found."
-      );
-
-      return new Err(new Error("Connector not found"));
-    }
-
-    await connector.markAsUnpaused();
-    const r = await this.resume();
-    if (r.isErr()) {
-      return r;
-    }
-
-    return new Ok(undefined);
-  }
-
   async sync({
     fromTs,
   }: {
@@ -414,7 +371,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         "Error stopping notion sync workflow."
       );
 
-      return new Err(e as Error);
+      return new Err(normalizeError(e));
     }
 
     notionConnectorState.fullResyncStartTime = new Date();
@@ -492,7 +449,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         expandable,
         permission: "read",
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
-        mimeType: MIME_TYPES.NOTION.PAGE,
+        mimeType: INTERNAL_MIME_TYPES.NOTION.PAGE,
       };
     };
 
@@ -515,7 +472,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         expandable: true,
         permission: "read",
         lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
-        mimeType: MIME_TYPES.NOTION.DATABASE,
+        mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
       };
     };
 
@@ -537,7 +494,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           expandable: true,
           permission: "read",
           lastUpdatedAt: null,
-          mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
+          mimeType: INTERNAL_MIME_TYPES.NOTION.UNKNOWN_FOLDER,
         });
       }
     }
@@ -549,6 +506,15 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     });
 
     return new Ok(nodes.concat(folderNodes));
+  }
+
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
   }
 
   async setPermissions(): Promise<Result<void, Error>> {

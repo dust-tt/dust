@@ -1,7 +1,17 @@
+import {} from "@radix-ui/react-dropdown-menu";
 import React from "react";
 
-import { Button, FlexSplitButton } from "@sparkle/components";
-import { ArrowUpIcon, ChevronDownIcon } from "@sparkle/icons";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+  Label,
+  Page,
+} from "@sparkle/components";
+import { ActionMoonIcon, ActionSunIcon, LightModeIcon } from "@sparkle/icons";
 
 export default {
   title: "Playground/Demo",
@@ -9,41 +19,54 @@ export default {
 
 export const Demo = () => {
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col s-gap-2">
-      <div className="s-flex s-gap-3">
-        <FlexSplitButton
-          label="Send"
-          variant={"highlight"}
-          icon={ArrowUpIcon}
-          splitAction={
-            <Button size="mini" variant={"highlight"} icon={ChevronDownIcon} />
-          }
-        />
-        <FlexSplitButton
-          label="Send"
-          variant={"primary"}
-          icon={ArrowUpIcon}
-          splitAction={
-            <Button size="mini" variant={"primary"} icon={ChevronDownIcon} />
-          }
-        />
-        <FlexSplitButton
-          label="Send"
-          variant={"outline"}
-          icon={ArrowUpIcon}
-          splitAction={
-            <Button size="mini" variant={"outline"} icon={ChevronDownIcon} />
-          }
-        />
-        <FlexSplitButton
-          label="Send"
-          variant={"ghost"}
-          icon={ArrowUpIcon}
-          splitAction={
-            <Button size="mini" variant={"ghost"} icon={ChevronDownIcon} />
-          }
-        />
-      </div>
+    <div className="s-flex s-h-full s-w-full s-cursor-pointer s-flex-col s-gap-2">
+      <Page.Layout direction="horizontal">
+        <Page.Vertical sizing="grow" align="stretch" gap="xs">
+          <Label>Theme</Label>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                icon={LightModeIcon}
+                label="light"
+                isSelect
+                className="s-w-fit"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem icon={ActionSunIcon} label="Light" />
+              <DropdownMenuItem icon={ActionMoonIcon} label="Dark" />
+              <DropdownMenuItem icon={LightModeIcon} label="System" />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </Page.Vertical>
+        <Page.Vertical sizing="grow" align="stretch" gap="xs">
+          <Label>Keyboard Shortcuts</Label>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="s-copy-sm s-flex s-items-center s-gap-2">
+                Send message
+                <Button
+                  variant="outline"
+                  label="Cmd+Enter (⌘+↵)"
+                  isSelect
+                  className="s-w-fit"
+                />
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem>
+                Send message when pressing Enter
+                <DropdownMenuShortcut>↵</DropdownMenuShortcut>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                Send message when pressing Cmd+Enter
+                <DropdownMenuShortcut>⌘ + ↵</DropdownMenuShortcut>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </Page.Vertical>
+      </Page.Layout>
     </div>
   );
 };

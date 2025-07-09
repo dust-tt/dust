@@ -1,43 +1,68 @@
-import type { WorkspaceEnterpriseConnection } from "@dust-tt/types";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
+import type { LightWorkspaceType, WhitelistableFeature } from "@app/types";
+
+export function useWorkspace({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const workspaceFetcher: Fetcher<GetWorkspaceResponseBody> = fetcher;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    `/api/w/${owner.sId}`,
+    workspaceFetcher,
+    { disabled }
+  );
+
+  return {
+    workspace: data?.workspace,
+    isWorkspaceLoading: !error && !data && !disabled,
+    isWorkspaceValidating: isValidating,
+    isWorkspaceError: error,
+    mutateWorkspace: mutate,
+  };
+}
 
 export function useWorkspaceSubscriptions({
-  workspaceId,
+  owner,
 }: {
-  workspaceId: string;
+  owner: LightWorkspaceType;
 }) {
   const workspaceSubscrptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/subscriptions`,
+    `/api/w/${owner.sId}/subscriptions`,
     workspaceSubscrptionsFetcher
   );
 
   return {
-    subscriptions: useMemo(() => (data ? data.subscriptions : []), [data]),
+    subscriptions: data?.subscriptions ?? emptyArray(),
     isSubscriptionsLoading: !error && !data,
     isSubscriptionsError: error,
   };
 }
 
 export function useWorkspaceAnalytics({
-  workspaceId,
+  owner,
   disabled,
 }: {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const analyticsFetcher: Fetcher<GetWorkspaceAnalyticsResponse> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/workspace-analytics`,
+    `/api/w/${owner.sId}/workspace-analytics`,
     analyticsFetcher,
     {
       disabled,
@@ -51,45 +76,18 @@ export function useWorkspaceAnalytics({
   };
 }
 
-export function useWorkspaceEnterpriseConnection({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const workspaceEnterpriseConnectionFetcher: Fetcher<{
-    connection: WorkspaceEnterpriseConnection;
-  }> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    workspaceId ? `/api/w/${workspaceId}/enterprise-connection` : null,
-    workspaceEnterpriseConnectionFetcher,
-    {
-      disabled,
-    }
-  );
-
-  return {
-    enterpriseConnection: data ? data.connection : null,
-    isEnterpriseConnectionLoading: !error && !data,
-    isEnterpriseConnectionError: error,
-    mutateEnterpriseConnection: mutate,
-  };
-}
-
 export function useWorkspaceActiveSubscription({
-  workspaceId,
+  owner,
   disabled,
 }: {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
   const workspaceSubscriptionsFetcher: Fetcher<GetSubscriptionsResponseBody> =
     fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/subscriptions`,
+    `/api/w/${owner.sId}/subscriptions`,
     workspaceSubscriptionsFetcher,
     {
       disabled,
@@ -131,9 +129,20 @@ export function useFeatureFlags({
     }
   );
 
+  const hasFeature = useCallback(
+    (flag: WhitelistableFeature | null | undefined) => {
+      if (!flag) {
+        return true;
+      }
+      return !!data?.feature_flags.includes(flag);
+    },
+    [data]
+  );
+
   return {
-    featureFlags: data ? data.feature_flags : [],
+    featureFlags: data?.feature_flags ?? emptyArray(),
     isFeatureFlagsLoading: !error && !data,
     isFeatureFlagsError: error,
+    hasFeature,
   };
 }

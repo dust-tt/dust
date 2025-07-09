@@ -1,14 +1,16 @@
-import { safeParseJSON } from "@dust-tt/types";
 import { useCallback, useMemo } from "react";
 
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
+import type { DataSourceViewCategory } from "@app/types";
+import { safeParseJSON } from "@app/types";
 
 // client-side counterpart of persisted_navigation_selection.ts
 
 export type NavigationSelectionType = {
   lastWorkspaceId?: string;
   lastSpaceId?: string;
+  lastSpaceCategory?: DataSourceViewCategory;
 };
 
 export const NAVIGATION_SELECTION_METADATA_NAME = "navigationSelection";
@@ -26,6 +28,7 @@ export const usePersistedNavigationSelection = () => {
         return {
           lastWorkspaceId: selection.lastWorkspaceId,
           lastSpaceId: selection.lastSpaceId,
+          lastSpaceCategory: selection.lastSpaceCategory,
         } as NavigationSelectionType;
       }
     }

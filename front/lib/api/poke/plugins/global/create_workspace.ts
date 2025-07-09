@@ -1,5 +1,3 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { config } from "@app/lib/api/regions/config";
@@ -7,6 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { getRegionDisplay } from "@app/lib/poke/regions";
 import { isEmailValid } from "@app/lib/utils";
+import { Err, Ok } from "@app/types";
 
 export const createWorkspacePlugin = createPlugin({
   manifest: {
@@ -25,21 +24,28 @@ export const createWorkspacePlugin = createPlugin({
         label: "Email",
         description: "The email of the admin user",
       },
-      enableAutoJoin: {
-        type: "boolean",
-        label: "Enable Auto Join",
-        description: "Enable auto join for the domain",
-      },
       isBusiness: {
         type: "boolean",
         label: "Is Business",
         description: "Is the workspace a business workspace (Pro plan 39€)",
       },
+      planCode: {
+        type: "string",
+        label: "Plan Code (optional)",
+        description:
+          "Code of the plan to subscribe the workspace to. Leave empty to redirect to the paywall for the Pro plan.",
+        required: false,
+      },
+      endDate: {
+        type: "string",
+        label: "End Date (optional)",
+        description:
+          "End date of the subscription, format: YYYY-MM-DD. Leave empty for no end date. If an end date is set, the workspace will automatically downgraded the day after the end date.",
+        required: false,
+      },
     },
   },
   execute: async (auth, _, args) => {
-    const { enableAutoJoin = false } = args;
-
     const email = args.email.trim();
     if (isEmailValid(email) === false) {
       return new Err(new Error("Email address is invalid."));
@@ -51,10 +57,10 @@ export const createWorkspacePlugin = createPlugin({
     }
 
     const workspace = await createWorkspaceInternal({
-      email,
       name,
-      isVerified: enableAutoJoin,
       isBusiness: args.isBusiness,
+      planCode: args.planCode,
+      endDate: args.endDate ? new Date(args.endDate) : null,
     });
 
     const newWorkspaceAuth = await Authenticator.internalAdminForWorkspace(
@@ -69,7 +75,7 @@ export const createWorkspacePlugin = createPlugin({
     const invitationRes = await handleMembershipInvitations(newWorkspaceAuth, {
       owner: newWorkspaceAuth.getNonNullableWorkspace(),
       // Dust admin user who invited the new user.
-      user: auth.getNonNullableUser(),
+      user: auth.getNonNullableUser().toJSON(),
       subscription,
       invitationRequests: [
         {
@@ -89,8 +95,10 @@ export const createWorkspacePlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
+      display: "textWithLink",
       value: `Workspace created (id: ${workspace.sId}) and invitation sent to ${result.email}.`,
+      link: `poke/${workspace.sId}`,
+      linkText: "View Workspace",
     });
   },
 });

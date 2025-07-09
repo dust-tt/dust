@@ -1,72 +1,49 @@
-import type { ConversationWithoutContentType, ModelId } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
+import { Op } from "sequelize";
 
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
-import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
+import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
-import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
-import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
-import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
-import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
-import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import {
+  AgentMCPAction,
+  AgentMCPActionOutputItem,
+} from "@app/lib/models/assistant/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
   AgentMessageFeedback,
-  Conversation,
-  ConversationParticipant,
   Mention,
   Message,
   MessageReaction,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
-import { DataSourceViewForConversation } from "@app/lib/resources/storage/models/data_source_view_conversation";
+import type { ConversationWithoutContentType, ModelId } from "@app/types";
+import { removeNulls } from "@app/types";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
-async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
-  // First, retrieve the retrieval actions and documents.
-  const retrievalActions = await AgentRetrievalAction.findAll({
+async function destroyActionsRelatedResources(
+  auth: Authenticator,
+  agentMessageIds: Array<ModelId>
+) {
+  // First, retrieve the MCP actions.
+  const mcpActions = await AgentMCPAction.findAll({
     attributes: ["id"],
-    where: { agentMessageId: agentMessageIds },
+    where: {
+      agentMessageId: { [Op.in]: agentMessageIds },
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
-  // Destroy retrieval resources.
-  await RetrievalDocumentResource.deleteAllForActions(
-    retrievalActions.map((a) => a.id)
-  );
-
-  await AgentRetrievalAction.destroy({
-    where: { agentMessageId: agentMessageIds },
+  // Destroy MCP action output items.
+  await AgentMCPActionOutputItem.destroy({
+    where: { agentMCPActionId: mcpActions.map((a) => a.id) },
   });
 
-  // Destroy other actions.
-  await AgentTablesQueryAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentDustAppRunAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentProcessAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentWebsearchAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentBrowseAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentConversationIncludeFileAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentReasoningAction.destroy({
+  // Destroy the actions.
+  await AgentMCPAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
 }
@@ -85,16 +62,15 @@ async function destroyMessageRelatedResources(messageIds: Array<ModelId>) {
 }
 
 async function destroyContentFragments(
+  auth: Authenticator,
   messageAndContentFragmentIds: Array<{
     contentFragmentId: ModelId;
     messageId: string;
   }>,
   {
     conversationId,
-    workspaceId,
   }: {
     conversationId: string;
-    workspaceId: string;
   }
 ) {
   const contentFragmentIds = messageAndContentFragmentIds.map(
@@ -104,8 +80,10 @@ async function destroyContentFragments(
     return;
   }
 
-  const contentFragments =
-    await ContentFragmentResource.fetchManyByModelIds(contentFragmentIds);
+  const contentFragments = await ContentFragmentResource.fetchManyByModelIds(
+    auth,
+    contentFragmentIds
+  );
 
   for (const contentFragment of contentFragments) {
     const messageContentFragmentId = messageAndContentFragmentIds.find(
@@ -123,7 +101,7 @@ async function destroyContentFragments(
     const deletionRes = await contentFragment.destroy({
       conversationId,
       messageId,
-      workspaceId,
+      workspaceId: auth.getNonNullableWorkspace().sId,
     });
     if (deletionRes.isErr()) {
       throw deletionRes;
@@ -145,15 +123,8 @@ async function destroyConversationDataSource(
   );
 
   if (dataSource) {
-    // Perform a soft delete and initiate a workflow for permanent deletion of the data source.
-    const r = await softDeleteDataSourceAndLaunchScrubWorkflow(
-      auth,
-      dataSource
-    );
-
-    if (r.isErr()) {
-      throw new Error(`Failed to delete data source: ${r.error.message}`);
-    }
+    // Directly delete the data source.
+    await hardDeleteDataSource(auth, dataSource);
   }
 }
 
@@ -167,14 +138,14 @@ export async function destroyConversation(
     conversationId: string;
   }
 ) {
-  const workspace = auth.getNonNullableWorkspace();
-  const conversationRes = await getConversationWithoutContent(
-    auth,
-    conversationId,
-    // We skip access checks as some conversations associated with deleted spaces may have become
-    // inaccessible, yet we want to be able to delete them here.
-    { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
-  );
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      conversationId,
+      // We skip access checks as some conversations associated with deleted spaces may have become
+      // inaccessible, yet we want to be able to delete them here.
+      { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
+    );
   if (conversationRes.isErr()) {
     throw conversationRes.error;
   }
@@ -188,7 +159,10 @@ export async function destroyConversation(
       "agentMessageId",
       "contentFragmentId",
     ],
-    where: { conversationId: conversation.id },
+    where: {
+      conversationId: conversation.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
   });
 
   // To preserve the DB, we delete messages in batches.
@@ -207,12 +181,12 @@ export async function destroyConversation(
       })
     );
 
-    await destroyActionsRelatedResources(agentMessageIds);
+    await destroyActionsRelatedResources(auth, agentMessageIds);
 
     await UserMessage.destroy({
       where: { id: userMessageIds },
     });
-    await AgentMessageContent.destroy({
+    await AgentStepContentModel.destroy({
       where: { agentMessageId: agentMessageIds },
     });
     await AgentMessageFeedback.destroy({
@@ -222,28 +196,20 @@ export async function destroyConversation(
       where: { id: agentMessageIds },
     });
 
-    await destroyContentFragments(messageAndContentFragmentIds, {
-      workspaceId: workspace.sId,
+    await destroyContentFragments(auth, messageAndContentFragmentIds, {
       conversationId: conversation.sId,
     });
 
     await destroyMessageRelatedResources(messageIds);
   }
 
-  await ConversationParticipant.destroy({
-    where: { conversationId: conversation.id },
-  });
-
-  await DataSourceViewForConversation.destroy({
-    where: { conversationId: conversation.id },
-  });
-
   await destroyConversationDataSource(auth, { conversation });
 
-  const c = await Conversation.findOne({
-    where: { id: conversation.id },
+  const c = await ConversationResource.fetchById(auth, conversation.sId, {
+    includeDeleted: true,
+    includeTest: true,
   });
   if (c) {
-    await c.destroy();
+    await c.delete(auth);
   }
 }

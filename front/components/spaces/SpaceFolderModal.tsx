@@ -11,8 +11,6 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
-import { isDataSourceNameValid } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
@@ -23,6 +21,8 @@ import {
   useSpaceDataSourceView,
   useUpdateFolder,
 } from "@app/lib/swr/spaces";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { isDataSourceNameValid } from "@app/types";
 
 interface SpaceFolderModalProps {
   dataSourceViewId: string | null;

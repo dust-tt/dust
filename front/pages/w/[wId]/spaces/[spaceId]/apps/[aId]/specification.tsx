@@ -1,18 +1,19 @@
 import { Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import type { AppType, SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
+import type { AppType, SubscriptionType, WorkspaceType } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -103,7 +104,7 @@ export default function Specification({
   const router = useRouter();
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
@@ -138,19 +139,23 @@ export default function Specification({
         </Tabs>
         <div className="mt-8 flex flex-col gap-4">
           <h3>Current specifications : </h3>
-          <div className="font-mono whitespace-pre text-sm text-gray-700">
+          <div className="whitespace-pre font-mono text-sm text-gray-700">
             {specification}
           </div>
           {specificationFromCore && (
             <>
               <h3>Saved specifications {specificationFromCore.hash}: </h3>
-              <div className="font-mono whitespace-pre text-sm text-gray-700">
+              <div className="whitespace-pre font-mono text-sm text-gray-700">
                 {specificationFromCore.data}
               </div>
             </>
           )}
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+Specification.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

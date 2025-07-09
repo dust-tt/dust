@@ -10,6 +10,7 @@ import external from "rollup-plugin-peer-deps-external";
 import postcss from "rollup-plugin-postcss";
 import tailwindcss from "tailwindcss";
 import { fileURLToPath } from "url";
+import terser from "@rollup/plugin-terser";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -55,6 +56,21 @@ const config = {
       extract: false,
     }),
     json(),
+    terser({
+      compress: {
+        passes: 2,
+        drop_console: true,
+        keep_fnames: false,
+      },
+      format: {
+        comments: false,
+        preserve_annotations: false,
+      },
+      mangle: {
+        properties: false,
+      },
+      sourceMap: false,
+    }),
   ],
 };
 

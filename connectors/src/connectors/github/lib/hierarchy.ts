@@ -1,11 +1,10 @@
-import type { ModelId } from "@dust-tt/types";
-
 import {
   getCodeRootInternalId,
   getRepositoryInternalId,
   isGithubCodeDirId,
 } from "@connectors/connectors/github/lib/utils";
 import { GithubCodeDirectory } from "@connectors/lib/models/github";
+import type { ModelId } from "@connectors/types";
 
 export async function getGithubCodeDirectoryParentIds(
   connectorId: ModelId,

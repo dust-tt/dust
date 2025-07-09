@@ -1,8 +1,3 @@
-import type {
-  AgentConfigurationType,
-  UserType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -18,6 +13,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  AgentConfigurationType,
+  UserType,
+  WithAPIErrorResponse,
+} from "@app/types";
 export type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
 };
@@ -54,13 +54,13 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const assistant = await getAgentConfiguration(auth, req.query.aId as string);
+  const assistant = await getAgentConfiguration(
+    auth,
+    req.query.aId as string,
+    "light"
+  );
 
-  if (
-    !assistant ||
-    (assistant.scope === "private" &&
-      assistant.versionAuthorId !== auth.user()?.id)
-  ) {
+  if (!assistant || (!assistant.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -70,12 +70,12 @@ async function handler(
     });
   }
 
-  if (assistant.scope === "workspace" && !auth.isBuilder()) {
+  if (!assistant.canEdit && !auth.isAdmin()) {
     return apiError(req, res, {
-      status_code: 404,
+      status_code: 403,
       api_error: {
         type: "app_auth_error",
-        message: "Only builders can get agent analytics.",
+        message: "Only editors can get agent analytics.",
       },
     });
   }
@@ -98,7 +98,7 @@ async function handler(
       const period = parseInt(queryValidation.right.period);
 
       const owner = auth.getNonNullableWorkspace();
-      const agentUsers = await getAgentUsers(owner, assistant, period);
+      const agentUsers = await getAgentUsers(auth, assistant, period);
       const users = await UserResource.fetchByModelIds(
         agentUsers.map((r) => r.userId)
       );

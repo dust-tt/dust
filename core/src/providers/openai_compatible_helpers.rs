@@ -10,11 +10,9 @@ use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
 use http::StatusCode;
 use hyper::{body::Buf, Uri};
-use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::io::prelude::*;
-use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
 
@@ -96,6 +94,8 @@ impl FromStr for OpenAIToolChoice {
         }
     }
 }
+
+type ResponseFormat = serde_json::Map<String, serde_json::Value>;
 
 // Outputs types.
 
@@ -252,8 +252,6 @@ pub struct OpenAIChatMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<OpenAIChatMessageContent>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub reasoning_content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<OpenAIToolCall>>,
@@ -265,8 +263,6 @@ pub struct OpenAIChatMessage {
 pub struct OpenAICompletionChatMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reasoning_content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub role: OpenAIChatMessageRole,
@@ -335,10 +331,6 @@ impl TryFrom<&OpenAICompletionChatMessage> for AssistantChatMessage {
             Some(c) => Some(c.clone()),
             None => None,
         };
-        let reasoning_content = match cm.reasoning_content.as_ref() {
-            Some(c) => Some(c.clone()),
-            None => None,
-        };
 
         let function_calls = if let Some(tool_calls) = cm.tool_calls.as_ref() {
             let cfc = tool_calls
@@ -368,11 +360,11 @@ impl TryFrom<&OpenAICompletionChatMessage> for AssistantChatMessage {
 
         Ok(AssistantChatMessage {
             content,
-            reasoning_content,
             role,
             name,
             function_call,
             function_calls,
+            contents: None,
         })
     }
 }
@@ -438,7 +430,6 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
                     Some(c) => Some(OpenAIChatMessageContent::try_from(c)?),
                     None => None,
                 },
-                reasoning_content: None,
                 name: assistant_msg.name.clone(),
                 role: OpenAIChatMessageRole::from(&assistant_msg.role),
                 tool_calls: match assistant_msg.function_calls.as_ref() {
@@ -453,7 +444,6 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
             }),
             ChatMessage::Function(function_msg) => Ok(OpenAIChatMessage {
                 content: Some(OpenAIChatMessageContent::try_from(&function_msg.content)?),
-                reasoning_content: None,
                 name: None,
                 role: OpenAIChatMessageRole::Tool,
                 tool_calls: None,
@@ -461,7 +451,6 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
             }),
             ChatMessage::System(system_msg) => Ok(OpenAIChatMessage {
                 content: Some(OpenAIChatMessageContent::try_from(&system_msg.content)?),
-                reasoning_content: None,
                 name: None,
                 role: OpenAIChatMessageRole::from(&system_msg.role),
                 tool_calls: None,
@@ -469,7 +458,6 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
             }),
             ChatMessage::User(user_msg) => Ok(OpenAIChatMessage {
                 content: Some(OpenAIChatMessageContent::try_from(&user_msg.content)?),
-                reasoning_content: None,
                 name: user_msg.name.clone(),
                 role: OpenAIChatMessageRole::from(&user_msg.role),
                 tool_calls: None,
@@ -638,7 +626,7 @@ pub async fn openai_compatible_chat_completion(
                 _ => None,
             },
             match v.get("response_format") {
-                Some(Value::String(f)) => Some(f.to_string()),
+                Some(Value::Object(f)) => Some(f.clone()),
                 _ => None,
             },
             match v.get("reasoning_effort") {
@@ -789,24 +777,30 @@ fn to_openai_messages(
                 let all_contents_are_text = contents
                     .iter()
                     .all(|c| matches!(c, OpenAIContentBlock::TextContent(_)));
+                let is_tool_result = m.tool_call_id.is_some();
 
                 OpenAIChatMessage {
                     role: m.role,
                     name: m.name,
                     tool_call_id: m.tool_call_id,
                     tool_calls: m.tool_calls,
-                    content: match (contents.len(), all_contents_are_text, squash_text_contents) {
+                    content: match (
+                        contents.len(),
+                        all_contents_are_text,
+                        squash_text_contents,
+                        is_tool_result,
+                    ) {
                         // Case 0: there's no content => return None
-                        (0, _, _) => None,
+                        (0, _, _, _) => None,
                         // Case 1: there's only a single text content => use string format
-                        (1, true, _) => Some(OpenAIChatMessageContent::String(
+                        (1, true, _, _) => Some(OpenAIChatMessageContent::String(
                             match contents.into_iter().next().unwrap() {
                                 OpenAIContentBlock::TextContent(tc) => tc.text.clone(),
                                 _ => unreachable!(),
                             },
                         )),
                         // Case 2: There's more than one content, all contents are text and we want to squash them => squash them
-                        (_, true, true) => Some(OpenAIChatMessageContent::String(
+                        (_, true, true, _) => Some(OpenAIChatMessageContent::String(
                             contents
                                 .into_iter()
                                 .map(|c| match c {
@@ -816,10 +810,22 @@ fn to_openai_messages(
                                 .collect::<Vec<String>>()
                                 .join("\n"),
                         )),
-                        // Case 3: there's more than one content, the content isn't text or we don't want to squash them => keep structured format
-                        (_, _, _) => Some(OpenAIChatMessageContent::Structured(contents)),
+                        // Case 3: it's a tool result, openai only supports string format for tool results, return the stringified content as a string
+                        (_, _, _, true) => Some(OpenAIChatMessageContent::String(
+                            contents
+                                .into_iter()
+                                .map(|c| match c {
+                                    OpenAIContentBlock::TextContent(tc) => tc.text.clone(),
+                                    OpenAIContentBlock::ImageContent(ic) => {
+                                        ic.image_url.url.clone()
+                                    }
+                                })
+                                .collect::<Vec<String>>()
+                                .join("\n"),
+                        )),
+                        // Case 4: there's more than one content, the content isn't text or we don't want to squash them => keep structured format
+                        (_, _, _, _) => Some(OpenAIChatMessageContent::Structured(contents)),
                     },
-                    reasoning_content: None,
                 }
             }
         })
@@ -843,7 +849,6 @@ fn to_openai_messages(
                         .collect()
                 }),
                 content: m.content,
-                reasoning_content: None,
             }
         })
         // Remove system messages if requested.
@@ -883,7 +888,7 @@ async fn streamed_chat_completion(
     max_tokens: Option<i32>,
     presence_penalty: Option<f32>,
     frequency_penalty: Option<f32>,
-    response_format: Option<String>,
+    response_format: Option<ResponseFormat>,
     reasoning_effort: Option<String>,
     logprobs: Option<bool>,
     top_logprobs: Option<i32>,
@@ -978,9 +983,7 @@ async fn streamed_chat_completion(
         body["tool_choice"] = json!(tool_choice);
     }
     if let Some(response_format) = response_format {
-        body["response_format"] = json!({
-            "type": response_format,
-        });
+        body["response_format"] = json!(response_format);
     }
     if let Some(reasoning_effort) = reasoning_effort {
         body["reasoning_effort"] = json!(reasoning_effort);
@@ -1006,7 +1009,7 @@ async fn streamed_chat_completion(
 
     let mut stream = client.stream();
 
-    let chunks: Arc<Mutex<Vec<ChatChunk>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut chunks: Vec<ChatChunk> = Vec::new();
     let mut usage = None;
     let mut request_id: Option<String> = None;
 
@@ -1027,10 +1030,7 @@ async fn streamed_chat_completion(
                         break 'stream;
                     }
                     _ => {
-                        let index = {
-                            let guard = chunks.lock();
-                            guard.len()
-                        };
+                        let index = chunks.len();
 
                         let chunk: ChatChunk = match serde_json::from_str(e.data.as_str()) {
                             Ok(c) => c,
@@ -1138,7 +1138,7 @@ async fn streamed_chat_completion(
                         };
 
                         if !chunk.choices.is_empty() {
-                            chunks.lock().push(chunk);
+                            chunks.push(chunk);
                         }
                     }
                 },
@@ -1202,14 +1202,13 @@ async fn streamed_chat_completion(
     }
 
     let mut completion = {
-        let guard = chunks.lock();
-        let f = match guard.len() {
+        let f = match chunks.len() {
             0 => Err(anyhow!("No chunks received from {}", provider_name)),
-            _ => Ok(guard[0].clone()),
+            _ => Ok(chunks[0].clone()),
         }?;
 
         // merge logprobs from all choices of all chunks
-        let logprobs: Vec<OpenAIChatChoiceLogprob> = guard
+        let logprobs: Vec<OpenAIChatChoiceLogprob> = chunks
             .iter()
             .flat_map(|chunk| {
                 chunk
@@ -1230,7 +1229,6 @@ async fn streamed_chat_completion(
                 .map(|c| OpenAIChatChoice {
                     message: OpenAICompletionChatMessage {
                         content: Some("".to_string()),
-                        reasoning_content: None,
                         name: None,
                         role: OpenAIChatMessageRole::System,
                         tool_calls: None,
@@ -1249,8 +1247,8 @@ async fn streamed_chat_completion(
             usage,
         };
 
-        for i in 0..guard.len() {
-            let a = guard[i].clone();
+        for i in 0..chunks.len() {
+            let a = chunks[i].clone();
             if a.choices.len() != f.choices.len() {
                 Err(anyhow!("Inconsistent number of choices in streamed chunks"))?;
             }
@@ -1286,14 +1284,6 @@ async fn streamed_chat_completion(
                             ));
                         }
                     },
-                };
-
-                match a.choices[j].delta.get("reasoning_content") {
-                    None => (),
-                    Some(reasoning_content) => {
-                        c.choices[j].message.reasoning_content =
-                            Some(reasoning_content.as_str().unwrap_or("").to_string());
-                    }
                 };
 
                 if let Some(tool_calls) = a.choices[j]
@@ -1352,7 +1342,7 @@ async fn streamed_chat_completion(
                                         ));
                                     }
 
-                                    tool_calls[index].function.arguments += a;
+                                    tool_calls[index].function.arguments += &a;
                                 }
                             }
                             _ => (),
@@ -1367,10 +1357,6 @@ async fn streamed_chat_completion(
     // for all messages, edit the content and strip leading and trailing spaces and \n
     for m in completion.choices.iter_mut() {
         m.message.content = match m.message.content.as_ref() {
-            None => None,
-            Some(c) => Some(c.trim().to_string()),
-        };
-        m.message.reasoning_content = match m.message.reasoning_content.as_ref() {
             None => None,
             Some(c) => Some(c.trim().to_string()),
         };
@@ -1394,7 +1380,7 @@ async fn chat_completion(
     max_tokens: Option<i32>,
     presence_penalty: Option<f32>,
     frequency_penalty: Option<f32>,
-    response_format: Option<String>,
+    response_format: Option<ResponseFormat>,
     reasoning_effort: Option<String>,
     logprobs: Option<bool>,
     top_logprobs: Option<i32>,
@@ -1427,9 +1413,7 @@ async fn chat_completion(
     }
 
     if let Some(response_format) = response_format {
-        body["response_format"] = json!({
-            "type": response_format,
-        });
+        body["response_format"] = json!(response_format)
     }
     if tools.len() > 0 {
         body["tools"] = json!(tools);
@@ -1522,10 +1506,6 @@ async fn chat_completion(
     // for all messages, edit the content and strip leading and trailing spaces and \n
     for m in completion.choices.iter_mut() {
         m.message.content = match m.message.content.as_ref() {
-            None => None,
-            Some(c) => Some(c.trim().to_string()),
-        };
-        m.message.reasoning_content = match m.message.reasoning_content.as_ref() {
             None => None,
             Some(c) => Some(c.trim().to_string()),
         };

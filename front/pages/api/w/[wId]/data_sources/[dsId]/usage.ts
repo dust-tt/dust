@@ -1,7 +1,3 @@
-import type {
-  DataSourceWithAgentsUsageType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
@@ -9,6 +5,10 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  DataSourceWithAgentsUsageType,
+  WithAPIErrorResponse,
+} from "@app/types";
 
 export type GetDataSourceUsageResponseBody = {
   usage: DataSourceWithAgentsUsageType;

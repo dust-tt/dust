@@ -3,6 +3,10 @@ name: Publish SDK Client
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 concurrency:
   group: publish_sdk_client
   cancel-in-progress: false

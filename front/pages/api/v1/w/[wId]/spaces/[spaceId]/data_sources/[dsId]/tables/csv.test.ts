@@ -93,10 +93,15 @@ vi.mock("@app/lib/file_storage", () => ({
       createReadStream: () => Readable.from([mockFileContent.content]),
     }),
   })),
+  getPrivateUploadBucket: vi.fn(() => ({
+    file: () => ({
+      createReadStream: () => Readable.from([mockFileContent.content]),
+    }),
+  })),
 }));
 
 describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv", () => {
-  itInTransaction("succesfully upserts a CSV received as file", async (t) => {
+  itInTransaction("successfully upserts a CSV received as file", async (t) => {
     const { req, res, workspace, globalGroup } =
       await createPublicApiMockRequest({
         systemKey: true,
@@ -129,6 +134,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
       description: "desc",
       fileId: file.sId,
       tableId: "fooTable-1",
+      allowEmptySchema: true,
     };
 
     // First fetch is to create the table
@@ -221,7 +227,19 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
         description: "desc",
         fileId: file.sId,
         tableId: "fooTable-1",
+        allowEmptySchema: true,
       };
+
+      global.fetch = vi.fn().mockImplementation(async (url: string) => {
+        if (url.endsWith("/validate_csv_content")) {
+          return Promise.resolve(
+            new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            })
+          );
+        }
+      });
 
       await handler(req, res);
 

@@ -1,15 +1,11 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Err, MIME_TYPES, Ok } from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import {
   getRepo,
   getReposPage,
   installationIdFromConnectionId,
+  MAX_REPOSITORIES_PAGE_SIZE,
 } from "@connectors/connectors/github/lib/github_api";
 import {
   getCodeRootInternalId,
@@ -41,11 +37,19 @@ import {
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  DataSourceConfig,
+} from "@connectors/types";
+import { INTERNAL_MIME_TYPES, normalizeError } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "github" });
 
 export class GithubConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "github";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -103,7 +107,18 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       const newGithubInstallationId =
         await installationIdFromConnectionId(connectionId);
 
-      if (connectorState?.installationId !== newGithubInstallationId) {
+      if (
+        connectorState?.installationId !== null &&
+        connectorState?.installationId !== newGithubInstallationId
+      ) {
+        logger.info(
+          {
+            previousInstallationId: connectorState?.installationId,
+            newInstallationId: newGithubInstallationId,
+          },
+          "Github connector installationId mismatch"
+        );
+
         return new Err(
           new ConnectorManagerError(
             "CONNECTOR_OAUTH_TARGET_MISMATCH",
@@ -112,11 +127,15 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         );
       }
 
+      await connectorState.update({
+        installationId: newGithubInstallationId,
+      });
+
       await c.update({ connectionId });
 
       // If connector was previously paused, unpause it.
       if (c.isPaused()) {
-        await this.unpause();
+        await this.unpauseAndResume();
       }
 
       await launchGithubFullSyncWorkflow({
@@ -154,7 +173,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -210,7 +229,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -232,7 +251,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       });
       return new Ok(this.connectorId.toString());
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
@@ -259,7 +278,11 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       let nodes: ContentNode[] = [];
       let pageNumber = 1; // 1-indexed
       for (;;) {
-        const pageRes = await getReposPage(c, pageNumber);
+        const pageRes = await getReposPage(
+          c,
+          pageNumber,
+          MAX_REPOSITORIES_PAGE_SIZE
+        );
 
         if (pageRes.isErr()) {
           return new Err(
@@ -286,7 +309,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             expandable: true,
             permission: "read",
             lastUpdatedAt: null,
-            mimeType: MIME_TYPES.GITHUB.REPOSITORY,
+            mimeType: INTERNAL_MIME_TYPES.GITHUB.REPOSITORY,
           }))
         );
       }
@@ -357,7 +380,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               expandable: false,
               permission: "read",
               lastUpdatedAt: latestIssue.updatedAt.getTime(),
-              mimeType: MIME_TYPES.GITHUB.ISSUES,
+              mimeType: INTERNAL_MIME_TYPES.GITHUB.ISSUES,
             });
           }
 
@@ -371,7 +394,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               expandable: false,
               permission: "read",
               lastUpdatedAt: latestDiscussion.updatedAt.getTime(),
-              mimeType: MIME_TYPES.GITHUB.DISCUSSIONS,
+              mimeType: INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,
             });
           }
 
@@ -385,7 +408,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               expandable: true,
               permission: "read",
               lastUpdatedAt: codeRepo.codeUpdatedAt.getTime(),
-              mimeType: MIME_TYPES.GITHUB.CODE_ROOT,
+              mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_ROOT,
             });
           }
 
@@ -427,7 +450,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               expandable: true,
               permission: "read",
               lastUpdatedAt: directory.codeUpdatedAt.getTime(),
-              mimeType: MIME_TYPES.GITHUB.CODE_DIRECTORY,
+              mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_DIRECTORY,
             });
           });
 
@@ -441,7 +464,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
               expandable: false,
               permission: "read",
               lastUpdatedAt: file.codeUpdatedAt.getTime(),
-              mimeType: MIME_TYPES.GITHUB.CODE_FILE,
+              mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_FILE,
             });
           });
 
@@ -463,6 +486,15 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           assertNever(type);
       }
     }
+  }
+
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
   }
 
   async setConfigurationKey({
@@ -509,9 +541,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       }
 
       case "useProxy": {
-        await connector.update({
-          useProxy: configValue === "true",
-        });
+        await connector.setUseProxy(configValue === "true");
         return new Ok(void 0);
       }
 
@@ -556,32 +586,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
-    }
-    await connector.markAsPaused();
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
-    }
-    await connector.markAsUnpaused();
-    await launchGithubFullSyncWorkflow({
-      connectorId: this.connectorId,
-      syncCodeOnly: false,
-    });
-
-    return new Ok(undefined);
   }
 
   async setPermissions(): Promise<Result<void, Error>> {

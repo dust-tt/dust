@@ -1,16 +1,4 @@
 import type {
-  AgentConfigurationType,
-  AgentMessageType,
-  ConversationType,
-  ConversationWithoutContentType,
-  LightAgentConfigurationType,
-  MessageType,
-  Result,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, GLOBAL_AGENTS_SID, Ok } from "@dust-tt/types";
-import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
@@ -27,13 +15,25 @@ import {
   AgentMessage,
   AgentMessage as AgentMessageModel,
   AgentMessageFeedback,
-  Conversation,
+  ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type {
+  AgentConfigurationType,
+  AgentMessageType,
+  ConversationType,
+  ConversationWithoutContentType,
+  LightAgentConfigurationType,
+  MessageType,
+  Result,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -156,7 +156,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
               attributes: ["id", "sId"],
               include: [
                 {
-                  model: Conversation,
+                  model: ConversationModel,
                   as: "conversation",
                   attributes: ["id", "sId"],
                 },
@@ -198,10 +198,12 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     startDate,
     endDate,
     workspace,
+    transaction,
   }: {
     startDate: Date;
     endDate: Date;
     workspace: WorkspaceType;
+    transaction?: Transaction;
   }) {
     const agentMessageFeedback = await AgentMessageFeedback.findAll({
       where: {
@@ -217,6 +219,20 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           model: AgentMessageModel,
           attributes: ["id"],
           as: "agentMessage",
+          include: [
+            {
+              model: Message,
+              as: "message",
+              attributes: ["id", "sId"],
+              include: [
+                {
+                  model: ConversationModel,
+                  as: "conversation",
+                  attributes: ["id", "sId"],
+                },
+              ],
+            },
+          ],
         },
         {
           model: UserResource.model,
@@ -225,6 +241,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
         },
       ],
       order: [["id", "ASC"]],
+      transaction,
     });
 
     return agentMessageFeedback
@@ -235,6 +252,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
           feedback.get(),
           {
             user: feedback.user,
+            conversationId: feedback.agentMessage?.message?.conversation?.sId,
           }
         );
       });
@@ -275,6 +293,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
     const feedbackForMessages = await Message.findAll({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: conversation.id,
         agentMessageId: {
           [Op.ne]: null,
@@ -354,6 +373,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       where: {
         sId: messageId,
         conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       include: [
         {
@@ -420,6 +440,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
     const agentConfiguration = await AgentConfiguration.findOne({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         sId: message.agentMessage.agentConfigurationId,
       },
       attributes: ["id", "sId", "version"],

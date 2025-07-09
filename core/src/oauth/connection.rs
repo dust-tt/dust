@@ -2,17 +2,18 @@ use crate::oauth::{
     encryption::{seal_str, unseal_str},
     providers::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
-        gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
-        intercom::IntercomConnectionProvider, microsoft::MicrosoftConnectionProvider,
-        mock::MockConnectionProvider, notion::NotionConnectionProvider,
-        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
-        zendesk::ZendeskConnectionProvider,
+        gmail::GmailConnectionProvider, gong::GongConnectionProvider,
+        google_drive::GoogleDriveConnectionProvider, hubspot::HubspotConnectionProvider,
+        intercom::IntercomConnectionProvider, mcp::MCPConnectionProvider,
+        microsoft::MicrosoftConnectionProvider, mock::MockConnectionProvider,
+        notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
+        slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
 use crate::utils;
 use crate::utils::ParseError;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use rslock::LockManager;
@@ -22,7 +23,7 @@ use std::time::Duration;
 use std::{env, fmt};
 use tracing::{error, info};
 
-use super::providers::utils::ProviderHttpRequestError;
+use super::{credential::Credential, providers::utils::ProviderHttpRequestError};
 
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
@@ -53,6 +54,8 @@ pub enum ConnectionErrorCode {
     // Refresh Access Token
     ConnectionNotFinalizedError,
     ProviderAccessTokenRefreshError,
+    // Invalid Metadata
+    InvalidMetadataError,
     // Internal Errors
     InternalError,
 }
@@ -89,6 +92,7 @@ pub enum ConnectionProvider {
     Github,
     Gong,
     GoogleDrive,
+    Gmail,
     Intercom,
     Microsoft,
     Notion,
@@ -96,6 +100,8 @@ pub enum ConnectionProvider {
     Mock,
     Zendesk,
     Salesforce,
+    Hubspot,
+    Mcp,
 }
 
 impl FromStr for ConnectionProvider {
@@ -126,6 +132,7 @@ pub struct FinalizeResult {
     pub access_token_expiry: Option<u64>,
     pub refresh_token: Option<String>,
     pub raw_json: serde_json::Value,
+    pub extra_metadata: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize)]
@@ -141,14 +148,47 @@ pub struct RefreshResult {
 pub trait Provider {
     fn id(&self) -> ConnectionProvider;
 
+    fn reqwest_client(&self) -> reqwest::Client {
+        if let (Ok(proxy_host), Ok(proxy_port), Ok(proxy_user_name), Ok(proxy_user_password)) = (
+            env::var("PROXY_HOST"),
+            env::var("PROXY_PORT"),
+            env::var("PROXY_USER_NAME"),
+            env::var("PROXY_USER_PASSWORD"),
+        ) {
+            match reqwest::Proxy::all(format!(
+                "http://{}:{}@{}:{}",
+                proxy_user_name, proxy_user_password, proxy_host, proxy_port
+            )) {
+                Ok(proxy) => match reqwest::Client::builder().proxy(proxy).build() {
+                    Ok(client) => client,
+                    Err(e) => {
+                        error!(error = ?e, "Failed to create client with proxy");
+                        reqwest::Client::new()
+                    }
+                },
+                Err(e) => {
+                    error!(error = ?e, "Failed to create proxy, falling back to no proxy");
+                    reqwest::Client::new()
+                }
+            }
+        } else {
+            reqwest::Client::new()
+        }
+    }
+
     async fn finalize(
         &self,
         connection: &Connection,
+        related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError>;
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError>;
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError>;
 
     // This method scrubs raw_json to remove information that should not exfill `oauth`, in
     // particular the `refresh_token`. By convetion the `access_token` should be scrubbed as well
@@ -188,6 +228,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Github => Box::new(GithubConnectionProvider::new()),
         ConnectionProvider::Gong => Box::new(GongConnectionProvider::new()),
         ConnectionProvider::GoogleDrive => Box::new(GoogleDriveConnectionProvider::new()),
+        ConnectionProvider::Gmail => Box::new(GmailConnectionProvider::new()),
         ConnectionProvider::Intercom => Box::new(IntercomConnectionProvider::new()),
         ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
@@ -195,6 +236,8 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Mock => Box::new(MockConnectionProvider::new()),
         ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
         ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
+        ConnectionProvider::Hubspot => Box::new(HubspotConnectionProvider::new()),
+        ConnectionProvider::Mcp => Box::new(MCPConnectionProvider::new()),
     }
 }
 
@@ -212,6 +255,8 @@ pub enum ProviderError {
     InternalError(anyhow::Error),
     #[error("Token revoked.")]
     TokenRevokedError,
+    #[error("Invalid metadata: {0}.")]
+    InvalidMetadataError(String),
 }
 
 impl From<anyhow::Error> for ProviderError {
@@ -233,6 +278,10 @@ impl ProviderError {
                 code: ConnectionErrorCode::TokenRevokedError,
                 message: self.to_string(),
             },
+            ProviderError::InvalidMetadataError(_) => ConnectionError {
+                code: ConnectionErrorCode::InvalidMetadataError,
+                message: self.to_string(),
+            },
             ProviderError::InternalError(_) => ConnectionError {
                 code: ConnectionErrorCode::InternalError,
                 message: "Failed to finalize connection.".to_string(),
@@ -250,6 +299,10 @@ impl ProviderError {
             },
             ProviderError::TokenRevokedError => ConnectionError {
                 code: ConnectionErrorCode::TokenRevokedError,
+                message: self.to_string(),
+            },
+            ProviderError::InvalidMetadataError(_) => ConnectionError {
+                code: ConnectionErrorCode::InvalidMetadataError,
                 message: self.to_string(),
             },
             ProviderError::InternalError(_) => ConnectionError {
@@ -457,18 +510,23 @@ impl Connection {
             .retrieve_connection_by_provider(self.provider, &self.connection_id)
             .await?;
 
-        self.created = connection.created;
-        self.provider = connection.provider;
-        self.status = connection.status;
-        self.metadata = connection.metadata;
-        self.redirect_uri = connection.redirect_uri;
-        self.encrypted_authorization_code = connection.encrypted_authorization_code;
-        self.access_token_expiry = connection.access_token_expiry;
-        self.encrypted_access_token = connection.encrypted_access_token;
-        self.encrypted_refresh_token = connection.encrypted_refresh_token;
-        self.encrypted_raw_json = connection.encrypted_raw_json;
-        self.related_credential_id = connection.related_credential_id;
-
+        if let Some(connection) = connection {
+            self.created = connection.created;
+            self.provider = connection.provider;
+            self.status = connection.status;
+            self.metadata = connection.metadata;
+            self.redirect_uri = connection.redirect_uri;
+            self.encrypted_authorization_code = connection.encrypted_authorization_code;
+            self.access_token_expiry = connection.access_token_expiry;
+            self.encrypted_access_token = connection.encrypted_access_token;
+            self.encrypted_refresh_token = connection.encrypted_refresh_token;
+            self.encrypted_raw_json = connection.encrypted_raw_json;
+            self.related_credential_id = connection.related_credential_id;
+        } else {
+            return Err(anyhow::anyhow!(
+                "Connection not found in store while reloading",
+            ));
+        }
         Ok(())
     }
 
@@ -558,8 +616,17 @@ impl Connection {
 
         let now = utils::now();
 
+        let credential = match self.related_credential_id() {
+            Some(id) => match store.retrieve_credential(&id).await {
+                Err(_) => None,
+                Ok(Some(credential)) => Some(credential),
+                Ok(None) => None,
+            },
+            None => None,
+        };
+
         let finalize = provider(self.provider)
-            .finalize(self, code, redirect_uri)
+            .finalize(self, credential, code, redirect_uri)
             .await?;
 
         self.status = ConnectionStatus::Finalized;
@@ -575,6 +642,19 @@ impl Connection {
         };
         self.encrypted_raw_json = Some(seal_str(&serde_json::to_string(&finalize.raw_json)?)?);
         store.update_connection_secrets(self).await?;
+
+        // If the provider has extra metadata, merge it with the connection metadata.
+        if let Some(extra_metadata) = finalize.extra_metadata {
+            let mut merged_metadata = match self.metadata.clone() {
+                serde_json::Value::Object(map) => map,
+                _ => Err(anyhow!("Invalid `metadata` stored on connection."))?,
+            };
+            for (key, value) in extra_metadata {
+                merged_metadata.insert(key.clone(), value.clone());
+            }
+            self.metadata = serde_json::Value::Object(merged_metadata);
+            store.update_connection_metadata(self).await?;
+        }
 
         info!(
             connection_id = self.connection_id(),
@@ -704,7 +784,16 @@ impl Connection {
 
         let now = utils::now();
 
-        let refresh = provider(self.provider).refresh(self).await?;
+        let credential = match self.related_credential_id() {
+            Some(id) => match store.retrieve_credential(&id).await {
+                Err(_) => None,
+                Ok(Some(credential)) => Some(credential),
+                Ok(None) => None,
+            },
+            None => None,
+        };
+
+        let refresh = provider(self.provider).refresh(self, credential).await?;
 
         self.access_token_expiry = refresh.access_token_expiry;
         self.encrypted_access_token = Some(seal_str(&refresh.access_token)?);

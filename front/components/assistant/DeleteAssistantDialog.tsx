@@ -7,21 +7,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
+import { useState } from "react";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import {
   useAgentUsage,
   useDeleteAgentConfiguration,
 } from "@app/lib/swr/assistants";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface DeleteAssistantDialogProps {
   agentConfiguration?: LightAgentConfigurationType;
   isOpen: boolean;
-  isPrivateAssistant?: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
 }
@@ -29,7 +29,6 @@ interface DeleteAssistantDialogProps {
 export function DeleteAssistantDialog({
   agentConfiguration,
   isOpen,
-  isPrivateAssistant,
   onClose,
   owner,
 }: DeleteAssistantDialogProps) {
@@ -39,6 +38,7 @@ export function DeleteAssistantDialog({
     workspaceId: owner.sId,
   });
 
+  const [isDeleting, setIsDeleting] = useState(false);
   const doDelete = useDeleteAgentConfiguration({ owner, agentConfiguration });
 
   return (
@@ -52,24 +52,20 @@ export function DeleteAssistantDialog({
     >
       <DialogContent size="md" isAlertDialog>
         <DialogHeader hideButton>
-          <DialogTitle>Deleting the agent</DialogTitle>
+          <DialogTitle>Archiving the agent</DialogTitle>
           <DialogDescription>
-            {isPrivateAssistant ? (
-              "Deleting the agent will be permanent."
-            ) : (
-              <div>
-                <span className="font-bold">
-                  {agentUsage &&
-                    assistantUsageMessage({
-                      usage: agentUsage.agentUsage,
-                      isError: agentUsage.isAgentUsageError,
-                      isLoading: agentUsage.isAgentUsageLoading,
-                      assistantName: agentConfiguration?.name ?? "",
-                    })}
-                </span>{" "}
-                This will permanently delete the agent for everyone.
-              </div>
-            )}
+            <div>
+              <span className="font-bold">
+                {agentUsage &&
+                  assistantUsageMessage({
+                    usage: agentUsage.agentUsage,
+                    isError: agentUsage.isAgentUsageError,
+                    isLoading: agentUsage.isAgentUsageLoading,
+                    assistantName: agentConfiguration?.name ?? "",
+                  })}
+              </span>{" "}
+              This will archive the agent for everyone.
+            </div>
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
@@ -78,15 +74,18 @@ export function DeleteAssistantDialog({
         <DialogFooter
           leftButtonProps={{
             label: "Cancel",
+            disabled: isDeleting,
             variant: "outline",
           }}
           rightButtonProps={{
-            label: isPrivateAssistant
-              ? "Delete the agent"
-              : "Delete for everyone",
+            label: "Archive for everyone",
+            disabled: isDeleting,
             variant: "warning",
-            onClick: async () => {
+            onClick: async (e: React.MouseEvent) => {
+              e.preventDefault();
+              setIsDeleting(true);
               await doDelete();
+              setIsDeleting(false);
               onClose();
             },
           }}

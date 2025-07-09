@@ -1,6 +1,7 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+
+import type { LightWorkspaceType } from "@app/types";
 
 export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
   const [isNavigationBarOpen, setIsNavigationBarOpen] = useState(true);

@@ -1,16 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import {
-  Err,
-  getGoogleSheetContentNodeInternalId,
-  MIME_TYPES,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok, removeNulls } from "@dust-tt/client";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import type { InferAttributes, WhereOptions } from "sequelize";
@@ -21,11 +10,9 @@ import {
   GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
 } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
+import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/permissions";
-import {
-  folderHasChildren,
-  getDrives,
-} from "@connectors/connectors/google_drive/temporal/activities";
+import { getDrives } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
 import {
   launchGoogleDriveFullSyncWorkflow,
   launchGoogleDriveIncrementalSyncWorkflow,
@@ -38,6 +25,7 @@ import {
 import type { Sheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
 import {
   driveObjectToDustType,
+  folderHasChildren,
   getAuthObject,
   getDriveClient,
   getDriveFileId,
@@ -64,11 +52,23 @@ import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
-import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  DataSourceConfig,
+  GoogleDriveObjectType,
+} from "@connectors/types";
+import {
+  FILE_ATTRIBUTES_TO_FETCH,
+  getGoogleSheetContentNodeInternalId,
+  INTERNAL_MIME_TYPES,
+  normalizeError,
+} from "@connectors/types";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "google_drive";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -152,7 +152,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
 
     // Ideally we want to check that the Google Project ID is the same as the one from the connector
-    // I couln't find an easy way to access it from the googleapis library
+    // I couldn't find an easy way to access it from the googleapis library
     // Workaround is checking the domain of the user who is updating the connector
     if (connectionId) {
       try {
@@ -199,7 +199,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
 
       // If connector was previously paused, unpause it.
       if (connector.isPaused()) {
-        await this.unpause();
+        await this.unpauseAndResume();
       }
     }
 
@@ -248,7 +248,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
       );
     }
-    const authCredentials = await getAuthObject(c.connectionId);
 
     if (isTablesView && filterPermission !== "read") {
       return new Err(
@@ -260,6 +259,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
+      const authCredentials = await getAuthObject(c.connectionId);
       const parentDriveId =
         parentInternalId && getDriveFileId(parentInternalId);
       if (filterPermission === "read") {
@@ -291,7 +291,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             parentId: parentDriveId,
           };
           if (isTablesView) {
-            // In tables view, we only show folders, spreadhsheets and sheets.
+            // In tables view, we only show folders, spreadsheets and sheets.
             // We filter out folders that only contain Documents.
             where.mimeType = [
               "application/vnd.google-apps.folder",
@@ -332,7 +332,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 permission: "read",
                 mimeType:
                   type === "folder"
-                    ? MIME_TYPES.GOOGLE_DRIVE.FOLDER
+                    ? INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER
                     : f.mimeType,
               };
             },
@@ -378,6 +378,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           const nodes: ContentNode[] = await Promise.all(
             drives.map(async (d): Promise<ContentNode> => {
               const driveObject = await getGoogleDriveObject({
+                connectorId: c.id,
                 authCredentials,
                 driveObjectId: d.id,
               });
@@ -407,7 +408,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 }))
                   ? "read"
                   : "none",
-                mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+                mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
               };
             })
           );
@@ -423,7 +424,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             lastUpdatedAt: null,
             expandable: true,
             permission: "none",
-            mimeType: MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
+            mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
           });
 
           nodes.sort((a, b) => {
@@ -477,6 +478,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           const nodes: ContentNode[] = await Promise.all(
             remoteFolders.map(async (rf): Promise<ContentNode> => {
               const driveObject = await driveObjectToDustType(
+                this.connectorId,
                 rf,
                 authCredentials
               );
@@ -501,7 +503,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 }))
                   ? "read"
                   : "none",
-                mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+                mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
               };
             })
           );
@@ -525,11 +527,11 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         return new Err(
           new ConnectorManagerError(
             "EXTERNAL_OAUTH_TOKEN_ERROR",
-            "Google Drive authorization error, please re-authorize."
+            `Google Drive authorization error, please re-authorize. Error: ${e.message}`
           )
         );
       }
-      // Unanhdled error, throwing to get a 500.
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
   }
@@ -678,6 +680,56 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+    memoizationKey,
+  }: {
+    internalId: string;
+    memoizationKey: string;
+  }): Promise<Result<string[], Error>> {
+    try {
+      const connector = await ConnectorResource.fetchById(this.connectorId);
+      if (!connector) {
+        return new Err(
+          new Error(`Connector not found with id ${this.connectorId}`)
+        );
+      }
+
+      if (
+        internalId === getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID)
+      ) {
+        return new Ok([]);
+      }
+
+      const authCredentials = await getAuthObject(connector.connectionId);
+
+      const driveObject = await getGoogleDriveObject({
+        connectorId: this.connectorId,
+        authCredentials,
+        driveObjectId: getDriveFileId(internalId),
+        cacheKey: { connectorId: this.connectorId, ts: memoizationKey },
+      });
+
+      if (!driveObject) {
+        return new Err(
+          new Error(`Drive object not found with id ${internalId}`)
+        );
+      }
+
+      const parents = await getFileParentsMemoized(
+        this.connectorId,
+        authCredentials,
+        driveObject,
+        memoizationKey,
+        { includeAllRemoteParents: true }
+      );
+
+      return new Ok(parents.map((p) => getInternalId(p)));
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+  }
+
   async getConfigurationKey({
     configKey,
   }: {
@@ -725,43 +777,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     return launchGoogleGarbageCollector(this.connectorId);
   }
 
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsPaused();
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsUnpaused();
-    const r = await launchGoogleDriveFullSyncWorkflow(
-      this.connectorId,
-      null,
-      []
-    );
-    if (r.isErr()) {
-      return r;
-    }
-    const incrementalSync = await launchGoogleDriveIncrementalSyncWorkflow(
-      this.connectorId
-    );
-    if (incrementalSync.isErr()) {
-      return incrementalSync;
-    }
-    return new Ok(undefined);
-  }
-
   async stop(): Promise<Result<undefined, Error>> {
     await terminateAllWorkflowsForConnectorId(this.connectorId);
     return new Ok(undefined);
@@ -804,6 +819,7 @@ async function getFoldersAsContentNodes({
     folders,
     async (f): Promise<ContentNode | null> => {
       const fd = await getGoogleDriveObject({
+        connectorId: f.connectorId,
         authCredentials,
         driveObjectId: f.folderId,
       });
@@ -825,7 +841,7 @@ async function getFoldersAsContentNodes({
           viewType,
         }),
         permission: "read",
-        mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+        mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
       };
     },
     { concurrency: 4 }

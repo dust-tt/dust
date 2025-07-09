@@ -5,10 +5,10 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
   AgentMessage,
-  Conversation,
+  ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -43,7 +43,7 @@ async function updateConversationsForWorkspace(
   execute: boolean,
   logger: Logger
 ) {
-  const conversations = await Conversation.findAll({
+  const conversations = await ConversationModel.findAll({
     attributes: ["id", "sId", "groupIds"],
     where: { workspaceId },
   });
@@ -56,7 +56,7 @@ async function updateConversationsForWorkspace(
   const conversationChunks = _.chunk(conversations, 16);
 
   // get workspace sid
-  const workspace = await Workspace.findByPk(workspaceId);
+  const workspace = await WorkspaceModel.findByPk(workspaceId);
 
   if (!workspace) {
     logger.error(
@@ -81,7 +81,7 @@ async function updateConversationsForWorkspace(
 
 async function updateConversation(
   auth: Authenticator,
-  conversation: Conversation,
+  conversation: ConversationModel,
   execute: boolean,
   logger: Logger
 ) {
@@ -117,6 +117,7 @@ async function updateConversation(
         where: { sId: agentConfigurationIds },
       })
     )
+      // @ts-expect-error `groupIds` was removed
       .map((agent) => agent.groupIds)
       .flat()
   );

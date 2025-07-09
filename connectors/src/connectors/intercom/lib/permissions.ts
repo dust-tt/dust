@@ -1,6 +1,3 @@
-import type { ContentNode, ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
-
 import {
   getHelpCenterCollectionInternalId,
   getHelpCenterInternalId,
@@ -8,12 +5,15 @@ import {
   getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
-  IntercomCollection,
-  IntercomTeam,
-  IntercomWorkspace,
+  IntercomCollectionModel,
+  IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ContentNode } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieve all selected nodes by the admin when setting permissions.
@@ -33,7 +33,7 @@ export async function retrieveSelectedNodes({
     throw new Error("Connector not found");
   }
 
-  const collections = await IntercomCollection.findAll({
+  const collections = await IntercomCollectionModel.findAll({
     where: {
       connectorId: connectorId,
       permission: "read",
@@ -65,13 +65,13 @@ export async function retrieveSelectedNodes({
       expandable,
       permission: collection.permission,
       lastUpdatedAt: collection.updatedAt.getTime() || null,
-      mimeType: MIME_TYPES.INTERCOM.COLLECTION,
+      mimeType: INTERNAL_MIME_TYPES.INTERCOM.COLLECTION,
     });
   });
 
   const teamsNodes: ContentNode[] = [];
 
-  const intercomWorkspace = await IntercomWorkspace.findOne({
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
     where: { connectorId },
   });
   if (
@@ -87,11 +87,11 @@ export async function retrieveSelectedNodes({
       expandable: true,
       permission: "read",
       lastUpdatedAt: null,
-      mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
+      mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAMS_FOLDER,
     });
   }
 
-  const teams = await IntercomTeam.findAll({
+  const teams = await IntercomTeamModel.findAll({
     where: {
       connectorId: connectorId,
       permission: "read",
@@ -107,7 +107,7 @@ export async function retrieveSelectedNodes({
       expandable: false,
       permission: team.permission,
       lastUpdatedAt: team.updatedAt.getTime() || null,
-      mimeType: MIME_TYPES.INTERCOM.TEAM,
+      mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAM,
     });
   });
 

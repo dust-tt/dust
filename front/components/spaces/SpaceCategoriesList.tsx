@@ -16,12 +16,6 @@ import {
   RobotIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceWithAgentsUsageType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import React from "react";
@@ -29,8 +23,16 @@ import React from "react";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type {
+  DataSourceWithAgentsUsageType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@app/types";
 
 type RowData = {
   category: string;
@@ -70,7 +72,7 @@ const getTableColumns = () => {
               title={
                 info.row.original.usage.count === 0
                   ? "Un-used"
-                  : `Used by ${info.row.original.usage.agentNames.join(", ")}`
+                  : `Used by ${info.row.original.usage.agents.map((a) => a.name).join(", ")}`
               }
             >
               <span className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -87,6 +89,7 @@ const getTableColumns = () => {
 
 type SpaceCategoriesListProps = {
   isAdmin: boolean;
+  isBuilder: boolean;
   canWriteInSpace: boolean;
   onButtonClick?: () => void;
   onSelect: (category: string) => void;
@@ -96,6 +99,7 @@ type SpaceCategoriesListProps = {
 
 export const SpaceCategoriesList = ({
   isAdmin,
+  isBuilder,
   onButtonClick,
   canWriteInSpace,
   onSelect,
@@ -107,13 +111,16 @@ export const SpaceCategoriesList = ({
     spaceId: space.sId,
   });
 
-  const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
-    React.useContext(SpaceSearchContext);
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
   const rows: RowData[] = spaceInfo
     ? removeNulls(
         DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
-          spaceInfo.categories[category]
+          spaceInfo.categories[category] &&
+          hasFeature(CATEGORY_DETAILS[category].flag)
             ? {
                 category,
                 ...spaceInfo.categories[category],
@@ -180,10 +187,16 @@ export const SpaceCategoriesList = ({
             label="Scrape a website"
           />
           <DropdownMenuItem
-            disabled={!canWriteInSpace}
+            disabled={!isBuilder || !canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
             icon={CommandLineIcon}
             label="Create a Dust App"
+          />
+          <DropdownMenuItem
+            disabled={!isAdmin}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/actions`}
+            icon={MCP_SPECIFICATION.cardIcon}
+            label="Tools"
           />
         </DropdownMenuContent>
       </DropdownMenu>
@@ -210,8 +223,6 @@ export const SpaceCategoriesList = ({
           data={rows}
           columns={getTableColumns()}
           className="pb-4"
-          filter={dataSourceSearch}
-          filterColumn="name"
           columnsBreakpoints={{
             usage: "md",
           }}

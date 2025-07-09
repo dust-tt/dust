@@ -1,4 +1,4 @@
-import { deleteFile } from "@connectors/connectors/google_drive/temporal/activities";
+import { deleteFile } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 
 // Deleting all existing Google Drive CSV files

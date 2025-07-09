@@ -1,22 +1,7 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type {
-  FileType,
-  FileTypeWithUploadUrl,
-  FileUseCaseMetadata,
-  LightWorkspaceType,
-  ModelId,
-  Result,
-  UserType,
-} from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import type { Readable, Writable } from "stream";
 
 import config from "@app/lib/api/config";
@@ -30,6 +15,18 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import type {
+  FileType,
+  FileTypeWithUploadUrl,
+  FileUseCaseMetadata,
+  LightWorkspaceType,
+  ModelId,
+  Result,
+  UserType,
+} from "@app/types";
+import { Err, FILE_FORMATS, normalizeError, Ok, removeNulls } from "@app/types";
+
+import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
 export type FileVersion = "processed" | "original" | "public";
 
@@ -37,9 +34,12 @@ export type FileVersion = "processed" | "original" | "public";
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FileResource extends BaseResource<FileModel> {
-  static model: ModelStatic<FileModel> = FileModel;
+  static model: ModelStaticWorkspaceAware<FileModel> = FileModel;
 
-  constructor(model: ModelStatic<FileModel>, blob: Attributes<FileModel>) {
+  constructor(
+    model: ModelStaticWorkspaceAware<FileModel>,
+    blob: Attributes<FileModel>
+  ) {
     super(FileModel, blob);
   }
 
@@ -81,6 +81,34 @@ export class FileResource extends BaseResource<FileModel> {
     return blobs.map((blob) => new this(this.model, blob.get()));
   }
 
+  static override async fetchByModelId(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _id: ModelId,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _transaction?: Transaction
+  ): Promise<null> {
+    // Workspace isolation is handled in `fetchByModelIdWithAuth`.
+    throw Error(
+      "Not implemented. `fetchByModelIdWithAuth` should be used instead"
+    );
+  }
+
+  static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId,
+    transaction?: Transaction
+  ): Promise<FileResource | null> {
+    const file = await this.model.findOne({
+      where: {
+        id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+
+    return file ? new this(this.model, file.get()) : null;
+  }
+
   static async deleteAllForWorkspace(
     workspace: LightWorkspaceType,
     transaction?: Transaction
@@ -93,13 +121,18 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
-  static async deleteAllForUser(user: UserType, transaction?: Transaction) {
+  static async deleteAllForUser(
+    auth: Authenticator,
+    user: UserType,
+    transaction?: Transaction
+  ) {
     // We don't actually delete, instead we set the userId field to null.
     return this.model.update(
       { userId: null },
       {
         where: {
           userId: user.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         transaction,
       }
@@ -131,7 +164,7 @@ export class FileResource extends BaseResource<FileModel> {
 
       return new Ok(undefined);
     } catch (error) {
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 
@@ -362,5 +395,9 @@ export class FileResource extends BaseResource<FileModel> {
       ...blob,
       uploadUrl: this.getPublicUrl(auth),
     };
+  }
+
+  isSafeToDisplay(): boolean {
+    return FILE_FORMATS[this.contentType].isSafeToDisplay;
   }
 }

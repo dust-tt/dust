@@ -2,12 +2,30 @@ import {
   Avatar,
   CloudArrowDownIcon,
   ContextItem,
-  LogoSquareColorLogo,
+  DustLogoSquare,
   Page,
   PlusIcon,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
+import type { InferGetServerSidePropsType } from "next";
+import { useRouter } from "next/router";
+import { useMemo } from "react";
+
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { isRestrictedFromAgentCreation } from "@app/lib/auth";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import {
+  getDisplayNameForDataSource,
+  isRemoteDatabase,
+} from "@app/lib/data_sources";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type {
   APIError,
   DataSourceType,
@@ -16,19 +34,7 @@ import type {
   SpaceType,
   SubscriptionType,
   WorkspaceType,
-} from "@dust-tt/types";
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
-
-import AppLayout from "@app/components/sparkle/AppLayout";
-import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -39,6 +45,12 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const subscription = auth.subscription();
 
   if (!owner || !auth.isBuilder() || !subscription) {
+    return {
+      notFound: true,
+    };
+  }
+
+  if (await isRestrictedFromAgentCreation(owner)) {
     return {
       notFound: true,
     };
@@ -89,11 +101,22 @@ export default function EditDustAssistant({
     agentsGetView: "global",
   });
 
-  const { spaceDataSourceViews, mutate: mutateDataSourceViews } =
-    useSpaceDataSourceViews({
-      workspaceId: owner.sId,
-      spaceId: globalSpace.sId,
-    });
+  const {
+    spaceDataSourceViews: unfilteredSpaceDataSourceViews,
+    mutate: mutateDataSourceViews,
+  } = useSpaceDataSourceViews({
+    workspaceId: owner.sId,
+    spaceId: globalSpace.sId,
+  });
+
+  // We do not support remote databases for the Dust agent at the moment.
+  const spaceDataSourceViews = useMemo(
+    () =>
+      unfilteredSpaceDataSourceViews.filter(
+        (ds) => !isRemoteDatabase(ds.dataSource)
+      ),
+    [unfilteredSpaceDataSourceViews]
+  );
 
   const sortedDatasources = spaceDataSourceViews.sort((a, b) => {
     if (a.dataSource.connectorProvider && !b.dataSource.connectorProvider) {
@@ -188,7 +211,7 @@ export default function EditDustAssistant({
   };
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       hideSidebar
       owner={owner}
@@ -204,7 +227,7 @@ export default function EditDustAssistant({
       <div className="h-12" />
       <Page.Header
         title="Dust Agent"
-        icon={LogoSquareColorLogo}
+        icon={DustLogoSquare}
         description="The Dust agent is a general purpose agent that has context on your company data."
       />
       <div className="flex flex-col space-y-8 pb-8 pt-8">
@@ -299,6 +322,10 @@ export default function EditDustAssistant({
           ) : null}
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+EditDustAssistant.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

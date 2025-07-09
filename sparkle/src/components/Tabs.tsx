@@ -15,7 +15,7 @@ const tabsListVariants = cva("s-inline-flex s-h-11 s-gap-2", {
       full: "s-w-full",
     },
     border: {
-      true: "s-border-b s-border-border-dark dark:s-border-border-dark-night",
+      true: "s-border-b s-border-border dark:s-border-border-night",
     },
   },
   defaultVariants: {
@@ -44,13 +44,15 @@ TabsList.displayName = TabsPrimitive.List.displayName;
 
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> & {
-    label?: string;
-    tooltip?: string;
-    icon?: React.ComponentType;
-    isLoading?: boolean;
-    buttonVariant?: React.ComponentProps<typeof Button>["variant"];
-  } & Omit<LinkWrapperProps, "children" | "className">
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> &
+    Partial<
+      Pick<
+        React.ComponentProps<typeof Button>,
+        "label" | "tooltip" | "icon" | "isCounter" | "counterValue" | "variant"
+      >
+    > & {
+      isLoading?: boolean;
+    } & Omit<LinkWrapperProps, "children" | "className">
 >(
   (
     {
@@ -64,7 +66,9 @@ const TabsTrigger = React.forwardRef<
       replace,
       shallow,
       disabled,
-      buttonVariant = "ghost",
+      variant = "ghost",
+      isCounter = false,
+      counterValue,
       ...props
     },
     ref
@@ -78,7 +82,7 @@ const TabsTrigger = React.forwardRef<
         {...props}
       >
         <Button
-          variant={buttonVariant}
+          variant={variant}
           size="sm"
           label={label}
           tooltip={tooltip}
@@ -89,7 +93,13 @@ const TabsTrigger = React.forwardRef<
           rel={rel}
           replace={replace}
           shallow={shallow}
-          className="s-relative after:s-absolute after:s-bottom-[-9px] after:s-left-1/2 after:s-h-[2px] after:s-w-full after:s--translate-x-1/2 after:s-bg-primary-500 after:s-opacity-0 data-[state=active]:after:s-opacity-100 data-[state=active]:after:s-shadow-inner-border dark:data-[state=active]:after:s-shadow-inner-border-night"
+          isCounter={isCounter}
+          counterValue={counterValue}
+          className={cn(
+            "s-relative",
+            "after:s-absolute after:s-bottom-[-9px] after:s-left-1/2 after:s-h-[2px] after:s-w-full after:s--translate-x-1/2",
+            "after:s-bg-foreground after:s-opacity-0 data-[state=active]:after:s-opacity-100 dark:after:s-bg-foreground-night"
+          )}
         />
       </TabsPrimitive.Trigger>
     );

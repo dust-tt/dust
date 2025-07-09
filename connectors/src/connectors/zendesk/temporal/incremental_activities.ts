@@ -1,26 +1,25 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
-
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
   deleteTicket,
   shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
+import type { ZendeskFetchedTicketComment } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  changeZendeskClientSubdomain,
-  createZendeskClient,
-  fetchRecentlyUpdatedArticles,
-  fetchZendeskManyUsers,
-  fetchZendeskTicketComments,
-  fetchZendeskTickets,
+  fetchZendeskCategory,
+  fetchZendeskSection,
+  fetchZendeskUser,
   getZendeskBrandSubdomain,
+  listRecentlyUpdatedArticles,
+  listZendeskTicketComments,
+  listZendeskTickets,
+  listZendeskUsers,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -28,6 +27,8 @@ import {
   ZendeskCategoryResource,
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.
@@ -35,7 +36,7 @@ import {
 export async function getZendeskTimestampCursorActivity(
   connectorId: ModelId
 ): Promise<Date> {
-  const cursors = await ZendeskTimestampCursor.findOne({
+  const cursors = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
   if (!cursors) {
@@ -56,7 +57,7 @@ export async function setZendeskTimestampCursorActivity({
   connectorId: ModelId;
   currentSyncDateMs: number;
 }) {
-  const cursors = await ZendeskTimestampCursor.findOne({
+  const cursors = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
   if (!cursors) {
@@ -87,6 +88,12 @@ export async function syncZendeskArticleUpdateBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -104,13 +111,14 @@ export async function syncZendeskArticleUpdateBatchActivity({
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     connectorId,
     brandId,
+    subdomain,
+    accessToken,
   });
 
-  const { articles, hasMore, endTime } = await fetchRecentlyUpdatedArticles({
+  const { articles, hasMore, endTime } = await listRecentlyUpdatedArticles({
     subdomain,
     brandSubdomain,
     accessToken,
@@ -120,13 +128,20 @@ export async function syncZendeskArticleUpdateBatchActivity({
   await concurrentExecutor(
     articles,
     async (article) => {
-      const { result: section } =
-        await zendeskApiClient.helpcenter.sections.show(article.section_id);
-      const { result: user } = await zendeskApiClient.users.show(
-        article.author_id
-      );
+      const section = await fetchZendeskSection({
+        accessToken,
+        brandSubdomain,
+        sectionId: article.section_id,
+      });
+      const user = configuration.hideCustomerDetails
+        ? null
+        : await fetchZendeskUser({
+            accessToken,
+            brandSubdomain,
+            userId: article.author_id,
+          });
 
-      if (section.category_id) {
+      if (section && section.category_id) {
         let category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
           brandId,
@@ -135,8 +150,11 @@ export async function syncZendeskArticleUpdateBatchActivity({
         /// fetching and adding the category to the db if it is newly created, and the Help Center is selected
         if (!category && hasHelpCenterPermissions) {
           const { category_id: categoryId } = section;
-          const { result: fetchedCategory } =
-            await zendeskApiClient.helpcenter.categories.show(categoryId);
+          const fetchedCategory = await fetchZendeskCategory({
+            accessToken,
+            brandSubdomain,
+            categoryId,
+          });
           if (fetchedCategory) {
             category = await ZendeskCategoryResource.makeNew({
               blob: {
@@ -157,7 +175,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
               parents,
               parentId: parents[1],
               title: category.name,
-              mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+              mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
               sourceUrl: category.url,
             });
           } else {
@@ -174,9 +192,10 @@ export async function syncZendeskArticleUpdateBatchActivity({
           (category.permission === "read" || hasHelpCenterPermissions)
         ) {
           return syncArticle({
-            connectorId,
-            category,
             article,
+            connector,
+            configuration,
+            category,
             section,
             user,
             helpCenterIsAllowed: hasHelpCenterPermissions,
@@ -235,14 +254,47 @@ export async function syncZendeskTicketUpdateBatchActivity({
     subdomain,
     accessToken,
   });
-  if (!brandSubdomain) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
-  }
 
-  const { tickets, hasMore, nextLink } = await fetchZendeskTickets(
+  const { tickets, hasMore, nextLink } = await listZendeskTickets(
     accessToken,
     url ? { url } : { brandSubdomain, startTime }
   );
+
+  const commentsPerTicket: Record<number, ZendeskFetchedTicketComment[]> = {};
+  await concurrentExecutor(
+    tickets,
+    async (ticket) => {
+      const comments = await listZendeskTicketComments({
+        accessToken,
+        brandSubdomain,
+        ticketId: ticket.id,
+      });
+      if (comments.length > 0) {
+        logger.info(
+          { ...loggerArgs, ticketId: ticket.id },
+          "[Zendesk] No comment for ticket."
+        );
+      }
+      commentsPerTicket[ticket.id] = comments;
+    },
+    { concurrency: 3 }
+  );
+
+  // If we hide customer details, we don't need to fetch the users at all.
+  // Also guarantees that user information is not included in the ticket content.
+  const users = configuration.hideCustomerDetails
+    ? []
+    : await listZendeskUsers({
+        accessToken,
+        brandSubdomain,
+        userIds: [
+          ...new Set(
+            Object.values(commentsPerTicket).flatMap((comments) =>
+              comments.map((c) => c.author_id)
+            )
+          ),
+        ],
+      });
 
   await concurrentExecutor(
     tickets,
@@ -256,19 +308,16 @@ export async function syncZendeskTicketUpdateBatchActivity({
           loggerArgs,
         });
       } else if (shouldSyncTicket(ticket, configuration)) {
-        const comments = await fetchZendeskTicketComments({
-          accessToken,
-          brandSubdomain,
-          ticketId: ticket.id,
-        });
-        const users = await fetchZendeskManyUsers({
-          accessToken,
-          brandSubdomain,
-          userIds: comments.map((c) => c.author_id),
-        });
+        const comments = commentsPerTicket[ticket.id];
+        if (!comments) {
+          throw new Error(
+            `[Zendesk] Comments not found for ticket ${ticket.id}`
+          );
+        }
         return syncTicket({
-          connectorId,
           ticket,
+          connector,
+          configuration,
           brandId,
           users,
           comments,

@@ -1,11 +1,8 @@
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { compareAgentsForSort } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import { compareAgentsForSort } from "@app/types";
 
 function makeEditorSuggestions(
   agentConfigurations: LightAgentConfigurationType[]
@@ -26,7 +23,7 @@ const useAssistantSuggestions = (
   owner: WorkspaceType
 ) => {
   // We use this specific hook because this component is involved in the new conversation page.
-  const { agentConfigurations } = useUnifiedAgentConfigurations({
+  const { agentConfigurations, isLoading } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
   });
 
@@ -39,7 +36,7 @@ const useAssistantSuggestions = (
     return { suggestions, fallbackSuggestions };
   }, [agentConfigurations, inListAgentConfigurations]);
 
-  return allSuggestions;
+  return { ...allSuggestions, isLoading };
 };
 
 export default useAssistantSuggestions;

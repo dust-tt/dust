@@ -1,87 +1,71 @@
 import {
-  Button,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Page,
-  Popup,
   SearchInput,
-  useSendNotification,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  UserIcon,
 } from "@dust-tt/sparkle";
+import { UsersIcon } from "@heroicons/react/20/solid";
+import type { PaginationState } from "@tanstack/react-table";
+import type { InferGetServerSidePropsType } from "next";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
+import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { InvitationsList } from "@app/components/members/InvitationsList";
+import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { MembersList } from "@app/components/members/MembersList";
+import { subNavigationAdmin } from "@app/components/navigation/config";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
+import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
+import { WorkspaceSection } from "@app/components/workspace/WorkspaceSection";
+import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
+import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
   SubscriptionType,
   UserType,
+  UserTypeWithWorkspace,
   WorkspaceDomain,
   WorkspaceType,
-} from "@dust-tt/types";
-import { UsersIcon } from "@heroicons/react/20/solid";
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
-
-import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
-import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
-import { InviteEmailModal } from "@app/components/members/InvitationModal";
-import { InvitationsList } from "@app/components/members/InvitationsList";
-import { MembersList } from "@app/components/members/MembersList";
-import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
-import type { EnterpriseConnectionStrategyDetails } from "@app/components/workspace/connection";
-import { EnterpriseConnectionDetails } from "@app/components/workspace/connection";
-import config from "@app/lib/api/config";
-import {
-  makeAudienceUri,
-  makeEnterpriseConnectionInitiateLoginUrl,
-  makeSamlAcsUrl,
-} from "@app/lib/api/enterprise_connection";
-import {
-  checkWorkspaceSeatAvailabilityUsingAuth,
-  getWorkspaceVerifiedDomain,
-} from "@app/lib/api/workspace";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   perSeatPricing: SubscriptionPerSeatPricing | null;
-  enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails;
   plan: PlanType;
   workspaceHasAvailableSeats: boolean;
-  workspaceVerifiedDomain: WorkspaceDomain | null;
+  workspaceVerifiedDomains: WorkspaceDomain[];
 }>(async (context, auth) => {
   const plan = auth.plan();
   const owner = auth.workspace();
-  const user = auth.user();
-  const subscription = auth.subscription();
+  const user = auth.user()?.toJSON();
+  const subscriptionResource = auth.subscriptionResource();
 
-  if (!owner || !user || !auth.isAdmin() || !plan || !subscription) {
+  if (!owner || !user || !auth.isAdmin() || !plan || !subscriptionResource) {
     return {
       notFound: true,
     };
   }
 
-  const workspaceVerifiedDomain = await getWorkspaceVerifiedDomain(owner);
+  // TODO(workos 2025-06-09): Remove this once fully migrated to WorkOS.
+  const workspaceVerifiedDomains = await getWorkspaceVerifiedDomains(owner);
   const workspaceHasAvailableSeats =
     await checkWorkspaceSeatAvailabilityUsingAuth(auth);
 
-  const enterpriseConnectionStrategyDetails: EnterpriseConnectionStrategyDetails =
-    {
-      callbackUrl: config.getAuth0TenantUrl(),
-      initiateLoginUrl: makeEnterpriseConnectionInitiateLoginUrl(owner.sId),
-      // SAML specific.
-      audienceUri: makeAudienceUri(owner),
-      samlAcsUrl: makeSamlAcsUrl(owner),
-    };
-
-  const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
+  const perSeatPricing = await subscriptionResource.getPerSeatPricing();
+  const subscription = subscriptionResource.toJSON();
 
   return {
     props: {
@@ -89,10 +73,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       perSeatPricing,
-      enterpriseConnectionStrategyDetails,
       plan,
       workspaceHasAvailableSeats,
-      workspaceVerifiedDomain,
+      workspaceVerifiedDomains,
     },
   };
 });
@@ -102,241 +85,196 @@ export default function WorkspaceAdmin({
   owner,
   subscription,
   perSeatPricing,
-  enterpriseConnectionStrategyDetails,
   plan,
-  workspaceVerifiedDomain,
   workspaceHasAvailableSeats,
+  workspaceVerifiedDomains,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const [showNoInviteLinkPopup, setShowNoInviteLinkPopup] = useState(false);
-  const [isActivateAutoJoinOpened, setIsActivateAutoJoinOpened] =
-    useState(false);
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
-  const { domain = "", domainAutoJoinEnabled = false } =
-    workspaceVerifiedDomain ?? {};
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
-  const onInviteClick = (event: MouseEvent) => {
-    if (!isUpgraded(plan)) {
-      setInviteBlockedPopupReason("cant_invite_free_plan");
-      event.preventDefault();
-    } else if (subscription.paymentFailingSince) {
-      setInviteBlockedPopupReason("cant_invite_payment_failure");
-      event.preventDefault();
-    } else if (!workspaceHasAvailableSeats) {
-      setInviteBlockedPopupReason("cant_invite_no_seats_available");
-      event.preventDefault();
-    }
-  };
+  const hasVerifiedDomains = workspaceVerifiedDomains.length > 0;
 
-  const popup = useMemo(() => {
-    if (!inviteBlockedPopupReason) {
-      return <></>;
-    }
+  const hasWorkOSProvisioningFlag = useMemo(
+    () => featureFlags.includes("workos_user_provisioning"),
+    [featureFlags]
+  );
 
-    return (
-      <ReachedLimitPopup
-        isOpened={!!inviteBlockedPopupReason}
-        onClose={() => setInviteBlockedPopupReason(null)}
-        subscription={subscription}
-        owner={owner}
-        code={inviteBlockedPopupReason}
-      />
-    );
-  }, [inviteBlockedPopupReason, owner, subscription]);
+  const isProvisioningEnabled = hasWorkOSProvisioningFlag && hasVerifiedDomains;
+
+  const onInviteClick = useCallback(
+    (event: MouseEvent) => {
+      if (!isUpgraded(plan)) {
+        setInviteBlockedPopupReason("cant_invite_free_plan");
+        event.preventDefault();
+      } else if (subscription.paymentFailingSince) {
+        setInviteBlockedPopupReason("cant_invite_payment_failure");
+        event.preventDefault();
+      } else if (!workspaceHasAvailableSeats) {
+        setInviteBlockedPopupReason("cant_invite_no_seats_available");
+        event.preventDefault();
+      }
+    },
+    [plan, subscription.paymentFailingSince, workspaceHasAvailableSeats]
+  );
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "members" })}
     >
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Member Management"
-          icon={UsersIcon}
-          description="Invite and remove members, manage their rights."
-        />
-        <DomainAutoJoinModal
-          domainAutoJoinEnabled={domainAutoJoinEnabled}
-          isOpen={isActivateAutoJoinOpened}
-          onClose={() => {
-            setIsActivateAutoJoinOpened(false);
-          }}
-          domain={domain}
-          owner={owner}
-        />
-        {workspaceVerifiedDomain && (
-          <Page.Vertical gap="sm">
-            <Page.H variant="h5">Auto-join Workspace</Page.H>
-            <Page.P variant="secondary">
-              Allow all your team members to access your Dust company Workspace
-              when they authenticate with a{" "}
-              <span className="font-bold">"@{domain}"</span> Google accounts.
-            </Page.P>
-            <div className="flex flex-col items-start gap-3">
-              {domainAutoJoinEnabled ? (
-                <Button
-                  label="De-activate Auto-join"
-                  size="sm"
-                  variant="warning"
-                  disabled={!domainAutoJoinEnabled}
-                  onClick={() => {
-                    if (!isUpgraded(plan)) {
-                      setShowNoInviteLinkPopup(true);
-                    } else {
-                      setIsActivateAutoJoinOpened(true);
-                    }
-                  }}
-                />
-              ) : (
-                <Button
-                  label="Activate Auto-join"
-                  size="sm"
-                  variant="primary"
-                  disabled={domainAutoJoinEnabled}
-                  onClick={() => {
-                    if (!isUpgraded(plan)) {
-                      setShowNoInviteLinkPopup(true);
-                    } else {
-                      setIsActivateAutoJoinOpened(true);
-                    }
-                  }}
-                />
-              )}
-              <Popup
-                show={showNoInviteLinkPopup}
-                chipLabel="Free plan"
-                description="You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
-                buttonLabel="Check Dust plans"
-                buttonClick={() => {
-                  void router.push(`/w/${owner.sId}/subscription`);
-                }}
-                className="absolute bottom-8 right-0"
-                onClose={() => setShowNoInviteLinkPopup(false)}
+      <div className="mb-4">
+        <Page.Vertical gap="lg" align="stretch">
+          <Page.Header
+            title="People & Security"
+            icon={UsersIcon}
+            description="Verify your domain, manage team members and their permissions."
+          />
+          <WorkspaceAccessPanel
+            workspaceVerifiedDomains={workspaceVerifiedDomains}
+            owner={owner}
+            plan={plan}
+          />
+          <WorkspaceSection title="Members" icon={UserIcon}>
+            <div className="flex flex-row gap-2">
+              <SearchInput
+                placeholder={
+                  isProvisioningEnabled ? "Search" : "Search members (email)"
+                }
+                value={searchTerm}
+                name="search"
+                onChange={setSearchTerm}
+              />
+              <InviteEmailButtonWithModal
+                owner={owner}
+                prefillText=""
+                perSeatPricing={perSeatPricing}
+                onInviteClick={onInviteClick}
               />
             </div>
-          </Page.Vertical>
-        )}
-        <EnterpriseConnectionDetails
-          owner={owner}
-          plan={plan}
-          strategyDetails={enterpriseConnectionStrategyDetails}
-          workspaceVerifiedDomain={workspaceVerifiedDomain}
-        />
-        <div className="flex flex-row gap-2">
-          <SearchInput
-            placeholder="Search members (email)"
-            value={searchTerm}
-            name="search"
-            onChange={(s) => {
-              setSearchTerm(s);
-            }}
-          />
-          <InviteEmailModal
-            owner={owner}
-            prefillText=""
-            perSeatPricing={perSeatPricing}
-            onInviteClick={onInviteClick}
-          />
-        </div>
-        <InvitationsList owner={owner} searchText={searchTerm} />
-        <MembersList
-          currentUserId={user.sId}
-          owner={owner}
-          searchText={searchTerm}
-        />
-        {popup}
-      </Page.Vertical>
-    </AppLayout>
+            <WorkspaceMembersGroupsList
+              currentUser={user}
+              owner={owner}
+              searchTerm={searchTerm}
+              isProvisioningEnabled={isProvisioningEnabled}
+            />
+          </WorkspaceSection>
+          {inviteBlockedPopupReason && (
+            <ReachedLimitPopup
+              isOpened={!!inviteBlockedPopupReason}
+              onClose={() => setInviteBlockedPopupReason(null)}
+              subscription={subscription}
+              owner={owner}
+              code={inviteBlockedPopupReason}
+            />
+          )}
+        </Page.Vertical>
+      </div>
+    </AppContentLayout>
   );
 }
 
-function DomainAutoJoinModal({
-  domain,
-  domainAutoJoinEnabled,
-  isOpen,
-  onClose,
-  owner,
-}: {
-  domain: string;
-  domainAutoJoinEnabled: boolean;
-  isOpen: boolean;
-  onClose: () => void;
+const DEFAULT_PAGE_SIZE = 25;
+
+interface WorkspaceMembersGroupsListProps {
+  currentUser: UserType | null;
+  isProvisioningEnabled: boolean;
   owner: WorkspaceType;
-}) {
-  const sendNotification = useSendNotification();
+  searchTerm: string;
+}
 
-  const title = domainAutoJoinEnabled
-    ? "De-activate Auto-join"
-    : "Activate Auto-join";
-  const validateLabel = domainAutoJoinEnabled ? "De-activate" : "Activate";
-  const validateVariant = domainAutoJoinEnabled ? "warning" : "primary";
-  const description = domainAutoJoinEnabled ? (
-    "New members will need to be invited in order to gain access to your Dust Workspace."
-  ) : (
-    <span>
-      Anyone with Google <span className="font-bold">{"@" + domain}</span>{" "}
-      account will have access to your Dust Workspace.
-    </span>
+function WorkspaceMembersGroupsList({
+  currentUser,
+  isProvisioningEnabled,
+  owner,
+  searchTerm,
+}: WorkspaceMembersGroupsListProps) {
+  return (
+    <div className="flex flex-col gap-1 pt-2">
+      <Tabs defaultValue="members">
+        <TabsList className="mb-4">
+          <TabsTrigger value="members" label="Members" />
+          <TabsTrigger value="invitations" label="Invitations" />
+        </TabsList>
+        <TabsContent value="members">
+          <WorkspaceMembersList
+            currentUser={currentUser}
+            owner={owner}
+            searchTerm={searchTerm}
+            isProvisioningEnabled={isProvisioningEnabled}
+          />
+        </TabsContent>
+        <TabsContent value="invitations">
+          <InvitationsList owner={owner} searchText={searchTerm} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
+}
 
-  async function handleUpdateWorkspace(): Promise<void> {
-    const res = await fetch(`/api/w/${owner.sId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        domain,
-        domainAutoJoinEnabled: !domainAutoJoinEnabled,
-      }),
-    });
+interface WorkspaceMembersListProps {
+  currentUser: UserType | null;
+  owner: WorkspaceType;
+  searchTerm: string;
+  isProvisioningEnabled: boolean;
+}
 
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Update failed",
-        description: `Failed to enable auto-add for whitelisted domain.`,
-      });
-    } else {
-      // We perform a full refresh so that the Workspace name updates and we get a fresh owner
-      // object so that the formValidation logic keeps working.
-      window.location.reload();
-    }
-  }
+function WorkspaceMembersList({
+  currentUser,
+  owner,
+  searchTerm,
+  isProvisioningEnabled,
+}: WorkspaceMembersListProps) {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+
+  const [selectedMember, setSelectedMember] =
+    useState<UserTypeWithWorkspace | null>(null);
+
+  const membersData = useSearchMembers({
+    workspaceId: owner.sId,
+    searchTerm,
+    pageIndex: pagination.pageIndex,
+    pageSize: DEFAULT_PAGE_SIZE,
+    groupKind: isProvisioningEnabled ? "provisioned" : undefined,
+  });
+
+  useEffect(() => {
+    setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
+  }, [setPagination]);
+
+  const resetSelectedMember = useCallback(() => {
+    setSelectedMember(null);
+  }, [setSelectedMember]);
 
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
+    <>
+      <MembersList
+        currentUser={currentUser}
+        membersData={membersData}
+        onRowClick={setSelectedMember}
+        showColumns={
+          isProvisioningEnabled
+            ? ["name", "email", "role", "status", "groups"]
+            : ["name", "email", "role"]
         }
-      }}
-    >
-      <DialogContent size="md" isAlertDialog>
-        <DialogHeader hideButton>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        <DialogContainer>{description}</DialogContainer>
-        <DialogFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-          }}
-          rightButtonProps={{
-            label: validateLabel,
-            variant: validateVariant,
-            onClick: async () => {
-              await handleUpdateWorkspace();
-              onClose();
-            },
-          }}
-        />
-      </DialogContent>
-    </Dialog>
+        pagination={pagination}
+        setPagination={setPagination}
+      />
+      <ChangeMemberModal
+        onClose={resetSelectedMember}
+        member={selectedMember}
+        mutateMembers={membersData.mutateRegardlessOfQueryParams}
+      />
+    </>
   );
 }
+
+WorkspaceAdmin.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

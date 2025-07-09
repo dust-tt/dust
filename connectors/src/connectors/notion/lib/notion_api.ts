@@ -1,11 +1,4 @@
-import type {
-  PageObjectProperties,
-  ParsedNotionBlock,
-  ParsedNotionDatabase,
-  ParsedNotionPage,
-  PropertyKeys,
-} from "@dust-tt/types";
-import { assertNever, cacheWithRedis } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/client";
 import type { LogLevel } from "@notionhq/client";
 import {
   APIResponseError,
@@ -31,6 +24,14 @@ import type { Logger } from "pino";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import mainLogger from "@connectors/logger/logger";
+import type {
+  PageObjectProperties,
+  ParsedNotionBlock,
+  ParsedNotionDatabase,
+  ParsedNotionPage,
+  PropertyKeys,
+} from "@connectors/types";
+import { cacheWithRedis } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -344,6 +345,77 @@ const NOTION_NOT_FOUND_ERROR_CODES = ["object_not_found"];
 
 const NOTION_RETRIABLE_ERRORS = ["rate_limited", "internal_server_error"];
 
+async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  {
+    maxTries = 5,
+    backoffFactor = 2,
+    baseWaitTime = 10000,
+    logger,
+    operationName,
+  }: {
+    maxTries?: number;
+    backoffFactor?: number;
+    baseWaitTime?: number;
+    logger: Logger;
+    operationName: string;
+  }
+): Promise<T> {
+  let tries = 0;
+
+  while (tries < maxTries) {
+    const tryLogger = logger.child({
+      tries,
+      maxTries,
+      operationName,
+    });
+
+    try {
+      return await operation();
+    } catch (e) {
+      if (
+        APIResponseError.isAPIResponseError(e) &&
+        NOTION_RETRIABLE_ERRORS.includes(e.code)
+      ) {
+        let waitTime = baseWaitTime * backoffFactor ** tries;
+        let usingHeader = false;
+
+        try {
+          // Trying to respect the rate limit sent back by notion api
+          // See: https://developers.notion.com/reference/request-limits
+          const responseHeaders = e.headers as Record<string, string>;
+          if (responseHeaders["retry-after"]) {
+            const retryAfter = parseInt(responseHeaders["retry-after"], 10);
+            if (!isNaN(retryAfter) && retryAfter > 0) {
+              waitTime = retryAfter * 1000;
+              usingHeader = true;
+            }
+          }
+        } catch (e) {
+          // Ignore all errors here as the e.headers type is unknown.
+          tryLogger.error({ error: e }, "Error parsing Retry-After header.");
+        }
+
+        tryLogger.info(
+          { waitTime, usingHeader },
+          "Got potentially transient error. Trying again."
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        tries += 1;
+        if (tries >= maxTries) {
+          throw e;
+        }
+        continue;
+      }
+
+      // For non-retriable errors, throw immediately
+      throw e;
+    }
+  }
+
+  throw new Error("Unreachable.");
+}
+
 export async function isAccessibleAndUnarchived(
   notionAccessToken: string,
   objectId: string,
@@ -354,96 +426,69 @@ export async function isAccessibleAndUnarchived(
     auth: notionAccessToken,
     logger: notionClientLogger,
   });
-  const maxTries = 5;
-  let tries = 0;
 
-  while (tries < maxTries) {
-    const tryLogger = (localLogger || logger).child({
-      tries,
-      maxTries,
-      objectType,
-      objectId,
-    });
+  const loggerToUse = localLogger || logger;
 
-    try {
-      tryLogger.info("Checking if page is accessible and unarchived.");
-      if (objectType === "page") {
-        const page = await wrapNotionAPITokenErrors(async () =>
-          notionClient.pages.retrieve({ page_id: objectId })
-        );
-        if (!isFullPage(page)) {
-          return false;
+  try {
+    if (objectType === "page") {
+      const page = await retryWithBackoff(
+        () =>
+          wrapNotionAPITokenErrors(async () =>
+            notionClient.pages.retrieve({ page_id: objectId })
+          ),
+        {
+          logger: loggerToUse,
+          operationName: "retrieve_page",
         }
-        return !page.archived;
+      );
+      if (!isFullPage(page)) {
+        return false;
       }
-      if (objectType === "database") {
-        const db = await wrapNotionAPITokenErrors(async () =>
-          notionClient.databases.retrieve({
-            database_id: objectId,
-          })
-        );
-        if (!isFullDatabase(db)) {
-          return false;
-        }
-        return !db.archived;
-      }
-    } catch (e) {
-      if (APIResponseError.isAPIResponseError(e)) {
-        if (NOTION_RETRIABLE_ERRORS.includes(e.code)) {
-          let waitTime = 500 * 2 ** tries;
-          let usingHeader = false;
-
-          try {
-            // Trying to respect the rate limit sent back by notion api
-            // See: https://developers.notion.com/reference/request-limits
-            const responseHeaders = e.headers as Record<string, string>;
-            if (responseHeaders["retry-after"]) {
-              const retryAfter = parseInt(responseHeaders["retry-after"], 10);
-              if (!isNaN(retryAfter) && retryAfter > 0) {
-                waitTime = retryAfter * 1000;
-                usingHeader = true;
-              }
-            }
-          } catch (e) {
-            // Ignore all errors here as the e.headers type is unknown.
-            tryLogger.error({ error: e }, "Error parsing Retry-After header.");
-          }
-
-          tryLogger.info(
-            { waitTime, usingHeader },
-            "Got potentially transient error. Trying again."
-          );
-          await new Promise((resolve) => setTimeout(resolve, waitTime));
-          tries += 1;
-          if (tries >= maxTries) {
-            throw e;
-          }
-          continue;
-        }
-
-        if (
-          NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code) ||
-          // This happens if the database is a "linked" database - we can't query those so
-          // it's not useful to retry. We just assume that we don't have access to this resource
-          // and return false.
-          e.code === "validation_error"
-        ) {
-          tryLogger.info(
-            { errorCode: e.code },
-            "Skipping page/database due to unauthorized status code."
-          );
-          return false;
-        }
-
-        if (NOTION_NOT_FOUND_ERROR_CODES.includes(e.code)) {
-          tryLogger.info({ errorCode: e.code }, "Object not found.");
-          return false;
-        }
-      }
-
-      tryLogger.error({ error: e }, "Error checking if page is accessible.");
-      throw e;
+      return !page.archived;
     }
+
+    if (objectType === "database") {
+      const db = await retryWithBackoff(
+        () =>
+          wrapNotionAPITokenErrors(async () =>
+            notionClient.databases.retrieve({
+              database_id: objectId,
+            })
+          ),
+        {
+          logger: loggerToUse,
+          operationName: "retrieve_database",
+        }
+      );
+      if (!isFullDatabase(db)) {
+        return false;
+      }
+      return !db.archived;
+    }
+  } catch (e) {
+    if (APIResponseError.isAPIResponseError(e)) {
+      if (
+        NOTION_UNAUTHORIZED_ACCESS_ERROR_CODES.includes(e.code) ||
+        // This happens if the database is a "linked" database - we can't query those so
+        // it's not useful to retry. We just assume that we don't have access to this resource
+        // and return false.
+        e.code === "validation_error"
+      ) {
+        loggerToUse.info(
+          { errorCode: e.code },
+          "Skipping page/database due to unauthorized status code."
+        );
+        return false;
+      }
+
+      if (NOTION_NOT_FOUND_ERROR_CODES.includes(e.code)) {
+        loggerToUse.info({ errorCode: e.code }, "Object not found.");
+        return false;
+      }
+    }
+
+    loggerToUse.error({ error: e }, "Error checking if page is accessible.");
+    throw e;
   }
 
   throw new Error("Unreachable.");
@@ -463,14 +508,12 @@ async function getBlockParent(
   // - if we encounter a block that is not a full block, or we get a non-retriable error, we give up and return null
   // - if we get 5 transient errors in a row, we throw an error (we let the tempooral activity manage the retries)
   const max_depth = 8;
-  const max_transient_errors = 5;
 
   const notionClient = new Client({
     auth: notionAccessToken,
     logger: notionClientLogger,
   });
   let depth = 0;
-  let transient_errors = 0;
 
   for (;;) {
     if (onProgress) {
@@ -478,10 +521,17 @@ async function getBlockParent(
     }
     localLogger.info({ blockId }, "Looking up block parent");
     try {
-      const block = await wrapNotionAPITokenErrors(async () =>
-        notionClient.blocks.retrieve({
-          block_id: blockId,
-        })
+      const block = await retryWithBackoff(
+        () =>
+          wrapNotionAPITokenErrors(async () =>
+            notionClient.blocks.retrieve({
+              block_id: blockId,
+            })
+          ),
+        {
+          logger: localLogger,
+          operationName: "retrieve_block",
+        }
       );
 
       if (!isFullBlock(block)) {
@@ -508,22 +558,8 @@ async function getBlockParent(
         return null;
       }
     } catch (e) {
-      if (!NOTION_RETRIABLE_ERRORS.includes((e as { code: string }).code)) {
-        return null;
-      }
-
-      const waitTime = 500 * 2 ** transient_errors;
-      transient_errors += 1;
-      if (transient_errors === max_transient_errors) {
-        // We don't want to retry more than 5 times.
-        throw e;
-      }
-      localLogger.info(
-        { waitTime },
-        "Got potentially transient error. Trying again."
-      );
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
-      continue;
+      // For non-retriable errors, return null
+      return null;
     }
   }
 }
@@ -575,6 +611,13 @@ export async function getParsedDatabase(
       localLogger.info("Database not found.");
       return null;
     }
+    localLogger.error(
+      {
+        databaseId,
+        error: e,
+      },
+      "Error when getting parsed database."
+    );
     throw e;
   }
 
@@ -664,11 +707,27 @@ export async function retrievePage({
   } catch (e) {
     if (
       APIResponseError.isAPIResponseError(e) &&
-      e.code === "object_not_found"
+      (e.code === "object_not_found" || e.code === "validation_error")
     ) {
-      localLogger.info("Page not found.");
+      localLogger.info(
+        {
+          notion_error: {
+            code: e.code,
+            message: e.message,
+          },
+        },
+        "Page not found."
+      );
       return null;
     }
+    localLogger.error(
+      {
+        pageId,
+        error: e,
+      },
+      "Error when retrieving page."
+    );
+
     throw e;
   }
 
@@ -710,12 +769,20 @@ export async function retrieveBlockChildrenResultPage({
   });
 
   try {
-    const resultPage = await wrapNotionAPITokenErrors(async () =>
-      notionClient.blocks.children.list({
-        block_id: blockOrPageId,
-        start_cursor: cursor ?? undefined,
-      })
+    const resultPage = await retryWithBackoff(
+      () =>
+        wrapNotionAPITokenErrors(async () =>
+          notionClient.blocks.children.list({
+            block_id: blockOrPageId,
+            start_cursor: cursor ?? undefined,
+          })
+        ),
+      {
+        logger: localLogger,
+        operationName: "list_block_children",
+      }
     );
+
     localLogger.info(
       { count: resultPage.results.length },
       "Received block or page children result page from Notion API."
@@ -736,9 +803,25 @@ export async function retrieveBlockChildrenResultPage({
         "Couldn't get block or page children."
       );
       return null;
-    } else {
-      throw e;
     }
+
+    // The block exists - Check if it is a child_page block.
+    // If it is, we return null, as it can't have children.
+    const block = await notionClient.blocks.retrieve({
+      block_id: blockOrPageId,
+    });
+    if (isFullBlock(block) && block.type === "child_page") {
+      return null;
+    }
+
+    localLogger.error(
+      {
+        blockOrPageId,
+        error: e,
+      },
+      "Error when list children block or page."
+    );
+    throw e;
   }
 }
 
@@ -844,6 +927,8 @@ export function parsePropertyValue(
   };
 
   switch (property.type) {
+    case "button":
+      return null;
     case "number":
       return property.number?.toString() || null;
     case "url":
@@ -947,6 +1032,9 @@ export async function retrieveDatabaseChildrenResultPage({
   const notionClient = new Client({
     auth: accessToken,
     logger: notionClientLogger,
+    // Default is 60_000: https://github.com/makenotion/notion-sdk-js/blob/main/src/Client.ts#L135
+    // Bumped as we observed some timeouts with the default value.
+    timeoutMs: 120_000,
   });
 
   localLogger.info("Fetching database children result page from Notion API.");
@@ -982,6 +1070,13 @@ export async function retrieveDatabaseChildrenResultPage({
       );
       return null;
     } else {
+      localLogger.error(
+        {
+          databaseId,
+          error: e,
+        },
+        "Error when retrieving database children."
+      );
       throw e;
     }
   }
@@ -1128,6 +1223,13 @@ export async function getUserName(
       pageLogger.info({ user_id: userId }, "Couln't find user.");
       return null;
     }
+    pageLogger.error(
+      {
+        userId,
+        error: e,
+      },
+      "Error when retrieving user name."
+    );
     throw e;
   }
 }

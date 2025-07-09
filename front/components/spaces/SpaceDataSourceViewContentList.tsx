@@ -9,21 +9,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Spinner,
+  Tooltip,
   useHashParam,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  ConnectorType,
-  ContentNodesViewType,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  LightWorkspaceType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isValidContentNodesViewType } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
@@ -37,7 +25,7 @@ import {
 } from "react";
 
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
-import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import type {
@@ -55,6 +43,7 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import {
@@ -63,9 +52,21 @@ import {
 } from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type {
+  APIError,
+  ConnectorType,
+  ContentNodesViewType,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  LightWorkspaceType,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { isValidContentNodesViewType } from "@app/types";
 
 const DEFAULT_VIEW_TYPE = "all";
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 100;
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
@@ -78,16 +79,60 @@ const columnsBreakpoints = {
   spaces: "md" as const,
 };
 
+function isMicrosoftNode(row: RowData) {
+  return row.dataSourceView.dataSource.connectorProvider === "microsoft";
+}
+
+/**
+ * Microsoft root folders' titles do not contain the sites / unsynced parent
+ * directory information, which had caused usability issues, see
+ * https://github.com/dust-tt/tasks/issues/2619
+ *
+ * As such we extract title from the sourceUrl rather than using titles
+ * directly.
+ *
+ * TODO(pr, 2025-04-18): if solution is satisfactory, change the title field for
+ * microsoft directly in connectors + backfill, then remove this logic.
+ */
+function getTitleForMicrosoftNode(row: RowData) {
+  if (
+    row.parentInternalId !== null ||
+    row.type !== "folder" ||
+    !row.sourceUrl
+  ) {
+    return row.title;
+  }
+  // remove the trailing url in parenthesis
+  //title = title.replace(/\s*\([^\)\()]*\)\s*$/, "");
+
+  // extract the title from the sourceUrl
+  const url = new URL(row.sourceUrl);
+  const decodedPathname = decodeURIComponent(url.pathname);
+  const title = decodedPathname.split("/").slice(2).join("/");
+  return title;
+}
 const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
   const columns: ColumnDef<RowData, any>[] = [];
   columns.push({
     header: "Name",
-    accessorKey: "title",
     id: "title",
-    sortingFn: "text", // built-in sorting function case-insensitive
+    accessorFn: (row) => {
+      if (isMicrosoftNode(row)) {
+        return getTitleForMicrosoftNode(row);
+      }
+      return row.title;
+    },
+    sortingFn: (a, b, columnId) => {
+      const aValue = a.getValue(columnId) as string;
+      const bValue = b.getValue(columnId) as string;
+      return aValue.localeCompare(bValue) > 0 ? -1 : 1;
+    },
     cell: (info: CellContext<RowData, string>) => (
       <DataTable.CellContent icon={info.row.original.icon}>
-        <span>{info.getValue()}</span>
+        <Tooltip
+          label={info.getValue()}
+          trigger={<span>{info.getValue()}</span>}
+        />
       </DataTable.CellContent>
     ),
   });
@@ -152,7 +197,7 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
   columns.push({
     id: "actions",
     meta: {
-      className: "flex justify-end items-center",
+      className: "w-16",
     },
     cell: (info) =>
       info.row.original.menuItems && (
@@ -259,8 +304,7 @@ export const SpaceDataSourceViewContentList = ({
     [resetPagination, setViewType, viewType]
   );
 
-  const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
-    useContext(SpaceSearchContext);
+  const { setIsSearchDisabled } = useContext(SpaceSearchContext);
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
@@ -439,7 +483,8 @@ export const SpaceDataSourceViewContentList = ({
           contentActionsRef,
           spaces,
           dataSourceViews,
-          addToSpace
+          addToSpace,
+          router
         ),
       })) || [],
     [
@@ -450,6 +495,7 @@ export const SpaceDataSourceViewContentList = ({
       dataSourceView,
       dataSourceViews,
       addToSpace,
+      router,
       onSelect,
     ]
   );
@@ -562,7 +608,7 @@ export const SpaceDataSourceViewContentList = ({
         connector &&
         !parentId &&
         space.kind === "system" && (
-          <div className="flex flex-col items-center gap-2 text-sm text-element-700">
+          <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
             {isEmpty && <div>Connection ready. Select the data to sync.</div>}
 
             <ConnectorPermissionsModal
@@ -619,10 +665,6 @@ export const SpaceDataSourceViewContentList = ({
           <DataTable
             data={rows}
             columns={columns}
-            filter={dataSourceSearch}
-            filterColumn={
-              "title" // see todo above
-            }
             className="pb-4"
             totalRowCount={totalNodesCount}
             rowCountIsCapped={!totalNodesCountIsAccurate}

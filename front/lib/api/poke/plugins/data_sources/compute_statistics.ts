@@ -1,17 +1,6 @@
-import { CoreAPI, Err, maxFileSizeToHumanReadable, Ok } from "@dust-tt/types";
-
-import config from "@app/lib/api/config";
+import { computeDataSourceStatistics } from "@app/lib/api/data_sources";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import logger from "@app/logger/logger";
-
-async function computeStatistics(dataSource: DataSourceResource) {
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  return coreAPI.getDataSourceStats({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-  });
-}
+import { Err, fileSizeToHumanReadable, Ok } from "@app/types";
 
 export const computeStatsPlugin = createPlugin({
   manifest: {
@@ -21,28 +10,23 @@ export const computeStatsPlugin = createPlugin({
     resourceTypes: ["data_sources"],
     args: {},
   },
-  execute: async (auth, dataSourceId) => {
-    if (!dataSourceId) {
-      return new Err(new Error("Data source not found."));
-    }
-
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+  execute: async (auth, dataSource) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
     }
 
-    const result = await computeStatistics(dataSource);
+    const result = await computeDataSourceStatistics([dataSource]);
     if (result.isErr()) {
       return new Err(new Error(result.error.message));
     }
 
-    const { name, text_size, document_count } = result.value.data_source;
+    const [{ name, text_size, document_count }] = result.value.data_sources;
 
     return new Ok({
       display: "json",
       value: {
         name,
-        text_size: maxFileSizeToHumanReadable(text_size, 2),
+        text_size: fileSizeToHumanReadable(text_size, 2),
         document_count,
       },
     });

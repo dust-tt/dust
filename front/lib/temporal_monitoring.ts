@@ -8,7 +8,7 @@ import tracer from "dd-trace";
 
 import type { Logger } from "@app/logger/logger";
 import type logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/withlogging";
+import { statsDClient } from "@app/logger/statsDClient";
 
 /** An Activity Context with an attached logger */
 export interface ContextWithLogger extends Context {

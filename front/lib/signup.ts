@@ -5,11 +5,9 @@ export function getSignUpUrl({
   signupCallbackUrl: string;
   invitationEmail?: string;
 }) {
-  let signUpUrl = `/api/auth/login?returnTo=${signupCallbackUrl}&prompt=login&screen_hint=signup`;
-
+  let signUpUrl = `/api/workos/login?returnTo=${signupCallbackUrl}&screenHint=sign-up`;
   if (invitationEmail) {
-    signUpUrl += `&login_hint=${encodeURIComponent(invitationEmail)}`;
+    signUpUrl += `&loginHint=${encodeURIComponent(invitationEmail)}`;
   }
-
   return signUpUrl;
 }

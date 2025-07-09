@@ -1,5 +1,4 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/client";
 import { JSON } from "@jsonjoy.com/util/lib/json-brand";
 import type { Request, Response } from "express";
 
@@ -7,14 +6,25 @@ import {
   isChannelCreatedEvent,
   onChannelCreation,
 } from "@connectors/api/webhooks/slack/created_channel";
-import { botAnswerMessage } from "@connectors/connectors/slack/bot";
+import type {
+  SlackWebhookReqBody,
+  SlackWebhookResBody,
+} from "@connectors/api/webhooks/slack/utils";
+import {
+  handleChatBot,
+  isSlackWebhookEventReqBody,
+  withTrace,
+} from "@connectors/api/webhooks/slack/utils";
+import { getBotUserIdMemoized } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  getSlackClient,
+  reportSlackUsage,
+} from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
 } from "@connectors/connectors/slack/lib/utils";
-import { getBotUserIdMemoized } from "@connectors/connectors/slack/temporal/activities";
 import {
   launchSlackGarbageCollectWorkflow,
   launchSlackSyncOneMessageWorkflow,
@@ -25,134 +35,11 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { SlackChannel } from "@connectors/lib/models/slack";
-import type { Logger } from "@connectors/logger/logger";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-
-import { removeNulls } from "../../../../sdks/js";
-
-type SlackWebhookEventSubtype =
-  | "message_changed"
-  | "message_deleted"
-  | "channel_name";
-
-export interface SlackWebhookEvent<T = string> {
-  bot_id?: string;
-  channel?: T;
-  subtype?: SlackWebhookEventSubtype;
-  hidden?: boolean; // added for message_deleted
-  deleted_ts?: string; // added for message_deleted - timestamp of deleted message
-  user?: string;
-  ts?: string; // slack message id
-  thread_ts?: string; // slack thread id
-  type?: string; // event type (eg: message)
-  channel_type?: "channel" | "im" | "mpim";
-  text: string; // content of the message
-  old_name?: string; // when renaming channel: old channel name
-  name?: string; // when renaming channel: new channel name
-  message?: {
-    bot_id?: string;
-  };
-}
-
-type SlackWebhookReqBody = {
-  type: string;
-  challenge?: string;
-  team_id: string;
-};
-
-type SlackWebhookEventReqBody = SlackWebhookReqBody & {
-  event: SlackWebhookEvent;
-};
-
-type SlackWebhookResBody = WithConnectorsAPIErrorReponse<{
-  challenge: string;
-} | null>;
-
-function isSlackWebhookEventReqBody(
-  body: SlackWebhookReqBody
-): body is SlackWebhookEventReqBody {
-  return (
-    typeof body === "object" &&
-    body !== null &&
-    "event" in body &&
-    "type" in body &&
-    "team_id" in body
-  );
-}
-
-async function handleChatBot(req: Request, res: Response, logger: Logger) {
-  const { event } = req.body;
-
-  const slackMessage = event.text;
-  const slackTeamId = req.body.team_id;
-  const slackChannel = event.channel;
-  const slackUserId = event.user;
-  const slackBotId = event.bot_id || null;
-  const slackMessageTs = event.ts;
-  const slackThreadTs = event.thread_ts || null;
-
-  logger.info(
-    {
-      event: {
-        channel: slackChannel,
-        teamId: slackTeamId,
-        userId: slackUserId,
-      },
-    },
-    "Processing app mention"
-  );
-
-  if (
-    !slackMessage ||
-    !slackTeamId ||
-    !slackChannel ||
-    !slackMessageTs ||
-    (!slackBotId && !slackUserId)
-  ) {
-    logger.error(
-      {
-        slackMessage,
-        slackTeamId,
-        slackChannel,
-        slackUserId,
-        slackBotId,
-        slackMessageTs,
-      },
-      "Missing required fields in request body"
-    );
-    return apiError(req, res, {
-      api_error: {
-        type: "invalid_request_error",
-        message: "Missing required fields in request body",
-      },
-      status_code: 400,
-    });
-  }
-
-  // We need to answer 200 quickly to Slack, otherwise they will retry the HTTP request.
-  res.status(200).send();
-  const params = {
-    slackTeamId,
-    slackChannel,
-    slackUserId,
-    slackBotId,
-    slackMessageTs,
-    slackThreadTs,
-  };
-  const botRes = await botAnswerMessage(slackMessage, params);
-  if (botRes.isErr()) {
-    logger.error(
-      {
-        error: botRes.error,
-        ...params,
-      },
-      "Failed to answer to Slack message"
-    );
-  }
-}
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const _webhookSlackAPIHandler = async (
   req: Request<
@@ -222,22 +109,16 @@ const _webhookSlackAPIHandler = async (
     try {
       switch (event.type) {
         case "app_mention": {
-          await handleChatBot(req, res, logger);
+          await withTrace({
+            "slack.team_id": teamId,
+            "slack.app": "slack",
+          })(handleChatBot)(req, res, logger);
           break;
         }
         /**
          * `message` handler.
          */
         case "message": {
-          if (!teamId) {
-            return apiError(req, res, {
-              api_error: {
-                type: "invalid_request_error",
-                message: "Missing team_id in request body for message event",
-              },
-              status_code: 400,
-            });
-          }
           if (event.channel_type === "im") {
             // Got a private message
             if (
@@ -271,7 +152,13 @@ const _webhookSlackAPIHandler = async (
               });
             }
 
+            const slackClient = await getSlackClient(slackConfig.connectorId, {
+              // Do not reject rate limited calls in webhook handler.
+              rejectRateLimitedCalls: false,
+            });
+
             const myUserId = await getBotUserIdMemoized(
+              slackClient,
               slackConfig.connectorId
             );
             if (event.user === myUserId) {
@@ -279,7 +166,10 @@ const _webhookSlackAPIHandler = async (
               return res.status(200).send();
             }
             // Message from an actual user (a human)
-            await handleChatBot(req, res, logger);
+            await withTrace({
+              "slack.team_id": teamId,
+              "slack.app": "slack",
+            })(handleChatBot)(req, res, logger);
             break;
           } else if (event.channel_type === "channel") {
             if (!event.channel) {
@@ -312,6 +202,18 @@ const _webhookSlackAPIHandler = async (
                       slackChannelId: channel,
                     },
                     "Skipping webhook: Slack channel not yet in DB"
+                  );
+                  return null;
+                }
+
+                if (slackChannel.skipReason) {
+                  logger.info(
+                    {
+                      connectorId: c.connectorId,
+                      slackChannelId: channel,
+                      skipReason: slackChannel.skipReason,
+                    },
+                    `Ignoring message because channel is skipped: ${slackChannel.skipReason}`
                   );
                   return null;
                 }
@@ -391,7 +293,7 @@ const _webhookSlackAPIHandler = async (
                       ],
                       parentId: null,
                       title: `#${slackChannelName}`,
-                      mimeType: MIME_TYPES.SLACK.CHANNEL,
+                      mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
                       sourceUrl: getSlackChannelSourceUrl(slackChannelId, c),
                       providerVisibility: "public",
                     });
@@ -542,6 +444,7 @@ const _webhookSlackAPIHandler = async (
             const onChannelCreationRes = await onChannelCreation({
               event,
               logger,
+              provider: "slack",
             });
             if (onChannelCreationRes.isErr()) {
               return apiError(req, res, {
@@ -595,20 +498,37 @@ const _webhookSlackAPIHandler = async (
               status_code: 404,
             });
           }
-          const myUserId = await getBotUserIdMemoized(slackConfig.connectorId);
+
+          const slackClient = await getSlackClient(slackConfig.connectorId, {
+            // Do not reject rate limited calls in webhook handler.
+            rejectRateLimitedCalls: false,
+          });
+
+          const myUserId = await getBotUserIdMemoized(
+            slackClient,
+            slackConfig.connectorId
+          );
 
           // if the bot is not the one joining the channel, ignore
           if (event.user !== myUserId) {
             return res.status(200).send();
           }
 
-          const slackClient = await getSlackClient(slackConfig.connectorId);
-
+          reportSlackUsage({
+            connectorId: slackConfig.connectorId,
+            method: "conversations.info",
+            channelId: event.channel,
+          });
           const channelInfo = await slackClient.conversations.info({
             channel: event.channel,
           });
 
           if (channelInfo?.channel?.is_private) {
+            reportSlackUsage({
+              connectorId: slackConfig.connectorId,
+              method: "chat.postMessage",
+              channelId: event.channel,
+            });
             await slackClient.chat.postMessage({
               channel: event.channel,
               text: "You can now talk to Dust in this channel. ⚠️ If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel.",
@@ -689,41 +609,3 @@ const _webhookSlackAPIHandler = async (
 };
 
 export const webhookSlackAPIHandler = withLogging(_webhookSlackAPIHandler);
-/**
- * Webhhok payload example. Can be handy for working on it.
- * This is what Slack sends us when a new message is posted in a channel.
- *
- * {
-  token: '6OiSmwn7QoyS8A3yL6tddCHd',
-  team_id: 'T050RH73H9P',
-  context_team_id: 'T050RH73H9P',
-  context_enterprise_id: null,
-  api_app_id: 'A04T6G3E9FY',
-  event: {
-    client_msg_id: 'af462834-af02-4f6b-82cf-a1f20150cdab',
-    type: 'message',
-    text: 'waiting for webhook….',
-    user: 'U0506AXSHN2',
-    ts: '1682680228.216339',
-    blocks: [ [Object] ],
-    team: 'T050RH73H9P',
-    channel: 'C050DRFBYGK',
-    event_ts: '1682680228.216339',
-    channel_type: 'channel'
-  },
-  type: 'event_callback',
-  event_id: 'Ev055EA9CB6X',
-  event_time: 1682680228,
-  authorizations: [
-    {
-      enterprise_id: null,
-      team_id: 'T050RH73H9P',
-      user_id: 'U04VCU7TB9V',
-      is_bot: true,
-      is_enterprise_install: false
-    }
-  ],
-  is_ext_shared_channel: false,
-  event_context: '4-eyJldCI6Im1lc3NhZ2UiLCJ0aWQiOiJUMDUwUkg3M0g5UCIsImFpZCI6IkEwNFQ2RzNFOUZZIiwiY2lkIjoiQzA1MERSRkJZR0sifQ'
-}
- */

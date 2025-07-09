@@ -1,11 +1,11 @@
-import type { DustAppSecretType } from "@dust-tt/types";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getDustAppSecret } from "@app/lib/api/dust_app_secrets";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { DustAppSecretType } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 
 export type PostDustAppSecretsResponseBody = {
   secret: DustAppSecretType;
@@ -41,10 +41,18 @@ async function handler(
 
   switch (req.method) {
     case "DELETE":
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "You do not have the required permissions.",
+          },
+        });
+      }
       await secret.destroy();
       res.status(204).end();
       return;
-
     default:
       return apiError(req, res, {
         status_code: 405,

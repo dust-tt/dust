@@ -1,25 +1,24 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
-import { concurrentExecutor } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import {
-  AgentTablesQueryConfiguration,
-  AgentTablesQueryConfigurationTable,
-} from "@app/lib/models/assistant/actions/tables_query";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Mention } from "@app/lib/models/assistant/conversation";
-import { Workspace } from "@app/lib/models/workspace";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-async function deleteRetrievalConfigurationForAgent(agent: AgentConfiguration) {
+import type { LightWorkspaceType } from "@app/types";
+
+async function deleteRetrievalConfigurationForAgent(
+  workspace: LightWorkspaceType,
+  agent: AgentConfiguration
+) {
   const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
     where: {
       agentConfigurationId: agent.id,
+      workspaceId: workspace.id,
     },
   });
 
@@ -38,54 +37,7 @@ async function deleteRetrievalConfigurationForAgent(agent: AgentConfiguration) {
   await AgentRetrievalConfiguration.destroy({
     where: {
       agentConfigurationId: agent.id,
-    },
-  });
-}
-
-async function deleteDustAppRunConfigurationForAgent(
-  agent: AgentConfiguration
-) {
-  const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll({
-    where: {
-      agentConfigurationId: agent.id,
-    },
-  });
-
-  if (dustAppRunConfigurations.length === 0) {
-    return;
-  }
-
-  await AgentDustAppRunConfiguration.destroy({
-    where: {
-      agentConfigurationId: agent.id,
-    },
-  });
-}
-
-async function deleteTableQueryConfigurationForAgent(
-  agent: AgentConfiguration
-) {
-  const tableQueryConfigurations = await AgentTablesQueryConfiguration.findAll({
-    where: {
-      agentConfigurationId: agent.id,
-    },
-  });
-
-  if (tableQueryConfigurations.length === 0) {
-    return;
-  }
-
-  await AgentTablesQueryConfigurationTable.destroy({
-    where: {
-      tablesQueryConfigurationId: {
-        [Op.in]: tableQueryConfigurations.map((r) => r.id),
-      },
-    },
-  });
-
-  await AgentTablesQueryConfiguration.destroy({
-    where: {
-      agentConfigurationId: agent.id,
+      workspaceId: workspace.id,
     },
   });
 }
@@ -98,6 +50,7 @@ async function deleteTableQueryConfigurationForAgent(
  * /!\ Only deletes draft agent configuration if it hasn't been used in any messages.
  */
 async function deleteDraftAgentConfigurationAndRelatedResources(
+  workspace: LightWorkspaceType,
   agent: AgentConfiguration,
   logger: Logger,
   execute: boolean
@@ -110,6 +63,7 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   // Only deletes draft agent configuration without mentions.
   const hasAtLeastOneMention = await Mention.findOne({
     where: {
+      workspaceId: workspace.id,
       agentConfigurationId: agent.sId,
     },
   });
@@ -125,13 +79,7 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   }
 
   // Delete the retrieval configurations.
-  await deleteRetrievalConfigurationForAgent(agent);
-
-  // Delete the dust app run configurations.
-  await deleteDustAppRunConfigurationForAgent(agent);
-
-  // Delete the table query configurations.
-  await deleteTableQueryConfigurationForAgent(agent);
+  await deleteRetrievalConfigurationForAgent(workspace, agent);
 
   // Finally delete the agent configuration.
   await AgentConfiguration.destroy({
@@ -171,6 +119,7 @@ async function removeDraftAgentConfigurationsForWorkspace(
 
   for (const agent of draftAgents) {
     const isDeleted = await deleteDraftAgentConfigurationAndRelatedResources(
+      workspace,
       agent,
       logger,
       execute
@@ -201,7 +150,7 @@ makeScript(
   },
   async ({ workspaceId, execute }, logger) => {
     if (workspaceId) {
-      const workspace = await Workspace.findOne({
+      const workspace = await WorkspaceModel.findOne({
         where: {
           sId: workspaceId,
         },

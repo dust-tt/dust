@@ -25,19 +25,18 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Marketing",
   title: <>Create On-Brand Content At Scale</>,
-  from: "from-amber-200",
-  to: "to-amber-500",
+  accentColor: "text-brand-orange-golden",
   description: (
     <>
-      Scale content production, maintain brand consistency, and optimize reach
-      across channels.
+      Scale content production, maintain brand consistency,
+      and&nbsp;optimize&nbsp;reach across channels.
     </>
   ),
   bulletPoints: [
-    "Localize content in multiple languages with brand consistency",
-    "Draft high-quality customer stories following company templates",
-    "Create compelling social media copy",
-    "Monitor industry and competitor news",
+    "Localize content in multiple languages with brand consistency.",
+    "Draft high-quality customer stories following company templates.",
+    "Create compelling social media copy.",
+    "Monitor industry and competitor news.",
   ],
   image: "/static/landing/marketing/crossMedia.png",
 };
@@ -116,8 +115,7 @@ export const Metrics: MetricProps = {
       description: <> brand-compliant copy generation</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -155,7 +153,7 @@ export const UseCases: UseCaseProps = {
 export const ROI: ROIProps = {
   number: "70%",
   subtitle: "time reduction in localization",
-  logo: "/static/landing/logos/qonto.png",
+  logo: "/static/landing/logos/gray/qonto.png",
 };
 
 export const Quote: QuoteProps = {
@@ -163,16 +161,23 @@ export const Quote: QuoteProps = {
     "Dust is not just a tool - it's like having an extra team member who knows your brand voice, can handle recurring tasks, and helps you tackle new challenges. I couldn't do half of my job without it, especially with tight deadlines and a small team.",
   name: "Valentine Chelius",
   title: "Head of Marketing at Fleet",
-  logo: "/static/landing/logos/fleet.png",
+  logo: "/static/landing/logos/color/fleet.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/z8ky9a7ugn?seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/z8ky9a7ugn",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [
+  {
+    title: "How Alan produces customer stories 80% faster with Dust",
+    content:
+      "Alan's marketing team uses Dust to create customer stories that resonate with their audience, all while maintaining brand consistency.",
+    href: "https://blog.dust.tt/alan-marketing-customer-story-production-dust/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan.png",
+  },
   {
     title: "How Qonto Achieved 70% Faster Localization with Dust",
     content:

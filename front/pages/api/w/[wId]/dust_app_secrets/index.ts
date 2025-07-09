@@ -1,5 +1,3 @@
-import type { DustAppSecretType, WithAPIErrorResponse } from "@dust-tt/types";
-import { encrypt, rateLimiter } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -9,8 +7,11 @@ import {
 } from "@app/lib/api/dust_app_secrets";
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { DustAppSecretType, WithAPIErrorResponse } from "@app/types";
+import { encrypt } from "@app/types";
 
 export type GetDustAppSecretsResponseBody = {
   secrets: DustAppSecretType[];
@@ -61,6 +62,15 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      if (!auth.isBuilder()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "You do not have the required permissions.",
+          },
+        });
+      }
       const secrets = await getDustAppSecrets(auth);
 
       res.status(200).json({
@@ -69,12 +79,25 @@ async function handler(
       return;
 
     case "POST":
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "You do not have the required permissions.",
+          },
+        });
+      }
+
       const { name: postSecretName } = req.body;
       const secretValue = req.body.value;
 
+      // Sanitize the secret name to be alphanumeric and underscores only
+      const sanitizedSecretName = postSecretName.replace(/[^a-zA-Z0-9_]/g, "_");
+
       const encryptedValue = encrypt(secretValue, owner.sId); // We feed the workspace sid as key that will be added to the salt.
 
-      let postSecret = await getDustAppSecret(auth, postSecretName);
+      let postSecret = await getDustAppSecret(auth, sanitizedSecretName);
 
       if (postSecret) {
         await postSecret.update({
@@ -84,14 +107,14 @@ async function handler(
         postSecret = await DustAppSecret.create({
           userId: user.id,
           workspaceId: owner.id,
-          name: postSecretName,
+          name: sanitizedSecretName,
           hash: encryptedValue,
         });
       }
 
       res.status(201).json({
         secret: {
-          name: postSecretName,
+          name: sanitizedSecretName,
           value: secretValue,
         },
       });
@@ -103,7 +126,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET, POST or DELETE is expected.",
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }

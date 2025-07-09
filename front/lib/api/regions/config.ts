@@ -1,4 +1,4 @@
-import { EnvironmentConfig, isDevelopment } from "@dust-tt/types";
+import { EnvironmentConfig, isDevelopment } from "@app/types";
 
 export const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
 export type RegionType = (typeof SUPPORTED_REGIONS)[number];

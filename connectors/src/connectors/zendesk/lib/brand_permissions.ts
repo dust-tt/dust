@@ -1,9 +1,8 @@
-import type { ModelId } from "@dust-tt/types";
-
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { fetchZendeskBrand } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
 
 /**
  * Mark a brand as permission "read" in db to indicate it was explicitly selected by the user.

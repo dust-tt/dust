@@ -1,15 +1,3 @@
-import type {
-  ConnectorProvider,
-  DataSourceViewCategory,
-  DataSourceWithConnectorDetailsType,
-  SpaceType,
-} from "@dust-tt/types";
-import {
-  CONNECTOR_PROVIDERS,
-  isConnectorProvider,
-  isDataSourceViewCategoryWithoutApps,
-  removeNulls,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -18,6 +6,7 @@ import type { DataSourceIntegration } from "@app/components/spaces/AddConnection
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
@@ -25,14 +14,23 @@ import {
 } from "@app/lib/api/data_sources";
 import { isManaged } from "@app/lib/data_sources";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import type { ActionApp } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-
-type DataSourceViewCategoryWithoutApps = Exclude<
-  DataSourceViewCategory,
-  "apps"
->;
+import type {
+  ConnectorProvider,
+  DataSourceViewCategoryWithoutApps,
+  DataSourceWithConnectorDetailsType,
+  SpaceType,
+  UserType,
+} from "@app/types";
+import {
+  CONNECTOR_PROVIDERS,
+  isConnectorProvider,
+  isDataSourceViewCategoryWithoutApps,
+  removeNulls,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
@@ -43,12 +41,15 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     systemSpace: SpaceType;
     integrations: DataSourceIntegration[];
     registryApps: ActionApp[] | null;
+    user: UserType;
+    activeSeats: number;
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const plan = auth.getNonNullablePlan();
   const isAdmin = auth.isAdmin();
+  const user = auth.getNonNullableUser();
 
   const { category, setupWithSuffixConnector, setupWithSuffixSuffix, spaceId } =
     context.query;
@@ -140,6 +141,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     ? Object.values(getDustProdActionRegistry()).map((action) => action.app)
     : null;
 
+  const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
+
   return {
     props: {
       canReadInSpace: space.canRead(auth),
@@ -149,11 +152,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       isAdmin,
       isBuilder,
       owner,
+      user: user.toJSON(),
       plan,
       registryApps,
       space: space.toJSON(),
       subscription,
       systemSpace: systemSpace.toJSON(),
+      activeSeats,
     },
   };
 });
@@ -163,16 +168,19 @@ export default function Space({
   isAdmin,
   canWriteInSpace,
   owner,
+  user,
   plan,
   space,
   systemSpace,
   integrations,
+  activeSeats,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
   return (
     <SpaceResourcesList
       owner={owner}
+      user={user}
       plan={plan}
       space={space}
       systemSpace={systemSpace}
@@ -180,6 +188,7 @@ export default function Space({
       canWriteInSpace={canWriteInSpace}
       category={category}
       integrations={integrations}
+      activeSeats={activeSeats}
       onSelect={(sId) => {
         void router.push(
           `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${sId}`
@@ -191,8 +200,10 @@ export default function Space({
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
   return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch>
-      {page}
-    </SpaceLayout>
+    <AppRootLayout>
+      <SpaceLayout pageProps={pageProps} useBackendSearch>
+        {page}
+      </SpaceLayout>
+    </AppRootLayout>
   );
 };

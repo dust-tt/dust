@@ -7,17 +7,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  APIErrorResponse,
-  AppType,
-  BlockRunConfig,
-  BlockType,
-  CoreAPIError,
-  SpecificationBlockType,
-  SpecificationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef, useState } from "react";
@@ -27,8 +16,9 @@ import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { extractConfig } from "@app/lib/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -41,6 +31,17 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useSavedRunStatus } from "@app/lib/swr/apps";
+import type {
+  APIErrorResponse,
+  AppType,
+  BlockRunConfig,
+  BlockType,
+  CoreAPIError,
+  SpecificationBlockType,
+  SpecificationType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -108,7 +109,8 @@ const isRunnable = (
         key != "error_as_output" &&
         key != "function_call" &&
         key != "logprobs" &&
-        key != "top_logprobs"
+        key != "top_logprobs" &&
+        key != "response_format"
       ) {
         if (!config[name][key] || config[name][key].length == 0) {
           return false;
@@ -326,7 +328,7 @@ export default function AppView({
   const router = useRouter();
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       hideSidebar
       owner={owner}
@@ -381,7 +383,7 @@ export default function AppView({
               icon={PlayIcon}
             />
             {runError ? (
-              <div className="flex-initial px-2 text-sm font-bold text-red-400">
+              <div className="flex-initial px-2 text-sm font-bold text-warning">
                 {(() => {
                   switch (runError.code) {
                     case "invalid_specification_error":
@@ -492,7 +494,7 @@ export default function AppView({
                 />
               </div>
               {runError ? (
-                <div className="flex px-2 text-sm font-bold text-red-400">
+                <div className="flex px-2 text-sm font-bold text-warning">
                   {(() => {
                     switch (runError.code) {
                       case "invalid_specification_error":
@@ -508,6 +510,10 @@ export default function AppView({
         </div>
         <div ref={bottomRef} className="mt-4"></div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+AppView.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

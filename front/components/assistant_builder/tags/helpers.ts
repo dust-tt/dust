@@ -1,7 +1,7 @@
 import type {
   DataSourceTag,
   DataSourceViewSelectionConfiguration,
-} from "@dust-tt/types";
+} from "@app/types";
 
 /**
  * Get the list of tags selected in the action.

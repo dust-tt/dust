@@ -1,18 +1,18 @@
-import type { MessageReactionType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import {
   createMessageReaction,
   deleteMessageReaction,
 } from "@app/lib/api/assistant/reaction";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { MessageReactionType, WithAPIErrorResponse } from "@app/types";
 
 export const MessageReactionRequestBodySchema = t.type({
   reaction: t.string,
@@ -40,10 +40,11 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversationRes = await getConversationWithoutContent(
-    auth,
-    conversationId
-  );
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      conversationId
+    );
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
@@ -79,10 +80,10 @@ async function handler(
       const created = await createMessageReaction(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
         context: {
           username: user.username,
-          fullName: user.fullName,
+          fullName: user.fullName(),
         },
         reaction: bodyValidation.right.reaction,
       });
@@ -103,10 +104,10 @@ async function handler(
       const deleted = await deleteMessageReaction(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
         context: {
           username: user.username,
-          fullName: user.fullName,
+          fullName: user.fullName(),
         },
         reaction: bodyValidation.right.reaction,
       });

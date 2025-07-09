@@ -1,4 +1,4 @@
-import { Input, Label, TextArea } from "@dust-tt/sparkle";
+import { Button, Input, Label, TextArea } from "@dust-tt/sparkle";
 import type * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import * as React from "react";
@@ -177,7 +177,7 @@ const FormInput = React.forwardRef<
       ref={ref}
       className={cn(
         "border-2 border-border-dark dark:border-border-dark-night",
-        "bg-white dark:bg-structure-50-night",
+        "bg-white dark:bg-muted-background-night",
         className
       )}
       value={value}
@@ -198,7 +198,7 @@ const FormTextArea = React.forwardRef<
       <TextArea
         className={cn(
           "border-2 border-border-dark dark:border-border-dark-night",
-          "bg-white dark:bg-structure-50-night",
+          "bg-white dark:bg-muted-background-night",
           className
         )}
         value={value ?? undefined}
@@ -210,6 +210,60 @@ const FormTextArea = React.forwardRef<
 });
 FormTextArea.displayName = "FormTextArea";
 
+const FormUpload = React.forwardRef<
+  HTMLInputElement,
+  Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> & {
+    value?: File | null;
+  }
+>(({ className, value, ...props }, ref) => {
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  return (
+    <>
+      <input
+        type="file"
+        className="hidden"
+        ref={(el) => {
+          if (fileInputRef) {
+            fileInputRef.current = el;
+          }
+          if (typeof ref === "function") {
+            ref(el);
+          } else if (ref) {
+            ref.current = el;
+          }
+        }}
+        {...props}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            if (props.onChange) {
+              const event = {
+                target: {
+                  value: file,
+                },
+              };
+              props.onChange(event as any);
+            }
+          }
+        }}
+      />
+      <div>
+        <Button
+          className={className}
+          variant="outline"
+          label={value?.name ?? "Select"}
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }}
+        />
+      </div>
+    </>
+  );
+});
+FormUpload.displayName = "FormUpload";
+
 export {
   Form as PokeForm,
   FormControl as PokeFormControl,
@@ -220,4 +274,5 @@ export {
   FormLabel as PokeFormLabel,
   FormMessage as PokeFormMessage,
   FormTextArea as PokeFormTextArea,
+  FormUpload as PokeFormUpload,
 };

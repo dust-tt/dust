@@ -10,9 +10,9 @@ use elasticsearch::{
 };
 use elasticsearch_dsl::{
     Aggregation, BoolQuery, FieldSort, Operator, Query, Script, ScriptSort, ScriptSortType, Search,
-    Sort, SortOrder,
+    Sort, SortMissing, SortOrder,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
@@ -64,6 +64,14 @@ pub enum SearchScopeType {
     Both,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MimeTypeFilter {
+    #[serde(rename = "in")]
+    pub is_in: Option<Vec<String>>,
+    #[serde(rename = "not")]
+    pub is_not: Option<Vec<String>>,
+}
+
 #[derive(serde::Deserialize, Debug)]
 pub struct SortSpec {
     pub field: String,
@@ -79,6 +87,8 @@ pub struct NodesSearchOptions {
     // It will sort by title desc, then by updated_at asc, as per
     // elasticsearch's sort syntax (although it's a small subset of it)
     sort: Option<Vec<SortSpec>>,
+    // Whether to search within source URLs when matching the query.
+    search_source_urls: Option<bool>,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
@@ -96,7 +106,7 @@ fn default_search_scope() -> SearchScopeType {
 #[derive(serde::Deserialize, Debug)]
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
-    excluded_node_mime_types: Option<Vec<String>>,
+    mime_types: Option<MimeTypeFilter>,
     node_ids: Option<Vec<String>>,
     node_types: Option<Vec<NodeType>>,
     parent_id: Option<String>,
@@ -138,8 +148,8 @@ pub trait SearchStore {
     // Data sources.
     async fn get_data_source_stats(
         &self,
-        data_source_id: String,
-    ) -> Result<Option<DataSourceESDocumentWithStats>>;
+        data_source_ids: Vec<String>,
+    ) -> Result<(Vec<DataSourceESDocumentWithStats>, i64)>;
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
     async fn delete_data_source(&self, data_source: &DataSource) -> Result<()>;
 
@@ -161,6 +171,7 @@ impl Default for NodesSearchOptions {
             limit: Some(MAX_PAGE_SIZE),
             cursor: None,
             sort: None,
+            search_source_urls: Some(false),
         }
     }
 }
@@ -291,11 +302,12 @@ impl SearchStore for ElasticsearchSearchStore {
         }
 
         // Build search query with potential truncation.
-        let (bool_query, warning_code) = self.build_search_node_query(query.clone(), filter)?;
+        let (bool_query, indices_to_query, warning_code) =
+            self.build_search_node_query(query.clone(), filter, &options)?;
 
         let sort = match query {
             None => self.build_search_nodes_sort(options.sort)?,
-            Some(_) => vec![],
+            Some(_) => self.build_relevance_sort(),
         };
 
         // Build and run search
@@ -311,16 +323,33 @@ impl SearchStore for ElasticsearchSearchStore {
             let decoded = URL_SAFE.decode(cursor)?;
             let json_str = String::from_utf8(decoded)?;
             let search_after: Vec<serde_json::Value> = serde_json::from_str(&json_str)?;
-            search = search.search_after(search_after);
+
+            // We replace empty strings with a "high sort" sentinel so that documents with
+            // an originally empty title will appear at the end of ascending sort order.
+            //
+            // Elasticsearch's Rust client (or DSL) has trouble when search_after contains "".
+            // By substituting a high-Unicode character ("\u{10FFFF}"), we ensure those items
+            // sort last without breaking the library's internal validation.
+            //
+            // Will be removed once we don't have empty strings titles anymore.
+            let fixed_sort = search_after
+                .iter()
+                .map(|v| {
+                    if v.as_str() == Some("") {
+                        serde_json::Value::String("\u{10FFFF}".to_string())
+                    } else {
+                        v.clone()
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            search = search.search_after(fixed_sort);
         }
 
         let search_start = utils::now();
         let response = self
             .client
-            .search(SearchParts::Index(&[
-                DATA_SOURCE_NODE_INDEX_NAME,
-                DATA_SOURCE_INDEX_NAME,
-            ]))
+            .search(SearchParts::Index(&indices_to_query))
             .body(search)
             .send()
             .await?;
@@ -418,15 +447,20 @@ impl SearchStore for ElasticsearchSearchStore {
 
     async fn get_data_source_stats(
         &self,
-        data_source_id: String,
-    ) -> Result<Option<DataSourceESDocumentWithStats>> {
-        // Search on data_source_id.
+        data_source_ids: Vec<String>,
+    ) -> Result<(Vec<DataSourceESDocumentWithStats>, i64)> {
+        if data_source_ids.is_empty() {
+            return Ok((vec![], 0));
+        }
+
+        // Search for data sources first to get their metadata
         let response = self
             .client
             .search(SearchParts::Index(&[DATA_SOURCE_INDEX_NAME]))
             .body(
                 Search::new()
-                    .query(Query::bool().filter(Query::term("data_source_id", data_source_id))),
+                    .query(Query::bool().filter(Query::terms("data_source_id", &data_source_ids)))
+                    .size(data_source_ids.len() as u64),
             )
             .send()
             .await?;
@@ -446,16 +480,38 @@ impl SearchStore for ElasticsearchSearchStore {
             }
         };
 
-        if items.len() > 1 {
-            // This should never ever happen since we are searching by data_source_id.
-            Err(anyhow::anyhow!("Found more than one matching data source."))
-        } else {
-            if let Some(item) = items.first() {
-                Some(self.compute_data_sources_stats(item.clone()).await).transpose()
-            } else {
-                Ok(None)
+        // Consistency check: we should find exactly the number of data sources we requested
+        // (unless some don't exist, which is valid)
+        if items.len() != data_source_ids.len() {
+            return Err(anyhow::anyhow!(
+                "Found inconsistency between returned data sources ({}) vs requested data sources ({}). This should never happen.",
+                items.len(),
+                data_source_ids.len()
+            ));
+        }
+
+        let (stats_map, overall_total_size) = self
+            .compute_multiple_data_sources_stats(&data_source_ids)
+            .await?;
+
+        // Combine data sources with their stats
+        let mut results = Vec::new();
+        for item in items {
+            if let SearchItem::DataSource(data_source) = item {
+                let (total_size, doc_count) = stats_map
+                    .get(&data_source.data_source_id)
+                    .copied()
+                    .unwrap_or((0, 0));
+
+                results.push(DataSourceESDocumentWithStats::from((
+                    data_source,
+                    total_size,
+                    doc_count,
+                )));
             }
         }
+
+        Ok((results, overall_total_size))
     }
 
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()> {
@@ -635,7 +691,10 @@ impl ElasticsearchSearchStore {
         &self,
         query: Option<String>,
         filter: NodesSearchFilter,
-    ) -> Result<(BoolQuery, Option<SearchWarningCode>)> {
+        options: &NodesSearchOptions,
+    ) -> Result<(BoolQuery, Vec<&str>, Option<SearchWarningCode>)> {
+        let mut indices_to_query = vec![];
+
         // Check there is at least one data source view filter
         // !! do not remove; without data source view filter this endpoint is
         // dangerous as any data from any workspace can be retrieved.
@@ -665,15 +724,24 @@ impl ElasticsearchSearchStore {
                 .must(self.build_data_sources_content_query(&query, &filter, &mut counter)?);
 
             should_queries.push(data_sources_query);
+            indices_to_query.push(DATA_SOURCE_INDEX_NAME);
         }
 
-        // Build nodes query only if we have clauses left.
-        if !counter.is_full() {
+        // Build nodes query only if we have clauses left and the scope is NodesTitles or Both.
+        if !counter.is_full()
+            && filter.data_source_views.iter().any(|f| {
+                matches!(
+                    f.search_scope,
+                    SearchScopeType::NodesTitles | SearchScopeType::Both
+                )
+            })
+        {
             let nodes_query = Query::bool()
                 .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
-                .filter(self.build_nodes_content_query(&query, &filter, &mut counter)?);
+                .filter(self.build_nodes_content_query(&query, &filter, options, &mut counter)?);
 
             should_queries.push(nodes_query);
+            indices_to_query.push(DATA_SOURCE_NODE_INDEX_NAME);
         }
 
         // If we've used all available clauses or had to skip any queries, set the warning code.
@@ -683,7 +751,7 @@ impl ElasticsearchSearchStore {
 
         let bool_query = Query::bool().should(should_queries).minimum_should_match(1);
 
-        Ok((bool_query, warning_code))
+        Ok((bool_query, indices_to_query, warning_code))
     }
 
     /// On the data source index, we only want to add a clause if the search scope is
@@ -776,6 +844,12 @@ impl ElasticsearchSearchStore {
         filter: &NodesSearchFilter,
         counter: &mut QueryClauseCounter,
     ) -> Result<BoolQuery> {
+        if let Some(_) = &filter.node_ids {
+            return Err(anyhow::anyhow!(
+                "The `node_ids` filter should not be used in conjunction with search in the datasources index, since datasources do not have nodeIds. Use `nodes_title` search scope to avoid searching this index, or remove the `node_ids` filter."
+            ));
+        }
+
         let mut bool_query = Query::bool()
             // Data sources don't support parents.
             .filter(self.build_shared_permission_filter(filter, DATA_SOURCE_INDEX_NAME, counter));
@@ -795,6 +869,7 @@ impl ElasticsearchSearchStore {
         &self,
         query: &Option<String>,
         filter: &NodesSearchFilter,
+        options: &NodesSearchOptions,
         counter: &mut QueryClauseCounter,
     ) -> Result<BoolQuery> {
         let mut bool_query = Query::bool().filter(self.build_shared_permission_filter(
@@ -817,6 +892,17 @@ impl ElasticsearchSearchStore {
             bool_query = bool_query.filter(Query::terms("node_type", terms));
         }
 
+        if let Some(mime_type_filter) = &filter.mime_types {
+            if let Some(included_mime_types) = &mime_type_filter.is_in {
+                counter.add(1);
+                bool_query = bool_query.filter(Query::terms("mime_type", included_mime_types))
+            }
+            if let Some(excluded_mime_types) = &mime_type_filter.is_not {
+                counter.add(1);
+                bool_query = bool_query.must_not(Query::terms("mime_type", excluded_mime_types))
+            }
+        }
+
         if let Some(parent_id) = &filter.parent_id {
             // if parent_id is root, we filter on all nodes whose parent_id is null
             // otherwise, we filter on all nodes whose parent_id is the given parent_id.
@@ -828,20 +914,20 @@ impl ElasticsearchSearchStore {
             }
         }
 
-        if let Some(excluded_node_mime_types) = filter
-            .excluded_node_mime_types
-            .as_ref()
-            .filter(|types| !types.is_empty())
-        {
-            counter.add(1);
-            bool_query = bool_query.must_not(Query::terms("mime_type", excluded_node_mime_types));
-        }
-
         // Add search term if present.
         if let Some(query_string) = query.clone() {
             counter.add(1);
-            bool_query =
-                bool_query.must(self.build_match_query("title", &query_string, counter)?);
+            let mut search_bool =
+                Query::bool().should(self.build_match_query("title", &query_string, counter)?);
+
+            // Only add source_url filter if search_source_urls is true
+            // This creates an OR between title and source_url matches.
+            if options.search_source_urls.unwrap_or(false) {
+                counter.add(1);
+                search_bool = search_bool.should(Query::term("source_url", query_string));
+            }
+
+            bool_query = bool_query.must(search_bool.minimum_should_match(1));
         }
 
         Ok(bool_query)
@@ -1008,80 +1094,117 @@ impl ElasticsearchSearchStore {
 
                 sort.into_iter()
                     .map(|s| {
-                        Sort::FieldSort(FieldSort::new(s.field).order(match s.direction {
-                            SortDirection::Asc => SortOrder::Asc,
-                            SortDirection::Desc => SortOrder::Desc,
-                        }))
+                        Sort::FieldSort(
+                            FieldSort::new(s.field)
+                                .order(match s.direction {
+                                    SortDirection::Asc => SortOrder::Asc,
+                                    SortDirection::Desc => SortOrder::Desc,
+                                })
+                                .missing(SortMissing::Last)
+                                .unmapped_type("keyword"),
+                        )
                     })
                     .collect()
             }
             // Default to sorting folders first, then both documents and tables
-            // and alphabetically by title
+            // and alphabetically by title (or data source name )
             None => vec![
                 Sort::ScriptSort(
                     ScriptSort::ascending(Script::source(
-                        "doc['node_type'].value == 'Folder' ? 0 : 1",
+                        "doc.containsKey('node_type') && doc['node_type'].size() > 0 && doc['node_type'].value == 'Folder' ? 0 : 1",
                     ))
                     .r#type(ScriptSortType::Number),
                 ),
-                Sort::FieldSort(FieldSort::new("title.keyword").order(SortOrder::Asc)),
+                Sort::FieldSort(
+                    FieldSort::new("title.keyword")
+                        .order(SortOrder::Asc)
+                        .missing(SortMissing::Last)
+                        .unmapped_type("keyword")
+                ),
             ],
         };
 
         base_sort.push(Sort::FieldSort(
-            FieldSort::new("node_id").order(SortOrder::Asc),
+            FieldSort::new("node_id")
+                .order(SortOrder::Asc)
+                .missing(SortMissing::Last)
+                .unmapped_type("keyword"),
+        ));
+
+        base_sort.push(Sort::FieldSort(
+            FieldSort::new("data_source_internal_id").order(SortOrder::Asc),
         ));
 
         Ok(base_sort)
     }
 
-    async fn compute_data_sources_stats(
+    fn build_relevance_sort(&self) -> Vec<Sort> {
+        vec![
+            Sort::FieldSort(FieldSort::new("_score").order(SortOrder::Desc)),
+            Sort::ScriptSort(
+                ScriptSort::ascending(Script::source(
+                    format!("doc['_index'].value.startsWith('{}') ? doc['node_id'].value : doc['data_source_id'].value",
+                            DATA_SOURCE_NODE_INDEX_NAME)
+                ))
+                .r#type(ScriptSortType::String)
+            ),
+        ]
+    }
+
+    async fn compute_multiple_data_sources_stats(
         &self,
-        item: SearchItem,
-    ) -> Result<DataSourceESDocumentWithStats> {
-        match item {
-            SearchItem::DataSource(data_source) => {
-                let search = Search::new()
+        data_source_ids: &[String],
+    ) -> Result<(HashMap<String, (i64, i64)>, i64)> {
+        let stats_response = self
+            .client
+            .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
+            .body(
+                Search::new()
                     .size(0)
-                    .query(Query::bool().filter(Query::term(
-                        "data_source_id",
-                        data_source.data_source_id.clone(),
-                    )))
+                    .query(Query::terms("data_source_id", data_source_ids))
                     .aggregate(
                         "data_sources",
                         Aggregation::terms("data_source_id")
+                            .size(data_source_ids.len() as u64)
                             .aggregate("total_size", Aggregation::sum("text_size")),
-                    );
-                let response = self
-                    .client
-                    .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
-                    .body(search)
-                    .send()
-                    .await?;
+                    )
+                    .aggregate("total_size", Aggregation::sum("text_size")),
+            )
+            .send()
+            .await?;
 
-                let response_body = response.json::<serde_json::Value>().await?;
-                let buckets = response_body["aggregations"]["data_sources"]["buckets"]
-                    .as_array()
-                    .unwrap();
-
-                buckets
-                    .first()
-                    .map(|bucket| {
-                        Ok(DataSourceESDocumentWithStats::from((
-                            data_source,
-                            // We unwrap here because if we got a bucket, then it necessarily contains these fields.
-                            bucket["total_size"]["value"].as_f64().unwrap().round() as i64,
-                            bucket["doc_count"].as_i64().unwrap(),
-                        )))
-                    })
-                    .unwrap_or(Err(anyhow::anyhow!(
-                        "Data source stats computation failed."
-                    )))
+        let stats_body = match stats_response.status_code().is_success() {
+            true => stats_response.json::<serde_json::Value>().await?,
+            false => {
+                return Err(anyhow::anyhow!(
+                    "Failed to get data source stats: {}",
+                    stats_response.json::<serde_json::Value>().await?
+                ));
             }
-            _ => Err(anyhow::anyhow!(
-                "Invalid search item type, expected a DataSource."
-            )),
+        };
+
+        // Build a map of data_source_id -> (total_size, doc_count)
+        let mut stats_map = HashMap::new();
+        if let Some(buckets) = stats_body["aggregations"]["data_sources"]["buckets"].as_array() {
+            for bucket in buckets {
+                if let Some(data_source_id) = bucket["key"].as_str() {
+                    let doc_count = bucket["doc_count"].as_i64().unwrap_or(0);
+                    let total_size = bucket["total_size"]["value"]
+                        .as_f64()
+                        .unwrap_or(0.0)
+                        .round() as i64;
+                    stats_map.insert(data_source_id.to_string(), (total_size, doc_count));
+                }
+            }
         }
+
+        // Extract the overall total_size from aggregations
+        let overall_total_size = stats_body["aggregations"]["total_size"]["value"]
+            .as_f64()
+            .unwrap_or(0.0)
+            .round() as i64;
+
+        Ok((stats_map, overall_total_size))
     }
 
     // Generic document methods.

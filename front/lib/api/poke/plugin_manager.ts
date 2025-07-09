@@ -1,12 +1,13 @@
-import type { PluginArgs } from "@dust-tt/types";
-
-import type { Plugin } from "@app/lib/api/poke/types";
+import type { AllPlugins } from "@app/lib/api/poke/types";
+import type { SupportedResourceType } from "@app/types";
 
 import * as allPlugins from "./plugins";
 
 class PluginManager {
-  private plugins: Map<string, Plugin<PluginArgs>> = new Map();
-  private pluginsByResourceType: Record<string, Plugin<PluginArgs>[]> = {};
+  private plugins: Map<string, AllPlugins> = new Map();
+  private pluginsByResourceType: Partial<
+    Record<SupportedResourceType, AllPlugins[]>
+  > = {};
 
   constructor() {
     this.loadPlugins();
@@ -18,11 +19,9 @@ class PluginManager {
         const resourceTypes = this.getResourceTypesFromPlugin(plugin);
 
         for (const rt of resourceTypes) {
-          if (!this.pluginsByResourceType[rt]) {
-            this.pluginsByResourceType[rt] = [];
-          }
-
-          this.pluginsByResourceType[rt].push(plugin);
+          // Initialize and push in one statement.
+          (this.pluginsByResourceType[rt] =
+            this.pluginsByResourceType[rt] || []).push(plugin);
         }
 
         this.plugins.set(plugin.manifest.id, plugin);
@@ -30,19 +29,21 @@ class PluginManager {
     }
   }
 
-  private isPlugin(obj: any): obj is Plugin<PluginArgs> {
+  private isPlugin(obj: any): obj is AllPlugins {
     return obj && typeof obj === "object" && "manifest" in obj;
   }
 
-  private getResourceTypesFromPlugin(plugin: Plugin<PluginArgs>): string[] {
+  private getResourceTypesFromPlugin(
+    plugin: AllPlugins
+  ): SupportedResourceType[] {
     return plugin.manifest.resourceTypes || ["default"];
   }
 
-  getPluginsForResourceType(resourceType: string): Plugin<PluginArgs>[] {
+  getPluginsForResourceType(resourceType: SupportedResourceType): AllPlugins[] {
     return this.pluginsByResourceType[resourceType] || [];
   }
 
-  getPluginById(pluginId: string): Plugin<PluginArgs> | undefined {
+  getPluginById(pluginId: string): AllPlugins | undefined {
     return this.plugins.get(pluginId);
   }
 }

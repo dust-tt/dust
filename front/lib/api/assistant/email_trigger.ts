@@ -1,12 +1,3 @@
-import type {
-  AgentMessageType,
-  ConversationType,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-  Result,
-  UserType,
-} from "@dust-tt/types";
-import { Err, isAgentMessageType, isDevelopment, Ok } from "@dust-tt/types";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
@@ -20,12 +11,21 @@ import {
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { sendEmail } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
-import { Workspace } from "@app/lib/models/workspace";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type {
+  AgentMessageType,
+  ConversationType,
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+  Result,
+  UserType,
+} from "@app/types";
+import { Err, isAgentMessageType, isDevelopment, Ok } from "@app/types";
 
 import { toFileContentFragment } from "./conversation/content_fragment";
 
@@ -43,6 +43,7 @@ function renderUserType(user: UserModel): UserType {
     lastName: user.lastName,
     fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
     image: user.imageUrl,
+    lastLoginAt: user.lastLoginAt?.getTime() ?? null,
   };
 }
 
@@ -118,7 +119,7 @@ export async function userAndWorkspacesFromEmail({
         `Please sign up for Dust at https://dust.tt to interact with assitsants over email.`,
     });
   }
-  const workspaces = await Workspace.findAll({
+  const workspaces = await WorkspaceModel.findAll({
     include: [
       {
         model: MembershipModel,
@@ -281,7 +282,7 @@ export async function triggerFromEmail({
     return new Err({
       type: "unexpected_error",
       message:
-        "An unexpected error occurred. Please try again or contact us at team@dust.tt.",
+        "An unexpected error occurred. Please try again or contact us at support@dust.tt.",
     });
   }
 
@@ -332,9 +333,9 @@ export async function triggerFromEmail({
       cfRes.value,
       {
         username: user.username,
-        fullName: user.fullName,
+        fullName: user.fullName(),
         email: user.email,
-        profilePictureUrl: user.image,
+        profilePictureUrl: user.imageUrl,
       }
     );
     if (contentFragmentRes.isErr()) {
@@ -386,11 +387,15 @@ export async function triggerFromEmail({
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
         username: user.username,
-        fullName: user.fullName,
+        fullName: user.fullName(),
         email: user.email,
-        profilePictureUrl: user.image,
+        profilePictureUrl: user.imageUrl,
         origin: "email",
       },
+      // When running an agent from an email we have no chance of validating tools so we skip all of
+      // them and run the tools by default. This is in tension with the admin settings and could be
+      // revisited if needed.
+      skipToolsValidation: true,
     },
     { resolveAfterFullGeneration: true }
   );

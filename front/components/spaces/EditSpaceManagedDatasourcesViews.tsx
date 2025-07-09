@@ -10,30 +10,30 @@ import {
   InformationCircleIcon,
   PlusIcon,
   Tooltip,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React, { useContext, useMemo, useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import { confirmPrivateNodesSync } from "@app/components/ConnectorPermissionsModal";
+import { confirmPrivateNodesSync } from "@app/components/data_source/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   useSpaceDataSourceViews,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import type {
+  APIError,
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { removeNulls } from "@app/types";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;
@@ -44,6 +44,10 @@ interface EditSpaceManagedDataSourcesViewsProps {
   space: SpaceType;
 }
 
+/*
+ * If you pass a dataSourceView to this component, it will be used to edit the data source view selection.
+ * If you don't pass a dataSourceView, it will allow you to edit data from multiple data sources at once.
+ */
 export function EditSpaceManagedDataSourcesViews({
   dataSourceView,
   isAdmin,
@@ -92,7 +96,8 @@ export function EditSpaceManagedDataSourcesViews({
         (dsv) =>
           isManaged(dsv.dataSource) &&
           (!dataSourceView ||
-            dsv.dataSource.sId === dataSourceView.dataSource.sId)
+            dsv.dataSource.sId === dataSourceView.dataSource.sId) &&
+          dsv.dataSource.connectorProvider !== "slack_bot"
       ),
     [systemSpaceDataSourceViews, dataSourceView]
   );
@@ -213,7 +218,7 @@ export function EditSpaceManagedDataSourcesViews({
                 selectionConfiguration.selectedResources.length === 0
               ) {
                 throw new Error(
-                  "We should never have a view with no data in the selection, " +
+                  `We should never have a view with no data in the selection (${existingViewForDs.dataSource.name}), ` +
                     "it should have been removed. Action: check the DataSourceViewSelector component."
                 );
               } else {
@@ -313,6 +318,7 @@ export function EditSpaceManagedDataSourcesViews({
     <>
       <SpaceManagedDatasourcesViewsModal
         space={space}
+        systemSpace={systemSpace}
         isOpen={showDataSourcesModal}
         onClose={() => {
           setShowDataSourcesModal(false);

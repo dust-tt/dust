@@ -1,25 +1,16 @@
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   cn,
-  DataTable,
+  ScrollableDataTable,
   SearchInput,
-  Spinner,
   useHashParam,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  ContentNodesViewType,
-  DataSourceViewCategory,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React from "react";
 
+import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
 import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
@@ -27,13 +18,34 @@ import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
 import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
+import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
+import { useDebounce } from "@app/hooks/useDebounce";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useQueryParams } from "@app/hooks/useQueryParams";
+import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import {
-  DATA_SOURCE_MIME_TYPE,
+  getViewTypeForURLNodeCandidateAccountingForNotion,
+  isNodeCandidate,
+  isUrlCandidate,
+  nodeCandidateFromUrl,
+} from "@app/lib/connectors";
+import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
-import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
+import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import type {
+  APIError,
+  ContentNodesViewType,
+  DataSourceViewCategory,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -68,7 +80,6 @@ function isBackendSearch(
 
 export function SpaceSearchInput(props: SpaceSearchInputProps) {
   // Common code for both backend and frontend search.
-  const [searchTerm, setSearchTerm] = React.useState<string>("");
   const [isSearchDisabled, setIsSearchDisabled] =
     React.useState<boolean>(false);
   const [targetDataSourceViews, setTargetDataSourceViews] = React.useState<
@@ -81,7 +92,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
 
   // Reset the search term when the URL changes.
   React.useEffect(() => {
-    setSearchTerm("");
     setTargetDataSourceViews(
       props.dataSourceView ? [props.dataSourceView] : []
     );
@@ -95,8 +105,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   // Create the context value.
   const searchContextValue = React.useMemo(
     () => ({
-      searchTerm,
-      setSearchTerm,
       isSearchDisabled,
       setIsSearchDisabled,
       targetDataSourceViews,
@@ -104,7 +112,7 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
       setActionButtons,
       actionButtons,
     }),
-    [searchTerm, isSearchDisabled, targetDataSourceViews, actionButtons]
+    [isSearchDisabled, targetDataSourceViews, actionButtons]
   );
 
   // Use the type guard to narrow the type.
@@ -116,8 +124,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
     return (
       <BackendSearch
         {...props}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
         isSearchDisabled={isSearchDisabled}
         targetDataSourceViews={targetDataSourceViews}
         searchContextValue={searchContextValue}
@@ -130,8 +136,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
       <>
         <FrontendSearch
           {...props}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
           isSearchDisabled={isSearchDisabled}
           searchContextValue={searchContextValue}
         />
@@ -143,12 +147,12 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
 interface FullBackendSearchProps extends BackendSearchProps {
   isSearchDisabled: boolean;
   searchContextValue: SpaceSearchContextType;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
   targetDataSourceViews: DataSourceViewType[];
   viewType: ContentNodesViewType;
   space: SpaceType;
 }
+
+const PAGE_SIZE = 25;
 
 function BackendSearch({
   canReadInSpace,
@@ -158,54 +162,175 @@ function BackendSearch({
   isSearchDisabled,
   owner,
   searchContextValue,
-  searchTerm,
-  setSearchTerm,
   targetDataSourceViews,
   viewType,
   space,
   dataSourceView,
   parentId,
 }: FullBackendSearchProps) {
-  // For backend search, we need to debounce the search term.
-  const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
+  const { q: searchParam } = useQueryParams(["q"]);
 
-  // Determine whether to show search results or children.
+  const [searchResultDataSourceView, setSearchResultDataSourceView] =
+    React.useState<DataSourceViewType | null>(null);
+  const [effectiveContentNode, setEffectiveContentNode] =
+    React.useState<LightContentNode | null>(null);
+  const effectiveDataSourceView = dataSourceView || searchResultDataSourceView;
+  const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = React.useState<
+    UrlCandidate | NodeCandidate | null
+  >(null);
+
+  const handleOpenDocument = React.useCallback(
+    (node: DataSourceViewContentNode) => {
+      setSearchResultDataSourceView(node.dataSourceView);
+    },
+    []
+  );
+  const handleCloseModal = React.useCallback(() => {
+    setSearchResultDataSourceView(null);
+    setEffectiveContentNode(null);
+  }, []);
+
+  const [searchResults, setSearchResults] = React.useState<
+    DataSourceViewContentNode[]
+  >([]);
+
+  const {
+    inputValue: searchTerm,
+    debouncedValue: debouncedSearch,
+    isDebouncing,
+    setValue: setSearchValue,
+  } = useDebounce(searchParam.value || "", {
+    delay: 300,
+    minLength: MIN_SEARCH_QUERY_SIZE,
+  });
+
+  const handleClearSearch = React.useCallback(() => {
+    searchParam.setParam(undefined);
+    setSearchValue("");
+    setNodeOrUrlCandidate(null);
+  }, [searchParam, setSearchValue]);
+
+  const handleSearchChange = (value: string) => {
+    searchParam.setParam(value);
+    setSearchValue(value);
+  };
+
+  // Check if the search term is a URL
+  React.useEffect(() => {
+    if (debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE) {
+      const candidate = nodeCandidateFromUrl(debouncedSearch.trim());
+      setNodeOrUrlCandidate(candidate);
+    } else {
+      setNodeOrUrlCandidate(null);
+    }
+  }, [debouncedSearch]);
+
   const shouldShowSearchResults = debouncedSearch.length > 0;
 
-  // Transition state.
   const [isChanging, setIsChanging] = React.useState(false);
   const [showSearch, setShowSearch] = React.useState(shouldShowSearchResults);
+  const [searchHitCount, setSearchHitCount] = React.useState(0);
 
-  // Debounce search term for backend search.
+  const {
+    cursorPagination,
+    resetPagination,
+    handlePaginationChange,
+    tablePagination,
+  } = useCursorPaginationForDataTable(PAGE_SIZE);
+
+  // Reset pagination when debounced search changes
   React.useEffect(() => {
-    const timeout = setTimeout(() => {
-      setDebouncedSearch(
-        searchTerm.length >= MIN_SEARCH_QUERY_SIZE ? searchTerm : ""
-      );
-    }, 300);
+    resetPagination();
+  }, [debouncedSearch, resetPagination]);
 
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [searchTerm]);
+  const commonSearchParams = {
+    owner,
+    spaceIds: [space.sId],
+    pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
+    // Required by search API to allow admins to search the system space
+    allowAdminSearch: true,
+    disabled: !debouncedSearch,
+    dataSourceViewIdsBySpaceId:
+      targetDataSourceViews.length > 0
+        ? {
+            [space.sId]: targetDataSourceViews.map((dsv) => dsv.sId),
+          }
+        : undefined,
+  };
 
-  // Use the space search hook for backend search.
+  // Use the spaces search hook for backend search with URL/node support
   const {
     isSearchLoading,
     isSearchValidating,
     searchResultNodes,
-    total: totalNodesCount,
-  } = useSpaceSearch({
-    dataSourceViews: targetDataSourceViews,
-    disabled: !debouncedSearch,
-    includeDataSources: true,
-    owner,
-    search: debouncedSearch,
-    space,
-    viewType,
-  });
+    nextPageCursor,
+  } = useSpacesSearch(
+    isNodeCandidate(nodeOrUrlCandidate) && nodeOrUrlCandidate.node
+      ? {
+          ...commonSearchParams,
+          nodeIds: [nodeOrUrlCandidate.node],
+          includeDataSources: false,
+          viewType: getViewTypeForURLNodeCandidateAccountingForNotion(
+            viewType,
+            nodeOrUrlCandidate.node
+          ),
+        }
+      : {
+          ...commonSearchParams,
+          search: debouncedSearch,
+          searchSourceUrls: isUrlCandidate(nodeOrUrlCandidate),
+          includeDataSources: true,
+          viewType,
+        }
+  );
 
-  // Handle transition when search state changes.
+  const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
+
+  React.useEffect(() => {
+    // Process search results to convert them to DataSourceViewContentNode format
+    const processedResults = searchResultNodes.flatMap((node) => {
+      const { dataSourceViews, ...rest } = node;
+      return dataSourceViews.map((view) => ({
+        ...rest,
+        dataSourceView: view,
+      }));
+    });
+
+    // Filter results based on URL match if we have a URL candidate
+    const filteredResults =
+      nodeOrUrlCandidate && !isNodeCandidate(nodeOrUrlCandidate)
+        ? processedResults.filter(
+            (node) => node.sourceUrl === nodeOrUrlCandidate.url
+          )
+        : processedResults;
+
+    if (tablePagination.pageIndex === 0) {
+      // Replace results on new search (first page)
+      setSearchResults(filteredResults);
+    } else if (filteredResults.length > 0) {
+      // Append results for subsequent pages
+      setSearchResults((prev) => [...prev, ...filteredResults]);
+    }
+  }, [searchResultNodes, tablePagination.pageIndex, nodeOrUrlCandidate]);
+
+  const handleLoadMore = React.useCallback(() => {
+    if (nextPageCursor && !isSearchValidating) {
+      handlePaginationChange(
+        {
+          pageIndex: tablePagination.pageIndex + 1,
+          pageSize: PAGE_SIZE,
+        },
+        nextPageCursor
+      );
+    }
+  }, [
+    nextPageCursor,
+    isSearchValidating,
+    handlePaginationChange,
+    tablePagination.pageIndex,
+  ]);
+
+  // Handle transition when search state changes
   React.useEffect(() => {
     if (shouldShowSearchResults !== showSearch) {
       setIsChanging(true);
@@ -219,13 +344,18 @@ function BackendSearch({
     }
   }, [shouldShowSearchResults, showSearch]);
 
+  React.useEffect(() => {
+    if (!isSearchValidating && !isLoading) {
+      setSearchHitCount(searchResults.length);
+    }
+  }, [isLoading, isSearchValidating, searchResults]);
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder="Search (Name)"
+        placeholder={`Search in ${space.name}`}
         value={searchTerm}
-        onChange={setSearchTerm}
+        onChange={handleSearchChange}
         disabled={isSearchDisabled}
       />
 
@@ -261,31 +391,39 @@ function BackendSearch({
         )}
       >
         {showSearch ? (
-          <div>
-            {isSearchLoading ? (
-              <div className="flex justify-center py-4">
-                <Spinner />
-              </div>
-            ) : searchResultNodes.length > 0 ? (
-              <SearchResultsTable
-                searchResultNodes={searchResultNodes}
-                category={category}
-                isSearchValidating={isSearchValidating}
-                owner={owner}
-                totalNodesCount={totalNodesCount}
-                canReadInSpace={canReadInSpace}
-                canWriteInSpace={canWriteInSpace}
-              />
-            ) : (
-              <div className="py-4 text-muted-foreground">
-                No results found for "{debouncedSearch}"
-              </div>
-            )}
+          <div className="flex w-full flex-col gap-2">
+            <div className="text-end text-sm text-muted-foreground">
+              Showing {searchResults.length} of {searchHitCount} results
+            </div>
+            <SearchResultsTable
+              searchResultNodes={searchResults}
+              category={category}
+              isSearchValidating={isSearchValidating}
+              owner={owner}
+              totalNodesCount={searchHitCount}
+              canReadInSpace={canReadInSpace}
+              canWriteInSpace={canWriteInSpace}
+              onLoadMore={handleLoadMore}
+              isLoading={isSearchLoading}
+              onOpenDocument={handleOpenDocument}
+              setEffectiveContentNode={setEffectiveContentNode}
+              onClearSearch={handleClearSearch}
+            />
           </div>
         ) : (
           children
         )}
       </div>
+      <DataSourceViewDocumentModal
+        owner={owner}
+        dataSourceView={effectiveDataSourceView}
+        onClose={handleCloseModal}
+      />
+      <DocumentOrTableDeleteDialog
+        dataSourceView={effectiveDataSourceView}
+        contentNode={effectiveContentNode}
+        owner={owner}
+      />
     </SpaceSearchContext.Provider>
   );
 }
@@ -293,29 +431,28 @@ function BackendSearch({
 interface FullFrontendSearchProps extends FrontendSearchProps {
   isSearchDisabled: boolean;
   searchContextValue: SpaceSearchContextType;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
 }
 
 function FrontendSearch({
   children,
   isSearchDisabled,
   searchContextValue,
-  searchTerm,
-  setSearchTerm,
   space,
   category,
   owner,
   dataSourceView,
   parentId,
 }: FullFrontendSearchProps) {
+  const { q: searchParam } = useQueryParams(["q"]);
+  const searchTerm = searchParam.value || "";
+
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder="Search (Name)"
+        placeholder={`Search in ${space.name}`}
         value={searchTerm}
-        onChange={setSearchTerm}
+        onChange={searchParam.setParam}
         disabled={isSearchDisabled}
       />
       <div className="flex w-full justify-between gap-2">
@@ -354,6 +491,11 @@ interface SearchResultsTableProps {
   owner: LightWorkspaceType;
   searchResultNodes: DataSourceViewContentNode[];
   totalNodesCount: number;
+  onLoadMore: () => void;
+  isLoading: boolean;
+  onOpenDocument?: (node: DataSourceViewContentNode) => void;
+  setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
+  onClearSearch: () => void;
 }
 
 function SearchResultsTable({
@@ -364,6 +506,11 @@ function SearchResultsTable({
   owner,
   searchResultNodes,
   totalNodesCount,
+  onLoadMore,
+  isLoading,
+  onOpenDocument,
+  setEffectiveContentNode,
+  onClearSearch,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -375,12 +522,16 @@ function SearchResultsTable({
 
   const sendNotification = useSendNotification();
 
+  // `contentActionsRef` is always null in a search context as results are pulled across data
+  // sources views. We still create the ref to comply to the API of getMenuItems.
   const contentActionsRef = React.useRef<ContentActionsRef>(null);
 
   const addToSpace = React.useCallback(
     async (node: DataSourceViewContentNode, spaceId: string) => {
       const existingViewForSpace = dataSourceViews.find(
-        (d) => d.spaceId === spaceId && d.sId === node.dataSourceView.sId
+        (d) =>
+          d.spaceId === spaceId &&
+          d.dataSource.sId === node.dataSourceView.dataSource.sId
       );
 
       try {
@@ -446,6 +597,7 @@ function SearchResultsTable({
 
       return {
         ...node,
+        id: node.internalId,
         icon: getVisualForDataSourceViewContentNode(node),
         ...(node.expandable && {
           onClick: () => {
@@ -456,14 +608,11 @@ function SearchResultsTable({
                 node.mimeType === DATA_SOURCE_MIME_TYPE
                   ? baseUrl
                   : `${baseUrl}?parentId=${parentId}`;
-
               void router.push(url);
+              onClearSearch();
             }
           },
         }),
-        dropdownMenuProps: {
-          modal: false,
-        },
         location: getLocationForDataSourceViewContentNode(node),
         menuItems: getMenuItems(
           canReadInSpace,
@@ -473,25 +622,30 @@ function SearchResultsTable({
           contentActionsRef,
           spaces,
           dataSourceViews,
-          addToSpace
+          addToSpace,
+          router,
+          onOpenDocument,
+          setEffectiveContentNode
         ),
       };
     });
   }, [
+    onClearSearch,
     addToSpace,
     canReadInSpace,
     canWriteInSpace,
     category,
-    contentActionsRef,
     dataSourceViews,
+    onOpenDocument,
     owner.sId,
     router,
     searchResultNodes,
+    setEffectiveContentNode,
     spaces,
   ]);
 
   return (
-    <DataTable
+    <ScrollableDataTable
       data={rows}
       columns={makeColumnsForSearchResults()}
       className={cn(
@@ -502,6 +656,10 @@ function SearchResultsTable({
       totalRowCount={totalNodesCount}
       rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
       columnsBreakpoints={columnsBreakpoints}
+      // TODO(20250304 jules): take full page height instead
+      maxHeight="h-[800px]"
+      onLoadMore={onLoadMore}
+      isLoading={isLoading}
     />
   );
 }

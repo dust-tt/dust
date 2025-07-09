@@ -1,4 +1,10 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { Provider } from "@app/lib/resources/storage/models/apps";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 import {
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
   GEMINI_1_5_FLASH_LATEST_MODEL_ID,
@@ -13,13 +19,7 @@ import {
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
-} from "@dust-tt/types";
-import type { NextApiRequest, NextApiResponse } from "next";
-
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { Provider } from "@app/lib/resources/storage/models/apps";
-import { apiError } from "@app/logger/withlogging";
+} from "@app/types";
 
 export type GetProviderModelsResponseBody = {
   models: Array<{ id: string }>;
@@ -87,26 +87,26 @@ async function handler(
               f = mList.filter((m) => m.id.startsWith("text-embedding"));
             } else {
               f = mList.filter((m) => {
+                if (
+                  m.id.includes("search") ||
+                  m.id.includes("similarity") ||
+                  m.id.includes("edit") ||
+                  m.id.includes("insert") ||
+                  m.id.includes("audio") ||
+                  m.id.includes(":") ||
+                  m.id.includes("embedding")
+                ) {
+                  return false;
+                }
+
                 return (
-                  !(
-                    m.id.includes("search") ||
-                    m.id.includes("similarity") ||
-                    m.id.includes("edit") ||
-                    m.id.includes("insert") ||
-                    m.id.includes("audio") ||
-                    m.id.includes(":") ||
-                    m.id.includes("embedding")
-                  ) &&
-                  (m.id.startsWith("text-") ||
-                    m.id.startsWith("code-") ||
-                    m.id.startsWith("o1-") ||
-                    m.id.startsWith("gpt-3.5-turbo") ||
-                    m.id.startsWith("gpt-4") ||
-                    m.id.startsWith("o3")) &&
-                  (!chat ||
-                    m.id.startsWith("o1-") ||
-                    m.id.startsWith("gpt-3.5-turbo") ||
-                    m.id.startsWith("gpt-4"))
+                  m.id.startsWith("text-") ||
+                  m.id.startsWith("code-") ||
+                  m.id.startsWith("gpt-3.5-turbo") ||
+                  m.id.startsWith("gpt-4") ||
+                  m.id.startsWith("o1-") ||
+                  m.id.startsWith("o3-") ||
+                  m.id.startsWith("o4-")
                 );
               });
             }
@@ -145,26 +145,29 @@ async function handler(
 
             let f = [];
             if (embed) {
-              f = mList.filter((d) => d.model.startsWith("text-embedding"));
+              f = mList.filter((m) => m.model.startsWith("text-embedding"));
             } else {
-              f = mList.filter((d) => {
+              f = mList.filter((m) => {
+                if (
+                  m.id.includes("search") ||
+                  m.id.includes("similarity") ||
+                  m.id.includes("edit") ||
+                  m.id.includes("insert") ||
+                  m.id.includes("audio") ||
+                  m.id.includes(":") ||
+                  m.id.includes("embedding")
+                ) {
+                  return false;
+                }
+
                 return (
-                  !(
-                    d.model.includes("search") ||
-                    d.model.includes("similarity") ||
-                    d.model.includes("edit") ||
-                    d.model.includes("insert") ||
-                    d.model.includes("audio") ||
-                    d.model.includes(":") ||
-                    d.model.includes("embedding")
-                  ) &&
-                  (d.model.startsWith("text-") ||
-                    d.model.startsWith("code-") ||
-                    d.model.startsWith("gpt-3.5-turbo") ||
-                    d.model.startsWith("gpt-4")) &&
-                  (!chat ||
-                    d.model.startsWith("gpt-3.5-turbo") ||
-                    d.model.startsWith("gpt-4"))
+                  m.id.startsWith("text-") ||
+                  m.id.startsWith("code-") ||
+                  m.id.startsWith("gpt-3.5-turbo") ||
+                  m.id.startsWith("gpt-4") ||
+                  m.id.startsWith("o1-") ||
+                  m.id.startsWith("o3-") ||
+                  m.id.startsWith("o4-")
                 );
               });
             }
@@ -190,20 +193,21 @@ async function handler(
           if (embed) {
             anthropic_models = [];
           } else {
-            if (chat) {
-              anthropic_models = [
-                { id: "claude-2.1" },
-                { id: "claude-3-haiku-20240307" },
-                { id: "claude-3-sonnet-20240229" },
-                { id: "claude-3-5-sonnet-20240620" },
-                { id: "claude-3-5-sonnet-20241022" },
-                { id: "claude-3-7-sonnet-20250219" },
-                { id: "claude-3-5-haiku-20241022" },
-                { id: "claude-3-opus-20240229" },
-              ];
-            } else {
-              anthropic_models = [{ id: "claude-2.1" }];
-            }
+            // From https://docs.anthropic.com/en/docs/about-claude/model-deprecations#model-status.
+            anthropic_models = [
+              // Deprecated models.
+              { id: "claude-2.1" }, // Retired Jul 2025.
+              { id: "claude-3-sonnet-20240229" }, // Retired Jul 2025.
+              { id: "claude-3-opus-20240229" }, // Retired Jan 2026.
+              // Active models.
+              { id: "claude-3-haiku-20240307" },
+              { id: "claude-3-5-sonnet-20240620" },
+              { id: "claude-3-5-haiku-20241022" },
+              { id: "claude-3-5-sonnet-20241022" },
+              { id: "claude-3-7-sonnet-20250219" },
+              { id: "claude-sonnet-4-20250514" },
+              { id: "claude-opus-4-20250514" },
+            ];
           }
 
           res.status(200).json({ models: anthropic_models });

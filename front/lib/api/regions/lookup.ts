@@ -1,17 +1,16 @@
-import type { Result } from "@dust-tt/types";
-import { Err, isAPIErrorResponse, Ok } from "@dust-tt/types";
-
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
-import { getPendingMembershipInvitationWithWorkspaceForEmail } from "@app/lib/iam/invitations";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
-import { Workspace } from "@app/lib/models/workspace";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   UserLookupRequestBodyType,
   UserLookupResponse,
 } from "@app/pages/api/lookup/[resource]";
+import type { Result } from "@app/types";
+import { Err, isAPIErrorResponse, Ok } from "@app/types";
 
 interface UserLookup {
   email: string;
@@ -23,24 +22,43 @@ export async function lookupUserRegionByEmail(
 ): Promise<boolean> {
   // Check if user exists, has pending invitations or has a workspace with verified domain.
   const [pendingInvite, workspaceWithVerifiedDomain] = await Promise.all([
-    getPendingMembershipInvitationWithWorkspaceForEmail(userLookup.email),
+    MembershipInvitationResource.getPendingForEmail(userLookup.email),
     findWorkspaceWithVerifiedDomain({
       email: userLookup.email,
       email_verified: userLookup.email_verified,
     }),
   ]);
 
-  if (pendingInvite || workspaceWithVerifiedDomain) {
-    return true;
+  // Check if workspace with verified domain exists but has been relocated
+  if (
+    workspaceWithVerifiedDomain &&
+    isWorkspaceRelocationDone(
+      renderLightWorkspaceType({
+        workspace: workspaceWithVerifiedDomain.workspace,
+      })
+    )
+  ) {
+    return false;
   }
 
-  return false;
+  // Check if pending invite exists but workspace has been relocated
+  if (
+    pendingInvite &&
+    isWorkspaceRelocationDone(
+      renderLightWorkspaceType({ workspace: pendingInvite.workspace })
+    )
+  ) {
+    return false;
+  }
+
+  // Return true if there is either a valid pending invite or workspace with verified domain
+  return Boolean(pendingInvite || workspaceWithVerifiedDomain);
 }
 
 export async function handleLookupWorkspace(workspaceLookup: {
   workspace: string;
 }) {
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: { sId: workspaceLookup.workspace },
   });
 

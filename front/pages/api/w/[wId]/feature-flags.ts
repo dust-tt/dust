@@ -1,13 +1,10 @@
-import type {
-  WhitelistableFeature,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { WhitelistableFeature, WithAPIErrorResponse } from "@app/types";
 
 export type GetWorkspaceFeatureFlagsResponseType = {
   feature_flags: WhitelistableFeature[];
@@ -38,4 +35,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(handler, {
+  doesNotRequireCanUseProduct: true,
+});

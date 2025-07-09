@@ -1,4 +1,9 @@
-import { useSendNotification } from "@dust-tt/sparkle";
+import { useState } from "react";
+
+import { useSendNotification } from "@app/hooks/useNotification";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
+import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
 import type {
   FileFormatCategory,
   FileUseCase,
@@ -6,9 +11,10 @@ import type {
   LightWorkspaceType,
   Result,
   SupportedFileContentType,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
-  concurrentExecutor,
+  DEFAULT_FILE_CONTENT_TYPE,
+  ensureFileSizeByFormatCategory,
   Err,
   getFileFormatCategory,
   isAPIErrorResponse,
@@ -16,12 +22,7 @@ import {
   isSupportedImageContentType,
   MAX_FILE_SIZES,
   Ok,
-} from "@dust-tt/types";
-import { useState } from "react";
-
-import { getMimeTypeFromFile } from "@app/lib/file";
-import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
-import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
+} from "@app/types";
 
 export interface FileBlob {
   contentType: SupportedFileContentType;
@@ -59,7 +60,9 @@ export function useFileUploaderService({
   useCaseMetadata?: FileUseCaseMetadata;
 }) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
-  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  const [numFilesProcessing, setNumFilesProcessing] = useState(0);
+
+  const isProcessingFiles = numFilesProcessing > 0;
 
   const sendNotification = useSendNotification();
 
@@ -78,7 +81,7 @@ export function useFileUploaderService({
   };
 
   const handleFilesUpload = async (files: File[]) => {
-    setIsProcessingFiles(true);
+    setNumFilesProcessing((prev) => prev + files.length);
 
     const categoryToSize: Map<FileFormatCategory, number> = new Map();
 
@@ -94,28 +97,29 @@ export function useFileUploaderService({
       );
     }
 
-    const isTooBig = [...categoryToSize].some(([cat, size]) => {
-      const multiplier = cat === "image" ? 5 : 2;
-      return size > MAX_FILE_SIZES[cat] * multiplier;
+    const oversizedCategories = [...categoryToSize].filter(([cat, size]) => {
+      return !ensureFileSizeByFormatCategory(cat, size);
     });
 
-    if (isTooBig) {
+    for (const cat of oversizedCategories) {
       sendNotification({
         type: "error",
         title: "Files too large.",
-        description:
-          "Combined file sizes exceed the limits. Please upload smaller files.",
+        description: `Combined ${cat[0]} file sizes exceed the limit of ${MAX_FILE_SIZES[cat[0]] / 1024 / 1024}MB. Please upload smaller files.`,
       });
-      return;
     }
 
+    if (oversizedCategories.length > 0) {
+      setNumFilesProcessing((prev) => prev - files.length);
+      return;
+    }
     const previewResults = processSelectedFiles(files);
     const newFileBlobs = processResults(previewResults);
 
     const uploadResults = await uploadFiles(newFileBlobs);
     const finalFileBlobs = processResults(uploadResults);
 
-    setIsProcessingFiles(false);
+    setNumFilesProcessing((prev) => prev - files.length);
 
     return finalFileBlobs;
   };
@@ -131,34 +135,45 @@ export function useFileUploaderService({
   const processSelectedFiles = (
     selectedFiles: File[]
   ): Result<FileBlob, FileBlobUploadError>[] => {
-    return selectedFiles.reduce(
-      (acc, file) => {
-        while (fileBlobs.some((f) => f.id === file.name)) {
-          const [base, ext] = file.name.split(/\.(?=[^.]+$)/);
-          const name = findAvailableTitle(base, ext, [
-            ...fileBlobs.map((f) => f.filename),
-          ]);
-          file = new File([file], name, { type: file.type });
+    const getRenamedFile = (file: File, fileType: string): File => {
+      let currentFile = file;
+      while (fileBlobs.some((f) => f.id === currentFile.name)) {
+        const [base, ext] = currentFile.name.split(/\.(?=[^.]+$)/);
+        const name = findAvailableTitle(base, ext, [
+          ...fileBlobs.map((f) => f.filename),
+        ]);
+        if (name !== currentFile.name) {
+          currentFile = new File([currentFile], name, { type: fileType });
         }
+      }
+      return currentFile;
+    };
 
-        const contentType = getMimeTypeFromFile(file);
-        if (!isSupportedFileContentType(contentType)) {
+    return selectedFiles.reduce<Result<FileBlob, FileBlobUploadError>[]>(
+      (acc, file) => {
+        const fileType = file.type || DEFAULT_FILE_CONTENT_TYPE;
+
+        // File objects are immutable - we can't modify their properties directly.
+        // When we need to change the name or type, we must create a new File object.
+        const renamedFile = getRenamedFile(file, fileType);
+
+        if (!isSupportedFileContentType(fileType)) {
           acc.push(
             new Err(
               new FileBlobUploadError(
                 "file_type_not_supported",
-                file,
-                `File "${file.name}" is not supported (${contentType}).`
+                renamedFile,
+                `File "${renamedFile.name}" is not supported (${fileType}).`
               )
             )
           );
           return acc;
         }
 
-        acc.push(new Ok(createFileBlob(file, contentType)));
+        acc.push(new Ok(createFileBlob(renamedFile, fileType)));
         return acc;
       },
-      [] as (Ok<FileBlob> | Err<FileBlobUploadError>)[]
+      []
     );
   };
 
@@ -320,7 +335,7 @@ export function useFileUploaderService({
 
       const allFilesReady = fileBlobs.every((f) => f.isUploading === false);
       if (allFilesReady && isProcessingFiles) {
-        setIsProcessingFiles(false);
+        setNumFilesProcessing(0);
       }
     }
   };

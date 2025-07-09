@@ -1,5 +1,3 @@
-import type { APIError, Result } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
 import * as t from "io-ts";
 import _ from "lodash";
 
@@ -7,6 +5,8 @@ import { callAction } from "@app/lib/actions/helpers";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { TrackerMaintainedScopeType } from "@app/lib/resources/tracker_resource";
+import type { APIError, Result } from "@app/types";
+import { Ok } from "@app/types";
 
 export async function callDocTrackerRetrievalAction(
   auth: Authenticator,

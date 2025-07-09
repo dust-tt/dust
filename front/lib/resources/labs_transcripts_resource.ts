@@ -1,8 +1,6 @@
-import type { LabsTranscriptsProviderType, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-import type { CreationAttributes } from "sequelize";
 import type {
   Attributes,
+  CreationAttributes,
   InferAttributes,
   ModelStatic,
   Transaction,
@@ -10,11 +8,22 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
-import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
+import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import {
+  LabsTranscriptsConfigurationModel,
+  LabsTranscriptsHistoryModel,
+} from "@app/lib/resources/storage/models/labs_transcripts";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type {
+  LabsTranscriptsConfigurationType,
+  LabsTranscriptsProviderType,
+  LightWorkspaceType,
+  ModelId,
+  Result,
+} from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -37,13 +46,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   static async makeNew(
     blob: Omit<
       CreationAttributes<LabsTranscriptsConfigurationModel>,
-      "isActive" | "isDefaultFullStorage"
+      "isActive"
     >
   ): Promise<LabsTranscriptsConfigurationResource> {
     const configuration = await LabsTranscriptsConfigurationModel.create({
       ...blob,
       isActive: false,
-      isDefaultFullStorage: false,
     });
 
     return new LabsTranscriptsConfigurationResource(
@@ -80,6 +88,36 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
+  static async listByWorkspace({
+    auth,
+  }: {
+    auth: Authenticator;
+  }): Promise<LabsTranscriptsConfigurationResource[]> {
+    const owner = auth.workspace();
+
+    if (!owner) {
+      return [];
+    }
+
+    return LabsTranscriptsConfigurationResource.findByWorkspaceId(owner.id);
+  }
+
+  static async findByWorkspaceId(
+    workspaceId: number
+  ): Promise<LabsTranscriptsConfigurationResource[]> {
+    const configurations = await LabsTranscriptsConfigurationModel.findAll({
+      where: { workspaceId },
+    });
+
+    return configurations.map(
+      (configuration) =>
+        new LabsTranscriptsConfigurationResource(
+          LabsTranscriptsConfigurationModel,
+          configuration.get()
+        )
+    );
+  }
+
   static async findByWorkspaceAndProvider({
     auth,
     provider,
@@ -113,6 +151,27 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       : null;
   }
 
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("transcripts_configuration", { id, workspaceId });
+  }
+
+  static async fetchById(
+    sId: string,
+    transaction?: Transaction
+  ): Promise<LabsTranscriptsConfigurationResource | null> {
+    const resourceId = getResourceIdFromSId(sId);
+    if (!resourceId) {
+      return null;
+    }
+    return this.fetchByModelId(resourceId, transaction);
+  }
+
   async getUser(): Promise<UserResource | null> {
     return UserResource.fetchByModelId(this.userId);
   }
@@ -137,15 +196,15 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
-  async setIsDefaultFullStorage(isDefaultFullStorage: boolean) {
-    if (this.isDefaultFullStorage === isDefaultFullStorage) {
+  async setIsDefault(isDefault: boolean) {
+    if (this.isDefaultWorkspaceConfiguration === isDefault) {
       return;
     }
 
     // Update all other configurations to be false.
-    if (isDefaultFullStorage) {
+    if (isDefault) {
       await LabsTranscriptsConfigurationModel.update(
-        { isDefaultFullStorage: false },
+        { isDefaultWorkspaceConfiguration: false },
         {
           where: {
             workspaceId: this.workspaceId,
@@ -154,40 +213,20 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       );
     }
 
-    return this.update({ isDefaultFullStorage });
+    return this.update({ isDefaultWorkspaceConfiguration: isDefault });
   }
 
-  async setDataSourceViewId(
-    auth: Authenticator,
-    dataSourceViewId: string | null
-  ) {
-    if (dataSourceViewId === undefined) {
-      return;
-    }
-
-    if (dataSourceViewId === null) {
-      return this.update({ dataSourceViewId: null });
-    }
-
-    const dataSourceView = await DataSourceViewResource.fetchById(
-      auth,
-      dataSourceViewId
-    );
-
-    if (!dataSourceView || this.dataSourceViewId === dataSourceView.id) {
-      return;
-    }
-
-    return this.update({ dataSourceViewId: dataSourceView.id });
+  async setDataSourceView(dataSourceView: DataSourceViewResource | null) {
+    return this.update({ dataSourceViewId: dataSourceView?.id ?? null });
   }
 
-  static async fetchDefaultFullStorageConfigurationForWorkspace(
-    auth: Authenticator
+  static async fetchDefaultConfigurationForWorkspace(
+    workspace: LightWorkspaceType
   ): Promise<LabsTranscriptsConfigurationResource | null> {
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        isDefaultFullStorage: true,
+        workspaceId: workspace.id,
+        isDefaultWorkspaceConfiguration: true,
       },
     });
 
@@ -206,7 +245,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
-      await this.deleteHistory(transaction);
+      await this.deleteHistory(auth, transaction);
       await this.model.destroy({
         where: {
           id: this.id,
@@ -215,28 +254,44 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       });
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
   /**
    * History
    */
-
-  async recordHistory(
-    blob: Omit<CreationAttributes<LabsTranscriptsHistoryModel>, "id">
-  ): Promise<InferAttributes<LabsTranscriptsHistoryModel>> {
-    const history = await LabsTranscriptsHistoryModel.create(blob);
-
+  async recordHistory({
+    workspace,
+    fileId,
+    fileName,
+    conversationId,
+    stored,
+  }: {
+    workspace: LightWorkspaceType;
+    fileId: string;
+    fileName: string;
+    conversationId?: string | null;
+    stored?: boolean;
+  }): Promise<InferAttributes<LabsTranscriptsHistoryModel>> {
+    const history = await LabsTranscriptsHistoryModel.create({
+      configurationId: this.id,
+      workspaceId: workspace.id,
+      fileId,
+      fileName,
+      conversationId: conversationId,
+      stored: stored,
+    });
     return history.get();
   }
 
   async setConversationHistory(
-    fileId: string,
-    conversationId: string
+    auth: Authenticator,
+    { conversationId, fileId }: { conversationId: string; fileId: string }
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         configurationId: this.id,
         fileId,
       },
@@ -251,9 +306,13 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
-  async setStorageStatusForFileId(fileId: string, stored: boolean) {
+  async setStorageStatusForFileId(
+    auth: Authenticator,
+    { fileId, stored }: { fileId: string; stored: boolean }
+  ) {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         configurationId: this.id,
         fileId,
       },
@@ -266,10 +325,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   async fetchHistoryForFileId(
+    auth: Authenticator,
     fileId: LabsTranscriptsHistoryModel["fileId"]
   ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         configurationId: this.id,
         fileId,
       },
@@ -282,30 +343,35 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
-  async listHistory({
-    limit = 20,
-    sort = "DESC",
-  }: {
-    limit: number;
-    sort: "ASC" | "DESC";
-  }): Promise<InferAttributes<LabsTranscriptsHistoryModel>[]> {
-    const histories = await LabsTranscriptsHistoryModel.findAll({
+  async hasAnyHistory(): Promise<boolean> {
+    const count = await LabsTranscriptsHistoryModel.count({
       where: {
         configurationId: this.id,
       },
-      limit,
-      order: [["createdAt", sort]],
     });
 
-    return histories.map((history) => history.get());
+    return count > 0;
+  }
+
+  async getMostRecentHistoryDate(): Promise<Date | null> {
+    const history = await LabsTranscriptsHistoryModel.findOne({
+      where: {
+        configurationId: this.id,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return history ? history.createdAt : null;
   }
 
   private async deleteHistory(
+    auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     try {
       await LabsTranscriptsHistoryModel.destroy({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           configurationId: this.id,
         },
         transaction,
@@ -313,7 +379,29 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
+  }
+
+  toJSON(): LabsTranscriptsConfigurationType {
+    return {
+      id: this.id,
+      sId: this.sId,
+      workspaceId: this.workspaceId,
+      provider: this.provider,
+      agentConfigurationId: this.agentConfigurationId,
+      isActive: this.isActive,
+      isDefaultWorkspaceConfiguration: this.isDefaultWorkspaceConfiguration,
+      credentialId: this.credentialId,
+      dataSourceViewId: this.dataSourceViewId,
+      useConnectorConnection: this.useConnectorConnection,
+    };
+  }
+
+  get sId(): string {
+    return LabsTranscriptsConfigurationResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
   }
 }

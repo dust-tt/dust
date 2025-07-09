@@ -1,11 +1,11 @@
-import type { RoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
+import type { RoleType, UserTypeWithWorkspace } from "@app/types";
 
 export async function handleMembersRoleChange({
   members,
   role,
   sendNotification,
 }: {
-  members: UserTypeWithWorkspaces[];
+  members: UserTypeWithWorkspace[];
   role: RoleType;
   sendNotification: any;
 }): Promise<void> {
@@ -13,7 +13,7 @@ export async function handleMembersRoleChange({
     return;
   }
   const promises = members.map((member) =>
-    fetch(`/api/w/${member.workspaces[0].sId}/members/${member.sId}`, {
+    fetch(`/api/w/${member.workspace.sId}/members/${member.sId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

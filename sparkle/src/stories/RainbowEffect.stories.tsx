@@ -43,9 +43,9 @@ const Example = () => {
           onClick={handleFocus}
           className={cn(
             "s-relative s-flex s-h-[120px] s-w-full s-flex-row s-p-5",
-            "s-rounded-3xl s-border s-border-border-dark/0 s-bg-primary-50 s-transition-all",
+            "s-rounded-3xl s-border s-border-border/0 s-bg-primary-50 s-transition-all",
             isFocused
-              ? "s-border-border-dark s-ring-2 s-ring-highlight-300 s-ring-offset-2"
+              ? "s-border-border s-ring-2 s-ring-highlight-300 s-ring-offset-2"
               : ""
           )}
         >

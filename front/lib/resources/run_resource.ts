@@ -1,11 +1,3 @@
-import type {
-  LightWorkspaceType,
-  ModelId,
-  ModelIdType,
-  ModelProviderIdType,
-  Result,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import assert from "assert";
 import type {
   Attributes,
@@ -24,9 +16,26 @@ import {
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
+import type {
+  LightWorkspaceType,
+  ModelId,
+  ModelIdType,
+  ModelProviderIdType,
+  Result,
+} from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
+
+export type FetchRunOptions<T extends boolean> = {
+  includeApp?: T;
+  skipCutoffDate?: boolean;
+  order?: [string, "ASC" | "DESC"][];
+  limit?: number;
+  offset?: number;
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RunResource extends ReadonlyAttributesType<RunModel> {}
@@ -44,32 +53,77 @@ export class RunResource extends BaseResource<RunModel> {
     return new this(RunResource.model, run.get());
   }
 
+  private static getOptions<T extends boolean>(
+    options?: FetchRunOptions<T>
+  ): ResourceFindOptions<RunModel> {
+    const result: ResourceFindOptions<RunModel> = {};
+
+    if (options?.includeApp) {
+      result.includes = [
+        {
+          model: AppModel,
+          as: "app",
+          required: true,
+        },
+      ];
+    }
+
+    if (options?.limit) {
+      result.limit = options?.limit;
+    }
+
+    if (options?.offset) {
+      result.offset = options.offset;
+    }
+
+    if (!options?.skipCutoffDate) {
+      result.where = addCreatedAtClause({});
+    }
+
+    if (options?.order) {
+      result.order = options.order;
+    }
+
+    return result;
+  }
+
   static async listByWorkspace<T extends boolean>(
     workspace: LightWorkspaceType,
-    { includeApp }: { includeApp: T }
+    options: FetchRunOptions<T>
   ): Promise<T extends true ? RunResourceWithApp[] : RunResource[]> {
-    const include = includeApp
-      ? [
-          {
-            model: AppModel,
-            as: "app",
-            required: true,
-          },
-        ]
-      : [];
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Disabled error for unused includeDeleted
+    const { where, includes, includeDeleted, ...opts } =
+      this.getOptions(options);
 
     const runs = await this.model.findAll({
-      where: addCreatedAtClause({
+      where: {
+        ...where,
         workspaceId: workspace.id,
-      }),
-      include,
+      },
+      include: includes,
+      ...opts,
     });
 
     return runs.map((r) =>
-      includeApp
+      options.includeApp
         ? (new this(this.model, r.get()) as RunResourceWithApp)
         : (new this(this.model, r.get()) as RunResource)
     ) as T extends true ? RunResourceWithApp[] : RunResource[];
+  }
+
+  static async countByWorkspace(
+    workspace: LightWorkspaceType,
+    options: Pick<FetchRunOptions<boolean>, "skipCutoffDate">
+  ) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Disabled error for unused includeDeleted
+    const { where } = this.getOptions(options);
+
+    return this.model.count({
+      where: {
+        ...where,
+        workspaceId: workspace.id,
+      },
+    });
   }
 
   static async listByAppAndRunType(
@@ -88,6 +142,20 @@ export class RunResource extends BaseResource<RunModel> {
       limit,
       offset,
       order: [["createdAt", "DESC"]],
+    });
+
+    return runs.map((r) => new this(this.model, r.get()));
+  }
+
+  static async listByDustRunIds(
+    auth: Authenticator,
+    { dustRunIds }: { dustRunIds: string[] }
+  ) {
+    const runs = await this.model.findAll({
+      where: {
+        dustRunId: { [Op.in]: dustRunIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
     });
 
     return runs.map((r) => new this(this.model, r.get()));
@@ -178,13 +246,14 @@ export class RunResource extends BaseResource<RunModel> {
 
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err as Error);
+      return new Err(normalizeError(err));
     }
   }
 
   /**
    * Run usage.
    */
+
   async recordRunUsage(usages: RunUsageType[]) {
     await RunUsageModel.bulkCreate(
       usages.map((usage) => ({
@@ -193,6 +262,22 @@ export class RunResource extends BaseResource<RunModel> {
         ...usage,
       }))
     );
+  }
+
+  async listRunUsages(auth: Authenticator): Promise<RunUsageType[]> {
+    const usages = await RunUsageModel.findAll({
+      where: {
+        runId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return usages.map((usage) => ({
+      completionTokens: usage.completionTokens,
+      modelId: usage.modelId as ModelIdType,
+      promptTokens: usage.promptTokens,
+      providerId: usage.providerId as ModelProviderIdType,
+    }));
   }
 }
 
@@ -206,8 +291,8 @@ function addCreatedAtClause(where: WhereOptions<RunModel>) {
 }
 
 export interface RunUsageType {
-  providerId: ModelProviderIdType;
+  completionTokens: number;
   modelId: ModelIdType;
   promptTokens: number;
-  completionTokens: number;
+  providerId: ModelProviderIdType;
 }

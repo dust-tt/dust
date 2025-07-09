@@ -25,8 +25,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Engineering",
   title: <>Ship Better Code, Reduce Interruptions</>,
-  from: "from-blue-200",
-  to: "to-blue-500",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>
       Streamline incident response, automate documentation, and keep your team
@@ -34,10 +33,10 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Get coding support and troubleshooting with relevant context",
-    "Speed up incident resolution and communication",
-    "Create instant team updates",
-    "Surface relevant context and solutions from past incidents",
+    "Get coding support and troubleshooting with relevant context.",
+    "Speed up incident resolution and communication.",
+    "Create instant team updates.",
+    "Surface relevant context and solutions from past incidents.",
   ],
   image: "/static/landing/engineering/incidentHandling.png",
 };
@@ -116,8 +115,7 @@ export const Metrics: MetricProps = {
       description: <> saved per incident</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -126,9 +124,9 @@ export const UseCases: UseCaseProps = {
     "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Debugging",
+      title: "Code debugging",
       content:
-        "Fix code errors by retrieving internal documentation, updates, and Slack discussions. Stay focused on your core work.",
+        "Streamline debugging within your IDE by surfacing relevant code context, documentation, and recent issues.",
       images: ["/static/landing/engineering/debuggingAgent.png"],
     },
     {
@@ -138,16 +136,16 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/engineering/incidentHandling.png"],
     },
     {
-      title: "Team updates",
+      title: "Code review",
       content:
-        "Generate concise summaries of code changes, incidents, and technical discussions to keep everyone aligned.",
-      images: ["/static/landing/engineering/teamUpdates.png"],
+        "Automate code reviews to maintain engineering standards and security at scale.",
+      images: ["/static/landing/engineering/autoreview.png"],
     },
     {
-      title: "External doc parser",
+      title: "Code to doc",
       content:
-        "Chat with any technical documentation to quickly find answers and follow step-by-step guidance.",
-      images: ["/static/landing/engineering/docParser.png"],
+        "Generate and maintain technical and external-facing documentation automatically from code changes.",
+      images: ["/static/landing/engineering/teamUpdates.png"],
     },
   ],
 };
@@ -155,7 +153,7 @@ export const UseCases: UseCaseProps = {
 export const ROI: ROIProps = {
   number: "20%",
   subtitle: "faster project completion",
-  logo: "/static/landing/logos/alan.png",
+  logo: "/static/landing/logos/gray/alan.png",
 };
 
 export const Quote: QuoteProps = {
@@ -163,13 +161,13 @@ export const Quote: QuoteProps = {
     "It's really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
   name: "Vincent Delagabbe",
   title: "Software Engineer at Alan",
-  logo: "/static/landing/logos/alan.png",
+  logo: "/static/landing/logos/color/alan.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/6z5rtwsuvo?web_component=true&seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/6z5rtwsuvo",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [

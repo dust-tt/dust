@@ -1,4 +1,3 @@
-import { concurrentExecutor, getGoogleSheetTableId } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
@@ -17,6 +16,7 @@ import {
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { concurrentExecutor, getGoogleSheetTableId } from "@connectors/types";
 
 const QUERY_BATCH_SIZE = 1024;
 const DOCUMENT_CONCURRENCY = 16;

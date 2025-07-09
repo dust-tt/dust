@@ -1,4 +1,3 @@
-// import { MetricSection } from "@app/components/home/ContentBlocks";
 import { MetricSection } from "../../ContentBlocks";
 
 const METRICS = {
@@ -6,26 +5,24 @@ const METRICS = {
     {
       value: "90%",
       description: <>weekly active users</>,
-      logo: "/static/landing/logos/alan.png",
+      logo: "/static/landing/logos/gray/alan.png",
     },
     {
       value: "50,000",
       description: <>hours saved annually</>,
-      logo: "/static/landing/logos/qonto.png",
+      logo: "/static/landing/logos/gray/qonto.png",
     },
     {
       value: "36x",
       description: <>faster at answering tickets</>,
-      logo: "/static/landing/logos/malt.png",
+      logo: "/static/landing/logos/gray/malt.png",
     },
     {
       value: "50%",
       description: <>time saved in legal tasks</>,
-      logo: "/static/landing/logos/didomi.png",
+      logo: "/static/landing/logos/gray/didomi.png",
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
 };
 
 export function MetricsSection() {

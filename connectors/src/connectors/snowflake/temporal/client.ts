@@ -1,5 +1,5 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
@@ -9,6 +9,8 @@ import { snowflakeSyncWorkflow } from "@connectors/connectors/snowflake/temporal
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 function makeSnowflakeSyncWorkflowId(connectorId: ModelId): string {
   return `snowflake-sync-${connectorId}`;
@@ -26,6 +28,9 @@ export async function launchSnowflakeSyncWorkflow(
 
   const client = await getTemporalClient();
   const workflowId = makeSnowflakeSyncWorkflowId(connectorId);
+
+  // hourOffset ensures jobs are distributed across the day based on connector ID
+  const hourOffset = connector.id % 6;
 
   try {
     await client.workflow.signalWithStart(snowflakeSyncWorkflow, {
@@ -45,11 +50,11 @@ export async function launchSnowflakeSyncWorkflow(
       memo: {
         connectorId,
       },
-      // Every hour.
-      cronSchedule: `${connector.id % 60} * * * *`,
+      // Every 6 hours, with hour offset based on connector ID
+      cronSchedule: `${connector.id % 60} ${hourOffset},${(hourOffset + 6) % 24},${(hourOffset + 12) % 24},${(hourOffset + 18) % 24} * * *`,
     });
   } catch (err) {
-    return new Err(err as Error);
+    return new Err(normalizeError(err));
   }
 
   return new Ok(workflowId);
@@ -87,6 +92,6 @@ export async function stopSnowflakeSyncWorkflow(
       },
       "Failed to stop Snowflake workflow."
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }

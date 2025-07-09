@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Knowledge",
   title: <>Make Company Knowledge Instantly Accessible.</>,
-  from: "from-emerald-200",
-  to: "to-emerald-500",
+  accentColor: "text-brand-hunter-green",
   description: (
     <>
       Transform organizational knowledge into structured insights and empower
@@ -33,10 +32,10 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Access company-wide knowledge instantly",
-    "Find product information across knowledge bases",
-    "Get answers in Slack with relevant context and citations",
-    "Surface blockers from project discussions",
+    "Access company-wide knowledge instantly.",
+    "Find product information across knowledge bases.",
+    "Get answers in Slack with relevant context and citations.",
+    "Surface blockers from project discussions.",
   ],
   image: "/static/landing/knowledge/askacme.png",
 };
@@ -115,8 +114,7 @@ export const Metrics: MetricProps = {
       description: <>of Kyriba employees save more than 3 hours weekly</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {
@@ -154,18 +152,25 @@ export const UseCases: UseCaseProps = {
 export const Quote: QuoteProps = {
   quote:
     "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you're newly onboarded or a veteran team member.",
-  name: "Boris Lipiainen ",
+  name: "Boris Lipiainen",
   title: "Chief Product and Technology Officer at Kyriba",
-  logo: "/static/landing/logos/kyriba.png",
+  logo: "/static/landing/logos/color/kyriba.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/qtnvwgyt0o?web_component=true&seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/qtnvwgyt0o",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [
+  {
+    title: "Clay creates scalable knowledge hub with Dust AI agents",
+    content:
+      "Clay uses Dust AI agents to solve team scaling challenges with instant knowledge access for rapid growth.",
+    href: "https://blog.dust.tt/clay-scaling-gtme-team/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+  },
   {
     title: "Kyriba's adoption of Dust across all functions",
     content:

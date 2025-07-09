@@ -1,13 +1,13 @@
 import type { ConversationEventType } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 /**
  * @swagger
@@ -28,6 +28,12 @@ import { apiError } from "@app/logger/withlogging";
  *         name: cId
  *         required: true
  *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: lastEventId
+ *         required: false
+ *         description: ID of the last event
  *         schema:
  *           type: string
  *     security:
@@ -63,7 +69,20 @@ async function handler(
     });
   }
 
-  const conversationRes = await getConversationWithoutContent(auth, cId);
+  const lastEventId = req.query.lastEventId || null;
+  if (lastEventId && typeof lastEventId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Invalid query parameters, `lastEventId` should be string if specified.",
+      },
+    });
+  }
+
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
@@ -90,9 +109,9 @@ async function handler(
       });
 
       const eventStream: AsyncGenerator<ConversationEventType> =
-        getConversationEvents(auth, {
+        getConversationEvents({
           conversationId: conversation.sId,
-          lastEventId: null,
+          lastEventId,
           signal,
         });
 

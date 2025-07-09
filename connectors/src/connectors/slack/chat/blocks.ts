@@ -1,9 +1,14 @@
-import type { LightAgentConfigurationType } from "@dust-tt/types";
-import { truncate } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/client";
 
-import { STATIC_AGENT_CONFIG } from "@connectors/api/webhooks/webhook_slack_interaction";
+import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_interaction";
+import {
+  APPROVE_TOOL_EXECUTION,
+  REJECT_TOOL_EXECUTION,
+  STATIC_AGENT_CONFIG,
+} from "@connectors/api/webhooks/webhook_slack_interaction";
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import { truncate } from "@connectors/types";
 
 /*
  * This length threshold is set to prevent the "msg_too_long" error
@@ -23,7 +28,7 @@ function makeDividerBlock() {
   };
 }
 
-function makeMarkdownBlock(text?: string) {
+export function makeMarkdownBlock(text?: string) {
   return text
     ? [
         {
@@ -222,4 +227,64 @@ export function makeErrorBlock(
     unfurl_links: false,
     text: errorMessage,
   };
+}
+
+/**
+ * Creates Slack blocks with buttons for validating a tool execution.
+ * This is used when an agent sends a tool_approve_execution event to Slack.
+ */
+export function makeToolValidationBlock({
+  agentName,
+  toolName,
+  id,
+}: {
+  agentName: string;
+  toolName: string;
+  id: string;
+}) {
+  return [
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `Agent \`${agentName}\` is requesting permission to use tool \`${toolName}\``,
+      },
+    },
+    {
+      type: "actions",
+      block_id: id,
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "Approve",
+            emoji: true,
+          },
+          style: "primary",
+          value: JSON.stringify({
+            status: "approved",
+            agentName,
+            toolName,
+          } as RequestToolPermissionActionValueParsed),
+          action_id: APPROVE_TOOL_EXECUTION,
+        },
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "Reject",
+            emoji: true,
+          },
+          style: "danger",
+          value: JSON.stringify({
+            status: "rejected",
+            agentName,
+            toolName,
+          } as RequestToolPermissionActionValueParsed),
+          action_id: REJECT_TOOL_EXECUTION,
+        },
+      ],
+    },
+  ];
 }

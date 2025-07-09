@@ -1,4 +1,5 @@
 import {
+  BracesIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
   ClipboardIcon,
@@ -12,12 +13,6 @@ import {
   StarStrokeIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isBuilder } from "@dust-tt/types";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -25,6 +20,9 @@ import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistant
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 
 interface AssistantDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -46,6 +44,14 @@ export function AssistantDetailsButtonBar({
   const { onOpenChange: onOpenChangeAssistantModal } =
     useURLSheet("assistantDetails");
 
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") &&
+    !isBuilder(owner);
+
   const router = useRouter();
 
   const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
@@ -61,9 +67,7 @@ export function AssistantDetailsButtonBar({
     return <></>;
   }
 
-  const allowDeletion =
-    agentConfiguration.scope !== "global" &&
-    (isBuilder(owner) || agentConfiguration.scope !== "workspace");
+  const allowDeletion = agentConfiguration.canEdit || isAdmin(owner);
 
   function AssistantDetailsDropdownMenu() {
     return (
@@ -76,7 +80,6 @@ export function AssistantDetailsButtonBar({
             setShowDeletionModal(false);
             onOpenChangeAssistantModal(false);
           }}
-          isPrivateAssistant={agentConfiguration.scope === "private"}
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -89,7 +92,7 @@ export function AssistantDetailsButtonBar({
                 e.stopPropagation();
                 await navigator.clipboard.writeText(agentConfiguration.sId);
               }}
-              icon={ClipboardIcon}
+              icon={BracesIcon}
             />
             {agentConfiguration.scope !== "global" && (
               <>
@@ -107,7 +110,7 @@ export function AssistantDetailsButtonBar({
                 />
                 {allowDeletion && (
                   <DropdownMenuItem
-                    label="Delete"
+                    label="Archive"
                     icon={TrashIcon}
                     onClick={() => {
                       setShowDeletionModal(true);
@@ -123,9 +126,7 @@ export function AssistantDetailsButtonBar({
     );
   }
 
-  const canEditAssistant =
-    // builders can all edit, non-builders can only edit personal/shared assistants
-    isBuilder(owner) || !(agentConfiguration.scope === "workspace");
+  const canEditAssistant = agentConfiguration.canEdit || isAdmin(owner);
 
   const isFavoriteDisabled =
     isAgentConfigurationValidating || isUpdatingFavorite;
@@ -156,35 +157,27 @@ export function AssistantDetailsButtonBar({
         />
       </div>
 
-      <Link
+      <Button
+        icon={ChatBubbleBottomCenterTextIcon}
+        size="sm"
+        variant="outline"
         href={`/w/${owner.sId}/assistant/new?assistant=${agentConfiguration.sId}`}
-      >
-        <Button
-          icon={ChatBubbleBottomCenterTextIcon}
-          size="sm"
-          variant="outline"
-        />
-      </Link>
+      />
 
-      {agentConfiguration.scope !== "global" && (
-        <Link
-          onClick={(e) => !canEditAssistant && e.preventDefault()}
-          href={`/w/${owner.sId}/builder/assistants/${
-            agentConfiguration.sId
-          }?flow=${
-            agentConfiguration.scope
-              ? "workspace_assistants"
-              : "personal_assistants"
-          }`}
-        >
+      {agentConfiguration.scope !== "global" &&
+        !isRestrictedFromAgentCreation && (
           <Button
             size="sm"
+            href={
+              canEditAssistant
+                ? `/w/${owner.sId}/builder/assistants/${agentConfiguration.sId}?flow=workspace_assistants`
+                : undefined
+            }
             disabled={!canEditAssistant}
             variant="outline"
             icon={PencilSquareIcon}
           />
-        </Link>
-      )}
+        )}
 
       {agentConfiguration.scope !== "global" && (
         <AssistantDetailsDropdownMenu />

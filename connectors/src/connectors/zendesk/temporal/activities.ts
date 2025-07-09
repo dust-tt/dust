@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 
 import {
@@ -14,16 +12,15 @@ import {
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
-  changeZendeskClientSubdomain,
-  createZendeskClient,
-  fetchZendeskArticlesInCategory,
   fetchZendeskBrand,
-  fetchZendeskCategoriesInBrand,
   fetchZendeskCategory,
-  fetchZendeskManyUsers,
-  fetchZendeskTicketComments,
-  fetchZendeskTickets,
   getZendeskBrandSubdomain,
+  listZendeskArticlesInCategory,
+  listZendeskCategoriesInBrand,
+  listZendeskSectionsByCategory,
+  listZendeskTicketComments,
+  listZendeskTickets,
+  listZendeskUsers,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -32,7 +29,7 @@ import {
   deleteDataSourceFolder,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -42,6 +39,8 @@ import {
   ZendeskCategoryResource,
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
@@ -57,7 +56,7 @@ export async function zendeskConnectorStartSync(
   if (res.isErr()) {
     throw res.error;
   }
-  const cursor = await ZendeskTimestampCursor.findOne({
+  const cursor = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
 
@@ -77,11 +76,11 @@ export async function saveZendeskConnectorSuccessSync(
   }
 
   // initializing the timestamp cursor if it does not exist (first sync, not incremental)
-  const cursors = await ZendeskTimestampCursor.findOne({
+  const cursors = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
   if (!cursors) {
-    await ZendeskTimestampCursor.create({
+    await ZendeskTimestampCursorModel.create({
       connectorId,
       timestampCursor: new Date(currentSyncDateMs),
     });
@@ -153,7 +152,7 @@ export async function syncZendeskBrandActivity({
       parents: [helpCenterNode.internalId],
       parentId: null,
       title: helpCenterNode.title,
-      mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.HELP_CENTER,
       timestampMs: currentSyncDateMs,
     });
 
@@ -172,7 +171,7 @@ export async function syncZendeskBrandActivity({
         parents,
         parentId: parents[1],
         title: category.name,
-        mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+        mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
         sourceUrl: category.url,
         timestampMs: currentSyncDateMs,
       });
@@ -218,7 +217,7 @@ export async function syncZendeskBrandActivity({
         parents: [folderId],
         parentId: null,
         title: category.name,
-        mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+        mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
         sourceUrl: category.url,
         timestampMs: currentSyncDateMs,
       });
@@ -235,7 +234,7 @@ export async function syncZendeskBrandActivity({
       parents: [ticketsNode.internalId],
       parentId: null,
       title: ticketsNode.title,
-      mimeType: MIME_TYPES.ZENDESK.TICKETS,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKETS,
       timestampMs: currentSyncDateMs,
     });
   } else {
@@ -357,16 +356,13 @@ export async function syncZendeskCategoryBatchActivity({
     accessToken,
     subdomain,
   });
-  if (!brandSubdomain) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
-  }
 
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
   });
 
-  const { categories, hasMore, nextLink } = await fetchZendeskCategoriesInBrand(
+  const { categories, hasMore, nextLink } = await listZendeskCategoriesInBrand(
     accessToken,
     url ? { url } : { brandSubdomain, pageSize: ZENDESK_BATCH_SIZE }
   );
@@ -451,9 +447,6 @@ export async function syncZendeskCategoryActivity({
     subdomain,
     brandId,
   });
-  if (!brandSubdomain) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
-  }
 
   // if the category is not on Zendesk anymore, we remove its permissions
   const fetchedCategory = await fetchZendeskCategory({
@@ -485,7 +478,7 @@ export async function syncZendeskCategoryActivity({
     parents,
     parentId,
     title: fetchedCategory.name,
-    mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+    mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
     sourceUrl: fetchedCategory.html_url,
     timestampMs: currentSyncDateMs,
   });
@@ -526,6 +519,11 @@ export async function syncZendeskArticleBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -547,13 +545,14 @@ export async function syncZendeskArticleBatchActivity({
   const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
-  const zendeskApiClient = createZendeskClient({ accessToken, subdomain });
-  const brandSubdomain = await changeZendeskClientSubdomain(zendeskApiClient, {
+  const brandSubdomain = await getZendeskBrandSubdomain({
     brandId: category.brandId,
     connectorId,
+    accessToken,
+    subdomain,
   });
 
-  const { articles, hasMore, nextLink } = await fetchZendeskArticlesInCategory(
+  const { articles, hasMore, nextLink } = await listZendeskArticlesInCategory(
     category,
     accessToken,
     url ? { url } : { brandSubdomain, pageSize: ZENDESK_BATCH_SIZE }
@@ -564,24 +563,30 @@ export async function syncZendeskArticleBatchActivity({
     `[Zendesk] Processing ${articles.length} articles in batch`
   );
 
-  const sections =
-    await zendeskApiClient.helpcenter.sections.listByCategory(categoryId);
-  const users = await fetchZendeskManyUsers({
+  const sections = await listZendeskSectionsByCategory({
     accessToken,
     brandSubdomain,
-    userIds: articles.map((article) => article.author_id),
+    categoryId,
   });
+  const users = configuration.hideCustomerDetails
+    ? []
+    : await listZendeskUsers({
+        accessToken,
+        brandSubdomain,
+        userIds: articles.map((article) => article.author_id),
+      });
 
   await concurrentExecutor(
     articles,
     (article) =>
       syncArticle({
-        connectorId,
-        category,
         article,
+        connector,
+        configuration,
+        category,
         section:
-          sections.find((section) => section.id === article.section_id) || null,
-        user: users.find((user) => user.id === article.author_id) || null,
+          sections.find((section) => section.id === article.section_id) ?? null,
+        user: users.find((user) => user.id === article.author_id) ?? null,
         dataSourceConfig,
         helpCenterIsAllowed,
         currentSyncDateMs,
@@ -637,14 +642,11 @@ export async function syncZendeskTicketBatchActivity({
     accessToken,
     subdomain,
   });
-  if (!brandSubdomain) {
-    throw new Error(`Brand ${brandId} not found in Zendesk.`);
-  }
 
   const startTime =
     Math.floor(currentSyncDateMs / 1000) -
     configuration.retentionPeriodDays * 24 * 60 * 60; // days to seconds
-  const { tickets, hasMore, nextLink } = await fetchZendeskTickets(
+  const { tickets, hasMore, nextLink } = await listZendeskTickets(
     accessToken,
     url ? { url } : { brandSubdomain, startTime }
   );
@@ -663,23 +665,33 @@ export async function syncZendeskTicketBatchActivity({
 
   const comments2d = await concurrentExecutor(
     ticketsToSync,
-    async (ticket) =>
-      fetchZendeskTicketComments({
+    async (ticket) => {
+      const comments = await listZendeskTicketComments({
         accessToken,
         brandSubdomain,
         ticketId: ticket.id,
-      }),
+      });
+      if (comments.length > 0) {
+        logger.info(
+          { ...loggerArgs, ticketId: ticket.id },
+          "[Zendesk] No comment for ticket."
+        );
+      }
+      return comments;
+    },
     { concurrency: 3, onBatchComplete: heartbeat }
   );
-  const users = await fetchZendeskManyUsers({
-    accessToken,
-    brandSubdomain,
-    userIds: [
-      ...new Set(
-        comments2d.flatMap((comments) => comments.map((c) => c.author_id))
-      ),
-    ],
-  });
+  const users = configuration.hideCustomerDetails
+    ? []
+    : await listZendeskUsers({
+        accessToken,
+        brandSubdomain,
+        userIds: [
+          ...new Set(
+            comments2d.flatMap((comments) => comments.map((c) => c.author_id))
+          ),
+        ],
+      });
 
   const res = await concurrentExecutor(
     _.zip(ticketsToSync, comments2d),
@@ -691,9 +703,10 @@ export async function syncZendeskTicketBatchActivity({
       }
 
       return syncTicket({
-        connectorId,
-        brandId,
         ticket,
+        connector,
+        configuration,
+        brandId,
         dataSourceConfig,
         currentSyncDateMs,
         loggerArgs,

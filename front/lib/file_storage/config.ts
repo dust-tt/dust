@@ -1,4 +1,4 @@
-import { EnvironmentConfig } from "@dust-tt/types";
+import { EnvironmentConfig } from "@app/types";
 
 const config = {
   getServiceAccount: (): string => {
@@ -12,6 +12,9 @@ const config = {
   },
   getGcsUpsertQueueBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_UPSERT_QUEUE_BUCKET");
+  },
+  getDustDataSourcesBucket: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_DATA_SOURCES_BUCKET");
   },
 };
 

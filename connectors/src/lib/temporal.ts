@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import type { ConnectionOptions } from "@temporalio/client";
 import { Client, Connection, WorkflowNotFoundError } from "@temporalio/client";
@@ -6,6 +5,7 @@ import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
 import logger from "@connectors/logger/logger";
+import type { ModelId } from "@connectors/types";
 
 // Assuming one cached workflows takes 2MB on average,
 // we can cache 292 workflows in 4096MB, which is the max heap size

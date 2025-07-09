@@ -3,14 +3,15 @@ name: Lint & Build & Test (front)
 on:
   push:
     paths:
-      - types/**
       - sdks/js/**
       - front/**
       - .github/workflows/build-and-lint-front.yml
+
 permissions:
   contents: read
   actions: read
   checks: write
+
 jobs:
   all-checks:
     runs-on: ubuntu-latest
@@ -24,15 +25,18 @@ jobs:
             ./front/package-lock.json
             ./types/package-lock.json
             ./sdks/js/package-lock.json
-      - name: Build Types
-        working-directory: types
-        run: npm install && npm run build
       - name: Build SDK/JS
         working-directory: sdks/js
         run: npm install && npm run build
       - name: Typecheck and Lint
         working-directory: front
-        run: npm install && npm run tsc && npm run lint && npm run format:check && npm run docs:check
+        run: npm ci && npx tsc --version && npm run tsc && npm run lint && npm run format:check && npm run docs:check
+      - name: Install Redis
+        uses: chenjuneking/redis-setup-action@v1
+        with:
+          version: "7.2.5"
+          hostPort: 5434
+          containerPort: 6379
       - name: Install Postgres
         uses: dust-tt/postgresql-action@6730e69fe23f4f2989c19edf9e6e0d7ffeb0a05c
         with:
@@ -46,6 +50,7 @@ jobs:
         working-directory: front
         env:
           FRONT_DATABASE_URI: "postgres://test:test@localhost:5433/front_test"
+          REDIS_CACHE_URI: "redis://localhost:5434"
           NODE_ENV: test
         run: npx tsx admin/db.ts && npm run test:ci
       - name: Build Tests Report

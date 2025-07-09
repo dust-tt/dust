@@ -7,6 +7,12 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
+import dynamic from "next/dynamic";
+import { useState } from "react";
+
+import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
   BlockType,
@@ -14,15 +20,9 @@ import type {
   SpecificationBlockType,
   SpecificationType,
   WorkspaceType,
-} from "@dust-tt/types";
-import dynamic from "next/dynamic";
-import { useState } from "react";
-
-import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
-import { shallowBlockClone } from "@app/lib/utils";
+} from "@app/types";
 
 import Block from "./Block";
-
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
   { ssr: false }
@@ -194,7 +194,7 @@ export default function DataSource({
     onBlockUpdate(b);
   };
 
-  const theme = localStorage.getItem("theme");
+  const { isDark } = useTheme();
 
   return (
     <Block
@@ -256,7 +256,7 @@ export default function DataSource({
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
               <CodeEditor
-                data-color-mode={theme === "dark" ? "dark" : "light"}
+                data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.query}
                 language="jinja2"
@@ -264,9 +264,8 @@ export default function DataSource({
                 onChange={(e) => handleQueryChange(e.target.value)}
                 padding={3}
                 minHeight={80}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
-                  color: "rgb(55 65 81)",
                   fontSize: 13,
                   fontFamily:
                     "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
@@ -284,7 +283,7 @@ export default function DataSource({
               <div className="flex w-full flex-col gap-2">
                 <div className="flex w-full flex-col gap-2">
                   <CodeEditor
-                    data-color-mode={theme === "dark" ? "dark" : "light"}
+                    data-color-mode={isDark ? "dark" : "light"}
                     readOnly={readOnly}
                     value={block.spec.filter_code}
                     language="js"
@@ -292,7 +291,7 @@ export default function DataSource({
                     onChange={(e) => handleFilterCodeChange(e.target.value)}
                     padding={15}
                     minHeight={80}
-                    className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                    className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                     style={{
                       fontSize: 12,
                       fontFamily:
@@ -344,7 +343,6 @@ export default function DataSource({
                                 key={i}
                                 label={tag}
                                 onRemove={() => handleRemoveTagsIn(i)}
-                                color="slate"
                               />
                             )
                           )}
@@ -396,7 +394,6 @@ export default function DataSource({
                                   key={i}
                                   label={tag}
                                   onRemove={() => handleRemoveTagsNot(i)}
-                                  color="slate"
                                 />
                               )
                             )}

@@ -2,6 +2,7 @@ use crate::oauth::{
     connection::{
         Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
     },
+    credential::Credential,
     providers::utils::execute_request,
 };
 use anyhow::{anyhow, Result};
@@ -36,6 +37,7 @@ impl Provider for ZendeskConnectionProvider {
     async fn finalize(
         &self,
         connection: &Connection,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -60,7 +62,8 @@ impl Provider for ZendeskConnectionProvider {
 
         let url = format!("https://{}.zendesk.com/oauth/tokens", subdomain);
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post(url)
             .header("Content-Type", "application/json")
             .json(&body);
@@ -82,10 +85,15 @@ impl Provider for ZendeskConnectionProvider {
             access_token_expiry: None,
             refresh_token: None,
             raw_json,
+            extra_metadata: None,
         })
     }
 
-    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        _connection: &Connection,
+        _related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         Err(ProviderError::ActionNotSupportedError(
             "Zendesk access tokens do not expire".to_string(),
         ))?

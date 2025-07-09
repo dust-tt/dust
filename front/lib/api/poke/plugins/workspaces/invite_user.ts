@@ -1,8 +1,8 @@
-import { Err, MEMBERSHIP_ROLE_TYPES, Ok } from "@dust-tt/types";
-
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isEmailValid } from "@app/lib/utils";
+import type { MembershipRoleType } from "@app/types";
+import { Err, mapToEnumValues, MEMBERSHIP_ROLE_TYPES, Ok } from "@app/types";
 
 export const inviteUser = createPlugin({
   manifest: {
@@ -20,11 +20,21 @@ export const inviteUser = createPlugin({
         type: "enum",
         label: "Role",
         description: "Role of the user to invite",
-        values: MEMBERSHIP_ROLE_TYPES,
+        values: mapToEnumValues(MEMBERSHIP_ROLE_TYPES, (role) => ({
+          label: role,
+          value: role,
+        })),
+      },
+      force: {
+        type: "boolean",
+        label: "Force",
+        description:
+          "If true, sends an email even if the user was already invited.",
+        defaultValue: false,
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const subscription = auth.subscription();
     const plan = auth.plan();
     if (!subscription || !plan) {
@@ -46,11 +56,13 @@ export const inviteUser = createPlugin({
 
     const invitationRes = await handleMembershipInvitations(auth, {
       owner: auth.getNonNullableWorkspace(),
-      user: auth.getNonNullableUser(),
+      user: auth.getNonNullableUser().toJSON(),
       subscription,
+      force: args.force,
       invitationRequests: [
         {
           ...args,
+          role: args.role as MembershipRoleType,
           email,
         },
       ],

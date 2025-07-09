@@ -1,4 +1,4 @@
-import type { PlanType } from "@dust-tt/types";
+import type { PlanType } from "@app/types";
 
 // Current free plans:
 export const FREE_NO_PLAN_CODE = "FREE_NO_PLAN";

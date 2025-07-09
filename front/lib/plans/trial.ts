@@ -1,13 +1,13 @@
-import type { SubscriptionType } from "@dust-tt/types";
-
 import type { Plan, Subscription } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
+import type { SubscriptionType } from "@app/types";
 
 // These limits are applied to all plans during the trial period.
 const TRIAL_LIMITS: Partial<PlanAttributes> = {
   maxUsersInWorkspace: 5,
   maxMessages: 100,
   maxMessagesTimeframe: "day",
+  maxImagesPerWeek: 50,
 };
 
 export function getTrialVersionForPlan(plan: Plan): PlanAttributes {

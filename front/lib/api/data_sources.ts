@@ -1,7 +1,39 @@
 import type {
+  DataSourceFolderSpreadsheetMimeType,
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
+import assert from "assert";
+import type { Transaction } from "sequelize";
+
+import { default as apiConfig, default as config } from "@app/lib/api/config";
+import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
+import { sendGitHubDeletionEmail } from "@app/lib/api/email";
+import { upsertTableFromCsv } from "@app/lib/api/tables";
+import {
+  getMembers,
+  getWorkspaceAdministrationVersionLock,
+} from "@app/lib/api/workspace";
+import type { Authenticator } from "@app/lib/auth";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
+import { DustError } from "@app/lib/error";
+import { getDustDataSourcesBucket } from "@app/lib/file_storage";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import { Lock } from "@app/lib/lock";
+import { TrackerDataSourceConfigurationModel } from "@app/lib/models/doc_tracker";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { ServerSideTracking } from "@app/lib/tracking/server";
+import { enqueueUpsertTable } from "@app/lib/upsert_queue";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis } from "@app/lib/utils/cache";
+import { cleanTimestamp } from "@app/lib/utils/timestamps";
+import logger from "@app/logger/logger";
+import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import type {
   AdminCommandType,
   ConnectorProvider,
@@ -19,10 +51,9 @@ import type {
   Result,
   WithConnector,
   WorkspaceType,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   assertNever,
-  concurrentExecutor,
   ConnectorsAPI,
   CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
@@ -33,30 +64,15 @@ import {
   isDataSourceNameValid,
   Ok,
   sectionFullText,
-} from "@dust-tt/types";
-import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
-import assert from "assert";
-import type { Transaction } from "sequelize";
+  validateUrl,
+} from "@app/types";
 
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
-import { default as apiConfig, default as config } from "@app/lib/api/config";
-import { sendGitHubDeletionEmail } from "@app/lib/api/email";
-import { upsertTableFromCsv } from "@app/lib/api/tables";
-import { getMembers } from "@app/lib/api/workspace";
-import type { Authenticator } from "@app/lib/auth";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
-import { DustError } from "@app/lib/error";
-import { Lock } from "@app/lib/lock";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { ServerSideTracking } from "@app/lib/tracking/server";
-import { enqueueUpsertTable } from "@app/lib/upsert_queue";
-import logger from "@app/logger/logger";
-import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
+import { ConversationResource } from "../resources/conversation_resource";
+import { frontSequelize } from "../resources/storage";
+
+// Number of files we pull from GCS at once for deletion.
+// If we have 10k documents of 100kB each (which is a lot) we are at 1GB here.
+const FILE_BATCH_SIZE = 10_000;
 
 export async function getDataSources(
   auth: Authenticator,
@@ -97,6 +113,28 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
     });
   }
 
+  // Soft delete all ds views for that data source.
+  const views = await DataSourceViewResource.listForDataSources(auth, [
+    dataSource,
+  ]);
+  await concurrentExecutor(
+    views,
+    async (view) => {
+      const r = await view.delete(auth, { transaction, hardDelete: false });
+      if (r.isErr()) {
+        logger.error(
+          { viewId: view.id, error: r.error },
+          "Error deleting data source view"
+        );
+        throw r.error;
+      }
+    },
+    {
+      concurrency: 8,
+    }
+  );
+
+  // Soft delete the data source.
   await dataSource.delete(auth, { transaction, hardDelete: false });
 
   // The scrubbing workflow will delete associated resources and hard delete the data source.
@@ -115,7 +153,81 @@ export async function hardDeleteDataSource(
 ) {
   assert(auth.isBuilder(), "Only builders can delete data sources.");
 
+  // Delete all files in the data source's bucket.
   const { dustAPIProjectId } = dataSource;
+
+  let files;
+
+  do {
+    files = await getDustDataSourcesBucket().getFiles({
+      prefix: dustAPIProjectId,
+      maxResults: FILE_BATCH_SIZE,
+    });
+
+    const chunkSize = 32;
+    const chunks = [];
+    for (let i = 0; i < files.length; i += chunkSize) {
+      chunks.push(files.slice(i, i + chunkSize));
+    }
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      if (!chunk) {
+        continue;
+      }
+      await Promise.all(
+        chunk.map((f) => {
+          return (async () => {
+            try {
+              await f.delete();
+            } catch (error) {
+              if (isGCSNotFoundError(error)) {
+                logger.warn(
+                  {
+                    path: f.name,
+                    dataSourceId: dataSource.sId,
+                    dustAPIProjectId,
+                  },
+                  "File not found during deletion, skipping"
+                );
+              } else {
+                throw error;
+              }
+            }
+          })();
+        })
+      );
+    }
+  } while (files.length === FILE_BATCH_SIZE);
+
+  // Delete all trackers datasource configurations associated with the data source.
+  await TrackerDataSourceConfigurationModel.destroy({
+    where: {
+      dataSourceId: dataSource.id,
+    },
+    hardDelete: true,
+  });
+
+  // Ensure all content fragments from dsviews are expired.
+  // Only used temporarily to unstuck queues -- TODO(fontanierh)
+  const views = await DataSourceViewResource.listForDataSources(
+    auth,
+    [dataSource],
+    {
+      includeDeleted: true,
+    }
+  );
+  await concurrentExecutor(
+    views,
+    async (view) => {
+      await view.expireContentFragments(auth);
+    },
+    {
+      concurrency: 8,
+    }
+  );
+
+  // Delete all connectors associated with the data source.
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
       !CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable &&
@@ -148,6 +260,7 @@ export async function hardDeleteDataSource(
     }
   }
 
+  // Delete the data source from core.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const coreDeleteRes = await coreAPI.deleteDataSource({
     projectId: dustAPIProjectId,
@@ -211,7 +324,7 @@ export async function augmentDataSourceWithConnectorDetails(
       fetchConnectorError = true;
       fetchConnectorErrorMessage = statusRes.error.message;
     } else {
-      connector = statusRes.value;
+      connector = { ...statusRes.value, connectionId: null };
     }
   } catch (e) {
     // Probably means `connectors` is down, we don't fail to avoid a 500 when just displaying
@@ -335,31 +448,15 @@ export async function upsertDocument({
       : section || null;
 
   const nonNullTags = tags || [];
+
   const titleInTags = nonNullTags
     .find((t) => t.startsWith("title:"))
     ?.substring(6);
-  if (!titleInTags) {
-    nonNullTags.push(`title:${title}`);
-  }
-
   if (titleInTags && titleInTags !== title) {
     logger.warn(
       { dataSourceId: dataSource.sId, documentId, titleInTags, title },
       "Inconsistency between tags and title."
     );
-  }
-
-  // Add selection of tags as prefix to the section if they are present.
-  let tagsPrefix = "";
-  ["title", "author"].forEach((t) => {
-    nonNullTags.forEach((tag) => {
-      if (tag.startsWith(t + ":") && tag.length > t.length + 1) {
-        tagsPrefix += `$${t} : ${tag.slice(t.length + 1)}\n`;
-      }
-    });
-  });
-  if (tagsPrefix && generatedSection) {
-    generatedSection.prefix = tagsPrefix;
   }
 
   if (!generatedSection) {
@@ -438,9 +535,7 @@ export async function upsertDocument({
     parentId: documentParentId,
     parents: documentParents,
     sourceUrl,
-    // TEMPORARY -- need to unstuck a specific entry
-    // TODO(FONTANIERH): remove this once the entry is unstuck
-    timestamp: timestamp ? Math.floor(timestamp) : null,
+    timestamp: cleanTimestamp(timestamp),
     section: generatedSection,
     credentials,
     lightDocumentOutput: light_document_output === true,
@@ -541,6 +636,13 @@ export interface UpsertTableArgs {
   tags?: string[] | null;
   parentId?: string | null;
   parents?: string[] | null;
+  allowEmptySchema?: boolean;
+}
+
+export function isUpsertDocumentArgs(
+  args: UpsertTableArgs | UpsertDocumentArgs | undefined
+): args is UpsertDocumentArgs {
+  return args !== undefined && "document_id" in args;
 }
 
 export function isUpsertTableArgs(
@@ -567,20 +669,7 @@ export async function upsertTable({
     | {
         table: CoreAPITable;
       },
-    Omit<DustError, "code"> & {
-      code:
-        | "invalid_csv_and_file"
-        | "missing_csv"
-        | "data_source_error"
-        | "invalid_csv_content"
-        | "invalid_url"
-        | "table_not_found"
-        | "file_not_found"
-        | "title_too_long"
-        | "invalid_parent_id"
-        | "invalid_parents"
-        | "internal_error";
-    }
+    DustError
   >
 > {
   const owner = auth.getNonNullableWorkspace();
@@ -624,7 +713,9 @@ export async function upsertTable({
     return new Err({
       name: "dust_error",
       code: "title_too_long",
-      message: `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
+      message:
+        "Invalid title:" +
+        `title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
     });
   }
 
@@ -665,51 +756,60 @@ export async function upsertTable({
     standardizedSourceUrl = standardized;
   }
 
-  if (async) {
-    if (fileId) {
-      const file = await FileResource.fetchById(auth, fileId);
-      if (!file) {
+  const title = params.title.trim() || name.trim() || UNTITLED_TITLE;
+
+  if (fileId) {
+    const file = await FileResource.fetchById(auth, fileId);
+    if (!file) {
+      return new Err<DustError>({
+        name: "dust_error",
+        code: "file_not_found",
+        message:
+          "The file associated with the fileId you provided was not found",
+      });
+    }
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+    const schemaRes = await coreAPI.tableValidateCSVContent({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      bucket: file.getBucketForVersion("processed").name,
+      bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+    });
+    if (schemaRes.isErr()) {
+      if (schemaRes.error.code === "invalid_csv_content") {
         return new Err({
           name: "dust_error",
-          code: "file_not_found",
-          message:
-            "The file associated with the fileId you provided was not found",
+          code: "invalid_csv_content",
+          message: schemaRes.error.message,
+        });
+      } else {
+        logger.error(
+          {
+            bucket: file.getBucketForVersion("processed").name,
+            bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+            dataSourceId: dataSource.sId,
+            error: schemaRes.error,
+          },
+          "Error validating CSV content"
+        );
+        return new Err({
+          name: "dust_error",
+          code: "internal_error",
+          message: schemaRes.error.message,
         });
       }
-      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-      const schemaRes = await coreAPI.tableValidateCSVContent({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        bucket: file.getBucketForVersion("processed").name,
-        bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
-      });
-      if (schemaRes.isErr()) {
-        if (schemaRes.error.code === "invalid_csv_content") {
-          return new Err({
-            name: "dust_error",
-            code: "invalid_csv_content",
-            message: schemaRes.error.message,
-          });
-        } else {
-          logger.error(
-            {
-              bucket: file.getBucketForVersion("processed").name,
-              bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
-              dataSourceId: dataSource.sId,
-              error: schemaRes.error,
-            },
-            "Error validating CSV content"
-          );
-          return new Err({
-            name: "dust_error",
-            code: "internal_error",
-            message: schemaRes.error.message,
-          });
-        }
-      }
     }
+    if (!params.allowEmptySchema && schemaRes.value.schema.length === 0) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_csv_content",
+        message: "Invalid CSV content, skipping",
+      });
+    }
+  }
 
+  if (async) {
     const enqueueRes = await enqueueUpsertTable({
       upsertTable: {
         workspaceId: owner.sId,
@@ -724,17 +824,27 @@ export async function upsertTable({
         csv: null,
         fileId: fileId ?? null,
         truncate,
-        title: params.title,
+        title,
         mimeType: params.mimeType,
         sourceUrl: standardizedSourceUrl,
       },
     });
     if (enqueueRes.isErr()) {
+      logger.error(
+        {
+          error: enqueueRes.error,
+          workspaceId: owner.sId,
+          dataSourceId: dataSource.sId,
+          tableId,
+        },
+        "Error enqueueing the table for asynchronous upsert."
+      );
+
       return new Err({
         name: "dust_error",
         code: "data_source_error",
         message:
-          "There was an error enqueueing the the document for asynchronous upsert.",
+          "There was an error enqueueing the table for asynchronous upsert.",
       });
     }
     return new Ok({
@@ -756,7 +866,7 @@ export async function upsertTable({
     tableParents,
     fileId: fileId ?? null,
     truncate,
-    title: params.title,
+    title,
     mimeType: params.mimeType,
     sourceUrl: standardizedSourceUrl,
   });
@@ -792,6 +902,52 @@ export async function upsertTable({
   return new Ok(tableRes.value);
 }
 
+export async function createDataSourceFolder(
+  dataSource: DataSourceResource,
+  {
+    folderId,
+    mimeType,
+    parentId,
+    parents,
+    sourceUrl,
+    title,
+  }: {
+    folderId: string;
+    mimeType: DataSourceFolderSpreadsheetMimeType;
+    parentId?: string | null;
+    parents?: string[] | null;
+    sourceUrl?: string | null;
+    title: string;
+  }
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  // Create folder with the Dust internal API.
+  const upsertRes = await coreAPI.upsertDataSourceFolder({
+    dataSourceId: dataSource.dustAPIDataSourceId,
+    folderId,
+    mimeType,
+    parentId: parentId || null,
+    parents: parents || [folderId],
+    projectId: dataSource.dustAPIProjectId,
+    providerVisibility: "public",
+    sourceUrl,
+    timestamp: Date.now(),
+    title: title.trim() || "Untitled Folder",
+  });
+
+  if (upsertRes.isErr()) {
+    return upsertRes;
+  }
+
+  return new Ok(upsertRes.value);
+}
+
+type DataSourceCreationError = Omit<DustError, "code"> & {
+  code: "invalid_request_error" | "plan_limit_error" | "internal_server_error";
+  dataSourceError?: CoreAPIError;
+};
+
 /**
  * Data sources without provider = folders
  */
@@ -812,18 +968,7 @@ export async function createDataSourceWithoutProvider(
     description: string | null;
     conversation?: ConversationWithoutContentType;
   }
-): Promise<
-  Result<
-    DataSourceViewResource,
-    Omit<DustError, "code"> & {
-      code:
-        | "invalid_request_error"
-        | "plan_limit_error"
-        | "internal_server_error";
-      dataSourceError?: CoreAPIError;
-    }
-  >
-> {
+): Promise<Result<DataSourceViewResource, DataSourceCreationError>> {
   if (name.startsWith("managed-")) {
     return new Err({
       name: "dust_error",
@@ -838,103 +983,121 @@ export async function createDataSourceWithoutProvider(
       message: "Data source names cannot be empty.",
     });
   }
-  const dataSources = await DataSourceResource.listByWorkspace(auth);
-  if (
-    plan.limits.dataSources.count != -1 &&
-    dataSources.length >= plan.limits.dataSources.count
-  ) {
-    return new Err({
-      name: "dust_error",
-      code: "plan_limit_error",
-      message: "Your plan does not allow you to create more data sources.",
-    });
-  }
 
-  if (dataSources.some((ds) => ds.name === name)) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "Data source with that name already exist.",
-    });
-  }
+  return frontSequelize.transaction(
+    async (
+      t
+    ): Promise<Result<DataSourceViewResource, DataSourceCreationError>> => {
+      // Only setup the lock if the workspace has a limit of data source
+      if (plan.limits.dataSources.count !== -1) {
+        await getWorkspaceAdministrationVersionLock(owner, t);
+      }
 
-  const dataSourceEmbedder =
-    owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
-  const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      const dataSources = await DataSourceResource.listByWorkspace(
+        auth,
+        undefined,
+        undefined,
+        t
+      );
+      if (
+        plan.limits.dataSources.count != -1 &&
+        dataSources.length >= plan.limits.dataSources.count
+      ) {
+        return new Err({
+          name: "dust_error",
+          code: "plan_limit_error",
+          message: "Your plan does not allow you to create more data sources.",
+        });
+      }
 
-  const dustProject = await coreAPI.createProject();
-  if (dustProject.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: "Failed to create internal project for the data source.",
-      dataSourceError: dustProject.error,
-    });
-  }
+      if (dataSources.some((ds) => ds.name === name)) {
+        return new Err({
+          name: "dust_error",
+          code: "invalid_request_error",
+          message: "Data source with that name already exist.",
+        });
+      }
 
-  const dustDataSource = await coreAPI.createDataSource({
-    projectId: dustProject.value.project.project_id.toString(),
-    config: {
-      qdrant_config: {
-        cluster: DEFAULT_QDRANT_CLUSTER,
-        shadow_write_cluster: null,
-      },
-      embedder_config: {
-        embedder: {
-          max_chunk_size: embedderConfig.max_chunk_size,
-          model_id: embedderConfig.model_id,
-          provider_id: embedderConfig.provider_id,
-          splitter_id: embedderConfig.splitter_id,
+      const dataSourceEmbedder =
+        owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
+      const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+      const dustProject = await coreAPI.createProject();
+      if (dustProject.isErr()) {
+        return new Err({
+          name: "dust_error",
+          code: "internal_server_error",
+          message: "Failed to create internal project for the data source.",
+          dataSourceError: dustProject.error,
+        });
+      }
+
+      const dustDataSource = await coreAPI.createDataSource({
+        projectId: dustProject.value.project.project_id.toString(),
+        config: {
+          qdrant_config: {
+            cluster: DEFAULT_QDRANT_CLUSTER,
+            shadow_write_cluster: null,
+          },
+          embedder_config: {
+            embedder: {
+              max_chunk_size: embedderConfig.max_chunk_size,
+              model_id: embedderConfig.model_id,
+              provider_id: embedderConfig.provider_id,
+              splitter_id: embedderConfig.splitter_id,
+            },
+          },
         },
-      },
-    },
-    credentials: dustManagedCredentials(),
-    name,
-  });
-
-  if (dustDataSource.isErr()) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: "Failed to create the data source.",
-      dataSourceError: dustDataSource.error,
-    });
-  }
-
-  const dataSourceView =
-    await DataSourceViewResource.createDataSourceAndDefaultView(
-      {
+        credentials: dustManagedCredentials(),
         name,
-        description,
-        dustAPIProjectId: dustProject.value.project.project_id.toString(),
-        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
-        workspaceId: owner.id,
-        assistantDefaultSelected: false,
-        conversationId: conversation?.id,
-      },
-      space,
-      auth.user(),
-      conversation
-    );
+      });
 
-  try {
-    // Asynchronous tracking without awaiting, handled safely
-    void ServerSideTracking.trackDataSourceCreated({
-      user: auth.user() ?? undefined,
-      workspace: owner,
-      dataSource: dataSourceView.dataSource.toJSON(),
-    });
-  } catch (error) {
-    logger.error(
-      {
-        error,
-      },
-      "Failed to track data source creation"
-    );
-  }
+      if (dustDataSource.isErr()) {
+        return new Err({
+          name: "dust_error",
+          code: "internal_server_error",
+          message: "Failed to create the data source.",
+          dataSourceError: dustDataSource.error,
+        });
+      }
 
-  return new Ok(dataSourceView);
+      const dataSourceView =
+        await DataSourceViewResource.createDataSourceAndDefaultView(
+          {
+            name,
+            description,
+            dustAPIProjectId: dustProject.value.project.project_id.toString(),
+            dustAPIDataSourceId:
+              dustDataSource.value.data_source.data_source_id,
+            workspaceId: owner.id,
+            assistantDefaultSelected: false,
+            conversationId: conversation?.id,
+          },
+          space,
+          auth.user(),
+          t
+        );
+
+      try {
+        // Asynchronous tracking without awaiting, handled safely
+        void ServerSideTracking.trackDataSourceCreated({
+          user: auth.user() ?? undefined,
+          workspace: owner,
+          dataSource: dataSourceView.dataSource.toJSON(),
+        });
+      } catch (error) {
+        logger.error(
+          {
+            error,
+          },
+          "Failed to track data source creation"
+        );
+      }
+
+      return new Ok(dataSourceView);
+    }
+  );
 }
 
 async function getOrCreateConversationDataSource(
@@ -1000,6 +1163,17 @@ async function getOrCreateConversationDataSource(
   return res;
 }
 
+function validateFileMetadataForConversation(
+  file: FileResource
+): Result<string, Error> {
+  const conversationId = file.useCaseMetadata?.conversationId;
+  if (!conversationId) {
+    return new Err(new Error("Field conversationId is missing from metadata"));
+  }
+
+  return new Ok(conversationId);
+}
+
 export async function getOrCreateConversationDataSourceFromFile(
   auth: Authenticator,
   file: FileResource
@@ -1012,20 +1186,18 @@ export async function getOrCreateConversationDataSourceFromFile(
   >
 > {
   // Note: this assume that if we don't have useCaseMetadata, the file is fine.
-  const hasRequiredMetadata =
-    !!file.useCaseMetadata && !!file.useCaseMetadata.conversationId;
-
-  if (!hasRequiredMetadata) {
+  const metadataResult = validateFileMetadataForConversation(file);
+  if (metadataResult.isErr()) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
-      message: "File is missing required metadata for JIT processing.",
+      message: metadataResult.error.message,
     });
   }
 
-  const cRes = await getConversationWithoutContent(
+  const cRes = await ConversationResource.fetchConversationWithoutContent(
     auth,
-    file.useCaseMetadata.conversationId
+    metadataResult.value
   );
   if (cRes.isErr()) {
     return new Err({
@@ -1108,8 +1280,19 @@ export async function pauseAllManagedDataSources(
   return new Ok(res);
 }
 
-export async function resumeAllManagedDataSources(auth: Authenticator) {
+export async function unpauseAllManagedDataSources(
+  auth: Authenticator,
+  providers?: ConnectorProvider[]
+) {
   const dataSources = await getAllManagedDataSources(auth);
+
+  const filteredDataSources = dataSources.filter(
+    // If no providers are provided, resume all data sources.
+    (ds) =>
+      !providers ||
+      (ds.connectorProvider !== null &&
+        providers.includes(ds.connectorProvider))
+  );
 
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
@@ -1117,41 +1300,61 @@ export async function resumeAllManagedDataSources(auth: Authenticator) {
   );
 
   const res = await concurrentExecutor(
-    dataSources,
+    filteredDataSources,
     async (ds) => {
       assert(ds.connectorId, "Connector ID is required");
 
-      const { connectorId } = ds;
-
-      const setErrorCommand: AdminCommandType = {
-        majorCommand: "connectors",
-        command: "clear-error",
-        args: {
-          connectorId,
-          wId: auth.getNonNullableWorkspace().sId,
-          dsId: ds.sId,
-        },
-      };
-
-      const setErrorRes = await connectorsAPI.admin(setErrorCommand);
-      if (setErrorRes.isErr()) {
-        return new Err(new Error(setErrorRes.error.message));
+      const unpauseRes = await connectorsAPI.unpauseConnector(ds.connectorId);
+      if (unpauseRes.isErr()) {
+        return new Err(new Error(unpauseRes.error.message));
       }
 
-      const resumeRes = await connectorsAPI.resumeConnector(ds.connectorId);
-      if (resumeRes.isErr()) {
-        return new Err(new Error(resumeRes.error.message));
-      }
-
-      return new Ok(resumeRes.value);
+      return new Ok(unpauseRes.value);
     },
     { concurrency: 5 }
   );
 
   const failed = res.filter((r) => r.isErr());
   if (failed.length > 0) {
-    return new Err(new Error(`Failed to resume ${failed.length} connectors.`));
+    return new Err(new Error(`Failed to unpause ${failed.length} connectors.`));
   }
 
   return new Ok(res);
 }
+
+export async function computeDataSourceStatistics(
+  dataSources: DataSourceResource[]
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  return coreAPI.getDataSourceStats(
+    dataSources.map(({ dustAPIProjectId, dustAPIDataSourceId }) => ({
+      project_id: parseInt(dustAPIProjectId),
+      data_source_id: dustAPIDataSourceId,
+    }))
+  );
+}
+
+export const computeWorkspaceOverallSizeCached = cacheWithRedis(
+  async (auth: Authenticator) => {
+    const dataSources = await DataSourceResource.listByWorkspace(
+      auth,
+      // TODO(DATASOURCE_SID): Clean-up
+      { origin: "v1_data_sources_documents_document_get_or_upsert" }
+    );
+    const result = await computeDataSourceStatistics(dataSources);
+
+    if (result.isErr()) {
+      throw new Error(
+        `Failed to get data source stats: ${result.error.message}`
+      );
+    }
+
+    return result.value.overall_total_size;
+  },
+  (auth: Authenticator) => {
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+    return `compute-datasource-stats:${workspaceId}`;
+  },
+  60 * 10 * 1000 // 10 minutes
+);

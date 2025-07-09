@@ -1,5 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -12,6 +10,8 @@ import {
 } from "@app/lib/api/regions/lookup";
 import { getBearerToken } from "@app/lib/auth";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever } from "@app/types";
 
 export type WorkspaceLookupResponse = {
   workspace: {

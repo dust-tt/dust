@@ -1,9 +1,9 @@
 import { MarkdownContentContext } from "@dust-tt/sparkle";
-import type { LightWorkspaceType } from "@dust-tt/types";
 import { useContext, useMemo } from "react";
 import { visit } from "unist-util-visit";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import type { LightWorkspaceType } from "@app/types";
 
 const VISUALIZATION_MAGIC_LINE = "{/** visualization-complete */}";
 
@@ -31,7 +31,7 @@ export function VisualizationBlock({
     return (
       customRenderer?.visualization ||
       (() => (
-        <div className="pb-2 pt-4 font-medium text-red-600">
+        <div className="pb-2 pt-4 font-medium text-warning">
           Visualization not available
         </div>
       ))

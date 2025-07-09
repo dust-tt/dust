@@ -1,23 +1,28 @@
-import type {
-  AgentConfigurationType,
-  ModelId,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { AVAILABLE_INTERNAL_MCP_SERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import {
-  Conversation,
+  ConversationModel,
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import type {
+  LightAgentConfigurationType,
+  ModelId,
+  WorkspaceType,
+} from "@app/types";
 
 export interface WorkspaceUsageQueryResult {
   createdAt: string;
@@ -55,6 +60,7 @@ type UserUsageQueryResult = {
   messageCount: number;
   lastMessageSent: string;
   activeDaysCount: number;
+  groups: string;
 };
 
 type BuilderUsageQueryResult = {
@@ -69,7 +75,9 @@ type BuilderUsageQueryResult = {
 interface AgentUsageQueryResult {
   name: string;
   description: string;
-  settings: "shared" | "private" | "company";
+  settings: "published" | "unpublished" | "unknown";
+  modelId: string;
+  providerId: string;
   authorEmails: string[];
   messages: number;
   distinctUsersReached: number;
@@ -85,7 +93,17 @@ interface FeedbackQueryResult {
   agentConfigurationVersion: number;
   thumb: "up" | "down";
   content: string | null;
+  conversationUrl: string | null;
 }
+
+type GroupMembershipQueryResult = {
+  userId: string;
+  groups: string;
+};
+
+type GroupMembershipWithGroup = GroupMembershipModel & {
+  group: GroupModel;
+};
 
 export async function unsafeGetUsageData(
   startDate: Date,
@@ -93,7 +111,13 @@ export async function unsafeGetUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const wId = workspace.sId;
+  const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
+  const sids = names.map((name) =>
+    internalMCPServerNameToSId({ name, workspaceId: workspace.id })
+  );
+
   const readReplica = getFrontReplicaDbConnection();
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const results = await readReplica.query<WorkspaceUsageQueryResult>(
     `
       SELECT
@@ -111,10 +135,12 @@ export async function unsafeGetUsageData(
         COALESCE(ac."sId", am."agentConfigurationId") AS "assistantId",
         COALESCE(ac."name", am."agentConfigurationId") AS "assistantName",
         CASE
-            WHEN COUNT(DISTINCT arc."id") > 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") = 0 THEN 'retrieval'
-            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") > 0 AND COUNT(DISTINCT adarc."id") = 0 THEN 'tablesQuery'
-            WHEN COUNT(DISTINCT arc."id") = 0 AND COUNT(DISTINCT atqc."id") = 0 AND COUNT(DISTINCT adarc."id") > 0 THEN 'dustAppRun'
-            WHEN COUNT(DISTINCT arc."id") + COUNT(DISTINCT atqc."id") + COUNT(DISTINCT adarc."id") > 1 THEN 'multiActions'
+            WHEN COUNT(DISTINCT msv."id") > 0 THEN
+              CASE
+                WHEN msv."internalMCPServerId" IN (:sids) THEN
+                  (SELECT name FROM (SELECT unnest(ARRAY[:sids]) as sid, unnest(ARRAY[:names]) as name) as t WHERE t.sid = msv."internalMCPServerId")
+                ELSE msv."internalMCPServerId"
+              END
             ELSE NULL
         END AS "actionType",
         um."userContextOrigin" AS "source"
@@ -135,18 +161,16 @@ export async function unsafeGetUsageData(
     LEFT JOIN
         "agent_configurations" ac ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
     LEFT JOIN
-        "agent_retrieval_configurations" arc ON ac."id" = arc."agentConfigurationId"
+        "agent_mcp_server_configurations" amsc ON ac."id" = amsc."agentConfigurationId"
     LEFT JOIN
-        "agent_tables_query_configurations" atqc ON ac."id" = atqc."agentConfigurationId"
-    LEFT JOIN
-        "agent_dust_app_run_configurations" adarc ON ac."id" = adarc."agentConfigurationId"
+        "mcp_server_views" msv ON amsc."mcpServerViewId" = msv."id"
     LEFT JOIN
         "messages" p ON m."parentId" = p."id"
     WHERE
         w."sId" = :wId AND
         m."createdAt" >= :startDate AND m."createdAt" <= :endDate
     GROUP BY
-        m."id", c."id", um."id", am."id", cf."id", ac."id", p."id"
+        m."id", c."id", um."id", am."id", cf."id", ac."id", p."id", msv."internalMCPServerId"
     ORDER BY
         m."createdAt" DESC
     `,
@@ -155,6 +179,8 @@ export async function unsafeGetUsageData(
         wId,
         startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"), // Use first day of start month
         endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"), // Use last day of end month
+        sids,
+        names,
       },
       type: QueryTypes.SELECT,
     }
@@ -172,6 +198,7 @@ export async function getMessageUsageData(
 ): Promise<string> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const results = await readReplica.query<MessageUsageQueryResult>(
     `
       SELECT
@@ -180,9 +207,9 @@ export async function getMessageUsageData(
         COALESCE(ac."sId", am."agentConfigurationId") AS "assistant_id",
         COALESCE(ac."name", am."agentConfigurationId") AS "assistant_name",
         CASE
-          WHEN ac."scope" = 'published' THEN 'shared'
-          WHEN ac."scope" = 'private' THEN 'private'
-          ELSE 'company'
+          WHEN ac."scope" = 'visible' THEN 'published'
+          WHEN ac."scope" = 'hidden' THEN 'unpublished'
+          ELSE 'unknown'
         END AS "assistant_settings",
         w."id" AS "workspace_id",
         w."name" AS "workspace_name",
@@ -226,74 +253,156 @@ export async function getMessageUsageData(
   return generateCsvFromQueryResult(results);
 }
 
+export async function getGroupMembershipsData(
+  startDate: Date,
+  endDate: Date,
+  workspace: WorkspaceType
+): Promise<string> {
+  const wId = workspace.id;
+  const userGroupsMap = await getUserGroupMemberships(wId, startDate, endDate);
+
+  const groupMembershipsData: GroupMembershipQueryResult[] = Object.entries(
+    userGroupsMap
+  ).map(([userId, groups]) => ({
+    userId,
+    groups,
+  }));
+
+  if (!groupMembershipsData.length) {
+    return "No group memberships data available.";
+  }
+  return generateCsvFromQueryResult(groupMembershipsData);
+}
+
+export async function getUserGroupMemberships(
+  workspaceId: number,
+  startDate: Date,
+  endDate: Date
+): Promise<Record<string, string>> {
+  const groupMemberships = await getFrontReplicaDbConnection().transaction(
+    async (t) => {
+      const whereClause = {
+        workspaceId,
+        [Op.and]: [
+          { startAt: { [Op.lte]: endDate } },
+          {
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gte]: startDate } }],
+          },
+        ],
+      };
+
+      return GroupMembershipModel.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: GroupModel,
+            as: "group",
+            attributes: ["name"],
+            required: true,
+            where: {
+              kind: {
+                [Op.in]: ["provisioned"],
+              },
+            },
+          },
+        ],
+        transaction: t,
+      }) as Promise<GroupMembershipWithGroup[]>;
+    }
+  );
+
+  const result: Record<string, string> = {};
+  groupMemberships.forEach((membership) => {
+    const userId = membership.userId.toString();
+    const groupName = membership.group.name;
+    result[userId] = result[userId]
+      ? `${result[userId]}, ${groupName}`
+      : groupName;
+  });
+
+  return result;
+}
+
 export async function getUserUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType
 ): Promise<string> {
   const wId = workspace.id;
-  const userMessages = await Message.findAll({
-    attributes: [
-      "userMessage.userId",
-      "userMessage.userContextFullName",
-      "userMessage.userContextEmail",
-      [Sequelize.fn("COUNT", Sequelize.col("userMessage.id")), "count"],
-      [
-        Sequelize.cast(
-          Sequelize.fn("MAX", Sequelize.col("userMessage.createdAt")),
-          "DATE"
-        ),
-        "lastMessageSent",
-      ],
-      [
-        Sequelize.fn(
-          "COUNT",
-          Sequelize.fn(
-            "DISTINCT",
-            Sequelize.fn("DATE", Sequelize.col("userMessage.createdAt"))
-          )
-        ),
-        "activeDaysCount",
-      ],
-    ],
-    where: {
-      createdAt: {
-        [Op.gt]: startDate,
-        [Op.lt]: endDate,
-      },
-    },
-    include: [
-      {
-        model: UserMessage,
-        as: "userMessage",
-        required: true,
-        attributes: [],
-        where: {
-          userId: {
-            [Op.not]: null,
-          },
-        },
-      },
-      {
-        model: Conversation,
-        as: "conversation",
-        attributes: [],
-        required: true,
+
+  const userMessages = await getFrontReplicaDbConnection().transaction(
+    async (t) => {
+      return Message.findAll({
+        attributes: [
+          "userMessage.userId",
+          "userMessage.userContextFullName",
+          "userMessage.userContextEmail",
+          [Sequelize.fn("COUNT", Sequelize.col("userMessage.id")), "count"],
+          [
+            Sequelize.cast(
+              Sequelize.fn("MAX", Sequelize.col("userMessage.createdAt")),
+              "DATE"
+            ),
+            "lastMessageSent",
+          ],
+          [
+            Sequelize.fn(
+              "COUNT",
+              Sequelize.fn(
+                "DISTINCT",
+                Sequelize.fn("DATE", Sequelize.col("userMessage.createdAt"))
+              )
+            ),
+            "activeDaysCount",
+          ],
+        ],
         where: {
           workspaceId: wId,
+          createdAt: {
+            [Op.gt]: startDate,
+            [Op.lt]: endDate,
+          },
         },
-      },
-    ],
-    group: [
-      "userMessage.userId",
-      "userMessage.userContextFullName",
-      "userMessage.userContextEmail",
-    ],
-    order: [["count", "DESC"]],
-    raw: true,
-  });
+        include: [
+          {
+            model: UserMessage,
+            as: "userMessage",
+            required: true,
+            attributes: [],
+            where: {
+              userId: {
+                [Op.not]: null,
+              },
+            },
+          },
+          {
+            model: ConversationModel,
+            as: "conversation",
+            attributes: [],
+            required: true,
+            where: {
+              workspaceId: wId,
+            },
+          },
+        ],
+        group: [
+          "userMessage.userId",
+          "userMessage.userContextFullName",
+          "userMessage.userContextEmail",
+        ],
+        order: [["count", "DESC"]],
+        raw: true,
+        transaction: t,
+      });
+    }
+  );
+
+  const userGroupsMap = await getUserGroupMemberships(wId, startDate, endDate);
+
   const userUsage: UserUsageQueryResult[] = userMessages.map((result) => {
+    const userId = String((result as unknown as { userId: number }).userId);
     return {
+      userId,
       userName: (result as unknown as { userContextFullName: string })
         .userContextFullName,
       userEmail: (result as unknown as { userContextEmail: string })
@@ -303,6 +412,7 @@ export async function getUserUsageData(
         .lastMessageSent,
       activeDaysCount: (result as unknown as { activeDaysCount: number })
         .activeDaysCount,
+      groups: userGroupsMap[userId] || "",
     };
   });
   if (!userUsage.length) {
@@ -317,48 +427,59 @@ export async function getBuildersUsageData(
   workspace: WorkspaceType
 ): Promise<string> {
   const wId = workspace.id;
-  const agentConfigurations = await AgentConfiguration.findAll({
-    attributes: [
-      [
-        Sequelize.fn("COUNT", Sequelize.col("agent_configuration.sId")),
-        "agentsEditionsCount",
-      ],
-      "user.email",
-      "user.firstName",
-      "user.lastName",
-      [
-        Sequelize.fn(
-          "COUNT",
-          Sequelize.literal('DISTINCT "agent_configuration"."sId"')
-        ),
-        "distinctAgentsEditionsCount",
-      ],
-      [
-        Sequelize.cast(
-          Sequelize.fn("MAX", Sequelize.col("agent_configuration.updatedAt")),
-          "DATE"
-        ),
-        "lastEditAt",
-      ],
-    ],
-    where: {
-      workspaceId: wId,
-      createdAt: {
-        [Op.gt]: startDate,
-        [Op.lt]: endDate,
-      },
-    },
-    include: [
-      {
-        model: UserModel,
-        as: "user",
-        attributes: [],
-        required: true,
-      },
-    ],
-    raw: true,
-    group: ["authorId", "user.email", "user.firstName", "user.lastName"],
-  });
+  const agentConfigurations = await getFrontReplicaDbConnection().transaction(
+    async (t) => {
+      return AgentConfiguration.findAll({
+        attributes: [
+          [
+            Sequelize.fn("COUNT", Sequelize.col("agent_configuration.sId")),
+            "agentsEditionsCount",
+          ],
+          "user.email",
+          "user.firstName",
+          "user.lastName",
+          [
+            Sequelize.fn(
+              "COUNT",
+              Sequelize.literal('DISTINCT "agent_configuration"."sId"')
+            ),
+            "distinctAgentsEditionsCount",
+          ],
+          [
+            Sequelize.cast(
+              Sequelize.fn(
+                "MAX",
+                Sequelize.col("agent_configuration.updatedAt")
+              ),
+              "DATE"
+            ),
+            "lastEditAt",
+          ],
+        ],
+        where: {
+          workspaceId: wId,
+          createdAt: {
+            [Op.gt]: startDate,
+            [Op.lt]: endDate,
+          },
+          status: {
+            [Op.not]: "draft",
+          },
+        },
+        include: [
+          {
+            model: UserModel,
+            as: "user",
+            attributes: [],
+            required: true,
+          },
+        ],
+        raw: true,
+        group: ["authorId", "user.email", "user.firstName", "user.lastName"],
+        transaction: t,
+      });
+    }
+  );
   const buildersUsage: BuilderUsageQueryResult[] = agentConfigurations.map(
     (result) => {
       const castResult = result as unknown as {
@@ -390,10 +511,11 @@ export async function getAssistantUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType,
-  agentConfiguration: AgentConfigurationType
+  agentConfiguration: LightAgentConfigurationType
 ): Promise<number> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const mentions = await readReplica.query<{ messages: number }>(
     `
     SELECT COUNT(a."id") AS "messages"
@@ -429,15 +551,18 @@ export async function getAssistantsUsageData(
 ): Promise<string> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
+  // eslint-disable-next-line dust/no-raw-sql -- Leggit
   const mentions = await readReplica.query<AgentUsageQueryResult>(
     `
     SELECT
       ac."name",
       ac."description",
+      ac."modelId",
+      ac."providerId",
       CASE
-        WHEN ac."scope" = 'published' THEN 'shared'
-        WHEN ac."scope" = 'private' THEN 'private'
-        ELSE 'company'
+        WHEN ac."scope" = 'visible' THEN 'published'
+        WHEN ac."scope" = 'hidden' THEN 'unpublished'
+        ELSE 'unknown'
       END AS "settings",
       ARRAY_AGG(DISTINCT aut."email") AS "authorEmails",
       COUNT(a."id") AS "messages",
@@ -456,11 +581,13 @@ export async function getAssistantsUsageData(
       a."createdAt" BETWEEN :startDate AND :endDate
       AND ac."workspaceId" = :wId
       AND ac."status" = 'active'
-      AND ac."scope" != 'private'
+      AND ac."scope" != 'hidden'
     GROUP BY
       ac."name",
       ac."description",
-      ac."scope"
+      ac."scope",
+      ac."modelId",
+      ac."providerId"
     ORDER BY
       "messages" DESC;
     `,
@@ -484,12 +611,16 @@ export async function getFeedbacksUsageData(
   endDate: Date,
   workspace: WorkspaceType
 ): Promise<string> {
-  const feedbacks =
-    await AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
-      startDate,
-      endDate,
-      workspace,
-    });
+  const feedbacks = await getFrontReplicaDbConnection().transaction(
+    async (t) => {
+      return AgentMessageFeedbackResource.getFeedbackUsageDataForWorkspace({
+        startDate,
+        endDate,
+        workspace,
+        transaction: t,
+      });
+    }
+  );
 
   if (feedbacks.length === 0) {
     return "No data available for the selected period.";
@@ -506,9 +637,20 @@ export async function getFeedbacksUsageData(
       agentConfigurationVersion: jsonFeedback.agentConfigurationVersion,
       thumb: jsonFeedback.thumbDirection,
       content: jsonFeedback.content?.replace(/\r?\n/g, "\\n") || null,
+      conversationUrl:
+        jsonFeedback.conversationId && jsonFeedback.isConversationShared
+          ? reconstructConversationUrl(workspace, jsonFeedback.conversationId)
+          : null,
     } as FeedbackQueryResult;
   });
   return generateCsvFromQueryResult(feedbacksWithMinimalFields);
+}
+
+function reconstructConversationUrl(
+  workspace: WorkspaceType,
+  conversationId: string
+) {
+  return `${config.getClientFacingUrl()}/w/${workspace.sId}/assistant/${conversationId}`;
 }
 
 function generateCsvFromQueryResult(
@@ -519,6 +661,7 @@ function generateCsvFromQueryResult(
     | MessageUsageQueryResult[]
     | BuilderUsageQueryResult[]
     | FeedbackQueryResult[]
+    | GroupMembershipQueryResult[]
 ) {
   if (rows.length === 0) {
     return "";
@@ -551,9 +694,11 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
     where: { workspaceId: auth.getNonNullableWorkspace().id },
   });
 
-  const hasRecentConversation = await Conversation.findOne({
+  // INFO: keep accessing the model for now to avoid circular deps warning
+  const owner = auth.getNonNullableWorkspace();
+  const hasRecentConversation = await ConversationModel.findAll({
     where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
+      workspaceId: owner.id,
       updatedAt: { [Op.gte]: sevenDaysAgo },
     },
   });

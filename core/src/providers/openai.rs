@@ -16,10 +16,12 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use humantime::parse_duration;
 use hyper::StatusCode;
 use hyper::{body::Buf, Uri};
 use itertools::izip;
-use parking_lot::{Mutex, RwLock};
+use lazy_static::lazy_static;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
@@ -34,6 +36,21 @@ use super::azure_openai::AzureOpenAIEmbedder;
 use super::openai_compatible_helpers::{
     openai_compatible_chat_completion, OpenAIError, TransformSystemMessages,
 };
+use super::openai_responses_api_helpers::openai_responses_api_completion;
+
+pub const REMAINING_TOKENS_MARGIN: u64 = 500_000;
+#[derive(Debug)]
+struct RateLimitDetails {
+    pub remaining_tokens: u64,
+    pub reset_tokens: u64, // Unix timestamp in milliseconds when the rate limit resets
+}
+
+lazy_static! {
+    // Map of API key to rate limit details
+    static ref RATE_LIMITS: RwLock<HashMap<String, RateLimitDetails>> = RwLock::new(HashMap::new());
+}
+
+static RESPONSES_API_ENABLED: bool = true;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -168,7 +185,7 @@ pub async fn streamed_completion(
 
     let mut stream = client.stream();
 
-    let completions: Arc<Mutex<Vec<Completion>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut completions: Vec<Completion> = Vec::new();
     let mut request_id: Option<String> = None;
 
     'stream: loop {
@@ -188,10 +205,7 @@ pub async fn streamed_completion(
                         break 'stream;
                     }
                     _ => {
-                        let index = {
-                            let guard = completions.lock();
-                            guard.len()
-                        };
+                        let index = completions.len();
 
                         let completion: Completion = match serde_json::from_str(e.data.as_str()) {
                             Ok(c) => c,
@@ -282,7 +296,7 @@ pub async fn streamed_completion(
                             }
                             None => (),
                         };
-                        completions.lock().push(completion);
+                        completions.push(completion);
                     }
                 },
                 None => {
@@ -340,14 +354,13 @@ pub async fn streamed_completion(
     }
 
     let completion = {
-        let mut guard = completions.lock();
-        let mut c = match guard.len() {
+        let mut c = match completions.len() {
             0 => Err(anyhow!("No completions received from OpenAI")),
-            _ => Ok(guard[0].clone()),
+            _ => Ok(completions[0].clone()),
         }?;
-        guard.remove(0);
-        for i in 0..guard.len() {
-            let a = guard[i].clone();
+        completions.remove(0);
+        for i in 0..completions.len() {
+            let a = completions[i].clone();
             if a.choices.len() != c.choices.len() {
                 Err(anyhow!(
                     "Inconsistent number of choices in streamed completions"
@@ -523,7 +536,36 @@ pub async fn embed(
     model_id: Option<String>,
     text: Vec<&str>,
     user: Option<String>,
+    min_remaining_tokens: Option<u64>,
 ) -> Result<Embeddings> {
+    if let Some(min_remaining_tokens) = min_remaining_tokens {
+        let now = utils::now();
+
+        // Clean up expired rate limits
+        {
+            let mut rate_limits = RATE_LIMITS.write();
+            rate_limits.retain(|_, details| details.reset_tokens > now);
+        }
+
+        // Check rate limits
+        {
+            let rate_limits = RATE_LIMITS.read();
+            if let Some(details) = rate_limits.get(&api_key) {
+                if details.remaining_tokens < min_remaining_tokens {
+                    Err(ModelError {
+                        request_id: None,
+                        message: "Rate limit exceeded".to_string(),
+                        retryable: Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(details.reset_tokens - now),
+                            factor: 2,
+                            retries: 3,
+                        }),
+                    })?;
+                }
+            }
+        }
+    }
+
     let mut body = json!({
         "input": text,
     });
@@ -568,6 +610,33 @@ pub async fn embed(
         Some(request_id) => Some(request_id.to_str()?.to_string()),
         None => None,
     };
+
+    let remaining_tokens = match res_headers.get("x-ratelimit-remaining-tokens") {
+        Some(remaining_tokens) => remaining_tokens.to_str()?.to_string().parse::<u64>().ok(),
+        None => None,
+    };
+
+    let reset_tokens = match res_headers.get("x-ratelimit-reset-tokens") {
+        Some(reset_tokens) => parse_duration(reset_tokens.to_str()?)
+            .ok()
+            .map(|d| d.as_millis()),
+        None => None,
+    };
+    match (remaining_tokens, reset_tokens) {
+        (Some(remaining_tokens), Some(reset_tokens)) => {
+            let now = utils::now();
+            if reset_tokens > 0 {
+                RATE_LIMITS.write().insert(
+                    api_key.clone(),
+                    RateLimitDetails {
+                        remaining_tokens,
+                        reset_tokens: now + reset_tokens as u64,
+                    },
+                );
+            }
+        }
+        _ => (),
+    }
 
     let body = match timeout(Duration::new(60, 0), res.bytes()).await {
         Ok(Ok(body)) => body,
@@ -627,12 +696,21 @@ impl OpenAILLM {
         Ok(format!("https://api.openai.com/v1/chat/completions",).parse::<Uri>()?)
     }
 
+    fn responses_uri(&self) -> Result<Uri> {
+        Ok(format!("https://api.openai.com/v1/responses",).parse::<Uri>()?)
+    }
+
     fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
         match self.id.as_str() {
             "code_davinci-002" | "code-cushman-001" => p50k_base_singleton(),
             "text-davinci-002" | "text-davinci-003" => p50k_base_singleton(),
             _ => {
-                if self.id.starts_with("gpt-4o-") {
+                if self.id.starts_with("gpt-4o")
+                    || self.id.starts_with("gpt-4.1")
+                    || self.id.starts_with("o4")
+                    || self.id.starts_with("o3")
+                    || self.id.starts_with("o1")
+                {
                     o200k_base_singleton()
                 } else if self.id.starts_with("gpt-3.5-turbo") || self.id.starts_with("gpt-4") {
                     cl100k_base_singleton()
@@ -645,6 +723,10 @@ impl OpenAILLM {
 
     pub fn openai_context_size(model_id: &str) -> usize {
         // Reference: https://platform.openai.com/docs/models
+
+        if model_id.starts_with("o4-mini") || model_id.starts_with("o3") || model_id == "o1" {
+            return 200000;
+        }
 
         // gpt-3.5-*
         if model_id.starts_with("gpt-3.5") {
@@ -659,6 +741,9 @@ impl OpenAILLM {
 
         // gpt-4*
         if model_id.starts_with("gpt-4") {
+            if model_id.starts_with("gpt-4.1") {
+                return 1000000;
+            }
             if model_id.starts_with("gpt-4-32k") {
                 return 32768;
             }
@@ -740,6 +825,11 @@ impl LLM for OpenAILLM {
         }
 
         let model_is_o1 = self.id.as_str().starts_with("o1");
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
+        };
+
         let (c, request_id) = if event_sender.is_some() {
             if n > 1 {
                 return Err(anyhow!(
@@ -748,7 +838,7 @@ impl LLM for OpenAILLM {
             }
             streamed_completion(
                 self.uri()?,
-                self.api_key.clone().unwrap(),
+                api_key.clone(),
                 match &extras {
                     Some(ex) => match ex.get("openai_organization_id") {
                         Some(Value::String(o)) => Some(o.to_string().clone()),
@@ -793,7 +883,7 @@ impl LLM for OpenAILLM {
         } else {
             completion(
                 self.uri()?,
-                self.api_key.clone().unwrap(),
+                api_key.clone(),
                 match &extras {
                     Some(e) => match e.get("openai_organization_id") {
                         Some(Value::String(o)) => Some(o.to_string()),
@@ -935,43 +1025,77 @@ impl LLM for OpenAILLM {
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        let is_reasoning_model =
-            self.id.as_str().starts_with("o3") || self.id.as_str().starts_with("o1");
+        let is_reasoning_model = self.id.as_str().starts_with("o3")
+            || self.id.as_str().starts_with("o1")
+            || self.id.as_str().starts_with("o4");
+
         // o1-mini specifically does not support any type of system messages.
         let remove_system_messages = self.id.as_str().starts_with("o1-mini");
-        openai_compatible_chat_completion(
-            self.chat_uri()?,
-            self.id.clone(),
-            self.api_key.clone().unwrap(),
-            &messages,
-            functions,
-            function_call,
-            if is_reasoning_model { 1.0 } else { temperature },
-            top_p,
-            n,
-            stop,
-            max_tokens,
-            presence_penalty,
-            frequency_penalty,
-            logprobs,
-            top_logprobs,
-            extras,
-            event_sender,
-            false,
-            // Some models (o1-mini) don't support any system messages.
-            if remove_system_messages {
-                TransformSystemMessages::Remove
-            // Other reasoning models replace system messages with developer messages.
-            } else if is_reasoning_model {
-                TransformSystemMessages::ReplaceWithDeveloper
-            // Standard non-reasoning models use regular system messages.
-            } else {
-                TransformSystemMessages::Keep
-            },
-            "OpenAI".to_string(),
-            false, // Don't squash text contents.
-        )
-        .await
+
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
+        };
+
+        let transform_system_messages = if remove_system_messages {
+            TransformSystemMessages::Remove
+        } else if is_reasoning_model {
+            TransformSystemMessages::ReplaceWithDeveloper
+        } else {
+            TransformSystemMessages::Keep
+        };
+
+        let temperature = if is_reasoning_model { 1.0 } else { temperature };
+
+        let provider_name = "OpenAI".to_string();
+
+        let is_auto_function_call = match &function_call {
+            Some(f) => f.to_lowercase() == "auto",
+            None => true,
+        };
+
+        // Use response API only when function_call is not forced and when n == 1.
+        if RESPONSES_API_ENABLED && is_auto_function_call && n == 1 && is_reasoning_model {
+            openai_responses_api_completion(
+                self.responses_uri()?,
+                self.id.clone(),
+                api_key,
+                &messages,
+                functions,
+                temperature,
+                max_tokens,
+                extras,
+                event_sender,
+                transform_system_messages,
+                provider_name,
+            )
+            .await
+        } else {
+            openai_compatible_chat_completion(
+                self.chat_uri()?,
+                self.id.clone(),
+                api_key,
+                &messages,
+                functions,
+                function_call,
+                temperature,
+                top_p,
+                n,
+                stop,
+                max_tokens,
+                presence_penalty,
+                frequency_penalty,
+                logprobs,
+                top_logprobs,
+                extras,
+                event_sender,
+                false,
+                transform_system_messages,
+                provider_name,
+                false, // Don't squash text contents.
+            )
+            .await
+        }
     }
 }
 
@@ -1080,9 +1204,14 @@ impl Embedder for OpenAIEmbedder {
     }
 
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("OPENAI_API_KEY is not set."))?,
+        };
+
         let e = embed(
             self.uri()?,
-            self.api_key.clone().unwrap(),
+            api_key,
             match &extras {
                 Some(e) => match e.get("openai_organization_id") {
                     Some(Value::String(o)) => Some(o.to_string()),
@@ -1095,6 +1224,13 @@ impl Embedder for OpenAIEmbedder {
             match &extras {
                 Some(e) => match e.get("openai_user") {
                     Some(Value::String(u)) => Some(u.to_string()),
+                    _ => None,
+                },
+                None => None,
+            },
+            match &extras {
+                Some(e) => match e.get("enforce_rate_limit_margin") {
+                    Some(Value::Bool(true)) => Some(REMAINING_TOKENS_MARGIN),
                     _ => None,
                 },
                 None => None,

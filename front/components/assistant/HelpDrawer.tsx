@@ -8,8 +8,15 @@ import {
   SheetContainer,
   SheetContent,
   UserGroupIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ComponentType } from "react";
+import { useCallback, useState } from "react";
+
+import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
+import { useSendNotification } from "@app/hooks/useNotification";
+import type { DustError } from "@app/lib/error";
 import type {
   AgentMention,
   MentionType,
@@ -17,15 +24,8 @@ import type {
   RoleType,
   UserType,
   WorkspaceType,
-} from "@dust-tt/types";
-import { Err, GLOBAL_AGENTS_SID, Ok } from "@dust-tt/types";
-import { useRouter } from "next/router";
-import type { ComponentType } from "react";
-import { useCallback, useState } from "react";
-
-import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
-import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
-import type { DustError } from "@app/lib/error";
+} from "@app/types";
+import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
 // describe the type of userContent where the
 
@@ -143,7 +143,10 @@ export function HelpDrawer({
         messageData: {
           input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
           mentions: mentionsWithHelp,
-          contentFragments: [],
+          contentFragments: {
+            uploaded: [],
+            contentNodes: [],
+          },
         },
       });
 
@@ -195,7 +198,7 @@ export function HelpDrawer({
                 },
                 {
                   title: "Join the Slack community",
-                  href: "https://join.slack.com/t/dustcommunity/shared_invite/zt-2tu2obwzo-ZyT1dUR6~qwSncVpIy7yTA",
+                  href: "https://dust-community.tightknit.community/join",
                   description: "Stuck? Ask your questions to the community",
                   icon: UserGroupIcon,
                 },

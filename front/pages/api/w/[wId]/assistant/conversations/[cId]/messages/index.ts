@@ -1,18 +1,24 @@
-import type { UserMessageType, WithAPIErrorResponse } from "@dust-tt/types";
-import { InternalPostMessagesRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  FetchConversationMessagesResponse,
+  UserMessageType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { InternalPostMessagesRequestBodySchema } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -25,7 +31,7 @@ async function handler(
 ): Promise<void> {
   const user = auth.getNonNullableUser();
 
-  if (!(typeof req.query.cId === "string")) {
+  if (typeof req.query.cId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -39,6 +45,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
+      const messageStartTime = performance.now();
+
       const paginationRes = getPaginationParams(req, {
         defaultLimit: 10,
         defaultOrderColumn: "rank",
@@ -70,6 +78,18 @@ async function handler(
         return apiErrorForConversation(req, res, messagesRes.error);
       }
 
+      const messageLatency = performance.now() - messageStartTime;
+
+      statsDClient.distribution(
+        "assistant.messages.fetch.latency",
+        messageLatency
+      );
+      const rawSize = Buffer.byteLength(
+        JSON.stringify(messagesRes.value),
+        "utf8"
+      );
+      statsDClient.distribution("assistant.messages.fetch.raw_size", rawSize);
+
       res.status(200).json(messagesRes.value);
       break;
 
@@ -92,6 +112,28 @@ async function handler(
 
       const { content, context, mentions } = bodyValidation.right;
 
+      if (context.clientSideMCPServerIds) {
+        const hasServerAccess = await concurrentExecutor(
+          context.clientSideMCPServerIds,
+          async (serverId) =>
+            validateMCPServerAccess(auth, {
+              serverId,
+            }),
+          { concurrency: 10 }
+        );
+
+        if (hasServerAccess.some((r) => r === false)) {
+          return apiError(req, res, {
+            status_code: 403,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "User does not have access to the client-side MCP servers.",
+            },
+          });
+        }
+      }
+
       const conversationRes = await getConversation(auth, conversationId);
 
       if (conversationRes.isErr()) {
@@ -100,8 +142,6 @@ async function handler(
 
       const conversation = conversationRes.value;
 
-      /* postUserMessageWithPubSub returns swiftly since it only waits for the
-        initial message creation event (or error) */
       const messageRes = await postUserMessageWithPubSub(
         auth,
         {
@@ -111,14 +151,18 @@ async function handler(
           context: {
             timezone: context.timezone,
             username: user.username,
-            fullName: user.fullName,
+            fullName: user.fullName(),
             email: user.email,
-            profilePictureUrl: context.profilePictureUrl ?? user.image,
+            profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
             origin: "web",
+            clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
           },
+          // For now we never skip tools when interacting with agents from the web client.
+          skipToolsValidation: false,
         },
         { resolveAfterFullGeneration: false }
       );
+
       if (messageRes.isErr()) {
         return apiError(req, res, messageRes.error);
       }

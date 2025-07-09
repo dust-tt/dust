@@ -1,5 +1,3 @@
-import type { DatasetType, WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -15,6 +13,8 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { Dataset } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { DatasetType, WithAPIErrorResponse } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 import { PostDatasetRequestBodySchema } from "..";
 
@@ -125,6 +125,32 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      // Check name validity
+      if (
+        !bodyValidation.right.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
+        bodyValidation.right.dataset.name.length === 0
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The dataset name must only contain alphanumeric characters and " +
+              "underscores and cannot be empty.",
+          },
+        });
+      }
+      if (req.query.name !== bodyValidation.right.dataset.name) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The dataset name in the request body does not match the one in the path.",
           },
         });
       }

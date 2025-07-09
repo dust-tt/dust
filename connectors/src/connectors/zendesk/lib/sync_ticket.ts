@@ -1,14 +1,12 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
+import { filterCustomTags } from "@connectors/connectors/shared/tags";
+import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
   ZendeskFetchedTicket,
   ZendeskFetchedTicketComment,
   ZendeskFetchedUser,
-} from "@connectors/@types/node-zendesk";
-import { filterCustomTags } from "@connectors/connectors/shared/tags";
-import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
+} from "@connectors/connectors/zendesk/lib/types";
 import {
   deleteDataSourceDocument,
   renderDocumentTitleAndContent,
@@ -16,9 +14,12 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
+import { stripNullBytes } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -45,7 +46,7 @@ export function extractMetadataFromDocumentUrl(ticketUrl: string): {
 } {
   // Format: https://${subdomain}.zendesk.com/tickets/${ticketId}.
   const match = ticketUrl.match(
-    /^https:\/\/([^.]+)\.zendesk\.com\/tickets\/#?(\d+)/
+    /^https:\/\/([^.]+)\.zendesk\.com\/(?:agent\/)?tickets\/#?(\d+)/
   );
   if (!match || !match[1] || !match[2]) {
     throw new Error(`Invalid ticket URL: ${ticketUrl}`);
@@ -91,8 +92,9 @@ export async function deleteTicket({
  * Syncs a ticket in the db and upserts it to the data sources.
  */
 export async function syncTicket({
-  connectorId,
   ticket,
+  connector,
+  configuration,
   brandId,
   currentSyncDateMs,
   dataSourceConfig,
@@ -101,9 +103,10 @@ export async function syncTicket({
   comments,
   users,
 }: {
-  connectorId: ModelId;
-  dataSourceConfig: DataSourceConfig;
   ticket: ZendeskFetchedTicket;
+  connector: ConnectorResource;
+  configuration: ZendeskConfigurationResource;
+  dataSourceConfig: DataSourceConfig;
   brandId: number;
   currentSyncDateMs: number;
   loggerArgs: Record<string, string | number | null>;
@@ -111,6 +114,8 @@ export async function syncTicket({
   comments: ZendeskFetchedTicketComment[];
   users: ZendeskFetchedUser[];
 }) {
+  const connectorId = connector.id;
+
   let ticketInDb = await ZendeskTicketResource.fetchByTicketId({
     connectorId,
     brandId,
@@ -127,14 +132,13 @@ export async function syncTicket({
     ticketInDb.lastUpsertedTs < updatedAtDate;
 
   // Tickets can be created without a subject using the API or by email,
-  // if they were never attended in the Agent Workspace their subject is not populated.
-  ticket.subject ||= "No subject";
-
+  // if they were never attended in the Agent Workspace, their subject is not populated.
+  const ticketSubject = stripNullBytes(ticket.subject?.trim() || "No subject");
   const ticketUrl = apiUrlToDocumentUrl(ticket.url);
   if (!ticketInDb) {
     ticketInDb = await ZendeskTicketResource.makeNew({
       blob: {
-        subject: ticket.subject,
+        subject: ticketSubject,
         url: ticketUrl,
         lastUpsertedTs: new Date(currentSyncDateMs),
         ticketUpdatedAt: updatedAtDate,
@@ -146,7 +150,7 @@ export async function syncTicket({
     });
   } else {
     await ticketInDb.update({
-      subject: ticket.subject,
+      subject: ticketSubject,
       url: ticketUrl,
       lastUpsertedTs: new Date(currentSyncDateMs),
       ticketUpdatedAt: updatedAtDate,
@@ -182,20 +186,19 @@ export async function syncTicket({
 
     const ticketContent = `Conversation:\n${comments
       .map((comment) => {
-        let author;
-        try {
-          author = users.find((user) => user.id === comment.author_id);
-        } catch (e) {
-          logger.warn(
-            { connectorId, e, usersType: typeof users, ...loggerArgs },
-            "[Zendesk] Error finding the author of a comment."
-          );
-          author = null;
+        // Remove line and paragraph separators.
+        const commentContent = (comment.plain_body || comment.body).replace(
+          /[\u2028\u2029]/g,
+          ""
+        );
+        if (configuration.hideCustomerDetails) {
+          return `[${comment?.created_at}] User ${comment.author_id}:\n${commentContent}`;
         }
-        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${(comment.plain_body || comment.body).replace(/[\u2028\u2029]/g, "")}`; // removing line and paragraph separators
+        const author =
+          users.find((user) => user.id === comment.author_id) ?? null;
+        return `[${comment?.created_at}] ${author ? `${author.name} (${author.email})` : "Unknown User"}:\n${commentContent}`;
       })
-      .join("\n")}
-`.trim();
+      .join("\n")}`.trim();
 
     const ticketContentInMarkdown = turndownService.turndown(ticketContent);
 
@@ -205,6 +208,7 @@ export async function syncTicket({
     );
 
     const metadata = [
+      `ticketId:${ticket.id}`,
       `priority:${ticket.priority}`,
       `ticketType:${ticket.type}`,
       `channel:${ticket.via?.channel}`,
@@ -224,14 +228,17 @@ export async function syncTicket({
 
     const documentContent = await renderDocumentTitleAndContent({
       dataSourceConfig,
-      title: ticket.subject,
+      title: ticketSubject,
       content: renderedMarkdown,
       createdAt: createdAtDate,
       updatedAt: updatedAtDate,
       additionalPrefixes: {
         metadata: metadata
           // We remove IDs from the prefixes since they do not hold any semantic meaning.
-          .filter((field) => !["organizationId", "groupId"].includes(field))
+          .filter(
+            (field) =>
+              !["ticketId", "organizationId", "groupId"].includes(field)
+          )
           .join(", "),
         labels: ticket.tags.join(", ") || "none",
       },
@@ -251,7 +258,6 @@ export async function syncTicket({
       documentUrl: ticketUrl,
       timestampMs: updatedAtDate.getTime(),
       tags: [
-        `title:${ticket.subject}`,
         `updatedAt:${updatedAtDate.getTime()}`,
         `createdAt:${createdAtDate.getTime()}`,
         ...metadata,
@@ -261,8 +267,8 @@ export async function syncTicket({
       parentId: parents[1],
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
-      title: ticket.subject,
-      mimeType: MIME_TYPES.ZENDESK.TICKET,
+      title: `#${ticket.id}: ${ticketSubject}`,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKET,
       async: true,
     });
     await ticketInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });

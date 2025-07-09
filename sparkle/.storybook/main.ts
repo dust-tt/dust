@@ -3,6 +3,9 @@ import path from "path";
 
 const config: StorybookConfig = {
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+
+  staticDirs: [{ from: "../../front/public/static", to: "/static" }],
+
   addons: [
     "@storybook/addon-links",
     "@storybook/addon-essentials",
@@ -18,15 +21,29 @@ const config: StorybookConfig = {
         },
       },
     },
+    "@storybook/addon-webpack5-compiler-babel",
+    "@chromatic-com/storybook",
   ],
+
   webpackFinal: async (config, { configType }) => {
     config.resolve = {
       ...(config.resolve || {}),
-
       alias: {
         ...(config.resolve?.alias || {}),
         "@sparkle": path.resolve(__dirname, "../src/"),
+        "/static": path.resolve(__dirname, "../../front/public/static"),
       },
+    };
+
+    config.module = {
+      ...(config.module || {}),
+      rules: [
+        ...(config.module?.rules || []),
+        {
+          test: /\.(woff|woff2|eot|ttf|otf)$/i,
+          type: "asset/resource",
+        },
+      ],
     };
 
     config.externals = {
@@ -35,12 +52,16 @@ const config: StorybookConfig = {
 
     return config;
   },
+
   framework: {
     name: "@storybook/react-webpack5",
     options: {},
   },
-  docs: {
-    autodocs: true,
+
+  docs: {},
+
+  typescript: {
+    reactDocgen: "react-docgen-typescript",
   },
 };
 export default config;

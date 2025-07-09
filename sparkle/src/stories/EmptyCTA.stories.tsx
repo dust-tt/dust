@@ -1,8 +1,8 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { EmptyCTA, EmptyCTAButton } from "@sparkle/components";
-import { CloudArrowDownIcon } from "@sparkle/icons";
+import { Button, EmptyCTA, EmptyCTAButton } from "@sparkle/components";
+import { CloudArrowDownIcon, PlusIcon } from "@sparkle/icons/app";
 
 const meta = {
   title: "Components/EmptyCTA",
@@ -12,7 +12,7 @@ export default meta;
 
 export const Demo = () => {
   return (
-    <div>
+    <div className="s-flex s-flex-col s-gap-4">
       <div className="s-flex s-items-center s-space-x-2">
         <EmptyCTA
           action={
@@ -23,6 +23,9 @@ export const Demo = () => {
           }
           message="You don't have any spaces yet."
         />
+      </div>
+      <div className="s-flex s-items-center s-space-x-2">
+        <EmptyCTA action={<Button icon={PlusIcon} label="Add domain" />} />
       </div>
     </div>
   );

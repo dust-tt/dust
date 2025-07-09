@@ -1,35 +1,35 @@
-import type { PluginWorkspaceResource, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import {
+  emptyArray,
   fetcher,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { PokeListPluginsForScopeResponseBody } from "@app/pages/api/poke/plugins/";
+import type { PokeGetPluginAsyncArgsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/async-args";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
 import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/run";
+import type { PluginResourceTarget, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export function usePokeListPluginForResourceType({
   disabled,
-  resourceType,
-  workspaceResource,
+  pluginResourceTarget,
 }: {
   disabled?: boolean;
-  resourceType: string;
-  workspaceResource?: PluginWorkspaceResource;
+  pluginResourceTarget: PluginResourceTarget;
 }) {
   const workspacesFetcher: Fetcher<PokeListPluginsForScopeResponseBody> =
     fetcher;
 
   const urlSearchParams = new URLSearchParams({
-    resourceType,
+    resourceType: pluginResourceTarget.resourceType,
   });
 
-  if (workspaceResource?.resourceId) {
-    urlSearchParams.append("resourceId", workspaceResource.resourceId);
+  if ("resourceId" in pluginResourceTarget) {
+    urlSearchParams.append("resourceId", pluginResourceTarget.resourceId);
+    urlSearchParams.append("workspaceId", pluginResourceTarget.workspace.sId);
   }
 
   const { data, error } = useSWRWithDefaults(
@@ -41,7 +41,7 @@ export function usePokeListPluginForResourceType({
   );
 
   return {
-    plugins: useMemo(() => (data ? data.plugins : []), [data]),
+    plugins: data?.plugins ?? emptyArray(),
     isLoading: !error && !data && !disabled,
     isError: error,
   };
@@ -50,24 +50,15 @@ export function usePokeListPluginForResourceType({
 export function usePokePluginManifest({
   disabled,
   pluginId,
-  workspaceResource,
 }: {
   disabled?: boolean;
   pluginId: string;
-  workspaceResource?: PluginWorkspaceResource;
 }) {
   const pluginManifestFetcher: Fetcher<PokeGetPluginDetailsResponseBody> =
     fetcher;
 
-  const urlSearchParams = new URLSearchParams({});
-
-  if (workspaceResource) {
-    urlSearchParams.append("resourceId", workspaceResource.resourceId);
-    urlSearchParams.append("workspaceId", workspaceResource.workspace.sId);
-  }
-
   const { data, error } = useSWRWithDefaults(
-    `/api/poke/plugins/${pluginId}/manifest?${urlSearchParams.toString()}`,
+    `/api/poke/plugins/${pluginId}/manifest`,
     pluginManifestFetcher,
     {
       disabled,
@@ -81,33 +72,94 @@ export function usePokePluginManifest({
   };
 }
 
+export function usePokePluginAsyncArgs({
+  disabled,
+  pluginId,
+  pluginResourceTarget,
+}: {
+  disabled?: boolean;
+  pluginId: string;
+  pluginResourceTarget: PluginResourceTarget;
+}) {
+  const pluginAsyncArgsFetcher: Fetcher<PokeGetPluginAsyncArgsResponseBody> =
+    fetcher;
+
+  const urlSearchParams = new URLSearchParams({
+    resourceType: pluginResourceTarget.resourceType,
+  });
+
+  if ("resourceId" in pluginResourceTarget) {
+    urlSearchParams.append("resourceId", pluginResourceTarget.resourceId);
+    urlSearchParams.append("workspaceId", pluginResourceTarget.workspace.sId);
+  }
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/poke/plugins/${pluginId}/async-args?${urlSearchParams.toString()}`,
+    pluginAsyncArgsFetcher,
+    {
+      disabled,
+    }
+  );
+
+  return {
+    asyncArgs: data ? data.asyncArgs : null,
+    isLoading: !error && !data && !disabled,
+    isError: error,
+  };
+}
+
 export function useRunPokePlugin({
   pluginId,
-  workspaceResource,
+  pluginResourceTarget,
 }: {
   pluginId: string;
-  workspaceResource?: PluginWorkspaceResource;
+  pluginResourceTarget: PluginResourceTarget;
 }) {
   const urlSearchParams = new URLSearchParams({});
 
-  if (workspaceResource) {
-    urlSearchParams.append("resourceId", workspaceResource.resourceId);
-    urlSearchParams.append("workspaceId", workspaceResource.workspace.sId);
+  urlSearchParams.append(
+    "resourceType",
+    pluginResourceTarget.resourceType ?? "global"
+  );
+
+  if ("resourceId" in pluginResourceTarget) {
+    urlSearchParams.append("resourceId", pluginResourceTarget.resourceId);
+    urlSearchParams.append("workspaceId", pluginResourceTarget.workspace.sId);
   }
 
   const doRunPlugin = async (
     args: object
   ): Promise<Result<PokeRunPluginResponseBody["result"], string>> => {
-    const res = await fetch(
-      `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(args),
-      }
-    );
+    // Check if any of the args are File objects
+    const hasFiles = Object.values(args).some((arg) => arg instanceof File);
+    let res;
+    if (hasFiles) {
+      // Use FormData for multipart/form-data when files are present
+      const formData = new FormData();
+      Object.entries(args).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+
+      res = await fetch(
+        `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+    } else {
+      // Use JSON when no files are present
+      res = await fetch(
+        `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(args),
+        }
+      );
+    }
 
     if (res.ok) {
       const response: PokeRunPluginResponseBody = await res.json();

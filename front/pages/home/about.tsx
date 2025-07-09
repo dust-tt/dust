@@ -15,6 +15,7 @@ import {
   Grid,
   H1,
   H2,
+  H3,
   P,
   Strong,
 } from "@app/components/home/ContentComponents";
@@ -26,7 +27,7 @@ import {
 } from "@app/components/home/Particles";
 import { classNames } from "@app/lib/utils";
 
-export async function getServerSideProps() {
+export async function getStaticProps() {
   return {
     props: {
       shape: getParticleShapeIndexByName(shapeNames.icosahedron),
@@ -85,7 +86,7 @@ const PEOPLE: Record<
     title: "Software Engineer",
     image: "https://avatars.githubusercontent.com/u/3803406",
     linkedIn: "https://www.linkedin.com/in/popdaph/",
-    github: "https://www.linkedin.com/in/popdaph/",
+    github: "https://github.com/popdaph",
   },
   yutcam: {
     name: "Pauline Pham",
@@ -199,33 +200,144 @@ const PEOPLE: Record<
     github: "https://github.com/k7vin",
     linkedIn: "https://www.linkedin.com/in/kevinstraszburger/",
   },
+  frank: {
+    name: "Frank Aloia",
+    title: "Acceleration Engineer",
+    image: "https://avatars.githubusercontent.com/u/201725577",
+    github: "https://github.com/frankaloia",
+    linkedIn: "https://www.linkedin.com/in/frank-aloia-39907a12b/",
+  },
+  gina: {
+    name: "Gina Kabasakalis",
+    title: "Go To Market",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U08FS7RK45B-0d9a6f5b000d-512",
+    linkedIn: "https://www.linkedin.com/in/ginakabasakalis/",
+    github: "https://github.com/gina-dust/",
+  },
+  apara: {
+    name: "Apara Sivaraman",
+    title: "Business Operations (US)",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U08FS7GNBM3-12d42049c6a8-512",
+    linkedIn: "https://www.linkedin.com/in/aparasivaraman/",
+    github: "https://github.com/apara-dust/",
+  },
+  adrsimon: {
+    name: "Adrien Simon",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/99071153",
+    github: "https://github.com/adrsimon",
+    linkedIn: "https://www.linkedin.com/in/adrsimon/",
+  },
+  stephen: {
+    name: "Stephen Bronnec",
+    title: "Acceleration Engineer",
+    image: "https://avatars.githubusercontent.com/u/11921176?v=4",
+    github: "https://github.com/FlagBenett",
+    linkedIn: "https://www.linkedin.com/in/stephen-bronnec-3033a02b/",
+  },
+  ykmsd: {
+    name: "Yuka Masuda",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/3702771?v=4",
+    github: "https://github.com/ykmsd",
+    linkedIn: "https://www.linkedin.com/in/ykmsd/",
+  },
+  victor: {
+    name: "Victor Pery",
+    title: "Account Executive",
+    image: "https://avatars.githubusercontent.com/u/205647687?v=4",
+    github: "https://github.com/victorpery",
+    linkedIn: "https://www.linkedin.com/in/victor-pery/",
+  },
+  wendy: {
+    name: "Wendy Zhao",
+    title: "Customer Education",
+    image: "https://avatars.githubusercontent.com/u/205610550?v=4",
+    github: "https://github.com/atrwendy",
+    linkedIn: "https://www.linkedin.com/in/wendyzhao07/",
+  },
+  max: {
+    name: "Maxime Cattet",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/1371886?v=4",
+    github: "https://github.com/johnoppenheimer",
+    linkedIn: "https://www.linkedin.com/in/maximecattet",
+  },
+  gaelle: {
+    name: "Gaëlle Caplier",
+    title: "Customer Success",
+    image: "https://avatars.githubusercontent.com/u/49072037?v=4",
+    github: "https://github.com/gcaplier",
+    linkedIn: "https://www.linkedin.com/in/gcaplier/",
+  },
+  lena: {
+    name: "Léna Caloud",
+    title: "Customer Success",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U08S29YC36H-b53f68fd8f87-512",
+    github: "https://github.com/lcaloud",
+    linkedIn: "https://www.linkedin.com/in/lenacaloud/",
+  },
+  ben: {
+    name: "Benjamin Toueg",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/498190?v=4",
+    github: "https://github.com/btoueg",
+    linkedIn: "https://www.linkedin.com/in/toueg",
+  },
+  joshua: {
+    name: "Joshua Gisiger",
+    title: "Software Engineer Intern",
+    image: "https://avatars.githubusercontent.com/u/192242584?v=4",
+    github: "https://github.com/jgr142",
+    linkedIn: "https://www.linkedin.com/in/joshuagisiger",
+  },
+  david: {
+    name: "David Ebbo",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/556238?v=4",
+    github: "https://github.com/davidebbo",
+    linkedIn: "https://www.linkedin.com/in/davidebbo",
+  },
+  edouard: {
+    name: "Edouard Villette",
+    title: "Senior Account Executive",
+    image: "https://avatars.githubusercontent.com/u/215458058?v=4",
+    github: "https://github.com/TrismoEd",
+    linkedIn: "https://www.linkedin.com/in/edouard-villette",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
   const person = PEOPLE[handle];
   return (
-    <div className="flex flex-row items-start gap-2">
+    <div className="flex flex-col gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50 sm:flex-row">
       <img
         src={person.image}
         alt={person.name}
-        className="mt-1 h-8 w-8 rounded-xl"
+        className="h-12 w-12 rounded-xl sm:mt-1 sm:h-10 sm:w-10"
       />
-      <div className="flex flex-col gap-0">
-        <div className="font-bold text-white">{person.name}</div>
-        <div className="text-sm text-muted-foreground">{person.title}</div>
-        <div className="flex flex-row items-start gap-1 pt-1">
+      <div className="flex flex-col gap-1">
+        <div className="copy-base text-foreground">
+          <strong>{person.name}</strong>
+        </div>
+        <div className="copy-sm text-muted-foreground">{person.title}</div>
+        <div className="flex flex-row gap-2 pt-1">
           {person.linkedIn && (
             <a href={person.linkedIn} target="_blank">
               <Icon
                 size="xs"
                 visual={LinkedinIcon}
-                className="text-slate-400"
+                className="text-muted-foreground hover:text-foreground"
               />
             </a>
           )}
           {person.github && (
             <a href={person.github} target="_blank">
-              <Icon size="xs" visual={GithubIcon} className="text-slate-400" />
+              <Icon
+                size="xs"
+                visual={GithubIcon}
+                className="text-muted-foreground hover:text-foreground"
+              />
             </a>
           )}
         </div>
@@ -252,15 +364,17 @@ const INVESTORS: { name: string; title: string }[] = [
 const Investor = ({ name, title }: { name: string; title: string }) => {
   return (
     <div className="flex flex-col gap-0">
-      <div className="font-bold text-white">{name}</div>
-      <div className="text-sm text-muted-foreground">{title}</div>
+      <div className="copy-base text-foreground">
+        <strong>{name}</strong>
+      </div>
+      <div className="copy-sm text-muted-foreground">{title}</div>
     </div>
   );
 };
 
 const VideoPlayer = () => {
   return (
-    <div className="relative w-full pt-[56.25%]">
+    <div className="relative w-full rounded-2xl pt-[56.20%]">
       {" "}
       {/* 16:9 aspect ratio */}
       <iframe
@@ -268,7 +382,7 @@ const VideoPlayer = () => {
         title="Dust product tour"
         allow="autoplay; fullscreen"
         frameBorder="0"
-        className="absolute inset-0 h-full w-full rounded-lg"
+        className="absolute inset-0 h-full w-full overflow-hidden rounded-2xl"
       ></iframe>
     </div>
   );
@@ -279,15 +393,14 @@ export default function About() {
     <>
       <div className="container flex w-full flex-col gap-16 px-6 md:gap-24">
         <div
-          className={classNames(
-            "flex w-full flex-col justify-end gap-4 pt-12 sm:pt-12 lg:pt-24"
-          )}
+          className={classNames("flex w-full flex-col justify-end gap-4 pt-24")}
         >
-          <P size="lg" className="text-center text-muted-foreground">
-            About us
-          </P>
+          <H3 className="text-center text-muted-foreground">About us</H3>
           <div className="flex flex-row justify-center">
-            <H1 className="max-w-2xl text-center text-red-400">
+            <H1
+              mono
+              className="max-w-2xl text-center text-5xl font-medium md:text-6xl lg:text-7xl"
+            >
               Our mission is to transform how work gets done
             </H1>
           </div>
@@ -311,16 +424,14 @@ export default function About() {
         <Grid>
           <div
             className={classNames(
-              "flex flex-col gap-16 xl:flex-row xl:items-start",
-              "col-span-10 col-start-2"
+              "flex flex-col gap-8 xl:flex-row xl:items-start",
+              "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
             )}
           >
-            <div className="flex max-w-lg flex-row">
-              <H2 className="text-white">
-                We're crafting the AI operating system for enterprises
-              </H2>
+            <div className="flex w-full flex-row xl:max-w-lg">
+              <H2>We're crafting the AI operating system for enterprises</H2>
             </div>
-            <div className="flex max-w-xl flex-col gap-2">
+            <div className="flex w-full flex-col gap-2 xl:max-w-xl">
               <P>
                 We're building Dust to serve as the operating system for
                 AI-driven companies.
@@ -341,18 +452,18 @@ export default function About() {
         </Grid>
 
         <Grid>
-          <Separator className="col-span-10 col-start-2 bg-slate-700" />
+          <Separator className="col-span-10 col-start-2" />
         </Grid>
 
         <Grid>
           <div
             className={classNames(
               "flex flex-col items-start gap-6",
-              "col-span-10 col-start-2"
+              "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
             )}
           >
-            <H2 className="text-white">Our operating principles</H2>
-            <div className="flex flex-col gap-2">
+            <H2>Our operating principles</H2>
+            <div className="flex w-full flex-col gap-2">
               <P>
                 Our{" "}
                 <Link
@@ -408,7 +519,7 @@ export default function About() {
           <div
             className={classNames(
               "flex flex-col items-start gap-6",
-              "col-span-10 col-start-2"
+              "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
             )}
           >
             <VideoPlayer />
@@ -416,20 +527,19 @@ export default function About() {
         </Grid>
 
         <Grid>
-          <div className="col-span-10 col-start-2 grid grid-cols-10 gap-x-2 gap-y-8">
-            {Object.keys(PEOPLE).map((handle) => (
-              <div
-                key={handle}
-                className={classNames("col-span-5 md:col-span-3 xl:col-span-2")}
-              >
-                <Person handle={handle} />
-              </div>
-            ))}
+          <div className="col-span-12 col-start-1 md:col-span-10 md:col-start-2">
+            <div className="grid grid-cols-2 justify-items-center gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {Object.keys(PEOPLE).map((handle) => (
+                <div key={handle} className="w-full">
+                  <Person handle={handle} />
+                </div>
+              ))}
+            </div>
           </div>
         </Grid>
 
         <Grid>
-          <Separator className="col-span-10 col-start-2 bg-slate-700" />
+          <Separator className="col-span-12 col-start-1 md:col-span-10 md:col-start-2" />
         </Grid>
 
         <div className="flex flex-col gap-8">
@@ -437,13 +547,11 @@ export default function About() {
             <div
               className={classNames(
                 "flex flex-col items-start gap-6",
-                "col-span-10 col-start-2"
+                "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
               )}
             >
-              <H2 className="text-white">
-                Built for enterprise, backed by experts
-              </H2>
-              <div className="flex flex-col gap-2">
+              <H2>Built for enterprise, backed by experts</H2>
+              <div className="flex w-full flex-col gap-2">
                 <P>
                   We're backed by investors who've built and scaled enterprise
                   infrastructure. Our investors include leading venture firms
@@ -455,7 +563,7 @@ export default function About() {
           </Grid>
 
           <Grid>
-            <div className="col-span-10 col-start-2 grid grid-cols-10 gap-x-2 gap-y-8">
+            <div className="col-span-12 col-start-1 grid grid-cols-10 gap-x-2 gap-y-8 md:col-span-10 md:col-start-2">
               {INVESTORS.map((investor) => (
                 <div
                   key={investor.name}

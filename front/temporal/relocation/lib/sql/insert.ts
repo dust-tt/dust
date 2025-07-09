@@ -2,6 +2,14 @@ import { isArrayOfPlainObjects } from "@app/temporal/relocation/activities/types
 
 const DEFAULT_CHUNK_SIZE = 250;
 
+// Temporary solution to handle JSONB columns.
+const JSONB_COLUMNS = [
+  {
+    tableName: "agent_configurations",
+    columns: ["responseFormat"],
+  },
+];
+
 export function generateParameterizedInsertStatements(
   tableName: string,
   rows: Record<string, any>[],
@@ -31,6 +39,23 @@ export function generateParameterizedInsertStatements(
       const rowPlaceholders: string[] = [];
       for (const col of columns) {
         rowPlaceholders.push(`$${paramIndex++}`);
+
+        // Special case: `autoReadChannelPatterns` is a JSONB column that needs to be stringified.
+        if (col === "autoReadChannelPatterns") {
+          params.push(JSON.stringify(row[col]));
+          continue;
+        }
+
+        if (
+          JSONB_COLUMNS.some(
+            (c) => c.tableName === tableName && c.columns.includes(col)
+          ) &&
+          (typeof row[col] === "string" ||
+            (Array.isArray(row[col]) && row[col].length > 0))
+        ) {
+          params.push(JSON.stringify(row[col]));
+          continue;
+        }
 
         // Array of plain objects are serialized to JSON strings.
         const serialized = isArrayOfPlainObjects(row[col])

@@ -1,4 +1,4 @@
-import { EnvironmentConfig } from "@dust-tt/types";
+import { EnvironmentConfig } from "@app/types";
 
 const config = {
   getGcsRelocationBucket: (): string => {

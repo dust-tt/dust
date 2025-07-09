@@ -1,4 +1,3 @@
-import type { ConnectorProvider, TrackerIdWorkspaceId } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
@@ -6,6 +5,8 @@ import {
   sleep,
   workflowInfo,
 } from "@temporalio/workflow";
+
+import type { ConnectorProvider, TrackerIdWorkspaceId } from "@app/types";
 
 import type * as activities from "./activities";
 import { newUpsertSignal, notifySignal } from "./signals";

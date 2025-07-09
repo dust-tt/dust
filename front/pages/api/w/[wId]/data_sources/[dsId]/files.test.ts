@@ -180,6 +180,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
       const { req, res, workspace, globalGroup, user } =
         await createPrivateApiMockRequest({
           method: "POST",
+          role: "admin",
         });
       const space = await SpaceFactory.global(workspace, t);
       await GroupSpaceFactory.associate(space, globalGroup);

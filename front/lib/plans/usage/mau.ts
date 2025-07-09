@@ -1,5 +1,3 @@
-import type { LightWorkspaceType, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 import type Stripe from "stripe";
 
@@ -10,6 +8,8 @@ import {
 import type { MauReportUsageType } from "@app/lib/plans/usage/types";
 import { InvalidRecurringPriceError } from "@app/lib/plans/usage/types";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
+import type { LightWorkspaceType, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 async function countActiveUsersForPeriodInWorkspace({
   messagesPerMonthForMau,
@@ -27,10 +27,9 @@ async function countActiveUsersForPeriodInWorkspace({
     `
     SELECT "user_messages"."userId", COUNT(mentions.id) AS count
     FROM messages
-    INNER JOIN conversations ON messages."conversationId" = conversations.id
     INNER JOIN user_messages ON messages."userMessageId" = user_messages.id
     INNER JOIN mentions ON mentions."messageId" = messages.id
-    WHERE conversations."workspaceId" = :workspaceId
+    WHERE messages."workspaceId" = :workspaceId
     AND "user_messages"."userId" IS NOT NULL
     AND "mentions"."createdAt" BETWEEN :startDate AND :endDate
     GROUP BY "user_messages"."userId"

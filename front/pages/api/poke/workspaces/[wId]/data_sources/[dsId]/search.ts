@@ -1,16 +1,16 @@
 import type { DataSourceSearchResponseType } from "@dust-tt/client";
 import { DataSourceSearchQuerySchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
-import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -105,4 +105,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthentication(handler);
+export default withSessionAuthenticationForPoke(handler);

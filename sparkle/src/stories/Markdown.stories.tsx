@@ -10,9 +10,9 @@ const meta: Meta<typeof Markdown> = {
   argTypes: {
     textColor: {
       options: [
-        "s-text-element-800",
-        "s-text-element-600",
-        "s-text-purple-800",
+        "s-text-foreground",
+        "s-text-muted-foreground",
+        "s-text-green-700",
       ],
       control: { type: "radio" },
     },
@@ -173,6 +173,30 @@ function renderHeader(latitude, longitude) {
 }
 \`\`\`
 
+
+### Some CLI code: 
+
+\`\`\`bash
+# Define variables
+API_URL="https://api.example.com"
+LATEST_TAG="v1.2.3"
+USERNAME="user123"
+ENVIRONMENT="production"
+
+# Basic GET with variables
+curl "\${API_URL}/version/\${LATEST_TAG}"
+
+# POST with JSON payload using variables
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d "{
+    "tag": "\${LATEST_TAG}",
+    "environment": "\${ENVIRONMENT}",
+    "deployedBy": "\${USERNAME}"
+  }" \
+  "\${API_URL}/deployments"
+\`\`\`
+
 ### Some python code:
 
 \`\`\`python
@@ -319,5 +343,84 @@ pie title Distribution
 export const ExtendedMarkdownStory: Story = {
   args: {
     content: example,
+  },
+};
+
+const mermaidAndJSON = `
+\`\`\`mermaid pie chart
+pie title Distribution
+    "Category A" : 30
+    "Category B" : 20
+    "Category C" : 15
+    "Category D" : 10
+    "Category E" : 25
+\`\`\`
+
+
+\`\`\`json
+{
+  "message": "Invalid JSON should not be pretty printed",
+  "status": "success",
+}
+\`\`\`
+
+\`\`\`json
+{
+  "message": "Soupi soupi soupinou ! Youhou !",
+  "status": "success",
+  "data": null
+}
+\`\`\`
+
+\`\`\`json
+{
+  "query": "SELECT COUNT() FROM Account"
+}
+\`\`\`
+
+\`\`\`json
+{
+  "records": [
+    {
+      "attributes": {
+        "type": "Account",
+        "url": "/services/data/v57.0/sobjects/Account/001Qy00000ccRXcIAM"
+      },
+      "Name": "Awesome Company",
+      "Type": "Customer - Direct",
+      "Industry": "Apparel",
+      "BillingCountry": "USA"
+    },
+    {
+      "attributes": {
+        "type": "Account",
+        "url": "/services/data/v57.0/sobjects/Account/001Qy00000ccRXeIAM"
+      },
+      "Name": "Awesomest Company",
+      "Type": "Customer - Channel",
+      "Industry": "Consulting",
+      "BillingCountry": "USA"
+    },
+    {
+      "attributes": {
+        "type": "Account",
+        "url": "/services/data/v57.0/sobjects/Account/001Qy00000ccRXbIAM"
+      },
+      "Name": "Awesomer Company",
+      "Type": "Customer - Direct",
+      "Industry": "Electronics",
+      "BillingCountry": null
+    }
+  ],
+  "totalSize": 18,
+  "done": true
+}
+\`\`\`
+
+`;
+
+export const JSONMarkdownStory: Story = {
+  args: {
+    content: mermaidAndJSON,
   },
 };

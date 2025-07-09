@@ -1,9 +1,9 @@
-import type { ConnectorProvider } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
+import type { ConnectorProvider } from "@app/types";
 
 interface ConnectorBlob {
   id: number;
@@ -66,7 +66,9 @@ export const checkConnectorsLastSyncSuccess: CheckFunction = async (
   const connectors = (await listAllConnectors()).filter(
     (connector) =>
       // Ignore webhook-based connectors and webcrawlers
-      !isWebhookBasedProvider(connector.type) && connector.type !== "webcrawler"
+      !isWebhookBasedProvider(connector.type) &&
+      connector.type !== "webcrawler" &&
+      connector.type !== "slack_bot"
   );
   heartbeat();
 

@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
@@ -9,6 +7,8 @@ import {
   immediateWorkspaceScrubWorkflow,
   scheduleWorkspaceScrubWorkflow,
 } from "@app/temporal/scrub_workspace/workflows";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 import { QUEUE_NAME } from "./config";
 
@@ -44,7 +44,7 @@ export async function launchScheduleWorkspaceScrubWorkflow({
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -80,7 +80,7 @@ export async function launchImmediateWorkspaceScrubWorkflow({
       },
       `Failed starting workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 
@@ -113,7 +113,7 @@ export async function terminateScheduleWorkspaceScrubWorkflow({
       },
       `Failed terminating workflow.`
     );
-    return new Err(e as Error);
+    return new Err(normalizeError(e));
   }
 }
 

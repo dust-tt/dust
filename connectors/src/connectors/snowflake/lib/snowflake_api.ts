@@ -1,10 +1,15 @@
-import type { Result } from "@dust-tt/types";
-import type { SnowflakeCredentials } from "@dust-tt/types";
-import { Err, EXCLUDE_DATABASES, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
+import crypto from "crypto";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import type { Connection, RowStatement, SnowflakeError } from "snowflake-sdk";
+import type {
+  Connection,
+  ConnectionOptions,
+  RowStatement,
+  SnowflakeError,
+} from "snowflake-sdk";
 import snowflake from "snowflake-sdk";
 
 import type {
@@ -19,6 +24,8 @@ import {
   remoteDBTableCodec,
 } from "@connectors/lib/remote_databases/utils";
 import logger from "@connectors/logger/logger";
+import type { SnowflakeCredentials } from "@connectors/types";
+import { EXCLUDE_DATABASES, EXCLUDE_SCHEMAS } from "@connectors/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;
@@ -122,19 +129,58 @@ export async function connectToSnowflake(
     logLevel: "OFF",
   });
   try {
+    const connectionOptions: ConnectionOptions = {
+      account: credentials.account,
+      username: credentials.username,
+      role: credentials.role,
+      warehouse: credentials.warehouse,
+
+      // Use proxy if defined to have all requests coming from the same IP.
+      proxyHost: process.env.PROXY_HOST,
+      proxyPort: process.env.PROXY_PORT
+        ? parseInt(process.env.PROXY_PORT)
+        : undefined,
+      proxyUser: process.env.PROXY_USER_NAME,
+      proxyPassword: process.env.PROXY_USER_PASSWORD,
+    };
+
+    if ("password" in credentials) {
+      // Legacy credentials or explicit password auth
+      connectionOptions.password = credentials.password;
+    } else if ("private_key" in credentials) {
+      // Key-pair authentication
+      connectionOptions.authenticator = "SNOWFLAKE_JWT";
+
+      // If the private key is encrypted (has a passphrase), decrypt it first
+      if (credentials.private_key_passphrase) {
+        try {
+          const privateKeyObject = crypto.createPrivateKey({
+            key: credentials.private_key,
+            format: "pem",
+            passphrase: credentials.private_key_passphrase,
+          });
+
+          // Extract the decrypted private key as a PEM-encoded string
+          connectionOptions.privateKey = privateKeyObject
+            .export({
+              format: "pem",
+              type: "pkcs8",
+            })
+            .toString();
+        } catch (err) {
+          return new Err(new Error("Invalid private key passphrase."));
+        }
+      } else {
+        // Unencrypted private key can be used directly
+        connectionOptions.privateKey = credentials.private_key;
+      }
+    } else {
+      throw new Error("Invalid credentials format");
+    }
+
     const connection = await new Promise<Connection>((resolve, reject) => {
       snowflake
-        .createConnection({
-          ...credentials,
-
-          // Use proxy if defined to have all requests coming from the same IP.
-          proxyHost: process.env.PROXY_HOST,
-          proxyPort: process.env.PROXY_PORT
-            ? parseInt(process.env.PROXY_PORT)
-            : undefined,
-          proxyUser: process.env.PROXY_USER_NAME,
-          proxyPassword: process.env.PROXY_USER_PASSWORD,
-        })
+        .createConnection(connectionOptions)
         .connect((err: SnowflakeError | undefined, conn: Connection) => {
           if (err) {
             reject(err);
@@ -170,7 +216,8 @@ export const fetchDatabases = async ({
 };
 
 /**
- * Fetch the tables available in the Snowflake account.
+ * Fetch the tables available in the Snowflake account. `fromDatabase` is required because there is
+ * no guarantee to get all schemas otherwise.
  */
 export const fetchSchemas = async ({
   credentials,
@@ -178,12 +225,10 @@ export const fetchSchemas = async ({
   connection,
 }: {
   credentials: SnowflakeCredentials;
-  fromDatabase?: string;
+  fromDatabase: string;
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
-  const query = fromDatabase
-    ? `SHOW SCHEMAS IN DATABASE ${fromDatabase}`
-    : "SHOW SCHEMAS";
+  const query = `SHOW SCHEMAS IN DATABASE ${fromDatabase}`;
   return _fetchRows<RemoteDBSchema>({
     credentials,
     query,
@@ -197,16 +242,22 @@ export const fetchSchemas = async ({
  */
 export const fetchTables = async ({
   credentials,
+  fromDatabase,
   fromSchema,
   connection,
 }: {
   credentials: SnowflakeCredentials;
+  fromDatabase?: string;
   fromSchema?: string;
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
+  // We fetch the tables in the schema provided if defined, otherwise in the database provided if
+  // defined, otherwise globally.
   const query = fromSchema
     ? `SHOW TABLES IN SCHEMA ${fromSchema}`
-    : "SHOW TABLES";
+    : fromDatabase
+      ? `SHOW TABLES IN DATABASE ${fromDatabase}`
+      : "SHOW TABLES";
 
   return _fetchRows<RemoteDBTable>({
     credentials,
@@ -243,13 +294,32 @@ export const fetchTree = async (
     (db) => !EXCLUDE_DATABASES.includes(db.name)
   );
 
-  const schemasRes = await fetchSchemas({ credentials, connection });
-  if (schemasRes.isErr()) {
-    return schemasRes;
+  const allSchemas: RemoteDBSchema[] = [];
+  const allTables: RemoteDBTable[] = [];
+
+  for (const db of databases) {
+    const schemasRes = await fetchSchemas({
+      credentials,
+      fromDatabase: db.name,
+      connection,
+    });
+    if (schemasRes.isErr()) {
+      return schemasRes;
+    }
+    allSchemas.push(...schemasRes.value);
+
+    const tablesRes = await fetchTables({
+      credentials,
+      fromDatabase: db.name,
+      connection,
+    });
+    if (tablesRes.isErr()) {
+      return tablesRes;
+    }
+    allTables.push(...tablesRes.value);
   }
-  const schemas = schemasRes.value.filter(
-    (s) => !EXCLUDE_SCHEMAS.includes(s.name)
-  );
+
+  const schemas = allSchemas.filter((s) => !EXCLUDE_SCHEMAS.includes(s.name));
   localLogger.info(
     {
       schemasCount: schemas.length,
@@ -257,11 +327,7 @@ export const fetchTree = async (
     "Found schemas in Snowflake"
   );
 
-  const tablesRes = await fetchTables({ credentials, connection });
-  if (tablesRes.isErr()) {
-    return tablesRes;
-  }
-  const tables = tablesRes.value;
+  const tables = allTables;
   localLogger.info(
     {
       tablesCount: tables.length,
@@ -381,6 +447,7 @@ async function _checkRoleGrants(
         "STAGE",
         "SEQUENCE",
         "MODEL",
+        "CORTEX_SEARCH_SERVICE",
       ].includes(grantOn)
     ) {
       if (!["USAGE", "READ"].includes(g.privilege)) {

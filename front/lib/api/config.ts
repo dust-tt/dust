@@ -1,9 +1,18 @@
-import { EnvironmentConfig } from "@dust-tt/types";
+import { EnvironmentConfig } from "@app/types";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
 const config = {
   getClientFacingUrl: (): string => {
+    // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
+    // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
+    // public API URL.
+    const override = EnvironmentConfig.getOptionalEnvVariable(
+      "DUST_INTERNAL_CLIENT_FACING_URL"
+    );
+    if (override) {
+      return override;
+    }
     return EnvironmentConfig.getEnvVariable(
       "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
     );
@@ -29,6 +38,9 @@ const config = {
   getAuth0ExtensionApplicationId: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_EXTENSION_CLIENT_ID");
   },
+  getAuth0CliApplicationId: (): string => {
+    return EnvironmentConfig.getEnvVariable("AUTH0_CLI_CLIENT_ID");
+  },
   getAuth0NamespaceClaim: (): string => {
     return EnvironmentConfig.getEnvVariable("AUTH0_CLAIM_NAMESPACE");
   },
@@ -53,9 +65,6 @@ const config = {
   },
   getStripeSecretWebhookKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_WEBHOOK_KEY");
-  },
-  getDustDataSourcesBucket: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_DATA_SOURCES_BUCKET");
   },
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
@@ -135,6 +144,11 @@ const config = {
   getOAuthNotionClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_NOTION_CLIENT_ID");
   },
+  getOAuthNotionPlatformActionsClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_ID"
+    );
+  },
   getOAuthConfluenceClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_CONFLUENCE_CLIENT_ID");
   },
@@ -143,6 +157,12 @@ const config = {
   },
   getOAuthSlackClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_CLIENT_ID");
+  },
+  getOAuthSlackBotClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_BOT_CLIENT_ID");
+  },
+  getOAuthSlackToolsClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_SLACK_TOOLS_CLIENT_ID");
   },
   getOAuthIntercomClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_INTERCOM_CLIENT_ID");
@@ -156,9 +176,10 @@ const config = {
   getOAuthZendeskClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
   },
-  getOAuthSalesforceClientId: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_SALESFORCE_CLIENT_ID");
+  getOAuthHubspotClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
   },
+
   // Text extraction.
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
@@ -177,6 +198,48 @@ const config = {
     return EnvironmentConfig.getOptionalEnvVariable(
       "MULTI_ACTIONS_AGENT_ANTHROPIC_BETA_FLAGS"
     )?.split(",");
+  },
+
+  // WorkOS
+  getWorkOSApiKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_API_KEY");
+  },
+  getWorkOSClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_CLIENT_ID");
+  },
+  getWorkOSCookiePassword: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_COOKIE_PASSWORD");
+  },
+  getWorkOSIssuerURL: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_ISSUER_URL");
+  },
+  getWorkOSWebhookSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_WEBHOOK_SECRET");
+  },
+  getWorkOSWebhookSigningSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_WEBHOOK_SIGNING_SECRET");
+  },
+  getWorkOSActionSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_ACTION_SECRET");
+  },
+  getWorkOSActionSigningSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_ACTION_SIGNING_SECRET");
+  },
+
+  // Profiler.
+  getProfilerSecret: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
+  },
+  // Untrusted egress proxy.
+  getUntrustedEgressProxyHost: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "UNTRUSTED_EGRESS_PROXY_HOST"
+    );
+  },
+  getUntrustedEgressProxyPort: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "UNTRUSTED_EGRESS_PROXY_PORT"
+    );
   },
 };
 

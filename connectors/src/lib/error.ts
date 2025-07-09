@@ -1,6 +1,6 @@
 // JS cannot give you any guarantee about the shape of an error you `catch`
 
-import type { APIError, ConnectorProvider } from "@dust-tt/types";
+import type { APIError, ConnectorProvider } from "@dust-tt/client";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function errorFromAny(e: any): Error {
@@ -52,6 +52,16 @@ export class ProviderWorkflowError extends DustConnectorWorkflowError {
   }
 }
 
+export class ProviderRateLimitError extends ProviderWorkflowError {
+  constructor(
+    message: string,
+    originalError?: Error | APIError,
+    readonly retryAfter?: number
+  ) {
+    super("slack", message, "rate_limit_error", originalError);
+  }
+}
+
 export class HTTPError extends Error {
   readonly statusCode: number;
   constructor(message: string, statusCode: number) {
@@ -73,6 +83,13 @@ export class ExternalOAuthTokenError extends Error {
   }
 }
 
+export class WorkspaceQuotaExceededError extends Error {
+  constructor(readonly innerError?: Error) {
+    super(innerError?.message);
+    this.name = "WorkspaceQuotaExceededError";
+  }
+}
+
 export function isNotFoundError(err: unknown): err is NotFoundError {
   return err instanceof HTTPError && err.statusCode === 404;
 }
@@ -85,5 +102,13 @@ export class TablesError extends Error {
   ) {
     super(message);
     this.name = "TablesError";
+  }
+}
+
+// Error for malicious or invalid URLs in webcrawler configuration
+export class WebcrawlerUrlValidationError extends Error {
+  constructor(readonly innerError?: Error) {
+    super(innerError?.message || "Invalid or malicious URL detected");
+    this.name = "WebcrawlerUrlValidationError";
   }
 }

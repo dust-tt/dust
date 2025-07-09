@@ -14,17 +14,6 @@
   top: 4px;
 }
 
-@keyframes bgblink {
-  0%,
-  100% {
-    @apply s-bg-primary-50;
-  }
-
-  50% {
-    @apply s-bg-purple-100;
-  }
-}
-
 @keyframes collapse-down {
   from {
     height: 0;
@@ -42,5 +31,3 @@
     height: 0;
   }
 }
-
-@import url("https://use.typekit.net/jnb2umy.css");

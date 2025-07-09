@@ -1,16 +1,8 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type { KeyType, ModelId } from "@dust-tt/types";
-import type { LightWorkspaceType, Result } from "@dust-tt/types";
-import { formatUserFullName, redactString } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-} from "sequelize";
+import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
@@ -20,11 +12,16 @@ import type { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { KeyType, ModelId, RoleType } from "@app/types";
+import type { LightWorkspaceType, Result } from "@app/types";
+import { formatUserFullName, redactString } from "@app/types";
 
 export interface KeyAuthType {
   id: ModelId;
   name: string | null;
   isSystem: boolean;
+  role: RoleType;
 }
 
 export const SECRET_KEY_PREFIX = "sk-";
@@ -33,11 +30,14 @@ export const SECRET_KEY_PREFIX = "sk-";
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class KeyResource extends BaseResource<KeyModel> {
-  static model: ModelStatic<KeyModel> = KeyModel;
+  static model: ModelStaticWorkspaceAware<KeyModel> = KeyModel;
 
   private user?: UserModel;
 
-  constructor(model: ModelStatic<KeyModel>, blob: Attributes<KeyModel>) {
+  constructor(
+    model: ModelStaticWorkspaceAware<KeyModel>,
+    blob: Attributes<KeyModel>
+  ) {
     super(KeyModel, blob);
   }
 
@@ -77,6 +77,9 @@ export class KeyResource extends BaseResource<KeyModel> {
       where: {
         secret,
       },
+      // WORKSPACE_ISOLATION_BYPASS: Used when a request is made from an API Key, at this point we
+      // don't know the workspaceId.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     if (!key) {
@@ -101,6 +104,21 @@ export class KeyResource extends BaseResource<KeyModel> {
     }
 
     return key;
+  }
+
+  static async fetchByName(auth: Authenticator, { name }: { name: string }) {
+    const key = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        name: name,
+      },
+    });
+
+    if (!key) {
+      return null;
+    }
+
+    return new this(KeyResource.model, key.get());
   }
 
   static async listNonSystemKeysByWorkspace(workspace: LightWorkspaceType) {
@@ -198,6 +216,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       secret,
       status: this.status,
       groupId: this.groupId,
+      role: this.role,
     };
   }
 
@@ -207,10 +226,15 @@ export class KeyResource extends BaseResource<KeyModel> {
       id: this.id,
       name: this.name,
       isSystem: this.isSystem,
+      role: this.role,
     };
   }
 
   get isActive() {
     return this.status === "active";
+  }
+
+  async updateRole({ newRole }: { newRole: RoleType }) {
+    await this.update({ role: newRole });
   }
 }

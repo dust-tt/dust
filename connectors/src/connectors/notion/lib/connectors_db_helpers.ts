@@ -1,8 +1,7 @@
-import type { ModelId } from "@dust-tt/types";
-
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceInfo } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceInfo } from "@connectors/types";
 
 // Note: this function does not let you "remove" a skipReason.
 export async function upsertNotionPageInConnectorsDb({
@@ -116,6 +115,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
   notionUrl,
   skipReason,
   lastCreatedOrMovedRunTs,
+  requestQueuingForUpsertToCore,
 }: {
   connectorId: ModelId;
   notionDatabaseId: string;
@@ -126,6 +126,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
   notionUrl?: string | null;
   skipReason?: string;
   lastCreatedOrMovedRunTs?: number;
+  requestQueuingForUpsertToCore: boolean;
 }): Promise<NotionDatabase> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
@@ -147,6 +148,7 @@ export async function upsertNotionDatabaseInConnectorsDb({
     skipReason?: string;
     lastCreatedOrMovedRunTs?: Date;
     firstSeenTs?: Date;
+    upsertRequestedRunTs?: Date;
   } = {
     lastSeenTs: new Date(runTimestamp),
   };
@@ -173,6 +175,20 @@ export async function upsertNotionDatabaseInConnectorsDb({
   // firstSeenTs was added.
   if (!database?.firstSeenTs) {
     updateParams.firstSeenTs = new Date(runTimestamp);
+  }
+
+  if (requestQueuingForUpsertToCore) {
+    // We want to queue the database for upsert.
+    // If we never queued the database for upsert, or if we haven't queued it since
+    // the last time we upserted it, we queue it.
+    // Otherwise, the database is already queued for upsert.
+    if (
+      !database?.upsertRequestedRunTs ||
+      (database.lastUpsertedRunTs &&
+        database.lastUpsertedRunTs > database.upsertRequestedRunTs)
+    ) {
+      updateParams.upsertRequestedRunTs = new Date(runTimestamp);
+    }
   }
 
   if (database) {

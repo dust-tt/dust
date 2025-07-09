@@ -2,5 +2,6 @@
 .idea/
 
 node_modules/
-build/*
 packages/*
+platforms/chrome/build/*
+platforms/front/build/*

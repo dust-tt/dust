@@ -1,12 +1,9 @@
 import type { MeResponseType } from "@dust-tt/client";
-import type {
-  UserTypeWithWorkspaces,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withAuth0TokenAuthentication } from "@app/lib/api/auth_wrappers";
+import { withTokenAuthentication } from "@app/lib/api/auth_wrappers";
 import { apiError } from "@app/logger/withlogging";
+import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -34,6 +31,6 @@ async function handler(
   }
 }
 
-export default withAuth0TokenAuthentication(handler, {
+export default withTokenAuthentication(handler, {
   requiredScopes: { GET: "read:user_profile" },
 });

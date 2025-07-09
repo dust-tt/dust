@@ -1,14 +1,17 @@
-import type { ConnectorProvider } from "@dust-tt/types";
-import { setupGlobalErrorHandler } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/client";
+import { Runtime } from "@temporalio/worker/lib/runtime";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 import { runBigQueryWorker } from "@connectors/connectors/bigquery/temporal/worker";
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
+import { runGongWorker } from "@connectors/connectors/gong/temporal/worker";
 import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
 import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
+import { closeRedisClient } from "@connectors/lib/redis";
+import { isDevelopment, setupGlobalErrorHandler } from "@connectors/types";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
@@ -24,7 +27,9 @@ import logger from "./logger/logger";
 
 setupGlobalErrorHandler(logger);
 
-type WorkerType = ConnectorProvider | "notion_garbage_collector";
+type WorkerType =
+  | Exclude<ConnectorProvider, "slack_bot">
+  | "notion_garbage_collector";
 
 const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   confluence: runConfluenceWorker,
@@ -40,16 +45,37 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   zendesk: runZendeskWorkers,
   bigquery: runBigQueryWorker,
   salesforce: runSalesforceWorker,
+  gong: runGongWorker,
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];
 
 async function runWorkers(workers: WorkerType[]) {
-  for (const worker of workers) {
-    workerFunctions[worker]().catch((err) =>
-      logger.error(errorFromAny(err), `Error running ${worker} worker.`)
+  // Start all workers in parallel
+  try {
+    const promises = workers.map((worker) =>
+      Promise.resolve()
+        .then(() => workerFunctions[worker]())
+        .catch((err) => {
+          logger.error(errorFromAny(err), `Error running ${worker} worker.`);
+        })
     );
+
+    // Wait for all workers to complete
+    await Promise.all(promises);
+  } catch (e) {
+    logger.error(errorFromAny(e), "Unexpected error during worker startup.");
   }
+
+  // Shutdown Temporal native runtime *once*
+  // Fix the issue of connectors hanging after receiving SIGINT in dev
+  // We don't have this issue with front workers, and deserve an investigation (no appetite for now)
+  if (isDevelopment()) {
+    await Runtime.instance().shutdown();
+  }
+
+  // Shutdown potential Redis client
+  await closeRedisClient();
 }
 
 yargs(hideBin(process.argv))

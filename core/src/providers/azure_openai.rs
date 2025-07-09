@@ -3,9 +3,9 @@ use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
-use crate::providers::openai::completion;
 use crate::providers::openai::embed;
 use crate::providers::openai::streamed_completion;
+use crate::providers::openai::{completion, REMAINING_TOKENS_MARGIN};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
 use crate::providers::tiktoken::tiktoken::{
@@ -267,11 +267,16 @@ impl LLM for AzureOpenAILLM {
             }
         }
 
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("AZURE_OPENAI_API_KEY is not set."))?,
+        };
+
         let (c, request_id) = match event_sender {
             Some(_) => {
                 streamed_completion(
                     self.uri()?,
-                    self.api_key.clone().unwrap(),
+                    api_key.clone(),
                     None,
                     None,
                     prompt,
@@ -310,7 +315,7 @@ impl LLM for AzureOpenAILLM {
             None => {
                 completion(
                     self.uri()?,
-                    self.api_key.clone().unwrap(),
+                    api_key,
                     None,
                     None,
                     prompt,
@@ -444,10 +449,14 @@ impl LLM for AzureOpenAILLM {
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("AZURE_OPENAI_API_KEY is not set."))?,
+        };
         openai_compatible_chat_completion(
             self.chat_uri()?,
             self.model_id.clone().unwrap(),
-            self.api_key.clone().unwrap(),
+            api_key,
             messages,
             functions,
             function_call,
@@ -595,16 +604,27 @@ impl Embedder for AzureOpenAIEmbedder {
     }
 
     async fn embed(&self, text: Vec<&str>, extras: Option<Value>) -> Result<Vec<EmbedderVector>> {
+        let api_key = match self.api_key.clone() {
+            Some(key) => key,
+            None => Err(anyhow!("AZURE_OPENAI_API_KEY is not set."))?,
+        };
         let e = embed(
             self.uri()?,
-            self.api_key.clone().unwrap(),
+            api_key,
             None,
             Some(self.model_id.clone()),
             text,
-            match extras {
+            match &extras {
                 Some(e) => match e.get("openai_user") {
                     Some(u) => Some(u.to_string()),
                     None => None,
+                },
+                None => None,
+            },
+            match &extras {
+                Some(e) => match e.get("enforce_rate_limit_margin") {
+                    Some(Value::Bool(true)) => Some(REMAINING_TOKENS_MARGIN),
+                    _ => None,
                 },
                 None => None,
             },

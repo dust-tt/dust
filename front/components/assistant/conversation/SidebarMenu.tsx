@@ -1,6 +1,6 @@
 import {
   Button,
-  ChatBubbleBottomCenterPlusIcon,
+  ChatBubbleBottomCenterTextIcon,
   Checkbox,
   DropdownMenu,
   DropdownMenuContent,
@@ -17,28 +17,27 @@ import {
   RobotIcon,
   SearchInput,
   TrashIcon,
-  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  ConversationWithoutContentType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isBuilder, isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import React, { useCallback, useContext, useState } from "react";
 
+import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { removeDiacritics, subFilter } from "@app/lib/utils";
+import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
+import { isBuilder } from "@app/types";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
@@ -65,6 +64,14 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     ConversationWithoutContentType[]
   >([]);
   const doDelete = useDeleteConversation(owner);
+
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") &&
+    !isBuilder(owner);
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
@@ -180,9 +187,18 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
 
   const { setAnimate } = useContext(InputBarContext);
 
-  const triggerInputAnimation = () => {
-    setAnimate(true);
-  };
+  const handleNewClick = useCallback(async () => {
+    setSidebarOpen(false);
+    const { cId } = router.query;
+    const isNewConversation =
+      router.pathname === "/w/[wId]/assistant/[cId]" &&
+      typeof cId === "string" &&
+      cId === "new";
+    if (isNewConversation) {
+      setAnimate(true);
+      document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT)?.scrollTo(0, 0);
+    }
+  }, [setSidebarOpen, router, setAnimate]);
 
   return (
     <>
@@ -194,14 +210,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
       />
-      <div
-        className={classNames(
-          "flex grow flex-col",
-          isOnlyUser(owner)
-            ? "border-t border-structure-200 dark:border-structure-200-night"
-            : ""
-        )}
-      >
+      <div className="flex grow flex-col">
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
@@ -229,38 +238,30 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   onChange={setTitleFilter}
                 />
                 <Button
-                  href={`/w/${owner.sId}/assistant/new`}
-                  shallow
                   label="New"
-                  icon={ChatBubbleBottomCenterPlusIcon}
+                  href={`/w/${owner.sId}/assistant/new`}
+                  icon={ChatBubbleBottomCenterTextIcon}
                   className="shrink"
                   tooltip="Create a new conversation"
-                  onClick={() => {
-                    setSidebarOpen(false);
-                    const { cId } = router.query;
-                    const isNewConversation =
-                      router.pathname === "/w/[wId]/assistant/[cId]" &&
-                      typeof cId === "string" &&
-                      cId === "new";
-
-                    if (isNewConversation && triggerInputAnimation) {
-                      triggerInputAnimation();
-                    }
-                  }}
+                  onClick={handleNewClick}
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuLabel>Agent</DropdownMenuLabel>
-                    <DropdownMenuItem
-                      href={`/w/${owner.sId}/builder/assistants/create`}
-                      icon={PlusIcon}
-                      label="Create new agent"
-                      data-gtm-label="assistantCreationButton"
-                      data-gtm-location="sidebarMenu"
-                    />
+                    {!isRestrictedFromAgentCreation && (
+                      <>
+                        <DropdownMenuLabel>Agent</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          href={`/w/${owner.sId}/builder/assistants/create`}
+                          icon={PlusIcon}
+                          label="Create new agent"
+                          data-gtm-label="assistantCreationButton"
+                          data-gtm-location="sidebarMenu"
+                        />
+                      </>
+                    )}
                     {isBuilder(owner) && (
                       <DropdownMenuItem
                         href={`/w/${owner.sId}/builder/assistants`}
@@ -339,7 +340,7 @@ const RenderConversations = ({
       <NavigationListLabel
         label={dateLabel}
         isSticky
-        className="bg-structure-50 dark:bg-structure-50-night"
+        className="bg-muted-background dark:bg-muted-background-night"
       />
       {conversations.map((conversation) => (
         <RenderConversation
@@ -379,13 +380,13 @@ const RenderConversation = ({
         <div className="flex items-center px-2 py-2">
           <Checkbox
             id={`conversation-${conversation.sId}`}
-            className="bg-white dark:bg-slate-950"
+            className="bg-background dark:bg-background-night"
             checked={selectedConversations.includes(conversation)}
             onCheckedChange={() => toggleConversationSelection(conversation)}
           />
           <Label
             htmlFor={`conversation-${conversation.sId}`}
-            className="ml-2 text-sm font-light text-muted-foreground dark:text-muted-foreground-night"
+            className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
           >
             {conversationLabel}
           </Label>

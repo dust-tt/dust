@@ -1,16 +1,9 @@
 import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
-import type { AgentMention, MentionType, Result } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { compareAgentsForSort } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { InputBarCitations } from "@app/components/assistant/conversation/input_bar/InputBarCitations";
+import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
   INPUT_BAR_ACTIONS,
@@ -18,11 +11,40 @@ import InputBarContainer, {
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { DustError } from "@app/lib/error";
+import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
+import type {
+  AgentMention,
+  ContentFragmentsType,
+  DataSourceViewContentNode,
+  LightAgentConfigurationType,
+  MentionType,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import { compareAgentsForSort } from "@app/types";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
+
+interface AssistantInputBarProps {
+  owner: WorkspaceType;
+  onSubmit: (
+    input: string,
+    mentions: MentionType[],
+    contentFragments: ContentFragmentsType
+  ) => Promise<Result<undefined, DustError>>;
+  conversationId: string | null;
+  stickyMentions?: AgentMention[];
+  additionalAgentConfiguration?: LightAgentConfigurationType;
+  actions?: InputBarContainerProps["actions"];
+  disableAutoFocus: boolean;
+  isFloating?: boolean;
+  isFloatingWithoutMargin?: boolean;
+  disableButton?: boolean;
+}
 
 /**
  *
@@ -39,24 +61,30 @@ export function AssistantInputBar({
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   isFloating = true,
-}: {
-  owner: WorkspaceType;
-  onSubmit: (
-    input: string,
-    mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
-  ) => Promise<Result<undefined, DustError>>;
-  conversationId: string | null;
-  stickyMentions?: AgentMention[];
-  additionalAgentConfiguration?: LightAgentConfigurationType;
-  actions?: InputBarContainerProps["actions"];
-  disableAutoFocus: boolean;
-  isFloating?: boolean;
-  isFloatingWithoutMargin?: boolean;
-}) {
-  const [disableSendButton, setDisableSendButton] = useState(false);
+  disableButton = false,
+}: AssistantInputBarProps) {
+  const [disableSendButton, setDisableSendButton] = useState(disableButton);
   const [isFocused, setIsFocused] = useState(false);
   const rainbowEffectRef = useRef<HTMLDivElement>(null);
+
+  const [attachedNodes, setAttachedNodes] = useState<
+    DataSourceViewContentNode[]
+  >([]);
+
+  const { spaces } = useSpaces({ workspaceId: owner.sId });
+  const spacesMap = useMemo(
+    () =>
+      Object.fromEntries(
+        spaces?.map((space) => [
+          space.sId,
+          {
+            name: space.kind === "global" ? "Company Data" : space.name,
+            icon: getSpaceIcon(space),
+          },
+        ]) || []
+      ),
+    [spaces]
+  );
 
   useEffect(() => {
     const container = rainbowEffectRef.current;
@@ -175,16 +203,15 @@ export function AssistantInputBar({
       setLoading(true);
       setDisableSendButton(true);
 
-      const r = await onSubmit(
-        markdown,
-        mentions,
-        fileUploaderService.getFileBlobs().map((cf) => {
+      const r = await onSubmit(markdown, mentions, {
+        uploaded: fileUploaderService.getFileBlobs().map((cf) => {
           return {
             title: cf.filename,
             fileId: cf.fileId,
           };
-        })
-      );
+        }),
+        contentNodes: attachedNodes,
+      });
 
       setLoading(false);
       setDisableSendButton(false);
@@ -193,20 +220,38 @@ export function AssistantInputBar({
         fileUploaderService.resetUpload();
       }
     } else {
-      void onSubmit(
-        markdown,
-        mentions,
-        fileUploaderService.getFileBlobs().map((cf) => {
+      void onSubmit(markdown, mentions, {
+        uploaded: fileUploaderService.getFileBlobs().map((cf) => {
           return {
             title: cf.filename,
             fileId: cf.fileId,
           };
-        })
-      );
+        }),
+        contentNodes: attachedNodes,
+      });
 
       resetEditorText();
       fileUploaderService.resetUpload();
+      setAttachedNodes([]);
     }
+  };
+
+  const handleNodesAttachmentSelect = (node: DataSourceViewContentNode) => {
+    const isNodeAlreadyAttached = attachedNodes.some(
+      (attachedNode) =>
+        attachedNode.internalId === node.internalId &&
+        attachedNode.dataSourceView.dataSource.sId ===
+          node.dataSourceView.dataSource.sId
+    );
+    if (!isNodeAlreadyAttached) {
+      setAttachedNodes((prev) => [...prev, node]);
+    }
+  };
+
+  const handleNodesAttachmentRemove = (node: DataSourceViewContentNode) => {
+    setAttachedNodes((prev) =>
+      prev.filter((n) => n.internalId !== node.internalId)
+    );
   };
 
   const [isStopping, setIsStopping] = useState<boolean>(false);
@@ -252,6 +297,10 @@ export function AssistantInputBar({
       setIsStopping(false);
     }
   }, [isStopping, generationContext.generatingMessages, conversationId]);
+
+  useEffect(() => {
+    setDisableSendButton(disableButton);
+  }, [disableButton]);
 
   return (
     <div className="flex w-full flex-col">
@@ -300,7 +349,14 @@ export function AssistantInputBar({
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
-              <InputBarCitations fileUploaderService={fileUploaderService} />
+              <InputBarAttachments
+                files={{ service: fileUploaderService }}
+                nodes={{
+                  items: attachedNodes,
+                  spacesMap,
+                  onRemove: handleNodesAttachmentRemove,
+                }}
+              />
               <InputBarContainer
                 actions={actions}
                 disableAutoFocus={disableAutoFocus}
@@ -314,6 +370,9 @@ export function AssistantInputBar({
                 disableSendButton={
                   disableSendButton || fileUploaderService.isProcessingFiles
                 }
+                onNodeSelect={handleNodesAttachmentSelect}
+                onNodeUnselect={handleNodesAttachmentRemove}
+                attachedNodes={attachedNodes}
               />
             </div>
           </div>
@@ -336,7 +395,7 @@ export function FixedAssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   stickyMentions?: AgentMention[];
   conversationId: string | null;

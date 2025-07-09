@@ -1,7 +1,7 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
-import type { SlackWebhookEvent } from "@connectors/api/webhooks/webhook_slack";
+import type { SlackWebhookEvent } from "@connectors/api/webhooks/slack/utils";
 import { autoReadChannel } from "@connectors/connectors/slack/auto_read_channel";
 import type { Logger } from "@connectors/logger/logger";
 
@@ -35,11 +35,13 @@ export function isChannelCreatedEvent(
 export interface OnChannelCreationInterface {
   event: ChannelCreatedEvent;
   logger: Logger;
+  provider?: Extract<ConnectorProvider, "slack_bot" | "slack">;
 }
 
 export async function onChannelCreation({
   event,
   logger,
+  provider = "slack",
 }: OnChannelCreationInterface): Promise<Result<void, Error>> {
   const { channel } = event;
   if (!channel) {
@@ -50,7 +52,8 @@ export async function onChannelCreation({
   const autoReadRes = await autoReadChannel(
     channel.context_team_id,
     logger,
-    channel.id
+    channel.id,
+    provider
   );
   if (autoReadRes.isErr()) {
     return new Err(

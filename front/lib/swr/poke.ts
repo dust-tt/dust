@@ -1,18 +1,18 @@
-import type {
-  ConnectorPermission,
-  DataSourceType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import type { RegionType } from "@app/lib/api/regions/config";
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
+import type {
+  ConnectorPermission,
+  DataSourceType,
+  LightWorkspaceType,
+} from "@app/types";
 
 export function usePokeRegion() {
   const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;
@@ -58,7 +58,7 @@ export function usePokeConnectorPermissions({
   });
 
   return {
-    resources: useMemo(() => (data ? data.resources : []), [data]),
+    resources: data?.resources ?? emptyArray(),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
   };
@@ -97,7 +97,7 @@ export function usePokeWorkspaces({
   );
 
   return {
-    workspaces: useMemo(() => (data ? data.workspaces : []), [data]),
+    workspaces: data?.workspaces ?? emptyArray(),
     isWorkspacesLoading: !error && !data,
     isWorkspacesError: error,
   };
@@ -109,23 +109,31 @@ export function usePokePlans() {
   const { data, error } = useSWRWithDefaults("/api/poke/plans", plansFetcher);
 
   return {
-    plans: useMemo(() => (data ? data.plans : []), [data]),
+    plans: data?.plans ?? emptyArray(),
     isPlansLoading: !error && !data,
     isPlansError: error,
   };
 }
 
-export function usePokeFeatureFlags({ workspaceId }: { workspaceId: string }) {
+export function usePokeFeatureFlags({
+  disabled,
+  owner,
+}: {
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+}) {
   const featureFlagsFetcher: Fetcher<GetPokeFeaturesResponseBody> = fetcher;
 
-  const { data, error } = useSWRWithDefaults(
-    `/api/poke/workspaces/${workspaceId}/features`,
-    featureFlagsFetcher
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/features`,
+    featureFlagsFetcher,
+    { disabled }
   );
 
   return {
-    featureFlags: useMemo(() => (data ? data.features : []), [data]),
-    isFeatureFlagsLoading: !error && !data,
-    isFeatureFlagsError: error,
+    data: data?.features ?? emptyArray(),
+    isLoading: !error && !data,
+    isError: error,
+    mutate,
   };
 }

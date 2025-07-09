@@ -1,4 +1,5 @@
 import {
+  ContentMessage,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -7,14 +8,15 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { SpaceType } from "@dust-tt/types";
 
 import { getSpaceName } from "@app/lib/spaces";
+import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import type { SpaceType } from "@app/types";
 
 interface ConfirmDeleteSpaceDialogProps {
   space: SpaceType;
   handleDelete: () => void;
-  dataSourceUsage?: number;
+  spaceInfoByCategory: { [key: string]: SpaceCategoryInfo } | undefined;
   isOpen: boolean;
   isDeleting: boolean;
   onClose: () => void;
@@ -23,17 +25,24 @@ interface ConfirmDeleteSpaceDialogProps {
 export function ConfirmDeleteSpaceDialog({
   space,
   handleDelete,
-  dataSourceUsage,
+  spaceInfoByCategory,
   isOpen,
   isDeleting,
   onClose,
 }: ConfirmDeleteSpaceDialogProps) {
-  const message =
-    dataSourceUsage === undefined
-      ? `Are you sure you want to permanently delete space ${getSpaceName(space)}?`
-      : dataSourceUsage > 0
-        ? `${dataSourceUsage} agents currently use space ${getSpaceName(space)}. Are you sure you want to delete?`
-        : `No agents are using this ${getSpaceName(space)}. Confirm permanent deletion?`;
+  const uniqueAgentNames = spaceInfoByCategory
+    ? [
+        ...new Set(
+          Object.values(spaceInfoByCategory)
+            .flatMap((category) => category.usage.agents)
+            .map((agent) => agent.name)
+            .filter((name) => name && name.length > 0)
+        ),
+      ]
+    : [];
+
+  const spaceName = `${getSpaceName(space)}`;
+  const hasAgents = uniqueAgentNames.length > 0;
 
   return (
     <Dialog
@@ -54,7 +63,23 @@ export function ConfirmDeleteSpaceDialog({
           </div>
         ) : (
           <>
-            <DialogContainer>{message}</DialogContainer>
+            <DialogContainer className="space-y-4">
+              {hasAgents && (
+                <ContentMessage
+                  variant="warning"
+                  // TODO: change to show names of public agents and then number of unpublished agents
+                  title={`${uniqueAgentNames.length} agent${uniqueAgentNames.length === 1 ? "" : "s"} 
+                    use${uniqueAgentNames.length === 1 ? "s" : ""} tools that depend on this space 
+                    and will be impacted by its deletion`}
+                />
+              )}
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to permanently delete space {spaceName}?
+                  This action cannot be undone.
+                </p>
+              </div>
+            </DialogContainer>
             <DialogFooter
               leftButtonProps={{
                 label: "Cancel",

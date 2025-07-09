@@ -1,15 +1,20 @@
-import { Breadcrumbs, CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import {
+  BoltIcon,
+  Breadcrumbs,
+  CloudArrowLeftRightIcon,
+} from "@dust-tt/sparkle";
+import React from "react";
+
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { CATEGORY_DETAILS, getSpaceIcon, getSpaceName } from "@app/lib/spaces";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
   LightWorkspaceType,
   SpaceType,
-} from "@dust-tt/types";
-import React from "react";
-
-import { getDataSourceNameFromView } from "@app/lib/data_sources";
-import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+} from "@app/types";
 
 interface SpaceBreadcrumbProps {
   owner: LightWorkspaceType;
@@ -48,16 +53,12 @@ export function SpaceBreadCrumbs({
       return [
         {
           icon: getSpaceIcon(space),
-          label: space.kind === "global" ? "Company Data" : space.name,
+          label: getSpaceName(space),
         },
       ];
     }
 
-    const items: {
-      label: string;
-      icon?: React.ComponentType;
-      href?: string;
-    }[] = [
+    const items: BreadcrumbItem[] = [
       {
         icon: getSpaceIcon(space),
         label: space.kind === "global" ? "Company Data" : space.name,
@@ -71,11 +72,18 @@ export function SpaceBreadCrumbs({
 
     if (space.kind === "system") {
       // Root managed connection in system space.
-      if (!dataSourceView) {
+      if (category === "managed" && !dataSourceView) {
         return [
           {
             icon: CloudArrowLeftRightIcon,
-            label: "Connection Admin",
+            label: "Connections Admin",
+          },
+        ];
+      } else if (category === "actions") {
+        return [
+          {
+            icon: BoltIcon,
+            label: "Tools",
           },
         ];
       }

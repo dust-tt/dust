@@ -48,9 +48,9 @@ export function PaginatedCitationsGrid({
       <CitationGrid>
         {paginatedItems.map((d, idx) => {
           return (
-            <Citation href={d.href} variant="primary">
+            <Citation href={d.href} variant="primary" key={idx}>
               <CitationIcons>
-                <CitationIndex>{idx}</CitationIndex>
+                <CitationIndex>{startIndex + idx + 1}</CitationIndex>
                 {d.icon}
               </CitationIcons>
               <CitationTitle>{d.title}</CitationTitle>

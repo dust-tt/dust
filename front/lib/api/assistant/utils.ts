@@ -1,17 +1,21 @@
-import type { ModelMessageTypeMultiActions } from "@dust-tt/types";
-import { isTextContent } from "@dust-tt/types";
+import type { ModelMessageTypeMultiActions } from "@app/types";
+import { isImageContent, isTextContent } from "@app/types";
 
 export function getTextContentFromMessage(
   message: ModelMessageTypeMultiActions
 ): string {
   const { content } = message;
 
+  if (!content) {
+    return "";
+  }
+
   if (typeof content === "string") {
     return content;
   }
 
-  if (!content) {
-    return "";
+  if (isImageContent(content)) {
+    return content.image_url.url;
   }
 
   return content
@@ -20,7 +24,11 @@ export function getTextContentFromMessage(
         return c.text;
       }
 
-      return c.image_url.url;
+      if (isImageContent(c)) {
+        return c.image_url.url;
+      }
+
+      return "";
     })
     .join("\n");
 }

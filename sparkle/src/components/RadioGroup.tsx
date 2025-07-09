@@ -10,7 +10,7 @@ import { cn } from "@sparkle/lib/utils";
 const radioStyles = cva(
   cn(
     "s-aspect-square s-rounded-full s-border",
-    "s-border-border-darker dark:s-border-primary-500",
+    "s-s-border-border-dark dark:s-border-primary-500",
     "s-bg-background dark:s-bg-background-night",
     "s-text-foreground dark:s-text-foreground-night",
     "s-flex s-items-center s-justify-center",
@@ -106,13 +106,13 @@ const RadioGroupItem = React.forwardRef<
     );
 
     const wrappedItem = (
-      <div className="s-flex s-items-center s-gap-2">
+      <div className="s-flex s-w-full s-items-center s-gap-2">
         {tooltipMessage ? (
           <Tooltip trigger={item} label={tooltipMessage} />
         ) : (
           item
         )}
-        {icon ? renderIcon(icon) : <></>}
+        {icon && renderIcon(icon)}
         <Label htmlFor={id} {...labelProps}>
           {label}
         </Label>
@@ -165,12 +165,12 @@ const RadioGroupCustomItem = React.forwardRef<
     return (
       <div
         className={cn(
-          "s-flex s-flex-col",
+          "s-flex s-w-full s-flex-col",
           className,
           `s-items-${iconPosition}`
         )}
       >
-        <div className="s-flex s-items-center s-gap-2">
+        <div className="s-flex s-w-full s-items-center s-gap-2">
           {item}
           {customItem}
         </div>

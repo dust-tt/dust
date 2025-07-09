@@ -1,7 +1,6 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
+import { Err, Ok } from "@app/types";
 
 export const createSpacePlugin = createPlugin({
   manifest: {
@@ -37,7 +36,14 @@ export const createSpacePlugin = createPlugin({
 
     const spaceRes = await createRegularSpaceAndGroup(
       auth,
-      { name: formattedName, memberIds: [], isRestricted },
+      isRestricted
+        ? {
+            name: formattedName,
+            memberIds: [],
+            isRestricted: true,
+            managementMode: "manual",
+          }
+        : { name: formattedName, isRestricted: false },
       {
         ignoreWorkspaceLimit: args.ignoreWorkspaceLimit,
       }

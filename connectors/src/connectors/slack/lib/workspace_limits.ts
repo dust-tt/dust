@@ -1,16 +1,34 @@
-import type { Result, WorkspaceDomain } from "@dust-tt/types";
-import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
+import type { Result, WorkspaceDomainType } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type {} from "@slack/web-api/dist/response/UsersInfoResponse";
 
 import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
-import { getSlackConversationInfo } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  getSlackConversationInfo,
+  reportSlackUsage,
+} from "@connectors/connectors/slack/lib/slack_client";
+import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { getDustAPI } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { DataSourceConfig } from "@connectors/types";
+import { cacheWithRedis } from "@connectors/types";
+
+function getDustAPI(dataSourceConfig: DataSourceConfig) {
+  return new DustAPI(
+    {
+      url: apiConfig.getDustFrontAPIUrl(),
+    },
+    {
+      apiKey: dataSourceConfig.workspaceAPIKey,
+      workspaceId: dataSourceConfig.workspaceId,
+    },
+    logger
+  );
+}
 
 async function getActiveMemberEmails(
   connector: ConnectorResource
@@ -45,7 +63,7 @@ export const getActiveMemberEmailsMemoized = cacheWithRedis(
 
 async function getVerifiedDomainsForWorkspace(
   connector: ConnectorResource
-): Promise<WorkspaceDomain[]> {
+): Promise<WorkspaceDomainType[]> {
   const ds = dataSourceConfigFromConnector(connector);
 
   const dustAPI = getDustAPI(ds);
@@ -165,6 +183,11 @@ async function postMessageForUnhautorizedUser(
       autoJoinEnabled ? "autojoin_enabled" : "autojoin_disabled"
     ];
 
+  reportSlackUsage({
+    connectorId: connector.id,
+    method: "chat.postMessage",
+    channelId: slackChannelId,
+  });
   return slackClient.chat.postMessage({
     channel: slackChannelId,
     blocks: slackMessageBlocks,
@@ -210,7 +233,7 @@ export async function isBotAllowed(
 
     return new Err(
       new SlackExternalUserError(
-        "To enable custom interactions between Slack bots and Dust agents, email us at support@dust.tt."
+        "To enable Slack Workflows to call Dust agents, email us at support@dust.tt."
       )
     );
   }
@@ -229,6 +252,7 @@ interface SlackInfos {
 // allowing them to interact with the bot in public channels.
 // See incident: https://dust4ai.slack.com/archives/C05B529FHV1/p1704799263814619.
 async function isExternalUserAllowed(
+  connector: ConnectorResource,
   slackClient: WebClient,
   slackUserInfo: SlackUserInfo,
   slackInfos: SlackInfos,
@@ -259,6 +283,7 @@ async function isExternalUserAllowed(
   );
 
   const slackConversationInfo = await getSlackConversationInfo(
+    connector.id,
     slackClient,
     slackChannelId
   );
@@ -327,6 +352,7 @@ export async function notifyIfSlackUserIsNotAllowed(
   if (isExternal) {
     // If the external user is allowed, they are allowed with a specific group id.
     return isExternalUserAllowed(
+      connector,
       slackClient,
       slackUserInfo,
       slackInfos,

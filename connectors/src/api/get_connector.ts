@@ -1,14 +1,12 @@
-import type {
-  ConnectorType,
-  WithConnectorsAPIErrorReponse,
-} from "@dust-tt/types";
-import { isConnectorProvider } from "@dust-tt/types";
+import { isConnectorProvider } from "@dust-tt/client";
 import type { Request, Response } from "express";
 
 import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
 import { NotionPage } from "@connectors/lib/models/notion";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ConnectorType } from "@connectors/types";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
 type GetConnectorRes = WithConnectorsAPIErrorReponse<ConnectorType>;
 

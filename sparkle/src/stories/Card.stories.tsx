@@ -17,7 +17,7 @@ import {
   ScanIcon,
   TableIcon,
   XMarkIcon,
-} from "@sparkle/icons";
+} from "@sparkle/icons/app";
 
 const meta = {
   title: "Primitives/Card",
@@ -133,7 +133,7 @@ export const ActionCardDemo: React.FC = () => (
         action={<CardActionButton size="mini" icon={XMarkIcon} />}
       >
         <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
-          <div className="s-flex s-w-full s-gap-1 s-font-medium s-text-foreground">
+          <div className="s-flex s-w-full s-gap-1 s-font-semibold s-text-foreground">
             <Icon visual={card.icon} size="sm" />
             <div className="s-w-full">{card.title}</div>
           </div>

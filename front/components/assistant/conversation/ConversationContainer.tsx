@@ -1,20 +1,10 @@
-import { Page, useSendNotification } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  LightAgentConfigurationType,
-  MentionType,
-  Result,
-  SubscriptionType,
-  UploadedContentFragment,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Page } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
+import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
 import { FixedAssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -24,7 +14,9 @@ import {
   createPlaceholderUserMessage,
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
@@ -32,12 +24,22 @@ import {
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
+import type {
+  AgentMention,
+  ContentFragmentsType,
+  LightAgentConfigurationType,
+  MentionType,
+  Result,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
   user: UserType;
-  isBuilder: boolean;
   agentIdToMention: string | null;
 }
 
@@ -45,7 +47,6 @@ export function ConversationContainer({
   owner,
   subscription,
   user,
-  isBuilder,
   agentIdToMention,
 }: ConversationContainerProps) {
   const { activeConversationId } = useConversationsNavigation();
@@ -96,10 +97,12 @@ export function ConversationContainer({
     }
   });
 
+  const { serverId } = useCoEditionContext();
+
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    contentFragments: ContentFragmentsType
   ): Promise<Result<undefined, DustError>> => {
     if (!activeConversationId) {
       return new Err({
@@ -109,13 +112,17 @@ export function ConversationContainer({
       });
     }
 
-    const messageData = { input, mentions, contentFragments };
+    const messageData = {
+      input,
+      mentions,
+      contentFragments,
+      clientSideMCPServerIds: removeNulls([serverId]),
+    };
 
     try {
-      // Update the local state immediately and fire the
-      // request. Since the API will return the updated
-      // data, there is no need to start a new revalidation
-      // and we can directly populate the cache.
+      // Update the local state immediately and fire the request. Since the API will return the
+      // updated data, there is no need to start a new revalidation and we can directly populate the
+      // cache.
       await mutateMessages(
         async (currentMessagePages) => {
           const result = await submitMessage({
@@ -173,8 +180,7 @@ export function ConversationContainer({
       await mutateConversations();
       scrollConversationsToTop();
     } catch (err) {
-      // If the API errors, the original data will be
-      // rolled back by SWR automatically.
+      // If the API errors, the original data will be rolled back by SWR automatically.
       console.error("Failed to post message:", err);
       return new Err({
         code: "internal_error",
@@ -192,7 +198,7 @@ export function ConversationContainer({
     async (
       input: string,
       mentions: MentionType[],
-      contentFragments: UploadedContentFragment[]
+      contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({
@@ -211,6 +217,7 @@ export function ConversationContainer({
           input,
           mentions,
           contentFragments,
+          clientSideMCPServerIds: removeNulls([serverId]),
         },
       });
 
@@ -253,6 +260,7 @@ export function ConversationContainer({
       router,
       mutateConversations,
       scrollConversationsToTop,
+      serverId,
     ]
   );
 
@@ -294,6 +302,8 @@ export function ConversationContainer({
     [setStickyMentions]
   );
 
+  const { startConversationRef } = useWelcomeTourGuide();
+
   return (
     <DropzoneContainer
       description="Drag and drop your text files (txt, doc, pdf) and image files (jpg, png) here."
@@ -308,13 +318,10 @@ export function ConversationContainer({
           onStickyMentionsChange={onStickyMentionsChange}
         />
       ) : (
-        <div></div>
-      )}
-
-      {!activeConversationId && (
         <div
           id="assistant-input-header"
           className="flex h-fit min-h-[20vh] w-full max-w-4xl flex-col justify-end gap-8 py-2"
+          ref={startConversationRef}
         >
           <Page.Header title={greeting} />
           <Page.SectionHeader title="Start a conversation" />
@@ -337,7 +344,6 @@ export function ConversationContainer({
             assistantToMention.current = assistant;
           }}
           owner={owner}
-          isBuilder={isBuilder}
         />
       )}
 

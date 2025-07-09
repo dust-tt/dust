@@ -1,35 +1,26 @@
-import type {
-  AgentConfigurationType,
-  AppType,
-  DataSourceViewType,
-  PlanType,
-  PlatformActionsConfigurationType,
-  SpaceType,
-  SubscriptionType,
-  TemplateAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ParsedUrlQuery } from "querystring";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
-import { AssistantBuilderProvider } from "@app/components/assistant_builder/AssistantBuilderContext";
-import {
-  buildInitialActions,
-  getAccessibleSourcesAndApps,
-} from "@app/components/assistant_builder/server_side_props_helpers";
-import type {
-  AssistantBuilderInitialState,
-  BuilderFlow,
-} from "@app/components/assistant_builder/types";
+import { AssistantBuilderProviders } from "@app/components/assistant_builder/contexts/AssistantBuilderContexts";
+import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
+import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { PlatformActionsConfigurationResource } from "@app/lib/resources/platform_actions_configuration_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
+import type {
+  AgentConfigurationType,
+  PlanType,
+  SubscriptionType,
+  TemplateAgentConfigurationType,
+  WorkspaceType,
+} from "@app/types";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;
@@ -45,10 +36,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   plan: PlanType;
-  spaces: SpaceType[];
-  dataSourceViews: DataSourceViewType[];
-  dustApps: AppType[];
-  actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
     | AgentConfigurationType
     | TemplateAgentConfigurationType
@@ -56,7 +43,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
   baseUrl: string;
   templateId: string | null;
-  platformActionsConfigurations: PlatformActionsConfigurationType[];
+  duplicateAgentId: string | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -67,11 +54,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [{ spaces, dataSourceViews, dustApps }, platformActionsConfigurations] =
-    await Promise.all([
-      getAccessibleSourcesAndApps(auth),
-      PlatformActionsConfigurationResource.listByWorkspace(auth),
-    ]);
+  const isRestricted = await isRestrictedFromAgentCreation(owner);
+  if (isRestricted) {
+    return {
+      notFound: true,
+    };
+  }
+
+  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
     context.query.flow as BuilderFlow
@@ -87,7 +77,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     context.query
   );
   if (duplicate) {
-    configuration = await getAgentConfiguration(auth, duplicate);
+    configuration = await getAgentConfiguration(auth, duplicate, "full");
 
     if (!configuration) {
       return {
@@ -96,8 +86,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     }
     // We reset the scope according to the current flow. This ensures that cloning a workspace
     // agent with flow `personal_assistants` will initialize the agent as private.
-    configuration.scope =
-      flow === "personal_assistants" ? "private" : "workspace";
+    configuration.scope = flow === "personal_assistants" ? "hidden" : "visible";
   } else if (templateId) {
     const agentConfigRes = await generateMockAgentConfigurationFromTemplate(
       templateId,
@@ -113,47 +102,29 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration = agentConfigRes.value;
   }
 
-  const actions = configuration
-    ? await buildInitialActions({
-        dataSourceViews,
-        dustApps,
-        configuration,
-      })
-    : [];
-
   return {
     props: {
-      actions,
       agentConfiguration: configuration,
       baseUrl: config.getClientFacingUrl(),
-      dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
-      dustApps: dustApps.map((a) => a.toJSON()),
       flow,
       owner,
       plan,
       subscription,
       templateId,
-      spaces: spaces.map((s) => s.toJSON()),
-      platformActionsConfigurations: platformActionsConfigurations.map((c) =>
-        c.toJSON()
-      ),
+      duplicateAgentId: duplicate,
     },
   };
 });
 
 export default function CreateAssistant({
-  actions,
   agentConfiguration,
   baseUrl,
-  spaces,
-  dataSourceViews,
-  dustApps,
   flow,
   owner,
   plan,
   subscription,
   templateId,
-  platformActionsConfigurations,
+  duplicateAgentId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
 
@@ -166,25 +137,21 @@ export default function CreateAssistant({
   }
 
   return (
-    <AssistantBuilderProvider
-      spaces={spaces}
-      dustApps={dustApps}
-      dataSourceViews={dataSourceViews}
-      platformActionsConfigurations={platformActionsConfigurations}
-    >
+    <AssistantBuilderProviders owner={owner}>
       <AssistantBuilder
         owner={owner}
         subscription={subscription}
         plan={plan}
         flow={flow}
+        duplicateAgentId={duplicateAgentId}
         initialBuilderState={
           agentConfiguration
             ? {
-                actions,
+                actions: [],
                 scope:
                   agentConfiguration.scope !== "global"
                     ? agentConfiguration.scope
-                    : "private",
+                    : "hidden",
                 handle: `${agentConfiguration.name}${
                   "isTemplate" in agentConfiguration ? "" : "_Copy"
                 }`,
@@ -200,18 +167,30 @@ export default function CreateAssistant({
                     modelId: agentConfiguration.model.modelId,
                   },
                   temperature: agentConfiguration.model.temperature,
+                  reasoningEffort:
+                    agentConfiguration.model.reasoningEffort || "none",
+                  responseFormat: agentConfiguration.model.responseFormat,
                 },
                 maxStepsPerRun: agentConfiguration.maxStepsPerRun ?? null,
                 visualizationEnabled: agentConfiguration.visualizationEnabled,
                 templateId: templateId,
+                tags: agentConfiguration.tags.filter(
+                  (tag) => tag.kind !== "protected"
+                ),
+                // either new, or template, or duplicate, so initially no editors
+                editors: [],
               }
             : null
         }
-        agentConfigurationId={null}
+        agentConfiguration={null}
         defaultIsEdited={assistantTemplate !== null}
         baseUrl={baseUrl}
         defaultTemplate={assistantTemplate}
       />
-    </AssistantBuilderProvider>
+    </AssistantBuilderProviders>
   );
 }
+
+CreateAssistant.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

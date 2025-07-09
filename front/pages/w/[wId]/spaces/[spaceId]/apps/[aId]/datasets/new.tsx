@@ -1,23 +1,24 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Button, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { DatasetSchema, DatasetType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppLayout from "@app/components/sparkle/AppLayout";
+import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getDatasets } from "@app/lib/api/datasets";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
+import type { WorkspaceType } from "@app/types";
+import type { AppType } from "@app/types";
+import type { DatasetSchema, DatasetType } from "@app/types";
+import type { SubscriptionType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -122,7 +123,7 @@ export default function NewDatasetView({
   };
 
   return (
-    <AppLayout
+    <AppContentLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
@@ -157,7 +158,7 @@ export default function NewDatasetView({
         </Tabs>
         <div className="mt-8 flex flex-col">
           <div className="flex flex-1">
-            <div className="dark:divide-gray-200-night space-y-6 divide-y divide-gray-200">
+            <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">
               <DatasetView
                 readOnly={false}
                 datasets={datasets}
@@ -180,6 +181,10 @@ export default function NewDatasetView({
           </div>
         </div>
       </div>
-    </AppLayout>
+    </AppContentLayout>
   );
 }
+
+NewDatasetView.getLayout = function getLayout(page: React.ReactElement) {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

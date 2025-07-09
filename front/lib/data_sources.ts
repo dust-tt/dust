@@ -1,44 +1,49 @@
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type {
   ConnectorProvider,
   CoreAPIDocument,
   DataSourceType,
   DataSourceViewType,
+  WhitelistableFeature,
   WithConnector,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+} from "@app/types";
 
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-
+// TODO(DURABLE AGENTS 2025-06-25): Remove RetrievalDocumentResource support.
 export function getDisplayNameForDocument(document: CoreAPIDocument): string {
   const titleTagPrefix = "title:";
   const titleTag = document.tags.find((tag) => tag.startsWith(titleTagPrefix));
   if (!titleTag) {
     return document.document_id;
   }
+
   return titleTag.substring(titleTagPrefix.length);
+}
+
+function getSetupSuffixForDataSource(
+  dataSource: DataSourceType
+): string | null {
+  const match = dataSource.name.match(
+    new RegExp(`managed\\-${dataSource.connectorProvider}\\-(.*)`)
+  );
+  if (!match || match.length < 2) {
+    return null;
+  }
+  return match[1];
 }
 
 export function getDisplayNameForDataSource(ds: DataSourceType) {
   if (ds.connectorProvider) {
-    switch (ds.connectorProvider) {
-      case "confluence":
-      case "slack":
-      case "google_drive":
-      case "github":
-      case "intercom":
-      case "microsoft":
-      case "notion":
-      case "zendesk":
-      case "snowflake":
-      case "bigquery":
-      case "salesforce":
-        return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
-      case "webcrawler":
-        return ds.name;
-      default:
-        assertNever(ds.connectorProvider);
+    if (ds.connectorProvider === "webcrawler") {
+      return ds.name;
     }
+    // Not very satisfying to retro-engineer getDefaultDataSourceName but we don't store the suffix by itself.
+    // This is a technical debt to have this function.
+    const suffix = getSetupSuffixForDataSource(ds);
+    if (suffix) {
+      return `${CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name} (${suffix})`;
+    }
+    return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
   } else {
     return ds.name;
   }
@@ -74,12 +79,10 @@ export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
 
 export function isRemoteDatabase(ds: DataSource): ds is DataSource &
   WithConnector & {
-    connectorProvider: "snowflake" | "bigquery" | "salesforce";
+    connectorProvider: "snowflake" | "bigquery";
   } {
   return (
-    ds.connectorProvider === "snowflake" ||
-    ds.connectorProvider === "bigquery" ||
-    ds.connectorProvider === "salesforce"
+    ds.connectorProvider === "snowflake" || ds.connectorProvider === "bigquery"
   );
 }
 
@@ -90,7 +93,13 @@ const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
   "salesforce",
 ];
 
-export function supportsDocumentsData(ds: DataSource): boolean {
+export function supportsDocumentsData(
+  ds: DataSource,
+  featureFlags: WhitelistableFeature[]
+): boolean {
+  if (ds.connectorProvider === "salesforce") {
+    return featureFlags.includes("salesforce_synced_queries");
+  }
   return !isRemoteDatabase(ds);
 }
 

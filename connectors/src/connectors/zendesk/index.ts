@@ -1,10 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import type {
   CreateConnectorErrorCode,
@@ -48,14 +43,28 @@ import {
 } from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+
+const SYNC_UNRESOLVED_TICKETS_CONFIG_KEY =
+  "zendeskSyncUnresolvedTicketsEnabled";
+const HIDE_CUSTOMER_DETAILS_CONFIG_KEY = "zendeskHideCustomerDetails";
+export const RETENTION_PERIOD_CONFIG_KEY = "zendeskRetentionPeriodDays";
+const MAX_RETENTION_DAYS = 365;
+const DEFAULT_RETENTION_DAYS = 180;
 
 export class ZendeskConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "zendesk";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -83,7 +92,12 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
       },
-      { subdomain, retentionPeriodDays: 180, syncUnresolvedTickets: false }
+      {
+        subdomain,
+        retentionPeriodDays: DEFAULT_RETENTION_DAYS,
+        syncUnresolvedTickets: false,
+        hideCustomerDetails: false,
+      }
     );
     const loggerArgs = {
       workspaceId: dataSourceConfig.workspaceId,
@@ -170,7 +184,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
       // if the connector was previously paused, unpause it.
       if (connector.isPaused()) {
-        await this.unpause();
+        await this.unpauseAndResume();
       }
     }
     return new Ok(connector.id.toString());
@@ -273,7 +287,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
     // launching an incremental workflow taking the diff starting from the given timestamp
     if (fromTs) {
-      const cursors = await ZendeskTimestampCursor.findOne({
+      const cursors = await ZendeskTimestampCursorModel.findOne({
         where: { connectorId },
       });
       if (!cursors) {
@@ -285,7 +299,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       const result = await launchZendeskSyncWorkflow(connector);
       return result.isErr() ? result : new Ok(connector.id.toString());
     } else {
-      await ZendeskTimestampCursor.destroy({ where: { connectorId } });
+      await ZendeskTimestampCursorModel.destroy({ where: { connectorId } });
     }
 
     // launching a full sync workflow otherwise
@@ -339,6 +353,15 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       // Unhandled error, throwing to get a 500.
       throw e;
     }
+  }
+
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
   }
 
   /**
@@ -520,29 +543,95 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       throw new Error("[Zendesk] Connector not found.");
     }
 
-    switch (configKey) {
-      case "zendeskSyncUnresolvedTicketsEnabled": {
-        const zendeskConfiguration =
-          await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
-        if (!zendeskConfiguration) {
-          logger.error({ connectorId }, "[Zendesk] Configuration not found.");
-          throw new Error(
-            "Error retrieving Zendesk configuration to update connector configuration."
-          );
-        }
+    const zendeskConfiguration =
+      await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+    if (!zendeskConfiguration) {
+      logger.error({ connectorId }, "[Zendesk] Configuration not found.");
+      throw new Error("[Zendesk] Configuration not found.");
+    }
 
+    switch (configKey) {
+      case SYNC_UNRESOLVED_TICKETS_CONFIG_KEY: {
         await zendeskConfiguration.update({
           syncUnresolvedTickets: configValue === "true",
         });
-
-        const result = await launchZendeskTicketReSyncWorkflow(connector);
+        const result = await launchZendeskTicketReSyncWorkflow(connector, {
+          forceResync: true,
+        });
         if (result.isErr()) {
           return result;
         }
-
         return new Ok(undefined);
       }
+      case HIDE_CUSTOMER_DETAILS_CONFIG_KEY: {
+        await zendeskConfiguration.update({
+          hideCustomerDetails: configValue === "true",
+        });
+        // We need to full sync since this affects tickets and articles.
+        const result = await this.sync({ fromTs: null });
+        if (result.isErr()) {
+          return result;
+        }
+        return new Ok(undefined);
+      }
+      case RETENTION_PERIOD_CONFIG_KEY: {
+        const retentionDays = parseInt(configValue.trim(), 10);
+        if (
+          configValue.trim() !== "" &&
+          (isNaN(retentionDays) || retentionDays < 0)
+        ) {
+          return new Err(
+            new Error(
+              "Retention period must be a non-negative integer or empty to use default."
+            )
+          );
+        }
+        if (retentionDays > MAX_RETENTION_DAYS) {
+          return new Err(
+            new Error(
+              `Retention period cannot exceed ${MAX_RETENTION_DAYS} days.`
+            )
+          );
+        }
 
+        const finalRetentionDays =
+          configValue.trim() === "" ? DEFAULT_RETENTION_DAYS : retentionDays;
+
+        logger.info(
+          { connectorId, retentionDays },
+          "[Zendesk] Setting retention period"
+        );
+
+        const { retentionPeriodDays: currentRetentionDays } =
+          zendeskConfiguration;
+
+        await zendeskConfiguration.update({
+          retentionPeriodDays: finalRetentionDays,
+        });
+
+        // Triggers a ticket sync for a Zendesk connector when retention period is increased.
+        if (finalRetentionDays > currentRetentionDays) {
+          const syncResult = await launchZendeskTicketReSyncWorkflow(
+            connector,
+            {
+              forceResync: false,
+            }
+          );
+
+          if (syncResult.isErr()) {
+            logger.error(
+              { connectorId, error: syncResult.error },
+              "[Zendesk] Failed to execute ticket sync"
+            );
+            return syncResult;
+          }
+          logger.info(
+            { connectorId, workflowId: syncResult.value },
+            "[Zendesk] Successfully executed ticket sync"
+          );
+        }
+        return new Ok(undefined);
+      }
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
@@ -557,57 +646,30 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
-      throw new Error(`Connector not found (connectorId: ${connectorId})`);
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      throw new Error("[Zendesk] Connector not found.");
+    }
+
+    const zendeskConfiguration =
+      await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+    if (!zendeskConfiguration) {
+      logger.error({ connectorId }, "[Zendesk] Configuration not found.");
+      throw new Error("[Zendesk] Configuration not found.");
     }
 
     switch (configKey) {
-      case "zendeskSyncUnresolvedTicketsEnabled": {
-        const zendeskConfiguration =
-          await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
-        if (!zendeskConfiguration) {
-          logger.error({ connectorId }, "[Zendesk] Configuration not found.");
-          return new Err(
-            new Error(
-              "Error retrieving Zendesk configuration to get connector configuration."
-            )
-          );
-        }
-
+      case SYNC_UNRESOLVED_TICKETS_CONFIG_KEY: {
         return new Ok(zendeskConfiguration.syncUnresolvedTickets.toString());
+      }
+      case HIDE_CUSTOMER_DETAILS_CONFIG_KEY: {
+        return new Ok(zendeskConfiguration.hideCustomerDetails.toString());
+      }
+      case RETENTION_PERIOD_CONFIG_KEY: {
+        return new Ok(zendeskConfiguration.retentionPeriodDays.toString());
       }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
-  }
-
-  /**
-   * Marks the connector as paused in db and stops all workflows.
-   */
-  async pause(): Promise<Result<undefined, Error>> {
-    const { connectorId } = this;
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      throw new Error("[Zendesk] Connector not found.");
-    }
-    await connector.markAsPaused();
-    return this.stop();
-  }
-
-  /**
-   * Marks the connector as unpaused in db and restarts the workflows.
-   * Does not trigger full syncs, only restart the incremental and gc workflows.
-   */
-  async unpause(): Promise<Result<undefined, Error>> {
-    const { connectorId } = this;
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      throw new Error("[Zendesk] Connector not found.");
-    }
-    await connector.markAsUnpaused();
-    // launch a gc and an incremental workflow (sync workflow without signals).
-    return this.resume();
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

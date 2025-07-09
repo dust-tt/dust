@@ -1,10 +1,10 @@
 import { SliderToggle, Spinner } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import React, { useState } from "react";
 import { useSWRConfig } from "swr/_internal";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type { KillSwitchType } from "@app/lib/poke/types";
 import { usePokeKillSwitches } from "@app/poke/swr/kill";
@@ -37,10 +37,6 @@ const KillPage = () => {
     save_data_source_views: {
       title: "Data Source Views",
       description: "Disable saving of data source views",
-    },
-    disable_hybrid_events: {
-      title: "Hybrid Events",
-      description: "Disable hybrid events",
     },
   };
 
@@ -143,7 +139,7 @@ const KillPage = () => {
 };
 
 KillPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+  return <PokeLayout title="Kill Switches">{page}</PokeLayout>;
 };
 
 export default KillPage;

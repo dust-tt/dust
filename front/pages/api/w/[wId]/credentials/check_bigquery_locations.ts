@@ -1,5 +1,3 @@
-import type { APIErrorType, WithAPIErrorResponse } from "@dust-tt/types";
-import { CheckBigQueryCredentialsSchema, removeNulls } from "@dust-tt/types";
 import { BigQuery } from "@google-cloud/bigquery";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -9,6 +7,12 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { APIErrorType, WithAPIErrorResponse } from "@app/types";
+import {
+  CheckBigQueryCredentialsSchema,
+  normalizeError,
+  removeNulls,
+} from "@app/types";
 
 const PostCheckBigQueryRegionsRequestBodySchema = t.type({
   credentials: CheckBigQueryCredentialsSchema,
@@ -122,12 +126,11 @@ async function handler(
       ),
     });
   } catch (err) {
-    const error = err as Error;
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error" as APIErrorType,
-        message: `Failed to check BigQuery locations: ${error.message}`,
+        message: `Failed to check BigQuery locations: ${normalizeError(err).message}`,
       },
     });
   }

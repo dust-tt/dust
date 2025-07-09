@@ -1,49 +1,105 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug core-api",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=core-api",
-                    "--manifest-path=${workspaceFolder}/core/Cargo.toml"
-                ],
-                "filter": {
-                    "name": "core-api",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-        },
-        {
-            "type": "node-terminal",
-            "name": "Debug Current TS File (npx tsx)",
-            "request": "launch",
-            "command": "npx tsx -- ${fileBasenameNoExtension}",
-            "cwd": "${fileDirname}",
-            "envFile": "${workspaceFolder}/front/.env.local",
-          },
-          {
-            "type": "node-terminal",
-            "name": "Debug connectors server",
-            "request": "launch",
-            "command": "npm start",
-            "cwd": "${workspaceFolder}/connectors",
-            "envFile": "${workspaceFolder}/connectors/.env.local",
-          },
-          {
-            "type": "node-terminal",
-            "name": "Debug front server",
-            "request": "launch",
-            "command": "npm run dev",
-            "cwd": "${workspaceFolder}/front",
-            "envFile": "${workspaceFolder}/front/.env.local",
-          }
-    ]
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug core-api",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=core-api",
+          "--manifest-path=${workspaceFolder}/core/Cargo.toml"
+        ],
+        "filter": {
+          "name": "core-api",
+          "kind": "bin"
+        }
+      },
+      "args": []
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug sqlite worker",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=sqlite-worker",
+          "--manifest-path=${workspaceFolder}/core/Cargo.toml"
+        ],
+        "filter": {
+          "name": "sqlite-worker",
+          "kind": "bin"
+        }
+      },
+      "args": []
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug migration",
+      "cargo": {
+        "args": [
+          "build",
+          "--bin=backfill_tables_gcs_files",
+          "--manifest-path=${workspaceFolder}/core/Cargo.toml"
+        ],
+        "filter": {
+          "name": "backfill_tables_gcs_files",
+          "kind": "bin"
+        }
+      },
+      "args": [
+        "--start-cursor",
+        "0",
+        "--batch-size",
+        "3",
+        "--skip-confirmation"
+      ]
+    },
+    {
+      "type": "node-terminal",
+      "name": "Debug Current TS File (npx tsx)",
+      "request": "launch",
+      "command": "npx tsx -- ${fileBasenameNoExtension}",
+      "cwd": "${fileDirname}",
+      "envFile": "${workspaceFolder}/front/.env.local"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Debug connectors worker",
+      "request": "launch",
+      "command": "npm run start:worker",
+      "cwd": "${workspaceFolder}/connectors",
+      "envFile": "${workspaceFolder}/connectors/.env.local"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Debug connectors server",
+      "request": "launch",
+      "command": "npm run start:web",
+      "cwd": "${workspaceFolder}/connectors",
+      "envFile": "${workspaceFolder}/connectors/.env.local"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Debug front server",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/front",
+      "envFile": "${workspaceFolder}/front/.env.local"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Debug front worker",
+      "request": "launch",
+      "command": "npm run start:worker",
+      "cwd": "${workspaceFolder}/front",
+      "envFile": "${workspaceFolder}/front/.env.local"
+    }
+  ]
 }

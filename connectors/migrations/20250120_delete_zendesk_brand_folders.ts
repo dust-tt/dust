@@ -1,4 +1,3 @@
-import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
@@ -14,6 +13,7 @@ import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const FOLDER_CONCURRENCY = 10;
 
@@ -51,7 +51,7 @@ async function migrateConnector(
           parents: [helpCenterNode.internalId],
           parentId: null,
           title: helpCenterNode.title,
-          mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+          mimeType: INTERNAL_MIME_TYPES.ZENDESK.HELP_CENTER,
         });
 
         const ticketsNode = brand.getTicketsContentNode(connectorId, {
@@ -63,7 +63,7 @@ async function migrateConnector(
           parents: [ticketsNode.internalId],
           parentId: null,
           title: ticketsNode.title,
-          mimeType: MIME_TYPES.ZENDESK.TICKETS,
+          mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKETS,
         });
       },
       { concurrency: FOLDER_CONCURRENCY }
@@ -89,7 +89,7 @@ async function migrateConnector(
           parents,
           parentId: parents[1],
           title: category.name,
-          mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+          mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
         });
       },
       { concurrency: FOLDER_CONCURRENCY }

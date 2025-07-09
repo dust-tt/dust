@@ -1,15 +1,15 @@
-import type {
-  FileStatus,
-  FileUseCase,
-  FileUseCaseMetadata,
-  SupportedFileContentType,
-} from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type {
+  FileStatus,
+  FileUseCase,
+  FileUseCaseMetadata,
+  SupportedFileContentType,
+} from "@app/types";
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare createdAt: CreationOptional<Date>;
@@ -38,7 +38,7 @@ FileModel.init(
       allowNull: false,
     },
     fileName: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(4096),
       allowNull: false,
     },
     fileSize: {
@@ -67,7 +67,10 @@ FileModel.init(
   {
     modelName: "files",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["workspaceId", "id"] }],
+    indexes: [
+      { fields: ["workspaceId", "id"] },
+      { fields: ["workspaceId", "userId"] },
+    ],
   }
 );
 UserModel.hasMany(FileModel, {

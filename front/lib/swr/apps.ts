@@ -1,13 +1,6 @@
-import type {
-  AppType,
-  LightWorkspaceType,
-  RunRunType,
-  SpaceType,
-} from "@dust-tt/types";
-import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_app_secrets";
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
@@ -15,6 +8,12 @@ import type { GetAppsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId
 import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs";
 import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
+import type {
+  AppType,
+  LightWorkspaceType,
+  RunRunType,
+  SpaceType,
+} from "@app/types";
 
 export function useApps({
   disabled,
@@ -36,7 +35,7 @@ export function useApps({
   );
 
   return {
-    apps: useMemo(() => (data ? data.apps : []), [data]),
+    apps: data?.apps ?? emptyArray(),
     isAppsLoading: !error && !data,
     isAppsError: !!error,
     mutateApps: mutate,
@@ -96,7 +95,7 @@ export function useDustAppSecrets(owner: LightWorkspaceType) {
   );
 
   return {
-    secrets: useMemo(() => (data ? data.secrets : []), [data]),
+    secrets: data?.secrets ?? emptyArray(),
     isSecretsLoading: !error && !data,
     isSecretsError: error,
   };
@@ -118,7 +117,7 @@ export function useRuns(
   const { data, error } = useSWRWithDefaults(url, runsFetcher);
 
   return {
-    runs: useMemo(() => (data ? data.runs : []), [data]),
+    runs: data?.runs ?? emptyArray(),
     total: data ? data.total : 0,
     isRunsLoading: !error && !data,
     isRunsError: error,
@@ -143,22 +142,26 @@ export function useProviders({
   );
 
   return {
-    providers: useMemo(() => (data ? data.providers : []), [data]),
+    providers: data?.providers ?? emptyArray(),
     isProvidersLoading: !error && !data,
     isProvidersError: error,
   };
 }
+
 export function useKeys(owner: LightWorkspaceType) {
   const keysFetcher: Fetcher<GetKeysResponseBody> = fetcher;
   const { data, error, isValidating } = useSWRWithDefaults(
     `/api/w/${owner.sId}/keys`,
-    keysFetcher
+    keysFetcher,
+    {
+      revalidateOnFocus: false,
+    }
   );
 
   return {
     isKeysError: error,
     isKeysLoading: !error && !data,
     isValidating,
-    keys: useMemo(() => (data ? data.keys : []), [data]),
+    keys: data?.keys ?? emptyArray(),
   };
 }

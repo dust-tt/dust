@@ -1,16 +1,15 @@
-import type { ModelId } from "@dust-tt/types";
 import assert from "assert";
 import { Op, QueryTypes } from "sequelize";
 
 import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
-import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
   UserMetadataModel,
   UserModel,
 } from "@app/lib/resources/storage/models/user";
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -21,6 +20,7 @@ import type {
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
+import type { ModelId } from "@app/types";
 
 export async function readCoreEntitiesFromSourceRegion({
   destRegion,
@@ -40,7 +40,7 @@ export async function readCoreEntitiesFromSourceRegion({
   localLogger.info("[SQL Core Entities] Reading core entities.");
 
   // Find the raw workspace.
-  const workspace = await Workspace.findOne({
+  const workspace = await WorkspaceModel.findOne({
     where: {
       sId: workspaceId,
     },
@@ -150,6 +150,7 @@ export async function readFrontTableChunk({
   sourceRegion,
   tableName,
   workspaceId,
+  fileName,
 }: ReadTableChunkParams) {
   const localLogger = logger.child({
     destRegion,
@@ -157,6 +158,7 @@ export async function readFrontTableChunk({
     sourceRegion,
     tableName,
     workspaceId,
+    fileName,
   });
 
   localLogger.info("[SQL Table] Reading table chunk");
@@ -190,6 +192,7 @@ export async function readFrontTableChunk({
     workspaceId,
     type: "front",
     operation: `read_table_chunk_${tableName}`,
+    fileName,
   });
 
   localLogger.info(

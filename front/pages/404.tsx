@@ -16,17 +16,17 @@ export default function Custom404() {
     <div className="flex h-screen items-center justify-center">
       <div className="flex flex-col gap-3 text-center">
         <div>
-          <span className="text-4xl font-normal leading-10 text-foreground dark:text-foreground-night">
+          <span className="text-4xl leading-10 text-foreground dark:text-foreground-night">
             ☕️
           </span>
-          <p className="text-xl font-bold leading-7 text-foreground dark:text-foreground-night">
+          <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
             404: Page not found
           </p>
-          <p className="text-sm font-normal leading-tight text-muted-foreground dark:text-muted-foreground-night">
+          <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
             Looks like this page took an unscheduled coffee break.
           </p>
           {currentURL && (
-            <p className="mt-2 text-xs text-slate-400 dark:text-slate-400-night">
+            <p className="mt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
               Attempted URL: {currentURL}
             </p>
           )}

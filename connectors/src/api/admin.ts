@@ -1,15 +1,12 @@
-import type {
-  AdminCommandType,
-  AdminResponseType,
-  WithConnectorsAPIErrorReponse,
-} from "@dust-tt/types";
-import { AdminCommandSchema } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
 import { runCommand } from "@connectors/lib/cli";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import type { AdminCommandType, AdminResponseType } from "@connectors/types";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { AdminCommandSchema } from "@connectors/types";
 
 const whitelistedCommands = [
   {
@@ -33,6 +30,14 @@ const whitelistedCommands = [
     command: "upsert-database",
   },
   {
+    majorCommand: "notion",
+    command: "clear-parents-last-updated-at",
+  },
+  {
+    majorCommand: "notion",
+    command: "update-orphaned-resources-parents",
+  },
+  {
     majorCommand: "slack",
     command: "whitelist-bot",
   },
@@ -47,6 +52,14 @@ const whitelistedCommands = [
   {
     majorCommand: "zendesk",
     command: "fetch-ticket",
+  },
+  {
+    majorCommand: "webcrawler",
+    command: "update-frequency",
+  },
+  {
+    majorCommand: "confluence",
+    command: "check-page-exists",
   },
 ];
 

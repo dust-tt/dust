@@ -5,8 +5,10 @@ export {
   AssistantCardMore,
   LargeAssistantCard,
 } from "./AssistantCard";
+export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
+export type { BreadcrumbItem } from "./Breadcrumbs";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type {
   ButtonProps,
@@ -31,7 +33,6 @@ export {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./Collapsible";
-export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
 export { ContentMessage } from "./ContentMessage";
@@ -44,7 +45,7 @@ export {
 } from "./ConversationMessage";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
-export { DataTable } from "./DataTable";
+export { DataTable, ScrollableDataTable } from "./DataTable";
 export {
   Dialog,
   DialogClose,
@@ -75,6 +76,8 @@ export {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  DropdownMenuTagItem,
+  DropdownMenuTagList,
   DropdownMenuTrigger,
 } from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
@@ -84,30 +87,40 @@ export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
 export { FilterChips } from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
-export { Icon } from "./Icon";
+export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
-export { IconToggleButton } from "./IconToggleButton";
 export { Input } from "./Input";
+export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
+export {
+  MultiPageSheet,
+  MultiPageSheetClose,
+  MultiPageSheetContent,
+  type MultiPageSheetPage,
+  type MultiPageSheetProps,
+  MultiPageSheetTrigger,
+} from "./MultiPageSheet";
 export * from "./NavigationList";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
+export { ColorPicker, IconPicker } from "./Picker";
 export {
+  AnchoredPopover,
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverPortal,
   PopoverRoot,
   PopoverTrigger,
 } from "./Popover";
-export { Popup } from "./Popup";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
@@ -117,6 +130,7 @@ export {
   ResizablePanelGroup,
 } from "./Resizable";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
+export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
 export { Separator } from "./Separator";
 export {

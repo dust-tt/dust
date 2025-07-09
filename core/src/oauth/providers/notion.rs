@@ -2,6 +2,7 @@ use crate::oauth::{
     connection::{
         Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
     },
+    credential::Credential,
     providers::utils::execute_request,
 };
 use anyhow::{anyhow, Result};
@@ -14,6 +15,29 @@ use std::env;
 lazy_static! {
     static ref OAUTH_NOTION_CLIENT_ID: String = env::var("OAUTH_NOTION_CLIENT_ID").unwrap();
     static ref OAUTH_NOTION_CLIENT_SECRET: String = env::var("OAUTH_NOTION_CLIENT_SECRET").unwrap();
+    static ref OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_ID: String =
+        env::var("OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_ID").unwrap();
+    static ref OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_SECRET: String =
+        env::var("OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_SECRET").unwrap();
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum NotionUseCase {
+    Connection,
+    PlatformActions,
+}
+
+impl NotionUseCase {
+    pub fn from_str(s: Option<&str>) -> Result<Self> {
+        match s {
+            Some("connection") | None => Ok(NotionUseCase::Connection),
+            Some("platform_actions") => Ok(NotionUseCase::PlatformActions),
+            Some(other) => Err(anyhow!(format!(
+                "Notion use_case format invalid: {}",
+                other
+            ))),
+        }
+    }
 }
 
 pub struct NotionConnectionProvider {}
@@ -23,11 +47,15 @@ impl NotionConnectionProvider {
         NotionConnectionProvider {}
     }
 
-    fn basic_auth(&self) -> String {
-        general_purpose::STANDARD.encode(&format!(
-            "{}:{}",
-            *OAUTH_NOTION_CLIENT_ID, *OAUTH_NOTION_CLIENT_SECRET
-        ))
+    fn basic_auth(&self, use_case: &NotionUseCase) -> String {
+        let (client_id, client_secret) = match use_case {
+            NotionUseCase::PlatformActions => (
+                &*OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_ID,
+                &*OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_SECRET,
+            ),
+            NotionUseCase::Connection => (&*OAUTH_NOTION_CLIENT_ID, &*OAUTH_NOTION_CLIENT_SECRET),
+        };
+        general_purpose::STANDARD.encode(&format!("{}:{}", client_id, client_secret))
     }
 }
 
@@ -39,21 +67,27 @@ impl Provider for NotionConnectionProvider {
 
     async fn finalize(
         &self,
-        _connection: &Connection,
+        connection: &Connection,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
+        let use_case = NotionUseCase::from_str(connection.metadata()["use_case"].as_str())?;
         let body = json!({
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": redirect_uri,
         });
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://api.notion.com/v1/oauth/token")
             .header("Accept", "application/json")
             .header("Content-Type", "application/json")
-            .header("Authorization", format!("Basic {}", self.basic_auth()))
+            .header(
+                "Authorization",
+                format!("Basic {}", self.basic_auth(&use_case)),
+            )
             .json(&body);
 
         let raw_json = execute_request(ConnectionProvider::Notion, req)
@@ -72,10 +106,15 @@ impl Provider for NotionConnectionProvider {
             access_token_expiry: None,
             refresh_token: None,
             raw_json,
+            extra_metadata: None,
         })
     }
 
-    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        _connection: &Connection,
+        _related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         Err(ProviderError::ActionNotSupportedError(
             "Notion access tokens do not expire".to_string(),
         ))?

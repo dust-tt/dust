@@ -1,28 +1,36 @@
-import type {
-  ConnectorType,
-  Result,
-  WithConnectorsAPIErrorReponse,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  ConnectorCreateRequestBodySchema,
-  ioTsParsePayload,
-  isConnectorProvider,
-  normalizeError,
-  SlackConfigurationTypeSchema,
-  WebCrawlerConfigurationTypeSchema,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, isConnectorProvider } from "@dust-tt/client";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { createConnector } from "@connectors/connectors";
-import type { CreateConnectorErrorCode } from "@connectors/connectors/interface";
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
+import type {
+  ConnectorManagerError,
+  CreateConnectorErrorCode,
+} from "@connectors/connectors/interface";
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ConnectorType } from "@connectors/types";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import {
+  ioTsParsePayload,
+  SlackConfigurationTypeSchema,
+  WebCrawlerConfigurationTypeSchema,
+} from "@connectors/types";
+import { ConnectorConfigurationTypeSchema } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
+
+const ConnectorCreateRequestBodySchema = t.type({
+  workspaceAPIKey: t.string,
+  dataSourceId: t.string,
+  workspaceId: t.string,
+  connectionId: t.string,
+  configuration: ConnectorConfigurationTypeSchema,
+});
 
 type ConnectorCreateResBody = WithConnectorsAPIErrorReponse<ConnectorType>;
 
@@ -97,7 +105,8 @@ const _createConnectorAPIHandler = async (
         break;
       }
 
-      case "slack": {
+      case "slack":
+      case "slack_bot": {
         const configurationRes = ioTsParsePayload(
           configuration,
           SlackConfigurationTypeSchema
@@ -112,7 +121,7 @@ const _createConnectorAPIHandler = async (
           });
         }
         connectorRes = await createConnector({
-          connectorProvider: "slack",
+          connectorProvider: req.params.connector_provider,
           params: {
             configuration: configurationRes.value,
             dataSourceConfig: {
@@ -135,7 +144,8 @@ const _createConnectorAPIHandler = async (
       case "bigquery":
       case "zendesk":
       case "microsoft":
-      case "salesforce": {
+      case "salesforce":
+      case "gong": {
         connectorRes = await createConnector({
           connectorProvider: req.params.connector_provider,
           params: {

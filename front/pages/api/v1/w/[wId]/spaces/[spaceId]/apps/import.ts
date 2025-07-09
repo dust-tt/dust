@@ -1,6 +1,5 @@
 import type { ImportAppsResponseType } from "@dust-tt/client";
 import { PostAppsRequestSchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -10,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { importApps } from "@app/lib/utils/apps";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 /**
  * @ignoreswagger

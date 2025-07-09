@@ -1,10 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 import { Client } from "@microsoft/microsoft-graph-client";
 
 import type {
@@ -52,16 +47,23 @@ import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import logger, { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   MicrosoftConfigurationResource,
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
+  readonly provider: ConnectorProvider = "microsoft";
+
   static async create({
     dataSourceConfig,
     connectionId,
@@ -73,7 +75,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     try {
       // Sanity checks - check connectivity and permissions. User should be able to access the sites and teams list.
-      await getSites(client);
+      await getSites(logger, client);
     } catch (err) {
       logger.error(
         {
@@ -124,11 +126,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     // Check that we don't switch tenants
     if (connectionId) {
       try {
+        const logger = getActivityLogger(connector);
         const client = await getClient(connector.connectionId);
-        const currentOrg = await clientApiGet(client, "/organization");
+        const currentOrg = await clientApiGet(logger, client, "/organization");
 
         const newClient = await getClient(connectionId);
-        const newOrg = await clientApiGet(newClient, "/organization");
+        const newOrg = await clientApiGet(logger, newClient, "/organization");
 
         if (
           !currentOrg?.value ||
@@ -162,7 +165,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
       // If connector was previously paused, unpause it.
       if (connector.isPaused()) {
-        await this.unpause();
+        await this.unpauseAndResume();
       }
     }
 
@@ -216,6 +219,8 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
+    const logger = getActivityLogger(connector);
+
     const isTablesView = viewType === "table";
     if (filterPermission === "read" || isTablesView) {
       if (!parentInternalId) {
@@ -268,21 +273,21 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       switch (nodeType) {
         case "sites-root": {
           const sites = await getAllPaginatedEntities((nextLink) =>
-            getSites(client, nextLink)
+            getSites(logger, client, nextLink)
           );
           nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
           break;
         }
         case "teams-root": {
           const teams = await getAllPaginatedEntities((nextLink) =>
-            getTeams(client, nextLink)
+            getTeams(logger, client, nextLink)
           );
           nodes.push(...teams.map((n) => getTeamAsContentNode(n)));
           break;
         }
         case "team": {
           const channels = await getAllPaginatedEntities((nextLink) =>
-            getChannels(client, parentInternalId, nextLink)
+            getChannels(logger, client, parentInternalId, nextLink)
           );
           nodes.push(
             ...channels.map((n) => getChannelAsContentNode(n, parentInternalId))
@@ -291,10 +296,10 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         }
         case "site": {
           const subSites = await getAllPaginatedEntities((nextLink) =>
-            getSubSites(client, parentInternalId, nextLink)
+            getSubSites(logger, client, parentInternalId, nextLink)
           );
           const drives = await getAllPaginatedEntities((nextLink) =>
-            getDrives(client, parentInternalId, nextLink)
+            getDrives(logger, client, parentInternalId, nextLink)
           );
           nodes.push(
             ...subSites.map((n) => getSiteAsContentNode(n, parentInternalId)),
@@ -305,7 +310,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         case "drive":
         case "folder": {
           const filesAndFolders = await getAllPaginatedEntities((nextLink) =>
-            getFilesAndFolders(client, parentInternalId, nextLink)
+            getFilesAndFolders(logger, client, parentInternalId, nextLink)
           );
           const folders = filesAndFolders.filter((n) => n.folder);
           nodes.push(
@@ -355,6 +360,15 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       // Unanhdled error, throwing to get a 500.
       throw e;
     }
+  }
+
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
   }
 
   async setPermissions({
@@ -568,48 +582,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
-  }
-
-  async pause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsPaused();
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
-    return new Ok(undefined);
-  }
-
-  async unpause(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Connector not found with id ${this.connectorId}`)
-      );
-    }
-    await connector.markAsUnpaused();
-    const r = await launchMicrosoftFullSyncWorkflow(this.connectorId);
-    if (r.isErr()) {
-      return r;
-    }
-
-    const gcRes = await launchMicrosoftGarbageCollectionWorkflow(
-      this.connectorId
-    );
-
-    if (gcRes.isErr()) {
-      return gcRes;
-    }
-
-    const incrementalSync = await launchMicrosoftIncrementalSyncWorkflow(
-      this.connectorId
-    );
-    if (incrementalSync.isErr()) {
-      return incrementalSync;
-    }
-    return new Ok(undefined);
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {

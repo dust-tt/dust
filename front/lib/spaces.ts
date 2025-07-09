@@ -1,21 +1,25 @@
 import {
   CloudArrowLeftRightIcon,
   CommandLineIcon,
+  CompanyIcon,
   FolderIcon,
   GlobeAltIcon,
   LockIcon,
   PlanetIcon,
   ServerIcon,
 } from "@dust-tt/sparkle";
+import { groupBy } from "lodash";
+import type React from "react";
+
+import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import type {
   DataSourceViewCategory,
   PlanType,
   SpaceType,
+  WhitelistableFeature,
   WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import { groupBy } from "lodash";
-import type React from "react";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 const SPACE_SECTION_GROUP_ORDER = [
   "system",
@@ -37,11 +41,15 @@ export function getSpaceIcon(
     return LockIcon;
   }
 
+  if (space.kind === "global") {
+    return CompanyIcon;
+  }
+
   return ServerIcon;
 }
 
 export const getSpaceName = (space: SpaceType) => {
-  return space.kind === "global" ? "Company Data" : space.name;
+  return space.kind === "global" ? "Company Space" : space.name;
 };
 
 export const dustAppsListUrl = (
@@ -100,6 +108,7 @@ export const CATEGORY_DETAILS: {
     icon: React.ComponentType<{
       className?: string;
     }>;
+    flag?: WhitelistableFeature;
   };
 } = {
   managed: {
@@ -118,4 +127,18 @@ export const CATEGORY_DETAILS: {
     label: "Apps",
     icon: CommandLineIcon,
   },
+  actions: {
+    label: "Tools",
+    icon: MCP_SPECIFICATION.cardIcon,
+  },
+};
+
+export const getSpaceAccessPriority = (space: SpaceType) => {
+  if (space.kind === "global") {
+    return 2;
+  }
+  if (!space.isRestricted) {
+    return 1;
+  }
+  return 0;
 };

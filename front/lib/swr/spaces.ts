@@ -1,25 +1,22 @@
-import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewCategory,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  LightWorkspaceType,
-  SearchWarningCode,
-  SpaceType,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
 import {
+  emptyArray,
   fetcher,
   fetcherWithBody,
   getErrorFromResponse,
+  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type {
+  DataSourceContentNode,
+  PostWorkspaceSearchResponseBody,
+} from "@app/pages/api/w/[wId]/search";
 import type {
   GetSpacesResponseBody,
   PostSpacesResponseBody,
@@ -32,9 +29,14 @@ import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
-  PostSpaceSearchRequestBody,
-  PostSpaceSearchResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
+  ContentNodesViewType,
+  DataSourceViewCategoryWithoutApps,
+  DataSourceViewType,
+  LightWorkspaceType,
+  SearchWarningCode,
+  SpaceType,
+} from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 export function useSpaces({
   workspaceId,
@@ -52,7 +54,7 @@ export function useSpaces({
   );
 
   return {
-    spaces: useMemo(() => (data ? data.spaces : []), [data]),
+    spaces: data?.spaces ?? emptyArray(),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
@@ -75,7 +77,7 @@ export function useSpacesAsAdmin({
   );
 
   return {
-    spaces: useMemo(() => (data ? data.spaces : []), [data]),
+    spaces: data?.spaces ?? emptyArray(),
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
@@ -145,7 +147,7 @@ export function useSpaceDataSourceViews({
   spaceId,
   workspaceId,
 }: {
-  category?: Exclude<DataSourceViewCategory, "apps">;
+  category?: DataSourceViewCategoryWithoutApps;
   disabled?: boolean;
   spaceId: string;
   workspaceId: string;
@@ -166,13 +168,8 @@ export function useSpaceDataSourceViews({
       { disabled }
     );
 
-  const spaceDataSourceViews = useMemo(() => {
-    return (data?.dataSourceViews ??
-      []) as GetSpaceDataSourceViewsResponseBody<false>["dataSourceViews"];
-  }, [data]);
-
   return {
-    spaceDataSourceViews,
+    spaceDataSourceViews: data?.dataSourceViews ?? emptyArray(),
     mutate,
     mutateRegardlessOfQueryParams,
     isSpaceDataSourceViewsLoading: !disabled && !error && !data,
@@ -186,7 +183,7 @@ export function useSpaceDataSourceViewsWithDetails({
   spaceId,
   workspaceId,
 }: {
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
   disabled?: boolean;
   spaceId: string;
   workspaceId: string;
@@ -208,13 +205,8 @@ export function useSpaceDataSourceViewsWithDetails({
       { disabled }
     );
 
-  const spaceDataSourceViews = useMemo(() => {
-    return (data?.dataSourceViews ??
-      []) as GetSpaceDataSourceViewsResponseBody<true>["dataSourceViews"];
-  }, [data]);
-
   return {
-    spaceDataSourceViews,
+    spaceDataSourceViews: data?.dataSourceViews ?? emptyArray(),
     mutate,
     mutateRegardlessOfQueryParams,
     isSpaceDataSourceViewsLoading: !error && !data && !disabled,
@@ -337,7 +329,7 @@ export function useDeleteFolderOrWebsite({
 }: {
   owner: LightWorkspaceType;
   spaceId: string;
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategoryWithoutApps;
 }) {
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
@@ -381,8 +373,25 @@ export function useDeleteFolderOrWebsite({
 }
 
 type DoCreateOrUpdateAllowedParams =
-  | { name: string | null; memberIds: null; isRestricted: false }
-  | { name: string | null; memberIds: string[]; isRestricted: true };
+  | {
+      name: string | null;
+      isRestricted: boolean;
+      managementMode?: never;
+    }
+  | {
+      name: string | null;
+      memberIds: string[];
+      groupIds?: never;
+      isRestricted: true;
+      managementMode: "manual";
+    }
+  | {
+      name: string | null;
+      memberIds?: never;
+      groupIds: string[];
+      isRestricted: true;
+      managementMode: "group";
+    };
 
 export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
@@ -395,31 +404,51 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate.
   });
 
-  const doCreate = async ({
-    name,
-    memberIds,
-    isRestricted,
-  }: DoCreateOrUpdateAllowedParams) => {
+  const doCreate = async (params: DoCreateOrUpdateAllowedParams) => {
+    const { name, managementMode, isRestricted } = params;
     if (!name) {
       return null;
     }
 
-    if (isRestricted && (!memberIds || memberIds?.length < 1)) {
-      return null;
-    }
-
     const url = `/api/w/${owner.sId}/spaces`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name,
-        memberIds,
-        isRestricted,
-      }),
-    });
+    let res;
+
+    if (managementMode) {
+      const { memberIds, groupIds } = params;
+
+      // Must have either memberIds or groupIds for restricted spaces
+      if (
+        (!memberIds || memberIds.length < 1) &&
+        (!groupIds || groupIds.length < 1)
+      ) {
+        return null;
+      }
+
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          memberIds,
+          groupIds,
+          managementMode,
+          isRestricted,
+        }),
+      });
+    } else {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          isRestricted,
+        }),
+      });
+    }
 
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
@@ -463,7 +492,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     space: SpaceType,
     params: DoCreateOrUpdateAllowedParams
   ) => {
-    const { name: newName, memberIds, isRestricted } = params;
+    const { name: newName, managementMode } = params;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -485,18 +514,24 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     // Prepare space members update request if provided.
     const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
-    updatePromises.push(
-      fetch(spaceMembersUrl, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          memberIds,
-          isRestricted,
-        }),
-      })
-    );
+    if (managementMode) {
+      const { memberIds, groupIds, isRestricted } = params;
+
+      updatePromises.push(
+        fetch(spaceMembersUrl, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            memberIds,
+            groupIds,
+            managementMode,
+            isRestricted,
+          }),
+        })
+      );
+    }
 
     if (updatePromises.length === 0) {
       return null;
@@ -531,7 +566,13 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
   return doUpdate;
 }
 
-export function useDeleteSpace({ owner }: { owner: LightWorkspaceType }) {
+export function useDeleteSpace({
+  owner,
+  force = false,
+}: {
+  owner: LightWorkspaceType;
+  force?: boolean;
+}) {
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
@@ -546,7 +587,7 @@ export function useDeleteSpace({ owner }: { owner: LightWorkspaceType }) {
     if (!space) {
       return false;
     }
-    const url = `/api/w/${owner.sId}/spaces/${space.sId}`;
+    const url = `/api/w/${owner.sId}/spaces/${space.sId}?force=${force}`;
     const res = await fetch(url, {
       method: "DELETE",
     });
@@ -600,49 +641,81 @@ export function useSystemSpace({
 
 const DEFAULT_SEARCH_LIMIT = 15;
 
-export function useSpaceSearch({
-  dataSourceViews,
-  disabled = false,
-  includeDataSources = false,
-  limit = DEFAULT_SEARCH_LIMIT,
-  owner,
-  search,
-  space,
-  viewType,
-}: {
-  dataSourceViews: DataSourceViewType[];
+type BaseSearchParams = {
   disabled?: boolean;
   includeDataSources: boolean;
-  limit?: number;
   owner: LightWorkspaceType;
-  search: string;
-  space: SpaceType;
+  spaceIds?: string[];
   viewType: ContentNodesViewType;
-  warningCode?: SearchWarningCode;
-}): {
+  pagination?: CursorPaginationParams;
+  allowAdminSearch?: boolean;
+  dataSourceViewIdsBySpaceId?: Record<string, string[]>;
+};
+
+// Text search variant
+type TextSearchParams = BaseSearchParams & {
+  search: string;
+  nodeIds?: undefined;
+  searchSourceUrls?: boolean;
+};
+
+// Node ID search variant
+type NodeIdSearchParams = BaseSearchParams & {
+  search?: undefined;
+  nodeIds: string[];
+  searchSourceUrls?: undefined;
+};
+
+type SpacesSearchParams = TextSearchParams | NodeIdSearchParams;
+
+export function useSpacesSearch({
+  disabled = false,
+  includeDataSources = false,
+  nodeIds,
+  owner,
+  search,
+  spaceIds,
+  viewType,
+  pagination,
+  searchSourceUrls = false,
+  allowAdminSearch = false,
+  dataSourceViewIdsBySpaceId,
+}: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
   isSearchValidating: boolean;
-  mutate: KeyedMutator<PostSpaceSearchResponseBody>;
-  searchResultNodes: DataSourceViewContentNode[];
-  total: number;
+  mutate: KeyedMutator<PostWorkspaceSearchResponseBody>;
+  searchResultNodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
+  nextPageCursor: string | null;
 } {
-  const body: PostSpaceSearchRequestBody = {
-    dataSourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
+  const params = new URLSearchParams();
+  if (pagination?.cursor) {
+    params.append("cursor", pagination.cursor);
+  }
+  if (pagination?.limit) {
+    params.append("limit", pagination.limit.toString());
+  }
+
+  const body = {
     includeDataSources,
-    limit,
+    limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
+    nodeIds,
     query: search,
+    searchSourceUrls,
+    spaceIds,
     viewType,
+    allowAdminSearch,
+    dataSourceViewIdsBySpaceId,
   };
 
-  // Only perform a query if we have a valid search.
+  // Only perform a query if we have a valid search
   const url =
-    search.length >= MIN_SEARCH_QUERY_SIZE
-      ? `/api/w/${owner.sId}/spaces/${space.sId}/search`
+    (search && search.length >= MIN_SEARCH_QUERY_SIZE) || nodeIds?.length
+      ? `/api/w/${owner.sId}/search?${params}`
       : null;
 
-  const fetchKey = [url, body];
+  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
 
   const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
     fetchKey,
@@ -661,12 +734,93 @@ export function useSpaceSearch({
   );
 
   return {
-    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
-    total: data?.total ?? 0,
+    searchResultNodes: data?.nodes ?? emptyArray(),
     isSearchLoading: isLoading,
     isSearchError: error,
     mutate,
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
+    nextPageCursor: data?.nextPageCursor || null,
+  };
+}
+
+export function useSpacesSearchWithInfiniteScroll({
+  disabled = false,
+  includeDataSources = false,
+  nodeIds,
+  owner,
+  search,
+  spaceIds,
+  viewType,
+  pageSize = 25,
+  allowAdminSearch = false,
+}: SpacesSearchParams & { pageSize?: number }): {
+  isSearchLoading: boolean;
+  isSearchError: boolean;
+  isSearchValidating: boolean;
+  searchResultNodes: DataSourceContentNode[];
+  nextPage: () => Promise<void>;
+  hasMore: boolean;
+} {
+  const body = {
+    query: search,
+    viewType,
+    nodeIds,
+    spaceIds,
+    includeDataSources,
+    limit: pageSize,
+    allowAdminSearch,
+  };
+
+  // Only perform a query if we have a valid search
+  const url =
+    (search && search.length >= 1) || nodeIds
+      ? `/api/w/${owner.sId}/search`
+      : null;
+
+  const { data, error, setSize, size, isValidating, isLoading } =
+    useSWRInfiniteWithDefaults(
+      (_, previousPageData) => {
+        if (!url || disabled) {
+          return null;
+        }
+
+        const params = new URLSearchParams();
+
+        params.append("limit", pageSize.toString());
+
+        if (previousPageData?.nextPageCursor) {
+          params.append("cursor", previousPageData.nextPageCursor);
+        }
+
+        return JSON.stringify([url + "?" + params.toString(), body]);
+      },
+      async (fetchKey: string) => {
+        if (!fetchKey) {
+          return null;
+        }
+
+        const [urlWithParams, bodyWithCursor] = JSON.parse(fetchKey);
+        return fetcherWithBody([urlWithParams, bodyWithCursor, "POST"]);
+      },
+      {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+        revalidateFirstPage: false,
+      }
+    );
+
+  return {
+    searchResultNodes: useMemo(
+      () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
+      [data]
+    ),
+    isSearchLoading: isLoading,
+    isSearchError: error,
+    isSearchValidating: isValidating,
+    hasMore: data?.[size - 1] ? data[size - 1]?.nextPageCursor !== null : false, // check the last page of the array to see if there is a next page or not
+    nextPage: useCallback(async () => {
+      await setSize((size) => size + 1);
+    }, [setSize]),
   };
 }

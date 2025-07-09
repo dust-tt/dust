@@ -6,11 +6,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -20,6 +15,11 @@ import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditio
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types";
 
 interface AssistantsDataTableProps {
   owner: LightWorkspaceType;
@@ -109,9 +109,11 @@ export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
         owner={owner}
         useSWRHook={usePokeAgentConfigurations}
       >
-        {(data) => (
+        {(data, mutate) => (
           <PokeDataTable
-            columns={makeColumnsForAssistants(owner, router.reload)}
+            columns={makeColumnsForAssistants(owner, async () => {
+              await mutate();
+            })}
             data={prepareAgentConfigurationForDisplay(data)}
           />
         )}
@@ -129,13 +131,11 @@ function RestoreAssistantModal({
   onClose: () => void;
   owner: LightWorkspaceType;
 }) {
-  const { data: archivedAssistants } = usePokeAgentConfigurations({
+  const { data: archivedAssistants, mutate } = usePokeAgentConfigurations({
     owner,
     disabled: !show,
     agentsGetView: "archived",
   });
-
-  const router = useRouter();
 
   return (
     <Sheet
@@ -153,7 +153,9 @@ function RestoreAssistantModal({
         <SheetContainer>
           {!!archivedAssistants?.length && (
             <PokeDataTable
-              columns={makeColumnsForAssistants(owner, router.reload)}
+              columns={makeColumnsForAssistants(owner, async () => {
+                await mutate();
+              })}
               data={prepareAgentConfigurationForDisplay(archivedAssistants)}
             />
           )}

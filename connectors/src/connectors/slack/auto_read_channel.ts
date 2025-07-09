@@ -1,9 +1,11 @@
-import { DustAPI } from "@dust-tt/client";
-import type { Result, SlackAutoReadPattern } from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
-import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
+import {
+  getSlackClient,
+  reportSlackUsage,
+} from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
@@ -16,6 +18,8 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { SlackAutoReadPattern } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 function findMatchingChannelPatterns(
   remoteChannelName: string,
@@ -30,7 +34,8 @@ function findMatchingChannelPatterns(
 export async function autoReadChannel(
   teamId: string,
   logger: Logger,
-  slackChannelId: string
+  slackChannelId: string,
+  provider: Extract<ConnectorProvider, "slack_bot" | "slack"> = "slack"
 ): Promise<Result<undefined, Error>> {
   const slackConfiguration =
     await SlackConfigurationResource.fetchByTeamId(teamId);
@@ -45,7 +50,16 @@ export async function autoReadChannel(
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Do not reject rate limited calls in auto read channel. Mostly calls from webhooks.
+    rejectRateLimitedCalls: false,
+  });
+
+  reportSlackUsage({
+    connectorId,
+    method: "conversations.info",
+    channelId: slackChannelId,
+  });
   const remoteChannel = await slackClient.conversations.info({
     channel: slackChannelId,
   });
@@ -72,18 +86,6 @@ export async function autoReadChannel(
       return joinChannelRes;
     }
 
-    await upsertDataSourceFolder({
-      dataSourceConfig: dataSourceConfigFromConnector(connector),
-      folderId: slackChannelInternalIdFromSlackChannelId(slackChannelId),
-      title: `#${remoteChannelName}`,
-      parentId: null,
-      parents: [slackChannelInternalIdFromSlackChannelId(slackChannelId)],
-      mimeType: MIME_TYPES.SLACK.CHANNEL,
-      sourceUrl: getSlackChannelSourceUrl(slackChannelId, slackConfiguration),
-      providerVisibility: remoteChannel.channel?.is_private
-        ? "private"
-        : "public",
-    });
     let channel: SlackChannel | null = null;
     channel = await SlackChannel.findOne({
       where: {
@@ -105,14 +107,32 @@ export async function autoReadChannel(
       });
     }
 
+    // For slack_bot context, only do the basic channel setup without data source operations
+    if (provider === "slack_bot") {
+      return new Ok(undefined);
+    }
+
+    // Slack context: perform full data source operations
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: slackChannelInternalIdFromSlackChannelId(slackChannelId),
+      title: `#${remoteChannelName}`,
+      parentId: null,
+      parents: [slackChannelInternalIdFromSlackChannelId(slackChannelId)],
+      mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
+      sourceUrl: getSlackChannelSourceUrl(slackChannelId, slackConfiguration),
+      providerVisibility: remoteChannel.channel?.is_private
+        ? "private"
+        : "public",
+    });
+
     const dustAPI = new DustAPI(
-      apiConfig.getDustAPIConfig(),
+      { url: apiConfig.getDustFrontAPIUrl() },
       {
         workspaceId: connector.workspaceId,
         apiKey: connector.workspaceAPIKey,
       },
-      logger,
-      apiConfig.getDustFrontAPIUrl()
+      logger
     );
 
     // Loop through all the matching patterns. Swallow errors and continue.

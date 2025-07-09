@@ -4,21 +4,18 @@ import {
   Sheet,
   SheetContainer,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type {
-  ContentNode,
-  DataSourceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isAdmin } from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
 
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import type { ContentNode, DataSourceType, WorkspaceType } from "@app/types";
+import { isAdmin } from "@app/types";
 
 export type SlackChannel = { slackChannelId: string; slackChannelName: string };
 
@@ -49,16 +46,15 @@ export function SlackIntegration({
 }: SlackIntegrationProps) {
   const [newSelection, setNewSelection] = useState<SlackChannel[]>([]);
   useEffect(() => {
-    if (existingSelection.length > 0 && newSelection.length === 0) {
+    if (existingSelection.length > 0) {
       setNewSelection(existingSelection);
     }
-  }, [existingSelection, newSelection]);
+  }, [existingSelection]);
 
   const customIsNodeChecked = useCallback(
     (node: ContentNode) => {
-      return (
-        newSelection?.some((c) => c.slackChannelId === node.internalId) || false
-      );
+      const channelId = node.internalId.substring("slack-channel-".length);
+      return newSelection?.some((c) => c.slackChannelId === channelId) || false;
     },
     [newSelection]
   );
@@ -104,12 +100,14 @@ export function SlackIntegration({
           Object.values(newModel).forEach((item) => {
             const { isSelected, node } = item;
             const index = newSelection.findIndex(
-              (c) => c.slackChannelId === node.internalId
+              (c) => `slack-channel-${c.slackChannelId}` === node.internalId
             );
 
             if (isSelected && index === -1) {
               newSelection.push({
-                slackChannelId: node.internalId,
+                slackChannelId: node.internalId.substring(
+                  "slack-channel-".length
+                ),
                 slackChannelName: node.title,
               });
             }
@@ -122,7 +120,6 @@ export function SlackIntegration({
         });
       }}
       showExpand={false}
-      isSearchEnabled={false}
       useResourcesHook={useResourcesHook}
     />
   );
@@ -167,6 +164,9 @@ export function SlackAssistantDefaultManager({
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Slack Integration</SheetTitle>
+          <SheetDescription>
+            Configure default Slack channels for this assistant
+          </SheetDescription>
         </SheetHeader>
         <SheetContainer>
           <div className="flex flex-col gap-4">
@@ -180,7 +180,7 @@ export function SlackAssistantDefaultManager({
             {!isAdmin(owner) && (
               <ContentMessage
                 size="md"
-                variant="pink"
+                variant="warning"
                 title="Admin Access Required"
                 icon={InformationCircleIcon}
               >

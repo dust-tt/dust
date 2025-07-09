@@ -1,23 +1,8 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
-import type {
-  ConversationType,
-  DataSourceViewCategory,
-  DataSourceViewType,
-  ModelId,
-  Result,
-  UserType,
-} from "@dust-tt/types";
-import {
-  CoreAPI,
-  Err,
-  formatUserFullName,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
 import assert from "assert";
+import { keyBy } from "lodash";
 import type {
   Attributes,
   CreationAttributes,
@@ -38,10 +23,9 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { DataSourceViewForConversation } from "@app/lib/resources/storage/models/data_source_view_conversation";
-import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -51,6 +35,17 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import type {
+  ConversationType,
+  DataSourceViewCategory,
+  DataSourceViewType,
+  ModelId,
+  Result,
+  UserType,
+} from "@app/types";
+import { CoreAPI, Err, formatUserFullName, Ok, removeNulls } from "@app/types";
+
+import type { UserResource } from "./user_resource";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -106,7 +101,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
-    conversation?: ConversationWithoutContentPublicType | null,
     transaction?: Transaction
   ) {
     const dataSourceView = await DataSourceViewResource.model.create(
@@ -125,42 +119,26 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       space
     );
     dsv.ds = dataSource;
-
-    if (conversation) {
-      // dataSourceView attached to a conversation, we create an entry in the
-      // join table
-      await DataSourceViewForConversation.create(
-        {
-          conversationId: conversation.id,
-          dataSourceViewId: dataSourceView.id,
-          workspaceId: blob.workspaceId,
-        },
-        { transaction }
-      );
-    }
-
     return dsv;
   }
 
   static async createDataSourceAndDefaultView(
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
     space: SpaceResource,
-    editedByUser?: UserType | null,
-    conversation?: ConversationWithoutContentPublicType | null,
+    editedByUser?: UserResource | null,
     transaction?: Transaction
   ) {
     const createDataSourceAndView = async (t: Transaction) => {
       const dataSource = await DataSourceResource.makeNew(
         blob,
         space,
-        editedByUser,
+        editedByUser?.toJSON(),
         t
       );
       return this.createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
         space,
         dataSource,
-        editedByUser,
-        conversation,
+        editedByUser?.toJSON(),
         t
       );
     };
@@ -176,7 +154,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     parentsIn: string[],
-    editedByUser?: UserType | null
+    editedByUser?: UserResource | null
   ) {
     return this.makeNew(
       {
@@ -187,7 +165,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       },
       space,
       dataSource,
-      editedByUser
+      editedByUser?.toJSON()
     );
   }
 
@@ -196,7 +174,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
-    conversation?: ConversationWithoutContentPublicType | null,
     transaction?: Transaction
   ) {
     return this.makeNew(
@@ -209,7 +186,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       space,
       dataSource,
       editedByUser,
-      conversation,
       transaction
     );
   }
@@ -264,11 +240,14 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       dataSourceIds,
       {
         includeEditedBy: fetchDataSourceViewOptions?.includeEditedBy,
+        includeDeleted,
       }
     );
 
+    const dataSourceById = keyBy(dataSources, "id");
+
     for (const dsv of dataSourceViews) {
-      dsv.ds = dataSources.find((ds) => ds.id === dsv.dataSourceId);
+      dsv.ds = dataSourceById[dsv.dataSourceId];
     }
 
     return dataSourceViews;
@@ -279,21 +258,33 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
     includeConversationDataSources?: boolean
   ) {
+    const options: ResourceFindOptions<DataSourceViewModel> = {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    };
+
+    if (!includeConversationDataSources) {
+      // We make an extra request to fetch the conversation space first.
+      // This allows early filtering of the data source views as there is no way to know
+      // if a datasource view is related to a conversation from it's attributes alone.
+      const conversationSpace =
+        await SpaceResource.fetchWorkspaceConversationsSpace(auth);
+      options.where = {
+        ...options.where,
+        vaultId: {
+          [Op.notIn]: [conversationSpace.id],
+        },
+      };
+    }
+
     const dataSourceViews = await this.baseFetch(
       auth,
       fetchDataSourceViewOptions,
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      }
+      options
     );
 
-    return dataSourceViews.filter(
-      (dsv) =>
-        (!dsv.space.isConversations() || includeConversationDataSources) &&
-        dsv.canReadOrAdministrate(auth)
-    );
+    return dataSourceViews.filter((dsv) => dsv.canReadOrAdministrate(auth));
   }
 
   static async listBySpace(
@@ -337,6 +328,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         },
       ],
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         vaultId: spaces.map((s) => s.id),
       },
     });
@@ -381,7 +373,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       FetchDataSourceViewOptions,
       "limit" | "order"
     >
-  ) {
+  ): Promise<DataSourceViewResource | null> {
     const [dataSourceView] = await DataSourceViewResource.fetchByIds(
       auth,
       [id],
@@ -413,7 +405,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
-    return dataSourceViews ?? null;
+    return dataSourceViews ?? [];
   }
 
   static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
@@ -429,7 +421,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
-    return dataSourceViews ?? null;
+    return dataSourceViews ?? [];
   }
 
   static async fetchByConversation(
@@ -450,6 +442,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       {},
       {
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           kind: "default",
           dataSourceId: dataSource.id,
         },
@@ -503,12 +496,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       {
         where: whereClause,
         order: [["updatedAt", "DESC"]],
-        includes: [
-          {
-            model: SpaceModel,
-            as: "space",
-          },
-        ],
       }
     );
   }
@@ -556,26 +543,34 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     // Check parentsToAdd exist in core as part of this data source view.
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-    const coreRes = await coreAPI.searchNodes({
-      filter: {
-        data_source_views: [
-          {
-            data_source_id: this.dataSource.dustAPIDataSourceId,
-            view_filter: [],
-          },
-        ],
-        node_ids: parentsToAdd,
-      },
-    });
+    const allNodes = [];
+    let nextPageCursor;
 
-    if (coreRes.isErr()) {
-      return new Err(new Error(coreRes.error.message));
-    }
+    do {
+      const coreRes = await coreAPI.searchNodes({
+        filter: {
+          data_source_views: [
+            {
+              data_source_id: this.dataSource.dustAPIDataSourceId,
+              view_filter: [],
+            },
+          ],
+          node_ids: parentsToAdd,
+        },
+        options: {
+          cursor: nextPageCursor,
+        },
+      });
+
+      if (coreRes.isErr()) {
+        return new Err(new Error(coreRes.error.message));
+      }
+      allNodes.push(...coreRes.value.nodes);
+      nextPageCursor = coreRes.value.next_page_cursor;
+    } while (nextPageCursor);
 
     // set to avoid O(n**2) complexity in check below
-    const coreParents = new Set(
-      coreRes.value.nodes.map((node) => node.node_id)
-    );
+    const coreParents = new Set(allNodes.map((node) => node.node_id));
     if (parentsToAdd.some((parent) => !coreParents.has(parent))) {
       return new Err(
         new Error("Some parents do not exist in this data source view.")
@@ -614,6 +609,9 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
+    // Mark all content fragments that reference this data source view as expired.
+    await this.expireContentFragments(auth, transaction);
+
     const deletedCount = await DataSourceViewModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -626,10 +624,34 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return new Ok(deletedCount);
   }
 
+  async expireContentFragments(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<void> {
+    // Mark all content fragments that reference this data source view as expired.
+    await ContentFragmentModel.update(
+      {
+        nodeId: null,
+        nodeDataSourceViewId: null,
+        expiredReason: "data_source_deleted",
+      },
+      {
+        where: {
+          nodeDataSourceViewId: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      }
+    );
+  }
+
   async hardDelete(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
+    // Mark all content fragments that reference this data source view as expired.
+    await this.expireContentFragments(auth, transaction);
+
     // Delete agent configurations elements pointing to this data source view.
     await AgentDataSourceConfiguration.destroy({
       where: {
@@ -641,12 +663,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       where: {
         dataSourceViewId: this.id,
       },
-    });
-    await DataSourceViewForConversation.destroy({
-      where: {
-        dataSourceViewId: this.id,
-      },
-      transaction,
     });
 
     const deletedCount = await DataSourceViewModel.destroy({

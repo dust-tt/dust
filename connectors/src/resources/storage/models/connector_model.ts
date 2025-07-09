@@ -1,13 +1,17 @@
-import type {
-  ConnectorErrorType,
-  ConnectorProvider,
-  ConnectorSyncStatus,
-} from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/client";
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { BaseModel } from "@connectors/resources/storage/wrappers/base";
+import type {
+  ConnectorErrorType,
+  ConnectorSyncStatus,
+} from "@connectors/types";
+
+export interface ConnectorMetadata {
+  rateLimited?: { at: Date } | null;
+}
 
 export class ConnectorModel extends BaseModel<ConnectorModel> {
   declare createdAt: CreationOptional<Date>;
@@ -30,6 +34,7 @@ export class ConnectorModel extends BaseModel<ConnectorModel> {
   declare lastGCTime: Date | null;
 
   declare pausedAt?: Date | null;
+  declare metadata: ConnectorMetadata | null;
 }
 
 ConnectorModel.init(
@@ -103,6 +108,10 @@ ConnectorModel.init(
     },
     pausedAt: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    metadata: {
+      type: DataTypes.JSONB,
       allowNull: true,
     },
   },

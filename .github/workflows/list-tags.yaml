@@ -32,6 +32,10 @@ on:
       GCLOUD_EU_PROJECT_ID:
         required: true
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   list-tags:
     permissions:

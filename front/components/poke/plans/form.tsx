@@ -7,37 +7,40 @@ import {
   Input,
   IntercomLogo,
   NotionLogo,
+  SalesforceLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type { PlanType } from "@dust-tt/types";
+import { useCallback, useState } from "react";
+
+import { classNames } from "@app/lib/utils";
+import type { PlanType } from "@app/types";
 import {
   assertNever,
   isMaxMessagesTimeframeType,
   MAX_MESSAGE_TIMEFRAMES,
-} from "@dust-tt/types";
-import { useCallback, useState } from "react";
-
-import { classNames } from "@app/lib/utils";
+} from "@app/types";
 
 export type EditingPlanType = {
-  name: string;
   code: string;
-  isConfluenceAllowed: boolean;
-  isSlackBotAllowed: boolean;
-  isSlackAllowed: boolean;
-  isNotionAllowed: boolean;
-  isGoogleDriveAllowed: boolean;
-  isGithubAllowed: boolean;
-  isIntercomAllowed: boolean;
-  isWebCrawlerAllowed: boolean;
-  maxMessages: string | number;
-  maxMessagesTimeframe: string;
   dataSourcesCount: string | number;
   dataSourcesDocumentsCount: string | number;
   dataSourcesDocumentsSizeMb: string | number;
+  isConfluenceAllowed: boolean;
+  isGithubAllowed: boolean;
+  isGoogleDriveAllowed: boolean;
+  isIntercomAllowed: boolean;
+  isNewPlan?: boolean;
+  isNotionAllowed: boolean;
+  isSalesforceAllowed: boolean;
+  isSlackAllowed: boolean;
+  isSlackBotAllowed: boolean;
+  isWebCrawlerAllowed: boolean;
+  maxImagesPerWeek: string | number;
+  maxMessages: string | number;
+  maxMessagesTimeframe: string;
   maxUsers: string | number;
   maxVaults: string | number;
-  isNewPlan?: boolean;
+  name: string;
   trialPeriodDays: string | number;
 };
 
@@ -53,6 +56,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isGithubAllowed: plan.limits.connections.isGithubAllowed,
     isIntercomAllowed: plan.limits.connections.isIntercomAllowed,
     isWebCrawlerAllowed: plan.limits.connections.isWebCrawlerAllowed,
+    isSalesforceAllowed: plan.limits.connections.isSalesforceAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
     dataSourcesCount: plan.limits.dataSources.count,
@@ -61,6 +65,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     maxUsers: plan.limits.users.maxUsers,
     maxVaults: plan.limits.vaults.maxVaults,
     trialPeriodDays: plan.trialPeriodDays,
+    maxImagesPerWeek: plan.limits.capabilities.images.maxImagesPerWeek,
   };
 };
 
@@ -92,12 +97,18 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         isGithubAllowed: editingPlan.isGithubAllowed,
         isIntercomAllowed: editingPlan.isIntercomAllowed,
         isWebCrawlerAllowed: editingPlan.isWebCrawlerAllowed,
+        isSalesforceAllowed: editingPlan.isSalesforceAllowed,
       },
       dataSources: {
         count: parseMaybeNumber(editingPlan.dataSourcesCount),
         documents: {
           count: parseMaybeNumber(editingPlan.dataSourcesDocumentsCount),
           sizeMb: parseMaybeNumber(editingPlan.dataSourcesDocumentsSizeMb),
+        },
+      },
+      capabilities: {
+        images: {
+          maxImagesPerWeek: parseMaybeNumber(editingPlan.maxImagesPerWeek),
         },
       },
       users: {
@@ -113,24 +124,26 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
 };
 
 const getEmptyPlan = (): EditingPlanType => ({
-  name: "",
   code: "",
-  isConfluenceAllowed: false,
-  isSlackBotAllowed: false,
-  isSlackAllowed: false,
-  isNotionAllowed: false,
-  isGoogleDriveAllowed: false,
-  isGithubAllowed: false,
-  isIntercomAllowed: false,
-  isWebCrawlerAllowed: false,
-  maxMessages: "",
-  maxMessagesTimeframe: "day",
   dataSourcesCount: "",
   dataSourcesDocumentsCount: "",
   dataSourcesDocumentsSizeMb: "",
+  isConfluenceAllowed: false,
+  isGithubAllowed: false,
+  isGoogleDriveAllowed: false,
+  isIntercomAllowed: false,
+  isNewPlan: true,
+  isNotionAllowed: false,
+  isSalesforceAllowed: false,
+  isSlackAllowed: false,
+  isSlackBotAllowed: false,
+  isWebCrawlerAllowed: false,
+  maxImagesPerWeek: "",
+  maxMessages: "",
+  maxMessagesTimeframe: "day",
   maxUsers: "",
   maxVaults: "",
-  isNewPlan: true,
+  name: "",
   trialPeriodDays: 0,
 });
 
@@ -218,6 +231,12 @@ export const PLAN_FIELDS = {
     title: "Websites",
     IconComponent: () => <GlobeAltIcon className="h-4 w-4" />,
   },
+  isSalesforceAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "Salesforce",
+    IconComponent: () => <SalesforceLogo className="h-4 w-4" />,
+  },
   maxMessages: {
     type: "number",
     width: "small",
@@ -263,6 +282,12 @@ export const PLAN_FIELDS = {
     title: "# Spaces",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxVaults),
   },
+  maxImagesPerWeek: {
+    type: "number",
+    width: "small",
+    title: "# Images",
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.maxImagesPerWeek),
+  },
   trialPeriodDays: {
     type: "number",
     width: "small",
@@ -298,7 +323,10 @@ export const Field: React.FC<FieldProps> = ({
     if (typeof x === "string") {
       if (!x) {
         strValue = "NULL";
-        classes = classNames(classes, "italic text-element-600");
+        classes = classNames(
+          classes,
+          "italic text-muted-foreground dark:text-muted-foreground-night"
+        );
       }
     }
     if (typeof x === "number") {

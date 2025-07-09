@@ -74,6 +74,7 @@ pub struct TableUpsertParams {
     pub title: String,
     pub mime_type: String,
     pub provider_visibility: Option<ProviderVisibility>,
+    pub check_name_uniqueness: Option<bool>,
 }
 
 pub struct FolderUpsertParams {
@@ -168,6 +169,10 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
     ) -> Result<Option<DataSource>>;
+    async fn load_data_sources(
+        &self,
+        project_data_sources: Vec<(i64, String)>,
+    ) -> Result<Vec<DataSource>>;
     async fn load_data_source_by_internal_id(
         &self,
         data_source_internal_id: &str,
@@ -294,6 +299,14 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
+    async fn set_data_source_table_migrated_to_csv(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        table_id: &str,
+        migrated_to_csv: bool,
+        timestamp: Option<i64>,
+    ) -> Result<()>;
     async fn load_data_source_table(
         &self,
         project: &Project,
@@ -314,6 +327,7 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
+
     // Folders
     async fn upsert_data_source_folder(
         &self,
@@ -585,6 +599,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        schema                       TEXT, -- json, kept up-to-date automatically with the last insert
        schema_stale_at              BIGINT, -- timestamp when the schema was last invalidated
        data_source                  BIGINT NOT NULL,
+       migrated_to_csv              BOOLEAN DEFAULT FALSE,
        remote_database_table_id     TEXT,
        remote_database_secret_id    TEXT,
        FOREIGN KEY(data_source)     REFERENCES data_sources(id)

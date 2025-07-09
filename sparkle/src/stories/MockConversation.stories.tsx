@@ -45,7 +45,7 @@ const ConversationView: React.FC<ConversationViewProps> = ({ messages }) => {
             <Avatar size="sm" visual={message.pictureUrl} name={message.name} />
             <div className="s-flex-1">
               <div className="s-font-medium">{message.name}</div>
-              <div className="s-text-sm s-text-element-700">
+              <div className="s-text-sm s-text-muted-foreground">
                 {message.isMarkdown ? (
                   <Markdown content={message.content} />
                 ) : (

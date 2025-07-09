@@ -1,8 +1,7 @@
-import type { ModelId } from "@dust-tt/types";
-import { cacheWithRedis, MIME_TYPES, removeNulls } from "@dust-tt/types";
+import type { LoggerInterface } from "@dust-tt/client";
+import { removeNulls } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
-import { heartbeat } from "@temporalio/activity";
 import * as _ from "lodash";
 
 import { getClient } from "@connectors/connectors/microsoft";
@@ -31,6 +30,7 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
+import { isItemNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   deleteFile,
   deleteFolder,
@@ -46,14 +46,18 @@ import {
   updateDataSourceDocumentParents,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import logger from "@connectors/logger/logger";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import { heartbeat } from "@connectors/lib/temporal";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   MicrosoftConfigurationResource,
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const DELETE_CONCURRENCY = 5;
@@ -77,6 +81,7 @@ export async function getRootNodesToSyncFromResources(
     throw new Error(`Connector with id ${connectorId} not found`);
   }
 
+  const logger = getActivityLogger(connector);
   const client = await getClient(connector.connectionId);
 
   // get root folders and drives and drill down site-root and sites to their
@@ -91,6 +96,7 @@ export async function getRootNodesToSyncFromResources(
         .map(async (resource) => {
           try {
             const item = await getItem(
+              logger,
               client,
               typeAndPathFromInternalId(resource.internalId).itemAPIPath
             );
@@ -104,12 +110,17 @@ export async function getRootNodesToSyncFromResources(
               name: `${node.name} (${extractPath(item)})`,
             };
           } catch (error) {
+            if (error instanceof GraphError && error.statusCode === 404) {
+              return null;
+            }
+            if (error instanceof ExternalOAuthTokenError) {
+              throw error;
+            }
             logger.error(
               {
                 connectorId,
                 error,
                 id: resource.internalId,
-                panic: true,
               },
               "Failed to get item"
             );
@@ -127,7 +138,7 @@ export async function getRootNodesToSyncFromResources(
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
     const msSites = await getAllPaginatedEntities((nextLink) =>
-      getSites(client, nextLink)
+      getSites(logger, client, nextLink)
     );
     rootSitePaths.push(...msSites.map((site) => getSiteAPIPath(site)));
   }
@@ -138,6 +149,7 @@ export async function getRootNodesToSyncFromResources(
       async (sitePath) => {
         const msDrives = await getAllPaginatedEntities((nextLink) =>
           getDrives(
+            logger,
             client,
             internalIdFromTypeAndPath({
               nodeType: "site",
@@ -185,6 +197,7 @@ export async function getRootNodesToSyncFromResources(
       !(
         node.nodeType === "folder" &&
         (await isParentAlreadyInNodes({
+          logger,
           client,
           nodes: allNodes,
           folder: node,
@@ -211,7 +224,7 @@ export async function getRootNodesToSyncFromResources(
         parents: [createdOrUpdatedResource.internalId],
         parentId: null,
         title: createdOrUpdatedResource.name ?? "",
-        mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+        mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
         sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
       }),
     { concurrency: 5 }
@@ -241,15 +254,18 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-
+  const logger = getActivityLogger(connector);
   const client = await getClient(connector.connectionId);
 
   for (const [driveId, nodeIds] of Object.entries(groupedItems)) {
     const { deltaLink } = await getDeltaResults({
+      logger,
       client,
       parentInternalId: driveId,
       token: "latest",
     });
+
+    logger.info({ nodeIds, deltaLink }, "Populating deltas");
 
     for (const nodeId of nodeIds) {
       const node = await MicrosoftNodeResource.fetchByInternalId(
@@ -267,16 +283,27 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
 }
 
 async function isParentAlreadyInNodes({
+  logger,
   client,
   nodes,
   folder,
 }: {
+  logger: LoggerInterface;
   client: Client;
   nodes: MicrosoftNode[];
   folder: MicrosoftNode;
 }) {
   const { itemAPIPath } = typeAndPathFromInternalId(folder.internalId);
-  let driveItem: DriveItem = await getItem(client, itemAPIPath);
+
+  let driveItem: DriveItem;
+  try {
+    driveItem = await getItem(logger, client, itemAPIPath);
+  } catch (error) {
+    if (error instanceof GraphError && error.statusCode === 404) {
+      return false;
+    }
+    throw error;
+  }
 
   // check if the list already contains the drive of this folder
   if (
@@ -304,7 +331,14 @@ async function isParentAlreadyInNodes({
       return true;
     }
 
-    driveItem = await getItem(client, parentAPIPath);
+    try {
+      driveItem = await getItem(logger, client, parentAPIPath);
+    } catch (error) {
+      if (error instanceof GraphError && error.statusCode === 404) {
+        return false;
+      }
+      throw error;
+    }
   }
   return false;
 }
@@ -320,8 +354,18 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
     internalId
   );
 
+  const logger = getActivityLogger(connector);
+
   if (!node) {
-    throw new Error(`Node ${internalId} not found`);
+    logger.error(
+      {
+        connectorId,
+        internalId,
+      },
+      `[MarkNodeAsSeen] Node not found, skipping`
+    );
+
+    return;
   }
 
   // if node was updated more recently than this sync, we don't need to mark it
@@ -349,13 +393,27 @@ export async function syncFiles({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
+  const logger = getActivityLogger(connector);
+
   const parent = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     parentInternalId
   );
 
   if (!parent) {
-    throw new Error(`Unexpected: parent node not found: ${parentInternalId}`);
+    logger.error(
+      {
+        connectorId,
+        parentInternalId,
+      },
+      `[SyncFiles] Node not found, skipping`
+    );
+
+    return {
+      count: 0,
+      childNodes: [],
+      nextLink: undefined,
+    };
   }
 
   if (parent.nodeType !== "folder" && parent.nodeType !== "drive") {
@@ -384,6 +442,7 @@ export async function syncFiles({
 
   // TODO(pr): handle pagination
   const childrenResult = await getFilesAndFolders(
+    logger,
     client,
     parent.internalId,
     nextPageLink
@@ -411,6 +470,7 @@ export async function syncFiles({
         file: child,
         parentInternalId,
         startSyncTs,
+        heartbeat,
       }),
     { concurrency: FILES_SYNC_CONCURRENCY }
   );
@@ -484,7 +544,7 @@ export async function syncFiles({
         parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
         parentId: parentsOfParent[0],
         title: createdOrUpdatedResource.name ?? "Untitled Folder",
-        mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+        mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
         sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
       }),
     { concurrency: 5 }
@@ -549,6 +609,7 @@ export async function syncDeltaForRootNodesInDrive({
 
   const client = await getClient(connector.connectionId);
 
+  const logger = getActivityLogger(connector);
   logger.info({ connectorId, rootNodeIds }, "Syncing delta for node");
 
   // Goes through pagination to return all delta results. This is because delta
@@ -563,10 +624,19 @@ export async function syncDeltaForRootNodesInDrive({
   // If it ever becomes an issue, redis-caching the list and having activities
   // grabbing pages of it can be implemented
   const { results, deltaLink } = await getDeltaData({
+    logger,
     client,
     node,
+    heartbeat,
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
+
+  logger.info(
+    {
+      uniqueChangedItems: uniqueChangedItems.length,
+    },
+    "Changes to process"
+  );
 
   const sortedChangedItems: DriveItem[] = [];
   const containWholeDrive = rootNodeIds.some(
@@ -578,14 +648,31 @@ export async function syncDeltaForRootNodesInDrive({
   } else {
     const microsoftNodes = await concurrentExecutor(
       rootNodeIds,
-      async (rootNodeId) =>
-        getItem(
-          client,
-          typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
-        ) as Promise<{ id: string }>,
+      async (rootNodeId) => {
+        try {
+          return (await getItem(
+            logger,
+            client,
+            typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
+          )) as { id: string };
+        } catch (error) {
+          if (isItemNotFoundError(error)) {
+            // Resource not found will be garbage collected later and is not blocking the activity
+            logger.info(
+              { rootNodeId, error: error.message },
+              "Root node not found, skipping"
+            );
+            return null;
+          }
+          throw error;
+        }
+      },
       { concurrency: 5 }
     );
-    microsoftNodes.forEach((rootNode) => {
+    const validMicrosoftNodes = microsoftNodes.filter(
+      (node): node is { id: string } => node !== null
+    );
+    validMicrosoftNodes.forEach((rootNode) => {
       sortedChangedItems.push(
         ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
       );
@@ -599,9 +686,8 @@ export async function syncDeltaForRootNodesInDrive({
       sortedChangedItems,
     });
   }
-
   for (const driveItem of sortedChangedItems) {
-    heartbeat();
+    await heartbeat();
     if (!driveItem.parentReference) {
       throw new Error(`Unexpected: parent reference missing: ${driveItem}`);
     }
@@ -621,13 +707,21 @@ export async function syncDeltaForRootNodesInDrive({
             driveItem.parentReference
           ),
           startSyncTs,
+          heartbeat,
         });
       }
     } else if (driveItem.folder) {
       if (driveItem.deleted) {
         // no need to delete children here since they will all be listed
         // in the delta with the 'deleted' field set
-        await deleteFolder({ connectorId, dataSourceConfig, internalId });
+        // we can delete, even if it is not a root node, because microsoft
+        // tells us the client has already deleted the folder
+        await deleteFolder({
+          connectorId,
+          dataSourceConfig,
+          internalId,
+          deleteRootNode: true,
+        });
       } else {
         const isMoved = await isFolderMovedInSameRoot({
           connectorId,
@@ -638,6 +732,7 @@ export async function syncDeltaForRootNodesInDrive({
         const { item, type } = driveItem.root
           ? {
               item: await getItem(
+                logger,
                 client,
                 `/drives/${driveItem.parentReference.driveId}`
               ),
@@ -656,6 +751,10 @@ export async function syncDeltaForRootNodesInDrive({
           blob
         );
 
+        if (isAlreadySeenItem({ driveItemResource: resource, startSyncTs })) {
+          continue;
+        }
+
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
         // todo check filter
@@ -667,7 +766,6 @@ export async function syncDeltaForRootNodesInDrive({
 
         await resource.update({
           parentInternalId,
-          lastSeenTs: new Date(),
         });
 
         const parents = await getParents({
@@ -687,7 +785,7 @@ export async function syncDeltaForRootNodesInDrive({
           parents,
           parentId: parents[1] || null,
           title: blob.name ?? "Untitled Folder",
-          mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+          mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
           sourceUrl: blob.webUrl ?? undefined,
         });
 
@@ -698,6 +796,10 @@ export async function syncDeltaForRootNodesInDrive({
             startSyncTs,
           });
         }
+
+        await resource.update({
+          lastSeenTs: new Date(),
+        });
       }
     } else {
       throw new Error(`Unexpected: driveItem is neither file nor folder`);
@@ -768,10 +870,15 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
     return false;
   });
 
+  // As we will iterate on both sortedItemList and changedList, we need to
+  // keep track of the items we have already seen in sortedItemList to avoid
+  // O(n^2) complexity.
+  const sortedItemSet = new Set(sortedItemList.map(getDriveItemInternalId));
+
   for (;;) {
     const nextLevel = changedList.filter((item) => {
       // Already in the list - skip
-      if (sortedItemList.includes(item)) {
+      if (sortedItemSet.has(getDriveItemInternalId(item))) {
         return false;
       }
 
@@ -795,9 +902,7 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
         return true;
       }
 
-      return sortedItemList.some(
-        (sortedItem) => getDriveItemInternalId(sortedItem) === parentInternalId
-      );
+      return sortedItemSet.has(parentInternalId);
     });
 
     if (nextLevel.length === 0) {
@@ -805,27 +910,52 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
     }
 
     sortedItemList.push(...nextLevel);
+
+    // Mark nodes as seen for the next iterations.
+    nextLevel.forEach((item) => {
+      sortedItemSet.add(getDriveItemInternalId(item));
+    });
   }
 }
 
 async function getDeltaData({
+  logger,
   client,
   node,
+  heartbeat,
 }: {
+  logger: LoggerInterface;
   client: Client;
   node: MicrosoftNodeResource;
+  heartbeat: () => void;
 }) {
   if (!node.deltaLink) {
     throw new Error(`No delta link for root node ${node.internalId}`);
   }
 
+  logger.info(
+    { internalId: node.internalId, deltaLink: node.deltaLink },
+    "Getting delta"
+  );
+
   try {
-    return await getFullDeltaResults(client, node.internalId, node.deltaLink);
+    return await getFullDeltaResults({
+      logger,
+      client,
+      parentInternalId: node.internalId,
+      initialDeltaLink: node.deltaLink,
+      heartbeatFunction: heartbeat,
+    });
   } catch (e) {
     if (e instanceof GraphError && e.statusCode === 410) {
       // API is answering 'resync required'
       // we repopulate the delta from scratch
-      return await getFullDeltaResults(client, node.internalId);
+      return await getFullDeltaResults({
+        logger,
+        client,
+        parentInternalId: node.internalId,
+        heartbeatFunction: heartbeat,
+      });
     }
     throw e;
   }
@@ -890,7 +1020,7 @@ async function updateDescendantsParentsInCore({
     parents,
     parentId: parents[1] || null,
     title: folder.name ?? "Untitled Folder",
-    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+    mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
     sourceUrl: folder.webUrl ?? undefined,
   });
 
@@ -963,19 +1093,19 @@ export async function microsoftDeletionActivity({
 export async function microsoftGarbageCollectionActivity({
   connectorId,
   idCursor,
-  rootNodeIds,
   startGarbageCollectionTs,
 }: {
   connectorId: ModelId;
   idCursor: ModelId;
-  rootNodeIds: string[];
   startGarbageCollectionTs: number;
 }) {
+  const rootNodeIds = await getRootNodesToSync(connectorId);
+
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-
+  const logger = getActivityLogger(connector);
   logger.info(
     { connectorId, idCursor },
     "Garbage collection activity for cursor"
@@ -986,7 +1116,7 @@ export async function microsoftGarbageCollectionActivity({
 
   const nodes = await MicrosoftNodeResource.fetchByPaginatedIds({
     connectorId,
-    pageSize: 500,
+    pageSize: 1000,
     idCursor,
   });
 
@@ -1020,16 +1150,54 @@ export async function microsoftGarbageCollectionActivity({
   const chunkedRequests = _.chunk(requests, 20);
 
   for (const chunk of chunkedRequests) {
-    const batchRes = await clientApiPost(client, "/$batch", {
-      requests: chunk,
-    });
+    let batchRes: {
+      responses: Array<{
+        id: string;
+        status: number;
+        body: unknown;
+      }>;
+    };
+    try {
+      batchRes = await clientApiPost(logger, client, "/$batch", {
+        requests: chunk,
+      });
+    } catch (error) {
+      if (isItemNotFoundError(error)) {
+        logger.info(
+          {
+            connectorId,
+            error: error.message,
+            chunkSize: chunk.length,
+          },
+          "Batch request failed with 404, treating all items as deleted"
+        );
+        // Create fake 404 responses for all items in the chunk
+        batchRes = {
+          responses: chunk.map((req) => ({
+            id: req.id,
+            status: 404,
+            body: null,
+          })),
+        };
+      } else {
+        throw error;
+      }
+    }
+
     for (const res of batchRes.responses) {
       const node = nodesToCheck[Number(res.id)];
       if (node && (res.status === 200 || res.status === 404)) {
         const driveOrItem = res.status === 200 ? res.body : null;
         switch (node.nodeType) {
           case "drive":
-            if (!driveOrItem || !rootNodeIds.includes(node.internalId)) {
+            if (!driveOrItem) {
+              await deleteFolder({
+                connectorId,
+                dataSourceConfig,
+                internalId: node.internalId,
+                deleteRootNode: true,
+              });
+            } else if (!rootNodeIds.includes(node.internalId)) {
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
@@ -1044,6 +1212,7 @@ export async function microsoftGarbageCollectionActivity({
               folder.deleted ||
               // isOutsideRootNodes
               (await isOutsideRootNodes({
+                logger,
                 client,
                 driveItem: folder,
                 rootNodeIds,
@@ -1054,6 +1223,7 @@ export async function microsoftGarbageCollectionActivity({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
+                deleteRootNode: true,
               });
             }
             break;
@@ -1065,6 +1235,7 @@ export async function microsoftGarbageCollectionActivity({
               file.deleted ||
               // isOutsideRootNodes
               (await isOutsideRootNodes({
+                logger,
                 client,
                 driveItem: file,
                 rootNodeIds,
@@ -1093,9 +1264,11 @@ export async function microsoftGarbageCollectionActivity({
 
 const cachedGetParentFromGraphAPI = cacheWithRedis(
   async ({
+    logger,
     client,
     parentInternalId,
   }: {
+    logger: LoggerInterface;
     client: Client;
     parentInternalId: string;
     startGarbageCollectionTs: number;
@@ -1107,13 +1280,27 @@ const cachedGetParentFromGraphAPI = cacheWithRedis(
       return null;
     }
 
-    const driveItem: DriveItem = await getItem(client, itemAPIPath);
+    try {
+      const driveItem: DriveItem = await getItem(logger, client, itemAPIPath);
 
-    if (!driveItem.parentReference) {
-      throw new Error("Unexpected: no parent reference for drive item");
+      if (!driveItem.parentReference) {
+        throw new Error("Unexpected: no parent reference for drive item");
+      }
+
+      return getParentReferenceInternalId(driveItem.parentReference);
+    } catch (error) {
+      if (isItemNotFoundError(error)) {
+        logger.info(
+          {
+            parentInternalId,
+            error: error.message,
+          },
+          "Parent item not found, treating as no parent"
+        );
+        return null;
+      }
+      throw error;
     }
-
-    return getParentReferenceInternalId(driveItem.parentReference);
   },
   ({
     parentInternalId,
@@ -1128,11 +1315,13 @@ const cachedGetParentFromGraphAPI = cacheWithRedis(
 );
 
 async function isOutsideRootNodes({
+  logger,
   client,
   driveItem,
   rootNodeIds,
   startGarbageCollectionTs,
 }: {
+  logger: LoggerInterface;
   client: Client;
   driveItem: DriveItem;
   rootNodeIds: string[];
@@ -1158,6 +1347,7 @@ async function isOutsideRootNodes({
       return false;
     }
     parentInternalId = await cachedGetParentFromGraphAPI({
+      logger,
       client,
       parentInternalId,
       startGarbageCollectionTs,
@@ -1205,7 +1395,7 @@ async function scrubRemovedFolders({
   );
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
+  const logger = getActivityLogger(connector);
   logger.info(
     {
       connectorId: connector.id,

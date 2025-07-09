@@ -6,7 +6,7 @@ import {
   ArrowDownOnSquareIcon,
   ClipboardCheckIcon,
   ClipboardIcon,
-} from "@sparkle/icons";
+} from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 export type SupportedContentType = "application/json" | "text/csv";

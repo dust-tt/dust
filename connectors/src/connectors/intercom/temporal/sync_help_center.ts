@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
@@ -26,14 +24,19 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import type { IntercomHelpCenter } from "@connectors/lib/models/intercom";
+import type { IntercomHelpCenterModel } from "@connectors/lib/models/intercom";
 import {
-  IntercomArticle,
-  IntercomCollection,
+  IntercomArticleModel,
+  IntercomCollectionModel,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
+import {
+  concurrentExecutor,
+  INTERNAL_MIME_TYPES,
+  safeSubstring,
+} from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -48,7 +51,7 @@ export async function removeHelpCenter({
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
-  helpCenter: IntercomHelpCenter;
+  helpCenter: IntercomHelpCenterModel;
   loggerArgs: Record<string, string | number>;
 }): Promise<void> {
   await deleteDataSourceFolder({
@@ -56,7 +59,7 @@ export async function removeHelpCenter({
     folderId: getHelpCenterInternalId(connectorId, helpCenter.helpCenterId),
   });
 
-  const level1Collections = await IntercomCollection.findAll({
+  const level1Collections = await IntercomCollectionModel.findAll({
     where: {
       connectorId,
       helpCenterId: helpCenter.helpCenterId,
@@ -87,7 +90,7 @@ export async function deleteCollectionWithChildren({
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
-  collection: IntercomCollection;
+  collection: IntercomCollectionModel;
   loggerArgs: Record<string, string | number>;
 }) {
   const collectionId = collection.collectionId;
@@ -101,7 +104,7 @@ export async function deleteCollectionWithChildren({
   }
 
   // We delete all articles in the collection
-  const articles = await IntercomArticle.findAll({
+  const articles = await IntercomArticleModel.findAll({
     where: {
       connectorId,
       parentId: collectionId,
@@ -132,7 +135,7 @@ export async function deleteCollectionWithChildren({
   );
 
   // Then we call ourself recursively on the children collections
-  const childrenCollections = await IntercomCollection.findAll({
+  const childrenCollections = await IntercomCollectionModel.findAll({
     where: {
       connectorId,
       parentId: collectionId,
@@ -178,7 +181,7 @@ export async function upsertCollectionWithChildren({
   }
 
   // Sync the Collection
-  const collectionOnDb = await IntercomCollection.findOne({
+  const collectionOnDb = await IntercomCollectionModel.findOne({
     where: {
       connectorId,
       collectionId,
@@ -196,7 +199,7 @@ export async function upsertCollectionWithChildren({
       lastUpsertedTs: new Date(currentSyncMs),
     });
   } else {
-    await IntercomCollection.create({
+    await IntercomCollectionModel.create({
       connectorId: connectorId,
       collectionId: collection.id,
       intercomWorkspaceId: collection.workspace_id,
@@ -227,10 +230,10 @@ export async function upsertCollectionWithChildren({
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: internalCollectionId,
-    title: collection.name,
+    title: collection.name.trim() || "Untitled Collection",
     parents: collectionParents,
     parentId: collectionParents[1] || null,
-    mimeType: MIME_TYPES.INTERCOM.COLLECTION,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.COLLECTION,
     sourceUrl: collection.url || fallbackCollectionUrl,
     timestampMs: currentSyncMs,
   });
@@ -243,17 +246,18 @@ export async function upsertCollectionWithChildren({
     parentId: collection.id,
   });
 
-  await Promise.all(
-    childrenCollectionsOnIntercom.map(async (collectionOnIntercom) => {
-      await upsertCollectionWithChildren({
+  await concurrentExecutor(
+    childrenCollectionsOnIntercom,
+    async (collectionOnIntercom) =>
+      upsertCollectionWithChildren({
         connectorId,
         connectionId,
         helpCenterId,
         collection: collectionOnIntercom,
         region,
         currentSyncMs,
-      });
-    })
+      }),
+    { concurrency: 10 }
   );
 }
 
@@ -276,14 +280,14 @@ export async function upsertArticle({
   helpCenterId: string;
   article: IntercomArticleType;
   region: string;
-  parentCollection: IntercomCollection;
+  parentCollection: IntercomCollectionModel;
   isHelpCenterWebsiteTurnedOn: boolean;
   currentSyncMs: number;
   forceResync: boolean;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number>;
 }) {
-  let articleOnDb = await IntercomArticle.findOne({
+  let articleOnDb = await IntercomArticleModel.findOne({
     where: {
       connectorId,
       articleId: article.id,
@@ -309,8 +313,8 @@ export async function upsertArticle({
 
   if (articleOnDb) {
     articleOnDb = await articleOnDb.update({
-      title: article.title,
-      url: articleUrl,
+      title: safeSubstring(article.title, 0, 254),
+      url: safeSubstring(articleUrl, 0, 254),
       authorId: article.author_id,
       parentId: parentCollection.collectionId,
       parentType: article.parent_type === "collection" ? "collection" : null,
@@ -318,11 +322,11 @@ export async function upsertArticle({
       state: article.state === "published" ? "published" : "draft",
     });
   } else {
-    articleOnDb = await IntercomArticle.create({
+    articleOnDb = await IntercomArticleModel.create({
       connectorId: connectorId,
       articleId: article.id,
-      title: article.title,
-      url: articleUrl,
+      title: safeSubstring(article.title, 0, 254),
+      url: safeSubstring(articleUrl, 0, 254),
       intercomWorkspaceId: article.workspace_id,
       authorId: article.author_id,
       parentId: parentCollection.collectionId,
@@ -426,7 +430,7 @@ export async function upsertArticle({
       sync_type: "batch",
     },
     title: article.title,
-    mimeType: MIME_TYPES.INTERCOM.ARTICLE,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.ARTICLE,
     async: true,
   });
   await articleOnDb.update({

@@ -1,25 +1,30 @@
 import { Button, Chip, CommandLineIcon } from "@dust-tt/sparkle";
-import type {
-  AgentActionType,
-  AgentMessageType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import { useEffect, useMemo, useState } from "react";
 
 import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
-import type { AgentStateClassification } from "@app/components/assistant/conversation/AgentMessage";
+import type {
+  BaseActionType,
+  BaseAgentActionType,
+} from "@app/lib/actions/types";
+import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
+import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
+import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
+import { assertNever } from "@app/types";
 
 interface AgentMessageActionsProps {
-  agentMessage: AgentMessageType;
+  agentMessage: LightAgentMessageType;
+  conversationId: string;
   lastAgentStateClassification: AgentStateClassification;
+  actionProgress: ActionProgressState;
   owner: LightWorkspaceType;
 }
 
 export function AgentMessageActions({
   agentMessage,
+  conversationId,
   lastAgentStateClassification,
+  actionProgress,
   owner,
 }: AgentMessageActionsProps) {
   const [chipLabel, setChipLabel] = useState<string | undefined>("Thinking");
@@ -31,7 +36,7 @@ export function AgentMessageActions({
         setChipLabel("Thinking");
         break;
       case "acting":
-        if (agentMessage.actions.length > 0) {
+        if (agentMessage.actions && agentMessage.actions.length > 0) {
           setChipLabel(renderActionName(agentMessage.actions));
         }
         break;
@@ -51,14 +56,16 @@ export function AgentMessageActions({
   return (
     <div className="flex flex-col items-start gap-y-4">
       <AgentMessageActionsDrawer
-        actions={agentMessage.actions}
+        conversationId={conversationId}
+        message={agentMessage}
         isOpened={isActionDrawerOpened}
         onClose={() => setIsActionDrawerOpened(false)}
         isActing={lastAgentStateClassification === "acting"}
+        actionProgress={actionProgress}
         owner={owner}
       />
       <ActionDetails
-        hasActions={agentMessage.actions.length !== 0}
+        hasActions={agentMessage.actions.length > 0}
         isActionStepDone={!isThinkingOrActing}
         label={chipLabel}
         onClick={() => setIsActionDrawerOpened(true)}
@@ -88,12 +95,7 @@ function ActionDetails({
       onClick={hasActions ? onClick : undefined}
       className={hasActions ? "cursor-pointer" : ""}
     >
-      <Chip
-        size="sm"
-        color="slate"
-        isBusy
-        label={label === "Thinking" ? label : `Thinking, ${label}`}
-      />
+      <Chip size="sm" isBusy label={label} />
     </div>
   ) : (
     <Button
@@ -106,17 +108,14 @@ function ActionDetails({
   );
 }
 
-function renderActionName(actions: AgentActionType[]): string {
-  const uniqueActionTypes = actions.reduce(
-    (acc, action) => {
-      if (!acc.includes(action.type)) {
-        acc.push(action.type);
-      }
+function renderActionName(actions: BaseAgentActionType[]): string {
+  const uniqueActionTypes = actions.reduce<BaseActionType[]>((acc, action) => {
+    if (!acc.includes(action.type)) {
+      acc.push(action.type);
+    }
 
-      return acc;
-    },
-    [] as AgentActionType["type"][]
-  );
+    return acc;
+  }, []);
 
   return uniqueActionTypes
     .map((actionType) => getActionSpecification(actionType).runningLabel)

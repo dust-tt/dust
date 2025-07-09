@@ -24,6 +24,7 @@ async function main() {
     try {
       const auth = await getAuthObject(connector.connectionId);
       const gDriveObject = await getGoogleDriveObject({
+        connectorId: connector.id,
         authCredentials: auth,
         driveObjectId: "root",
       });
