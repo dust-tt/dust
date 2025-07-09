@@ -12,73 +12,94 @@ import { cn } from "@sparkle/lib/utils";
 
 import { Button } from "./Button";
 
-const barHeaderVariants = cva(
-  "s-flex s-h-16 s-flex-row s-items-center s-gap-3 s-border-b s-px-4",
+const barVariants = cva(
+  "s-flex s-h-16 s-flex-row s-items-center s-gap-3 s-px-4",
   {
     variants: {
+      position: {
+        top: "s-border-b",
+        bottom: "s-border-t",
+      },
       variant: {
-        full: "s-fixed s-left-0 s-right-0 s-top-0 s-z-30 s-backdrop-blur s-border-border-dark/70 s-bg-background/80 dark:s-border-border-dark-night/70 dark:s-bg-background-night/80",
+        full: "s-fixed s-left-0 s-right-0 s-z-30 s-backdrop-blur s-border-border-dark/70 s-bg-background/80 dark:s-border-border-dark-night/70 dark:s-bg-background-night/80",
         default:
           "s-relative s-z-10 s-border-structure-200 s-bg-structure-50 dark:s-border-structure-200-night dark:s-bg-structure-50-night",
       },
     },
+    compoundVariants: [
+      {
+        position: "top",
+        variant: "full",
+        class: "s-top-0",
+      },
+      {
+        position: "bottom",
+        variant: "full",
+        class: "s-bottom-0",
+      },
+    ],
     defaultVariants: {
+      position: "top",
       variant: "full",
     },
   }
 );
 
-interface BarHeaderProps extends VariantProps<typeof barHeaderVariants> {
-  title: string;
+interface BarProps extends VariantProps<typeof barVariants> {
+  title?: string;
   tooltip?: string;
   leftActions?: React.ReactNode;
   rightActions?: React.ReactNode;
   className?: string;
 }
 
-export function BarHeader({
+export function Bar({
   title,
   tooltip,
   leftActions,
   rightActions,
   className,
+  position,
   variant,
-}: BarHeaderProps) {
+}: BarProps) {
   const titleClasses = cn(
     "s-text-foreground dark:s-text-foreground-night",
     "s-heading-base s-truncate s-grow"
   );
 
   return (
-    <div className={cn(barHeaderVariants({ variant }), className)}>
+    <div className={cn(barVariants({ position, variant }), className)}>
       {leftActions && <div className="s-flex s-gap-1">{leftActions}</div>}
-      <div className={titleClasses}>
-        {tooltip ? (
-          <Tooltip
-            tooltipTriggerAsChild
-            trigger={<span>{title}</span>}
-            label={tooltip}
-          ></Tooltip>
-        ) : (
-          title
-        )}
-      </div>
+      {title && (
+        <div className={titleClasses}>
+          {tooltip ? (
+            <Tooltip
+              tooltipTriggerAsChild
+              trigger={<span>{title}</span>}
+              label={tooltip}
+            />
+          ) : (
+            title
+          )}
+        </div>
+      )}
+      {!title && !leftActions && <div className="s-flex-grow" />}
       {rightActions && <div className="s-flex s-gap-1">{rightActions}</div>}
     </div>
   );
 }
 
-type BarHeaderButtonBarCloseProps = {
+type BarButtonBarCloseProps = {
   variant: "close";
   onClose?: () => void;
 };
 
-type BarHeaderButtonBarBackProps = {
+type BarButtonBarBackProps = {
   variant: "back";
   onBack?: () => void;
 };
 
-type BarHeaderButtonBarValidateProps = {
+type BarButtonBarValidateProps = {
   variant: "validate";
   onCancel?: () => void;
   onSave?: () => void;
@@ -89,19 +110,19 @@ type BarHeaderButtonBarValidateProps = {
   saveTooltip?: string;
 };
 
-type BarHeaderButtonBarConversationProps = {
+type BarButtonBarConversationProps = {
   variant: "conversation";
   onDelete?: () => void;
   onShare?: () => void;
 };
 
-export type BarHeaderButtonBarProps =
-  | BarHeaderButtonBarCloseProps
-  | BarHeaderButtonBarBackProps
-  | BarHeaderButtonBarValidateProps
-  | BarHeaderButtonBarConversationProps;
+export type BarButtonBarProps =
+  | BarButtonBarCloseProps
+  | BarButtonBarBackProps
+  | BarButtonBarValidateProps
+  | BarButtonBarConversationProps;
 
-function ValidateSaveButton(props: BarHeaderButtonBarValidateProps) {
+function ValidateSaveButton(props: BarButtonBarValidateProps) {
   const button = (
     <Button
       size="sm"
@@ -123,7 +144,7 @@ function ValidateSaveButton(props: BarHeaderButtonBarValidateProps) {
   );
 }
 
-BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
+Bar.ButtonBar = function (props: BarButtonBarProps) {
   switch (props.variant) {
     case "back":
       return (
@@ -181,3 +202,65 @@ BarHeader.ButtonBar = function (props: BarHeaderButtonBarProps) {
       return null;
   }
 };
+
+// BarHeader component - convenience wrapper for top-positioned Bar
+interface BarHeaderProps {
+  title: string;
+  tooltip?: string;
+  leftActions?: React.ReactNode;
+  rightActions?: React.ReactNode;
+  className?: string;
+  variant?: "full" | "default";
+}
+
+export function BarHeader({
+  title,
+  tooltip,
+  leftActions,
+  rightActions,
+  className,
+  variant,
+}: BarHeaderProps) {
+  return (
+    <Bar
+      position="top"
+      title={title}
+      tooltip={tooltip}
+      leftActions={leftActions}
+      rightActions={rightActions}
+      className={className}
+      variant={variant}
+    />
+  );
+}
+
+export type BarHeaderButtonBarProps = BarButtonBarProps;
+BarHeader.ButtonBar = Bar.ButtonBar;
+
+// BarFooter component - convenience wrapper for bottom-positioned Bar
+interface BarFooterProps {
+  leftActions?: React.ReactNode;
+  rightActions?: React.ReactNode;
+  className?: string;
+  variant?: "full" | "default";
+}
+
+export function BarFooter({
+  leftActions,
+  rightActions,
+  className,
+  variant,
+}: BarFooterProps) {
+  return (
+    <Bar
+      position="bottom"
+      leftActions={leftActions}
+      rightActions={rightActions}
+      className={className}
+      variant={variant}
+    />
+  );
+}
+
+export type BarFooterButtonBarProps = BarButtonBarProps;
+BarFooter.ButtonBar = Bar.ButtonBar;
