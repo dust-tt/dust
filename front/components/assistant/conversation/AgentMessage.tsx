@@ -532,9 +532,12 @@ export function AgentMessage({
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
     if (agentMessage.status === "failed") {
-      datadogLogs.logger.info("Failed agent message rendered", {
-        agentMessage,
-      });
+      datadogLogs.logger.info(
+        `Failed agent message rendered${agentMessage.error ? `: ${agentMessage.error.code}` : ""}`,
+        {
+          ...(agentMessage.error ? agentMessage.error : {}),
+        }
+      );
       if (
         agentMessage.error &&
         agentMessage.error.code ===
