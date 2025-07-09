@@ -21,9 +21,8 @@ import type {
   DataSourceViewSelectionConfigurations,
   UserType,
 } from "@app/types";
-import type { Result } from "@app/types";
+import type { LightAgentConfigurationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@app/types/assistant/agent";
 import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/assistant";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -32,9 +31,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  * Transforms a light agent configuration (server-side) into agent builder form data (client-side).
  */
 export function transformAgentConfigurationToFormData(
-  agentConfiguration: AgentConfigurationType,
-  currentUser: UserType,
-  agentEditors: UserType[] = []
+  agentConfiguration: LightAgentConfigurationType
 ): AgentBuilderFormData {
   return {
     agentSettings: {
@@ -45,7 +42,7 @@ export function transformAgentConfigurationToFormData(
         agentConfiguration.scope === "global"
           ? "visible"
           : agentConfiguration.scope,
-      editors: agentEditors.length > 0 ? agentEditors : [currentUser],
+      editors: [], // Fallback - editors will be updated reactively
       slackProvider: null, // TODO: determine from agent configuration
       slackChannels: [], // TODO: determine from agent configuration
       tags: agentConfiguration.tags,

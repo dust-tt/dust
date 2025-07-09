@@ -62,11 +62,7 @@ export default function AgentBuilder({
 
   const defaultValues = useMemo((): AgentBuilderFormData => {
     if (agentConfiguration) {
-      return transformAgentConfigurationToFormData(
-        agentConfiguration,
-        user,
-        [user] // Always use current user as fallback - editors will be updated reactively
-      );
+      return transformAgentConfigurationToFormData(agentConfiguration);
     }
     return getDefaultAgentFormData(user, defaultMaxSteps);
   }, [agentConfiguration, user, defaultMaxSteps]);
