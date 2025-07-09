@@ -8,6 +8,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{error, info};
 
+use crate::databases::table_upserts_background_worker::{
+    GoogleCloudStorageBackgroundProcessingStore, TableUpsertCall, REDIS_TABLE_UPSERT_HASH_NAME,
+};
 use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
 use crate::databases_store::store::{DatabasesStoreStrategy, CURRENT_STRATEGY};
 use crate::search_stores::search_store::NodeItem;
@@ -29,16 +32,6 @@ use crate::{
 pub enum TableType {
     Local,
     Remote(String),
-}
-
-pub const REDIS_TABLE_UPSERT_HASH_NAME: &str = "TABLE_UPSERT";
-
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct TableUpsertCall {
-    pub time: u64,
-    pub project_id: i64,
-    pub data_source_id: String,
-    pub table_id: String,
 }
 
 pub fn get_table_unique_id(project: &Project, data_source_id: &str, table_id: &str) -> String {
@@ -428,7 +421,7 @@ impl LocalTable {
         Self::validate_rows_lowercase(rows.clone()).await?;
 
         if truncate {
-            self.upsert_rows_now(store, databases_store, rows, truncate)
+            self.upsert_rows_now(&store, &databases_store, rows, truncate)
                 .await
         } else {
             if let Some(client) = &*cache::REDIS_CLIENT {
@@ -448,6 +441,15 @@ impl LocalTable {
                             )
                             .await
                             .unwrap();
+
+                        let rows_arc = Arc::new(rows);
+                        let schema = TableSchema::from_rows_async(rows_arc.clone()).await?;
+                        GoogleCloudStorageBackgroundProcessingStore::write_rows_to_csv(
+                            &self.table,
+                            &schema,
+                            &rows_arc,
+                        )
+                        .await?;
                     }
                     Err(e) => {
                         error!("Error connecting to Redis: {}.", e);
@@ -460,8 +462,8 @@ impl LocalTable {
 
     pub async fn upsert_rows_now(
         &self,
-        store: Box<dyn Store + Sync + Send>,
-        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        store: &Box<dyn Store + Sync + Send>,
+        databases_store: &Box<dyn DatabasesStore + Sync + Send>,
         rows: Vec<Row>,
         truncate: bool,
     ) -> Result<()> {

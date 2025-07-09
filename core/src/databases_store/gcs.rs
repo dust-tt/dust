@@ -20,6 +20,41 @@ use super::store::DatabasesStore;
 #[derive(Clone)]
 pub struct GoogleCloudStorageDatabasesStore {}
 
+pub async fn write_rows_to_csv_helper(
+    schema: &TableSchema,
+    rows: &Vec<Row>,
+    bucket: &str,
+    bucket_csv_path: &str,
+) -> Result<(), anyhow::Error> {
+    let mut field_names = schema
+        .columns()
+        .iter()
+        .map(|c| c.name.clone())
+        .collect::<Vec<_>>();
+
+    // Read all rows and upload to GCS
+    let mut wtr = Writer::from_writer(vec![]);
+
+    // We need to append the row_id in a __dust_id field
+    // It's important to have it LAST in the headers as the table schema do not show it
+    // and when the csv will be used as-is for the sqlite database, the dust_id will be completely ignored (as it should).
+    field_names.push("__dust_id".to_string());
+
+    // Write the header.
+    wtr.write_record(field_names.iter().map(String::as_str))?;
+
+    // Write the rows.
+    for row in rows {
+        wtr.write_record(row.to_csv_record(&field_names)?)?;
+    }
+
+    let csv = wtr.into_inner()?;
+
+    Object::create(bucket, csv, bucket_csv_path, "text/csv").await?;
+
+    Ok(())
+}
+
 impl GoogleCloudStorageDatabasesStore {
     pub fn new() -> Self {
         Self {}
@@ -54,35 +89,11 @@ impl GoogleCloudStorageDatabasesStore {
         schema: &TableSchema,
         rows: &Vec<Row>,
     ) -> Result<(), anyhow::Error> {
-        let mut field_names = schema
-            .columns()
-            .iter()
-            .map(|c| c.name.clone())
-            .collect::<Vec<_>>();
-
-        // Read all rows and upload to GCS
-        let mut wtr = Writer::from_writer(vec![]);
-
-        // We need to append the row_id in a __dust_id field
-        // It's important to have it LAST in the headers as the table schema do not show it
-        // and when the csv will be used as-is for the sqlite database, the dust_id will be completely ignored (as it should).
-        field_names.push("__dust_id".to_string());
-
-        // Write the header.
-        wtr.write_record(field_names.iter().map(String::as_str))?;
-
-        // Write the rows.
-        for row in rows {
-            wtr.write_record(row.to_csv_record(&field_names)?)?;
-        }
-
-        let csv = wtr.into_inner()?;
-
-        Object::create(
+        write_rows_to_csv_helper(
+            schema,
+            rows,
             &Self::get_bucket()?,
-            csv,
             &Self::get_csv_storage_file_path(table),
-            "text/csv",
         )
         .await?;
 
