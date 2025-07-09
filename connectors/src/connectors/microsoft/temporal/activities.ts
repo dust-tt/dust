@@ -1162,11 +1162,7 @@ export async function microsoftGarbageCollectionActivity({
         requests: chunk,
       });
     } catch (error) {
-      if (
-        error instanceof GraphError &&
-        error.code === "itemNotFound" &&
-        error.statusCode === 404
-      ) {
+      if (isItemNotFoundError(error)) {
         logger.info(
           {
             connectorId,
@@ -1284,13 +1280,27 @@ const cachedGetParentFromGraphAPI = cacheWithRedis(
       return null;
     }
 
-    const driveItem: DriveItem = await getItem(logger, client, itemAPIPath);
+    try {
+      const driveItem: DriveItem = await getItem(logger, client, itemAPIPath);
 
-    if (!driveItem.parentReference) {
-      throw new Error("Unexpected: no parent reference for drive item");
+      if (!driveItem.parentReference) {
+        throw new Error("Unexpected: no parent reference for drive item");
+      }
+
+      return getParentReferenceInternalId(driveItem.parentReference);
+    } catch (error) {
+      if (isItemNotFoundError(error)) {
+        logger.info(
+          {
+            parentInternalId,
+            error: error.message,
+          },
+          "Parent item not found, treating as no parent"
+        );
+        return null;
+      }
+      throw error;
     }
-
-    return getParentReferenceInternalId(driveItem.parentReference);
   },
   ({
     parentInternalId,
