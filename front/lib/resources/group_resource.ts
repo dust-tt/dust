@@ -2,7 +2,7 @@ import type {
   DirectoryGroup,
   DirectoryGroup as WorkOSGroup,
 } from "@workos-inc/node";
-import { assert } from "console";
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
