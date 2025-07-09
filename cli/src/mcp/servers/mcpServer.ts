@@ -31,25 +31,6 @@ export class AgentsMcpService extends ExternalMcpService {
     this.selectedAgents = selectedAgents;
   }
 
-  async initializeDustClient(): Promise<void> {
-    if (!this.dustClient) {
-      this.dustClient = await getDustClient();
-      if (!this.dustClient) {
-        throw new Error(
-          "Dust client not initialized. Please run 'dust login'."
-        );
-      }
-
-      const meRes = await this.dustClient.me();
-      if (meRes.isErr()) {
-        throw new Error(
-          `Failed to get user information: ${meRes.error.message}`
-        );
-      }
-      this.user = meRes.value;
-    }
-  }
-
   async createMcpServer(): Promise<McpServer> {
     await this.initializeDustClient();
 
@@ -161,6 +142,25 @@ export class AgentsMcpService extends ExternalMcpService {
     }
 
     return server;
+  }
+
+  async initializeDustClient(): Promise<void> {
+    if (!this.dustClient) {
+      this.dustClient = await getDustClient();
+      if (!this.dustClient) {
+        throw new Error(
+          "Dust client not initialized. Please run 'dust login'."
+        );
+      }
+
+      const meRes = await this.dustClient.me();
+      if (meRes.isErr()) {
+        throw new Error(
+          `Failed to get user information: ${meRes.error.message}`
+        );
+      }
+      this.user = meRes.value;
+    }
   }
 }
 
