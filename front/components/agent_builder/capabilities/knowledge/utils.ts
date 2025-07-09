@@ -13,6 +13,7 @@ import {
 } from "@app/components/agent_builder/types";
 
 export interface CapabilityConfig {
+  name: KnowledgeServerName,
   title: string;
   description: string;
   icon: React.ComponentType;
@@ -34,6 +35,7 @@ export interface CapabilityConfig {
 
 export const CAPABILITY_CONFIGS: Record<KnowledgeServerName, CapabilityConfig> = {
   search: {
+    name: 'search',
     title: "Select Data Sources",
     description: "Choose which data sources to search",
     icon: MagnifyingGlassIcon,
@@ -54,6 +56,7 @@ export const CAPABILITY_CONFIGS: Record<KnowledgeServerName, CapabilityConfig> =
     },
   },
   include_data: {
+    name: 'include_data',
     title: "Select Data Sources",
     description: "Choose which data sources to include data from",
     icon: ActionIncludeIcon,
@@ -75,6 +78,7 @@ export const CAPABILITY_CONFIGS: Record<KnowledgeServerName, CapabilityConfig> =
     },
   },
   extract_data: {
+    name: 'extract_data',
     title: "Data Sources",
     description: "Choose which data sources to extract data from",
     icon: ActionScanIcon,
@@ -95,6 +99,7 @@ export const CAPABILITY_CONFIGS: Record<KnowledgeServerName, CapabilityConfig> =
     },
   },
   query_tables: {
+    name: 'query_tables',
     title: "Select Tables",
     description: "Choose which tables to query from your data sources",
     icon: TableIcon,

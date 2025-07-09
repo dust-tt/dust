@@ -149,12 +149,5 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
   CONFIGURATION: "configuration",
 } as const;
 
-export type PageId = (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
+export type ConfigurationSheetPageId = (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
 
-export interface CapabilitiesConfigurationSheetProps {
-  capability: KnowledgeServerName | null;
-  onSave: (action: AgentBuilderAction) => void;
-  isOpen: boolean;
-  onClose: () => void;
-  action?: AgentBuilderAction;
-}

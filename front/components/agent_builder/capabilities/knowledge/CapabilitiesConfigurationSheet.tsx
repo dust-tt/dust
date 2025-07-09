@@ -21,10 +21,10 @@ import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/k
 import type {
   CapabilityFormData,
   ConfigurationSheetPageId,
+  KnowledgeServerName,
 } from "@app/components/agent_builder/types";
 import type {
   AgentBuilderAction,
-  CapabilitiesConfigurationSheetProps,
   ExtractDataAgentBuilderAction,
   IncludeDataAgentBuilderAction,
   SearchAgentBuilderAction,
@@ -38,6 +38,14 @@ import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/D
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
+interface CapabilitiesConfigurationSheetProps {
+  capability: KnowledgeServerName | null;
+  onSave: (action: AgentBuilderAction) => void;
+  isOpen: boolean;
+  onClose: () => void;
+  action?: AgentBuilderAction;
+}
+
 export function CapabilitiesConfigurationSheet({
   capability,
   onSave,
@@ -45,6 +53,58 @@ export function CapabilitiesConfigurationSheet({
   onClose,
   action,
 }: CapabilitiesConfigurationSheetProps) {
+  // We store as state to to control the timing to update the content for exit animation.
+  const [config, setConfig] = useState<CapabilityConfig | null>(null);
+
+  const handleClose = () => {
+    onClose();
+
+    // Wait until closing animation ends, otherwise exit animation won't work.
+    setTimeout(() => {
+      setConfig(null);
+    }, 200);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setConfig(capability ? CAPABILITY_CONFIGS[capability] : null);
+    }
+  }, [capability, isOpen]);
+
+  return (
+    <MultiPageSheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        !open && handleClose();
+      }}
+    >
+      {config && (
+        <CapabilitiesConfigurationSheetContent
+          config={config}
+          onClose={handleClose}
+          action={action}
+          onSave={onSave}
+        />
+      )}
+    </MultiPageSheet>
+  );
+}
+
+interface CapabilitiesConfigurationSheetContent {
+  config: CapabilityConfig;
+  action?: AgentBuilderAction;
+  onSave: (action: AgentBuilderAction) => void;
+  onClose: () => void;
+}
+
+// This component gets unmounted when config is null,
+// so we don't have to reset the state.
+function CapabilitiesConfigurationSheetContent({
+  action,
+  onSave,
+  config,
+  onClose,
+}: CapabilitiesConfigurationSheetContent) {
   const { owner, supportedDataSourceViews } = useAgentBuilderContext();
   const { spaces } = useSpacesContext();
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
@@ -58,7 +118,6 @@ export function CapabilitiesConfigurationSheet({
     useState<DataSourceViewSelectionConfigurations>(() =>
       getDataSourceConfigurations(action)
     );
-  const [config, setConfig] = useState<CapabilityConfig | null>(null);
 
   const form = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
@@ -77,43 +136,16 @@ export function CapabilitiesConfigurationSheet({
     "jsonSchema",
   ]);
 
-  useEffect(() => {
-    if (isOpen) {
-      setConfig(capability ? CAPABILITY_CONFIGS[capability] : null);
-      form.reset({
-        description: action?.description ?? "",
-        timeFrame: getTimeFrame(action),
-        jsonSchema: getJsonSchema(action),
-      });
-      setDataSourceConfigurations(getDataSourceConfigurations(action));
-      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
-    }
-  }, [action, isOpen, form, capability]);
-
-  const handleClose = () => {
-    onClose();
-
-    // Wait until closing animation ends, otherwise exit animation won't work.
-    setTimeout(() => {
-      setConfig(null);
-    }, 200);
-  };
-
   const hasDataSources = hasDataSourceSelections(dataSourceConfigurations);
 
   const handleSave = () => {
-    if (!capability) {
-      return;
-    }
-
     const formData = getValues();
-    const config = CAPABILITY_CONFIGS[capability];
     let newAction: AgentBuilderAction;
 
     switch (config.actionType) {
       case "SEARCH":
         newAction = {
-          id: action?.id || `${capability}_${Date.now()}`,
+          id: action?.id || `${config.name}_${Date.now()}`,
           type: "SEARCH",
           name: config.actionName,
           description: formData.description,
@@ -157,7 +189,7 @@ export function CapabilitiesConfigurationSheet({
         return;
     }
 
-    handleClose();
+    onClose();
     onSave(newAction);
   };
 
@@ -167,101 +199,89 @@ export function CapabilitiesConfigurationSheet({
     }
   };
 
-  const pages: MultiPageSheetPage[] = config
-    ? [
-        {
-          id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
-          title: config.title,
-          description: config.description,
-          icon: config.icon,
-          content: (
-            <div className="space-y-4">
-              <div
-                id="dataSourceViewsSelector"
-                className="overflow-y-auto scrollbar-hide"
-              >
-                <DataSourceViewsSpaceSelector
-                  useCase="assistantBuilder"
-                  dataSourceViews={supportedDataSourceViews}
-                  allowedSpaces={spaces}
-                  owner={owner}
-                  selectionConfigurations={dataSourceConfigurations}
-                  setSelectionConfigurations={setDataSourceConfigurations}
-                  viewType={config.viewType}
-                  isRootSelectable={true}
-                />
-              </div>
-            </div>
-          ),
-        },
-        {
-          id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
-          title: config.configPageTitle,
-          description: config.configPageDescription,
-          icon: config.icon,
-          content: (
-            <FormProvider form={form}>
-              <div className="space-y-6">
-                {config.hasTimeFrame && (
-                  <TimeFrameSection
-                    timeFrame={timeFrame}
-                    setTimeFrame={(timeFrame) =>
-                      setValue("timeFrame", timeFrame)
-                    }
-                    actionType={
-                      capability === "extract_data" ? "extract" : "include"
-                    }
-                  />
-                )}
-                {config.hasJsonSchema && (
-                  <JsonSchemaSection
-                    value={jsonSchema}
-                    initialSchemaString={
-                      action && getJsonSchema(action)
-                        ? JSON.stringify(getJsonSchema(action), null, 2)
-                        : null
-                    }
-                    onChange={(schema) => setValue("jsonSchema", schema)}
-                    agentInstructions={instructions}
-                    agentDescription={description}
-                    owner={owner}
-                  />
-                )}
-                <DescriptionSection
-                  title={config.descriptionConfig.title}
-                  description={config.descriptionConfig.description}
-                  placeholder={config.descriptionConfig.placeholder}
-                  maxLength={config.descriptionConfig.maxLength}
-                  helpText={config.descriptionConfig.helpText}
-                />
-              </div>
-            </FormProvider>
-          ),
-        },
-      ]
-    : [];
+  const pages: MultiPageSheetPage[] = [
+    {
+      id: CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION,
+      title: config.title,
+      description: config.description,
+      icon: config.icon,
+      content: (
+        <div className="space-y-4">
+          <div
+            id="dataSourceViewsSelector"
+            className="overflow-y-auto scrollbar-hide"
+          >
+            <DataSourceViewsSpaceSelector
+              useCase="assistantBuilder"
+              dataSourceViews={supportedDataSourceViews}
+              allowedSpaces={spaces}
+              owner={owner}
+              selectionConfigurations={dataSourceConfigurations}
+              setSelectionConfigurations={setDataSourceConfigurations}
+              viewType={config.viewType}
+              isRootSelectable={true}
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
+      title: config.configPageTitle,
+      description: config.configPageDescription,
+      icon: config.icon,
+      content: (
+        <FormProvider form={form}>
+          <div className="space-y-6">
+            {config.hasTimeFrame && (
+              <TimeFrameSection
+                timeFrame={timeFrame}
+                setTimeFrame={(timeFrame) => setValue("timeFrame", timeFrame)}
+                actionType={
+                  config.name === "extract_data" ? "extract" : "include"
+                }
+              />
+            )}
+            {config.hasJsonSchema && (
+              <JsonSchemaSection
+                value={jsonSchema}
+                initialSchemaString={
+                  action && getJsonSchema(action)
+                    ? JSON.stringify(getJsonSchema(action), null, 2)
+                    : null
+                }
+                onChange={(schema) => setValue("jsonSchema", schema)}
+                agentInstructions={instructions}
+                agentDescription={description}
+                owner={owner}
+              />
+            )}
+            <DescriptionSection
+              title={config.descriptionConfig.title}
+              description={config.descriptionConfig.description}
+              placeholder={config.descriptionConfig.placeholder}
+              maxLength={config.descriptionConfig.maxLength}
+              helpText={config.descriptionConfig.helpText}
+            />
+          </div>
+        </FormProvider>
+      ),
+    },
+  ];
 
   return (
-    <MultiPageSheet
-      open={isOpen}
-      onOpenChange={(open) => {
-        !open && handleClose();
-      }}
-    >
-      <MultiPageSheetContent
-        pages={pages}
-        currentPageId={currentPageId}
-        onPageChange={handlePageChange}
-        size="lg"
-        onSave={handleSave}
-        showNavigation={true}
-        disableNext={
-          currentPageId ===
-            CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION &&
-          !hasDataSources
-        }
-        disableSave={!hasDataSources || !formState.isValid}
-      />
-    </MultiPageSheet>
+    <MultiPageSheetContent
+      pages={pages}
+      currentPageId={currentPageId}
+      onPageChange={handlePageChange}
+      size="lg"
+      onSave={handleSave}
+      showNavigation={true}
+      disableNext={
+        currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION &&
+        !hasDataSources
+      }
+      disableSave={!hasDataSources || !formState.isValid}
+    />
   );
 }
