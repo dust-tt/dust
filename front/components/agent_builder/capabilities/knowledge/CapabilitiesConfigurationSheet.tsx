@@ -97,8 +97,7 @@ interface CapabilitiesConfigurationSheetContent {
   onClose: () => void;
 }
 
-// This component gets unmounted when config is null,
-// so we don't have to reset the state.
+// This component gets unmounted when config is null so no need to reset the state.
 function CapabilitiesConfigurationSheetContent({
   action,
   onSave,
@@ -121,7 +120,6 @@ function CapabilitiesConfigurationSheetContent({
 
   const form = useForm<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
-    mode: "onChange",
     defaultValues: {
       description: action?.description ?? "",
       timeFrame: getTimeFrame(action),
@@ -256,13 +254,7 @@ function CapabilitiesConfigurationSheetContent({
                 owner={owner}
               />
             )}
-            <DescriptionSection
-              title={config.descriptionConfig.title}
-              description={config.descriptionConfig.description}
-              placeholder={config.descriptionConfig.placeholder}
-              maxLength={config.descriptionConfig.maxLength}
-              helpText={config.descriptionConfig.helpText}
-            />
+            <DescriptionSection {...config.descriptionConfig} />
           </div>
         </FormProvider>
       ),
