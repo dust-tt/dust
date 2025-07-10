@@ -51,7 +51,7 @@ async function migrateConnector(
       },
       "Checked duplicate ticket"
     );
-    if (isValid) {
+    if (!isValid) {
       if (execute) {
         await ticket.destroy();
         logger.info(
