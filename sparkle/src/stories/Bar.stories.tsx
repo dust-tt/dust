@@ -44,13 +44,18 @@ export const BasicBarHeaderValidate = () => {
         rightActions={
           <Bar.ButtonBar
             variant="validate"
-            isSaving={isSaving}
-            onSave={() => {
-              setIsSaving(true);
-              setTimeout(() => {
-                setIsSaving(false);
-                alert("Save !");
-              }, 2000);
+            saveButtonProps={{
+              size: "sm",
+              label: isSaving ? "Saving..." : "Save",
+              variant: "primary",
+              onClick: () => {
+                setIsSaving(true);
+                setTimeout(() => {
+                  setIsSaving(false);
+                  alert("Save !");
+                }, 2000);
+              },
+              disabled: isSaving,
             }}
           />
         }
@@ -111,14 +116,24 @@ export const BasicBarFooterValidate = () => {
         rightActions={
           <Bar.ButtonBar
             variant="validate"
-            isSaving={isSaving}
-            onCancel={() => alert("Cancelled!")}
-            onSave={() => {
-              setIsSaving(true);
-              setTimeout(() => {
-                setIsSaving(false);
-                alert("Saved!");
-              }, 2000);
+            cancelButtonProps={{
+              size: "sm",
+              label: "Cancel",
+              variant: "ghost",
+              onClick: () => alert("Cancelled!"),
+            }}
+            saveButtonProps={{
+              size: "sm",
+              label: isSaving ? "Saving..." : "Save",
+              variant: "primary",
+              onClick: () => {
+                setIsSaving(true);
+                setTimeout(() => {
+                  setIsSaving(false);
+                  alert("Saved!");
+                }, 2000);
+              },
+              disabled: isSaving,
             }}
           />
         }
@@ -168,14 +183,24 @@ export const HeaderAndFooterCombined = () => {
         rightActions={
           <Bar.ButtonBar
             variant="validate"
-            isSaving={isSaving}
-            onCancel={() => alert("Cancelled!")}
-            onSave={() => {
-              setIsSaving(true);
-              setTimeout(() => {
-                setIsSaving(false);
-                alert("Saved!");
-              }, 2000);
+            cancelButtonProps={{
+              size: "sm",
+              label: "Cancel",
+              variant: "ghost",
+              onClick: () => alert("Cancelled!"),
+            }}
+            saveButtonProps={{
+              size: "sm",
+              label: isSaving ? "Saving..." : "Save",
+              variant: "primary",
+              onClick: () => {
+                setIsSaving(true);
+                setTimeout(() => {
+                  setIsSaving(false);
+                  alert("Saved!");
+                }, 2000);
+              },
+              disabled: isSaving,
             }}
           />
         }
@@ -220,14 +245,24 @@ export const DefaultVariantInPanel = () => {
               rightActions={
                 <Bar.ButtonBar
                   variant="validate"
-                  isSaving={isSaving}
-                  onCancel={() => alert("Cancelled!")}
-                  onSave={() => {
-                    setIsSaving(true);
-                    setTimeout(() => {
-                      setIsSaving(false);
-                      alert("Saved!");
-                    }, 2000);
+                  cancelButtonProps={{
+                    size: "sm",
+                    label: "Cancel",
+                    variant: "ghost",
+                    onClick: () => alert("Cancelled!"),
+                  }}
+                  saveButtonProps={{
+                    size: "sm",
+                    label: isSaving ? "Saving..." : "Save",
+                    variant: "primary",
+                    onClick: () => {
+                      setIsSaving(true);
+                      setTimeout(() => {
+                        setIsSaving(false);
+                        alert("Saved!");
+                      }, 2000);
+                    },
+                    disabled: isSaving,
                   }}
                 />
               }
@@ -267,8 +302,18 @@ export const DefaultVariantInPanel = () => {
               rightActions={
                 <Bar.ButtonBar
                   variant="validate"
-                  onCancel={() => alert("Cancelled!")}
-                  onSave={() => alert("Saved!")}
+                  cancelButtonProps={{
+                    size: "sm",
+                    label: "Cancel",
+                    variant: "ghost",
+                    onClick: () => alert("Cancelled!"),
+                  }}
+                  saveButtonProps={{
+                    size: "sm",
+                    label: "Save",
+                    variant: "primary",
+                    onClick: () => alert("Saved!"),
+                  }}
                 />
               }
             />

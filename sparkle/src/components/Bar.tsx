@@ -10,7 +10,7 @@ import {
 } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
-import { Button } from "./Button";
+import { Button, type ButtonProps } from "./Button";
 
 const barVariants = cva(
   "s-flex s-h-16 s-flex-row s-items-center s-gap-3 s-px-4",
@@ -101,13 +101,8 @@ type BarButtonBarBackProps = {
 
 type BarButtonBarValidateProps = {
   variant: "validate";
-  onCancel?: () => void;
-  onSave?: () => void;
-  saveLabel?: string;
-  isSaving?: boolean;
-  isDisabled?: boolean;
-  savingLabel?: string;
-  saveTooltip?: string;
+  cancelButtonProps?: ButtonProps;
+  saveButtonProps?: ButtonProps;
 };
 
 type BarButtonBarConversationProps = {
@@ -121,28 +116,6 @@ export type BarButtonBarProps =
   | BarButtonBarBackProps
   | BarButtonBarValidateProps
   | BarButtonBarConversationProps;
-
-function ValidateSaveButton(props: BarButtonBarValidateProps) {
-  const button = (
-    <Button
-      size="sm"
-      label={
-        props.isSaving
-          ? props.savingLabel || "Processing..."
-          : props.saveLabel || "Save"
-      }
-      variant="primary"
-      onClick={props.onSave}
-      disabled={!props.onSave || props.isSaving}
-    />
-  );
-
-  return props.saveTooltip ? (
-    <Tooltip label={props.saveTooltip} side="left" trigger={button} />
-  ) : (
-    button
-  );
-}
 
 Bar.ButtonBar = function (props: BarButtonBarProps) {
   switch (props.variant) {
@@ -169,14 +142,8 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
     case "validate":
       return (
         <>
-          <Button
-            size="sm"
-            label="Cancel"
-            variant="ghost"
-            onClick={props.onCancel}
-            disabled={!props.onCancel || props.isSaving || props.isDisabled}
-          />
-          <ValidateSaveButton {...props} />
+          {props.cancelButtonProps && <Button {...props.cancelButtonProps} />}
+          {props.saveButtonProps && <Button {...props.saveButtonProps} />}
         </>
       );
     case "conversation":
