@@ -12,7 +12,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "gmail",
   version: "1.0.0",
-  description: "Gmail tools for managing email drafts.",
+  description: "Gmail tools for reading emails and managing email drafts.",
   authorization: {
     provider: "google_drive" as const,
     supported_use_cases: ["personal_actions"] as const,
@@ -36,13 +36,24 @@ const createServer = (): McpServer => {
         .describe(
           'Only return draft messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:<somemsgid@example.com> is:unread".'
         ),
+      pageToken: z
+        .string()
+        .optional()
+        .describe("Token for fetching the next page of results."),
     },
-    async ({ q }, { authInfo }) => {
+    async ({ q, pageToken }, { authInfo }) => {
       const accessToken = authInfo?.token;
 
+      const params = new URLSearchParams();
+      if (q) {
+        params.append("q", q);
+      }
+      if (pageToken) {
+        params.append("pageToken", pageToken);
+      }
+
       const response = await fetch(
-        "https://gmail.googleapis.com/gmail/v1/users/me/drafts?q=" +
-          encodeURIComponent(q ?? ""),
+        `https://gmail.googleapis.com/gmail/v1/users/me/drafts?${params.toString()}`,
         {
           method: "GET",
           headers: {
@@ -81,7 +92,10 @@ const createServer = (): McpServer => {
 
       return makeMCPToolJSONSuccess({
         message: "Drafts fetched successfully",
-        result: drafts,
+        result: {
+          drafts,
+          nextPageToken: result.nextPageToken,
+        },
       });
     }
   );
@@ -200,6 +214,268 @@ const createServer = (): McpServer => {
       return makeMCPToolJSONSuccess({
         message: "Draft deleted successfully",
         result: "",
+      });
+    }
+  );
+
+  server.tool(
+    "get_messages",
+    "Get messages from Gmail inbox. Supports Gmail search queries to filter messages.",
+    {
+      q: z
+        .string()
+        .optional()
+        .describe(
+          'Gmail search query to filter messages. Supports the same query format as the Gmail search box. Examples: "from:someone@example.com", "subject:meeting", "is:unread", "label:important". Leave empty to get recent messages.'
+        ),
+      maxResults: z
+        .number()
+        .optional()
+        .describe(
+          "Maximum number of messages to return (default: 10, max: 100)"
+        ),
+      pageToken: z
+        .string()
+        .optional()
+        .describe("Token for fetching the next page of results."),
+    },
+    async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+
+      const params = new URLSearchParams();
+      if (q) {
+        params.append("q", q);
+      }
+      params.append("maxResults", Math.min(maxResults, 100).toString());
+      if (pageToken) {
+        params.append("pageToken", pageToken);
+      }
+
+      const response = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        return makeMCPToolTextError(
+          `Failed to get messages: ${response.status} ${response.statusText} - ${errorText}`
+        );
+      }
+
+      const result = await response.json();
+
+      // Get detailed message information for each message
+      const messageDetails = await concurrentExecutor(
+        result.messages ?? [],
+        async (message: { id: string }) => {
+          const messageResponse = await fetch(
+            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date&metadataHeaders=Message-ID&metadataHeaders=In-Reply-To&metadataHeaders=References`,
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+          if (!messageResponse.ok) {
+            const errorText = await messageResponse
+              .text()
+              .catch(() => "Unknown error");
+            return {
+              success: false,
+              messageId: message.id,
+              error: `${messageResponse.status} ${messageResponse.statusText} - ${errorText}`,
+            };
+          }
+
+          return {
+            success: true,
+            data: await messageResponse.json(),
+          };
+        },
+        { concurrency: 10 }
+      );
+
+      // Separate successful and failed message details
+      const successfulMessages = messageDetails
+        .filter((detail: any) => detail.success)
+        .map((detail: any) => detail.data);
+
+      const failedMessages = messageDetails
+        .filter((detail: any) => !detail.success)
+        .map((detail: any) => ({
+          messageId: detail.messageId,
+          error: detail.error,
+        }));
+
+      const totalRequested = result.messages?.length || 0;
+      const totalSuccessful = successfulMessages.length;
+      const totalFailed = failedMessages.length;
+
+      let message = "Messages fetched successfully";
+      if (totalFailed > 0) {
+        message = `Messages fetched with ${totalFailed} failures out of ${totalRequested} total messages`;
+      }
+
+      return makeMCPToolJSONSuccess({
+        message,
+        result: {
+          messages: successfulMessages,
+          failedMessages,
+          summary: {
+            totalRequested,
+            totalSuccessful,
+            totalFailed,
+          },
+          nextPageToken: result.nextPageToken,
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "create_reply_draft",
+    `Create a reply draft to an existing email thread in Gmail.
+- The draft will be saved in the user's Gmail account and can be reviewed and sent later.
+- The reply will be properly formatted with the original message quoted.
+- The draft will include proper email headers and threading information.`,
+    {
+      messageId: z.string().describe("The ID of the message to reply to"),
+      body: z.string().describe("The body of the reply email"),
+      contentType: z
+        .enum(["text/plain", "text/html"])
+        .optional()
+        .describe(
+          "The content type of the email (text/plain or text/html). Defaults to text/plain."
+        ),
+    },
+    async ({ messageId, body, contentType = "text/plain" }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+
+      // Fetch the original message to extract threading information
+      const messageResponse = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Message-ID&metadataHeaders=References`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!messageResponse.ok) {
+        const errorText = await messageResponse
+          .text()
+          .catch(() => "Unknown error");
+        if (messageResponse.status === 404) {
+          return makeMCPToolTextError(`Message not found: ${messageId}`);
+        }
+        return makeMCPToolTextError(
+          `Failed to get original message: ${messageResponse.status} ${messageResponse.statusText} - ${errorText}`
+        );
+      }
+
+      const originalMessage = await messageResponse.json();
+      const headers = originalMessage.payload?.headers || [];
+
+      // Helper to extract a header value
+      const getHeader = (name: string) =>
+        headers.find(
+          (h: { name: string; value: string }) =>
+            h.name.toLowerCase() === name.toLowerCase()
+        )?.value;
+
+      const originalFrom = getHeader("From");
+      const originalTo = getHeader("To");
+      const originalSubject = getHeader("Subject");
+      const originalMessageId = getHeader("Message-ID");
+      const originalReferences = getHeader("References");
+
+      // Determine the reply-to address (prefer From, fallback to To)
+      const replyTo = originalFrom || originalTo;
+      if (!replyTo || replyTo.trim() === "") {
+        return makeMCPToolTextError(
+          "Cannot determine reply-to address from original message"
+        );
+      }
+
+      // Create subject line for reply
+      const replySubject = originalSubject?.startsWith("Re:")
+        ? originalSubject
+        : `Re: ${originalSubject || "No Subject"}`;
+
+      // Create threading headers
+      const threadingHeaders = [
+        originalMessageId ? `In-Reply-To: ${originalMessageId}` : null,
+        originalReferences ? `References: ${originalReferences}` : null,
+        originalMessageId && !originalReferences
+          ? `References: ${originalMessageId}`
+          : null,
+      ].filter(Boolean);
+
+      // Encode subject line using RFC 2047
+      const encodedSubject = `=?UTF-8?B?${Buffer.from(replySubject, "utf-8").toString("base64")}?=`;
+
+      // Construct the reply message
+      const message = [
+        `To: ${replyTo}`,
+        `Subject: ${encodedSubject}`,
+        `Content-Type: ${contentType}`,
+        "MIME-Version: 1.0",
+        ...threadingHeaders,
+        "",
+        body,
+      ].join("\n");
+
+      // Encode the message in base64 as required by the Gmail API
+      const encodedMessage = Buffer.from(message)
+        .toString("base64")
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+
+      // Create the draft via Gmail API
+      const response = await fetch(
+        "https://gmail.googleapis.com/gmail/v1/users/me/drafts",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: {
+              raw: encodedMessage,
+            },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        return makeMCPToolTextError(
+          `Failed to create reply draft: ${response.status} ${response.statusText} - ${errorText}`
+        );
+      }
+
+      const result = await response.json();
+
+      return makeMCPToolJSONSuccess({
+        message: "Reply draft created successfully",
+        result: {
+          draftId: result.id,
+          messageId: result.message.id,
+          originalMessageId: messageId,
+          replyTo: replyTo,
+          subject: replySubject,
+        },
       });
     }
   );

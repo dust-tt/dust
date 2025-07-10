@@ -222,6 +222,8 @@ export const INTERNAL_MCP_SERVERS: Record<
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
+      get_messages: "low",
+      create_reply_draft: "low",
     },
   },
   google_calendar: {
