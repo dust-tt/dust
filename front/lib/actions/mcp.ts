@@ -1166,34 +1166,10 @@ export async function mcpActionTypesFromAgentMessageIds(
   auth: Authenticator,
   { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<MCPActionType[]> {
-  const owner = auth.getNonNullableWorkspace();
-
   const allActions = await AgentMCPAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
-      workspaceId: owner.id,
-    },
-  });
-
-  const maxVersionActions = allActions.reduce((acc, current) => {
-    // TODO(durable-agents): remove the default value of -1 once not nullable.
-    const key = current.stepContentId ?? -1;
-    const existing = acc.get(key);
-    if (!existing || current.version > existing.version) {
-      acc.set(key, current);
-    }
-    return acc;
-  }, new Map<number, AgentMCPAction>());
-
-  const actionIds = Array.from(maxVersionActions.values()).map(
-    (action) => action.id
-  );
-
-  // Then fetch the full records with includes using the filtered IDs
-  const actions = await AgentMCPAction.findAll({
-    where: {
-      id: actionIds,
-      workspaceId: owner.id,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
     include: [
       {
@@ -1211,7 +1187,17 @@ export async function mcpActionTypesFromAgentMessageIds(
     ],
   });
 
-  return actions.map((action) => {
+  const maxVersionActions = allActions.reduce((acc, current) => {
+    // TODO(durable-agents): remove the default value of -1 once not nullable.
+    const key = current.stepContentId ?? -1;
+    const existing = acc.get(key);
+    if (!existing || current.version > existing.version) {
+      acc.set(key, current);
+    }
+    return acc;
+  }, new Map<number, AgentMCPAction>());
+
+  return Array.from(maxVersionActions.values()).map((action) => {
     return new MCPActionType({
       id: action.id,
       params: action.params,
