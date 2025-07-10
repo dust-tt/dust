@@ -194,8 +194,8 @@ async function* runMultiActionsAgentLoop(
               },
               "Error running multi-actions agent."
             );
-            if (category === "retryable_model_error") {
-              isRetryableModelError = true;
+            isRetryableModelError = category === "retryable_model_error";
+            if (isRetryableModelError) {
               break;
             }
             yield {
