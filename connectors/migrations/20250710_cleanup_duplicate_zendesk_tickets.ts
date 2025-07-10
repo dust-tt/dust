@@ -1,11 +1,11 @@
 import _ from "lodash";
+import type { Logger } from "pino";
 import { makeScript } from "scripts/helpers";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { fetchZendeskTicket } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZendeskTicketModel } from "@connectors/lib/models/zendesk";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-export type { Logger } from "pino";
 
 async function checkTicketValidity(
   ticket: ZendeskTicketModel,
