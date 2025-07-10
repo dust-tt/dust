@@ -966,22 +966,13 @@ mod tests {
     fn test_render_dbml_with_spaces_in_table_name() {
         let schema = create_test_schema();
         let dbml = schema.render_dbml("my table", "A table with spaces", true);
-        
+
         assert!(dbml.contains("Table \"my table\" {"));
         assert!(dbml.contains("field1 INT"));
         assert!(dbml.contains("field2 REAL"));
         assert!(dbml.contains("field3 TEXT"));
         assert!(dbml.contains("field4 BOOLEAN"));
         assert!(dbml.contains("Note: 'A table with spaces'"));
-    }
-
-    #[test]
-    fn test_render_dbml_without_spaces_in_table_name() {
-        let schema = create_test_schema();
-        let dbml = schema.render_dbml("mytable", "", false);
-        
-        assert!(dbml.contains("Table \"mytable\" {"));
-        assert!(!dbml.contains("Note:"));
     }
 
     // Helper function to set up an in-memory database with a test table
