@@ -35,6 +35,7 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -75,21 +76,14 @@ const MAX_ACTIONS_PER_STEP = 16;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // nor updating it (responsibility of the caller based on the emitted events).
-export async function* runAgent(
+export async function runAgent(
   auth: Authenticator,
   configuration: LightAgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
-  agentMessage: AgentMessageType
-): AsyncGenerator<
-  | AgentErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
-  void
-> {
+  agentMessage: AgentMessageType,
+  redisChannel: string
+): Promise<void> {
   const [fullConfiguration] = await Promise.all([
     getAgentConfiguration(auth, configuration.sId, "full"),
   ]);
@@ -105,6 +99,7 @@ export async function* runAgent(
     throw new Error("Unreachable: could not find owner workspace for agent");
   }
 
+  const redisHybridManager = getRedisHybridManager();
   const stream = runMultiActionsAgentLoop(
     auth,
     fullConfiguration,
@@ -114,7 +109,11 @@ export async function* runAgent(
   );
 
   for await (const event of stream) {
-    yield event;
+    await redisHybridManager.publish(
+      redisChannel,
+      JSON.stringify(event),
+      "agent_execution"
+    );
   }
 }
 
