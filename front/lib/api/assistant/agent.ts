@@ -194,10 +194,13 @@ async function* runMultiActionsAgentLoop(
               },
               "Error running multi-actions agent."
             );
+
+            // Do not yield and error and stop if we get a retryable error.
             isRetryableModelError = category === "retryable_model_error";
             if (isRetryableModelError) {
               break;
             }
+
             yield {
               ...event,
               error: { ...event.error, message: publicMessage },
