@@ -8,7 +8,7 @@ import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant
 import type { UserType } from "@app/types";
 import type { LightAgentConfigurationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/assistant";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -44,7 +44,7 @@ export function transformAgentConfigurationToFormData(
     },
     actions: [], // Actions are always loaded client-side via SWR
     maxStepsPerRun:
-      agentConfiguration.maxStepsPerRun || DEFAULT_MAX_STEPS_USE_PER_RUN,
+      agentConfiguration.maxStepsPerRun || MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }
 
@@ -182,7 +182,7 @@ function createTypedAction(
 
 export function getDefaultAgentFormData(
   user: UserType,
-  defaultMaxSteps: number = DEFAULT_MAX_STEPS_USE_PER_RUN
+  defaultMaxSteps: number
 ): AgentBuilderFormData {
   return {
     agentSettings: {
