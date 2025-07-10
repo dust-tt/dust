@@ -223,7 +223,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
             step: sc.step,
             content: sc.value,
           })) ?? [];
-
       const textContents: Array<{ step: number; content: TextContentType }> =
         [];
       for (const content of agentStepContents) {
