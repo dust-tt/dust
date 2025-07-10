@@ -1,4 +1,4 @@
-import type { RegularButtonProps } from "@dust-tt/sparkle";
+import type { ButtonProps } from "@dust-tt/sparkle";
 import { BarFooter, BarHeader, Button, XMarkIcon } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -11,7 +11,7 @@ interface AgentBuilderLeftPanelProps {
   title: string;
   onCancel: () => void;
   agentConfigurationId: string | null;
-  saveButtonProps?: RegularButtonProps;
+  saveButtonProps?: ButtonProps;
 }
 
 export function AgentBuilderLeftPanel({
