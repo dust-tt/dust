@@ -10,6 +10,8 @@ import {
   HistoryIcon,
   Spinner,
 } from "@dust-tt/sparkle";
+import { compareDesc } from "date-fns";
+import { format } from "date-fns/format";
 import { useCallback, useMemo } from "react";
 import React from "react";
 
@@ -50,16 +52,8 @@ export function AgentInstructionsHistory({
 
   const formatVersionLabel = useCallback(
     (config: LightAgentConfigurationType) => {
-      const dateFormatter = new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "numeric",
-        minute: "numeric",
-        hour12: true,
-      });
       return config.versionCreatedAt
-        ? dateFormatter.format(new Date(config.versionCreatedAt))
+        ? format(config.versionCreatedAt, "Pp")
         : `v${config.version}`;
     },
     []
@@ -80,19 +74,12 @@ export function AgentInstructionsHistory({
 
     const sorted = [...history]
       .filter((config) => config.version !== currentVersion)
-      .sort((a, b) => {
-        const timeA = a.versionCreatedAt
-          ? new Date(a.versionCreatedAt).getTime()
-          : a.version;
-        const timeB = b.versionCreatedAt
-          ? new Date(b.versionCreatedAt).getTime()
-          : b.version;
-
-        if (timeA !== timeB) {
-          return timeB - timeA;
-        }
-        return b.version - a.version;
-      });
+      .sort((a, b) =>
+        compareDesc(
+          a.versionCreatedAt ?? a.version,
+          b.versionCreatedAt ?? b.version
+        )
+      );
 
     const result: Array<{
       config: LightAgentConfigurationType;

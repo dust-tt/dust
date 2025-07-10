@@ -6,6 +6,7 @@ import {
   Separator,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { format } from "date-fns/format";
 import React, { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -35,15 +36,6 @@ export function AgentBuilderInstructionsBlock({
     agentConfigurationId,
     disabled: !agentConfigurationId,
     limit: 30,
-  });
-
-  const dateFormatter = new Intl.DateTimeFormat("en-US", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "numeric",
-    minute: "numeric",
-    hour12: true,
   });
 
   const restoreVersion = () => {
@@ -93,7 +85,7 @@ export function AgentBuilderInstructionsBlock({
           {compareVersion?.versionCreatedAt && (
             <Label>
               Comparing current version with{" "}
-              {dateFormatter.format(new Date(compareVersion.versionCreatedAt))}
+              {format(compareVersion.versionCreatedAt, "Pp")}
             </Label>
           )}
           <div className="flex gap-2">
