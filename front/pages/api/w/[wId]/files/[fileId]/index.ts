@@ -137,6 +137,11 @@ async function handler(
     }
   }
 
+  const isFileAuthor = file.userId === auth.user()?.id;
+  const isUploadUseCase =
+    file.useCase === "upsert_table" || file.useCase === "folders_document";
+  const canWriteInSpace = space ? space.canWrite(auth) : false;
+
   switch (req.method) {
     case "GET": {
       const action = getSecureFileAction(req.query.action, file);
@@ -173,12 +178,9 @@ async function handler(
     case "DELETE": {
       // Check if the user is a builder for the workspace or it's a conversation file
       if (
-        (file.useCase === "folders_document" ||
-          file.useCase === "upsert_table") &&
-        space &&
-        !space.canWrite(auth)
+        isUploadUseCase &&
+        !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
       ) {
-        console.log("here");
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -215,10 +217,8 @@ async function handler(
     case "POST": {
       // Check if the user is a builder for the workspace or it's a conversation file or avatar
       if (
-        (file.useCase === "folders_document" ||
-          file.useCase === "upsert_table") &&
-        space &&
-        !space.canWrite(auth)
+        isUploadUseCase &&
+        !((isFileAuthor && canWriteInSpace) || auth.isBuilder())
       ) {
         return apiError(req, res, {
           status_code: 403,
