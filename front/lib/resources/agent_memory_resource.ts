@@ -158,7 +158,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       forUser: UserType | null;
       index: number;
     }
-  ): Promise<AgentMemoryResource | null> {
+  ): Promise<Result<AgentMemoryResource, Error>> {
     const memory = await this.findByAgentConfiguration(auth, {
       agentConfiguration,
       forUser,
@@ -169,10 +169,14 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       if (index >= 0 && index < c.length) {
         c.splice(index, 1);
         await memory.update({ content: c });
+      } else {
+        return new Err(new Error(`Index ${index} does not exist in memory.`));
       }
+    } else {
+      return new Err(new Error(`Index ${index} does not exist in memory.`));
     }
 
-    return memory;
+    return new Ok(memory);
   }
 
   static async overwriteMemory(
@@ -188,7 +192,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       index: number;
       content: string;
     }
-  ): Promise<Result<AgentMemoryResource | null, Error>> {
+  ): Promise<Result<AgentMemoryResource, Error>> {
     const memory = await this.findByAgentConfiguration(auth, {
       agentConfiguration,
       forUser,
@@ -202,6 +206,8 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       } else {
         return new Err(new Error(`Index ${index} does not exist in memory.`));
       }
+    } else {
+      return new Err(new Error(`Index ${index} does not exist in memory.`));
     }
 
     return new Ok(memory);

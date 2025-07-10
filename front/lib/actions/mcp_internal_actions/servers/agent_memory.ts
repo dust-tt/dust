@@ -190,11 +190,23 @@ const createServer = (
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
-      await AgentMemoryResource.eraseMemory(auth, {
+      const result = await AgentMemoryResource.eraseMemory(auth, {
         agentConfiguration,
         forUser: user?.toJSON(),
         index,
       });
+
+      if (result.isErr()) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${result.error.message}`,
+            },
+          ],
+        };
+      }
 
       return {
         isError: false,
