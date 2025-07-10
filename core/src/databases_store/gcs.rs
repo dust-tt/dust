@@ -68,7 +68,7 @@ impl GoogleCloudStorageDatabasesStore {
         }
     }
 
-    pub fn get_new_csv_storage_file_path(table: &Table) -> String {
+    pub fn get_csv_storage_file_path(table: &Table) -> String {
         format!(
             "project-{}/{}/{}.csv",
             table.project().project_id(),
@@ -80,7 +80,7 @@ impl GoogleCloudStorageDatabasesStore {
     pub async fn get_rows_from_csv(table: &Table) -> Result<Vec<Row>> {
         let csv = GoogleCloudStorageCSVContent {
             bucket: Self::get_bucket()?,
-            bucket_csv_path: Self::get_new_csv_storage_file_path(table),
+            bucket_csv_path: Self::get_csv_storage_file_path(table),
         };
         csv.parse().await
     }
@@ -94,7 +94,7 @@ impl GoogleCloudStorageDatabasesStore {
             schema,
             rows,
             &Self::get_bucket()?,
-            &Self::get_new_csv_storage_file_path(table),
+            &Self::get_csv_storage_file_path(table),
         )
         .await?;
 
@@ -207,7 +207,7 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
         if table.migrated_to_csv() {
             match Object::delete(
                 &Self::get_bucket()?,
-                &Self::get_new_csv_storage_file_path(table),
+                &Self::get_csv_storage_file_path(table),
             )
             .await
             {
