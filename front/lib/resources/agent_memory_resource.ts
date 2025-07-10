@@ -77,7 +77,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
   ): Promise<AgentMemoryResource | null> {
     const [agentMemory] = await this.baseFetch(auth, {
       where: {
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: agentConfiguration.sId,
         userId: forUser?.id ?? null,
       },
     });

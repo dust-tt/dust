@@ -95,6 +95,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   monday_tool: {
     description: "Monday MCP tool",
   },
+  agent_memory_tools: {
+    description: "Agent memory tools",
+  },
 } as const;
 
 export const WHITELISTABLE_FEATURES = Object.keys(

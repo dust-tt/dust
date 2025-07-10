@@ -310,6 +310,9 @@ export const INTERNAL_MCP_SERVERS: Record<
   agent_memory: {
     id: 21,
     availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_memory_tools");
+    },
   },
   search: {
     id: 1006,
