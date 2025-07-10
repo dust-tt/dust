@@ -1,15 +1,17 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import assert from "assert";
 import { z } from "zod";
 
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import {
-  isServerSideMCPServerConfiguration,
-  isServerSideMCPToolConfiguration,
-} from "@app/lib/actions/types/guards";
+// import {
+//   isServerSideMCPServerConfiguration,
+//   isServerSideMCPToolConfiguration,
+// } from "@app/lib/actions/types/guards";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "agent_memory",
@@ -26,40 +28,44 @@ const createServer = (
 ): McpServer => {
   const server = new McpServer(serverInfo);
 
-  let isUserScopedMemory = false;
+  const isUserScopedMemory = true;
 
-  if (
-    agentLoopContext &&
-    agentLoopContext.listToolsContext &&
-    isServerSideMCPServerConfiguration(
-      agentLoopContext.listToolsContext.agentActionConfiguration
-    ) &&
-    agentLoopContext.listToolsContext.agentActionConfiguration
-      .additionalConfiguration
-  ) {
-    isUserScopedMemory = agentLoopContext.listToolsContext
-      .agentActionConfiguration.additionalConfiguration["shared_across_users"]
-      ? false
-      : true;
-  }
+  // For now we only support user-scoped memory, the code below allows to support agent-level memory
+  // which is somewhat dangerous as it can leak data across users while use cases are not completely
+  // obvious for now.
 
-  if (
-    agentLoopContext &&
-    agentLoopContext.runContext &&
-    isServerSideMCPToolConfiguration(
-      agentLoopContext.runContext.actionConfiguration
-    ) &&
-    agentLoopContext.runContext.actionConfiguration.additionalConfiguration
-  ) {
-    isUserScopedMemory = agentLoopContext.runContext.actionConfiguration
-      .additionalConfiguration["shared_across_users"]
-      ? false
-      : true;
-  }
+  // if (
+  //   agentLoopContext &&
+  //   agentLoopContext.listToolsContext &&
+  //   isServerSideMCPServerConfiguration(
+  //     agentLoopContext.listToolsContext.agentActionConfiguration
+  //   ) &&
+  //   agentLoopContext.listToolsContext.agentActionConfiguration
+  //     .additionalConfiguration
+  // ) {
+  //   isUserScopedMemory = agentLoopContext.listToolsContext
+  //     .agentActionConfiguration.additionalConfiguration["shared_across_users"]
+  //     ? false
+  //     : true;
+  // }
+
+  // if (
+  //   agentLoopContext &&
+  //   agentLoopContext.runContext &&
+  //   isServerSideMCPToolConfiguration(
+  //     agentLoopContext.runContext.actionConfiguration
+  //   ) &&
+  //   agentLoopContext.runContext.actionConfiguration.additionalConfiguration
+  // ) {
+  //   isUserScopedMemory = agentLoopContext.runContext.actionConfiguration
+  //     .additionalConfiguration["shared_across_users"]
+  //     ? false
+  //     : true;
+  // }
 
   const user = auth.user();
 
-  if (!user && isUserScopedMemory) {
+  if (!user /* && isUserScopedMemory*/) {
     // If we are executed without users yet the memory is user scoped we show to the model that the
     // memory functions are not available.
     server.tool(
@@ -88,16 +94,41 @@ const createServer = (
     "retrieve",
     `Retrieve all agent memories${isUserScopedMemory ? " for the current user" : ""}`,
     {
-      shared_across_users:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
+      // shared_across_users:
+      //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
     },
-    async (params, { authInfo }) => {
+    async () => {
+      assert(
+        agentLoopContext?.runContext,
+        "agentLoopContext is required where the tool is called"
+      );
+      const { agentConfiguration } = agentLoopContext.runContext;
+
+      const memory = await AgentMemoryResource.retrieve(auth, {
+        agentConfiguration,
+        forUser: user?.toJSON(),
+      });
+
+      if (!memory || memory.content.length === 0) {
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text: "(memory empty)",
+            },
+          ],
+        };
+      }
+
       return {
         isError: false,
         content: [
           {
             type: "text",
-            text: "[1] Stan likes fish\n\n[2] the user paints.",
+            text: memory.content
+              .map((entry, i) => `[${i + 1}] ${entry}`)
+              .join("\n---\n"),
           },
         ],
       };
@@ -108,8 +139,8 @@ const createServer = (
     "record",
     `Record a new memory${isUserScopedMemory ? " for the current user" : ""}`,
     {
-      shared_across_users:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
+      // shared_across_users:
+      //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
       content: z.string().describe("The content of the new memory entry."),
       index: z
         .number()
@@ -135,8 +166,8 @@ const createServer = (
     "erase",
     `Erase a memory${isUserScopedMemory ? " for the current user" : ""}`,
     {
-      shared_across_users:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
+      // shared_across_users:
+      //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
       index: z.number().describe("The index of the memory entry to forget."),
     },
     async ({ text, index }, { authInfo }) => {
@@ -156,8 +187,8 @@ const createServer = (
     "overwrite",
     `Overwrite a memory${isUserScopedMemory ? " for the current user" : ""}`,
     {
-      shared_across_users:
-        ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
+      // shared_across_users:
+      //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
       index: z.number().describe("The index of the memory entry to overwrite."),
       content: z.string().describe("The content to overwrite the memory with."),
     },
