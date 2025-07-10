@@ -1,3 +1,5 @@
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { Bucket, File } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 
@@ -10,6 +12,26 @@ export const DIRECTORY_PLACEHOLDER_FILE = ".gitkeep";
 export const DIRECTORY_PLACEHOLDER_METADATA = "isDirectoryPlaceholder";
 
 const DEFAULT_MAX_RESULTS = 1000;
+
+export class GCSFileNotFoundError extends Error {
+  readonly originalError: unknown;
+
+  constructor(gcsPath: string, originalError: unknown) {
+    super(`File not found in GCS: ${gcsPath}`);
+    this.name = "GCSFileNotFoundError";
+    this.originalError = originalError;
+  }
+}
+
+export class GCSDownloadError extends Error {
+  readonly originalError: unknown;
+
+  constructor(gcsPath: string, originalError: unknown) {
+    super(`Failed to download file from GCS: ${gcsPath}`);
+    this.name = "GCSDownloadError";
+    this.originalError = originalError;
+  }
+}
 
 /**
  * A wrapper around GCS operations for GitHub repository code sync.
@@ -75,13 +97,22 @@ export class GCSRepositoryManager {
   /**
    * Download file content from GCS.
    */
-  async downloadFile(gcsPath: string): Promise<Buffer> {
+  async downloadFile(
+    gcsPath: string
+  ): Promise<Result<Buffer, GCSFileNotFoundError | GCSDownloadError>> {
     try {
       const [content] = await this.bucket.file(gcsPath).download();
-      return content;
+      return new Ok(content);
     } catch (error) {
+      const errorCode = (error as { code?: number | string })?.code;
+
+      if (errorCode === 404) {
+        logger.warn({ gcsPath, error }, "File not found in GCS");
+        return new Err(new GCSFileNotFoundError(gcsPath, error));
+      }
+
       logger.error({ error, gcsPath }, "Failed to download file from GCS");
-      throw new Error(`Failed to download file: ${gcsPath}`);
+      return new Err(new GCSDownloadError(gcsPath, error));
     }
   }
 
