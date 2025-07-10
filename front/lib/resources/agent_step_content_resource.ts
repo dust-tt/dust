@@ -6,16 +6,18 @@ import type {
 } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { canReadMessage } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import type { AgentStepContentType } from "@app/types/assistant/agent_step_content";
+import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -31,6 +33,47 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     blob: Attributes<AgentStepContentModel>
   ) {
     super(AgentStepContentModel, blob);
+  }
+
+  /**
+   * Helper function to check if the user can read the agent message
+   * and fetch the agent configuration.
+   */
+  private static async checkAgentMessageAccess(
+    auth: Authenticator,
+    agentMessageId: number
+  ): Promise<{ canAccess: boolean; agentConfiguration?: any }> {
+    const agentMessage = await AgentMessage.findOne({
+      where: {
+        id: agentMessageId,
+      },
+    });
+
+    if (!agentMessage) {
+      return { canAccess: false };
+    }
+
+    // Fetch agent configuration to check permissions
+    const agentConfigurations = await getAgentConfigurations({
+      auth,
+      agentsGetView: { agentIds: [agentMessage.agentConfigurationId] },
+      variant: "light",
+    });
+
+    if (agentConfigurations.length === 0) {
+      return { canAccess: false };
+    }
+
+    const agentConfiguration = agentConfigurations[0];
+    
+    // Check if user can read the message using the configuration's requested group IDs
+    const canRead = canReadMessage(auth, {
+      configuration: {
+        requestedGroupIds: agentConfiguration.requestedGroupIds || [],
+      },
+    } as any);
+
+    return { canAccess: canRead, agentConfiguration };
   }
 
   static async makeNew(
@@ -78,26 +121,13 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Check authorization by verifying access to agent configuration
-    const agentMessage = await AgentMessage.findOne({
-      where: {
-        id: agentMessageId,
-      },
-    });
-
-    if (!agentMessage) {
-      return [];
-    }
-
-    // Fetch agent configuration to check permissions
-    const agentConfigurations = await getAgentConfigurations({
+    // Check authorization
+    const { canAccess } = await this.checkAgentMessageAccess(
       auth,
-      agentsGetView: { agentIds: [agentMessage.agentConfigurationId] },
-      variant: "light",
-    });
+      agentMessageId
+    );
 
-    // If the user can't access the agent configuration, they can't read the step contents
-    if (agentConfigurations.length === 0) {
+    if (!canAccess) {
       return [];
     }
 
@@ -133,26 +163,13 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Check authorization by verifying access to agent configuration
-    const agentMessage = await AgentMessage.findOne({
-      where: {
-        id: agentMessageId,
-      },
-    });
-
-    if (!agentMessage) {
-      return [];
-    }
-
-    // Fetch agent configuration to check permissions
-    const agentConfigurations = await getAgentConfigurations({
+    // Check authorization
+    const { canAccess } = await this.checkAgentMessageAccess(
       auth,
-      agentsGetView: { agentIds: [agentMessage.agentConfigurationId] },
-      variant: "light",
-    });
+      agentMessageId
+    );
 
-    // If the user can't access the agent configuration, they can't read the step contents
-    if (agentConfigurations.length === 0) {
+    if (!canAccess) {
       return [];
     }
 
@@ -186,26 +203,13 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Check authorization by verifying access to agent configuration
-    const agentMessage = await AgentMessage.findOne({
-      where: {
-        id: agentMessageId,
-      },
-    });
-
-    if (!agentMessage) {
-      return [];
-    }
-
-    // Fetch agent configuration to check permissions
-    const agentConfigurations = await getAgentConfigurations({
+    // Check authorization
+    const { canAccess } = await this.checkAgentMessageAccess(
       auth,
-      agentsGetView: { agentIds: [agentMessage.agentConfigurationId] },
-      variant: "light",
-    });
+      agentMessageId
+    );
 
-    // If the user can't access the agent configuration, they can't read the step contents
-    if (agentConfigurations.length === 0) {
+    if (!canAccess) {
       return [];
     }
 
@@ -249,26 +253,13 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Check authorization by verifying access to agent configuration
-    const agentMessage = await AgentMessage.findOne({
-      where: {
-        id: agentMessageId,
-      },
-    });
-
-    if (!agentMessage) {
-      return [];
-    }
-
-    // Fetch agent configuration to check permissions
-    const agentConfigurations = await getAgentConfigurations({
+    // Check authorization
+    const { canAccess } = await this.checkAgentMessageAccess(
       auth,
-      agentsGetView: { agentIds: [agentMessage.agentConfigurationId] },
-      variant: "light",
-    });
+      agentMessageId
+    );
 
-    // If the user can't access the agent configuration, they can't read the step contents
-    if (agentConfigurations.length === 0) {
+    if (!canAccess) {
       return [];
     }
 
@@ -325,19 +316,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }
 
   async toJSON(includeActions = false): Promise<AgentStepContentType> {
-    const base: AgentStepContentType = {
-      id: this.id,
-      sId: this.sId,
-      createdAt: this.createdAt.getTime(),
-      updatedAt: this.updatedAt.getTime(),
-      agentMessageId: this.agentMessageId,
-      step: this.step,
-      index: this.index,
-      version: this.version,
-      type: this.type,
-      value: this.value,
-    };
-
     // Get agent message sId
     const agentMessage = await AgentMessage.findOne({
       where: {
@@ -352,9 +330,24 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       ],
     });
 
-    if (agentMessage && agentMessage.message) {
-      base.agentMessageSId = agentMessage.message.sId;
+    if (!agentMessage || !agentMessage.message) {
+      throw new Error(
+        `Agent message or its associated message not found for agentMessageId: ${this.agentMessageId}`
+      );
     }
+
+    const base: AgentStepContentType = {
+      id: this.id,
+      sId: this.sId,
+      createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
+      agentMessageSId: agentMessage.message.sId,
+      step: this.step,
+      index: this.index,
+      version: this.version,
+      type: this.type,
+      value: this.value,
+    };
 
     if (includeActions) {
       const mcpActions = await AgentMCPAction.findAll({
@@ -363,23 +356,15 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         },
       });
 
-      base.mcpActions = mcpActions.map((action) => {
-        const stepContentSId = makeSId("agent_step_content", {
-          id: this.id,
-          workspaceId: this.workspaceId,
-        });
-
-        return {
-          id: action.id,
-          mcpServerConfigurationId: action.mcpServerConfigurationId,
-          functionCallId: action.functionCallId,
-          functionCallName: action.functionCallName,
-          params: action.params,
-          executionState: action.executionState,
-          isError: action.isError,
-          stepContentSId,
-        };
-      });
+      base.mcpActions = await Promise.all(
+        mcpActions.map(async (action) => {
+          const resource = new AgentMCPActionResource(
+            AgentMCPAction,
+            action.get()
+          );
+          return resource.toJSON();
+        })
+      );
     }
 
     return base;

@@ -1,3 +1,4 @@
+import type { ModelId } from "@app/types";
 import type { FunctionCallType } from "@app/types/assistant/generation";
 
 export type TextContentType = {
@@ -40,3 +41,34 @@ export function isFunctionCallContent(
 ): content is FunctionCallContentType {
   return content.type === "function_call";
 }
+
+// Type matching AgentMCPActionResource.toJSON() output
+export type AgentMCPActionType = {
+  sId: string;
+  createdAt: string;
+  functionCallName: string | null;
+  params: Record<string, unknown>;
+  executionState:
+    | "pending"
+    | "timeout"
+    | "allowed_explicitly"
+    | "allowed_implicitly"
+    | "denied";
+  isError: boolean;
+  stepContentSId?: string;
+};
+
+export type AgentStepContentType = {
+  id: ModelId;
+  sId: string;
+  createdAt: number;
+  updatedAt: number;
+  agentMessageSId: string;
+  step: number;
+  index: number;
+  version: number;
+  type: AgentContentItemType["type"];
+  value: AgentContentItemType;
+  // Array of MCP actions that reference this step content.
+  mcpActions?: AgentMCPActionType[];
+};
