@@ -1866,56 +1866,27 @@ async function* streamRunAgentEvents(
   // We use 'void' to:
   // - Start agent execution immediately without blocking
   // - Avoid awaiting (which would cause deadlock since we need to consume events)
+  // - Silence TypeScript "floating promise" warning (intentional fire-and-forget)
   void runAgent(
     auth,
     agentConfiguration,
     conversation,
     userMessage,
     agentMessage,
+    agentMessageRow,
     redisChannel
   );
 
   // STEP 3: Process events as they arrive
   // Only real-time events will flow as the agent publishes them to Redis.
+  // Database operations are now handled in runAgent before publishing.
+  // TODO(DURABLE-AGENT 2025-07-10): Remove this event proxy to only consume at the endpoints level.
   for await (const event of eventStream) {
     switch (event.type) {
-      case "agent_error":
-        // Store error in database.
-        await agentMessageRow.update({
-          status: "failed",
-          errorCode: event.error.code,
-          errorMessage: event.error.message,
-          errorMetadata: event.error.metadata,
-        });
-        yield event;
-        return;
-
       case "agent_action_success":
-        yield event;
-        break;
-      case "agent_message_success":
-        // Store message in database.
-        await agentMessageRow.update({
-          runIds: event.runIds,
-        });
-        // Update status in database.
-        await agentMessageRow.update({
-          status: "succeeded",
-        });
-        yield event;
-        break;
-
+      case "agent_error":
       case "agent_generation_cancelled":
-        if (agentMessageRow.status !== "cancelled") {
-          await agentMessageRow.update({
-            status: "cancelled",
-          });
-          yield event;
-        }
-        break;
-
-      // All other events that won't impact the database and are related to actions or tokens
-      // generation.
+      case "agent_message_success":
       case "generation_tokens":
       case "tool_approve_execution":
       case "tool_notification":
