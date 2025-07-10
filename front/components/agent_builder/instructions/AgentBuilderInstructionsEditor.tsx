@@ -10,12 +10,14 @@ import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/AgentInstructionDiffExtension";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
+import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -24,6 +26,7 @@ const extensions = [
   Text,
   ParagraphExtension,
   History,
+  AgentInstructionDiffExtension,
   CharacterCount.configure({
     limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   }),
@@ -57,7 +60,15 @@ const editorVariants = cva(
   }
 );
 
-export function AgentBuilderInstructionsEditor() {
+interface AgentBuilderInstructionsEditorProps {
+  compareVersion?: LightAgentConfigurationType | null;
+  isInstructionDiffMode?: boolean;
+}
+
+export function AgentBuilderInstructionsEditor({
+  compareVersion,
+  isInstructionDiffMode = false,
+}: AgentBuilderInstructionsEditorProps = {}) {
   const { owner } = useAgentBuilderContext();
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
@@ -67,9 +78,11 @@ export function AgentBuilderInstructionsEditor() {
     extensions,
     content: tipTapContentFromPlainText(field.value),
     onUpdate: ({ editor }) => {
-      const json = editor.getJSON();
-      const plainText = plainTextFromTipTapContent(json);
-      field.onChange(plainText);
+      if (!isInstructionDiffMode) {
+        const json = editor.getJSON();
+        const plainText = plainTextFromTipTapContent(json);
+        field.onChange(plainText);
+      }
     },
   });
 
@@ -102,6 +115,29 @@ export function AgentBuilderInstructionsEditor() {
       editor.commands.setContent(tipTapContentFromPlainText(field.value));
     }
   }, [editor, field.value]);
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    if (isInstructionDiffMode && compareVersion) {
+      if (editor.storage.agentInstructionDiff?.isDiffMode) {
+        editor.commands.exitDiff();
+      }
+
+      const currentText = plainTextFromTipTapContent(editor.getJSON());
+      const compareText = compareVersion.instructions || "";
+
+      editor.commands.applyDiff(compareText, currentText);
+      editor.setEditable(false);
+    } else if (!isInstructionDiffMode && editor) {
+      if (editor.storage.agentInstructionDiff?.isDiffMode) {
+        editor.commands.exitDiff();
+        editor.setEditable(true);
+      }
+    }
+  }, [isInstructionDiffMode, compareVersion, editor]);
 
   return (
     <div className="flex h-full flex-col gap-1">

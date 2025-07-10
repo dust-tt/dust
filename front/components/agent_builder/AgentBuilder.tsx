@@ -180,6 +180,7 @@ export default function AgentBuilder({
             isDisabled={
               isMCPServerViewsLoading || isActionsLoading || isEditorsLoading
             }
+            agentConfigurationId={agentConfiguration?.sId || null}
           />
         }
         rightPanel={
