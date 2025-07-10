@@ -68,9 +68,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   openai_o1_high_reasoning_feature: {
     description: "Access to OpenAI o1 high reasoning model",
   },
-  openai_o1_mini_feature: {
-    description: "Access to OpenAI o1-mini model",
-  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
   },
