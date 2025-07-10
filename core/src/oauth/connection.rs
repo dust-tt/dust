@@ -6,9 +6,9 @@ use crate::oauth::{
         google_drive::GoogleDriveConnectionProvider, hubspot::HubspotConnectionProvider,
         intercom::IntercomConnectionProvider, mcp::MCPConnectionProvider,
         microsoft::MicrosoftConnectionProvider, mock::MockConnectionProvider,
-        monday::MondayConnectionProvider,
-        notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
-        slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
+        monday::MondayConnectionProvider, notion::NotionConnectionProvider,
+        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
+        zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
