@@ -6,7 +6,7 @@ use futures::future::try_join_all;
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::{error, info};
+use tracing::info;
 
 use crate::databases::table_upserts_background_worker::{
     TableUpsertActivityData, REDIS_TABLE_UPSERT_HASH_NAME,
@@ -412,6 +412,39 @@ impl LocalTable {
         Ok(())
     }
 
+    async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
+        let mut redis_conn = if let Some(client) = &*cache::REDIS_CLIENT {
+            client.get_async_connection().await?
+        } else {
+            return Err(anyhow!("Redis client not available"));
+        };
+
+        let upsert_call = TableUpsertActivityData {
+            time: utils::now(),
+            project_id: self.table.project().project_id(),
+            data_source_id: self.table.data_source_id().to_string(),
+            table_id: self.table.table_id().to_string(),
+        };
+        let _: () = redis_conn
+            .hset(
+                REDIS_TABLE_UPSERT_HASH_NAME,
+                self.table.unique_id(),
+                serde_json::to_string(&upsert_call)?,
+            )
+            .await?;
+
+        let rows_arc = Arc::new(rows);
+        let schema = TableSchema::from_rows_async(rows_arc.clone()).await?;
+        GoogleCloudStorageBackgroundProcessingStore::write_rows_to_csv(
+            &self.table,
+            &schema,
+            &rows_arc,
+        )
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn upsert_rows(
         &self,
         store: Box<dyn Store + Sync + Send>,
@@ -425,39 +458,7 @@ impl LocalTable {
             self.upsert_rows_now(&store, &databases_store, rows, truncate)
                 .await
         } else {
-            if let Some(client) = &*cache::REDIS_CLIENT {
-                match client.get_async_connection().await {
-                    Ok(mut conn) => {
-                        let upsert_call = TableUpsertActivityData {
-                            time: utils::now(),
-                            project_id: self.table.project().project_id(),
-                            data_source_id: self.table.data_source_id().to_string(),
-                            table_id: self.table.table_id().to_string(),
-                        };
-                        let _: () = conn
-                            .hset(
-                                REDIS_TABLE_UPSERT_HASH_NAME,
-                                self.table.unique_id(),
-                                serde_json::to_string(&upsert_call).unwrap(),
-                            )
-                            .await
-                            .unwrap();
-
-                        let rows_arc = Arc::new(rows);
-                        let schema = TableSchema::from_rows_async(rows_arc.clone()).await?;
-                        GoogleCloudStorageBackgroundProcessingStore::write_rows_to_csv(
-                            &self.table,
-                            &schema,
-                            &rows_arc,
-                        )
-                        .await?;
-                    }
-                    Err(e) => {
-                        error!("Error connecting to Redis: {}.", e);
-                    }
-                }
-            }
-            Ok(())
+            self.schedule_background_upsert_or_delete(rows).await
         }
     }
 
@@ -705,37 +706,11 @@ impl LocalTable {
 
     pub async fn delete_row(
         &self,
-        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        _: Box<dyn DatabasesStore + Sync + Send>,
         row_id: &str,
     ) -> Result<()> {
-        // Delete the table row.
-        // If we are only using one of the stores, the right store is passed in the parameters.
-        // If we are using both, we need to do the operation on the other store manually.
-        match CURRENT_STRATEGY {
-            DatabasesStoreStrategy::PostgresOnly | DatabasesStoreStrategy::GCSOnly => {
-                databases_store
-                    .delete_table_row(&self.table, row_id)
-                    .await?;
-            }
-            DatabasesStoreStrategy::PostgresAndWriteToGCS => {
-                databases_store
-                    .delete_table_row(&self.table, row_id)
-                    .await?;
-
-                let gcs_store = GoogleCloudStorageDatabasesStore::new();
-                gcs_store.delete_table_row(&self.table, row_id).await?;
-            }
-            DatabasesStoreStrategy::GCSAndWriteToPostgres => {
-                databases_store
-                    .delete_table_row(&self.table, row_id)
-                    .await?;
-
-                let postgres_store = databases_store::postgres::get_postgres_store().await?;
-                postgres_store.delete_table_row(&self.table, row_id).await?;
-            }
-        }
-
-        Ok(())
+        let rows = vec![Row::new_delete(row_id.to_string())];
+        self.schedule_background_upsert_or_delete(rows).await
     }
 
     pub async fn list_rows(
