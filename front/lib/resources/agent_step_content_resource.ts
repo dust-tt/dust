@@ -5,9 +5,15 @@ import type {
   Transaction,
 } from "sequelize";
 
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import {
+  AgentMessage,
+  Message,
+} from "@app/lib/models/assistant/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -76,6 +82,29 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
+    // Check authorization by verifying access to agent configuration
+    const agentMessage = await AgentMessage.findOne({
+      where: {
+        id: agentMessageId,
+      },
+    });
+
+    if (!agentMessage) {
+      return [];
+    }
+
+    // Fetch agent configuration to check permissions
+    const agentConfigurations = await getAgentConfigurations({
+      auth,
+      agentsGetView: { agentIds: [agentMessage.agentConfigurationId] },
+      variant: "light",
+    });
+
+    // If the user can't access the agent configuration, they can't read the step contents
+    if (agentConfigurations.length === 0) {
+      return [];
+    }
+
     const agentStepContents = await AgentStepContentModel.findAll({
       where: {
         workspaceId: owner.id,
@@ -108,6 +137,29 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
+    // Check authorization by verifying access to agent configuration
+    const agentMessage = await AgentMessage.findOne({
+      where: {
+        id: agentMessageId,
+      },
+    });
+
+    if (!agentMessage) {
+      return [];
+    }
+
+    // Fetch agent configuration to check permissions
+    const agentConfigurations = await getAgentConfigurations({
+      auth,
+      agentsGetView: { agentIds: [agentMessage.agentConfigurationId] },
+      variant: "light",
+    });
+
+    // If the user can't access the agent configuration, they can't read the step contents
+    if (agentConfigurations.length === 0) {
+      return [];
+    }
+
     const agentStepContents = await AgentStepContentModel.findAll({
       where: {
         workspaceId: owner.id,
@@ -138,6 +190,29 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
+    // Check authorization by verifying access to agent configuration
+    const agentMessage = await AgentMessage.findOne({
+      where: {
+        id: agentMessageId,
+      },
+    });
+
+    if (!agentMessage) {
+      return [];
+    }
+
+    // Fetch agent configuration to check permissions
+    const agentConfigurations = await getAgentConfigurations({
+      auth,
+      agentsGetView: { agentIds: [agentMessage.agentConfigurationId] },
+      variant: "light",
+    });
+
+    // If the user can't access the agent configuration, they can't read the step contents
+    if (agentConfigurations.length === 0) {
+      return [];
+    }
+
     // Fetch all contents and group by step/index to get the latest version of each.
     const allContents = await AgentStepContentModel.findAll({
       where: {
@@ -167,7 +242,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     );
   }
 
-  static async fetchWithMCPActions({
+  static async fetchLatestWithLatestMCPActions({
     auth,
     agentMessageId,
     transaction,
@@ -178,18 +253,35 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    const agentStepContents = await AgentStepContentModel.findAll({
+    // Check authorization by verifying access to agent configuration
+    const agentMessage = await AgentMessage.findOne({
+      where: {
+        id: agentMessageId,
+      },
+    });
+
+    if (!agentMessage) {
+      return [];
+    }
+
+    // Fetch agent configuration to check permissions
+    const agentConfigurations = await getAgentConfigurations({
+      auth,
+      agentsGetView: { agentIds: [agentMessage.agentConfigurationId] },
+      variant: "light",
+    });
+
+    // If the user can't access the agent configuration, they can't read the step contents
+    if (agentConfigurations.length === 0) {
+      return [];
+    }
+
+    // Fetch all contents and group by step/index to get the latest version of each.
+    const allContents = await AgentStepContentModel.findAll({
       where: {
         workspaceId: owner.id,
         agentMessageId,
       },
-      include: [
-        {
-          model: AgentMCPAction,
-          as: "agentMCPActions",
-          required: false,
-        },
-      ],
       order: [
         ["step", "ASC"],
         ["index", "ASC"],
@@ -198,7 +290,16 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       transaction,
     });
 
-    return agentStepContents.map(
+    // Group by step and index, keeping only the latest version.
+    const latestContents = new Map<string, AgentStepContentModel>();
+    for (const content of allContents) {
+      const key = `${content.step}-${content.index}`;
+      if (!latestContents.has(key)) {
+        latestContents.set(key, content);
+      }
+    }
+
+    return Array.from(latestContents.values()).map(
       (content) =>
         new AgentStepContentResource(AgentStepContentModel, content.get())
     );
@@ -241,13 +342,38 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       value: this.value,
     };
 
+    // Get agent message sId
+    const agentMessage = await AgentMessage.findOne({
+      where: {
+        id: this.agentMessageId,
+      },
+      include: [
+        {
+          model: Message,
+          as: "message",
+          required: true,
+        },
+      ],
+    });
+
+    if (agentMessage && agentMessage.message) {
+      base.agentMessageSId = agentMessage.message.sId;
+    }
+
     if (includeActions) {
       const mcpActions = await AgentMCPAction.findAll({
         where: {
           stepContentId: this.id,
         },
       });
-      base.mcpActionIds = mcpActions.map((action) => action.id);
+
+      base.mcpActions = mcpActions.map((action) => {
+        const resource = new AgentMCPActionResource(
+          AgentMCPAction,
+          action.get()
+        );
+        return resource.toJSON();
+      });
     }
 
     return base;

@@ -11,6 +11,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -63,6 +64,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   }
 
   toJSON() {
+    const stepContentSId = this.stepContentId
+      ? makeSId("agent_step_content", {
+          id: this.stepContentId,
+          workspaceId: this.workspaceId,
+        })
+      : undefined;
+
     return {
       sId: this.sId,
       createdAt: this.createdAt.toISOString(),
@@ -70,7 +78,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       params: this.params,
       executionState: this.executionState,
       isError: this.isError,
-      stepContentId: this.stepContentId,
+      stepContentSId,
     };
   }
 
