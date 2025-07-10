@@ -23,6 +23,7 @@ pub enum CredentialProvider {
     Hubspot,
     Linear,
     Gmail,
+    Monday,
     Mcp,
 }
 
@@ -201,6 +202,9 @@ impl Credential {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Gmail => {
+                vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::Monday => {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Mcp => {
