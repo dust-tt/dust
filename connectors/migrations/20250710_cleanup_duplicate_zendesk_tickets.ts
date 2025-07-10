@@ -17,7 +17,7 @@ async function checkTicketValidity(
     ticketId: ticket.ticketId,
   });
 
-  return fetchedTicket?.brand_id === ticket.brandId;
+  return fetchedTicket && fetchedTicket.brand_id === ticket.brandId;
 }
 
 async function migrateConnector(
