@@ -164,6 +164,8 @@ export function DataSourceNodeTable({
         });
         setNodeRows((prev) => [...prev, ...newRows]);
       }
+    } else {
+      setNodeRows([]);
     }
   }, [
     traversedNode,
