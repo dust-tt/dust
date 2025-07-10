@@ -69,9 +69,6 @@ interface DataSourceSearchTableProps {
   >;
   viewType: ContentNodesViewType;
   space: SpaceType;
-  setTraversedNode: Dispatch<
-    SetStateAction<DataSourceViewContentNode | undefined>
-  >;
   searchQuery: string;
   onNavigate: (node: DataSourceViewContentNode) => void;
 }
@@ -84,7 +81,6 @@ export function DataSourceSearchTable({
   viewType,
   space,
   onNavigate,
-  setTraversedNode,
   searchQuery,
 }: DataSourceSearchTableProps) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
@@ -143,7 +139,6 @@ export function DataSourceSearchTable({
       // WARN: temp
       searchResultNodes as any,
       (node: DataSourceViewContentNode) => {
-        setTraversedNode(node);
         onNavigate(node);
       }
     );
@@ -153,12 +148,7 @@ export function DataSourceSearchTable({
     } else if (searchResultNodes.length > 0) {
       setSearchResults((prev) => [...prev, ...tableRows]);
     }
-  }, [
-    searchResultNodes,
-    tablePagination.pageIndex,
-    setTraversedNode,
-    onNavigate,
-  ]);
+  }, [searchResultNodes, tablePagination.pageIndex, onNavigate]);
 
   const columns: ColumnDef<TableRowData>[] = useMemo(
     () => [

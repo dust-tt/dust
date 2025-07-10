@@ -30,7 +30,7 @@ interface DataSourceNodeTableProps {
   viewType: ContentNodesViewType;
   categoryDataSourceViews?: DataSourceViewType[];
   selectedCategory?: string;
-  traversedNode?: DataSourceViewContentNode;
+  traversedNode: DataSourceViewContentNode | null;
   onNavigate: (node: DataSourceViewContentNode) => void;
   isCategoryLoading?: boolean;
 }
@@ -99,11 +99,7 @@ export function DataSourceNodeTable({
   ]);
 
   useEffect(() => {
-    if (
-      !traversedNode &&
-      selectedCategory &&
-      categoryDataSourceViews.length > 0
-    ) {
+    if (!traversedNode && selectedCategory) {
       // Listing data source views of a category
       // Convert data source views to content nodes
       const categoryNodes = categoryDataSourceViews
@@ -234,21 +230,6 @@ export function DataSourceNodeTable({
         ),
         meta: {
           sizeRatio: 70,
-        },
-      },
-      {
-        accessorKey: "parentTitle",
-        id: "parentTitle",
-        header: "Parent",
-        cell: ({ row }) => (
-          <DataTable.CellContent>
-            <span className="flex items-center gap-2 truncate text-ellipsis text-sm text-muted-foreground">
-              {row.original.parentTitle}
-            </span>
-          </DataTable.CellContent>
-        ),
-        meta: {
-          sizeRatio: 30,
         },
       },
     ],
