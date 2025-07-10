@@ -3,6 +3,7 @@ use async_std::stream::StreamExt;
 use cloud_storage::{ListRequest, Object};
 use std::collections::HashMap;
 use tracing::error;
+use uuid::Uuid;
 
 use crate::{
     databases::{
@@ -11,7 +12,6 @@ use crate::{
         table_schema::TableSchema,
     },
     databases_store::gcs::write_rows_to_bucket,
-    utils,
 };
 
 // This Store is used to pass upsert and delete call info from the APIs to the background worker
@@ -27,20 +27,20 @@ impl GoogleCloudStorageBackgroundProcessingStore {
 
     fn get_csv_storage_folder_path(table: &Table) -> String {
         format!(
-            "project-{}__{}__{}/",
+            "project-{}/{}/{}/",
             table.project().project_id(),
             table.data_source_id(),
             table.table_id(),
         )
     }
 
-    fn get_csv_storage_file_path(table: &Table) -> String {
+    fn get_new_csv_storage_file_path(table: &Table) -> String {
         format!(
-            "project-{}__{}__{}/{}.csv",
+            "project-{}/{}/{}/{}.csv",
             table.project().project_id(),
             table.data_source_id(),
             table.table_id(),
-            utils::now()
+            Uuid::new_v4().to_string()
         )
     }
 
@@ -117,7 +117,7 @@ impl GoogleCloudStorageBackgroundProcessingStore {
             schema,
             rows,
             &Self::get_bucket()?,
-            &Self::get_csv_storage_file_path(table),
+            &Self::get_new_csv_storage_file_path(table),
         )
         .await?;
 
