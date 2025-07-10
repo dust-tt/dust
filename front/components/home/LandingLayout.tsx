@@ -10,10 +10,7 @@ import {
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useState } from "react";
-import { useCookies } from "react-cookie";
 
-import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
@@ -35,18 +32,6 @@ export default function LandingLayout({
   pageProps: LandingLayoutProps;
 }) {
   const { postLoginReturnToUrl = "/api/login", gtmTrackingId } = pageProps;
-
-  const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
-    "dust-cookies-accepted",
-  ]);
-  const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
-  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
-
-  useEffect(() => {
-    const hasAccepted = Boolean(acceptedCookie["dust-cookies-accepted"]);
-    setHasAcceptedCookies(hasAccepted);
-    setShowCookieBanner(!hasAccepted);
-  }, [acceptedCookie]);
 
   return (
     <>
@@ -108,24 +93,7 @@ export default function LandingLayout({
         >
           {children}
         </div>
-        <CookieBanner
-          className="fixed bottom-0 left-0 z-50 w-full"
-          show={showCookieBanner}
-          onClickAccept={() => {
-            setAcceptedCookie("dust-cookies-accepted", "true", {
-              path: "/",
-              maxAge: 183 * 24 * 60 * 60, // 6 months in seconds
-              sameSite: "lax",
-            });
-            setHasAcceptedCookies(true);
-            setShowCookieBanner(false);
-          }}
-          onClickRefuse={() => {
-            removeAcceptedCookie("dust-cookies-accepted", { path: "/" });
-            setShowCookieBanner(false);
-          }}
-        />
-        {hasAcceptedCookies && (
+        {gtmTrackingId && (
           <Script id="google-tag-manager" strategy="afterInteractive">
             {`
               (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -143,71 +111,6 @@ export default function LandingLayout({
   );
 }
 
-const CookieBanner = ({
-  show,
-  onClickAccept,
-  onClickRefuse,
-  className,
-}: {
-  show: boolean;
-  onClickAccept: () => void;
-  onClickRefuse: () => void;
-  className?: string;
-}) => {
-  const [isVisible, setIsVisible] = useState(show);
-
-  useEffect(() => {
-    setIsVisible(show);
-  }, [show]);
-
-  if (!isVisible) {
-    return null;
-  }
-
-  return (
-    <div
-      className={classNames(
-        "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-4 border-t border-border bg-blue-100 p-6 shadow-2xl md:flex-row",
-        "s-transition-opacity s-duration-300 s-ease-in-out",
-        isVisible ? "s-opacity-100" : "s-opacity-0",
-        className || ""
-      )}
-    >
-      <div className="text-sm font-normal text-foreground md:text-base">
-        We use{" "}
-        <A variant="primary">
-          <Link
-            href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec"
-            target="_blank"
-          >
-            cookies
-          </Link>
-        </A>{" "}
-        to improve your experience on our site.
-      </div>
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          label="Reject"
-          onClick={() => {
-            setIsVisible(false);
-            onClickRefuse();
-          }}
-        />
-        <Button
-          variant="highlight"
-          size="sm"
-          label="Accept All"
-          onClick={() => {
-            setIsVisible(false);
-            onClickAccept();
-          }}
-        />
-      </div>
-    </div>
-  );
-};
 const Header = () => {
   return (
     <Head>
