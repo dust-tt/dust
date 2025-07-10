@@ -19,7 +19,7 @@ import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getPublicErrorMessage } from "@app/lib/api/assistant/agent_errors";
+import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -178,19 +178,19 @@ async function* runMultiActionsAgentLoop(
     for await (const event of loopIterationStream) {
       switch (event.type) {
         case "agent_error":
-          const publicErrorMessage = getPublicErrorMessage(event.error);
+          const { publicMessage } = categorizeAgentErrorMessage(event.error);
 
           localLogger.error(
             {
               elapsedTime: Date.now() - now,
               error: event.error,
-              publicErrorMessage,
+              publicErrorMessage: publicMessage,
             },
             "Error running multi-actions agent."
           );
           yield {
             ...event,
-            error: { ...event.error, message: publicErrorMessage },
+            error: { ...event.error, message: publicMessage },
           };
           return;
         case "agent_actions":
