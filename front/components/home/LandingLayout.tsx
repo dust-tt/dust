@@ -10,7 +10,6 @@ import {
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useState } from "react";
 
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
@@ -33,7 +32,6 @@ export default function LandingLayout({
   pageProps: LandingLayoutProps;
 }) {
   const { postLoginReturnToUrl = "/api/login", gtmTrackingId } = pageProps;
-
 
   return (
     <>
