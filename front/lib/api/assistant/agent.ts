@@ -192,7 +192,7 @@ async function* runMultiActionsAgentLoop(
               },
               "Error running multi-actions agent."
             );
-            if (category === "anthropic_overloaded") {
+            if (category === "retryable_model_error") {
               isRetryableModelError = true;
               break;
             }

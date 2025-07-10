@@ -20,7 +20,7 @@ export const categorizeAgentErrorMessage = (error: {
   code: string;
 }): {
   category?:
-    | "anthropic_overloaded"
+    | "retryable_model_error"
     | "context_window_exceeded"
     | "provider_internal_error";
   publicMessage: string;
@@ -32,7 +32,7 @@ export const categorizeAgentErrorMessage = (error: {
         error.message.includes("503 Service Unavailable")
       ) {
         return {
-          category: "anthropic_overloaded",
+          category: "retryable_model_error",
           publicMessage:
             "Anthropic is currently experiencing issues and cannot process requests for " +
             "this model. You can temporarily switch your agent to use a different model " +
