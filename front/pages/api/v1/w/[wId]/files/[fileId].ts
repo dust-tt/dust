@@ -89,7 +89,7 @@ async function handler(
       });
     }
   } else if (
-    file.useCase === "folders_document" &&
+    (file.useCase === "folders_document" || file.useCase === "upsert_table") &&
     file.useCaseMetadata?.spaceId
   ) {
     // For folder documents, check if the user has access to the space

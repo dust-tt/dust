@@ -86,6 +86,9 @@ export const TableUploadOrEditModal = ({
   const fileUploaderService = useFileUploaderService({
     owner,
     useCase: "upsert_table",
+    useCaseMetadata: {
+      spaceId: dataSourceView.spaceId,
+    },
   });
   const [fileId, setFileId] = useState<string | null>(null);
   const doUpsertFileAsDataSourceEntry = useUpsertFileAsDatasourceEntry(
