@@ -5,6 +5,7 @@ import type { UploadResult } from "convertapi";
 import ConvertAPI from "convertapi";
 import { z } from "zod";
 
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -105,15 +106,7 @@ const createServer = (auth: Authenticator): McpServer => {
     },
     async ({ file_name, input, source_format, output_format }) => {
       if (!process.env.CONVERTAPI_API_KEY) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "Missing environment variable.",
-            },
-          ],
-        };
+        return makeMCPToolTextError("Missing environment variable.");
       }
 
       let contentType: SupportedFileContentType | null;
@@ -187,15 +180,7 @@ const createServer = (auth: Authenticator): McpServer => {
               `${file_name}.${source_format}`
             );
           } else {
-            return {
-              isError: true,
-              content: [
-                {
-                  type: "text",
-                  text: `File not found: ${input}`,
-                },
-              ],
-            };
+            return makeMCPToolTextError(`File not found: ${input}`);
           }
         } else {
           url = await convertapi.upload(
@@ -228,15 +213,9 @@ const createServer = (auth: Authenticator): McpServer => {
           content,
         };
       } catch (e) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `There was an error generating your file: ${normalizeError(e)}, maybe you can chain multiple conversions to get the result you want, pay attention to the source format you use.`,
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          `There was an error generating your file: ${normalizeError(e)}, maybe you can chain multiple conversions to get the result you want, pay attention to the source format you use.`
+        );
       }
     }
   );

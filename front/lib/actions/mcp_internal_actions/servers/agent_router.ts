@@ -2,6 +2,7 @@ import { DustAPI } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
 import apiConfig from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -62,12 +63,7 @@ const createServer = (auth: Authenticator): McpServer => {
         view: "all",
       });
       if (res.isErr()) {
-        return {
-          isError: true,
-          content: [
-            { type: "text", text: "Error fetching agent configurations" },
-          ],
-        };
+        return makeMCPToolTextError("Error fetching agent configurations");
       }
 
       const agents = res.value;
@@ -127,12 +123,7 @@ const createServer = (auth: Authenticator): McpServer => {
         view: "all",
       });
       if (getAgentsRes.isErr()) {
-        return {
-          isError: true,
-          content: [
-            { type: "text", text: "Error fetching agent configurations" },
-          ],
-        };
+        return makeMCPToolTextError("Error fetching agent configurations");
       }
       const agents = getAgentsRes.value as LightAgentConfigurationType[];
 
@@ -142,15 +133,9 @@ const createServer = (auth: Authenticator): McpServer => {
       });
 
       if (suggestedAgentsRes.isErr()) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Error suggesting agents: ${suggestedAgentsRes.error}`,
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          `Error suggesting agents: ${suggestedAgentsRes.error}`
+        );
       }
 
       const suggestedAgents = suggestedAgentsRes.value;

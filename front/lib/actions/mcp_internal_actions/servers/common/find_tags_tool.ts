@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -51,10 +52,7 @@ export function makeFindTagsTool(auth: Authenticator) {
       );
 
       if (coreSearchArgsResults.some((res) => res.isErr())) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "Invalid data sources" }],
-        };
+        return makeMCPToolTextError("Invalid data sources");
       }
 
       const coreSearchArgs = removeNulls(
@@ -62,15 +60,9 @@ export function makeFindTagsTool(auth: Authenticator) {
       );
 
       if (coreSearchArgs.length === 0) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "Search action must have at least one data source configured.",
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          "Search action must have at least one data source configured."
+        );
       }
 
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -82,10 +74,7 @@ export function makeFindTagsTool(auth: Authenticator) {
       });
 
       if (result.isErr()) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: "Error searching for labels" }],
-        };
+        return makeMCPToolTextError("Error searching for labels");
       }
 
       return {
