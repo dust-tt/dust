@@ -41,6 +41,45 @@ const OUTPUT_FORMATS = [
   "xml",
 ] as const;
 
+function getContentTypeFromOutputFormat(
+  outputFormat: (typeof OUTPUT_FORMATS)[number]
+): SupportedFileContentType {
+  switch (outputFormat) {
+    case "md":
+      return "text/markdown";
+    case "gif":
+      return "image/gif";
+    case "pdf":
+      return "application/pdf";
+    case "doc":
+      return "application/msword";
+    case "docx":
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    case "pptx":
+      return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    case "csv":
+      return "text/csv";
+    case "txt":
+      return "text/plain";
+    case "html":
+      return "text/html";
+    case "jpg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    case "xml":
+      return "text/xml";
+    case "xls":
+      return "application/vnd.ms-excel";
+    case "xlsx":
+      return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    case "webp":
+      return "image/webp";
+    default:
+      assertNever(outputFormat);
+  }
+}
+
 const createServer = (auth: Authenticator): McpServer => {
   const server = new McpServer(serverInfo);
   server.tool(
@@ -109,60 +148,8 @@ const createServer = (auth: Authenticator): McpServer => {
         return makeMCPToolTextError("Missing environment variable.");
       }
 
-      let contentType: SupportedFileContentType | null;
-      switch (output_format) {
-        case "md":
-          contentType = "text/markdown";
-          break;
-        case "gif":
-          contentType = "image/gif";
-          break;
-        case "pdf":
-          contentType = "application/pdf";
-          break;
-        case "doc":
-          contentType = "application/msword";
-          break;
-        case "docx":
-          contentType =
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-          break;
-        case "pptx":
-          contentType =
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-          break;
-        case "csv":
-          contentType = "text/csv";
-          break;
-        case "txt":
-          contentType = "text/plain";
-          break;
-        case "html":
-          contentType = "text/html";
-          break;
-        case "jpg":
-          contentType = "image/jpeg";
-          break;
-        case "png":
-          contentType = "image/png";
-          break;
-        case "xml":
-          contentType = "text/xml";
-          break;
-        case "xls":
-          contentType = "application/vnd.ms-excel";
-          break;
-        case "xlsx":
-          contentType =
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-          break;
-        case "webp":
-          contentType = "image/webp";
-          break;
-
-        default:
-          assertNever(output_format);
-      }
+      let contentType: SupportedFileContentType | null =
+        getContentTypeFromOutputFormat(output_format);
 
       const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
       let url: string | UploadResult = input;
