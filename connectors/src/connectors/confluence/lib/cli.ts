@@ -1,7 +1,10 @@
 import assert from "assert";
 import fs from "fs/promises";
 
-import { listConfluenceSpaces } from "@connectors/connectors/confluence/lib/confluence_api";
+import {
+  listConfluenceSpaces,
+  pageHasReadRestrictions,
+} from "@connectors/connectors/confluence/lib/confluence_api";
 import { extractConfluenceIdsFromUrl } from "@connectors/connectors/confluence/lib/utils";
 import {
   confluenceUpdatePagesParentIdsActivity,
@@ -213,9 +216,12 @@ export const confluence = async ({
         })) ?? [];
 
       const hasChildren = page.childTypes.page.value ?? false;
-      const hasReadRestrictions =
-        page.restrictions.read.restrictions.group.results.length > 0 ||
-        page.restrictions.read.restrictions.user.results.length > 0;
+
+      const hasReadRestrictions = await pageHasReadRestrictions(
+        confluenceClient,
+        pageId
+      );
+
       const confluencePage = await ConfluencePage.findOne({
         where: {
           connectorId,
@@ -228,7 +234,7 @@ export const confluence = async ({
         ancestors,
         existsInDust: !!confluencePage,
         hasChildren,
-        hasReadRestrictions,
+        hasReadRestrictions: hasReadRestrictions ?? true,
         status: page.status,
         title: page.title,
       };
