@@ -89,7 +89,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
    * API used by the agent memory MCP server
    */
 
-  static async retrieve(
+  static async retrieveMemories(
     auth: Authenticator,
     {
       agentConfiguration,
@@ -105,44 +105,107 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     });
   }
 
-  // static async record(
-  //   auth: Authenticator,
-  //   {
-  //     agentConfiguration,
-  //     forUser,
-  //     content,
-  //     index,
-  //   }: {
-  //     agentConfiguration: LightAgentConfigurationType;
-  //     forUser: UserType | null;
-  //     content: string;
-  //     index?: number;
-  //   }
-  // ): Promise<Result<AgentMemoryResource, Error>> {
-  //   try {
-  //     const existingMemory = await this.findByAgentConfiguration(auth, {
-  //       agentConfiguration,
-  //       forUser,
-  //     });
+  static async recordMemory(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      forUser,
+      content,
+      index,
+    }: {
+      agentConfiguration: LightAgentConfigurationType;
+      forUser: UserType | null;
+      content: string;
+      index?: number;
+    }
+  ): Promise<AgentMemoryResource> {
+    let memory = await this.findByAgentConfiguration(auth, {
+      agentConfiguration,
+      forUser,
+    });
+    if (!memory) {
+      memory = await this.makeNew(auth, {
+        agentConfigurationId: agentConfiguration.sId,
+        content: [],
+        userId: forUser?.id ?? null,
+      });
+    }
 
-  //     if (existingMemory) {
-  //       // Update existing memory
-  //       existingMemory.model.content = content;
-  //       await existingMemory.model.save();
-  //       return new Ok(existingMemory);
-  //     } else {
-  //       // Create new memory
-  //       const newMemory = await this.makeNew(auth, {
-  //         agentConfigurationId: agentConfiguration.id,
-  //         content,
-  //         userId: forUser?.id ?? null,
-  //       });
-  //       return new Ok(newMemory);
-  //     }
-  //   } catch (err) {
-  //     return new Err(normalizeError(err));
-  //   }
-  // }
+    const c = memory.content;
+    if (index !== undefined) {
+      // Insert at specific index
+      c.splice(index, 0, content);
+    } else {
+      // Append to the end
+      c.push(content);
+    }
+
+    await memory.update({
+      content: c,
+    });
+
+    return memory;
+  }
+
+  static async eraseMemory(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      forUser,
+      index,
+    }: {
+      agentConfiguration: LightAgentConfigurationType;
+      forUser: UserType | null;
+      index: number;
+    }
+  ): Promise<AgentMemoryResource | null> {
+    const memory = await this.findByAgentConfiguration(auth, {
+      agentConfiguration,
+      forUser,
+    });
+
+    if (memory) {
+      const c = memory.content;
+      if (index >= 0 && index < c.length) {
+        c.splice(index, 1);
+        await memory.update({ content: c });
+      }
+    }
+
+    return memory;
+  }
+
+  static async overwriteMemory(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      forUser,
+      index,
+      content,
+    }: {
+      agentConfiguration: LightAgentConfigurationType;
+      forUser: UserType | null;
+      index: number;
+      content: string;
+    }
+  ): Promise<Result<AgentMemoryResource | null, Error>> {
+    const memory = await this.findByAgentConfiguration(auth, {
+      agentConfiguration,
+      forUser,
+    });
+
+    if (memory) {
+      const c = memory.content;
+      if (index >= 0 && index < c.length) {
+        c[index] = content;
+        await memory.update({ content: c });
+      } else {
+        return new Err(new Error(`Index ${index} does not exist in memory.`));
+      }
+    }
+
+    return new Ok(memory);
+  }
 
   async delete(
     auth: Authenticator,
