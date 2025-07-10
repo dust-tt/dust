@@ -3,7 +3,6 @@ import { Storage } from "@google-cloud/storage";
 
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import logger from "@connectors/logger/logger";
-import type { ModelId } from "@connectors/types";
 import { isDevelopment } from "@connectors/types";
 
 export const DIRECTORY_PLACEHOLDER_FILE = ".gitkeep";
@@ -135,27 +134,6 @@ export class GCSRepositoryManager {
         "Failed to create directory placeholder in GCS"
       );
       throw error;
-    }
-  }
-
-  /**
-   * Delete all files for a repository.
-   */
-  async deleteRepository(connectorId: ModelId, repoId: number): Promise<void> {
-    const prefix = `${connectorId}/github-repos/${repoId}`;
-
-    try {
-      await this.bucket.deleteFiles({ prefix });
-      logger.info(
-        { connectorId, repoId, prefix },
-        "Deleted repository from GCS"
-      );
-    } catch (error) {
-      logger.error(
-        { error, connectorId, repoId, prefix },
-        "Failed to delete repository from GCS"
-      );
-      throw new Error(`Failed to delete repository: ${prefix}`);
     }
   }
 }
