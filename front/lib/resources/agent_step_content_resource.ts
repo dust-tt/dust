@@ -42,7 +42,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   private static async checkAgentMessageAccess(
     auth: Authenticator,
     agentMessageId: number
-  ): Promise<{ canAccess: boolean; agentConfiguration?: any }> {
+  ): Promise<void> {
     const agentMessage = await AgentMessage.findOne({
       where: {
         id: agentMessageId,
@@ -50,7 +50,9 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     });
 
     if (!agentMessage) {
-      return { canAccess: false };
+      throw new Error(
+        `Unexpected: Agent message not found for agentMessageId: ${agentMessageId}`
+      );
     }
 
     // Fetch agent configuration to check permissions
@@ -61,19 +63,23 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     });
 
     if (agentConfigurations.length === 0) {
-      return { canAccess: false };
+      throw new Error(
+        `Unexpected: User does not have access to agent configuration: ${agentMessage.agentConfigurationId}`
+      );
     }
 
     const agentConfiguration = agentConfigurations[0];
 
-    // Check if user can read the message using the configuration's requested group IDs
+    // Check if user can read the message using the configuration
     const canRead = canReadMessage(auth, {
-      configuration: {
-        requestedGroupIds: agentConfiguration.requestedGroupIds || [],
-      },
+      configuration: agentConfiguration,
     } as any);
 
-    return { canAccess: canRead, agentConfiguration };
+    if (!canRead) {
+      throw new Error(
+        `Unexpected: User does not have permission to read agent message: ${agentMessageId}`
+      );
+    }
   }
 
   static async makeNew(
@@ -121,15 +127,8 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Check authorization
-    const { canAccess } = await this.checkAgentMessageAccess(
-      auth,
-      agentMessageId
-    );
-
-    if (!canAccess) {
-      return [];
-    }
+    // Check authorization - will throw if unauthorized
+    await this.checkAgentMessageAccess(auth, agentMessageId);
 
     const agentStepContents = await AgentStepContentModel.findAll({
       where: {
@@ -163,15 +162,8 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Check authorization
-    const { canAccess } = await this.checkAgentMessageAccess(
-      auth,
-      agentMessageId
-    );
-
-    if (!canAccess) {
-      return [];
-    }
+    // Check authorization - will throw if unauthorized
+    await this.checkAgentMessageAccess(auth, agentMessageId);
 
     const agentStepContents = await AgentStepContentModel.findAll({
       where: {
@@ -203,15 +195,8 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Check authorization
-    const { canAccess } = await this.checkAgentMessageAccess(
-      auth,
-      agentMessageId
-    );
-
-    if (!canAccess) {
-      return [];
-    }
+    // Check authorization - will throw if unauthorized
+    await this.checkAgentMessageAccess(auth, agentMessageId);
 
     // Fetch all contents and group by step/index to get the latest version of each.
     const allContents = await AgentStepContentModel.findAll({
@@ -253,15 +238,8 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Check authorization
-    const { canAccess } = await this.checkAgentMessageAccess(
-      auth,
-      agentMessageId
-    );
-
-    if (!canAccess) {
-      return [];
-    }
+    // Check authorization - will throw if unauthorized
+    await this.checkAgentMessageAccess(auth, agentMessageId);
 
     // Fetch all contents and group by step/index to get the latest version of each.
     const allContents = await AgentStepContentModel.findAll({
