@@ -131,7 +131,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       });
     }
 
-    const c = memory.content;
+    const c = [...memory.content];
     if (index !== undefined) {
       // Insert at specific index
       c.splice(index, 0, content);
@@ -165,7 +165,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     });
 
     if (memory) {
-      const c = memory.content;
+      const c = [...memory.content];
       if (index >= 0 && index < c.length) {
         c.splice(index, 1);
         await memory.update({ content: c });
@@ -195,7 +195,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     });
 
     if (memory) {
-      const c = memory.content;
+      const c = [...memory.content];
       if (index >= 0 && index < c.length) {
         c[index] = content;
         await memory.update({ content: c });
