@@ -112,6 +112,7 @@ function logFailedAgentMessageOncePerSession(
 
   let seenErrors = loggedAgentErrorsPerSession.get(sessionId);
   if (!seenErrors) {
+    loggedAgentErrorsPerSession.clear(); // reset the map to prevent memory leak
     seenErrors = new Set();
     loggedAgentErrorsPerSession.set(sessionId, seenErrors);
   }
