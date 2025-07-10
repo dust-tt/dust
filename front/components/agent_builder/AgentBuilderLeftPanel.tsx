@@ -1,3 +1,4 @@
+import type { ButtonProps } from "@dust-tt/sparkle";
 import { BarFooter, BarHeader, Button, XMarkIcon } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -8,20 +9,16 @@ import { ConfirmContext } from "@app/components/Confirm";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
-  onSave?: () => void;
   onCancel: () => void;
-  isSaving?: boolean;
-  isDisabled?: boolean;
   agentConfigurationId: string | null;
+  saveButtonProps?: ButtonProps;
 }
 
 export function AgentBuilderLeftPanel({
   title,
-  onSave,
   onCancel,
-  isSaving,
-  isDisabled,
   agentConfigurationId,
+  saveButtonProps,
 }: AgentBuilderLeftPanelProps) {
   const confirm = React.useContext(ConfirmContext);
 
@@ -67,10 +64,13 @@ export function AgentBuilderLeftPanel({
         rightActions={
           <BarFooter.ButtonBar
             variant="validate"
-            onCancel={handleCancel}
-            onSave={onSave}
-            isSaving={isSaving}
-            isDisabled={isDisabled}
+            cancelButtonProps={{
+              size: "sm",
+              label: "Cancel",
+              variant: "ghost",
+              onClick: handleCancel,
+            }}
+            saveButtonProps={saveButtonProps}
           />
         }
       />
