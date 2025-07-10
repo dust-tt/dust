@@ -1,4 +1,4 @@
-import { BarHeader } from "@dust-tt/sparkle";
+import { BarHeader, type RegularButtonProps } from "@dust-tt/sparkle";
 import React from "react";
 
 export function AppLayoutSimpleCloseTitle({
@@ -36,10 +36,24 @@ export function AppLayoutSimpleSaveCancelTitle({
       rightActions={
         <BarHeader.ButtonBar
           variant="validate"
-          onCancel={onCancel}
-          onSave={onSave}
-          isSaving={isSaving}
-          saveTooltip={saveTooltip}
+          cancelButtonProps={{
+            size: "sm",
+            label: "Cancel",
+            variant: "ghost",
+            onClick: onCancel,
+          }}
+          saveButtonProps={
+            onSave
+              ? {
+                  size: "sm",
+                  label: isSaving ? "Saving..." : "Save",
+                  variant: "primary",
+                  onClick: onSave,
+                  disabled: isSaving,
+                  tooltip: saveTooltip,
+                }
+              : undefined
+          }
         />
       }
       className="ml-10 lg:ml-0"

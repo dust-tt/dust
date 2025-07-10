@@ -162,6 +162,9 @@ export default function AgentBuilder({
     void form.handleSubmit(handleSubmit)();
   };
 
+  // Subscribe to form state changes by destructuring before render
+  const { isDirty, isSubmitting } = form.formState;
+
   return (
     <FormProvider form={form} onSubmit={handleSubmit}>
       <AgentBuilderLayout
@@ -175,11 +178,18 @@ export default function AgentBuilder({
             onCancel={async () => {
               await appLayoutBack(owner, router);
             }}
-            onSave={handleSave}
-            isSaving={form.formState.isSubmitting}
-            isDisabled={
-              isMCPServerViewsLoading || isActionsLoading || isEditorsLoading
-            }
+            saveButtonProps={{
+              size: "sm",
+              label: isSubmitting ? "Saving..." : "Save",
+              variant: "primary",
+              onClick: handleSave,
+              disabled:
+                !isDirty ||
+                isSubmitting ||
+                isMCPServerViewsLoading ||
+                isActionsLoading ||
+                isEditorsLoading,
+            }}
             agentConfigurationId={agentConfiguration?.sId || null}
           />
         }
