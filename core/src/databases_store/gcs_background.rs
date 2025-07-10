@@ -52,7 +52,7 @@ impl GoogleCloudStorageBackgroundProcessingStore {
         csv.parse().await
     }
 
-    pub async fn get_rows_from_all_csvs(table: &Table) -> Result<Vec<Row>> {
+    pub async fn get_files_for_table(table: &Table) -> Result<Vec<String>> {
         let bucket = Self::get_bucket()?;
         let bucket_folder_path = Self::get_csv_storage_folder_path(table);
         let list_request = ListRequest {
@@ -68,21 +68,35 @@ impl GoogleCloudStorageBackgroundProcessingStore {
         };
         let stream = Object::list(&bucket, list_request).await?;
 
-        let mut s = Box::pin(stream);
-        let mut all_rows = Vec::new();
+        let mut pinned_stream = Box::pin(stream);
+        let mut files = Vec::new();
 
-        while let Some(result) = s.next().await {
+        while let Some(result) = pinned_stream.next().await {
             match result {
                 Ok(object_list) => {
                     for object in object_list.items {
-                        let rows = Self::get_rows_from_csv(object.name).await?;
-                        all_rows.extend(rows);
+                        files.push((object.name, object.time_created));
                     }
                 }
                 Err(e) => {
                     error!("Failed to list objects in GCS: {}", e);
                 }
             }
+        }
+
+        // Sort files by time_created (oldest first)
+        files.sort_by_key(|(_, time_created)| *time_created);
+
+        // Extract only the file names
+        Ok(files.into_iter().map(|(name, _)| name).collect())
+    }
+
+    pub async fn get_rows_from_all_files(files: &Vec<String>) -> Result<Vec<Row>> {
+        let mut all_rows = Vec::new();
+
+        for file in files {
+            let rows = Self::get_rows_from_csv(file.clone()).await?;
+            all_rows.extend(rows);
         }
 
         // Dedup rows by row_id, keeping only the last one
@@ -107,6 +121,16 @@ impl GoogleCloudStorageBackgroundProcessingStore {
         )
         .await?;
 
+        Ok(())
+    }
+
+    pub async fn delete_files(files: &Vec<String>) -> Result<()> {
+        let bucket = Self::get_bucket()?;
+        for file in files {
+            if let Err(e) = Object::delete(&bucket, file).await {
+                error!("Failed to delete file {}: {}", file, e);
+            }
+        }
         Ok(())
     }
 }
