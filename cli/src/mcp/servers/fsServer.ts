@@ -3,7 +3,7 @@ import { DustMcpServerTransport } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { ReadFileTool } from "../tools/readFile.js";
-// import { SearchContentTool } from "../tools/searchContent.js";
+import { SearchContentTool } from "../tools/searchContent.js";
 import { SearchFilesTool } from "../tools/searchFiles.js";
 
 // Add local development tools to the MCP server
@@ -18,7 +18,7 @@ export const useFileSystemServer = async (
 
   const readFileTool = new ReadFileTool();
   const searchFilesTool = new SearchFilesTool();
-  //   const searchContentTool = new SearchContentTool();
+  const searchContentTool = new SearchContentTool();
 
   // File operations
   server.tool(
@@ -36,12 +36,12 @@ export const useFileSystemServer = async (
     searchFilesTool.execute
   );
 
-  //   server.tool(
-  //     searchContentTool.name,
-  //     searchContentTool.description,
-  //     searchContentTool.inputSchema.shape,
-  //     searchContentTool.execute
-  //   );
+  server.tool(
+    searchContentTool.name,
+    searchContentTool.description,
+    searchContentTool.inputSchema.shape,
+    searchContentTool.execute
+  );
 
   // Connect to Dust with enhanced error handling
   const transport = new DustMcpServerTransport(
@@ -49,8 +49,7 @@ export const useFileSystemServer = async (
     (serverId) => {
       onServerIdReceived(serverId);
     },
-    "fs-cli",
-    true
+    "fs-cli"
   ); // Enable verbose logging
 
   // Add error handling for connection issues
