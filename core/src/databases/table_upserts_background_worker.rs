@@ -25,90 +25,112 @@ pub struct TableUpsertCall {
     pub table_id: String,
 }
 
-pub async fn handle_loop_iteration(
-    conn: &mut redis::aio::Connection,
-    store: &Box<dyn store::Store + Sync + Send>,
-    databases_store: &Box<dyn databases_store::store::DatabasesStore + Sync + Send>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let all_values: HashMap<String, String> = conn.hgetall(REDIS_TABLE_UPSERT_HASH_NAME).await?;
+pub struct TableUpsertsBackgroundWorker {
+    store: Box<dyn store::Store + Sync + Send>,
+    databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send>,
+    redis_conn: redis::aio::Connection,
+}
 
-    let mut values: Vec<TableUpsertCall> = all_values
-        .values()
-        .filter_map(|json_value| serde_json::from_str(json_value).ok())
-        .collect();
-    values.sort_by(|a, b| b.time.cmp(&a.time));
+impl TableUpsertsBackgroundWorker {
+    pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
+            Ok(db_uri) => {
+                let store = postgres::PostgresStore::new(&db_uri).await;
+                Box::new(store.unwrap())
+            }
+            Err(_) => panic!("CORE_DATABASE_URI is required (postgres)"),
+        };
 
-    for call in values {
-        let table = store
-            .load_data_source_table(
-                &Project::new_from_id(call.project_id),
-                &call.data_source_id,
-                &call.table_id,
-            )
+        let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
+            match CURRENT_STRATEGY {
+                DatabasesStoreStrategy::PostgresOnly
+                | DatabasesStoreStrategy::PostgresAndWriteToGCS => {
+                    let store = databases_store::postgres::get_postgres_store()
+                        .await
+                        .unwrap();
+                    Box::new(store)
+                }
+                DatabasesStoreStrategy::GCSOnly | DatabasesStoreStrategy::GCSAndWriteToPostgres => {
+                    let store = GoogleCloudStorageDatabasesStore::new();
+                    Box::new(store)
+                }
+            };
+
+        let redis_conn = if let Some(client) = &*cache::REDIS_CLIENT {
+            client.get_async_connection().await?
+        } else {
+            return Err("Redis client is not initialized".into());
+        };
+
+        Ok(Self {
+            store,
+            databases_store,
+            redis_conn,
+        })
+    }
+
+    async fn loop_iteration(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let all_values: HashMap<String, String> = self
+            .redis_conn
+            .hgetall(REDIS_TABLE_UPSERT_HASH_NAME)
             .await?;
 
-        match table {
-            Some(table) => {
-                let files =
-                    GoogleCloudStorageBackgroundProcessingStore::get_files_for_table(&table)
+        let mut values: Vec<TableUpsertCall> = all_values
+            .values()
+            .filter_map(|json_value| serde_json::from_str(json_value).ok())
+            .collect();
+        values.sort_by(|a, b| b.time.cmp(&a.time));
+
+        for call in values {
+            let table = self
+                .store
+                .load_data_source_table(
+                    &Project::new_from_id(call.project_id),
+                    &call.data_source_id,
+                    &call.table_id,
+                )
+                .await?;
+
+            match table {
+                Some(table) => {
+                    let files =
+                        GoogleCloudStorageBackgroundProcessingStore::get_files_for_table(&table)
+                            .await?;
+                    let rows =
+                        GoogleCloudStorageBackgroundProcessingStore::get_rows_from_all_files(
+                            &files,
+                        )
                         .await?;
-                let rows =
-                    GoogleCloudStorageBackgroundProcessingStore::get_rows_from_all_files(&files)
+                    let table = LocalTable::from_table(table).unwrap();
+                    table
+                        .upsert_rows_now(&self.store, &self.databases_store, rows, false)
                         .await?;
-                let table = LocalTable::from_table(table).unwrap();
-                table
-                    .upsert_rows_now(store, databases_store, rows, false)
-                    .await?;
-                GoogleCloudStorageBackgroundProcessingStore::delete_files(&files).await?;
+                    GoogleCloudStorageBackgroundProcessingStore::delete_files(&files).await?;
+                }
+                None => {
+                    error!(
+                        "Table not found for project_id: {}, data_source_id: {}, table_id: {}",
+                        call.project_id, call.data_source_id, call.table_id
+                    );
+                    continue;
+                }
             }
-            None => {
-                println!(
-                    "Table not found for project_id: {}, data_source_id: {}, table_id: {}",
-                    call.project_id, call.data_source_id, call.table_id
-                );
-                continue;
+        }
+
+        Ok(())
+    }
+
+    pub async fn main_loop(&mut self) {
+        loop {
+            if let Err(e) = self.loop_iteration().await {
+                error!("Error in TableUpsertsBackgroundWorker loop: {}", e);
             }
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
     }
 
-    Ok(())
-}
-
-pub async fn table_upserts_and_deletes_loop() {
-    let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
-        Ok(db_uri) => {
-            let store = postgres::PostgresStore::new(&db_uri).await;
-            Box::new(store.unwrap())
-        }
-        Err(_) => panic!("CORE_DATABASE_URI is required (postgres)"),
-    };
-
-    let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
-        match CURRENT_STRATEGY {
-            DatabasesStoreStrategy::PostgresOnly
-            | DatabasesStoreStrategy::PostgresAndWriteToGCS => {
-                let store = databases_store::postgres::get_postgres_store()
-                    .await
-                    .unwrap();
-                Box::new(store)
-            }
-            DatabasesStoreStrategy::GCSOnly | DatabasesStoreStrategy::GCSAndWriteToPostgres => {
-                let store = GoogleCloudStorageDatabasesStore::new();
-                Box::new(store)
-            }
-        };
-
-    if let Some(client) = &*cache::REDIS_CLIENT {
-        match client.get_async_connection().await {
-            Ok(mut conn) => loop {
-                if let Err(e) = handle_loop_iteration(&mut conn, &store, &databases_store).await {
-                    error!("Error in loop iteration: {}", e);
-                }
-                tokio::time::sleep(std::time::Duration::from_millis(1024 * 60)).await;
-            },
-            Err(e) => {
-                error!("Error connecting to Redis: {}.", e);
-            }
-        }
+    pub async fn start_loop() {
+        let mut worker = TableUpsertsBackgroundWorker::new().await.unwrap();
+        worker.main_loop().await;
     }
 }

@@ -8,7 +8,7 @@ use axum::{
 use dust::{
     databases::{
         table::{LocalTable, Table},
-        table_upserts_background_worker::table_upserts_and_deletes_loop,
+        table_upserts_background_worker::TableUpsertsBackgroundWorker,
     },
     databases_store::{self},
     sqlite_workers::{
@@ -343,8 +343,10 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
+        // Start the background worker for table upserts. Note that this is not related
+        // to sqlite, but we put it here for convenience.
         tokio::task::spawn(async move {
-            table_upserts_and_deletes_loop().await;
+            TableUpsertsBackgroundWorker::start_loop().await;
         });
 
         tracing_subscriber::registry()
