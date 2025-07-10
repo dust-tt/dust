@@ -10,7 +10,7 @@ export class AgentMemoryModel extends WorkspaceAwareModel<AgentMemoryModel> {
   declare updatedAt: CreationOptional<Date>;
 
   declare agentConfigurationId: string;
-  declare content: Array<string>;
+  declare content: string[];
 
   declare userId: ForeignKey<UserModel["id"]> | null;
   declare user: NonAttribute<UserModel> | null;
@@ -32,7 +32,7 @@ AgentMemoryModel.init(
       allowNull: false,
     },
     content: {
-      type: DataTypes.JSONB,
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: false,
     },
   },
