@@ -184,7 +184,10 @@ export const zendesk = async ({
         return {
           ticket: ticket as { [key: string]: unknown } | null,
           shouldSyncTicket:
-            ticket !== null && shouldSyncTicket(ticket, configuration),
+            ticket !== null &&
+            shouldSyncTicket(ticket, configuration, {
+              brandId: brand?.brandId,
+            }),
           isTicketOnDb: ticketOnDb !== null,
         };
       }
@@ -219,7 +222,10 @@ export const zendesk = async ({
       return {
         ticket: ticket as { [key: string]: unknown } | null,
         shouldSyncTicket:
-          ticket !== null && shouldSyncTicket(ticket, configuration),
+          ticket !== null &&
+          shouldSyncTicket(ticket, configuration, {
+            brandId,
+          }),
         isTicketOnDb: ticketOnDb !== null,
       };
     }
@@ -315,7 +321,7 @@ export const zendesk = async ({
         throw new Error(`Ticket ${ticketId} not found`);
       }
 
-      if (!shouldSyncTicket(ticket, configuration)) {
+      if (!shouldSyncTicket(ticket, configuration, { brandId })) {
         logger.info(
           { ticketId, brandId, status: ticket.status },
           "Ticket should not be synced based on status and configuration."
