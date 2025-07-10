@@ -65,7 +65,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     }
 
     const agentConfiguration = agentConfigurations[0];
-    
+
     // Check if user can read the message using the configuration's requested group IDs
     const canRead = canReadMessage(auth, {
       configuration: {
