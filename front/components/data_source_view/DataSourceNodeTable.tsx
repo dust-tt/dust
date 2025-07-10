@@ -2,7 +2,6 @@ import { isFolder, isWebsite } from "@dust-tt/client";
 import {
   Checkbox,
   DataTable,
-  DoubleIcon,
   Hoverable,
   Icon,
   ScrollableDataTable,
@@ -22,6 +21,8 @@ import type {
   DataSourceViewType,
   WorkspaceType,
 } from "@app/types";
+
+import { useTheme } from "../sparkle/ThemeContext";
 
 const PAGE_SIZE = 25;
 
@@ -54,6 +55,7 @@ export function DataSourceNodeTable({
 }: DataSourceNodeTableProps) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [nodeRows, setNodeRows] = useState<NodeRowData[]>([]);
+  const { isDark } = useTheme();
 
   const {
     cursorPagination,
@@ -118,6 +120,7 @@ export function DataSourceNodeTable({
         .map((dsv) => {
           const logo = getConnectorProviderLogoWithFallback({
             provider: dsv.dataSource.connectorProvider,
+            isDark,
           });
 
           return {
@@ -169,6 +172,7 @@ export function DataSourceNodeTable({
     childNodes,
     tablePagination.pageIndex,
     onNavigate,
+    isDark,
   ]);
 
   const columns: ColumnDef<NodeRowData>[] = useMemo(
@@ -266,24 +270,12 @@ function getTableRows(
   onNodeClick: (node: DataSourceViewContentNode) => void
 ): NodeRowData[] {
   return nodes.map((node) => {
-    const { dataSource } = node.dataSourceView;
-    const logo = getConnectorProviderLogoWithFallback({
-      provider: dataSource.connectorProvider,
-    });
-    const isWebsiteOrFolder = isWebsite(dataSource) || isFolder(dataSource);
-    const visual = isWebsiteOrFolder ? (
-      <Icon visual={logo} />
-    ) : (
-      <DoubleIcon
-        mainIcon={getVisualForDataSourceViewContentNode(node)}
-        secondaryIcon={logo}
-        size="md"
-      />
-    );
     return {
       id: node.internalId,
       title: node.title,
-      icon: visual,
+      icon: (
+        <Icon visual={getVisualForDataSourceViewContentNode(node)} size="md" />
+      ),
       parentTitle: node.parentTitle,
       onClick: node.expandable ? () => onNodeClick(node) : undefined,
     };
