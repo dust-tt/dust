@@ -10,9 +10,13 @@ import type { ServerInfo } from "./serverInfo.js";
  */
 export abstract class InternalMcpService {
   protected server: McpServer | null = null;
+  protected serverInfo: ServerInfo;
   protected transport: DustMcpServerTransport | null = null;
   protected serverId: string | undefined = undefined;
 
+  constructor(serverInfo: ServerInfo) {
+    this.serverInfo = serverInfo;
+  }
   /**
    * Create and connect to a server for a workspace
    * Primary method for workspace-scoped MCP implementation
@@ -48,7 +52,7 @@ export abstract class InternalMcpService {
    */
   private createMcpServer(): McpServer | null {
     try {
-      this.server = new McpServer(this.getServerInfo());
+      this.server = new McpServer(this.serverInfo);
       this.registerTools();
       return this.server;
     } catch (error) {
@@ -80,7 +84,7 @@ export abstract class InternalMcpService {
           this.serverId = serverId;
           onServerIdReceived(serverId);
         },
-        this.getServerInfo().name
+        this.serverInfo.name
       );
 
       await server.connect(transport);
@@ -102,5 +106,4 @@ export abstract class InternalMcpService {
   }
 
   protected abstract registerTools(): void;
-  protected abstract getServerInfo(): ServerInfo;
 }

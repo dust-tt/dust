@@ -16,32 +16,30 @@ export abstract class ExternalMcpService {
     this.serverInfo = serverInfo;
   }
 
+  // Template method
   async startServer(): Promise<string> {
     await this.authenticate();
-    this.createMcpServer();
+
+    this.server = new McpServer(this.serverInfo);
     if (!this.server) {
       throw new Error("Failed to create MCP server");
     }
+
+    this.registerTools();
+
     return this.transport.start(this.server);
   }
 
-  private createMcpServer(): McpServer | null {
-    try {
-      this.server = new McpServer(this.serverInfo);
-      this.registerTools();
-      return this.server;
-    } catch (error) {
-      console.error("Failed to create MCP Server: ", error);
-      return null;
-    }
-  }
-
+  // Not Required, but over-rideable
   protected async authenticate(): Promise<void> {
     return;
   }
 
+  // Required
+  protected abstract registerTools(): void;
+
+  // Not Template, but globally shared
   async disconnect(): Promise<void> {
     this.transport.stop();
   }
-  protected abstract registerTools(): void;
 }
