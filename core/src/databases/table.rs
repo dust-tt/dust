@@ -9,7 +9,7 @@ use serde_json::Value;
 use tracing::{error, info};
 
 use crate::databases::table_upserts_background_worker::{
-    TableUpsertCallData, REDIS_TABLE_UPSERT_HASH_NAME,
+    TableUpsertActivityData, REDIS_TABLE_UPSERT_HASH_NAME,
 };
 use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
 use crate::databases_store::gcs_background::GoogleCloudStorageBackgroundProcessingStore;
@@ -428,7 +428,7 @@ impl LocalTable {
             if let Some(client) = &*cache::REDIS_CLIENT {
                 match client.get_async_connection().await {
                     Ok(mut conn) => {
-                        let upsert_call = TableUpsertCallData {
+                        let upsert_call = TableUpsertActivityData {
                             time: utils::now(),
                             project_id: self.table.project().project_id(),
                             data_source_id: self.table.data_source_id().to_string(),

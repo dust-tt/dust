@@ -21,7 +21,7 @@ pub const REDIS_TABLE_UPSERT_HASH_NAME: &str = "TABLE_UPSERT";
 const UPSERT_DEBOUNCE_TIME_MS: u64 = 30_000;
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct TableUpsertCallData {
+pub struct TableUpsertActivityData {
     pub time: u64,
     pub project_id: i64,
     pub data_source_id: String,
@@ -79,18 +79,22 @@ impl TableUpsertsBackgroundWorker {
             .await?;
 
         // This includes both upserts and deletes
-        let mut upsert_calls: Vec<TableUpsertCallData> = all_values
-            .values()
-            .filter_map(|json_value| serde_json::from_str(json_value).ok())
+        let mut active_tables: Vec<(String, TableUpsertActivityData)> = all_values
+            .into_iter()
+            .filter_map(|(key, json_value)| {
+                serde_json::from_str(&json_value)
+                    .ok()
+                    .map(|call_data| (key, call_data))
+            })
             .collect();
-        upsert_calls.sort_by(|a, b| a.time.cmp(&b.time));
+        active_tables.sort_by(|a, b| a.1.time.cmp(&b.1.time));
 
-        for call in upsert_calls {
+        for (key, table_data) in active_tables {
             // They're ordered from oldest to newest, meaning we first see those that are most
             // likely to be past the debounce time. As soon as we find one that is not
             // past the debounce time, we can stop processing.
             // TODO: consider supporting a maximum wait time to prevent starvation
-            let time_since_last_upsert = utils::now() - call.time; // time is in milliseconds, so we can compare directly
+            let time_since_last_upsert = utils::now() - table_data.time; // time is in milliseconds, so we can compare directly
             if time_since_last_upsert < UPSERT_DEBOUNCE_TIME_MS {
                 break;
             }
@@ -98,9 +102,9 @@ impl TableUpsertsBackgroundWorker {
             let table = self
                 .store
                 .load_data_source_table(
-                    &Project::new_from_id(call.project_id),
-                    &call.data_source_id,
-                    &call.table_id,
+                    &Project::new_from_id(table_data.project_id),
+                    &table_data.data_source_id,
+                    &table_data.table_id,
                 )
                 .await?;
 
@@ -108,9 +112,9 @@ impl TableUpsertsBackgroundWorker {
                 Some(table) => {
                     info!(
                         "Processing upsert for project_id: {}, data_source_id: {}, table_id: {} ({}s since last upsert)",
-                        call.project_id,
-                        call.data_source_id,
-                        call.table_id,
+                        table_data.project_id,
+                        table_data.data_source_id,
+                        table_data.table_id,
                         time_since_last_upsert / 1000
                     );
 
@@ -127,10 +131,10 @@ impl TableUpsertsBackgroundWorker {
                         .upsert_rows_now(&self.store, &self.databases_store, rows, false)
                         .await?;
 
-                    // Remove the redist hash key for this table
+                    // Remove the Redis hash key for this table using the key from the item being processed
                     let _: () = self
                         .redis_conn
-                        .hdel(REDIS_TABLE_UPSERT_HASH_NAME, local_table.table.unique_id())
+                        .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
                         .await?;
 
                     GoogleCloudStorageBackgroundProcessingStore::delete_files(&files).await?;
@@ -138,7 +142,7 @@ impl TableUpsertsBackgroundWorker {
                 None => {
                     error!(
                         "Table not found for project_id: {}, data_source_id: {}, table_id: {}",
-                        call.project_id, call.data_source_id, call.table_id
+                        table_data.project_id, table_data.data_source_id, table_data.table_id
                     );
                     continue;
                 }
