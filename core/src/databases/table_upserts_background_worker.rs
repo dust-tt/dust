@@ -4,7 +4,7 @@ use tracing::{error, info};
 
 use crate::{
     cache,
-    databases::table::LocalTable,
+    databases::table::{LocalTable, Table},
     databases_store::{
         self,
         gcs::GoogleCloudStorageDatabasesStore,
@@ -72,6 +72,37 @@ impl TableUpsertsBackgroundWorker {
         })
     }
 
+    async fn process_table(
+        &mut self,
+        table: &Table,
+        key: String,
+        table_data: TableUpsertActivityData,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        info!(
+            "Processing upsert for project_id: {}, data_source_id: {}, table_id: {}",
+            table_data.project_id, table_data.data_source_id, table_data.table_id
+        );
+
+        let files =
+            GoogleCloudStorageBackgroundProcessingStore::get_files_for_table(&table).await?;
+        let rows =
+            GoogleCloudStorageBackgroundProcessingStore::get_dedupped_rows_from_all_files(&files)
+                .await?;
+        let local_table = LocalTable::from_table(table.clone()).unwrap();
+        local_table
+            .upsert_rows_now(&self.store, &self.databases_store, rows, false)
+            .await?;
+
+        let _: () = self
+            .redis_conn
+            .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
+            .await?;
+
+        GoogleCloudStorageBackgroundProcessingStore::delete_files(&files).await?;
+
+        Ok(())
+    }
+
     async fn loop_iteration(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let all_values: HashMap<String, String> = self
             .redis_conn
@@ -110,41 +141,16 @@ impl TableUpsertsBackgroundWorker {
 
             match table {
                 Some(table) => {
-                    info!(
-                        "Processing upsert for project_id: {}, data_source_id: {}, table_id: {} ({}s since last upsert)",
-                        table_data.project_id,
-                        table_data.data_source_id,
-                        table_data.table_id,
-                        time_since_last_upsert / 1000
-                    );
-
-                    let files =
-                        GoogleCloudStorageBackgroundProcessingStore::get_files_for_table(&table)
-                            .await?;
-                    let rows =
-                        GoogleCloudStorageBackgroundProcessingStore::get_dedupped_rows_from_all_files(
-                            &files,
-                        )
-                        .await?;
-                    let local_table = LocalTable::from_table(table).unwrap();
-                    local_table
-                        .upsert_rows_now(&self.store, &self.databases_store, rows, false)
-                        .await?;
-
-                    // Remove the Redis hash key for this table using the key from the item being processed
-                    let _: () = self
-                        .redis_conn
-                        .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
-                        .await?;
-
-                    GoogleCloudStorageBackgroundProcessingStore::delete_files(&files).await?;
+                    // TODO: add lock around this call
+                    // Running into "error[E0277]: `dyn StdError` cannot be sent between threads safely"
+                    // when I tried. Need to investigate further.
+                    self.process_table(&table, key.clone(), table_data).await?;
                 }
                 None => {
                     error!(
                         "Table not found for project_id: {}, data_source_id: {}, table_id: {}",
                         table_data.project_id, table_data.data_source_id, table_data.table_id
                     );
-                    continue;
                 }
             }
         }
