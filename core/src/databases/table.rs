@@ -9,9 +9,10 @@ use serde_json::Value;
 use tracing::{error, info};
 
 use crate::databases::table_upserts_background_worker::{
-    GoogleCloudStorageBackgroundProcessingStore, TableUpsertCall, REDIS_TABLE_UPSERT_HASH_NAME,
+    TableUpsertCall, REDIS_TABLE_UPSERT_HASH_NAME,
 };
 use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
+use crate::databases_store::gcs_background::GoogleCloudStorageBackgroundProcessingStore;
 use crate::databases_store::store::{DatabasesStoreStrategy, CURRENT_STRATEGY};
 use crate::search_stores::search_store::NodeItem;
 use crate::{cache, databases_store};
