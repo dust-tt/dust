@@ -17,6 +17,9 @@ inputs:
   depot_token:
     description: "Depot project token"
     required: true
+  datadog_api_key:
+    description: "Datadog api key"
+    required: false
   dd_client_token:
     description: "Datadog client token"
     required: false
@@ -75,6 +78,11 @@ runs:
         while IFS='=' read -r key value; do
           [[ -n "$key" ]] && build_args+=("--build-arg" "$(echo "$key" | xargs)=$(echo "$value" | xargs)")
         done < "$CONFIG_FILE"
+
+        # Only set the Datadog API key if provided
+        if [[ -n "${{ inputs.DATADOG_API_KEY }}" ]]; then
+          build_args+=("--build-arg DATADOG_API_KEY=${{ inputs.DATADOG_API_KEY }}")
+        fi
 
         # Only set the Datadog client token for front and front-edge builds
         if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" ]]; then
