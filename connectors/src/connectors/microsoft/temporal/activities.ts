@@ -604,7 +604,17 @@ export async function syncDeltaForRootNodesInDrive({
   const node = nodes[0];
 
   if (nodes.length !== rootNodeIds.length || !node) {
-    throw new Error(`Root or node resource ${nodes} not found`);
+    const logger = getActivityLogger(connector);
+    logger.error(
+      {
+        connectorId,
+        rootNodeIds,
+        foundNodes: nodes.length,
+        expectedNodes: rootNodeIds.length,
+      },
+      "Some root nodes not found in database, skipping delta sync for this drive"
+    );
+    return;
   }
 
   const client = await getClient(connector.connectionId);
