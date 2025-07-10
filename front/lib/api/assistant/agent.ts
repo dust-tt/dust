@@ -19,7 +19,7 @@ import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getPublicErrorMessage } from "@app/lib/api/assistant/agent_errors";
+import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -72,6 +72,7 @@ import type { TextContentType } from "@app/types/assistant/agent_message_content
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
+const MAX_AUTO_RETRY = 3;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // nor updating it (responsibility of the caller based on the emitted events).
@@ -178,19 +179,20 @@ async function* runMultiActionsAgentLoop(
     for await (const event of loopIterationStream) {
       switch (event.type) {
         case "agent_error":
-          const publicErrorMessage = getPublicErrorMessage(event.error);
+          const { publicMessage } = categorizeAgentErrorMessage(event.error);
 
           localLogger.error(
             {
               elapsedTime: Date.now() - now,
               error: event.error,
-              publicErrorMessage,
+              publicErrorMessage: publicMessage,
             },
             "Error running multi-actions agent."
           );
+
           yield {
             ...event,
-            error: { ...event.error, message: publicErrorMessage },
+            error: { ...event.error, message: publicMessage },
           };
           return;
         case "agent_actions":
@@ -612,33 +614,76 @@ async function* runMultiActionsAgent(
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
-  const res = await runActionStreamed(
-    auth,
-    "assistant-v2-multi-actions-agent",
-    runConfig,
-    [
+  let autoRetryCount = 0;
+  let isRetryableModelError = false;
+  let res;
+
+  do {
+    res = await runActionStreamed(
+      auth,
+      "assistant-v2-multi-actions-agent",
+      runConfig,
+      [
+        {
+          conversation: modelConversationRes.value.modelConversation,
+          specifications,
+          prompt,
+        },
+      ],
       {
-        conversation: modelConversationRes.value.modelConversation,
-        specifications,
-        prompt,
-      },
-    ],
-    {
-      conversationId: conversation.sId,
-      workspaceId: conversation.owner.sId,
-      userMessageId: userMessage.sId,
+        conversationId: conversation.sId,
+        workspaceId: conversation.owner.sId,
+        userMessageId: userMessage.sId,
+      }
+    );
+
+    if (res.isErr()) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error: res.error,
+        },
+        "Error running multi-actions agent."
+      );
+
+      const { category } = categorizeAgentErrorMessage({
+        code: "multi_actions_error",
+        message: res.error.message,
+      });
+
+      isRetryableModelError = category === "retryable_model_error";
+
+      if (!(isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY)) {
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "multi_actions_error",
+            message: `Error running agent: [${res.error.type}] ${res.error.message}`,
+            metadata: null,
+          },
+        } satisfies AgentErrorEvent;
+
+        return;
+      }
+
+      logger.warn(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error: res.error.message,
+        },
+        "Auto-retrying multi-actions agent."
+      );
     }
-  );
+
+    autoRetryCount += 1;
+  } while (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY);
 
   if (res.isErr()) {
-    logger.error(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        error: res.error,
-      },
-      "Error running multi-actions agent."
-    );
     yield {
       type: "agent_error",
       created: Date.now(),
