@@ -1,7 +1,10 @@
 import type { Bucket, File } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
+import type { Readable } from "stream";
+import { pipeline } from "stream/promises";
 
 import { connectorsConfig } from "@connectors/connectors/shared/config";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { isDevelopment } from "@connectors/types";
 
@@ -9,6 +12,8 @@ export const DIRECTORY_PLACEHOLDER_FILE = ".gitkeep";
 export const DIRECTORY_PLACEHOLDER_METADATA = "isDirectoryPlaceholder";
 
 const DEFAULT_MAX_RESULTS = 1000;
+const STREAM_THRESHOLD_BYTES = 1024 * 1024; // 1MB - files smaller than this will be buffered.
+const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
 
 /**
  * A wrapper around GCS operations for GitHub repository code sync.
@@ -85,9 +90,9 @@ export class GCSRepositoryManager {
   }
 
   /**
-   * Upload content to GCS (internal method).
+   * Upload content to GCS.
    */
-  private async uploadFile(
+  async uploadFile(
     gcsPath: string,
     content: string | Buffer,
     options?: {
@@ -104,8 +109,6 @@ export class GCSRepositoryManager {
           customMetadata: options?.metadata,
         },
       });
-
-      logger.info({ gcsPath }, "File uploaded to GCS");
     } catch (error) {
       logger.error({ error, gcsPath }, "Failed to upload file to GCS");
       throw new Error(`Failed to upload file: ${gcsPath}`);
@@ -134,6 +137,72 @@ export class GCSRepositoryManager {
         "Failed to create directory placeholder in GCS"
       );
       throw error;
+    }
+  }
+
+  /**
+   * Upload a file from a stream using a hybrid approach based on file size:
+   *
+   * - Small files (< `STREAM_THRESHOLD_BYTES`MB): Buffer the entire stream content in memory and use uploadFile().
+   *   This provides better error handling since the upload is synchronous and can be easily
+   *   retried without stream complications. Most files fall into this category.
+   *
+   * - Large files (≥ `STREAM_THRESHOLD_BYTES`MB): Stream content directly to GCS using createWriteStream().
+   *   This avoids loading large files into memory but has more complex error handling
+   *   since streams can fail partway through and are harder to retry.
+   *
+   * The threshold balances memory usage vs error handling complexity.
+   */
+  async uploadFileStream(
+    gcsPath: string,
+    stream: Readable,
+    options: {
+      size?: number;
+      contentType?: string;
+      metadata?: Record<string, string>;
+      childLogger?: Logger;
+    } = {}
+  ): Promise<void> {
+    const {
+      size = 0,
+      contentType = "text/plain",
+      metadata,
+      childLogger = logger,
+    } = options;
+
+    try {
+      if (size < STREAM_THRESHOLD_BYTES) {
+        // Small file - buffer content and use uploadFile for better error handling.
+        const chunks: Buffer[] = [];
+
+        for await (const chunk of stream) {
+          chunks.push(chunk);
+        }
+
+        const content = Buffer.concat(chunks);
+        await this.uploadFile(gcsPath, content, { contentType, metadata });
+      } else {
+        // Large file - stream directly to GCS.
+        const file = this.bucket.file(gcsPath);
+
+        await pipeline(
+          stream,
+          file.createWriteStream({
+            metadata: {
+              contentType,
+              customMetadata: metadata,
+            },
+            resumable: size >= GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
+            validation: false,
+          })
+        );
+      }
+    } catch (error) {
+      childLogger.error(
+        { error, gcsPath, size },
+        "Failed to upload file stream to GCS"
+      );
+      throw new Error(`Failed to upload file stream: ${gcsPath}`);
     }
   }
 }

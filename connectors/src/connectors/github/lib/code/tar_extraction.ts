@@ -21,8 +21,7 @@ import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 
-const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1MB
-const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024; // 3MB
 const MAX_CONCURRENT_GCS_UPLOADS = 200;
 
 interface TarExtractionOptions {
@@ -172,7 +171,6 @@ export async function extractGitHubTarballToGCS(
         if (shouldProcessFile(header, [...filePath, fileName], childLogger)) {
           // Upload file to GCS with preserved hierarchy.
           const gcsPath = `${gcsBasePath}/${cleanPath}`;
-          const gcsFile = gcsManager.getBucket().file(gcsPath);
 
           // Track directories for placeholder creation immediately.
           for (let i = 0; i < filePath.length; i++) {
@@ -182,42 +180,21 @@ export async function extractGitHubTarballToGCS(
             }
           }
 
-          // Upload file to GCS using stream directly with queue.
+          // Upload file to GCS using hybrid approach.
           filesUploaded++;
           childLogger.info(
             { gcsPath, fileName, filePath, filesUploaded },
             "Uploading file to GCS"
           );
 
-          // Queue the upload but use stream directly.
-          uploadQueue
-            .add(async () => {
-              return pipeline(
-                stream,
-                gcsFile.createWriteStream({
-                  metadata: {
-                    contentType: "text/plain",
-                  },
-                  resumable:
-                    (header.size ?? 0) >= GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
-                  validation: false,
-                })
-              );
-            })
-            .catch((error) => {
-              childLogger.error(
-                {
-                  error,
-                  gcsPath,
-                  fileName,
-                  filePath,
-                  repoId,
-                  connectorId,
-                },
-                "Failed to upload file to GCS"
-              );
-              throw error;
+          // Queue the upload.
+          void uploadQueue.add(async () => {
+            return gcsManager.uploadFileStream(gcsPath, stream, {
+              size: header.size,
+              contentType: "text/plain",
+              childLogger,
             });
+          });
 
           // Continue tar extraction immediately.
           next();
