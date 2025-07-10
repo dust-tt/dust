@@ -666,6 +666,8 @@ async function* runMultiActionsAgent(
             metadata: null,
           },
         } satisfies AgentErrorEvent;
+
+        return;
       }
 
       logger.warn(
