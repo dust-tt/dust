@@ -4,7 +4,6 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import type { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import type { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -16,25 +15,6 @@ export type RetrievalTimeframe =
       duration: number;
       unit: "hour" | "day" | "week" | "month" | "year";
     };
-
-export function renderRetrievalTimeframeType(
-  action: AgentRetrievalConfiguration
-): RetrievalTimeframe {
-  let timeframe: RetrievalTimeframe = "auto";
-  if (
-    action.relativeTimeFrame === "custom" &&
-    action.relativeTimeFrameDuration &&
-    action.relativeTimeFrameUnit
-  ) {
-    timeframe = {
-      duration: action.relativeTimeFrameDuration,
-      unit: action.relativeTimeFrameUnit,
-    };
-  } else if (action.relativeTimeFrame === "none") {
-    timeframe = "none";
-  }
-  return timeframe;
-}
 
 export function renderDataSourceConfiguration(
   dataSourceConfig: AgentDataSourceConfiguration
