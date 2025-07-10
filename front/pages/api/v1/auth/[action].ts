@@ -22,7 +22,7 @@ const providers: Record<string, Provider> = {
     name: "workos",
     authorizeUri: config.getWorkOSIssuerURL() + "/oauth2/authorize",
     authenticateUri: config.getWorkOSIssuerURL() + "/oauth2/token",
-    logoutUri: config.getWorkOSIssuerURL() + "/oauth2/sessions/logout",
+    logoutUri: config.getWorkOSIssuerURL() + "/oauth2/logout",
     clientId: config.getWorkOSExtensionClientId(),
     scopes: "openid profile email offline_access",
   },
