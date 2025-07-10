@@ -1168,20 +1168,26 @@ export async function mcpActionTypesFromAgentMessageIds(
 ): Promise<MCPActionType[]> {
   const owner = auth.getNonNullableWorkspace();
 
-  // Get the IDs of actions with the maximum version for each step.
-  const maxVersionActions = await AgentMCPAction.findAll({
-    attributes: [
-      [Sequelize.fn("MAX", Sequelize.col("version")), "maxVersion"],
-      [Sequelize.fn("MAX", Sequelize.col("id")), "id"],
-    ],
+  const allActions = await AgentMCPAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
       workspaceId: owner.id,
     },
-    group: ["stepContentId", "agentMessageId"],
   });
 
-  const actionIds = maxVersionActions.map((action) => action.id);
+  const maxVersionActions = allActions.reduce((acc, current) => {
+    // TODO(durable-agents): remove the default value of -1 once not nullable.
+    const key = current.stepContentId ?? -1;
+    const existing = acc.get(key);
+    if (!existing || current.version > existing.version) {
+      acc.set(key, current);
+    }
+    return acc;
+  }, new Map<number, AgentMCPAction>());
+
+  const actionIds = Array.from(maxVersionActions.values()).map(
+    (action) => action.id
+  );
 
   // Then fetch the full records with includes using the filtered IDs
   const actions = await AgentMCPAction.findAll({
