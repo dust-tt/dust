@@ -156,43 +156,6 @@ export const INTERNAL_MCP_SERVERS: Record<
       remove_association: "high",
     },
   },
-  monday: {
-    id: 19,
-    availability: "manual",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("monday_tool");
-    },
-    tools_stakes: {
-      // Read operations
-      get_boards: "never_ask",
-      get_board_items: "never_ask",
-      get_item_details: "never_ask",
-      search_items: "never_ask",
-      get_items_by_column_value: "never_ask",
-      find_user_by_name: "never_ask",
-      get_board_values: "never_ask",
-      get_column_values: "never_ask",
-      get_file_column_values: "never_ask",
-      get_group_details: "never_ask",
-      get_subitem_values: "never_ask",
-      get_user_details: "never_ask",
-
-      // Write operations - High stakes
-      create_item: "high",
-      update_item: "high",
-      update_item_name: "high",
-      create_update: "high",
-      create_board: "high",
-      create_column: "high",
-      create_group: "high",
-      create_subitem: "high",
-      update_subitem: "high",
-      duplicate_group: "high",
-      upload_file_to_column: "high",
-      delete_item: "high",
-      delete_group: "high",
-    },
-  },
   agent_router: {
     id: 8,
     availability: "auto_hidden_builder",
@@ -304,6 +267,43 @@ export const INTERNAL_MCP_SERVERS: Record<
       add_worksheet: "low",
       delete_worksheet: "low",
       format_cells: "low",
+    },
+  },
+  monday: {
+    id: 20,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("monday_tool");
+    },
+    tools_stakes: {
+      // Read operations
+      get_boards: "never_ask",
+      get_board_items: "never_ask",
+      get_item_details: "never_ask",
+      search_items: "never_ask",
+      get_items_by_column_value: "never_ask",
+      find_user_by_name: "never_ask",
+      get_board_values: "never_ask",
+      get_column_values: "never_ask",
+      get_file_column_values: "never_ask",
+      get_group_details: "never_ask",
+      get_subitem_values: "never_ask",
+      get_user_details: "never_ask",
+
+      // Write operations - High stakes
+      create_item: "high",
+      update_item: "high",
+      update_item_name: "high",
+      create_update: "high",
+      create_board: "high",
+      create_column: "high",
+      create_group: "high",
+      create_subitem: "high",
+      update_subitem: "high",
+      duplicate_group: "high",
+      upload_file_to_column: "high",
+      delete_item: "high",
+      delete_group: "high",
     },
   },
   search: {
