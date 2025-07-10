@@ -16,7 +16,7 @@ import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "agent_memory",
   version: "1.0.0",
-  description: "Long-term memory tools for agents.",
+  description: "User-scoped long-term memory tools for agents.",
   authorization: null,
   icon: "ActionLightbulbIcon",
   documentationUrl: null,
@@ -104,7 +104,7 @@ const createServer = (
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
-      const memory = await AgentMemoryResource.retrieve(auth, {
+      const memory = await AgentMemoryResource.retrieveMemories(auth, {
         agentConfiguration,
         forUser: user?.toJSON(),
       });
@@ -149,13 +149,26 @@ const createServer = (
           "The index at which to insert the new memory entry. If not provided, it will be appended."
         ),
     },
-    async ({ content, index }, { authInfo }) => {
+    async ({ content, index }) => {
+      assert(
+        agentLoopContext?.runContext,
+        "agentLoopContext is required where the tool is called"
+      );
+      const { agentConfiguration } = agentLoopContext.runContext;
+
+      await AgentMemoryResource.recordMemory(auth, {
+        agentConfiguration,
+        forUser: user?.toJSON(),
+        content,
+        index,
+      });
+
       return {
         isError: false,
         content: [
           {
             type: "text",
-            text: "Memory inserted",
+            text: "Memory recorded.",
           },
         ],
       };
@@ -170,13 +183,25 @@ const createServer = (
       //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
       index: z.number().describe("The index of the memory entry to forget."),
     },
-    async ({ text, index }, { authInfo }) => {
+    async ({ index }) => {
+      assert(
+        agentLoopContext?.runContext,
+        "agentLoopContext is required where the tool is called"
+      );
+      const { agentConfiguration } = agentLoopContext.runContext;
+
+      await AgentMemoryResource.eraseMemory(auth, {
+        agentConfiguration,
+        forUser: user?.toJSON(),
+        index,
+      });
+
       return {
         isError: false,
         content: [
           {
             type: "text",
-            text: "Memory erased",
+            text: "Memory erased.",
           },
         ],
       };
@@ -192,13 +217,38 @@ const createServer = (
       index: z.number().describe("The index of the memory entry to overwrite."),
       content: z.string().describe("The content to overwrite the memory with."),
     },
-    async ({ text, index }, { authInfo }) => {
+    async ({ content, index }) => {
+      assert(
+        agentLoopContext?.runContext,
+        "agentLoopContext is required where the tool is called"
+      );
+      const { agentConfiguration } = agentLoopContext.runContext;
+
+      const result = await AgentMemoryResource.overwriteMemory(auth, {
+        agentConfiguration,
+        forUser: user?.toJSON(),
+        index,
+        content,
+      });
+
+      if (result.isErr()) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Error: ${result.error.message}`,
+            },
+          ],
+        };
+      }
+
       return {
         isError: false,
         content: [
           {
             type: "text",
-            text: "Memory overwritten",
+            text: "Memory overwritten.",
           },
         ],
       };
