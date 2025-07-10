@@ -10,9 +10,12 @@ export const useSendNotification = () => {
     (notification: NotificationType) => {
       if (notification.type === "error") {
         datadogLogs.logger.info(
-          `UI error notification: ${notification.title}`,
+          `UI notification error: ${notification.title}`,
           {
-            notification,
+            error: {
+              short: notification.title,
+              long: notification.description,
+            },
           }
         );
       }
