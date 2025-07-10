@@ -82,6 +82,7 @@ impl Provider for JiraConnectionProvider {
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
+            extra_metadata: None,
             code: code.to_string(),
             access_token: access_token.to_string(),
             access_token_expiry: Some(
