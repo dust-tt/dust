@@ -1,12 +1,19 @@
 import type { ModelId } from "@app/types";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
+// Simple type to avoid circular dependency with AgentMCPActionResource
 export type SimpleMCPAction = {
-  sId: string;
-  createdAt: string;
+  id: ModelId;
+  mcpServerConfigurationId: string;
+  functionCallId: string | null;
   functionCallName: string | null;
   params: Record<string, unknown>;
-  executionState: string;
+  executionState:
+    | "pending"
+    | "timeout"
+    | "allowed_explicitly"
+    | "allowed_implicitly"
+    | "denied";
   isError: boolean;
   stepContentSId?: string;
 };

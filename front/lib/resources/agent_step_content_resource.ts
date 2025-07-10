@@ -13,7 +13,6 @@ import {
   AgentMessage,
   Message,
 } from "@app/lib/models/assistant/conversation";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -368,11 +367,21 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       });
 
       base.mcpActions = mcpActions.map((action) => {
-        const resource = new AgentMCPActionResource(
-          AgentMCPAction,
-          action.get()
-        );
-        return resource.toJSON();
+        const stepContentSId = makeSId("agent_step_content", {
+          id: this.id,
+          workspaceId: this.workspaceId,
+        });
+
+        return {
+          id: action.id,
+          mcpServerConfigurationId: action.mcpServerConfigurationId,
+          functionCallId: action.functionCallId,
+          functionCallName: action.functionCallName,
+          params: action.params,
+          executionState: action.executionState,
+          isError: action.isError,
+          stepContentSId,
+        };
       });
     }
 
