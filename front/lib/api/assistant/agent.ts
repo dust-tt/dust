@@ -165,7 +165,7 @@ async function* runMultiActionsAgentLoop(
         : // Otherwise, we let the agent decide which action to run (if any).
           configuration.actions;
 
-    let isAnthropicOverloaded = false;
+    let isRetryableModelError = false;
     do {
       const loopIterationStream = runMultiActionsAgent(auth, {
         agentConfiguration: configuration,
@@ -193,7 +193,7 @@ async function* runMultiActionsAgentLoop(
               "Error running multi-actions agent."
             );
             if (category === "anthropic_overloaded") {
-              isAnthropicOverloaded = true;
+              isRetryableModelError = true;
               break;
             }
             yield {
@@ -346,7 +346,7 @@ async function* runMultiActionsAgentLoop(
             assertNever(event);
         }
       }
-    } while (isAnthropicOverloaded);
+    } while (isRetryableModelError);
   }
 }
 
