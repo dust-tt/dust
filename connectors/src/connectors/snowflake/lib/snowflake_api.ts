@@ -130,7 +130,8 @@ export async function connectToSnowflake(
   });
   try {
     const connectionOptions: ConnectionOptions = {
-      account: credentials.account,
+      // Replace any `_` with `-` in the account name for nginx proxy.
+      account: credentials.account.replace(/_/g, "-"),
       username: credentials.username,
       role: credentials.role,
       warehouse: credentials.warehouse,
