@@ -72,6 +72,7 @@ import type { TextContentType } from "@app/types/assistant/agent_message_content
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
+const MAX_AUTO_RETRY = 3;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // nor updating it (responsibility of the caller based on the emitted events).
@@ -165,6 +166,7 @@ async function* runMultiActionsAgentLoop(
         : // Otherwise, we let the agent decide which action to run (if any).
           configuration.actions;
 
+    let autoRetryCount = 0;
     let isRetryableModelError = false;
     do {
       const loopIterationStream = runMultiActionsAgent(auth, {
@@ -346,7 +348,8 @@ async function* runMultiActionsAgentLoop(
             assertNever(event);
         }
       }
-    } while (isRetryableModelError);
+      autoRetryCount++;
+    } while (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY);
   }
 }
 
