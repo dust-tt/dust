@@ -46,11 +46,12 @@ const fetchAgentBuilderSuggestions = async (
             name: builderState?.handle ?? null,
             description: builderState?.description ?? null,
             instructions: currentText,
-            tools:
+            tools: JSON.stringify(
               builderState?.actions?.map((action) => ({
                 name: action.name,
                 description: action.description,
-              })) || [],
+              })) || []
+            ),
           },
         }),
       }
@@ -282,7 +283,7 @@ export const AgentBuilderInstructionsAutoCompleteExtension = Extension.create<
     return {
       applySuggestionKey: "Tab",
       owner: null,
-      suggestionDebounce: 1500,
+      suggestionDebounce: 700,
     };
   },
 

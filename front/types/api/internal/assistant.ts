@@ -202,7 +202,7 @@ export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
       description: t.union([t.null, t.string]),
       instructions: t.string,
       name: t.union([t.null, t.string]),
-      tools: t.array(t.type({ name: t.string, description: t.string })),
+      tools: t.string, // Stringified array of {name: string, description: string}.
     }),
   }),
   t.type({
