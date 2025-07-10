@@ -837,7 +837,7 @@ pub struct Row {
 // To keep track of pending delete actions, we use a special key in the row value.
 // This allows us to keep all the row datya in the same format, and makes it easier
 // to persist and read from GCS
-pub const DELETED_ROW_MARKER_KEY: &str = "__dust_deleted";
+pub const DELETED_ROW_MARKER_KEY: &str = "_dust_deleted";
 
 impl Row {
     pub fn new(row_id: String, value: serde_json::Map<String, serde_json::Value>) -> Self {
