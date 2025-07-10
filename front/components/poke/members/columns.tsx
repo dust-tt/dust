@@ -76,6 +76,19 @@ export function makeColumnsForMembers({
       header: "Provider",
     },
     {
+      accessorKey: "lastLoginAt",
+      header: "Last login",
+      cell: ({ row }) => {
+        const lastLoginAt: string | null = row.getValue("lastLoginAt");
+
+        if (!lastLoginAt) {
+          return "never logged in";
+        }
+
+        return formatTimestampToFriendlyDate(new Date(lastLoginAt).getTime());
+      },
+    },
+    {
       accessorKey: "createdAt",
       header: "Created at",
       cell: ({ row }) => {
