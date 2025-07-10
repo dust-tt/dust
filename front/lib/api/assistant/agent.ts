@@ -165,178 +165,188 @@ async function* runMultiActionsAgentLoop(
         : // Otherwise, we let the agent decide which action to run (if any).
           configuration.actions;
 
-    const loopIterationStream = runMultiActionsAgent(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      userMessage,
-      agentMessage,
-      agentActions: actions,
-      isLastGenerationIteration,
-      isLegacyAgent,
-    });
+    let isAnthropicOverloaded = false;
+    do {
+      const loopIterationStream = runMultiActionsAgent(auth, {
+        agentConfiguration: configuration,
+        conversation,
+        userMessage,
+        agentMessage,
+        agentActions: actions,
+        isLastGenerationIteration,
+        isLegacyAgent,
+      });
 
-    for await (const event of loopIterationStream) {
-      switch (event.type) {
-        case "agent_error":
-          const { publicMessage } = categorizeAgentErrorMessage(event.error);
+      for await (const event of loopIterationStream) {
+        switch (event.type) {
+          case "agent_error":
+            const { category, publicMessage } = categorizeAgentErrorMessage(
+              event.error
+            );
 
-          localLogger.error(
-            {
-              elapsedTime: Date.now() - now,
-              error: event.error,
-              publicErrorMessage: publicMessage,
-            },
-            "Error running multi-actions agent."
-          );
-          yield {
-            ...event,
-            error: { ...event.error, message: publicMessage },
-          };
-          return;
-        case "agent_actions":
-          runIds.push(event.runId);
+            localLogger.error(
+              {
+                elapsedTime: Date.now() - now,
+                error: event.error,
+                publicErrorMessage: publicMessage,
+              },
+              "Error running multi-actions agent."
+            );
+            if (category === "anthropic_overloaded") {
+              isAnthropicOverloaded = true;
+              break;
+            }
+            yield {
+              ...event,
+              error: { ...event.error, message: publicMessage },
+            };
+            return;
+          case "agent_actions":
+            runIds.push(event.runId);
 
-          localLogger.info(
-            {
-              elapsed: Date.now() - now,
-            },
-            "[ASSISTANT_TRACE] Action inputs generation"
-          );
+            localLogger.info(
+              {
+                elapsed: Date.now() - now,
+              },
+              "[ASSISTANT_TRACE] Action inputs generation"
+            );
 
-          // We received the actions to run, but will enforce a limit on the number of actions (16)
-          // which is very high. Over that the latency will just be too high. This is a guardrail
-          // against the model outputting something unreasonable.
-          event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
+            // We received the actions to run, but will enforce a limit on the number of actions (16)
+            // which is very high. Over that the latency will just be too high. This is a guardrail
+            // against the model outputting something unreasonable.
+            event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
-          const eventStreamGenerators = event.actions.map(
-            ({ action, inputs, functionCallId }, index) => {
-              // Find the step content ID for this function call
-              const stepContentId = functionCallId
-                ? functionCallStepContentIds[functionCallId]
-                : undefined;
+            const eventStreamGenerators = event.actions.map(
+              ({ action, inputs, functionCallId }, index) => {
+                // Find the step content ID for this function call
+                const stepContentId = functionCallId
+                  ? functionCallStepContentIds[functionCallId]
+                  : undefined;
 
-              return runAction(auth, {
-                configuration,
-                actionConfiguration: action,
-                conversation,
-                agentMessage,
-                inputs,
-                functionCallId,
-                step: i,
-                stepActionIndex: index,
+                return runAction(auth, {
+                  configuration,
+                  actionConfiguration: action,
+                  conversation,
+                  agentMessage,
+                  inputs,
+                  functionCallId,
+                  step: i,
+                  stepActionIndex: index,
+                  stepActions: event.actions.map((a) => a.action),
+                  citationsRefsOffset,
+                  stepContentId,
+                });
+              }
+            );
+
+            const eventStreamPromises = eventStreamGenerators.map((gen) =>
+              gen.next()
+            );
+            while (eventStreamPromises.length > 0) {
+              const winner = await Promise.race(
+                eventStreamPromises.map(async (p, i) => {
+                  return { v: await p, offset: i };
+                })
+              );
+              if (winner.v.done) {
+                eventStreamGenerators.splice(winner.offset, 1);
+                // eslint-disable-next-line @typescript-eslint/no-floating-promises
+                eventStreamPromises.splice(winner.offset, 1);
+              } else {
+                eventStreamPromises[winner.offset] =
+                  eventStreamGenerators[winner.offset].next();
+                yield winner.v.value;
+              }
+            }
+
+            // After we are done running actions, we update the inter-step refsOffset.
+            for (let j = 0; j < event.actions.length; j++) {
+              citationsRefsOffset += getCitationsCount({
+                agentConfiguration: configuration,
                 stepActions: event.actions.map((a) => a.action),
-                citationsRefsOffset,
-                stepContentId,
+                stepActionIndex: j,
               });
             }
-          );
 
-          const eventStreamPromises = eventStreamGenerators.map((gen) =>
-            gen.next()
-          );
-          while (eventStreamPromises.length > 0) {
-            const winner = await Promise.race(
-              eventStreamPromises.map(async (p, i) => {
-                return { v: await p, offset: i };
-              })
-            );
-            if (winner.v.done) {
-              eventStreamGenerators.splice(winner.offset, 1);
-              // eslint-disable-next-line @typescript-eslint/no-floating-promises
-              eventStreamPromises.splice(winner.offset, 1);
-            } else {
-              eventStreamPromises[winner.offset] =
-                eventStreamGenerators[winner.offset].next();
-              yield winner.v.value;
-            }
-          }
+            break;
 
-          // After we are done running actions, we update the inter-step refsOffset.
-          for (let j = 0; j < event.actions.length; j++) {
-            citationsRefsOffset += getCitationsCount({
-              agentConfiguration: configuration,
-              stepActions: event.actions.map((a) => a.action),
-              stepActionIndex: j,
+          case "agent_message_content":
+            processedContent += event.processedContent;
+            break;
+
+          case "agent_step_content":
+            const stepContent = await AgentStepContentModel.create({
+              workspaceId: conversation.owner.id,
+              agentMessageId: agentMessage.agentMessageId,
+              step: i,
+              index: event.index,
+              type: event.content.type,
+              value: event.content,
+              version: 0,
             });
-          }
 
-          break;
+            // If this is a function call step content, track its ID.
+            if (
+              event.content.type === "function_call" &&
+              event.content.value.id
+            ) {
+              functionCallStepContentIds[event.content.value.id] =
+                stepContent.id;
+            }
 
-        case "agent_message_content":
-          processedContent += event.processedContent;
-          break;
+            agentMessage.contents.push({
+              step: i,
+              content: event.content,
+            });
+            break;
 
-        case "agent_step_content":
-          const stepContent = await AgentStepContentModel.create({
-            workspaceId: conversation.owner.id,
-            agentMessageId: agentMessage.agentMessageId,
-            step: i,
-            index: event.index,
-            type: event.content.type,
-            value: event.content,
-            version: 0,
-          });
+          // Generation events
+          case "generation_tokens":
+            yield event;
+            break;
+          case "generation_cancel":
+            yield {
+              type: "agent_generation_cancelled",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+            } satisfies AgentGenerationCancelledEvent;
+            return;
+          case "generation_success":
+            if (event.chainOfThought.length) {
+              if (!agentMessage.chainOfThought) {
+                agentMessage.chainOfThought = "";
+              }
+              agentMessage.chainOfThought += event.chainOfThought;
+            }
+            agentMessage.content = processedContent;
+            agentMessage.status = "succeeded";
 
-          // If this is a function call step content, track its ID.
-          if (
-            event.content.type === "function_call" &&
-            event.content.value.id
-          ) {
-            functionCallStepContentIds[event.content.value.id] = stepContent.id;
-          }
+            runIds.push(event.runId);
 
-          agentMessage.contents.push({
-            step: i,
-            content: event.content,
-          });
-          break;
+            yield {
+              type: "agent_message_success",
+              created: Date.now(),
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              message: agentMessage,
+              runIds: runIds,
+            } satisfies AgentMessageSuccessEvent;
+            return;
 
-        // Generation events
-        case "generation_tokens":
-          yield event;
-          break;
-        case "generation_cancel":
-          yield {
-            type: "agent_generation_cancelled",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-          } satisfies AgentGenerationCancelledEvent;
-          return;
-        case "generation_success":
-          if (event.chainOfThought.length) {
+          case "agent_chain_of_thought":
             if (!agentMessage.chainOfThought) {
               agentMessage.chainOfThought = "";
             }
             agentMessage.chainOfThought += event.chainOfThought;
-          }
-          agentMessage.content = processedContent;
-          agentMessage.status = "succeeded";
+            // This event is not useful outside of the multi-actions loop, so we don't yield it.
+            break;
 
-          runIds.push(event.runId);
-
-          yield {
-            type: "agent_message_success",
-            created: Date.now(),
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            message: agentMessage,
-            runIds: runIds,
-          } satisfies AgentMessageSuccessEvent;
-          return;
-
-        case "agent_chain_of_thought":
-          if (!agentMessage.chainOfThought) {
-            agentMessage.chainOfThought = "";
-          }
-          agentMessage.chainOfThought += event.chainOfThought;
-          // This event is not useful outside of the multi-actions loop, so we don't yield it.
-          break;
-
-        default:
-          assertNever(event);
+          default:
+            assertNever(event);
+        }
       }
-    }
+    } while (isAnthropicOverloaded);
   }
 }
 
