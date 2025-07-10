@@ -20,7 +20,7 @@ use super::store::DatabasesStore;
 #[derive(Clone)]
 pub struct GoogleCloudStorageDatabasesStore {}
 
-pub async fn write_rows_to_csv_helper(
+pub async fn write_rows_to_bucket(
     schema: &TableSchema,
     rows: &Vec<Row>,
     bucket: &str,
@@ -38,6 +38,7 @@ pub async fn write_rows_to_csv_helper(
     // We need to append the row_id in a __dust_id field
     // It's important to have it LAST in the headers as the table schema do not show it
     // and when the csv will be used as-is for the sqlite database, the dust_id will be completely ignored (as it should).
+    // See Row.to_csv_record
     field_names.push("__dust_id".to_string());
 
     // Write the header.
@@ -67,7 +68,7 @@ impl GoogleCloudStorageDatabasesStore {
         }
     }
 
-    pub fn get_csv_storage_file_path(table: &Table) -> String {
+    pub fn get_new_csv_storage_file_path(table: &Table) -> String {
         format!(
             "project-{}/{}/{}.csv",
             table.project().project_id(),
@@ -79,7 +80,7 @@ impl GoogleCloudStorageDatabasesStore {
     pub async fn get_rows_from_csv(table: &Table) -> Result<Vec<Row>> {
         let csv = GoogleCloudStorageCSVContent {
             bucket: Self::get_bucket()?,
-            bucket_csv_path: Self::get_csv_storage_file_path(table),
+            bucket_csv_path: Self::get_new_csv_storage_file_path(table),
         };
         csv.parse().await
     }
@@ -89,11 +90,11 @@ impl GoogleCloudStorageDatabasesStore {
         schema: &TableSchema,
         rows: &Vec<Row>,
     ) -> Result<(), anyhow::Error> {
-        write_rows_to_csv_helper(
+        write_rows_to_bucket(
             schema,
             rows,
             &Self::get_bucket()?,
-            &Self::get_csv_storage_file_path(table),
+            &Self::get_new_csv_storage_file_path(table),
         )
         .await?;
 
@@ -206,7 +207,7 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
         if table.migrated_to_csv() {
             match Object::delete(
                 &Self::get_bucket()?,
-                &Self::get_csv_storage_file_path(table),
+                &Self::get_new_csv_storage_file_path(table),
             )
             .await
             {

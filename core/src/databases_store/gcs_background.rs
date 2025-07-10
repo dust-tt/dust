@@ -10,7 +10,7 @@ use crate::{
         table::{Row, Table},
         table_schema::TableSchema,
     },
-    databases_store::gcs::write_rows_to_csv_helper,
+    databases_store::gcs::write_rows_to_bucket,
     utils,
 };
 
@@ -113,7 +113,7 @@ impl GoogleCloudStorageBackgroundProcessingStore {
         schema: &TableSchema,
         rows: &Vec<Row>,
     ) -> Result<(), anyhow::Error> {
-        write_rows_to_csv_helper(
+        write_rows_to_bucket(
             schema,
             rows,
             &Self::get_bucket()?,

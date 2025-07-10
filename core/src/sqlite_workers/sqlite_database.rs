@@ -271,7 +271,7 @@ async fn create_in_memory_sqlite_db_with_csv(
             async move {
                 let mut stream = Object::download_streamed(
                     &GoogleCloudStorageDatabasesStore::get_bucket()?,
-                    &GoogleCloudStorageDatabasesStore::get_csv_storage_file_path(&table.table),
+                    &GoogleCloudStorageDatabasesStore::get_new_csv_storage_file_path(&table.table),
                 )
                 .await?;
                 let mut temp_file = NamedTempFile::new()?;
