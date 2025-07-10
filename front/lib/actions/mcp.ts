@@ -1160,11 +1160,12 @@ const buildErrorEvent = (
 // Internal interface for the retrieval and rendering of an MCPAction action. Should not be used
 // outside api/assistant. We allow a ModelId interface here because we don't have `sId` on actions
 // (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
+// This function only returns the actions with the maximum version for each step.
 export async function mcpActionTypesFromAgentMessageIds(
   auth: Authenticator,
   { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<MCPActionType[]> {
-  const actions = await AgentMCPAction.findAll({
+  const allActions = await AgentMCPAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -1185,7 +1186,17 @@ export async function mcpActionTypesFromAgentMessageIds(
     ],
   });
 
-  return actions.map((action) => {
+  const maxVersionActions = allActions.reduce((acc, current) => {
+    // TODO(durable-agents): remove the default value of -1 once not nullable.
+    const key = current.stepContentId ?? -1;
+    const existing = acc.get(key);
+    if (!existing || current.version > existing.version) {
+      acc.set(key, current);
+    }
+    return acc;
+  }, new Map<number, AgentMCPAction>());
+
+  return Array.from(maxVersionActions.values()).map((action) => {
     return new MCPActionType({
       id: action.id,
       params: action.params,
