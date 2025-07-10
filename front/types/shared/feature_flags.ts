@@ -5,7 +5,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   advanced_search: {
     description:
-      "Activates the advanced search option: browse selecteddata like a file system",
+      "Activates the advanced search option: browse selected data like a file system",
   },
   agent_builder_v2: {
     description: "[Dust-only] Version 2 of the agent builder interface (wip)",
