@@ -121,7 +121,7 @@ async function processEventForDatabase(
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // but it now handles updating it based on the execution results.
-export async function runAgent(
+export async function runAgentWithStreaming(
   auth: Authenticator,
   configuration: LightAgentConfigurationType,
   conversation: ConversationType,

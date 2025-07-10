@@ -3,7 +3,7 @@ import type { Transaction } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
-import { runAgent } from "@app/lib/api/assistant/agent";
+import { runAgentWithStreaming } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   getAgentConfigurations,
@@ -1867,7 +1867,7 @@ async function* streamRunAgentEvents(
   // - Start agent execution immediately without blocking
   // - Avoid awaiting (which would cause deadlock since we need to consume events)
   // - Silence TypeScript "floating promise" warning (intentional fire-and-forget)
-  void runAgent(
+  void runAgentWithStreaming(
     auth,
     agentConfiguration,
     conversation,
@@ -1882,21 +1882,7 @@ async function* streamRunAgentEvents(
   // Database operations are now handled in runAgent before publishing.
   // TODO(DURABLE-AGENT 2025-07-10): Remove this event proxy to only consume at the endpoints level.
   for await (const event of eventStream) {
-    switch (event.type) {
-      case "agent_action_success":
-      case "agent_error":
-      case "agent_generation_cancelled":
-      case "agent_message_success":
-      case "generation_tokens":
-      case "tool_approve_execution":
-      case "tool_notification":
-      case "tool_params":
-        yield event;
-        break;
-
-      default:
-        assertNever(event);
-    }
+    yield event;
   }
 }
 
