@@ -14,7 +14,6 @@ import React, { useContext, useState } from "react";
 import { AgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
-import type { AgentConfigurationType } from "@app/types";
 
 type AgentBuilderRightPanelTabType = "testing" | "performance";
 
@@ -105,12 +104,12 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
 
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
-  agentConfiguration?: AgentConfigurationType;
+  agentConfigurationSId?: string;
 }
 
 function ExpandedContent({
   selectedTab,
-  agentConfiguration,
+  agentConfigurationSId,
 }: ExpandedContentProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -119,9 +118,11 @@ function ExpandedContent({
           <AgentBuilderPreview />
         </div>
       )}
-      {selectedTab === "performance" && (
+      {selectedTab === "performance" && agentConfigurationSId && (
         <div className="flex-1 overflow-y-auto p-4">
-          <AgentBuilderPerformance agentConfiguration={agentConfiguration} />
+          <AgentBuilderPerformance
+            agentConfigurationSId={agentConfigurationSId}
+          />
         </div>
       )}
     </div>
@@ -129,11 +130,11 @@ function ExpandedContent({
 }
 
 interface AgentBuilderRightPanelProps {
-  agentConfiguration?: AgentConfigurationType;
+  agentConfigurationSId?: string;
 }
 
 export function AgentBuilderRightPanel({
-  agentConfiguration,
+  agentConfigurationSId,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     useContext(AgentBuilderContext);
@@ -164,7 +165,7 @@ export function AgentBuilderRightPanel({
       {isPreviewPanelOpen ? (
         <ExpandedContent
           selectedTab={selectedTab}
-          agentConfiguration={agentConfiguration}
+          agentConfigurationSId={agentConfigurationSId}
         />
       ) : (
         <CollapsedTabs onTabSelect={handleTabSelect} />

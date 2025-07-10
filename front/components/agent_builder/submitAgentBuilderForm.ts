@@ -1,3 +1,14 @@
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  ExtractDataAgentBuilderAction,
+  IncludeDataAgentBuilderAction,
+  SearchAgentBuilderAction,
+} from "@app/components/agent_builder/types";
+import {
+  isExtractDataAction,
+  isIncludeDataAction,
+  isSearchAction,
+} from "@app/components/agent_builder/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   AgentConfigurationType,
@@ -9,18 +20,6 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-import type { AgentBuilderFormData } from "./AgentBuilderFormContext";
-import type {
-  ExtractDataAgentBuilderAction,
-  IncludeDataAgentBuilderAction,
-  SearchAgentBuilderAction,
-} from "./types";
-import {
-  isExtractDataAction,
-  isIncludeDataAction,
-  isSearchAction,
-} from "./types";
 
 function convertDataSourceConfigurations(
   dataSourceConfigurations: DataSourceViewSelectionConfigurations,

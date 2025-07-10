@@ -19,7 +19,7 @@ import { useState } from "react";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { FeedbacksSection } from "@app/components/assistant_builder/FeedbacksSection";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
-import type { AgentConfigurationType } from "@app/types";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { removeNulls } from "@app/types";
 
 const PERIODS = [
@@ -48,14 +48,19 @@ function NoAgentState() {
 }
 
 interface AgentBuilderPerformanceProps {
-  agentConfiguration?: AgentConfigurationType;
+  agentConfigurationSId: string;
 }
 
 export function AgentBuilderPerformance({
-  agentConfiguration,
+  agentConfigurationSId,
 }: AgentBuilderPerformanceProps) {
   const { owner } = useAgentBuilderContext();
   const [period, setPeriod] = useState(DEFAULT_PERIOD_VALUE);
+
+  const { agentConfiguration } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentConfigurationSId || null,
+  });
 
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
     workspaceId: owner.sId,
