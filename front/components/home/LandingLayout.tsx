@@ -14,7 +14,6 @@ import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { A } from "@app/components/home/ContentComponents";
-
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
