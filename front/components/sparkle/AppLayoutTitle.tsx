@@ -1,4 +1,4 @@
-import { BarHeader, type RegularButtonProps } from "@dust-tt/sparkle";
+import { BarHeader } from "@dust-tt/sparkle";
 import React from "react";
 
 export function AppLayoutSimpleCloseTitle({
