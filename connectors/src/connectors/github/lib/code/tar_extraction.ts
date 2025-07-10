@@ -189,7 +189,7 @@ export async function extractGitHubTarballToGCS(
             "Uploading file to GCS"
           );
 
-          // Queue the upload but use stream directly
+          // Queue the upload but use stream directly.
           uploadQueue
             .add(async () => {
               return pipeline(
