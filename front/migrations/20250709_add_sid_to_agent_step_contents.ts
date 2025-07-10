@@ -1,3 +1,5 @@
+/* eslint-disable dust/no-raw-sql */
+
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { Logger } from "@app/logger/logger";
@@ -40,4 +42,3 @@ makeScript({}, async ({ execute }, logger: Logger) => {
 
   logger.info("Made sId column NOT NULL.");
 });
-

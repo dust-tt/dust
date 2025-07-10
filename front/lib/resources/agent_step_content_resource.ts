@@ -238,4 +238,3 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return base;
   }
 }
-

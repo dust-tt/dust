@@ -15,4 +15,3 @@ export type AgentStepContentType = {
   // Array of MCP action IDs that reference this step content.
   mcpActionIds?: ModelId[];
 };
-
