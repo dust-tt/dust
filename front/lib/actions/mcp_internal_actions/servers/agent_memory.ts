@@ -1,14 +1,8 @@
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import { z } from "zod";
 
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-// import {
-//   isServerSideMCPServerConfiguration,
-//   isServerSideMCPToolConfiguration,
-// } from "@app/lib/actions/types/guards";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
@@ -72,8 +66,8 @@ const createServer = (
       "memory_not_available",
       "Memory is configured to be scoped to users but no user is currently authenticated.",
       {
-        shared_across_users:
-          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
+        // shared_across_users:
+        //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
       },
       async () => {
         return {
