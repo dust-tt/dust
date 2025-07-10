@@ -1,15 +1,17 @@
 import _ from "lodash";
 import type { Logger } from "pino";
 import { makeScript } from "scripts/helpers";
+import { Op } from "sequelize";
 
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import { fetchZendeskTicket } from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ZendeskTicketModel } from "@connectors/lib/models/zendesk";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
-import { Op } from "sequelize";
 
 const TICKET_BATCH_SIZE = 1024;
+const CONCURRENCY = 16;
 
 async function checkTicketValidity(
   ticket: ZendeskTicketModel,
@@ -67,43 +69,47 @@ async function cleanupConnector(
       .filter((t) => t.length > 1)
       .flat();
 
-    for (const ticket of duplicateTickets) {
-      const isValid = await checkTicketValidity(ticket, {
-        accessToken,
-        brandSubdomains,
-      });
-      logger.info(
-        {
-          connectorId: connector.id,
-          ticketId: ticket.ticketId,
-          brandId: ticket.brandId,
-          isValid,
-        },
-        "Checked duplicate ticket"
-      );
-      if (!isValid) {
-        if (execute) {
-          await ticket.destroy();
-          logger.info(
-            {
-              connectorId: connector.id,
-              ticketId: ticket.ticketId,
-              brandId: ticket.brandId,
-            },
-            "Destroyed duplicate ticket"
-          );
-        } else {
-          logger.info(
-            {
-              connectorId: connector.id,
-              ticketId: ticket.ticketId,
-              brandId: ticket.brandId,
-            },
-            "Would destroy duplicate ticket"
-          );
+    await concurrentExecutor(
+      duplicateTickets,
+      async (ticket) => {
+        const isValid = await checkTicketValidity(ticket, {
+          accessToken,
+          brandSubdomains,
+        });
+        logger.info(
+          {
+            connectorId: connector.id,
+            ticketId: ticket.ticketId,
+            brandId: ticket.brandId,
+            isValid,
+          },
+          "Checked duplicate ticket"
+        );
+        if (!isValid) {
+          if (execute) {
+            await ticket.destroy();
+            logger.info(
+              {
+                connectorId: connector.id,
+                ticketId: ticket.ticketId,
+                brandId: ticket.brandId,
+              },
+              "Destroyed duplicate ticket"
+            );
+          } else {
+            logger.info(
+              {
+                connectorId: connector.id,
+                ticketId: ticket.ticketId,
+                brandId: ticket.brandId,
+              },
+              "Would destroy duplicate ticket"
+            );
+          }
         }
-      }
-    }
+      },
+      { concurrency: CONCURRENCY }
+    );
     lastId = tickets[tickets.length - 1]?.id || 0;
   } while (tickets.length === TICKET_BATCH_SIZE);
 }
