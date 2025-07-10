@@ -1,5 +1,5 @@
 {
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://browser-intake-datadoghq.eu https://dust.tt/ https://eu.dust.tt/"
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://browser-intake-datadoghq.eu https://dust.tt/ https://eu.dust.tt/ data:"
   }
 }
