@@ -6,14 +6,31 @@ import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendes
 import { fetchZendeskTicket } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import { ZendeskTicketModel } from "@connectors/lib/models/zendesk";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
 async function checkTicketValidity(
   ticket: ZendeskTicketModel,
-  { accessToken, subdomain }: { accessToken: string; subdomain: string }
+  {
+    accessToken,
+    brandSubdomains,
+  }: { accessToken: string; brandSubdomains: Map<number, string> }
 ) {
+  let brandSubdomain = brandSubdomains.get(ticket.brandId);
+  if (!brandSubdomains.has(ticket.brandId)) {
+    const brand = await ZendeskBrandResource.fetchByBrandId({
+      connectorId: ticket.connectorId,
+      brandId: ticket.brandId,
+    });
+    if (!brand) {
+      return false;
+    }
+    brandSubdomains.set(ticket.brandId, brand.subdomain);
+    brandSubdomain = brand.subdomain;
+  }
+
   const fetchedTicket = await fetchZendeskTicket({
     accessToken,
-    brandSubdomain: subdomain,
+    brandSubdomain: brandSubdomain!,
     ticketId: ticket.ticketId,
   });
 
@@ -25,9 +42,10 @@ async function migrateConnector(
   execute: boolean,
   logger: Logger
 ) {
-  const { accessToken, subdomain } = await getZendeskSubdomainAndAccessToken(
+  const { accessToken } = await getZendeskSubdomainAndAccessToken(
     connector.connectionId
   );
+  const brandSubdomains = new Map<number, string>();
 
   const tickets = await ZendeskTicketModel.findAll({
     where: { connectorId: connector.id },
@@ -40,7 +58,7 @@ async function migrateConnector(
   for (const ticket of duplicateTickets) {
     const isValid = await checkTicketValidity(ticket, {
       accessToken,
-      subdomain,
+      brandSubdomains,
     });
     logger.info(
       {
