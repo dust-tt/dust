@@ -148,11 +148,11 @@ const createServer = (auth: Authenticator): McpServer => {
         return makeMCPToolTextError("Missing environment variable.");
       }
 
-      let contentType: SupportedFileContentType | null =
-        getContentTypeFromOutputFormat(output_format);
+      const contentType = getContentTypeFromOutputFormat(output_format);
 
       const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
       let url: string | UploadResult = input;
+
       if (!validateUrl(input).valid) {
         const r = getResourceNameAndIdFromSId(input);
         if (r && r.resourceName === "file") {
@@ -161,14 +161,14 @@ const createServer = (auth: Authenticator): McpServer => {
             auth,
             resourceModelId
           );
-          if (file) {
-            url = await convertapi.upload(
-              file.getReadStream({ auth, version: "original" }),
-              `${file_name}.${source_format}`
-            );
-          } else {
+          if (!file) {
             return makeMCPToolTextError(`File not found: ${input}`);
           }
+
+          url = await convertapi.upload(
+            file.getReadStream({ auth, version: "original" }),
+            `${file_name}.${source_format}`
+          );
         } else {
           url = await convertapi.upload(
             Readable.from(input),
@@ -191,7 +191,7 @@ const createServer = (auth: Authenticator): McpServer => {
           resource: {
             mimeType: contentType,
             uri: file.url,
-            text: `Your file was generated successfully.`,
+            text: "Your file was generated successfully.",
           },
         }));
 
