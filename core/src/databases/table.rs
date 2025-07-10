@@ -419,6 +419,17 @@ impl LocalTable {
             return Err(anyhow!("Redis client not available"));
         };
 
+        // Write the rows to GCS for the worker to process
+        let rows_arc = Arc::new(rows);
+        let schema = TableSchema::from_rows_async(rows_arc.clone()).await?;
+        GoogleCloudStorageBackgroundProcessingStore::write_rows_to_csv(
+            &self.table,
+            &schema,
+            &rows_arc,
+        )
+        .await?;
+
+        // Tell the worker that there are things to process for this table.
         let upsert_call = TableUpsertActivityData {
             time: utils::now(),
             project_id: self.table.project().project_id(),
@@ -433,15 +444,6 @@ impl LocalTable {
             )
             .await?;
 
-        let rows_arc = Arc::new(rows);
-        let schema = TableSchema::from_rows_async(rows_arc.clone()).await?;
-        GoogleCloudStorageBackgroundProcessingStore::write_rows_to_csv(
-            &self.table,
-            &schema,
-            &rows_arc,
-        )
-        .await?;
-
         Ok(())
     }
 
@@ -454,7 +456,9 @@ impl LocalTable {
     ) -> Result<()> {
         Self::validate_rows_lowercase(rows.clone()).await?;
 
+        // We only go through the background worker for non-truncate upserts.
         if truncate {
+            // TODO: we should lock on the table to prevent conflicting with the worker
             self.upsert_rows_now(&store, &databases_store, rows, truncate)
                 .await
         } else {
@@ -709,7 +713,8 @@ impl LocalTable {
         _: Box<dyn DatabasesStore + Sync + Send>,
         row_id: &str,
     ) -> Result<()> {
-        let rows = vec![Row::new_delete(row_id.to_string())];
+        // Deletions are conveyed by special rows
+        let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
         self.schedule_background_upsert_or_delete(rows).await
     }
 
@@ -839,7 +844,7 @@ impl Row {
         Row { row_id, value }
     }
 
-    pub fn new_delete(row_id: String) -> Self {
+    pub fn new_delete_marker_row(row_id: String) -> Self {
         Row {
             row_id,
             value: serde_json::Map::from_iter(vec![(

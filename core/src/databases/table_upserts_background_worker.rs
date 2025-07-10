@@ -84,7 +84,8 @@ impl TableUpsertsBackgroundWorker {
         );
 
         let files =
-            GoogleCloudStorageBackgroundProcessingStore::get_files_for_table(&table).await?;
+            GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(&table)
+                .await?;
         let rows =
             GoogleCloudStorageBackgroundProcessingStore::get_dedupped_rows_from_all_files(&files)
                 .await?;
@@ -141,7 +142,7 @@ impl TableUpsertsBackgroundWorker {
 
             match table {
                 Some(table) => {
-                    // TODO: add lock around this call
+                    // TODO: add redis lock around this call
                     // Running into "error[E0277]: `dyn StdError` cannot be sent between threads safely"
                     // when I tried. Need to investigate further.
                     self.process_table(&table, key.clone(), table_data).await?;

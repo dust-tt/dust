@@ -52,7 +52,7 @@ impl GoogleCloudStorageBackgroundProcessingStore {
         csv.parse().await
     }
 
-    pub async fn get_files_for_table(table: &Table) -> Result<Vec<String>> {
+    pub async fn get_gcs_csv_file_names_for_table(table: &Table) -> Result<Vec<String>> {
         let bucket = Self::get_bucket()?;
         let bucket_folder_path = Self::get_csv_storage_folder_path(table);
         let list_request = ListRequest {
