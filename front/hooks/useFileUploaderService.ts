@@ -259,8 +259,13 @@ export function useFileUploaderService({
         }
 
         if (!uploadResult.ok) {
+          const { error } = await uploadResult.json();
           return new Err(
-            new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+            new FileBlobUploadError(
+              "failed_to_upload_file",
+              fileBlob.file,
+              error?.message ?? "An unknown error happened."
+            )
           );
         }
 
@@ -291,7 +296,7 @@ export function useFileUploaderService({
         sendNotification({
           type: "error",
           title: `Failed to upload file`,
-          description: `error uploading  ${result.error.file.name} ${result.error.message ? ": " + result.error.message : ""}`,
+          description: `Error uploading  "${result.error.file.name.slice(0, 20)}..." ${result.error.message ? ": " + result.error.message : ""}`,
         });
       } else {
         successfulBlobs.push(result.value);
