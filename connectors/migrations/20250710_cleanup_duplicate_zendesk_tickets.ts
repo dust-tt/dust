@@ -37,7 +37,7 @@ async function checkTicketValidity(
   return fetchedTicket && fetchedTicket.brand_id === ticket.brandId;
 }
 
-async function migrateConnector(
+async function cleanupConnector(
   connector: ConnectorResource,
   execute: boolean,
   logger: Logger
@@ -110,7 +110,7 @@ makeScript(
     }
 
     logger.info({ connectorId }, "Starting migration");
-    await migrateConnector(connector, execute, logger);
+    await cleanupConnector(connector, execute, logger);
     logger.info({ connectorId }, "Migration done");
   }
 );
