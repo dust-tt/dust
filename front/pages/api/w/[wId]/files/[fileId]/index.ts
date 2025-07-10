@@ -175,10 +175,9 @@ async function handler(
       if (
         (file.useCase === "folders_document" ||
           file.useCase === "upsert_table") &&
-        space &&
-        !space.canWrite(auth)
+        ((space && !space.canWrite(auth)) ||
+          (file.userId !== auth.user()?.id && !auth.isBuilder()))
       ) {
-        console.log("here");
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -217,8 +216,8 @@ async function handler(
       if (
         (file.useCase === "folders_document" ||
           file.useCase === "upsert_table") &&
-        space &&
-        !space.canWrite(auth)
+        ((space && !space.canWrite(auth)) ||
+          (file.userId !== auth.user()?.id && !auth.isBuilder()))
       ) {
         return apiError(req, res, {
           status_code: 403,
