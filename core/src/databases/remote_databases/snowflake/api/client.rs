@@ -68,7 +68,8 @@ impl SnowflakeClient {
         let session_token = login(&self.http, &self.username, &self.auth, &self.config).await?;
         Ok(SnowflakeSession {
             http: self.http.clone(),
-            account: self.config.account.clone(),
+            // Replace any `_` with `-` in the account name for nginx proxy.
+            account: self.config.account.clone().replace('_', "-"),
             session_token,
             timeout: self.config.timeout,
         })
