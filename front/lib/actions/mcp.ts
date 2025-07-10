@@ -1178,7 +1178,7 @@ export async function mcpActionTypesFromAgentMessageIds(
       agentMessageId: agentMessageIds,
       workspaceId: owner.id,
     },
-    group: ["step", "agentMessageId"],
+    group: ["stepContentId", "agentMessageId"],
   });
 
   const actionIds = maxVersionActions.map((action) => action.id);
