@@ -62,6 +62,15 @@ async function migrateConnector(
           },
           "Destroyed duplicate ticket"
         );
+      } else {
+        logger.info(
+          {
+            connectorId: connector.id,
+            ticketId: ticket.ticketId,
+            brandId: ticket.brandId,
+          },
+          "Would destroy duplicate ticket"
+        );
       }
     }
   }
