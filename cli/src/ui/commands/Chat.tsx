@@ -451,6 +451,7 @@ const CliChat: FC<CliChatProps> = ({
 
         if (!currentConversationId) {
           // For new conversation, pass contentFragments (from uploaded files)
+          // TODO: At some point we will have to pass context of folder structure here.
           const contentFragments = attachedFiles.map((file) => ({
             type: "file_attachment" as const,
             fileId: file.fileId,
