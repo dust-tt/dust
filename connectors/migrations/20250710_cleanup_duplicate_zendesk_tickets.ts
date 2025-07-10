@@ -7,6 +7,9 @@ import { fetchZendeskTicket } from "@connectors/connectors/zendesk/lib/zendesk_a
 import { ZendeskTicketModel } from "@connectors/lib/models/zendesk";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
+import { Op } from "sequelize";
+
+const TICKET_BATCH_SIZE = 1024;
 
 async function checkTicketValidity(
   ticket: ZendeskTicketModel,
@@ -47,51 +50,62 @@ async function cleanupConnector(
   );
   const brandSubdomains = new Map<number, string>();
 
-  const tickets = await ZendeskTicketModel.findAll({
-    where: { connectorId: connector.id },
-  });
-  const ticketsByTicketId = _.groupBy(tickets, (t) => t.ticketId);
-  const duplicateTickets = Object.values(ticketsByTicketId)
-    .filter((t) => t.length > 1)
-    .flat();
+  let lastId = 0;
+  let tickets: ZendeskTicketModel[] = [];
 
-  for (const ticket of duplicateTickets) {
-    const isValid = await checkTicketValidity(ticket, {
-      accessToken,
-      brandSubdomains,
-    });
-    logger.info(
-      {
+  do {
+    tickets = await ZendeskTicketModel.findAll({
+      where: {
         connectorId: connector.id,
-        ticketId: ticket.ticketId,
-        brandId: ticket.brandId,
-        isValid,
+        id: { [Op.gt]: lastId },
       },
-      "Checked duplicate ticket"
-    );
-    if (!isValid) {
-      if (execute) {
-        await ticket.destroy();
-        logger.info(
-          {
-            connectorId: connector.id,
-            ticketId: ticket.ticketId,
-            brandId: ticket.brandId,
-          },
-          "Destroyed duplicate ticket"
-        );
-      } else {
-        logger.info(
-          {
-            connectorId: connector.id,
-            ticketId: ticket.ticketId,
-            brandId: ticket.brandId,
-          },
-          "Would destroy duplicate ticket"
-        );
+      order: [["id", "ASC"]],
+      limit: TICKET_BATCH_SIZE,
+    });
+    const ticketsByTicketId = _.groupBy(tickets, (t) => t.ticketId);
+    const duplicateTickets = Object.values(ticketsByTicketId)
+      .filter((t) => t.length > 1)
+      .flat();
+
+    for (const ticket of duplicateTickets) {
+      const isValid = await checkTicketValidity(ticket, {
+        accessToken,
+        brandSubdomains,
+      });
+      logger.info(
+        {
+          connectorId: connector.id,
+          ticketId: ticket.ticketId,
+          brandId: ticket.brandId,
+          isValid,
+        },
+        "Checked duplicate ticket"
+      );
+      if (!isValid) {
+        if (execute) {
+          await ticket.destroy();
+          logger.info(
+            {
+              connectorId: connector.id,
+              ticketId: ticket.ticketId,
+              brandId: ticket.brandId,
+            },
+            "Destroyed duplicate ticket"
+          );
+        } else {
+          logger.info(
+            {
+              connectorId: connector.id,
+              ticketId: ticket.ticketId,
+              brandId: ticket.brandId,
+            },
+            "Would destroy duplicate ticket"
+          );
+        }
       }
     }
-  }
+    lastId = tickets[tickets.length - 1]?.id || 0;
+  } while (tickets.length === TICKET_BATCH_SIZE);
 }
 
 makeScript(
