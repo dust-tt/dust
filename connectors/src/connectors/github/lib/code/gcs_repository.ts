@@ -172,7 +172,7 @@ export class GCSRepositoryManager {
 
     try {
       if (size < STREAM_THRESHOLD_BYTES) {
-        // Small file - buffer content and use uploadFile for better error handling
+        // Small file - buffer content and use uploadFile for better error handling.
         const chunks: Buffer[] = [];
 
         for await (const chunk of stream) {
