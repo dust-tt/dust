@@ -29,7 +29,6 @@ makeScript(
 
   async ({ keyId, workspaceId, execute }, logger) => {
     const workspace = await WorkspaceResource.fetchByModelId(workspaceId);
-    let connectorsPrimaryDbInstance: Sequelize | null = null;
 
     if (!workspace) {
       logger.error("Workspace not found.");
@@ -50,19 +49,12 @@ makeScript(
 
     logger.info({ keyToRotate: keyToRotate.id }, "Found key to rotate.");
 
-    function getConnectorsPrimaryDbConnection() {
-      if (!connectorsPrimaryDbInstance) {
-        connectorsPrimaryDbInstance = new Sequelize(
-          config.getConnectorsDatabasePrimaryUri(),
-          {
-            logging: false,
-          }
-        );
+    const connectorsDb = new Sequelize(
+      config.getConnectorsDatabasePrimaryUri(),
+      {
+        logging: false,
       }
-      return connectorsPrimaryDbInstance;
-    }
-
-    const connectorsDb = getConnectorsPrimaryDbConnection();
+    );
     const frontDb = frontSequelize;
 
     const connectorsToUpdate: ConnectorBlob[] = await connectorsDb.query(
