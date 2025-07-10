@@ -117,14 +117,6 @@ export type BarButtonBarProps =
   | BarButtonBarValidateProps
   | BarButtonBarConversationProps;
 
-function ValidateSaveButton(props: BarButtonBarValidateProps) {
-  if (!props.saveButtonProps) {
-    return null;
-  }
-
-  return <Button {...props.saveButtonProps} />;
-}
-
 Bar.ButtonBar = function (props: BarButtonBarProps) {
   switch (props.variant) {
     case "back":
@@ -151,7 +143,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
       return (
         <>
           {props.cancelButtonProps && <Button {...props.cancelButtonProps} />}
-          <ValidateSaveButton {...props} />
+          {props.saveButtonProps && <Button {...props.saveButtonProps} />}
         </>
       );
     case "conversation":
