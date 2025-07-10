@@ -410,9 +410,7 @@ export async function githubCleanupCodeSyncActivity({
     logger.child({ task: "garbageCollectCodeSync" })
   );
 
-  // Delete the GCS repository.
-  const gcsManager = new GCSRepositoryManager();
-  await gcsManager.deleteRepository(connectorId, repoId);
+  // No need to delete the GCS repository, it will be deleted by the bucket lifecycle policy.
 
   const githubCodeRepository = await GithubCodeRepository.findOne({
     where: {
