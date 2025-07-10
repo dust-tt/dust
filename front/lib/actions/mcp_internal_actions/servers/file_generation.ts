@@ -251,8 +251,6 @@ const createServer = (auth: Authenticator): McpServer => {
         };
       }
 
-      const contentType = getContentTypeFromOutputFormat(extension);
-
       return {
         isError: false,
         content: [
@@ -263,7 +261,7 @@ const createServer = (auth: Authenticator): McpServer => {
               name: file_name,
               blob: Buffer.from(file_content).toString("base64"),
               text: "Your file was generated successfully.",
-              mimeType: contentType,
+              mimeType: getContentTypeFromOutputFormat(extension),
               uri: "",
             },
           },
