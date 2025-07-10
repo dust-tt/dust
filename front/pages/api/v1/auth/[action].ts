@@ -24,7 +24,7 @@ const providers: Record<string, Provider> = {
     authenticateUri: config.getWorkOSIssuerURL() + "/oauth2/token",
     logoutUri: config.getWorkOSIssuerURL() + "/oauth2/sessions/logout",
     clientId: config.getWorkOSExtensionClientId(),
-    scopes: "openid profile email",
+    scopes: "openid profile email offline_access",
   },
   auth0: {
     name: "auth0",
