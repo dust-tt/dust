@@ -17,6 +17,9 @@ inputs:
   depot_token:
     description: "Depot project token"
     required: true
+  dd_client_token:
+    description: "Datadog client token"
+    required: false
   commit_sha:
     description: "Commit SHA"
     required: true
