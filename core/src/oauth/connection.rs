@@ -38,7 +38,7 @@ pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 10 * 60 * 1000;
 pub static CONNECTION_ID_PREFIX: &str = "con";
 
 lazy_static! {
-    static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
+    pub static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
 }
 
 // API Error types.

@@ -1,5 +1,6 @@
 use redis::AsyncCommands;
-use std::collections::HashMap;
+use rslock::LockManager;
+use std::{collections::HashMap, time::Duration};
 use tracing::{error, info};
 
 use crate::{
@@ -11,12 +12,14 @@ use crate::{
         gcs_background::GoogleCloudStorageBackgroundProcessingStore,
         store::{DatabasesStoreStrategy, CURRENT_STRATEGY},
     },
+    oauth::connection::REDIS_URI,
     project::Project,
     stores::{postgres, store},
     utils,
 };
 
 pub const REDIS_TABLE_UPSERT_HASH_NAME: &str = "TABLE_UPSERT";
+static REDIS_LOCK_TTL_SECONDS: u64 = 15;
 
 const UPSERT_DEBOUNCE_TIME_MS: u64 = 30_000;
 
@@ -142,10 +145,24 @@ impl TableUpsertsBackgroundWorker {
 
             match table {
                 Some(table) => {
-                    // TODO: add redis lock around this call
-                    // Running into "error[E0277]: `dyn StdError` cannot be sent between threads safely"
-                    // when I tried. Need to investigate further.
+                    let now = utils::now();
+                    let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
+
+                    let lock = lock_manager
+                        .acquire_no_guard(
+                            format!("upsert:{}", table.unique_id()).as_bytes(),
+                            Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
+                        )
+                        .await?;
+
+                    info!(
+                        lock_acquisition_duration = utils::now() - now,
+                        "Upsert lock acquired"
+                    );
+
                     self.process_table(&table, key.clone(), table_data).await?;
+
+                    lock_manager.unlock(&lock).await;
                 }
                 None => {
                     error!(
