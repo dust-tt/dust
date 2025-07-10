@@ -76,6 +76,7 @@ export const KNOWLEDGE_SERVER_NAMES = [
   "search",
   "include_data",
   "extract_data",
+  "query_tables",
 ] as const;
 export type KnowledgeServerName = (typeof KNOWLEDGE_SERVER_NAMES)[number];
 
