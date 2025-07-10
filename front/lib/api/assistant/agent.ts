@@ -351,6 +351,10 @@ async function* runMultiActionsAgentLoop(
             assertNever(event);
         }
       }
+      localLogger.warn(
+        { autoRetryCount },
+        "Automatically retrying model error."
+      );
       autoRetryCount++;
     } while (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY);
   }
