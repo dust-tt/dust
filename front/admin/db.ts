@@ -41,6 +41,7 @@ import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { TagModel } from "@app/lib/models/tags";
+import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import {
   AppModel,
   Clone,
@@ -160,6 +161,8 @@ async function main() {
   await LabsTranscriptsHistoryModel.sync({ alter: true });
 
   await PluginRunModel.sync({ alter: true });
+
+  await AgentMemoryModel.sync({ alter: true });
 
   process.exit(0);
 }
