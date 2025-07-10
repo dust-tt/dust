@@ -5,8 +5,13 @@ import {
   supportedImageFileFormats,
   supportedOtherFileFormats,
 } from "@dust-tt/client";
+import fs from "fs";
 import { stat } from "fs/promises";
-import { basename, extname } from "path";
+import mime from "mime-types";
+import path, { basename, extname } from "path";
+
+const MAX_LINES_TEXT_FILE = 2000;
+const MAX_LINE_LENGTH_TEXT_FILE = 2000;
 
 export interface FileInfo {
   path: string;
@@ -14,6 +19,7 @@ export interface FileInfo {
   size: number;
   type: SupportedFileContentType;
   extension: string;
+  fileType: string;
 }
 
 // Maximum file size (50MB)
@@ -115,6 +121,7 @@ export async function validateAndGetFileInfo(
       size,
       type: getMimeType(extension),
       extension,
+      fileType: detectFileType(filePath),
     };
   } catch (error) {
     if (error instanceof Error) {
@@ -129,4 +136,143 @@ export async function validateAndGetFileInfo(
  */
 export function getFileExtension(filename: string): string {
   return extname(filename).toLowerCase();
+}
+
+export function detectFileType(
+  filePath: string
+): "text" | "image" | "pdf" | "audio" | "video" | "binary" {
+  const fileExtension = path.extname(filePath).toLowerCase();
+
+  // Handle TypeScript files specifically (mime library treats .ts as video)
+  if (fileExtension === ".ts") {
+    return "text";
+  }
+
+  // Check against known binary file extensions first
+  const binaryExtensions = new Set([
+    ".zip",
+    ".tar",
+    ".gz",
+    ".exe",
+    ".dll",
+    ".so",
+    ".class",
+    ".jar",
+    ".war",
+    ".7z",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".odt",
+    ".ods",
+    ".odp",
+    ".bin",
+    ".dat",
+    ".obj",
+    ".o",
+    ".a",
+    ".lib",
+    ".wasm",
+    ".pyc",
+    ".pyo",
+  ]);
+
+  if (binaryExtensions.has(fileExtension)) {
+    return "binary";
+  }
+
+  // Use mime type detection for remaining files
+  const mimeType = mime.lookup(filePath);
+  if (!mimeType) {
+    return "text"; // Default to text if no mime type found
+  }
+
+  // Map mime types to file categories
+  const mimeTypeMap = {
+    "image/": "image",
+    "audio/": "audio",
+    "video/": "video",
+  } as const;
+
+  // Check for mime type prefixes
+  for (const [prefix, category] of Object.entries(mimeTypeMap)) {
+    if (mimeType.startsWith(prefix)) {
+      return category;
+    }
+  }
+
+  // Handle PDF specifically
+  if (mimeType === "application/pdf") {
+    return "pdf";
+  }
+
+  // Default fallback
+  return "text";
+}
+
+export async function processFile(
+  filePath: string,
+  offset: number = 0,
+  limit: number = MAX_LINES_TEXT_FILE
+) {
+  // check for existence
+  if (!fs.existsSync(filePath)) {
+    throw new Error("");
+  }
+
+  // get stats, checks for file size and for whether it actually is a file and not a directory
+  const { fileType } = await validateAndGetFileInfo(filePath);
+
+  switch (fileType) {
+    case "binary":
+      throw new Error("cannot handle binary files");
+    case "text":
+      const content = await fs.promises.readFile(filePath, "utf-8");
+      const lines = content.split("\n");
+      const oldLineCount = lines.length;
+
+      const startLine = Math.min(offset, oldLineCount);
+      const endLine = Math.min(startLine + limit, oldLineCount);
+
+      const selectedLines = lines.slice(startLine, endLine);
+
+      const totalCut = endLine < oldLineCount;
+      let linesCut = false;
+      const formattedLines = selectedLines.map((line) => {
+        if (line.length > MAX_LINE_LENGTH_TEXT_FILE) {
+          linesCut = true;
+          return line.substring(0, MAX_LINE_LENGTH_TEXT_FILE) + "... [cut]";
+        }
+        return line;
+      });
+
+      let cutMessage = "";
+      if (totalCut) {
+        cutMessage = `[File content cut: showing lines ${
+          startLine + 1
+        }-${endLine} of ${oldLineCount} total lines. Use offset/limit parameters to view more.]\n`;
+      } else if (linesCut) {
+        cutMessage = `[File content partially cut: some lines exceeded maximum length of ${MAX_LINE_LENGTH_TEXT_FILE} characters.]\n`;
+      }
+
+      const resContent = cutMessage + formattedLines.join("\n");
+
+      return {
+        data: resContent,
+      };
+    case "image":
+    case "pdf":
+    case "audio":
+    case "video":
+      const contentBuffer = await fs.promises.readFile(filePath);
+      const base64Data = contentBuffer.toString("base64");
+      return {
+        data: base64Data,
+      };
+    default:
+      throw new Error("We should now have reached this statement");
+  }
 }

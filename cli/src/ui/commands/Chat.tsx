@@ -8,6 +8,7 @@ import open from "open";
 import type { FC } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import { useFileSystemServer } from "../../mcp/servers/fsServer.js";
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
@@ -24,10 +25,15 @@ import { toolsCache } from "../../utils/toolsCache.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
+import FileAccessSelector from "../components/fileAccessSelector.js";
 import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
 import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
+import {
+  sendNonInteractiveMessage,
+  validateNonInteractiveFlags,
+} from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 
 type AgentConfiguration =
@@ -36,6 +42,7 @@ type AgentConfiguration =
 interface CliChatProps {
   sId?: string;
   agentSearch?: string;
+  message?: string;
   conversationId?: string;
 }
 
@@ -55,9 +62,15 @@ function getLastConversationItem<T extends ConversationItem>(
 const CliChat: FC<CliChatProps> = ({
   sId: requestedSId,
   agentSearch,
+  message,
   conversationId,
 }) => {
   const [error, setError] = useState<string | null>(null);
+
+  // Validate flags usage
+  useEffect(() => {
+    validateNonInteractiveFlags(message, agentSearch, conversationId);
+  }, [message, agentSearch, conversationId]);
 
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
     null
@@ -87,6 +100,10 @@ const CliChat: FC<CliChatProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [showFileSelector, setShowFileSelector] = useState(false);
+  const [chosenFileSystemUsage, setChosenFileSystemUsage] = useState(false);
+  const [fileSystemServerId, setFileSystemServerId] = useState<string | null>(
+    null
+  );
 
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
@@ -299,6 +316,33 @@ const CliChat: FC<CliChatProps> = ({
     ]);
   }, [agentSearch, allAgents, selectedAgent]);
 
+  // Handle non-interactive mode when message is provided
+  useEffect(() => {
+    if (!message || !selectedAgent) {
+      return;
+    }
+
+    // Wait for authentication to load
+    if (isMeLoading) {
+      return;
+    }
+
+    // Check for authentication errors
+    if (!me || meError) {
+      console.error(
+        JSON.stringify({
+          error: "Authentication error",
+          details: meError || "Not authenticated",
+        })
+      );
+      process.exit(1);
+    }
+
+    // Call the standalone function
+    setIsProcessingQuestion(true);
+    void sendNonInteractiveMessage(message, selectedAgent, me, conversationId);
+  }, [message, selectedAgent, me, meError, isMeLoading, conversationId]);
+
   const canSubmit =
     me &&
     !meError &&
@@ -422,6 +466,9 @@ const CliChat: FC<CliChatProps> = ({
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
               context: {
+                clientSideMCPServerIds: fileSystemServerId
+                  ? [fileSystemServerId]
+                  : null,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 username: me.username,
                 fullName: me.fullName,
@@ -457,6 +504,9 @@ const CliChat: FC<CliChatProps> = ({
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
               context: {
+                clientSideMCPServerIds: fileSystemServerId
+                  ? [fileSystemServerId]
+                  : null,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 username: me.username,
                 fullName: me.fullName,
@@ -675,6 +725,7 @@ const CliChat: FC<CliChatProps> = ({
       meError,
       isMeLoading,
       uploadedFiles,
+      fileSystemServerId,
     ]
   );
 
@@ -1066,6 +1117,13 @@ const CliChat: FC<CliChatProps> = ({
     }
   });
 
+  // In non-interactive mode, show minimal UI
+  if (message) {
+    // Don't show any UI in non-interactive mode
+    // All output is handled via console.log/console.error in the useEffect
+    return null;
+  }
+
   // Show loading state while searching for agent
   if (agentSearch && agentsIsLoading) {
     return (
@@ -1140,6 +1198,26 @@ const CliChat: FC<CliChatProps> = ({
             // Clear terminal and force re-render.
             await clearTerminal();
           }
+        }}
+      />
+    );
+  }
+
+  if ((selectedAgent || !isSelectingNewAgent) && !chosenFileSystemUsage) {
+    return (
+      <FileAccessSelector
+        selectMultiple={false}
+        onConfirm={async (selectedModelFileAccess) => {
+          if (selectedModelFileAccess[0].id === "y") {
+            const dustClient = await getDustClient();
+            if (!dustClient) {
+              throw new Error("No Dust API set.");
+            }
+            await useFileSystemServer(dustClient, (serverId) => {
+              setFileSystemServerId(serverId);
+            });
+          }
+          setChosenFileSystemUsage(true);
         }}
       />
     );
