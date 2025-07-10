@@ -199,12 +199,23 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
   });
 
   itInTransaction(
-    "should return 403 when user is not a builder for non-conversation files",
+    "should return 403 when user cannot write to space for non-conversation files",
     async (t) => {
+      vi.mock("@app/lib/resources/space_resource", () => ({
+        SpaceResource: {
+          fetchById: vi.fn().mockResolvedValue({
+            id: "test-space-id",
+            canRead: vi.fn().mockReturnValue(true),
+            canWrite: vi.fn().mockReturnValue(false),
+          }),
+        },
+      }));
+
       const { req, res } = await setupTest(t, {
         userRole: "user",
         method: "POST",
         useCase: "folders_document",
+        useCaseMetadata: { spaceId: "test-space-id" },
       });
 
       await handler(req, res);
@@ -212,8 +223,7 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
       expect(res._getJSONData()).toEqual({
         error: {
           type: "workspace_auth_error",
-          message:
-            "Only users that are `builders` for the current workspace can modify files.",
+          message: "You cannot edit files in that space.",
         },
       });
     }
@@ -262,10 +272,21 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
   itInTransaction(
     "should return 403 when user is not a builder for non-conversation files",
     async (t) => {
+      vi.mock("@app/lib/resources/space_resource", () => ({
+        SpaceResource: {
+          fetchById: vi.fn().mockResolvedValue({
+            id: "test-space-id",
+            canRead: vi.fn().mockReturnValue(true),
+            canWrite: vi.fn().mockReturnValue(false),
+          }),
+        },
+      }));
+
       const { req, res } = await setupTest(t, {
         userRole: "user",
         method: "DELETE",
         useCase: "folders_document",
+        useCaseMetadata: { spaceId: "test-space-id" },
       });
 
       await handler(req, res);
@@ -273,8 +294,7 @@ describe("DELETE /api/w/[wId]/files/[fileId]", () => {
       expect(res._getJSONData()).toEqual({
         error: {
           type: "workspace_auth_error",
-          message:
-            "Only users that are `builders` for the current workspace can delete files.",
+          message: "You cannot edit files in that space.",
         },
       });
     }
