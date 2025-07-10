@@ -237,7 +237,7 @@ const createServer = (auth: Authenticator): McpServer => {
         return makeMCPToolTextError("Missing environment variable.");
       }
 
-      // Remove the leading dot.
+      // Remove the leading dot from the extension.
       const extension = extname(file_name).replace(/^\./, "");
       if (!isValidOutputType(extension)) {
         return {
