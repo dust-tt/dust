@@ -1,9 +1,4 @@
-import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import {
-  AgentDustAppRunAction,
-  AgentDustAppRunConfiguration,
-} from "@app/lib/models/assistant/actions/dust_app_run";
 import {
   AgentChildAgentConfiguration,
   AgentMCPAction,
@@ -15,8 +10,6 @@ import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
-import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
@@ -141,8 +134,6 @@ async function main() {
   await RemoteMCPServerToolMetadataModel.sync({ alter: true });
 
   await AgentMCPServerConfiguration.sync({ alter: true });
-  await AgentRetrievalConfiguration.sync({ alter: true });
-  await AgentDustAppRunConfiguration.sync({ alter: true });
   await AgentTablesQueryConfigurationTable.sync({ alter: true });
   await AgentReasoningConfiguration.sync({ alter: true });
 
@@ -156,11 +147,8 @@ async function main() {
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });
 
-  await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentDataRetentionModel.sync({ alter: true });
-  await AgentDustAppRunAction.sync({ alter: true });
   await AgentStepContentModel.sync({ alter: true });
-  await AgentSearchLabelsAction.sync({ alter: true });
   await AgentMCPAction.sync({ alter: true });
   await AgentMCPActionOutputItem.sync({ alter: true });
   await AgentChildAgentConfiguration.sync({ alter: true });

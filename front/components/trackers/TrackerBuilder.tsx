@@ -11,7 +11,6 @@ import {
   Page,
   TextArea,
   TrashIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { capitalize } from "lodash";
 import { LockIcon } from "lucide-react";
@@ -27,6 +26,7 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuilderDataSourceModal";
 import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { isConnectorTypeTrackable } from "@app/lib/connector_providers";
 import { isEmailValid } from "@app/lib/utils";
 import type {
@@ -346,6 +346,7 @@ export const TrackerBuilder = ({
                   providerId: tracker.providerId,
                 },
                 temperature: tracker.temperature,
+                reasoningEffort: "none",
               }}
               setGenerationSettings={(g: {
                 modelSettings: SupportedModel;

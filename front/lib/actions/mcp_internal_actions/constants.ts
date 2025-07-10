@@ -22,10 +22,12 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "file_generation",
   "github",
   "gmail",
+  "google_sheets",
   "hubspot",
   "image_generation",
   "include_data",
   "missing_action_catcher",
+  "monday",
   "notion",
   "primitive_types_debugger",
   "query_tables",
@@ -123,6 +125,17 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_meeting: "never_ask",
       get_file_public_url: "never_ask",
       get_associated_meetings: "never_ask",
+      get_hubspot_link: "never_ask",
+      get_hubspot_portal_id: "never_ask",
+      list_owners: "never_ask",
+      search_owners: "never_ask",
+      get_current_user_id: "never_ask",
+      get_user_activity: "never_ask",
+      list_associations: "never_ask",
+
+      count_objects_by_properties: "never_ask",
+      search_crm_objects: "never_ask",
+      export_crm_objects_csv: "never_ask",
 
       // Create operations.
       create_contact: "high",
@@ -134,15 +147,13 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_note: "high",
       create_communication: "high",
       create_meeting: "high",
+      create_association: "high",
 
       // Update operations.
       update_contact: "high",
       update_company: "high",
       update_deal: "high",
-
-      // Other operations.
-      count_objects_by_properties: "never_ask",
-      search_crm_objects: "never_ask",
+      remove_association: "high",
     },
   },
   agent_router: {
@@ -201,9 +212,9 @@ export const INTERNAL_MCP_SERVERS: Record<
       return !isAvailable;
     },
     tools_stakes: {
-      execute_read_query: "low",
-      list_objects: "low",
-      describe_object: "low",
+      execute_read_query: "never_ask",
+      list_objects: "never_ask",
+      describe_object: "never_ask",
     },
   },
   gmail: {
@@ -240,6 +251,59 @@ export const INTERNAL_MCP_SERVERS: Record<
       list_public_channels: "never_ask",
       list_threads: "never_ask",
       post_message: "low",
+    },
+  },
+  google_sheets: {
+    id: 19,
+    availability: "manual",
+    tools_stakes: {
+      list_spreadsheets: "never_ask",
+      get_spreadsheet: "never_ask",
+      get_worksheet: "never_ask",
+      update_cells: "low",
+      append_data: "low",
+      clear_range: "low",
+      create_spreadsheet: "low",
+      add_worksheet: "low",
+      delete_worksheet: "low",
+      format_cells: "low",
+    },
+  },
+  monday: {
+    id: 20,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("monday_tool");
+    },
+    tools_stakes: {
+      // Read operations
+      get_boards: "never_ask",
+      get_board_items: "never_ask",
+      get_item_details: "never_ask",
+      search_items: "never_ask",
+      get_items_by_column_value: "never_ask",
+      find_user_by_name: "never_ask",
+      get_board_values: "never_ask",
+      get_column_values: "never_ask",
+      get_file_column_values: "never_ask",
+      get_group_details: "never_ask",
+      get_subitem_values: "never_ask",
+      get_user_details: "never_ask",
+
+      // Write operations - High stakes
+      create_item: "high",
+      update_item: "high",
+      update_item_name: "high",
+      create_update: "high",
+      create_board: "high",
+      create_column: "high",
+      create_group: "high",
+      create_subitem: "high",
+      update_subitem: "high",
+      duplicate_group: "high",
+      upload_file_to_column: "high",
+      delete_item: "high",
+      delete_group: "high",
     },
   },
   search: {

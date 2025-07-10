@@ -35,7 +35,7 @@ function ModelRadioItem({
 }: ModelRadioItemProps) {
   return (
     <DropdownMenuRadioItem
-      value={`${modelConfig.modelId}${modelConfig.reasoningEffort ? `-${modelConfig.reasoningEffort}` : ""}`}
+      value={modelConfig.modelId}
       icon={getModelProviderLogo(modelConfig.providerId, isDark)}
       description={modelConfig.shortDescription}
       label={modelConfig.displayName}
@@ -55,13 +55,12 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { bestPerformingModelConfigs, otherModelConfigs } =
     categorizeModels(models);
 
-  const currentModelKey = `${field.value.modelId}${field.value.reasoningEffort ? `-${field.value.reasoningEffort}` : ""}`;
+  const currentModelKey = field.value.modelId;
 
   const handleModelSelection = (modelConfig: ModelConfigurationType) => {
     field.onChange({
       modelId: modelConfig.modelId,
       providerId: modelConfig.providerId,
-      reasoningEffort: modelConfig.reasoningEffort,
     });
   };
 

@@ -5,10 +5,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import React from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { WorkspaceType } from "@app/types";
 
 export function ToggleEnforceEnterpriseConnectionModal({

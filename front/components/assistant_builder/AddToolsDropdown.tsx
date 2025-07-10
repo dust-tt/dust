@@ -9,7 +9,6 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
@@ -27,6 +26,7 @@ import {
   getDefaultMCPServerActionConfiguration,
   getDefaultMCPServerConfigurationWithId,
 } from "@app/components/assistant_builder/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -148,9 +148,7 @@ export function AddToolsDropdown({
         // Use o4-mini (high reasoning effort) as default reasoning model, if it's not available use the first one in the list.
         const defaultReasoningModel =
           reasoningModels.find(
-            (model) =>
-              model.modelId === DEFAULT_REASONING_MODEL_ID &&
-              model.reasoningEffort === "high"
+            (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
           ) ?? reasoningModels[0];
 
         setAction({
@@ -163,8 +161,8 @@ export function AddToolsDropdown({
               reasoningModel: {
                 modelId: defaultReasoningModel.modelId,
                 providerId: defaultReasoningModel.providerId,
-                reasoningEffort: defaultReasoningModel.reasoningEffort ?? null,
                 temperature: null,
+                reasoningEffort: null,
               },
             },
           },

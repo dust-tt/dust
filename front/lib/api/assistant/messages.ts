@@ -1,10 +1,7 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { conversationIncludeFileTypesFromAgentMessageIds } from "@app/lib/actions/conversation/include_file";
-import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_run";
 import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
-import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -130,13 +127,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   const agentMessageIds = removeNulls(
     agentMessages.map((m) => m.agentMessageId || null)
   );
-  const [
-    agentConfigurations,
-    agentDustAppRunActions,
-    agentConversationIncludeFileActions,
-    agentSearchLabelsActions,
-    agentMCPActions,
-  ] = await Promise.all([
+  const [agentConfigurations, agentMCPActions] = await Promise.all([
     (async () => {
       const agentConfigurationIds: Set<string> = agentMessages.reduce(
         (acc: Set<string>, m) => {
@@ -158,13 +149,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       return agents as LightAgentConfigurationType[];
     })(),
-    (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    (async () =>
-      conversationIncludeFileTypesFromAgentMessageIds(auth, {
-        agentMessageIds,
-      }))(),
-    (async () =>
-      searchLabelsActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
     (async () =>
       mcpActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
   ]);
@@ -186,12 +170,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       const agentMessage = message.agentMessage;
 
-      const actions: AgentActionType[] = [
-        agentConversationIncludeFileActions,
-        agentDustAppRunActions,
-        agentSearchLabelsActions,
-        agentMCPActions,
-      ]
+      const actions: AgentActionType[] = [agentMCPActions]
         .flat()
         .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);

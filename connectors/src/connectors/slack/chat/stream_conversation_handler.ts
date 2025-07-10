@@ -129,10 +129,7 @@ async function streamAgentAnswerToSlack(
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
       case "conversation_include_file_params":
-      case "dust_app_run_block":
-      case "dust_app_run_params":
       case "process_params":
-      case "search_labels_params":
       case "tool_params":
       case "tool_notification":
         await postSlackMessageUpdate(

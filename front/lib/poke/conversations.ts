@@ -1,14 +1,12 @@
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   ConversationError,
   PokeConversationType,
   Result,
 } from "@app/types";
-import { assertNever, Ok } from "@app/types";
+import { Ok } from "@app/types";
 
 export async function getPokeConversation(
   auth: Authenticator,
@@ -27,7 +25,6 @@ export async function getPokeConversation(
   // and I still wanted to use the existing getConversation code for rendering.
   if (conversation.isOk()) {
     const pokeConversation = conversation.value as PokeConversationType;
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     // Cycle through the message and actions and enrich them with the runId(s)
     for (const messages of pokeConversation.content) {
       for (const m of messages) {
@@ -46,45 +43,12 @@ export async function getPokeConversation(
           if (m.actions.length > 0) {
             {
               for (const a of m.actions) {
-                switch (a.type) {
-                  case "dust_app_run_action": {
-                    const runAction = await AgentDustAppRunAction.findOne({
-                      where: {
-                        id: a.id,
-                        workspaceId: owner.id,
-                      },
-                      attributes: ["runId", "appWorkspaceId", "appId"],
-                      raw: true,
-                    });
-
-                    if (runAction) {
-                      a.runId = runAction.runId;
-                      a.appWorkspaceId = runAction.appWorkspaceId;
-                      a.appSpaceId = globalSpace.sId;
-                      a.appId = runAction.appId;
-                    }
-                    break;
-                  }
-
-                  case "tool_action":
-                    a.mcpIO = {
-                      params: a.params,
-                      output: a.output,
-                      generatedFiles: a.generatedFiles,
-                      isError: a.isError,
-                    };
-                    break;
-
-                  case "conversation_include_file_action":
-                  case "conversation_list_files_action":
-                  case "search_labels_action":
-                    // TODO(REASONING TOOL): reasoning_action
-                    // Theses actions do not call a dust app
-                    break;
-
-                  default:
-                    assertNever(a);
-                }
+                a.mcpIO = {
+                  params: a.params,
+                  output: a.output,
+                  generatedFiles: a.generatedFiles,
+                  isError: a.isError,
+                };
               }
             }
           }

@@ -3,10 +3,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
-import { getDefaultRemoteMCPServerById } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { assertNever } from "@app/types";
@@ -81,7 +82,22 @@ async function handler(
           }
 
           if (!CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS.includes(permission)) {
-            const defaultServerConfig = getDefaultRemoteMCPServerById(id);
+            const remoteMCPServer = await RemoteMCPServerResource.findByPk(
+              auth,
+              id
+            );
+            if (!remoteMCPServer) {
+              return apiError(req, res, {
+                status_code: 404,
+                api_error: {
+                  type: "data_source_not_found",
+                  message: "Remote MCP server not found.",
+                },
+              });
+            }
+            const defaultServerConfig = getDefaultRemoteMCPServerByURL(
+              remoteMCPServer.url
+            );
             if (defaultServerConfig?.toolStakes?.[toolName] !== permission) {
               return apiError(req, res, {
                 status_code: 400,

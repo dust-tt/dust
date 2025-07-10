@@ -258,13 +258,14 @@ export function useDataSourceViewContentNodes({
       },
       {
         ...swrOptions,
-        disabled: disabled || !viewType,
+        disabled: disabled || !viewType || !dataSourceView?.spaceId,
       }
     );
 
   return {
     isNodesError: !!error,
-    isNodesLoading: !error && !data,
+    isNodesLoading:
+      !error && !data && !disabled && !!viewType && !!dataSourceView?.spaceId,
     isNodesValidating: isValidating,
     mutate,
     mutateRegardlessOfQueryParams,

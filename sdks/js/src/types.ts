@@ -552,28 +552,6 @@ const BaseActionSchema = z.object({
   type: BaseActionTypeSchema,
 });
 
-const SearchLabelsActionOutputSchema = z.object({
-  tags: z.array(
-    z.object({
-      tag: z.string(),
-      match_count: z.number(),
-      data_sources: z.array(z.string()),
-    })
-  ),
-});
-
-const SearchLabelsActionTypeSchema = BaseActionSchema.extend({
-  agentMessageId: ModelIdSchema,
-  output: SearchLabelsActionOutputSchema.nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  step: z.number(),
-  type: z.literal("search_labels_action"),
-});
-type SearchLabelsActionPublicType = z.infer<
-  typeof SearchLabelsActionTypeSchema
->;
-
 const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   params: z.object({
@@ -735,7 +713,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "advanced_search"
   | "agent_builder_v2"
-  | "claude_3_7_reasoning"
+  | "agent_builder_instructions_autocomplete"
   | "claude_4_opus_feature"
   | "co_edition"
   | "deepseek_feature"
@@ -743,7 +721,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dev_mcp_actions"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
-  | "enforce_datasource_quota"
   | "exploded_tables_query"
   | "extended_max_steps_per_run"
   | "google_ai_studio_experimental_models_feature"
@@ -757,6 +734,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_high_reasoning_custom_assistants_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_o1_mini_feature"
+  | "monday_tool"
   | "pro_plan_salesforce_connector"
   | "salesforce_synced_queries"
   | "salesforce_tool"
@@ -1020,7 +998,6 @@ const AgentActionTypeSchema = z.union([
   ProcessActionTypeSchema,
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
-  SearchLabelsActionTypeSchema,
   MCPActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
@@ -1135,22 +1112,6 @@ const ConversationIncludeFileParamsEventSchema = z.object({
   action: ConversationIncludeFileActionTypeSchema,
 });
 
-const DustAppRunParamsEventSchema = z.object({
-  type: z.literal("dust_app_run_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: DustAppRunActionTypeSchema,
-});
-
-const DustAppRunBlockEventSchema = z.object({
-  type: z.literal("dust_app_run_block"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: DustAppRunActionTypeSchema,
-});
-
 const ProcessParamsEventSchema = z.object({
   type: z.literal("process_params"),
   created: z.number(),
@@ -1158,14 +1119,6 @@ const ProcessParamsEventSchema = z.object({
   messageId: z.string(),
   dataSources: z.array(DataSourceConfigurationSchema),
   action: ProcessActionTypeSchema,
-});
-
-const SearchLabelsParamsEventSchema = z.object({
-  type: z.literal("search_labels_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: SearchLabelsActionTypeSchema,
 });
 
 const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
@@ -1277,10 +1230,7 @@ export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
 const AgentActionSpecificEventSchema = z.union([
   ConversationIncludeFileParamsEventSchema,
-  DustAppRunBlockEventSchema,
-  DustAppRunParamsEventSchema,
   ProcessParamsEventSchema,
-  SearchLabelsParamsEventSchema,
   MCPParamsEventSchema,
   ToolNotificationEventSchema,
   MCPApproveExecutionEventSchema,
@@ -2576,12 +2526,6 @@ export function isProcessActionType(
   return action.type === "process_action";
 }
 
-export function isSearchLabelsActionType(
-  action: AgentActionPublicType
-): action is SearchLabelsActionPublicType {
-  return action.type === "search_labels_action";
-}
-
 export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {
   return (arg as AgentMentionType).configurationId !== undefined;
 }
@@ -2766,7 +2710,6 @@ export const ACTION_RUNNING_LABELS: Record<
   conversation_list_files_action: "Listing files",
   dust_app_run_action: "Running App",
   process_action: "Extracting data",
-  search_labels_action: "Searching labels",
   tool_action: "Using a tool",
 };
 

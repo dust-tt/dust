@@ -29,15 +29,19 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
 
 export function shouldSyncTicket(
   ticket: ZendeskFetchedTicket,
-  configuration: ZendeskConfigurationResource
+  configuration: ZendeskConfigurationResource,
+  { brandId }: { brandId?: number }
 ): boolean {
-  return [
-    "closed",
-    "solved",
-    ...(configuration.syncUnresolvedTickets
-      ? ["new", "open", "pending", "hold"]
-      : []),
-  ].includes(ticket.status);
+  return (
+    [
+      "closed",
+      "solved",
+      ...(configuration.syncUnresolvedTickets
+        ? ["new", "open", "pending", "hold"]
+        : []),
+    ].includes(ticket.status) &&
+    (!brandId || brandId === ticket.brand_id)
+  );
 }
 
 export function extractMetadataFromDocumentUrl(ticketUrl: string): {

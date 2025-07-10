@@ -580,7 +580,6 @@ impl OpenAICompatibleError {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransformSystemMessages {
-    Remove,
     ReplaceWithDeveloper,
     Keep,
 }
@@ -850,13 +849,6 @@ fn to_openai_messages(
                 }),
                 content: m.content,
             }
-        })
-        // Remove system messages if requested.
-        // Some models don't support system messages, so we need this to be
-        // configurable.
-        .filter(|m| {
-            transform_system_messages != TransformSystemMessages::Remove
-                || m.role != OpenAIChatMessageRole::System
         })
         .collect::<Vec<_>>();
 

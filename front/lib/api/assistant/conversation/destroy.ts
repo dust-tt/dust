@@ -3,13 +3,10 @@ import { Op } from "sequelize";
 
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
-import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
-import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -31,16 +28,6 @@ async function destroyActionsRelatedResources(
   auth: Authenticator,
   agentMessageIds: Array<ModelId>
 ) {
-  await AgentDustAppRunAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentSearchLabelsAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-  await AgentConversationIncludeFileAction.destroy({
-    where: { agentMessageId: agentMessageIds },
-  });
-
   // First, retrieve the MCP actions.
   const mcpActions = await AgentMCPAction.findAll({
     attributes: ["id"],

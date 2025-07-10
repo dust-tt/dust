@@ -54,19 +54,7 @@ const { githubUpsertIssueActivity, githubUpsertDiscussionActivity } =
     startToCloseTimeout: "60 minute",
   });
 
-const { githubCodeSyncActivity } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "240 minute",
-  // We use a rather large heartbeat as we have to allow enough time for the initial code tar
-  // download to complete (should be less than a few GB). But this is nonetheless valuable compared
-  // to just relying on startToCloseTimeout (which has to be large enough to allow the full initial
-  // sync, which can only be done in one activity since it is stateful (download of tar file to
-  // local temp storage)). Basically In case of a deploy or crash of the worker node we will retry
-  // the activity after 15mn and not 240 as defined by the startToCloseTimeout.
-  heartbeatTimeout: "15 minute",
-});
-
 const {
-  githubCleanupCodeSyncActivity,
   githubEnsureCodeSyncEnabledActivity,
   githubGetGcsFilesActivity,
   githubProcessDirectoryChunkActivity,
@@ -75,10 +63,16 @@ const {
   startToCloseTimeout: "10 minute",
 });
 
+const { githubCleanupCodeSyncActivity } = proxyActivities<
+  typeof activitiesSyncCode
+>({
+  startToCloseTimeout: "20 minute",
+});
+
 const { githubExtractToGcsActivity } = proxyActivities<
   typeof activitiesSyncCode
 >({
-  startToCloseTimeout: "60 minute",
+  startToCloseTimeout: "120 minute",
 });
 
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
@@ -86,8 +80,6 @@ const MAX_CONCURRENT_ISSUE_SYNC_ACTIVITIES_PER_WORKFLOW = 8;
 
 const FILE_CHUNK_SIZE = 200;
 const DIRECTORY_CHUNK_SIZE = 100;
-
-const CONNECTOR_IDS_USING_GCS_CODE_SYNC: number[] = [15, 8714, 8986, 24601];
 
 /**
  * This workflow is used to fetch and sync all the repositories of a GitHub connector.
@@ -428,37 +420,23 @@ export async function githubRepoSyncWorkflow({
     }
   }
 
-  if (CONNECTOR_IDS_USING_GCS_CODE_SYNC.includes(connectorId)) {
-    await executeChild(githubCodeSyncStatelessWorkflow, {
-      workflowId: getCodeSyncStatelessWorkflowId(connectorId, repoId),
-      searchAttributes: {
-        connectorId: [connectorId],
+  await executeChild(githubCodeSyncStatelessWorkflow, {
+    workflowId: getCodeSyncStatelessWorkflowId(connectorId, repoId),
+    searchAttributes: {
+      connectorId: [connectorId],
+    },
+    args: [
+      {
+        connectorId,
+        dataSourceConfig,
+        forceResync: forceCodeResync,
+        repoId,
+        repoLogin,
+        repoName,
       },
-      args: [
-        {
-          connectorId,
-          dataSourceConfig,
-          forceResync: forceCodeResync,
-          repoId,
-          repoLogin,
-          repoName,
-        },
-      ],
-      memo: workflowInfo().memo,
-    });
-  } else {
-    // Start code syncing activity.
-    await githubCodeSyncActivity({
-      dataSourceConfig,
-      connectorId,
-      repoLogin,
-      repoName,
-      repoId,
-      loggerArgs: { syncCodeOnly: syncCodeOnly ? "true" : "false" },
-      isBatchSync: true,
-      forceResync: forceCodeResync,
-    });
-  }
+    ],
+    memo: workflowInfo().memo,
+  });
 }
 
 export async function githubCodeSyncWorkflow(
@@ -469,7 +447,6 @@ export async function githubCodeSyncWorkflow(
   repoLogin: string
 ) {
   let signaled = false;
-  let debounceCount = 0;
 
   setHandler(newWebhookSignal, () => {
     signaled = true;
@@ -483,42 +460,25 @@ export async function githubCodeSyncWorkflow(
     // at this layer for a few seconds, hence the use of signals here.
     await sleep(10000);
     if (signaled) {
-      debounceCount += 1;
       continue;
     }
 
-    if (CONNECTOR_IDS_USING_GCS_CODE_SYNC.includes(connectorId)) {
-      await executeChild(githubCodeSyncStatelessWorkflow, {
-        workflowId: getCodeSyncStatelessWorkflowId(connectorId, repoId),
-        searchAttributes: {
-          connectorId: [connectorId],
+    await executeChild(githubCodeSyncStatelessWorkflow, {
+      workflowId: getCodeSyncStatelessWorkflowId(connectorId, repoId),
+      searchAttributes: {
+        connectorId: [connectorId],
+      },
+      args: [
+        {
+          connectorId,
+          dataSourceConfig,
+          repoId,
+          repoLogin,
+          repoName,
         },
-        args: [
-          {
-            connectorId,
-            dataSourceConfig,
-            repoId,
-            repoLogin,
-            repoName,
-          },
-        ],
-        memo: workflowInfo().memo,
-      });
-    } else {
-      await githubCodeSyncActivity({
-        dataSourceConfig,
-        connectorId,
-        repoLogin,
-        repoName,
-        repoId,
-        loggerArgs: {
-          debounceCount,
-          activity: "githubCodeSync",
-        },
-        isBatchSync: true,
-      });
-      await githubSaveSuccessSyncActivity(dataSourceConfig);
-    }
+      ],
+      memo: workflowInfo().memo,
+    });
   }
 }
 

@@ -79,6 +79,7 @@ export interface ZendeskFetchedArticle {
 
 export interface ZendeskFetchedTicket {
   assignee_id: number;
+  brand_id: number;
   collaborator_ids: number[];
   created_at: string; // ISO 8601 date string
   custom_fields: {

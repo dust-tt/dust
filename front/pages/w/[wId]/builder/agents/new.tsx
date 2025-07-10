@@ -21,6 +21,7 @@ import type {
   PlanType,
   SubscriptionType,
   TemplateAgentConfigurationType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 
@@ -36,6 +37,7 @@ function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
+  user: UserType;
   subscription: SubscriptionType;
   plan: PlanType;
   agentConfiguration:
@@ -107,6 +109,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     configuration = agentConfigRes.value;
   }
 
+  const user = auth.getNonNullableUser().toJSON();
+
   return {
     props: {
       agentConfiguration: configuration,
@@ -116,6 +120,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       subscription,
       templateId,
+      user,
     },
   };
 });
@@ -123,6 +128,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function CreateAgent({
   agentConfiguration,
   owner,
+  user,
   templateId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { assistantTemplate } = useAssistantTemplate({ templateId });
@@ -136,7 +142,7 @@ export default function CreateAgent({
   }
 
   return (
-    <AgentBuilderProvider owner={owner}>
+    <AgentBuilderProvider owner={owner} user={user}>
       <SpacesProvider owner={owner}>
         <MCPServerViewsProvider owner={owner}>
           <DataSourceViewsProvider owner={owner}>

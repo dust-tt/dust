@@ -1,40 +1,22 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type {
-  ConversationIncludeFileActionRunningEvents,
-  ConversationIncludeFileConfigurationType,
-} from "@app/lib/actions/conversation/include_file";
-import type {
-  DustAppRunActionRunningEvents,
-  DustAppRunConfigurationType,
-} from "@app/lib/actions/dust_app_run";
-import type {
   ClientSideMCPServerConfigurationType,
   MCPActionRunningEvents,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import type {
-  SearchLabelsActionRunningEvents,
-  SearchLabelsConfigurationType,
-} from "@app/lib/actions/search_labels";
 
 /**
  * Agent Action configuration when setting up the agent.
  */
-export type AgentActionConfigurationType =
-  | DustAppRunConfigurationType
-  | MCPServerConfigurationType;
+export type AgentActionConfigurationType = MCPServerConfigurationType;
 
 /**
  * Action configuration type that can be used to run the action.
  */
-export type ActionConfigurationType =
-  | Exclude<AgentActionConfigurationType, MCPServerConfigurationType>
-  | MCPToolConfigurationType
-  | SearchLabelsConfigurationType
-  | ConversationIncludeFileConfigurationType;
+export type ActionConfigurationType = MCPToolConfigurationType;
 
 /**
  * Type guard to check if a value is of type ActionConfigurationType
@@ -43,10 +25,7 @@ export function isActionConfigurationType(
   value: AgentActionConfigurationType | ActionConfigurationType
 ): value is ActionConfigurationType {
   switch (value.type) {
-    case "conversation_include_file_configuration":
-    case "dust_app_run_configuration":
     case "mcp_configuration":
-    case "search_labels_configuration":
       return true;
     case "mcp_server_configuration":
       return false;
@@ -153,8 +132,4 @@ export function inputSchemaToDustAppRunInputs(
 }
 
 // Event sent during the execution of an action. These are action-specific.
-export type AgentActionSpecificEvent =
-  | ConversationIncludeFileActionRunningEvents
-  | DustAppRunActionRunningEvents
-  | SearchLabelsActionRunningEvents
-  | MCPActionRunningEvents;
+export type AgentActionSpecificEvent = MCPActionRunningEvents;

@@ -18,10 +18,10 @@ import {
   RepositoryAccessBlockedError,
 } from "@connectors/connectors/github/lib/errors";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 
-const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1MB
-const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024; // 3MB
 const MAX_CONCURRENT_GCS_UPLOADS = 200;
 
 interface TarExtractionOptions {
@@ -36,7 +36,11 @@ interface TarExtractionResult {
   directoriesCreated: number;
 }
 
-function shouldProcessFile(header: tar.Headers, pathParts: string[]): boolean {
+function shouldProcessFile(
+  header: tar.Headers,
+  pathParts: string[],
+  childLogger: Logger
+): boolean {
   // Skip non-files.
   if (header.type !== "file") {
     return false;
@@ -44,7 +48,7 @@ function shouldProcessFile(header: tar.Headers, pathParts: string[]): boolean {
 
   // Skip large files.
   if (header.size && header.size > MAX_FILE_SIZE_BYTES) {
-    logger.info(
+    childLogger.info(
       { path: header.name, size: header.size },
       "File is over the size limit, skipping."
     );
@@ -61,7 +65,7 @@ function shouldProcessFile(header: tar.Headers, pathParts: string[]): boolean {
   // Get the actual filename (last part of the path).
   const fileName = pathParts[pathParts.length - 1];
   if (!fileName) {
-    logger.info(
+    childLogger.info(
       { path: header.name, pathParts },
       "File has no name, skipping."
     );
@@ -71,7 +75,7 @@ function shouldProcessFile(header: tar.Headers, pathParts: string[]): boolean {
   // Check extension whitelist and filename whitelist.
   const isWhitelisted = isSupportedFile(fileName);
   if (!isWhitelisted) {
-    logger.info(
+    childLogger.info(
       { path: header.name, fileName },
       "File not whitelisted, skipping."
     );
@@ -141,7 +145,13 @@ export async function extractGitHubTarballToGCS(
   // Create tar stream extractor.
   const extract = tar.extract();
 
-  logger.info(
+  const childLogger = logger.child({
+    connectorId,
+    gcsBasePath,
+    repoId,
+  });
+
+  childLogger.info(
     { repoId, connectorId, gcsBasePath },
     "Starting GitHub tarball extraction to GCS"
   );
@@ -158,10 +168,9 @@ export async function extractGitHubTarballToGCS(
       if (header.type === "file") {
         const { cleanPath, filePath, fileName } = parseGitHubPath(header.name);
 
-        if (shouldProcessFile(header, [...filePath, fileName])) {
+        if (shouldProcessFile(header, [...filePath, fileName], childLogger)) {
           // Upload file to GCS with preserved hierarchy.
           const gcsPath = `${gcsBasePath}/${cleanPath}`;
-          const gcsFile = gcsManager.getBucket().file(gcsPath);
 
           // Track directories for placeholder creation immediately.
           for (let i = 0; i < filePath.length; i++) {
@@ -171,49 +180,28 @@ export async function extractGitHubTarballToGCS(
             }
           }
 
-          // Upload file to GCS using stream directly with queue.
+          // Upload file to GCS using hybrid approach.
           filesUploaded++;
-          logger.info(
+          childLogger.info(
             { gcsPath, fileName, filePath, filesUploaded },
             "Uploading file to GCS"
           );
 
-          // Queue the upload but use stream directly
-          uploadQueue
-            .add(async () => {
-              return pipeline(
-                stream,
-                gcsFile.createWriteStream({
-                  metadata: {
-                    contentType: "text/plain",
-                  },
-                  resumable:
-                    (header.size ?? 0) >= GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
-                  validation: false,
-                })
-              );
-            })
-            .catch((error) => {
-              logger.error(
-                {
-                  error,
-                  gcsPath,
-                  fileName,
-                  filePath,
-                  repoId,
-                  connectorId,
-                },
-                "Failed to upload file to GCS"
-              );
-              throw error;
+          // Queue the upload.
+          void uploadQueue.add(async () => {
+            return gcsManager.uploadFileStream(gcsPath, stream, {
+              size: header.size,
+              contentType: "text/plain",
+              childLogger,
             });
+          });
 
           // Continue tar extraction immediately.
           next();
         } else {
           // Skip filtered file but must drain stream to prevent backpressure.
           filesSkipped++;
-          logger.info(
+          childLogger.info(
             { fileName: header.name },
             "Skipping file (filtered out)"
           );
@@ -240,14 +228,17 @@ export async function extractGitHubTarballToGCS(
 
         if (shouldInclude && cleanPath) {
           seenDirs.add(cleanPath);
-          logger.info({ dirPath: cleanPath }, "Found directory in tarball");
+          childLogger.info(
+            { dirPath: cleanPath },
+            "Found directory in tarball"
+          );
         }
 
         // Drain directory stream to prevent backpressure.
         drainAndNext();
       } else {
         // Skip non-file/directory entries but drain to prevent backpressure.
-        logger.info(
+        childLogger.info(
           { fileName: header.name, type: header.type },
           "Skipping non-file/directory entry"
         );
@@ -261,7 +252,7 @@ export async function extractGitHubTarballToGCS(
         return new Err(new RepositoryAccessBlockedError(error));
       }
 
-      logger.error(
+      childLogger.error(
         { error, header },
         "Error processing tarball entry, resuming stream."
       );
@@ -273,7 +264,7 @@ export async function extractGitHubTarballToGCS(
   // Stream: GitHub tarball -> gunzip -> tar extract -> GCS upload.
   await pipeline(tarballStream, gunzip(), extract);
 
-  logger.info({ repoId, connectorId }, "All files uploaded");
+  childLogger.info({ repoId, connectorId }, "All files uploaded");
 
   // Create directory placeholder files to preserve GitHub hierarchy.
   Array.from(seenDirs).forEach((dirPath) =>
@@ -285,7 +276,7 @@ export async function extractGitHubTarballToGCS(
   // Wait for all queued uploads to complete.
   await uploadQueue.onIdle();
 
-  logger.info(
+  childLogger.info(
     {
       repoId,
       connectorId,

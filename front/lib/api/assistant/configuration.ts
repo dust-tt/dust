@@ -8,7 +8,6 @@ import {
   ValidationError,
 } from "sequelize";
 
-import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type {
@@ -19,6 +18,7 @@ import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guard
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
@@ -28,7 +28,6 @@ import {
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import type { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
@@ -501,12 +500,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const configurationSIds = agentConfigurations.map((a) => a.sId);
 
   const [
-    dustAppRunActionsConfigurationsPerAgent,
     mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
     tagsPerAgent,
   ] = await Promise.all([
-    fetchDustAppRunActionConfigurations(auth, { configurationIds, variant }),
     fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user && variant !== "extra_light"
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
@@ -521,11 +518,6 @@ async function fetchWorkspaceAgentConfigurationsForView(
     const actions: AgentActionConfigurationType[] = [];
 
     if (variant === "full") {
-      // Dust app run configurations.
-      const dustAppRunActionsConfigurations =
-        dustAppRunActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...dustAppRunActionsConfigurations);
-
       // MCP server configurations
       const mcpServerActionsConfigurations =
         mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? [];
@@ -542,8 +534,18 @@ async function fetchWorkspaceAgentConfigurationsForView(
       model.responseFormat = agent.responseFormat;
     }
 
+    // Always set reasoning effort, using model default if null/undefined
     if (agent.reasoningEffort) {
       model.reasoningEffort = agent.reasoningEffort;
+    } else {
+      // Get the model configuration to use default reasoning effort
+      const modelConfig = getSupportedModelConfig({
+        providerId: agent.providerId,
+        modelId: agent.modelId,
+      });
+      if (modelConfig) {
+        model.reasoningEffort = modelConfig.defaultReasoningEffort;
+      }
     }
 
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
@@ -1120,7 +1122,6 @@ export async function createAgentActionConfiguration(
     if (action.dataSources) {
       await createAgentDataSourcesConfiguration(auth, t, {
         dataSourceConfigurations: action.dataSources,
-        retrievalConfiguration: null,
         mcpServerConfiguration: mcpConfig,
       });
     }
@@ -1179,11 +1180,9 @@ async function createAgentDataSourcesConfiguration(
   t: Transaction,
   {
     dataSourceConfigurations,
-    retrievalConfiguration,
     mcpServerConfiguration,
   }: {
     dataSourceConfigurations: DataSourceConfiguration[];
-    retrievalConfiguration: AgentRetrievalConfiguration | null;
     mcpServerConfiguration: AgentMCPServerConfiguration | null;
   }
 ): Promise<AgentDataSourceConfiguration[]> {
@@ -1238,7 +1237,6 @@ async function createAgentDataSourcesConfiguration(
         dataSourceId: dataSourceView.dataSource.id,
         parentsIn: dsConfig.filter.parents?.in,
         parentsNotIn: dsConfig.filter.parents?.not,
-        retrievalConfigurationId: retrievalConfiguration?.id || null,
         dataSourceViewId: dataSourceView.id,
         mcpServerConfigurationId: mcpServerConfiguration?.id || null,
         tagsMode,

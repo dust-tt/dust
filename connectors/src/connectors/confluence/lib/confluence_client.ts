@@ -280,23 +280,19 @@ export class ConfluenceClient {
   private readonly restApiBaseUrl: string;
   private readonly legacyRestApiBaseUrl: string;
   private readonly proxyAgent?: ProxyAgent;
-  private readonly ignoreNearRateLimit?: boolean;
 
   constructor(
     private readonly authToken: string,
     {
       cloudId,
-      ignoreNearRateLimit,
       useProxy = false,
     }: {
       cloudId?: string;
-      ignoreNearRateLimit?: boolean;
       useProxy?: boolean;
     } = {}
   ) {
     this.restApiBaseUrl = `/ex/confluence/${cloudId}/wiki/api/v2`;
     this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
-    this.ignoreNearRateLimit = ignoreNearRateLimit;
     if (useProxy) {
       this.proxyAgent = new ProxyAgent(
         `http://${EnvironmentConfig.getEnvVariable(
@@ -499,11 +495,7 @@ export class ConfluenceClient {
 
     // When approaching the rate limit (using adaptive throttle ratio based on limit size), we slow down
     // the query pace by waiting NEAR_RATE_LIMIT_DELAY ms.
-    if (
-      !bypassThrottle &&
-      !this.ignoreNearRateLimit &&
-      checkNearRateLimit(response.headers)
-    ) {
+    if (!bypassThrottle && checkNearRateLimit(response.headers)) {
       statsDClient.increment("external.api.calls", 1, [
         "provider:confluence",
         "status:near_rate_limit",

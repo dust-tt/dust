@@ -1,7 +1,7 @@
-import { useSendNotification } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   fetcher,
   getErrorFromResponse,
@@ -225,4 +225,81 @@ export function useToggleSlackChatBot({
   };
 
   return doToggle;
+}
+
+export function useTogglePdfEnabled({
+  dataSource,
+  owner,
+}: {
+  dataSource: DataSourceType | null;
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { mutateConfig } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: "pdfEnabled",
+    disabled: true, // Needed just to mutate
+  });
+
+  if (!dataSource) {
+    return {
+      doToggle: () => {
+        sendNotification({
+          type: "error",
+          title: "Failed to update PDF sync setting",
+          description:
+            "Tried to update PDF sync setting, but no data source was found.",
+        });
+      },
+      isLoading: false,
+    };
+  }
+
+  const doToggle = async (pdfEnabled: boolean) => {
+    setIsLoading(true);
+    const res = await fetch(
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/pdfEnabled`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({ configValue: pdfEnabled.toString() }),
+      }
+    );
+
+    if (res.ok) {
+      void mutateConfig();
+
+      const response: GetOrPostManagedDataSourceConfigResponseBody =
+        await res.json();
+
+      const { configValue } = response;
+
+      sendNotification({
+        type: "success",
+        title: "PDF sync setting updated successfully",
+        description: pdfEnabled
+          ? "PDF syncing is now enabled."
+          : "PDF syncing has been disabled.",
+      });
+      setIsLoading(false);
+      return configValue;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+
+      sendNotification({
+        type: "error",
+        title: "Failed to update PDF sync setting",
+        description: errorData.message,
+      });
+      setIsLoading(false);
+      return null;
+    }
+  };
+
+  return { doToggle, isLoading };
 }

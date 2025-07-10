@@ -3,7 +3,6 @@
 import fs from "fs";
 import { Op } from "sequelize";
 
-import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -17,6 +16,8 @@ import { getInsertSQL } from "@app/lib/utils/sql_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId } from "@app/types";
+
+const DEFAULT_PROCESS_ACTION_NAME = "extract_structured_data_from_data_sources";
 
 async function findWorkspacesWithProcessConfigurations(): Promise<ModelId[]> {
   const processConfigurations = await AgentProcessConfiguration.findAll({

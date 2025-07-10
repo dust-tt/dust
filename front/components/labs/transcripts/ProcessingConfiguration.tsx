@@ -1,9 +1,9 @@
 import { Page, SliderToggle } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type {

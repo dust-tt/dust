@@ -7,12 +7,12 @@ import {
   DialogHeader,
   DialogTitle,
   Page,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { Organization } from "@workos-inc/node";
 import { useState } from "react";
 
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type { PlanType, WorkspaceDomain, WorkspaceType } from "@app/types";
 

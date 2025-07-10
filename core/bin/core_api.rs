@@ -43,7 +43,12 @@ use dust::{
         database::{execute_query, get_tables_schema, QueryDatabaseError},
         table::{LocalTable, Row, Table},
     },
-    databases_store, dataset,
+    databases_store::{
+        self,
+        gcs::GoogleCloudStorageDatabasesStore,
+        store::{DatabasesStoreStrategy, CURRENT_STRATEGY},
+    },
+    dataset,
     deno::js_executor::JSExecutor,
     project,
     providers::provider::{provider, ProviderID},
@@ -4100,14 +4105,18 @@ fn main() {
             }
             Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
         };
-        let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
-            match std::env::var("DATABASES_STORE_DATABASE_URI") {
-                Ok(db_uri) => {
-                    let s = databases_store::postgres::PostgresDatabasesStore::new(&db_uri).await?;
-                    Box::new(s)
-                }
-                Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
-            };
+
+        // We setup the right databases store based on the strategy.
+        let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> = match CURRENT_STRATEGY {
+            DatabasesStoreStrategy::PostgresOnly | DatabasesStoreStrategy::PostgresAndWriteToGCS => {
+                let store = databases_store::postgres::get_postgres_store().await?;
+                Box::new(store)
+            }
+            DatabasesStoreStrategy::GCSOnly | DatabasesStoreStrategy::GCSAndWriteToPostgres => {
+                let store = GoogleCloudStorageDatabasesStore::new();
+                Box::new(store)
+            }
+        };
 
         let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
         let username =

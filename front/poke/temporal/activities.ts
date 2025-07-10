@@ -1,5 +1,4 @@
 import assert from "assert";
-import { chunk } from "lodash";
 import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
@@ -17,17 +16,10 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
-  AgentDustAppRunAction,
-  AgentDustAppRunConfiguration,
-} from "@app/lib/models/assistant/actions/dust_app_run";
-import {
   AgentChildAgentConfiguration,
-  AgentMCPAction,
-  AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
@@ -64,6 +56,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/works
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
@@ -250,28 +243,6 @@ export async function deleteAgentsActivity({
       },
     });
 
-    const mcpActions = await AgentMCPAction.findAll({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
-        },
-      },
-    });
-
-    await AgentMCPActionOutputItem.destroy({
-      where: {
-        agentMCPActionId: {
-          [Op.in]: mcpActions.map((r) => r.id),
-        },
-      },
-    });
-    await AgentMCPAction.destroy({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
-        },
-      },
-    });
     await AgentChildAgentConfiguration.destroy({
       where: {
         mcpServerConfigurationId: {
@@ -281,48 +252,6 @@ export async function deleteAgentsActivity({
       },
     });
     await AgentMCPServerConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-    await AgentDataSourceConfiguration.destroy({
-      where: {
-        retrievalConfigurationId: {
-          [Op.in]: retrievalConfigurations.map((r) => r.id),
-        },
-      },
-    });
-    await AgentRetrievalConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const dustAppRunConfigurations = await AgentDustAppRunConfiguration.findAll(
-      {
-        where: {
-          agentConfigurationId: agent.id,
-          workspaceId: workspace.id,
-        },
-      }
-    );
-    await AgentDustAppRunAction.destroy({
-      where: {
-        dustAppRunConfigurationId: {
-          [Op.in]: dustAppRunConfigurations.map((r) => r.sId),
-        },
-      },
-    });
-    await AgentDustAppRunConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,
@@ -397,35 +326,63 @@ export async function deleteRunOnDustAppsActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  const runs = await RunResource.listByWorkspace(workspace, {
-    includeApp: true,
-  });
+  const localLogger = hardDeleteLogger.child({ workspaceId });
 
-  const chunkSize = 8;
-  const chunks = chunk(runs, chunkSize);
+  const BATCH_SIZE = 10_000;
+  let deletedRuns = 0;
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    if (!chunk) {
-      continue;
-    }
-    await Promise.all(
-      chunk.map((run) => {
-        return (async () => {
-          const res = await coreAPI.deleteRun({
-            projectId: run.app.dustAPIProjectId,
-            runId: run.dustRunId,
-          });
-          if (res.isErr()) {
-            throw new Error(
-              `Error deleting Run from Core: ${res.error.message}`
-            );
-          }
-          await run.delete(auth);
-        })();
-      })
+  // Fetch the total of runs to fetch to max end to not go over.
+  const totalRunsToFetch = await RunResource.countByWorkspace(workspace);
+  localLogger.info(
+    { totalRuns: totalRunsToFetch },
+    "Numbers of runs to be deleted"
+  );
+
+  do {
+    const runs = await RunResource.listByWorkspace(workspace, {
+      includeApp: true,
+      limit: BATCH_SIZE,
+      order: [["createdAt", "ASC"]],
+    });
+
+    localLogger.info(
+      { batchSize: runs.length, deletedRuns },
+      "Processing batch of runs"
     );
-  }
+
+    await concurrentExecutor(
+      runs,
+      async (run, idx) => {
+        const res = await coreAPI.deleteRun({
+          projectId: run.app.dustAPIProjectId,
+          runId: run.dustRunId,
+        });
+        if (res.isErr()) {
+          throw new Error(`Error deleting Run from Core: ${res.error.message}`);
+        }
+        await run.delete(auth);
+
+        if (idx % 500) {
+          localLogger.info({ idx, runId: run.id }, "Run deleted");
+        }
+      },
+      { concurrency: 12 }
+    );
+
+    localLogger.info(
+      { deletedRuns, batchRunsDeleted: runs.length },
+      "Processed batch of runs"
+    );
+
+    // The last fetch was less than the batch size, so we know there is no batch after that.
+    if (runs.length < BATCH_SIZE) {
+      localLogger.info(
+        "Exiting the loop as there is less runs than the batch size"
+      );
+      break;
+    }
+    deletedRuns += runs.length;
+  } while (deletedRuns <= totalRunsToFetch);
 }
 
 export const deleteRemoteMCPServersActivity = async ({

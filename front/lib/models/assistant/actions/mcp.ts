@@ -5,6 +5,7 @@ import { DataTypes } from "sequelize";
 
 import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -188,7 +189,9 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare functionCallName: string | null;
 
   declare step: number;
+  declare version: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+  declare stepContentId: ForeignKey<AgentStepContentModel["id"]> | null;
 
   declare isError: boolean;
   declare executionState:
@@ -233,6 +236,11 @@ AgentMCPAction.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    version: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
     executionState: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -258,11 +266,6 @@ AgentMCPAction.init(
     modelName: "agent_mcp_action",
     sequelize: frontSequelize,
     indexes: [
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-12): Remove index
-      {
-        fields: ["agentMessageId"],
-        concurrently: true,
-      },
       {
         fields: ["workspaceId", "agentMessageId"],
         concurrently: true,
@@ -277,6 +280,15 @@ AgentMCPAction.belongsTo(AgentMessage, {
 
 AgentMessage.hasMany(AgentMCPAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+AgentMCPAction.belongsTo(AgentStepContentModel, {
+  foreignKey: { name: "stepContentId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+
+AgentStepContentModel.hasMany(AgentMCPAction, {
+  foreignKey: { name: "stepContentId", allowNull: true },
 });
 
 export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPActionOutputItem> {

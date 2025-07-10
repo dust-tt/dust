@@ -146,6 +146,7 @@ pub mod oauth {
         pub mod mcp;
         pub mod microsoft;
         pub mod mock;
+        pub mod monday;
         pub mod notion;
         pub mod salesforce;
         pub mod slack;

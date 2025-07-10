@@ -1,9 +1,9 @@
 import { Chip, DataTable, Label, SearchInput, Spinner } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { keyBy } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";

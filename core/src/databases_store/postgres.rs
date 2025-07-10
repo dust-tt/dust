@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
@@ -319,3 +319,13 @@ pub const SQL_INDEXES: [&'static str; 2] = [
     "CREATE UNIQUE INDEX IF NOT EXISTS tables_rows_unique ON tables_rows (row_id, table_id);",
     "CREATE INDEX IF NOT EXISTS tables_rows_table_id ON tables_rows (table_id);",
 ];
+
+pub async fn get_postgres_store() -> Result<PostgresDatabasesStore> {
+    match std::env::var("DATABASES_STORE_DATABASE_URI") {
+        Ok(db_uri) => {
+            let s = PostgresDatabasesStore::new(&db_uri).await?;
+            Ok(s)
+        }
+        Err(_) => Err(anyhow!("DATABASES_STORE_DATABASE_URI not set."))?,
+    }
+}

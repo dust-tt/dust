@@ -8,7 +8,6 @@ import {
   SheetContainer,
   SheetContent,
   UserGroupIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
@@ -16,6 +15,7 @@ import { useCallback, useState } from "react";
 
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
 import type {
   AgentMention,

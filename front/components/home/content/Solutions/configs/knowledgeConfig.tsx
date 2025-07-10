@@ -32,10 +32,10 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Access company-wide knowledge instantly",
-    "Find product information across knowledge bases",
-    "Get answers in Slack with relevant context and citations",
-    "Surface blockers from project discussions",
+    "Access company-wide knowledge instantly.",
+    "Find product information across knowledge bases.",
+    "Get answers in Slack with relevant context and citations.",
+    "Surface blockers from project discussions.",
   ],
   image: "/static/landing/knowledge/askacme.png",
 };
@@ -151,7 +151,7 @@ export const UseCases: UseCaseProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you’re newly onboarded or a veteran team member.",
+    "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you're newly onboarded or a veteran team member.",
   name: "Boris Lipiainen",
   title: "Chief Product and Technology Officer at Kyriba",
   logo: "/static/landing/logos/color/kyriba.png",
@@ -172,7 +172,7 @@ export const Stories: CustomerStory[] = [
     src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
   },
   {
-    title: "Kyriba’s adoption of Dust across all functions",
+    title: "Kyriba's adoption of Dust across all functions",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
@@ -187,7 +187,7 @@ export const Stories: CustomerStory[] = [
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_payfit.png",
   },
   {
-    title: "November Five’s journey to minimizing routine tasks with Dust",
+    title: "November Five's journey to minimizing routine tasks with Dust",
     content:
       "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
     href: "https://blog.dust.tt/november-five-ai-transformation-dust/",

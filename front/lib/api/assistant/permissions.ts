@@ -1,15 +1,10 @@
 import { Op } from "sequelize";
 
-import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedAgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import {
-  isDustAppRunConfiguration,
-  isServerSideMCPServerConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -93,13 +88,6 @@ export async function getAgentConfigurationGroupIdsFromActions(
     auth,
     getDataSourceViewIdsFromActions(actions)
   );
-  const dustApps = await AppResource.fetchByIds(
-    auth,
-    actions
-      .filter((action) => isDustAppRunConfiguration(action))
-      .map((action) => (action as DustAppRunConfigurationType).appId)
-  );
-
   // Map spaceId to its group requirements.
   const spacePermissions = new Map<string, Set<number>>();
 
@@ -114,20 +102,6 @@ export async function getAgentConfigurationGroupIdsFromActions(
       spacePermissions.set(spaceId, new Set());
     }
     const groups = groupsFromRequestedPermissions(view.requestedPermissions());
-    groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
-  }
-
-  // Collect DustApp permissions by space.
-  for (const app of dustApps) {
-    const { sId: spaceId } = app.space;
-    if (ignoreSpaceIds?.has(spaceId)) {
-      continue;
-    }
-
-    if (!spacePermissions.has(spaceId)) {
-      spacePermissions.set(spaceId, new Set());
-    }
-    const groups = groupsFromRequestedPermissions(app.requestedPermissions());
     groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
   }
 

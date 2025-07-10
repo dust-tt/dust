@@ -16,15 +16,10 @@ import type {
   AgentActionSpecificEvent,
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
-import {
-  isConversationIncludeFileConfiguration,
-  isDustAppRunConfiguration,
-  isMCPToolConfiguration,
-  isSearchLabelsConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getPublicErrorMessage } from "@app/lib/api/assistant/agent_errors";
+import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -40,6 +35,7 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -63,10 +59,11 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  ModelId,
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, removeNulls, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { assertNever, removeNulls } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -75,6 +72,7 @@ import type { TextContentType } from "@app/types/assistant/agent_message_content
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
+const MAX_AUTO_RETRY = 3;
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // nor updating it (responsibility of the caller based on the emitted events).
@@ -146,6 +144,9 @@ async function* runMultiActionsAgentLoop(
   let processedContent = "";
   const runIds = [];
 
+  // Track step content IDs by function call ID for later use in actions.
+  const functionCallStepContentIds: Record<string, ModelId> = {};
+
   for (let i = 0; i < maxStepsPerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
@@ -178,19 +179,20 @@ async function* runMultiActionsAgentLoop(
     for await (const event of loopIterationStream) {
       switch (event.type) {
         case "agent_error":
-          const publicErrorMessage = getPublicErrorMessage(event.error);
+          const { publicMessage } = categorizeAgentErrorMessage(event.error);
 
           localLogger.error(
             {
               elapsedTime: Date.now() - now,
               error: event.error,
-              publicErrorMessage,
+              publicErrorMessage: publicMessage,
             },
             "Error running multi-actions agent."
           );
+
           yield {
             ...event,
-            error: { ...event.error, message: publicErrorMessage },
+            error: { ...event.error, message: publicMessage },
           };
           return;
         case "agent_actions":
@@ -209,19 +211,24 @@ async function* runMultiActionsAgentLoop(
           event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
           const eventStreamGenerators = event.actions.map(
-            ({ action, inputs, functionCallId, specification }, index) => {
+            ({ action, inputs, functionCallId }, index) => {
+              // Find the step content ID for this function call
+              const stepContentId = functionCallId
+                ? functionCallStepContentIds[functionCallId]
+                : undefined;
+
               return runAction(auth, {
                 configuration,
                 actionConfiguration: action,
                 conversation,
                 agentMessage,
                 inputs,
-                specification,
                 functionCallId,
                 step: i,
                 stepActionIndex: index,
                 stepActions: event.actions.map((a) => a.action),
                 citationsRefsOffset,
+                stepContentId,
               });
             }
           );
@@ -262,14 +269,24 @@ async function* runMultiActionsAgentLoop(
           break;
 
         case "agent_step_content":
-          await AgentStepContentModel.create({
+          const stepContent = await AgentStepContentModel.create({
             workspaceId: conversation.owner.id,
             agentMessageId: agentMessage.agentMessageId,
             step: i,
             index: event.index,
             type: event.content.type,
             value: event.content,
+            version: 0,
           });
+
+          // If this is a function call step content, track its ID.
+          if (
+            event.content.type === "function_call" &&
+            event.content.value.id
+          ) {
+            functionCallStepContentIds[event.content.value.id] = stepContent.id;
+          }
+
           agentMessage.contents.push({
             step: i,
             content: event.content,
@@ -356,11 +373,7 @@ async function* runMultiActionsAgent(
   | AgentContentEvent
   | AgentStepContentEvent
 > {
-  const model = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === agentConfiguration.model.modelId &&
-      m.providerId === agentConfiguration.model.providerId
-  );
+  const model = getSupportedModelConfig(agentConfiguration.model);
 
   if (!model) {
     yield {
@@ -471,13 +484,8 @@ async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    const specRes = await getRunnerForActionConfiguration(a).buildSpecification(
-      auth,
-      {
-        name: a.name,
-        description: a.description ?? null,
-      }
-    );
+    const specRes =
+      await getRunnerForActionConfiguration(a).buildSpecification(auth);
 
     if (specRes.isErr()) {
       logger.error(
@@ -589,9 +597,13 @@ async function* runMultiActionsAgent(
   runConfig.MODEL.provider_id = model.providerId;
   runConfig.MODEL.model_id = model.modelId;
   runConfig.MODEL.temperature = agentConfiguration.model.temperature;
-  if (agentConfiguration.model.reasoningEffort) {
-    runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
+
+  const reasoningEffort =
+    agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
+  if (reasoningEffort !== "none" && reasoningEffort !== "light") {
+    runConfig.MODEL.reasoning_effort = reasoningEffort;
   }
+
   if (agentConfiguration.model.responseFormat) {
     runConfig.MODEL.response_format = JSON.parse(
       agentConfiguration.model.responseFormat
@@ -602,33 +614,76 @@ async function* runMultiActionsAgent(
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
-  const res = await runActionStreamed(
-    auth,
-    "assistant-v2-multi-actions-agent",
-    runConfig,
-    [
+  let autoRetryCount = 0;
+  let isRetryableModelError = false;
+  let res;
+
+  do {
+    res = await runActionStreamed(
+      auth,
+      "assistant-v2-multi-actions-agent",
+      runConfig,
+      [
+        {
+          conversation: modelConversationRes.value.modelConversation,
+          specifications,
+          prompt,
+        },
+      ],
       {
-        conversation: modelConversationRes.value.modelConversation,
-        specifications,
-        prompt,
-      },
-    ],
-    {
-      conversationId: conversation.sId,
-      workspaceId: conversation.owner.sId,
-      userMessageId: userMessage.sId,
+        conversationId: conversation.sId,
+        workspaceId: conversation.owner.sId,
+        userMessageId: userMessage.sId,
+      }
+    );
+
+    if (res.isErr()) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error: res.error,
+        },
+        "Error running multi-actions agent."
+      );
+
+      const { category } = categorizeAgentErrorMessage({
+        code: "multi_actions_error",
+        message: res.error.message,
+      });
+
+      isRetryableModelError = category === "retryable_model_error";
+
+      if (!(isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY)) {
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "multi_actions_error",
+            message: `Error running agent: [${res.error.type}] ${res.error.message}`,
+            metadata: null,
+          },
+        } satisfies AgentErrorEvent;
+
+        return;
+      }
+
+      logger.warn(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error: res.error.message,
+        },
+        "Auto-retrying multi-actions agent."
+      );
     }
-  );
+
+    autoRetryCount += 1;
+  } while (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY);
 
   if (res.isErr()) {
-    logger.error(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        error: res.error,
-      },
-      "Error running multi-actions agent."
-    );
     yield {
       type: "agent_error",
       created: Date.now(),
@@ -896,7 +951,7 @@ async function* runMultiActionsAgent(
     }
 
     const chainOfThought =
-      nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
+      (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
     yield {
       type: "agent_message_content",
@@ -950,8 +1005,6 @@ async function* runMultiActionsAgent(
       actionNamesFromLLM.includes(ac.name)
     );
     let args = a.arguments;
-    let spec =
-      specifications.find((s) => actionNamesFromLLM.includes(s.name)) ?? null;
 
     if (!action) {
       if (!a.name) {
@@ -1056,19 +1109,12 @@ async function* runMultiActionsAgent(
 
         action = catchAllAction;
         args = {};
-        spec = {
-          description:
-            "The agent attempted to run an invalid action, this will catch it.",
-          inputSchema: {},
-          name: a.name,
-        };
       }
     }
 
     actions.push({
       action: action!,
       inputs: args ?? {},
-      specification: spec,
       functionCallId: a.functionCallId ?? null,
     });
   }
@@ -1076,7 +1122,7 @@ async function* runMultiActionsAgent(
   yield* contentParser.flushTokens();
 
   const chainOfThought =
-    nativeChainOfThought ?? contentParser.getChainOfThought() ?? "";
+    (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
   if (chainOfThought?.length) {
     yield {
@@ -1120,210 +1166,30 @@ async function* runAction(
     conversation,
     agentMessage,
     inputs,
-    specification,
     functionCallId,
     step,
     stepActionIndex,
     stepActions,
     citationsRefsOffset,
+    stepContentId,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: ActionConfigurationType;
     conversation: ConversationType;
     agentMessage: AgentMessageType;
     inputs: Record<string, string | boolean | number>;
-    specification: AgentActionSpecification | null;
     functionCallId: string | null;
     step: number;
     stepActionIndex: number;
     stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
+    stepContentId?: ModelId;
   }
 ): AsyncGenerator<
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
   void
 > {
-  const now = Date.now();
-
-  if (isDustAppRunConfiguration(actionConfiguration)) {
-    if (!specification) {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          elapsedTime: Date.now() - now,
-        },
-        "No specification found for Dust app run action."
-      );
-      yield {
-        type: "agent_error",
-        created: now,
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "parameters_generation_error",
-          message: "No specification found for Dust app run action.",
-          metadata: null,
-        },
-      };
-      return;
-    }
-
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(
-      auth,
-      {
-        agentConfiguration: configuration,
-        conversation,
-        agentMessage,
-        rawInputs: inputs,
-        functionCallId,
-        step,
-      },
-      {
-        spec: specification,
-      }
-    );
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "dust_app_run_params":
-          yield event;
-          break;
-        case "dust_app_run_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "dust_app_run_block":
-          yield event;
-          break;
-        case "dust_app_run_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isConversationIncludeFileConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "conversation_include_file_params":
-          yield event;
-          break;
-        case "conversation_include_file_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-        case "conversation_include_file_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isSearchLabelsConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "search_labels_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-
-        case "search_labels_params":
-          yield event;
-          break;
-
-        case "search_labels_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isMCPToolConfiguration(actionConfiguration)) {
+  if (isMCPToolConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(auth, {
@@ -1336,6 +1202,7 @@ async function* runAction(
       stepActionIndex,
       stepActions,
       citationsRefsOffset,
+      stepContentId,
     });
 
     for await (const event of eventStream) {
