@@ -10,8 +10,8 @@ import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import type { Result } from "@app/types";
+import { makeSId } from "@app/lib/resources/string_ids";
+import type { ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type { AgentStepContentType } from "@app/types/assistant/agent_step_content";
 
@@ -32,22 +32,37 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<AgentStepContentModel>, "sId">,
+    blob: CreationAttributes<AgentStepContentModel>,
     transaction?: Transaction
   ): Promise<AgentStepContentResource> {
-    const sId = generateRandomModelSId();
-    const agentStepContent = await AgentStepContentModel.create(
-      {
-        ...blob,
-        sId,
-      },
-      { transaction }
-    );
+    const agentStepContent = await AgentStepContentModel.create(blob, {
+      transaction,
+    });
 
     return new AgentStepContentResource(
       AgentStepContentModel,
       agentStepContent.get()
     );
+  }
+
+  get sId(): string {
+    return AgentStepContentResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("agent_step_content", {
+      id,
+      workspaceId,
+    });
   }
 
   static async fetchByAgentMessage({
