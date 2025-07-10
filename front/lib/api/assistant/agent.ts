@@ -195,7 +195,7 @@ async function* runMultiActionsAgentLoop(
               "Error running multi-actions agent."
             );
 
-            // Do not yield and error and stop if we get a retryable error.
+            // If we get a retryable error, do not yield an error but instead auto retry.
             isRetryableModelError = category === "retryable_model_error";
             if (isRetryableModelError) {
               break;
