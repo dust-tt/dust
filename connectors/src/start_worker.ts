@@ -1,4 +1,5 @@
 import type { ConnectorProvider } from "@dust-tt/client";
+import { Runtime } from "@temporalio/worker/lib/runtime";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -9,7 +10,8 @@ import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/wo
 import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
-import { setupGlobalErrorHandler } from "@connectors/types";
+import { closeRedisClient } from "@connectors/lib/redis";
+import { isDevelopment, setupGlobalErrorHandler } from "@connectors/types";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
@@ -49,11 +51,31 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];
 
 async function runWorkers(workers: WorkerType[]) {
-  for (const worker of workers) {
-    workerFunctions[worker]().catch((err) =>
-      logger.error(errorFromAny(err), `Error running ${worker} worker.`)
+  // Start all workers in parallel
+  try {
+    const promises = workers.map((worker) =>
+      Promise.resolve()
+        .then(() => workerFunctions[worker]())
+        .catch((err) => {
+          logger.error(errorFromAny(err), `Error running ${worker} worker.`);
+        })
     );
+
+    // Wait for all workers to complete
+    await Promise.all(promises);
+  } catch (e) {
+    logger.error(errorFromAny(e), "Unexpected error during worker startup.");
   }
+
+  // Shutdown Temporal native runtime *once*
+  // Fix the issue of connectors hanging after receiving SIGINT in dev
+  // We don't have this issue with front workers, and deserve an investigation (no appetite for now)
+  if (isDevelopment()) {
+    await Runtime.instance().shutdown();
+  }
+
+  // Shutdown potential Redis client
+  await closeRedisClient();
 }
 
 yargs(hideBin(process.argv))

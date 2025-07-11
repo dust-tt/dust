@@ -14,7 +14,6 @@ import {
   Input,
   Markdown,
   TextArea,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import _ from "lodash";
@@ -44,6 +43,7 @@ import {
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeAssistantTemplate } from "@app/poke/swr";

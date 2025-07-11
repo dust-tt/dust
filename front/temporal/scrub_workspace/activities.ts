@@ -31,10 +31,10 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI, isGlobalAgentId, removeNulls } from "@app/types";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 export async function sendDataDeletionEmail({
   remainingDays,

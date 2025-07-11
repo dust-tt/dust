@@ -28,6 +28,7 @@ export const OAUTH_PROVIDERS = [
   "gmail",
   "intercom",
   "jira",
+  "monday",
   "notion",
   "slack",
   "gong",
@@ -42,7 +43,6 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   github: "GitHub",
   google_drive: "Google",
-  gmail: "Gmail",
   intercom: "Intercom",
   jira: "Jira",
   notion: "Notion",
@@ -148,6 +148,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "slack":
     case "gong":
     case "microsoft":
+    case "monday":
     case "notion":
     case "confluence":
     case "github":

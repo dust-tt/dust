@@ -1,6 +1,6 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
 import type {
   LightWorkspaceType,

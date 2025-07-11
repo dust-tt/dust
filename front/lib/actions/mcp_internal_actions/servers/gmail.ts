@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { assert } from "console";
+import assert from "assert";
 import { z } from "zod";
 
 import {
@@ -150,8 +150,8 @@ const createServer = (): McpServer => {
       );
 
       if (!response.ok) {
-        console.log(response, await response.json());
-        return makeMCPToolTextError("Failed to create draft");
+        const responseText = await response.text();
+        return makeMCPToolTextError(`Failed to create draft: ${responseText}`);
       }
 
       const result = await response.json();

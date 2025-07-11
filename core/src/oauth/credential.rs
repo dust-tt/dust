@@ -24,6 +24,7 @@ pub enum CredentialProvider {
     Linear,
     Gmail,
     Jira,
+    Monday,
     Mcp,
 }
 
@@ -206,6 +207,9 @@ impl Credential {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Jira => {
+                vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::Monday => {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Mcp => {

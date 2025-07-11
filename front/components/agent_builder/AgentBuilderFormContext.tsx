@@ -167,3 +167,5 @@ export const agentBuilderFormSchema = z.object({
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderAction = z.infer<typeof actionSchema>;
+
+export type BaseActionData = z.infer<typeof baseActionSchema>;

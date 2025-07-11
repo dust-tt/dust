@@ -38,7 +38,7 @@ export function AssistantDetailsPerformance({
   gridMode,
 }: AssistantDetailsPerformanceProps) {
   const [period, setPeriod] = useState(30);
-  const { agentAnalytics, isAgentAnayticsLoading } = useAgentAnalytics({
+  const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,
     period,
@@ -72,7 +72,7 @@ export function AssistantDetailsPerformance({
         </div>
       </div>
 
-      {isAgentAnayticsLoading ? (
+      {isAgentAnalyticsLoading ? (
         <div className="w-full p-6">
           <Spinner variant="dark" />
         </div>

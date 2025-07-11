@@ -69,6 +69,10 @@ async function getDefautPriceFromMetadata(
   return null;
 }
 
+const SUPPORTED_PAYMENT_METHODS = ["card", "sepa_debit"] as const;
+
+type SupportedPaymentMethod = (typeof SUPPORTED_PAYMENT_METHODS)[number];
+
 /**
  * Calls the Stripe API to create a pro plan checkout session for a given workspace.
  * We return the URL of the checkout session.
@@ -77,15 +81,17 @@ async function getDefautPriceFromMetadata(
  * to go through the checkout process.
  */
 export const createProPlanCheckoutSession = async ({
-  owner,
-  user,
+  allowedPaymentMethods = ["card"],
   billingPeriod,
+  owner,
   planCode,
+  user,
 }: {
-  owner: WorkspaceType;
-  user: UserType;
+  allowedPaymentMethods?: SupportedPaymentMethod[];
   billingPeriod: BillingPeriod;
+  owner: WorkspaceType;
   planCode: string;
+  user: UserType;
 }): Promise<string | null> => {
   const stripe = getStripeClient();
 
@@ -133,7 +139,7 @@ export const createProPlanCheckoutSession = async ({
     mode: "subscription",
     client_reference_id: owner.sId,
     customer_email: user.email,
-    payment_method_types: ["card"],
+    payment_method_types: allowedPaymentMethods,
     subscription_data: {
       metadata: {
         planCode: planCode,

@@ -110,18 +110,15 @@ export function AgentBuilderSlackSelector() {
       />
 
       <PopoverRoot>
-        {/* Prevent the PopoverTrigger to validate the form by stopping the event from bubbling up */}
-        <div
-          onClick={(e: React.MouseEvent<HTMLDivElement>) => {
-            e.preventDefault();
+        <PopoverTrigger
+          asChild
+          onClick={(e) => {
             e.stopPropagation();
           }}
         >
-          <PopoverTrigger>
-            <Button label="Slack" icon={SlackLogo} variant="outline" />
-          </PopoverTrigger>
-          <SlackPopoverContent setSlackDrawerOpened={setSlackDrawerOpened} />
-        </div>
+          <Button label="Slack" icon={SlackLogo} variant="outline" />
+        </PopoverTrigger>
+        <SlackPopoverContent setSlackDrawerOpened={setSlackDrawerOpened} />
       </PopoverRoot>
     </>
   );

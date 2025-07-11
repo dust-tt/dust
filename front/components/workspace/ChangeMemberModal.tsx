@@ -16,13 +16,13 @@ import {
   SheetHeader,
   SheetTitle,
   Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { ActiveRoleType, UserTypeWithWorkspace } from "@app/types";

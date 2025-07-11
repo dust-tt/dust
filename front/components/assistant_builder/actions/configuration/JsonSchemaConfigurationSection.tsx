@@ -1,13 +1,9 @@
-import {
-  Button,
-  SparklesIcon,
-  TextArea,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { Button, SparklesIcon, TextArea } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
 
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { Result } from "@app/types";
 

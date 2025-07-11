@@ -6,11 +6,7 @@ import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
-import type {
-  LightWorkspaceType,
-  WhitelistableFeature,
-  WorkspaceEnterpriseConnection,
-} from "@app/types";
+import type { LightWorkspaceType, WhitelistableFeature } from "@app/types";
 
 export function useWorkspace({
   owner,
@@ -77,34 +73,6 @@ export function useWorkspaceAnalytics({
     analytics: data ? data : null,
     isMemberCountLoading: !error && !data,
     isMemberCountError: error,
-  };
-}
-
-// TODO(workos): Remove this once we have migrated to WorkOS.
-export function useWorkspaceEnterpriseConnection({
-  owner,
-  disabled,
-}: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-}) {
-  const workspaceEnterpriseConnectionFetcher: Fetcher<{
-    connection: WorkspaceEnterpriseConnection;
-  }> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/enterprise-connection`,
-    workspaceEnterpriseConnectionFetcher,
-    {
-      disabled,
-    }
-  );
-
-  return {
-    enterpriseConnection: data ? data.connection : null,
-    isEnterpriseConnectionLoading: !error && !data,
-    isEnterpriseConnectionError: error,
-    mutateEnterpriseConnection: mutate,
   };
 }
 

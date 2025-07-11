@@ -214,7 +214,6 @@ async function handleUserMessageEvents(
             case "agent_generation_cancelled":
             case "agent_message_success":
             case "generation_tokens":
-            case "search_labels_params":
             case "tool_approve_execution":
             case "tool_notification":
             case "tool_params": {
@@ -375,7 +374,6 @@ export async function retryAgentMessageWithPubSub(
               case "agent_generation_cancelled":
               case "agent_message_success":
               case "generation_tokens":
-              case "search_labels_params":
               case "tool_approve_execution":
               case "tool_notification":
               case "tool_params": {

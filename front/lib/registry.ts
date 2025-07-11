@@ -177,6 +177,20 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
+  "assistant-builder-autocompletion-suggestions": {
+    app: {
+      appId: "eDoafmNqwn",
+      appHash:
+        "79ff579ada29a0e2726ee038890fba38e61082e30e11dac7a1fb2bf2dc035d80",
+    },
+    config: {
+      CREATE_SUGGESTIONS: {
+        // `provider_id` and `model_id` must be set by caller.
+        function_call: "autocomplete_instructions",
+        use_cache: false,
+      },
+    },
+  },
   "assistant-builder-name-suggestions": {
     app: {
       appId: "34a8c4a2aa",

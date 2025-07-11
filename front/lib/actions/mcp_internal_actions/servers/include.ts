@@ -22,6 +22,7 @@ import {
   getCoreSearchArgs,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
@@ -207,27 +208,13 @@ function createServer(
     );
 
     if (searchResults.isErr()) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: searchResults.error.message,
-          },
-        ],
-      };
+      return makeMCPToolTextError(searchResults.error.message);
     }
 
     if (refsOffset + topK > getRefs().length) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: "The inclusion exhausted the total number of references available for citations",
-          },
-        ],
-      };
+      return makeMCPToolTextError(
+        "The inclusion exhausted the total number of references available for citations"
+      );
     }
 
     const refs = getRefs().slice(refsOffset, refsOffset + topK);

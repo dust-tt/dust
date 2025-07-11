@@ -8,7 +8,6 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
 import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
@@ -28,17 +27,6 @@ export function isDustAppRunConfiguration(
     typeof arg === "object" &&
     "type" in arg &&
     arg.type === "dust_app_run_configuration"
-  );
-}
-
-export function isSearchLabelsConfiguration(
-  arg: unknown
-): arg is SearchLabelsConfigurationType {
-  return (
-    !!arg &&
-    typeof arg === "object" &&
-    "type" in arg &&
-    arg.type === "search_labels_configuration"
   );
 }
 

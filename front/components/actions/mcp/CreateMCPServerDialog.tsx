@@ -8,11 +8,11 @@ import {
   Input,
   Label,
   SliderToggle,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";

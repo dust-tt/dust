@@ -1,6 +1,6 @@
-import { useSendNotification } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
 import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
@@ -259,8 +259,13 @@ export function useFileUploaderService({
         }
 
         if (!uploadResult.ok) {
+          const { error } = await uploadResult.json();
           return new Err(
-            new FileBlobUploadError("failed_to_upload_file", fileBlob.file)
+            new FileBlobUploadError(
+              "failed_to_upload_file",
+              fileBlob.file,
+              error?.message ?? "An unknown error happened."
+            )
           );
         }
 
@@ -291,7 +296,7 @@ export function useFileUploaderService({
         sendNotification({
           type: "error",
           title: `Failed to upload file`,
-          description: `error uploading  ${result.error.file.name} ${result.error.message ? ": " + result.error.message : ""}`,
+          description: `Error uploading  "${result.error.file.name.slice(0, 20)}..." ${result.error.message ? ": " + result.error.message : ""}`,
         });
       } else {
         successfulBlobs.push(result.value);

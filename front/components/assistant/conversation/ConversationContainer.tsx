@@ -1,4 +1,4 @@
-import { Page, useSendNotification } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
@@ -16,6 +16,7 @@ import {
 } from "@app/components/assistant/conversation/lib";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversation/event_handlers";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";

@@ -2,7 +2,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import React from "react";
 
 import type { PriceTableDisplay } from "@app/components/plans/PlansTables";
-import { ProPriceTable } from "@app/components/plans/PlansTables";
+import {
+  BusinessPriceTable,
+  ProPriceTable,
+} from "@app/components/plans/PlansTables";
 import { classNames } from "@app/lib/utils";
 import type { BillingPeriod, PlanType, WorkspaceType } from "@app/types";
 
@@ -25,7 +28,7 @@ export function ProPlansTable({
 
   if (isBusiness) {
     return (
-      <ProPriceTable
+      <BusinessPriceTable
         owner={owner}
         display={display}
         size={size}

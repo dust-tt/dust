@@ -9,7 +9,6 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
   Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
@@ -27,6 +26,7 @@ import {
   getDefaultMCPServerActionConfiguration,
   getDefaultMCPServerConfigurationWithId,
 } from "@app/components/assistant_builder/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
