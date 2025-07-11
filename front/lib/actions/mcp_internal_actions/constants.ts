@@ -259,6 +259,9 @@ export const INTERNAL_MCP_SERVERS: Record<
   google_sheets: {
     id: 19,
     availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("google_sheets_tool");
+    },
     tools_stakes: {
       list_spreadsheets: "never_ask",
       get_spreadsheet: "never_ask",
