@@ -177,7 +177,7 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
             // take here, as the row is simply not included in the final result.
             let merged_rows_map = merged_rows_map
                 .into_iter()
-                .filter(|(_, row)| !row.is_delete())
+                .filter(|(_, row)| !row.is_delete)
                 .collect::<HashMap<_, _>>();
 
             new_rows = merged_rows_map.into_values().collect();

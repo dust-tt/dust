@@ -887,30 +887,27 @@ impl Filterable for Table {
 pub struct Row {
     pub row_id: String,
     pub value: serde_json::Map<String, serde_json::Value>,
+    // To keep track of pending delete actions, we use a special marker row.
+    // This allows us to keep all the row data in the same format, which keeps the
+    // implementation simpler.
+    pub is_delete: bool,
 }
-
-// To keep track of pending delete actions, we use a special key in the row value.
-// This allows us to keep all the row datya in the same format, and makes it easier
-// to persist and read from GCS
-pub const DELETED_ROW_MARKER_KEY: &str = "_dust_deleted";
 
 impl Row {
     pub fn new(row_id: String, value: serde_json::Map<String, serde_json::Value>) -> Self {
-        Row { row_id, value }
+        Row {
+            row_id,
+            value,
+            is_delete: false,
+        }
     }
 
     pub fn new_delete_marker_row(row_id: String) -> Self {
         Row {
             row_id,
-            value: serde_json::Map::from_iter(vec![(
-                DELETED_ROW_MARKER_KEY.to_string(),
-                Value::Bool(true),
-            )]),
+            value: serde_json::Map::new(),
+            is_delete: true,
         }
-    }
-
-    pub fn is_delete(&self) -> bool {
-        self.value.contains_key(DELETED_ROW_MARKER_KEY)
     }
 
     /// This method implements our interpretation of CSVs into Table rows.

@@ -223,7 +223,7 @@ impl DatabasesStore for PostgresDatabasesStore {
             );
         } else {
             let (rows_to_add, rows_to_delete): (Vec<&Row>, Vec<&Row>) =
-                rows.iter().partition(|r| !r.is_delete());
+                rows.iter().partition(|r| !r.is_delete);
 
             if !rows_to_delete.is_empty() {
                 let stmt = c

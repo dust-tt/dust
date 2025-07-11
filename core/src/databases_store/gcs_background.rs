@@ -34,22 +34,34 @@ impl GoogleCloudStorageBackgroundProcessingStore {
         )
     }
 
-    fn get_new_csv_storage_file_path(table: &Table) -> String {
+    fn get_new_csv_storage_file_path(table: &Table, is_delete: bool) -> String {
+        // We save the file differently if it's a delete operation
+        let extension = if is_delete { "delete.csv" } else { "csv" };
         format!(
-            "project-{}/{}/{}/{}.csv",
+            "project-{}/{}/{}/{}.{}",
             table.project().project_id(),
             table.data_source_id(),
             table.table_id(),
-            Uuid::new_v4().to_string()
+            Uuid::new_v4().to_string(),
+            extension
         )
     }
 
     async fn get_rows_from_csv(csv_path: String) -> Result<Vec<Row>> {
+        let is_delete = csv_path.ends_with(".delete.csv");
         let csv = GoogleCloudStorageCSVContent {
             bucket: Self::get_bucket()?,
             bucket_csv_path: csv_path,
         };
-        csv.parse().await
+        let mut rows = csv.parse().await?;
+
+        // If it's a 'deleted rows' file, mark all rows as deleted
+        if is_delete {
+            for row in &mut rows {
+                row.is_delete = true;
+            }
+        }
+        Ok(rows)
     }
 
     pub async fn get_gcs_csv_file_names_for_table(table: &Table) -> Result<Vec<String>> {
@@ -113,11 +125,14 @@ impl GoogleCloudStorageBackgroundProcessingStore {
         schema: &TableSchema,
         rows: &Vec<Row>,
     ) -> Result<(), anyhow::Error> {
+        // If this csv is for delete operations, we'll save the file with a different extension
+        let is_delete = rows.get(0).map(|row| row.is_delete).unwrap_or(false);
+
         write_rows_to_bucket(
             schema,
             rows,
             &Self::get_bucket()?,
-            &Self::get_new_csv_storage_file_path(table),
+            &Self::get_new_csv_storage_file_path(table, is_delete),
         )
         .await?;
 
