@@ -112,7 +112,8 @@ export async function formatMessagesForUpsert({
 
   // If the document already exists, only append new sections to the existing document.
   if (existingDocumentBlob) {
-    // Get the createdAt tag from the existing document blob.
+    // Get the createdAt tag from the existing document blob. The `createdAt` tag is formatted as
+    // `createdAt:${createdAt.getTime()}`.
     const createdAtTag = existingDocumentBlob.tags
       .find((t) => t.startsWith("createdAt:"))
       ?.split(":")[1];

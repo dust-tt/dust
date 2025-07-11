@@ -9,7 +9,8 @@ import type {
   UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import type { AxiosError } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
@@ -304,12 +305,13 @@ export async function getDataSourceDocumentBlob({
   try {
     dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
   } catch (e) {
+    if (axios.isAxiosError(e) && e.response?.status === 404) {
+      localLogger.info("Document doesn't exist on Dust. Ignoring.");
+      return undefined;
+    }
+
     localLogger.error({ error: e }, "Error getting document from Dust.");
     throw e;
-  }
-  if (dustRequestResult.status !== 200) {
-    localLogger.info("Document blob doesn't exist on Dust. Ignoring.");
-    return;
   }
 
   return dustRequestResult.data.blob;
