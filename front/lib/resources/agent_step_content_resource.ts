@@ -7,11 +7,10 @@ import type {
 } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
-import { canReadMessage } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -48,16 +47,9 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       where: {
         id: agentMessageId,
       },
-      include: [
-        {
-          model: Message,
-          as: "message",
-          required: true,
-        },
-      ],
     });
 
-    if (!agentMessage || !agentMessage.message) {
+    if (!agentMessage) {
       throw new Error(
         `Unexpected: Agent message not found for agentMessageId: ${agentMessageId}`
       );
@@ -72,20 +64,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     if (agentConfigurations.length === 0) {
       throw new Error(
-        `Unexpected: User does not have access to agent configuration: ${agentMessage.agentConfigurationId}`
-      );
-    }
-
-    const agentConfiguration = agentConfigurations[0];
-
-    // Check if user can read the message using the configuration
-    const canRead = canReadMessage(auth, {
-      configuration: agentConfiguration,
-    } as any);
-
-    if (!canRead) {
-      throw new Error(
-        `Unexpected: User does not have permission to read agent message: ${agentMessageId}`
+        `Unexpected: User does not have access to agent: ${agentMessage.agentConfigurationId}`
       );
     }
   }
@@ -163,30 +142,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }
 
   /**
-   * Helper to filter latest MCP actions within each step content
-   */
-  private static filterLatestMCPActions(
-    contents: AgentStepContentModel[]
-  ): void {
-    for (const content of contents) {
-      if (
-        "agentMCPActions" in content &&
-        Array.isArray((content as any).agentMCPActions)
-      ) {
-        const mcpActions = (content as any).agentMCPActions as AgentMCPAction[];
-
-        if (mcpActions.length > 0) {
-          // Keep only the action with the highest version
-          const maxVersionAction = _.maxBy(mcpActions, "version");
-          (content as any).agentMCPActions = maxVersionAction
-            ? [maxVersionAction]
-            : [];
-        }
-      }
-    }
-  }
-
-  /**
    * Helper to create resources from models
    */
   private static createResources(
@@ -239,9 +194,18 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     if (latestVersionsOnly) {
       contents = this.filterLatestVersions(contents, ["step", "index"]);
 
-      // Also filter MCP actions to latest versions if included
+      // Also filter MCP actions to latest versions
       if (includeMCPActions) {
-        this.filterLatestMCPActions(contents);
+        contents.forEach((c) => {
+          if (!("agentMCPActions" in c)) {
+            return;
+          }
+          const maxVersionAction = _.maxBy(
+            c.agentMCPActions as AgentMCPAction[],
+            "version"
+          );
+          c.agentMCPActions = maxVersionAction ? [maxVersionAction] : [];
+        });
       }
     }
 
@@ -293,7 +257,16 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
       // Also filter MCP actions to latest versions if included
       if (includeMCPActions) {
-        this.filterLatestMCPActions(contents);
+        contents.forEach((c) => {
+          if (!("agentMCPActions" in c)) {
+            return;
+          }
+          const maxVersionAction = _.maxBy(
+            c.agentMCPActions as AgentMCPAction[],
+            "version"
+          );
+          c.agentMCPActions = maxVersionAction ? [maxVersionAction] : [];
+        });
       }
     }
 
@@ -311,6 +284,11 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         new Error("Cannot delete agent step content from another workspace")
       );
     }
+
+    await AgentStepContentResource.checkAgentMessageAccess(
+      auth,
+      this.agentMessageId
+    );
 
     const deletedCount = await AgentStepContentModel.destroy({
       where: {
@@ -337,12 +315,8 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       value: this.value,
     };
 
-    // If the resource was fetched with MCP actions included, serialize them
-    if (
-      "agentMCPActions" in this &&
-      Array.isArray((this as any).agentMCPActions)
-    ) {
-      const mcpActions = (this as any).agentMCPActions as AgentMCPAction[];
+    if ("agentMCPActions" in this && Array.isArray(this.agentMCPActions)) {
+      const mcpActions = this.agentMCPActions as AgentMCPAction[];
 
       // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
       base.mcpActions = mcpActions.map((action: AgentMCPAction) => {
