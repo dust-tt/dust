@@ -29,7 +29,6 @@ const {
   confluenceRemoveUnvisitedPagesActivity,
   confluenceSaveStartSyncActivity,
   confluenceSaveSuccessSyncActivity,
-  confluenceUpdatePagesParentIdsActivity,
   confluenceCheckAndUpsertSinglePageActivity,
   confluenceUpsertLeafPagesActivity,
   confluenceGetActiveChildPageRefsActivity,
@@ -52,6 +51,13 @@ const {
     backoffCoefficient: 2,
     maximumInterval: "3600 seconds",
   },
+});
+
+const { confluenceUpdatePagesParentIdsActivity } = proxyActivities<
+  typeof activities
+>({
+  startToCloseTimeout: "60 minutes",
+  heartbeatTimeout: "5 minutes",
 });
 
 const { reportInitialSyncProgress } = proxyActivities<

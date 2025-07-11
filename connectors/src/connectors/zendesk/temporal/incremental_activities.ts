@@ -307,7 +307,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
           dataSourceConfig,
           loggerArgs,
         });
-      } else if (shouldSyncTicket(ticket, configuration)) {
+      } else if (shouldSyncTicket(ticket, configuration, { brandId })) {
         const comments = commentsPerTicket[ticket.id];
         if (!comments) {
           throw new Error(

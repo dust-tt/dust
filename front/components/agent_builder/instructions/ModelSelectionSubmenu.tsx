@@ -46,22 +46,30 @@ function ModelRadioItem({
 
 export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { isDark } = useTheme();
-  const { field } = useController<
+  const { field: modelField } = useController<
     AgentBuilderFormData,
     "generationSettings.modelSettings"
   >({
     name: "generationSettings.modelSettings",
   });
+  const { field: reasoningEffortField } = useController<
+    AgentBuilderFormData,
+    "generationSettings.reasoningEffort"
+  >({
+    name: "generationSettings.reasoningEffort",
+  });
   const { bestPerformingModelConfigs, otherModelConfigs } =
     categorizeModels(models);
 
-  const currentModelKey = field.value.modelId;
+  const currentModelKey = modelField.value.modelId;
 
   const handleModelSelection = (modelConfig: ModelConfigurationType) => {
-    field.onChange({
+    modelField.onChange({
       modelId: modelConfig.modelId,
       providerId: modelConfig.providerId,
     });
+    // Set reasoning effort to the model's default
+    reasoningEffortField.onChange(modelConfig.defaultReasoningEffort);
   };
 
   return (

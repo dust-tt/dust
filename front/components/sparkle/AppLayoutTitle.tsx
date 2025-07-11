@@ -36,10 +36,24 @@ export function AppLayoutSimpleSaveCancelTitle({
       rightActions={
         <BarHeader.ButtonBar
           variant="validate"
-          onCancel={onCancel}
-          onSave={onSave}
-          isSaving={isSaving}
-          saveTooltip={saveTooltip}
+          cancelButtonProps={{
+            size: "sm",
+            label: "Cancel",
+            variant: "ghost",
+            onClick: onCancel,
+          }}
+          saveButtonProps={
+            onSave
+              ? {
+                  size: "sm",
+                  label: isSaving ? "Saving..." : "Save",
+                  variant: "primary",
+                  onClick: onSave,
+                  disabled: isSaving,
+                  tooltip: saveTooltip,
+                }
+              : undefined
+          }
         />
       }
       className="ml-10 lg:ml-0"

@@ -21,7 +21,7 @@ export async function runGithubWorker() {
       ...activitiesSyncCode,
     },
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 32,
+    maxConcurrentActivityTaskExecutions: 16,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     connection,
     reuseV8Context: true,

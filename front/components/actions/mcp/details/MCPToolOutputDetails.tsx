@@ -17,7 +17,6 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { useCallback } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   ReasoningSuccessOutputType,
@@ -36,6 +35,7 @@ import {
   isWebsearchQueryResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getDocumentIcon } from "@app/lib/content_nodes";
 import type { LightWorkspaceType } from "@app/types";
 import { removeNulls } from "@app/types";
 

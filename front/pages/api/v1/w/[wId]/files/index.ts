@@ -13,7 +13,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import {
   ensureFileSize,
-  isPublicySupportedUseCase,
+  isPubliclySupportedUseCase,
   isSupportedFileContentType,
 } from "@app/types";
 
@@ -129,7 +129,7 @@ async function handler(
         }
 
         // Limit use-case if not a system key.
-        if (!isPublicySupportedUseCase(useCase)) {
+        if (!isPubliclySupportedUseCase(useCase)) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {

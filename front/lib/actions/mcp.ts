@@ -3,7 +3,6 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-import type { DustAppRunConfigurationType } from "@app/components/actions/dust_app_run/utils";
 import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
@@ -70,6 +69,7 @@ import { statsDClient } from "@app/logger/statsDClient";
 import type {
   AgentConfigurationType,
   AgentMessageType,
+  DustAppRunConfigurationType,
   FileUseCase,
   FileUseCaseMetadata,
   FunctionCallType,
@@ -469,6 +469,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       rawInputs,
       functionCallId,
       step,
+      stepContentId,
       stepActionIndex,
       stepActions,
       citationsRefsOffset,
@@ -530,6 +531,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       workspaceId: owner.id,
       isError: false,
       executionState: "pending",
+      version: 0,
+      stepContentId: stepContentId || null,
     });
 
     const mcpAction = new MCPActionType({
@@ -1157,11 +1160,12 @@ const buildErrorEvent = (
 // Internal interface for the retrieval and rendering of an MCPAction action. Should not be used
 // outside api/assistant. We allow a ModelId interface here because we don't have `sId` on actions
 // (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
+// This function only returns the actions with the maximum version for each step.
 export async function mcpActionTypesFromAgentMessageIds(
   auth: Authenticator,
   { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<MCPActionType[]> {
-  const actions = await AgentMCPAction.findAll({
+  const allActions = await AgentMCPAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -1182,7 +1186,17 @@ export async function mcpActionTypesFromAgentMessageIds(
     ],
   });
 
-  return actions.map((action) => {
+  const maxVersionActions = allActions.reduce((acc, current) => {
+    // TODO(durable-agents): remove the default value once stepContentId is not nullable.
+    const key = current.stepContentId ?? current.step;
+    const existing = acc.get(key);
+    if (!existing || current.version > existing.version) {
+      acc.set(key, current);
+    }
+    return acc;
+  }, new Map<number, AgentMCPAction>());
+
+  return Array.from(maxVersionActions.values()).map((action) => {
     return new MCPActionType({
       id: action.id,
       params: action.params,

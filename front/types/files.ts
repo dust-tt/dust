@@ -342,7 +342,7 @@ export function isSupportedFileContentType(
 }
 
 // UseCases supported on the public API
-export function isPublicySupportedUseCase(
+export function isPubliclySupportedUseCase(
   useCase: string
 ): useCase is FileUseCase {
   return ["conversation"].includes(useCase);

@@ -16,13 +16,10 @@ import type {
   AgentActionSpecificEvent,
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
-import {
-  isMCPToolConfiguration,
-  isSearchLabelsConfiguration,
-} from "@app/lib/actions/types/guards";
+import { isMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getPublicErrorMessage } from "@app/lib/api/assistant/agent_errors";
+import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -38,11 +35,13 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -62,6 +61,7 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  ModelId,
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
@@ -74,24 +74,64 @@ import type { TextContentType } from "@app/types/assistant/agent_message_content
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
+const MAX_AUTO_RETRY = 3;
+
+// Process database operations for agent events before publishing to Redis.
+async function processEventForDatabase(
+  event:
+    | AgentErrorEvent
+    | AgentActionSpecificEvent
+    | AgentActionSuccessEvent
+    | GenerationTokensEvent
+    | AgentGenerationCancelledEvent
+    | AgentMessageSuccessEvent,
+  agentMessageRow: AgentMessage
+): Promise<void> {
+  switch (event.type) {
+    case "agent_error":
+      // Store error in database.
+      await agentMessageRow.update({
+        status: "failed",
+        errorCode: event.error.code,
+        errorMessage: event.error.message,
+        errorMetadata: event.error.metadata,
+      });
+      break;
+
+    case "agent_generation_cancelled":
+      // Store cancellation in database.
+      await agentMessageRow.update({
+        status: "cancelled",
+      });
+      break;
+
+    case "agent_message_success":
+      // Store success and run IDs in database.
+      await agentMessageRow.update({
+        runIds: event.runIds,
+        status: "succeeded",
+      });
+
+      break;
+
+    default:
+      // Ensure we handle all event types.
+      break;
+  }
+}
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
-// nor updating it (responsibility of the caller based on the emitted events).
-export async function* runAgent(
+// but it now handles updating it based on the execution results.
+export async function runAgentWithStreaming(
   auth: Authenticator,
   configuration: LightAgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
-  agentMessage: AgentMessageType
-): AsyncGenerator<
-  | AgentErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
-  void
-> {
+  // TODO(DURABLE-AGENTS 2025-07-10): DRY those two arguments to stick with only one.
+  agentMessage: AgentMessageType,
+  agentMessageRow: AgentMessage,
+  redisChannel: string
+): Promise<void> {
   const [fullConfiguration] = await Promise.all([
     getAgentConfiguration(auth, configuration.sId, "full"),
   ]);
@@ -107,6 +147,7 @@ export async function* runAgent(
     throw new Error("Unreachable: could not find owner workspace for agent");
   }
 
+  const redisHybridManager = getRedisHybridManager();
   const stream = runMultiActionsAgentLoop(
     auth,
     fullConfiguration,
@@ -116,7 +157,15 @@ export async function* runAgent(
   );
 
   for await (const event of stream) {
-    yield event;
+    // Process database operations BEFORE publishing to Redis.
+    await processEventForDatabase(event, agentMessageRow);
+
+    // Then publish the event to Redis for consumers.
+    await redisHybridManager.publish(
+      redisChannel,
+      JSON.stringify(event),
+      "agent_execution"
+    );
   }
 }
 
@@ -144,6 +193,9 @@ async function* runMultiActionsAgentLoop(
 
   let processedContent = "";
   const runIds = [];
+
+  // Track step content IDs by function call ID for later use in actions.
+  const functionCallStepContentIds: Record<string, ModelId> = {};
 
   for (let i = 0; i < maxStepsPerRun + 1; i++) {
     const localLogger = logger.child({
@@ -177,19 +229,20 @@ async function* runMultiActionsAgentLoop(
     for await (const event of loopIterationStream) {
       switch (event.type) {
         case "agent_error":
-          const publicErrorMessage = getPublicErrorMessage(event.error);
+          const { publicMessage } = categorizeAgentErrorMessage(event.error);
 
           localLogger.error(
             {
               elapsedTime: Date.now() - now,
               error: event.error,
-              publicErrorMessage,
+              publicErrorMessage: publicMessage,
             },
             "Error running multi-actions agent."
           );
+
           yield {
             ...event,
-            error: { ...event.error, message: publicErrorMessage },
+            error: { ...event.error, message: publicMessage },
           };
           return;
         case "agent_actions":
@@ -209,6 +262,11 @@ async function* runMultiActionsAgentLoop(
 
           const eventStreamGenerators = event.actions.map(
             ({ action, inputs, functionCallId }, index) => {
+              // Find the step content ID for this function call
+              const stepContentId = functionCallId
+                ? functionCallStepContentIds[functionCallId]
+                : undefined;
+
               return runAction(auth, {
                 configuration,
                 actionConfiguration: action,
@@ -220,6 +278,7 @@ async function* runMultiActionsAgentLoop(
                 stepActionIndex: index,
                 stepActions: event.actions.map((a) => a.action),
                 citationsRefsOffset,
+                stepContentId,
               });
             }
           );
@@ -260,14 +319,24 @@ async function* runMultiActionsAgentLoop(
           break;
 
         case "agent_step_content":
-          await AgentStepContentModel.create({
+          const stepContent = await AgentStepContentResource.makeNew({
             workspaceId: conversation.owner.id,
             agentMessageId: agentMessage.agentMessageId,
             step: i,
             index: event.index,
             type: event.content.type,
             value: event.content,
+            version: 0,
           });
+
+          // If this is a function call step content, track its ID.
+          if (
+            event.content.type === "function_call" &&
+            event.content.value.id
+          ) {
+            functionCallStepContentIds[event.content.value.id] = stepContent.id;
+          }
+
           agentMessage.contents.push({
             step: i,
             content: event.content,
@@ -465,13 +534,8 @@ async function* runMultiActionsAgent(
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    const specRes = await getRunnerForActionConfiguration(a).buildSpecification(
-      auth,
-      {
-        name: a.name,
-        description: a.description ?? null,
-      }
-    );
+    const specRes =
+      await getRunnerForActionConfiguration(a).buildSpecification(auth);
 
     if (specRes.isErr()) {
       logger.error(
@@ -600,33 +664,76 @@ async function* runMultiActionsAgent(
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
-  const res = await runActionStreamed(
-    auth,
-    "assistant-v2-multi-actions-agent",
-    runConfig,
-    [
+  let autoRetryCount = 0;
+  let isRetryableModelError = false;
+  let res;
+
+  do {
+    res = await runActionStreamed(
+      auth,
+      "assistant-v2-multi-actions-agent",
+      runConfig,
+      [
+        {
+          conversation: modelConversationRes.value.modelConversation,
+          specifications,
+          prompt,
+        },
+      ],
       {
-        conversation: modelConversationRes.value.modelConversation,
-        specifications,
-        prompt,
-      },
-    ],
-    {
-      conversationId: conversation.sId,
-      workspaceId: conversation.owner.sId,
-      userMessageId: userMessage.sId,
+        conversationId: conversation.sId,
+        workspaceId: conversation.owner.sId,
+        userMessageId: userMessage.sId,
+      }
+    );
+
+    if (res.isErr()) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error: res.error,
+        },
+        "Error running multi-actions agent."
+      );
+
+      const { category } = categorizeAgentErrorMessage({
+        code: "multi_actions_error",
+        message: res.error.message,
+      });
+
+      isRetryableModelError = category === "retryable_model_error";
+
+      if (!(isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY)) {
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "multi_actions_error",
+            message: `Error running agent: [${res.error.type}] ${res.error.message}`,
+            metadata: null,
+          },
+        } satisfies AgentErrorEvent;
+
+        return;
+      }
+
+      logger.warn(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error: res.error.message,
+        },
+        "Auto-retrying multi-actions agent."
+      );
     }
-  );
+
+    autoRetryCount += 1;
+  } while (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY);
 
   if (res.isErr()) {
-    logger.error(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        error: res.error,
-      },
-      "Error running multi-actions agent."
-    );
     yield {
       type: "agent_error",
       created: Date.now(),
@@ -1114,6 +1221,7 @@ async function* runAction(
     stepActionIndex,
     stepActions,
     citationsRefsOffset,
+    stepContentId,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: ActionConfigurationType;
@@ -1125,62 +1233,13 @@ async function* runAction(
     stepActionIndex: number;
     stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
+    stepContentId?: ModelId;
   }
 ): AsyncGenerator<
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
   void
 > {
-  if (isSearchLabelsConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "search_labels_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: null,
-            },
-          };
-          return;
-
-        case "search_labels_params":
-          yield event;
-          break;
-
-        case "search_labels_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isMCPToolConfiguration(actionConfiguration)) {
+  if (isMCPToolConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(auth, {
@@ -1193,6 +1252,7 @@ async function* runAction(
       stepActionIndex,
       stepActions,
       citationsRefsOffset,
+      stepContentId,
     });
 
     for await (const event of eventStream) {

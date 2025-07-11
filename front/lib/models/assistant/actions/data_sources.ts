@@ -2,7 +2,6 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -27,9 +26,6 @@ export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataS
 
   // AgentDataSourceConfiguration can be used by both the retrieval
   // and the MCP actions' configurations.
-  declare retrievalConfigurationId: ForeignKey<
-    AgentRetrievalConfiguration["id"]
-  > | null;
   declare mcpServerConfigurationId: ForeignKey<
     AgentMCPServerConfiguration["id"]
   > | null;
@@ -73,14 +69,6 @@ AgentDataSourceConfiguration.init(
   {
     modelName: "agent_data_source_configuration",
     indexes: [
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
-      { fields: ["retrievalConfigurationId"] },
-      {
-        fields: ["workspaceId", "retrievalConfigurationId"],
-        concurrently: true,
-        name: "agent_data_source_config_workspace_id_retrieval_config_id",
-      },
-      // TODO(WORKSPACE_ID_ISOLATION 2025-05-13): Remove index
       { fields: ["mcpServerConfigurationId"] },
       {
         fields: ["workspaceId", "mcpServerConfigurationId"],
@@ -141,15 +129,6 @@ AgentDataSourceConfiguration.init(
     },
   }
 );
-
-// Retrieval config <> Data source config
-AgentRetrievalConfiguration.hasMany(AgentDataSourceConfiguration, {
-  foreignKey: { name: "retrievalConfigurationId", allowNull: true },
-  onDelete: "RESTRICT",
-});
-AgentDataSourceConfiguration.belongsTo(AgentRetrievalConfiguration, {
-  foreignKey: { name: "retrievalConfigurationId", allowNull: true },
-});
 
 // MCP server config <> Data source config
 AgentMCPServerConfiguration.hasMany(AgentDataSourceConfiguration, {

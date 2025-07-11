@@ -157,7 +157,6 @@ export function messageReducer(
       newState.agentState = "thinking";
       return newState;
     }
-    case "search_labels_params":
     case "tool_params":
       return {
         ...state,

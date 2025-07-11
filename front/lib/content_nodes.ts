@@ -9,12 +9,16 @@ import {
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
 
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_CONFIGURATIONS,
+  getConnectorProviderLogoWithFallback,
+} from "@app/lib/connector_providers";
 import type {
   ContentNode,
   ContentNodeType,
   DataSourceViewContentNode,
 } from "@app/types";
+import { isConnectorProvider } from "@app/types";
 import { assertNever } from "@app/types";
 // Since titles will be synced in ES we don't support arbitrarily large titles.
 export const MAX_NODE_TITLE_LENGTH = 512;
@@ -43,6 +47,17 @@ export const SPREADSHEET_INTERNAL_MIME_TYPES = [
   INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET,
   INTERNAL_MIME_TYPES.FOLDER.SPREADSHEET,
 ] as readonly string[];
+
+export function getDocumentIcon(provider: string | null | undefined) {
+  if (provider && isConnectorProvider(provider)) {
+    const IconComponent = getConnectorProviderLogoWithFallback({
+      provider,
+      fallback: DocumentIcon,
+    });
+    return IconComponent;
+  }
+  return DocumentIcon;
+}
 
 function getVisualForFileContentNode(node: ContentNode & { type: "document" }) {
   if (node.expandable) {

@@ -1,30 +1,34 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
   advanced_notion_management: {
-    description: "Advanced features for Notion workspace management",
+    description:
+      "Advanced features for Notion workspace management shown to admins",
   },
   advanced_search: {
-    description: "Enhanced search capabilities across workspaces",
+    description:
+      "Activates the advanced search option: browse selected data like a file system",
   },
   agent_builder_v2: {
-    description: "Version 2 of the agent builder interface",
+    description: "[Dust-only] Version 2 of the agent builder interface (wip)",
   },
   agent_builder_instructions_autocomplete: {
-    description: "Autocomplete feature for agent builder instructions",
+    description:
+      "[Dust-only] Autocomplete feature for agent builder instructions (wip)",
   },
   claude_4_opus_feature: {
-    description: "Access to Claude 4 Opus model",
+    description: "Access to Claude 4 Opus model in the agent builder",
   },
   co_edition: {
     description: "Collaborative editing features",
   },
   deepseek_feature: {
-    description: "Access to DeepSeek models",
+    description:
+      "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
   },
   deepseek_r1_global_agent_feature: {
     description: "Access to DeepSeek R1 model as global agent",
   },
   dev_mcp_actions: {
-    description: "MCP tools currently in development",
+    description: "[Dust-only] MCP tools currently in development",
   },
   disable_run_logs: {
     description: "Disable logging of agent runs",
@@ -68,26 +72,28 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   openai_o1_high_reasoning_feature: {
     description: "Access to OpenAI o1 high reasoning model",
   },
-  openai_o1_mini_feature: {
-    description: "Access to OpenAI o1-mini model",
-  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
   },
   salesforce_tool: {
-    description: "Salesforce MCP tool",
+    description:
+      "Salesforce MCP tool (activated by default on most plans, FF to override the plan config)",
   },
   show_debug_tools: {
-    description: "Display debug tools in the interface",
+    description: "[Dust-only] Display debug tools in the interface",
   },
   usage_data_api: {
-    description: "API for accessing usage data",
+    description:
+      "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",
   },
   workos_user_provisioning: {
     description: "WorkOS user provisioning features",
   },
   xai_feature: {
-    description: "Access to xAI models",
+    description: "Access to xAI models in the agent builder",
+  },
+  monday_tool: {
+    description: "Monday MCP tool",
   },
 } as const;
 

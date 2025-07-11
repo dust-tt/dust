@@ -28,7 +28,6 @@ import {
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import type { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
@@ -1123,7 +1122,6 @@ export async function createAgentActionConfiguration(
     if (action.dataSources) {
       await createAgentDataSourcesConfiguration(auth, t, {
         dataSourceConfigurations: action.dataSources,
-        retrievalConfiguration: null,
         mcpServerConfiguration: mcpConfig,
       });
     }
@@ -1182,11 +1180,9 @@ async function createAgentDataSourcesConfiguration(
   t: Transaction,
   {
     dataSourceConfigurations,
-    retrievalConfiguration,
     mcpServerConfiguration,
   }: {
     dataSourceConfigurations: DataSourceConfiguration[];
-    retrievalConfiguration: AgentRetrievalConfiguration | null;
     mcpServerConfiguration: AgentMCPServerConfiguration | null;
   }
 ): Promise<AgentDataSourceConfiguration[]> {
@@ -1241,7 +1237,6 @@ async function createAgentDataSourcesConfiguration(
         dataSourceId: dataSourceView.dataSource.id,
         parentsIn: dsConfig.filter.parents?.in,
         parentsNotIn: dsConfig.filter.parents?.not,
-        retrievalConfigurationId: retrievalConfiguration?.id || null,
         dataSourceViewId: dataSourceView.id,
         mcpServerConfigurationId: mcpServerConfiguration?.id || null,
         tagsMode,

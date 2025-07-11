@@ -27,7 +27,7 @@ export type ActionGeneratedFileType = {
   snippet: string | null;
 };
 
-export type BaseActionType = "search_labels_action" | "tool_action";
+export type BaseActionType = "tool_action";
 
 export interface BaseAgentActionType {
   type: BaseActionType;
@@ -99,6 +99,7 @@ export interface BaseActionRunParams {
   rawInputs: Record<string, unknown>;
   functionCallId: string | null;
   step: number;
+  stepContentId?: ModelId;
 }
 
 export abstract class BaseActionConfigurationServerRunner<

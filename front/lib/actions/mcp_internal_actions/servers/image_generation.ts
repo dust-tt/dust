@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { z } from "zod";
 
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -107,17 +108,10 @@ const createServer = (auth: Authenticator): McpServer => {
       if (remaining <= 0) {
         statsDClient.increment("tools.image_generation.rate_limit_hit", 1);
 
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text:
-                `Rate limit of ${maxImagesPerWeek} requests per week exceeded. Contact your ` +
-                "administrator to increase the limit.",
-            },
-          ],
-        };
+        return makeMCPToolTextError(
+          `Rate limit of ${maxImagesPerWeek} requests per week exceeded. Contact your ` +
+            "administrator to increase the limit."
+        );
       }
 
       try {
@@ -146,15 +140,7 @@ const createServer = (auth: Authenticator): McpServer => {
         );
 
         if (!result.data) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: "No image generated.",
-              },
-            ],
-          };
+          return makeMCPToolTextError("No image generated.");
         }
 
         const fileName = `${name}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
@@ -177,28 +163,13 @@ const createServer = (auth: Authenticator): McpServer => {
         );
 
         if (error instanceof OpenAI.APIError) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text:
-                  `Error generating image. Image generation service error: Status: ` +
-                  `${error.status}, Code: ${error.code}, Message: ${error.message}`,
-              },
-            ],
-          };
+          return makeMCPToolTextError(
+            `Error generating image. Image generation service error: Status: ` +
+              `${error.status}, Code: ${error.code}, Message: ${error.message}`
+          );
         }
 
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "Error generating image.",
-            },
-          ],
-        };
+        return makeMCPToolTextError("Error generating image.");
       }
     }
   );

@@ -10,11 +10,11 @@ import {
 import { Breadcrumbs, DocumentIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import { getDocumentIcon } from "@app/components/actions/retrieval/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import { isDataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isFilesystemPathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getDocumentIcon } from "@app/lib/content_nodes";
 import { getVisualForContentNodeType } from "@app/lib/content_nodes";
 import { formatDataSourceDisplayName } from "@app/types";
 
