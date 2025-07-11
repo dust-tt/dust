@@ -7,10 +7,8 @@ use tracing::{error, info};
 use crate::{
     databases::table::{LocalTable, Table},
     databases_store::{
-        self,
-        gcs::GoogleCloudStorageDatabasesStore,
+        self, gcs::GoogleCloudStorageDatabasesStore,
         gcs_background::GoogleCloudStorageBackgroundProcessingStore,
-        store::{DatabasesStoreStrategy, CURRENT_STRATEGY},
     },
     project::Project,
     stores::{postgres, store},
@@ -46,7 +44,7 @@ pub struct TableUpsertActivityData {
 
 pub struct TableUpsertsBackgroundWorker {
     store: Box<dyn store::Store + Sync + Send>,
-    databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send>,
+    gcs_db_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send>,
     redis_conn: redis::aio::Connection,
 }
 
@@ -60,26 +58,14 @@ impl TableUpsertsBackgroundWorker {
             Err(_) => panic!("CORE_DATABASE_URI is required (postgres)"),
         };
 
-        let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
-            match CURRENT_STRATEGY {
-                DatabasesStoreStrategy::PostgresOnly
-                | DatabasesStoreStrategy::PostgresAndWriteToGCS => {
-                    let store = databases_store::postgres::get_postgres_store()
-                        .await
-                        .unwrap();
-                    Box::new(store)
-                }
-                DatabasesStoreStrategy::GCSOnly | DatabasesStoreStrategy::GCSAndWriteToPostgres => {
-                    let store = GoogleCloudStorageDatabasesStore::new();
-                    Box::new(store)
-                }
-            };
+        let gcs_db_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
+            Box::new(GoogleCloudStorageDatabasesStore::new());
 
         let redis_conn = REDIS_CLIENT.get_async_connection().await?;
 
         Ok(Self {
             store,
-            databases_store,
+            gcs_db_store,
             redis_conn,
         })
     }
@@ -105,7 +91,7 @@ impl TableUpsertsBackgroundWorker {
         local_table
             .upsert_rows_now(
                 &self.store,
-                &self.databases_store,
+                &self.gcs_db_store,
                 rows,
                 false,
                 false, /*postgres*/
