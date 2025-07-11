@@ -20,16 +20,13 @@ use crate::{
 // Define a static Redis client with lazy initialization
 lazy_static! {
     pub static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
-    pub static ref REDIS_CLIENT: Option<Arc<RedisClient>> = {
+    pub static ref REDIS_CLIENT: Arc<RedisClient> = {
         match RedisClient::open(&**REDIS_URI) {
-            Ok(client) => Some(Arc::new(client)),
-            Err(e) => {
-                error!(
-                    "Failed to connect to Redis: {}. Continuing without Redis cache.",
-                    e
-                );
-                None
-            }
+            Ok(client) => Arc::new(client),
+            Err(e) => panic!(
+                "Failed to connect to Redis: {}. Redis client must be initialized.",
+                e
+            ),
         }
     };
 }
@@ -78,11 +75,7 @@ impl TableUpsertsBackgroundWorker {
                 }
             };
 
-        let redis_conn = if let Some(client) = &*REDIS_CLIENT {
-            client.get_async_connection().await?
-        } else {
-            return Err("Redis client is not initialized".into());
-        };
+        let redis_conn = REDIS_CLIENT.get_async_connection().await?;
 
         Ok(Self {
             store,

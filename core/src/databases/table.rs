@@ -413,11 +413,7 @@ impl LocalTable {
     }
 
     async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
-        let mut redis_conn = if let Some(client) = &*REDIS_CLIENT {
-            client.get_async_connection().await?
-        } else {
-            return Err(anyhow!("Redis client not available"));
-        };
+        let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
 
         // Write the rows to GCS for the worker to process
         let rows_arc = Arc::new(rows);
