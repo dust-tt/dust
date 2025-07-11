@@ -921,13 +921,16 @@ export async function completeGarbageCollectionRun(
   connectorId: ModelId,
   nbOfBatches: number
 ) {
-  const redisCli = await redisClient({ origin: "notion_gc" });
   const redisKey = redisGarbageCollectorKey(connectorId);
-  await redisCli.del(`${redisKey}-pages`);
-  await redisCli.del(`${redisKey}-databases`);
+  // Generate all the keys
+  const keysToDelete = [`${redisKey}-pages`, `${redisKey}-databases`];
   for (let i = 0; i < nbOfBatches; i++) {
-    await redisCli.del(`${redisKey}-resources-not-seen-batch-${i}`);
+    keysToDelete.push(`${redisKey}-resources-not-seen-batch-${i}`);
   }
+
+  const redisCli = await redisClient({ origin: "notion_gc" });
+  // Delete all keys in one DEL command
+  await redisCli.del(keysToDelete);
 
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
