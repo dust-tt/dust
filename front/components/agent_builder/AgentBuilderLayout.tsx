@@ -5,11 +5,12 @@ import {
 } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
 import Head from "next/head";
-import { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import React from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
-import { AgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 
 const COLLAPSED_RIGHT_PANEL_SIZE = 3;
 const MIN_EXPANDED_RIGHT_PANEL_SIZE = 20;
@@ -24,8 +25,9 @@ export function AgentBuilderLayout({
   leftPanel,
   rightPanel,
 }: AgentBuilderLayoutProps) {
-  const { owner, isPreviewPanelOpen, setIsPreviewPanelOpen } =
-    useContext(AgentBuilderContext);
+  const { owner } = useAgentBuilderContext();
+  const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
+    usePreviewPanelContext();
   const previewPanelRef = useRef<ImperativePanelHandle>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [loaded, setLoaded] = useState(false);
