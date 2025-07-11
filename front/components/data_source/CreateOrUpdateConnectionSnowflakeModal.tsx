@@ -294,7 +294,11 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
             <Page.SectionHeader title="Snowflake Credentials" />
 
-            {error && <Chip color="warning" label={error} />}
+            {error && (
+              <Chip color="warning" size="sm">
+                {error}
+              </Chip>
+            )}
 
             <div className="w-full space-y-4">
               <div className="space-y-2">
