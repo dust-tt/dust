@@ -1,4 +1,7 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type {
+  CallToolResult,
+  EmbeddedResource,
+} from "@modelcontextprotocol/sdk/types.js";
 
 import { isExecuteTablesQueryErrorResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,10 +13,7 @@ function isKnownErrorResource(
   outputBlock: CallToolResult["content"][number]
 ): outputBlock is {
   type: "resource";
-  resource: {
-    text: "string";
-    uri: string;
-  } & { [k: string]: unknown };
+  resource: { text: "string" } & EmbeddedResource["resource"];
 } {
   return isExecuteTablesQueryErrorResourceType(outputBlock);
 }
