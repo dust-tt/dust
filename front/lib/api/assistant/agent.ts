@@ -35,10 +35,12 @@ import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent"
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
+import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -74,23 +76,62 @@ const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
 const MAX_AUTO_RETRY = 3;
 
+// Process database operations for agent events before publishing to Redis.
+async function processEventForDatabase(
+  event:
+    | AgentErrorEvent
+    | AgentActionSpecificEvent
+    | AgentActionSuccessEvent
+    | GenerationTokensEvent
+    | AgentGenerationCancelledEvent
+    | AgentMessageSuccessEvent,
+  agentMessageRow: AgentMessage
+): Promise<void> {
+  switch (event.type) {
+    case "agent_error":
+      // Store error in database.
+      await agentMessageRow.update({
+        status: "failed",
+        errorCode: event.error.code,
+        errorMessage: event.error.message,
+        errorMetadata: event.error.metadata,
+      });
+      break;
+
+    case "agent_generation_cancelled":
+      // Store cancellation in database.
+      await agentMessageRow.update({
+        status: "cancelled",
+      });
+      break;
+
+    case "agent_message_success":
+      // Store success and run IDs in database.
+      await agentMessageRow.update({
+        runIds: event.runIds,
+        status: "succeeded",
+      });
+
+      break;
+
+    default:
+      // Ensure we handle all event types.
+      break;
+  }
+}
+
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
-// nor updating it (responsibility of the caller based on the emitted events).
-export async function* runAgent(
+// but it now handles updating it based on the execution results.
+export async function runAgentWithStreaming(
   auth: Authenticator,
   configuration: LightAgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
-  agentMessage: AgentMessageType
-): AsyncGenerator<
-  | AgentErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
-  void
-> {
+  // TODO(DURABLE-AGENTS 2025-07-10): DRY those two arguments to stick with only one.
+  agentMessage: AgentMessageType,
+  agentMessageRow: AgentMessage,
+  redisChannel: string
+): Promise<void> {
   const [fullConfiguration] = await Promise.all([
     getAgentConfiguration(auth, configuration.sId, "full"),
   ]);
@@ -106,6 +147,7 @@ export async function* runAgent(
     throw new Error("Unreachable: could not find owner workspace for agent");
   }
 
+  const redisHybridManager = getRedisHybridManager();
   const stream = runMultiActionsAgentLoop(
     auth,
     fullConfiguration,
@@ -115,7 +157,15 @@ export async function* runAgent(
   );
 
   for await (const event of stream) {
-    yield event;
+    // Process database operations BEFORE publishing to Redis.
+    await processEventForDatabase(event, agentMessageRow);
+
+    // Then publish the event to Redis for consumers.
+    await redisHybridManager.publish(
+      redisChannel,
+      JSON.stringify(event),
+      "agent_execution"
+    );
   }
 }
 

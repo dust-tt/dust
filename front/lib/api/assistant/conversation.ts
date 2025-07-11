@@ -3,7 +3,7 @@ import type { Transaction } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
-import { runAgent } from "@app/lib/api/assistant/agent";
+import { runAgentWithStreaming } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   getAgentConfigurations,
@@ -20,7 +20,9 @@ import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
+import { getAgentExecutionChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -96,6 +98,15 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+
+// Type alias for agent execution events.
+type AgentExecutionEvent =
+  | AgentErrorEvent
+  | AgentActionSpecificEvent
+  | AgentActionSuccessEvent
+  | GenerationTokensEvent
+  | AgentGenerationCancelledEvent
+  | AgentMessageSuccessEvent;
 
 function getTimeframeSecondsFromLiteral(
   timeframeLiteral: MaxMessagesTimeframeType
@@ -913,7 +924,7 @@ export async function* postUserMessage(
   const eventStreamGenerators = agentMessages.map((agentMessage, i) => {
     // We stitch the conversation to add the user message and only that agent message
     // so that it can be used to prompt the agent.
-    const eventStream = runAgent(
+    return streamRunAgentEvents(
       auth,
       agentMessage.configuration,
       {
@@ -921,12 +932,6 @@ export async function* postUserMessage(
         content: [...conversation.content, [userMessage], [agentMessage]],
       },
       userMessage,
-      agentMessage
-    );
-
-    return streamRunAgentEvents(
-      auth,
-      eventStream,
       agentMessages[i],
       agentMessageRows[i]
     );
@@ -1446,7 +1451,7 @@ export async function* editUserMessage(
     }
     // We stitch the conversation to add the user message and only that agent message
     // so that it can be used to prompt the agent.
-    const eventStream = runAgent(
+    return streamRunAgentEvents(
       auth,
       agentMessage.configuration,
       {
@@ -1454,12 +1459,6 @@ export async function* editUserMessage(
         content: [...conversation.content, [userMessage], [agentMessage]],
       },
       userMessage,
-      agentMessage
-    );
-
-    return streamRunAgentEvents(
-      auth,
-      eventStream,
       agentMessages[i],
       agentMessageRows[i]
     );
@@ -1697,7 +1696,7 @@ export async function* retryAgentMessage(
     throw new Error("Unreachable: parent message must be a user message");
   }
 
-  const eventStream = runAgent(
+  yield* streamRunAgentEvents(
     auth,
     agentMessage.configuration,
     {
@@ -1705,10 +1704,9 @@ export async function* retryAgentMessage(
       content: newContent,
     },
     userMessage,
-    agentMessage
+    agentMessage,
+    agentMessageRow
   );
-
-  yield* streamRunAgentEvents(auth, eventStream, agentMessage, agentMessageRow);
 }
 
 // Injects a new content fragment in the conversation.
@@ -1828,26 +1826,12 @@ export async function postNewContentFragment(
 
 async function* streamRunAgentEvents(
   auth: Authenticator,
-  eventStream: AsyncGenerator<
-    | AgentErrorEvent
-    | AgentActionSpecificEvent
-    | AgentActionSuccessEvent
-    | GenerationTokensEvent
-    | AgentGenerationCancelledEvent
-    | AgentMessageSuccessEvent,
-    void
-  >,
+  agentConfiguration: LightAgentConfigurationType,
+  conversation: ConversationType,
+  userMessage: UserMessageType,
   agentMessage: AgentMessageType,
   agentMessageRow: AgentMessage
-): AsyncGenerator<
-  | AgentErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
-  void
-> {
+): AsyncGenerator<AgentExecutionEvent, void> {
   if (!canReadMessage(auth, agentMessage)) {
     yield {
       type: "agent_error",
@@ -1863,55 +1847,42 @@ async function* streamRunAgentEvents(
     return;
   }
 
+  const redisChannel = getAgentExecutionChannelId(agentMessage.sId);
+  const redisHybridManager = getRedisHybridManager();
+
+  // STEP 1: Subscribe to Redis channel FIRST
+  // This sets up the event consumer for real-time events only (no history replay).
+  // Must happen before agent execution starts to avoid missing events.
+  const { iterator: eventStream } =
+    await redisHybridManager.subscribeAsAsyncIterator<AgentExecutionEvent>({
+      channelName: redisChannel,
+      lastEventId: null,
+      origin: "agent_execution",
+      // Don't include history for now. Might be revisited when using a temporal workflow.
+      includeHistory: false,
+    });
+
+  // STEP 2: Start agent execution (fire-and-forget)
+  // We use 'void' to:
+  // - Start agent execution immediately without blocking
+  // - Avoid awaiting (which would cause deadlock since we need to consume events)
+  // - Silence TypeScript "floating promise" warning (intentional fire-and-forget)
+  void runAgentWithStreaming(
+    auth,
+    agentConfiguration,
+    conversation,
+    userMessage,
+    agentMessage,
+    agentMessageRow,
+    redisChannel
+  );
+
+  // STEP 3: Process events as they arrive
+  // Only real-time events will flow as the agent publishes them to Redis.
+  // Database operations are now handled in runAgent before publishing.
+  // TODO(DURABLE-AGENT 2025-07-10): Remove this event proxy to only consume at the endpoints level.
   for await (const event of eventStream) {
-    switch (event.type) {
-      case "agent_error":
-        // Store error in database.
-        await agentMessageRow.update({
-          status: "failed",
-          errorCode: event.error.code,
-          errorMessage: event.error.message,
-          errorMetadata: event.error.metadata,
-        });
-        yield event;
-        return;
-
-      case "agent_action_success":
-        yield event;
-        break;
-      case "agent_message_success":
-        // Store message in database.
-        await agentMessageRow.update({
-          runIds: event.runIds,
-        });
-        // Update status in database.
-        await agentMessageRow.update({
-          status: "succeeded",
-        });
-        yield event;
-        break;
-
-      case "agent_generation_cancelled":
-        if (agentMessageRow.status !== "cancelled") {
-          await agentMessageRow.update({
-            status: "cancelled",
-          });
-          yield event;
-        }
-        break;
-
-      // All other events that won't impact the database and are related to actions or tokens
-      // generation.
-      case "generation_tokens":
-      case "tool_approve_execution":
-      case "tool_notification":
-      case "tool_params":
-        yield event;
-        break;
-
-      default:
-        assertNever(event);
-    }
+    yield event;
   }
 }
 
