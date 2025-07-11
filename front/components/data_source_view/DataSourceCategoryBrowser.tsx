@@ -11,6 +11,7 @@ import React, { useMemo } from "react";
 
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   DataSourceViewCategory,
@@ -121,7 +122,7 @@ export function DataSourceCategoryBrowser({
         }
       });
     }
-    return [];
+    return emptyArray<CategoryRowData>();
   }, [hasFeature, isSpaceInfoLoading, onSelectCategory, spaceInfo]);
 
   if (isSpaceInfoLoading) {
