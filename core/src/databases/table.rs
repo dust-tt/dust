@@ -456,9 +456,8 @@ impl LocalTable {
     ) -> Result<()> {
         Self::validate_rows_lowercase(rows.clone()).await?;
 
-        // We only go through the background worker for non-truncate upserts.
         if truncate {
-            // TODO: we should lock on the table to prevent conflicting with the worker
+            // For truncate, save instantly to both postgres and
             self.upsert_rows_now(
                 &store,
                 &databases_store,
@@ -469,6 +468,7 @@ impl LocalTable {
             )
             .await
         } else {
+            // For non-truncate, we instantly save to postgres, and use the background worker for GCS.
             let rows_clone = rows.clone();
             self.upsert_rows_now(
                 &store,
