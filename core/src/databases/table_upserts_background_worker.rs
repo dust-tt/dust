@@ -1,11 +1,10 @@
 use lazy_static::lazy_static;
-use redis::AsyncCommands;
+use redis::{AsyncCommands, Client as RedisClient};
 use rslock::LockManager;
-use std::{collections::HashMap, env, time::Duration};
+use std::{collections::HashMap, env, sync::Arc, time::Duration};
 use tracing::{error, info};
 
 use crate::{
-    cache,
     databases::table::{LocalTable, Table},
     databases_store::{
         self,
@@ -18,8 +17,21 @@ use crate::{
     utils,
 };
 
+// Define a static Redis client with lazy initialization
 lazy_static! {
     pub static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
+    pub static ref REDIS_CLIENT: Option<Arc<RedisClient>> = {
+        match RedisClient::open(&**REDIS_URI) {
+            Ok(client) => Some(Arc::new(client)),
+            Err(e) => {
+                error!(
+                    "Failed to connect to Redis: {}. Continuing without Redis cache.",
+                    e
+                );
+                None
+            }
+        }
+    };
 }
 
 pub const REDIS_TABLE_UPSERT_HASH_NAME: &str = "TABLE_UPSERT";
@@ -66,7 +78,7 @@ impl TableUpsertsBackgroundWorker {
                 }
             };
 
-        let redis_conn = if let Some(client) = &*cache::REDIS_CLIENT {
+        let redis_conn = if let Some(client) = &*REDIS_CLIENT {
             client.get_async_connection().await?
         } else {
             return Err("Redis client is not initialized".into());

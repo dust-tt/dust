@@ -9,13 +9,13 @@ use serde_json::Value;
 use tracing::info;
 
 use crate::databases::table_upserts_background_worker::{
-    TableUpsertActivityData, REDIS_TABLE_UPSERT_HASH_NAME,
+    TableUpsertActivityData, REDIS_CLIENT, REDIS_TABLE_UPSERT_HASH_NAME,
 };
+use crate::databases_store;
 use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
 use crate::databases_store::gcs_background::GoogleCloudStorageBackgroundProcessingStore;
 use crate::databases_store::store::{DatabasesStoreStrategy, CURRENT_STRATEGY};
 use crate::search_stores::search_store::NodeItem;
-use crate::{cache, databases_store};
 use crate::{
     data_sources::node::ProviderVisibility,
     databases::{csv::GoogleCloudStorageCSVContent, database::HasValue, table_schema::TableSchema},
@@ -413,7 +413,7 @@ impl LocalTable {
     }
 
     async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
-        let mut redis_conn = if let Some(client) = &*cache::REDIS_CLIENT {
+        let mut redis_conn = if let Some(client) = &*REDIS_CLIENT {
             client.get_async_connection().await?
         } else {
             return Err(anyhow!("Redis client not available"));
