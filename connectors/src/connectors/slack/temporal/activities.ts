@@ -32,6 +32,7 @@ import {
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
+  extractFromTags,
   getSlackChannelSourceUrl,
   getWeekEnd,
   getWeekStart,
@@ -720,12 +721,10 @@ async function processAndUpsertNonThreadedMessages({
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
-    title:
-      tags
-        .find((t) => t.startsWith("title:"))
-        ?.split(":")
-        .slice(1)
-        .join(":") ?? "",
+    title: extractFromTags({
+      tagPrefix: "title:",
+      tags,
+    }),
     mimeType: INTERNAL_MIME_TYPES.SLACK.MESSAGES,
     async: asyncUpsert,
   });

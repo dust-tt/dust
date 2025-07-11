@@ -144,3 +144,20 @@ export function getSlackChannelSourceUrl(
 ): `https://app.slack.com/client/${SlackConfigurationResource["slackTeamId"]}/${SlackChannel["slackChannelId"]}` {
   return `https://app.slack.com/client/${slackConfig.slackTeamId}/${slackChannelId}`;
 }
+
+// Extract a tag from a list of tags. The tag is formatted as `tagPrefix:${tagValue}`.
+export function extractFromTags({
+  tagPrefix,
+  tags,
+}: {
+  tagPrefix: string;
+  tags: string[];
+}) {
+  return (
+    tags
+      .find((t) => t.startsWith(tagPrefix))
+      ?.split(":")
+      .slice(1)
+      .join(":") ?? ""
+  );
+}

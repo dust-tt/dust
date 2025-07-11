@@ -6,6 +6,7 @@ import {
   getBotOrUserName,
   getUserName,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { extractFromTags } from "@connectors/connectors/slack/lib/utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
@@ -112,11 +113,11 @@ export async function formatMessagesForUpsert({
 
   // If the document already exists, only append new sections to the existing document.
   if (existingDocumentBlob) {
-    // Get the createdAt tag from the existing document blob. The `createdAt` tag is formatted as
-    // `createdAt:${createdAt.getTime()}`.
-    const createdAtTag = existingDocumentBlob.tags
-      .find((t) => t.startsWith("createdAt:"))
-      ?.split(":")[1];
+    // Get the createdAt tag from the existing document blob.
+    const createdAtTag = extractFromTags({
+      tagPrefix: "createdAt:",
+      tags: existingDocumentBlob.tags,
+    });
 
     const createdAt = createdAtTag
       ? new Date(parseInt(createdAtTag, 10))
