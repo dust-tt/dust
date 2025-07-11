@@ -743,6 +743,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workos"
   | "workos_user_provisioning"
   | "xai_feature"
+  | "agent_memory_tools"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

@@ -13,6 +13,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger, { auditLog } from "@app/logger/logger";
 import type {
@@ -24,8 +25,6 @@ import type {
   Result,
 } from "@app/types";
 import { assertNever, Err, normalizeError, Ok } from "@app/types";
-
-import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
