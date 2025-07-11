@@ -166,7 +166,18 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
-  async rotateSecret(transaction?: Transaction) {
+  async rotateSecret(
+    {
+      dangerouslyRotateSecret,
+    }: {
+      dangerouslyRotateSecret: boolean;
+    },
+    transaction?: Transaction
+  ) {
+    if (!dangerouslyRotateSecret) {
+      throw new Error("Cannot rotate secret without explicitly allowing it.");
+    }
+
     const newSecret = KeyResource.createNewSecret();
     return this.update({ secret: newSecret }, transaction);
   }

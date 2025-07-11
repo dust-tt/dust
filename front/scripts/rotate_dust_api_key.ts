@@ -21,15 +21,14 @@ makeScript(
       description: "The ID of the key to rotate.",
     },
     workspaceId: {
-      type: "number",
+      type: "string",
       demandOption: true,
-      description: "The ID of the workspace containing the key.",
+      description: "The sId of the workspace containing the key.",
     },
   },
 
   async ({ keyId, workspaceId, execute }, logger) => {
-    const workspace = await WorkspaceResource.fetchByModelId(workspaceId);
-
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
       logger.error("Workspace not found.");
       return;
@@ -55,7 +54,6 @@ makeScript(
         logging: false,
       }
     );
-    const frontDb = frontSequelize;
 
     const connectorsToUpdate: ConnectorBlob[] = await connectorsDb.query(
       `SELECT * FROM connectors WHERE "workspaceId" = :workspaceId AND "workspaceAPIKey" = :workspaceAPIKey`,
@@ -85,38 +83,52 @@ makeScript(
       return;
     }
 
-    await frontDb.transaction(async (frontTransaction) => {
+    // Using transactions to ensure that we don't end up with a key that is not in sync between the
+    // front and connectors databases. Explicitly aborting both transactions if an error occurs.
+    await frontSequelize.transaction(async (frontTransaction) => {
       await connectorsDb.transaction(async (connectorsTransaction) => {
-        const result = await keyToRotate.rotateSecret(frontTransaction);
+        try {
+          const [affectedCount] = await keyToRotate.rotateSecret(
+            { dangerouslyRotateSecret: true },
+            frontTransaction
+          );
 
-        if (result[0] === 1) {
-          logger.info({ keyId }, "rotated key");
-        } else {
-          logger.error({ keyId }, "failed to rotate key");
-          throw new Error("Failed to rotate key");
-        }
+          if (affectedCount === 1) {
+            logger.info({ keyId }, "Rotated key.");
+          } else {
+            logger.error({ keyId }, "Failed to rotate key.");
+            throw new Error("Failed to rotate key");
+          }
 
-        if (connectorsToUpdate.length > 0) {
-          for (const connector of connectorsToUpdate) {
+          if (connectorsToUpdate.length > 0) {
             await connectorsDb.query(
-              `UPDATE connectors SET "workspaceAPIKey" = :workspaceAPIKey WHERE "id" = :id`,
+              `UPDATE connectors SET "workspaceAPIKey" = :workspaceAPIKey WHERE "id" IN (:ids)`,
               {
                 replacements: {
                   workspaceAPIKey: keyToRotate.secret,
-                  id: connector.id,
+                  ids: connectorsToUpdate.map((c) => c.id),
                 },
                 transaction: connectorsTransaction,
                 type: QueryTypes.UPDATE,
               }
             );
           }
+        } catch (err) {
+          logger.error(
+            { keyId, error: err },
+            "Failed to update connectors -- rollbacking transactions"
+          );
+          await frontTransaction.rollback();
+          await connectorsTransaction.rollback();
+
+          throw err;
         }
       });
-
-      logger.info(
-        { keyId, connectorsToUpdate: connectorsToUpdate.map((c) => c.id) },
-        "Successfully rotated key and updated related connectors."
-      );
     });
+
+    logger.info(
+      { keyId, connectorsToUpdate: connectorsToUpdate.map((c) => c.id) },
+      "Successfully rotated key and updated related connectors."
+    );
   }
 );
