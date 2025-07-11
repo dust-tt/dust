@@ -98,12 +98,12 @@ const createServer = (
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
-      const memory = await AgentMemoryResource.retrieveMemories(auth, {
+      const memory = await AgentMemoryResource.retrieveMemory(auth, {
         agentConfiguration,
-        forUser: user?.toJSON(),
+        user: user?.toJSON(),
       });
 
-      if (!memory || memory.content.length === 0) {
+      if (memory.length === 0) {
         return {
           isError: false,
           content: [
@@ -120,7 +120,7 @@ const createServer = (
         content: [
           {
             type: "text",
-            text: memory.content
+            text: memory
               .map((entry, i) => `[${i + 1}] ${entry}`)
               .join("\n---\n"),
           },
@@ -130,31 +130,26 @@ const createServer = (
   );
 
   server.tool(
-    "record",
-    `Record a new memory${isUserScopedMemory ? " for the current user" : ""}`,
+    "record_entries",
+    `Record new memory entries${isUserScopedMemory ? " for the current user" : ""}`,
     {
       // shared_across_users:
       //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
-      content: z.string().describe("The content of the new memory entry."),
-      index: z
-        .number()
-        .optional()
-        .describe(
-          "The index at which to insert the new memory entry. If not provided, it will be appended."
-        ),
+      entries: z
+        .array(z.string())
+        .describe("The array of new memory entries to record."),
     },
-    async ({ content, index }) => {
+    async ({ entries }) => {
       assert(
         agentLoopContext?.runContext,
         "agentLoopContext is required where the tool is called"
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
-      await AgentMemoryResource.recordMemory(auth, {
+      await AgentMemoryResource.recordEntries(auth, {
         agentConfiguration,
-        forUser: user?.toJSON(),
-        content,
-        index,
+        user: user?.toJSON(),
+        entries,
       });
 
       return {
@@ -162,7 +157,7 @@ const createServer = (
         content: [
           {
             type: "text",
-            text: "Memory recorded.",
+            text: "Memory entries recorded.",
           },
         ],
       };
@@ -170,44 +165,34 @@ const createServer = (
   );
 
   server.tool(
-    "erase",
-    `Erase a memory${isUserScopedMemory ? " for the current user" : ""}`,
+    "erase_entries",
+    `Erase memory entries by indexes${isUserScopedMemory ? " for the current user" : ""}`,
     {
       // shared_across_users:
       //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
-      index: z.number().describe("The index of the memory entry to forget."),
+      indexes: z
+        .array(z.number())
+        .describe("The indexes of the memory entries to erase."),
     },
-    async ({ index }) => {
+    async ({ indexes }) => {
       assert(
         agentLoopContext?.runContext,
         "agentLoopContext is required where the tool is called"
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
-      const result = await AgentMemoryResource.eraseMemory(auth, {
+      await AgentMemoryResource.eraseEntries(auth, {
         agentConfiguration,
-        forUser: user?.toJSON(),
-        index,
+        user: user?.toJSON(),
+        indexes,
       });
-
-      if (result.isErr()) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Error: ${result.error.message}`,
-            },
-          ],
-        };
-      }
 
       return {
         isError: false,
         content: [
           {
             type: "text",
-            text: "Memory erased.",
+            text: "Memory entries erased.",
           },
         ],
       };
@@ -215,39 +200,36 @@ const createServer = (
   );
 
   server.tool(
-    "overwrite",
-    `Overwrite a memory${isUserScopedMemory ? " for the current user" : ""}`,
+    "edit_entries",
+    `Edit (overwrite) memory entries by indexes${isUserScopedMemory ? " for the current user" : ""}`,
     {
       // shared_across_users:
       //   ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN],
-      index: z.number().describe("The index of the memory entry to overwrite."),
-      content: z.string().describe("The content to overwrite the memory with."),
+      edits: z
+        .array(
+          z.object({
+            index: z
+              .number()
+              .describe("The index of the memory entry to overwrite."),
+            content: z
+              .string()
+              .describe("The new content for the memory entry."),
+          })
+        )
+        .describe("The array of memory entries to edit."),
     },
-    async ({ content, index }) => {
+    async ({ edits }) => {
       assert(
         agentLoopContext?.runContext,
         "agentLoopContext is required where the tool is called"
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
-      const result = await AgentMemoryResource.overwriteMemory(auth, {
+      await AgentMemoryResource.editEntries(auth, {
         agentConfiguration,
-        forUser: user?.toJSON(),
-        index,
-        content,
+        user: user?.toJSON(),
+        edits,
       });
-
-      if (result.isErr()) {
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Error: ${result.error.message}`,
-            },
-          ],
-        };
-      }
 
       return {
         isError: false,

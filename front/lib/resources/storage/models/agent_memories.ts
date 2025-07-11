@@ -10,7 +10,7 @@ export class AgentMemoryModel extends WorkspaceAwareModel<AgentMemoryModel> {
   declare updatedAt: CreationOptional<Date>;
 
   declare agentConfigurationId: string;
-  declare content: string[];
+  declare content: string;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
   declare user: NonAttribute<UserModel> | null;
@@ -32,7 +32,7 @@ AgentMemoryModel.init(
       allowNull: false,
     },
     content: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+      type: DataTypes.TEXT,
       allowNull: false,
     },
   },
@@ -41,8 +41,8 @@ AgentMemoryModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        unique: true,
-        fields: ["workspaceId", "agentConfigurationId", "userId"],
+        fields: ["workspaceId", "agentConfigurationId", "userId", "updatedAt"],
+        name: "agent_memories_workspace_agent_configuration_user_updated_at",
       },
     ],
   }

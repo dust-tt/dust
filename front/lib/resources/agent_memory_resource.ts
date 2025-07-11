@@ -7,6 +7,7 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -19,6 +20,8 @@ import type {
   UserType,
 } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+
+import { concurrentExecutor } from "../utils/async_utils";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -38,19 +41,24 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: CreationAttributes<AgentMemoryModel>
+    blob: CreationAttributes<AgentMemoryModel>,
+    transaction?: Transaction
   ) {
-    const memory = await AgentMemoryModel.create({
-      ...blob,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    });
+    const memory = await AgentMemoryModel.create(
+      {
+        ...blob,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      { transaction }
+    );
 
     return new this(AgentMemoryModel, memory.get());
   }
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<AgentMemoryModel>
+    options?: ResourceFindOptions<AgentMemoryModel>,
+    transaction?: Transaction
   ) {
     const { where, ...otherOptions } = options ?? {};
 
@@ -60,157 +68,168 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       ...otherOptions,
+      transaction,
     });
 
     return memories.map((m) => new this(AgentMemoryModel, m.get()));
   }
 
-  private static async findByAgentConfiguration(
+  private static async findByAgentConfigurationAndUser(
     auth: Authenticator,
     {
       agentConfiguration,
-      forUser,
+      user,
     }: {
       agentConfiguration: LightAgentConfigurationType;
-      forUser: UserType | null;
-    }
-  ): Promise<AgentMemoryResource | null> {
-    const [agentMemory] = await this.baseFetch(auth, {
-      where: {
-        agentConfigurationId: agentConfiguration.sId,
-        userId: forUser?.id ?? null,
+      user: UserType | null;
+    },
+    transaction?: Transaction
+  ): Promise<AgentMemoryResource[]> {
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          agentConfigurationId: agentConfiguration.sId,
+          userId: user?.id ?? null,
+        },
+        order: [["updatedAt", "DESC"]],
       },
-    });
-
-    return agentMemory ?? null;
+      transaction
+    );
   }
 
   /**
    * API used by the agent memory MCP server
    */
 
-  static async retrieveMemories(
+  static async retrieveMemory(
     auth: Authenticator,
     {
       agentConfiguration,
-      forUser,
+      user,
     }: {
       agentConfiguration: LightAgentConfigurationType;
-      forUser: UserType | null;
+      user: UserType | null;
     }
-  ): Promise<AgentMemoryResource | null> {
-    return this.findByAgentConfiguration(auth, {
+  ): Promise<{ lastUpdated: Date; content: string }[]> {
+    return (
+      await this.findByAgentConfigurationAndUser(auth, {
+        agentConfiguration,
+        user,
+      })
+    )
+      .map((m) => ({
+        lastUpdated: m.updatedAt,
+        content: m.content,
+      }))
+      .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
+  }
+
+  static async recordEntries(
+    auth: Authenticator,
+    {
       agentConfiguration,
-      forUser,
+      user,
+      entries,
+    }: {
+      agentConfiguration: LightAgentConfigurationType;
+      user: UserType | null;
+      entries: string[];
+    }
+  ): Promise<undefined> {
+    await concurrentExecutor(
+      entries,
+      async (content) => {
+        await this.makeNew(auth, {
+          agentConfigurationId: agentConfiguration.sId,
+          content: content,
+          userId: user?.id ?? null,
+        });
+      },
+      { concurrency: 4 }
+    );
+  }
+
+  static async eraseEntries(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      user,
+      indexes,
+    }: {
+      agentConfiguration: LightAgentConfigurationType;
+      user: UserType | null;
+      indexes: number[];
+    }
+  ): Promise<undefined> {
+    await frontSequelize.transaction(async (t) => {
+      const memories = (
+        await this.findByAgentConfigurationAndUser(
+          auth,
+          {
+            agentConfiguration,
+            user,
+          },
+          t
+        )
+      ).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
+      await concurrentExecutor(
+        indexes,
+        async (i) => {
+          await memories[i]?.delete(auth, { transaction: t });
+        },
+        { concurrency: 4 }
+      );
     });
   }
 
-  static async recordMemory(
+  static async editEntries(
     auth: Authenticator,
     {
       agentConfiguration,
-      forUser,
-      content,
-      index,
+      user,
+      edits,
     }: {
       agentConfiguration: LightAgentConfigurationType;
-      forUser: UserType | null;
-      content: string;
-      index?: number;
+      user: UserType | null;
+      edits: { index: number; content: string }[];
     }
-  ): Promise<AgentMemoryResource> {
-    let memory = await this.findByAgentConfiguration(auth, {
-      agentConfiguration,
-      forUser,
+  ): Promise<undefined> {
+    await frontSequelize.transaction(async (t) => {
+      const memories = (
+        await this.findByAgentConfigurationAndUser(
+          auth,
+          {
+            agentConfiguration,
+            user,
+          },
+          t
+        )
+      ).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
+      await concurrentExecutor(
+        edits,
+        async ({ index, content }) => {
+          const m = memories[index];
+          if (m) {
+            await m.update({ content }, t);
+          } else {
+            // If the index does not exist we create a new memory.
+            await this.makeNew(
+              auth,
+              {
+                agentConfigurationId: agentConfiguration.sId,
+                content: content,
+                userId: user?.id ?? null,
+              },
+              t
+            );
+          }
+        },
+        { concurrency: 4 }
+      );
     });
-    if (!memory) {
-      memory = await this.makeNew(auth, {
-        agentConfigurationId: agentConfiguration.sId,
-        content: [],
-        userId: forUser?.id ?? null,
-      });
-    }
-
-    const c = [...memory.content];
-    if (index !== undefined) {
-      // Insert at specific index
-      c.splice(index, 0, content);
-    } else {
-      // Append to the end
-      c.push(content);
-    }
-
-    await memory.update({
-      content: c,
-    });
-
-    return memory;
-  }
-
-  static async eraseMemory(
-    auth: Authenticator,
-    {
-      agentConfiguration,
-      forUser,
-      index,
-    }: {
-      agentConfiguration: LightAgentConfigurationType;
-      forUser: UserType | null;
-      index: number;
-    }
-  ): Promise<Result<AgentMemoryResource, Error>> {
-    const memory = await this.findByAgentConfiguration(auth, {
-      agentConfiguration,
-      forUser,
-    });
-
-    if (memory) {
-      const c = [...memory.content];
-      if (index >= 0 && index < c.length) {
-        c.splice(index, 1);
-        await memory.update({ content: c });
-      } else {
-        return new Err(new Error(`Index ${index} does not exist in memory.`));
-      }
-    } else {
-      return new Err(new Error(`Index ${index} does not exist in memory.`));
-    }
-
-    return new Ok(memory);
-  }
-
-  static async overwriteMemory(
-    auth: Authenticator,
-    {
-      agentConfiguration,
-      forUser,
-      index,
-      content,
-    }: {
-      agentConfiguration: LightAgentConfigurationType;
-      forUser: UserType | null;
-      index: number;
-      content: string;
-    }
-  ): Promise<Result<AgentMemoryResource, Error>> {
-    const memory = await this.findByAgentConfiguration(auth, {
-      agentConfiguration,
-      forUser,
-    });
-
-    if (memory) {
-      const c = [...memory.content];
-      if (index >= 0 && index < c.length) {
-        c[index] = content;
-        await memory.update({ content: c });
-      } else {
-        return new Err(new Error(`Index ${index} does not exist in memory.`));
-      }
-    } else {
-      return new Err(new Error(`Index ${index} does not exist in memory.`));
-    }
-
-    return new Ok(memory);
   }
 
   async delete(
