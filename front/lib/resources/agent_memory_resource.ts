@@ -250,6 +250,14 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     }
   }
 
+  static async deleteAllForWorkspace(auth: Authenticator): Promise<undefined> {
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
   get sId(): string {
     return AgentMemoryResource.modelIdToSId({
       id: this.id,
@@ -264,7 +272,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     id: ModelId;
     workspaceId: ModelId;
   }): string {
-    return makeSId("tag", {
+    return makeSId("agent_memory", {
       id,
       workspaceId,
     });
@@ -273,6 +281,8 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
   toJSON() {
     return {
       sId: this.sId,
+      lastUpdated: this.updatedAt,
+      content: this.content,
     };
   }
 }
