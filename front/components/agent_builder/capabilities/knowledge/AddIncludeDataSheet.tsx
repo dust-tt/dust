@@ -25,6 +25,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   TimeFrame,
 } from "@app/types";
+import { SelectionDisplay } from "@app/components/agent_builder/capabilities/knowledge/shared/SelectionDisplay";
 
 const PAGE_IDS = {
   DATA_SOURCE_SELECTION: "data-source-selection",
@@ -169,6 +170,11 @@ export function AddIncludeDataSheet({
           currentPageId === PAGE_IDS.DATA_SOURCE_SELECTION && !hasDataSources
         }
         disableSave={!hasDataSources || !description.trim()}
+        footerContent={
+          <SelectionDisplay
+            selectionConfigurations={dataSourceConfigurations}
+          />
+        }
       />
     </MultiPageSheet>
   );

@@ -30,6 +30,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   TimeFrame,
 } from "@app/types";
+import { SelectionDisplay } from "@app/components/agent_builder/capabilities/knowledge/shared/SelectionDisplay";
 
 const DESCRIPTION_MAX_LENGTH = 800;
 
@@ -191,6 +192,11 @@ export function AddExtractSheet({
         }
         disableSave={
           !hasDataSources || !description.trim() || description.length > 800
+        }
+        footerContent={
+          <SelectionDisplay
+            selectionConfigurations={dataSourceConfigurations}
+          />
         }
       />
     </MultiPageSheet>
