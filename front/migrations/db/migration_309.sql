@@ -1,3 +1,0 @@
--- Migration created on Jul 10, 2025
-CREATE TABLE IF NOT EXISTS "agent_memories" ("createdAt" TIMESTAMP WITH TIME ZONE NOT NULL, "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL, "agentConfigurationId" VARCHAR(255) NOT NULL, "content" TEXT[] NOT NULL, "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, "id"  BIGSERIAL , "userId" BIGINT REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE, PRIMARY KEY ("id"));
-CREATE UNIQUE INDEX "agent_memories_workspace_id_agent_configuration_id_user_id" ON "agent_memories" ("workspaceId", "agentConfigurationId", "userId");
