@@ -4,7 +4,6 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import type { ZodRawShape } from "zod";
 import { z } from "zod";
 
-import { getDustAppRunResultsFileTitle } from "@app/components/actions/dust_app_run/utils";
 import {
   generateCSVFileAndSnippet,
   generateJSONFileAndSnippet,
@@ -37,9 +36,11 @@ import type {
   BlockRunConfig,
   ConversationType,
   DatasetSchema,
+  SpecificationBlockType,
+  SupportedFileContentType,
 } from "@app/types";
-import type { SpecificationBlockType } from "@app/types";
 import {
+  extensionsForContentType,
   getHeaderFromGroupIds,
   getHeaderFromRole,
   safeParseJSON,
@@ -65,6 +66,21 @@ interface DustFileOutput {
     content: unknown;
   };
   [key: string]: unknown;
+}
+
+function getDustAppRunResultsFileTitle({
+  appName,
+  resultsFileContentType,
+}: {
+  appName: string;
+  resultsFileContentType: SupportedFileContentType;
+}): string {
+  const extensions = extensionsForContentType(resultsFileContentType);
+  let title = `${appName}_output`;
+  if (extensions.length > 0) {
+    title += extensions[0];
+  }
+  return title;
 }
 
 function convertDatasetSchemaToZodRawShape(
