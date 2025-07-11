@@ -9,6 +9,52 @@ import {
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
+interface GmailHeader {
+  name: string;
+  value: string;
+}
+
+interface GmailMessageBody {
+  data?: string;
+  size?: number;
+}
+
+interface GmailMessagePart {
+  partId?: string;
+  mimeType?: string;
+  filename?: string;
+  headers?: GmailHeader[];
+  body?: GmailMessageBody;
+  parts?: GmailMessagePart[];
+}
+
+interface GmailMessagePayload {
+  partId?: string;
+  mimeType?: string;
+  filename?: string;
+  headers?: GmailHeader[];
+  body?: GmailMessageBody;
+  parts?: GmailMessagePart[];
+}
+
+interface GmailMessage {
+  id: string;
+  threadId?: string;
+  labelIds?: string[];
+  snippet?: string;
+  payload?: GmailMessagePayload;
+  sizeEstimate?: number;
+  historyId?: string;
+  internalDate?: string;
+}
+
+interface MessageDetail {
+  success: boolean;
+  data?: GmailMessage;
+  messageId?: string;
+  error?: string;
+}
+
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "gmail",
   version: "1.0.0",
@@ -305,12 +351,12 @@ const createServer = (): McpServer => {
 
       // Separate successful and failed message details
       const successfulMessages = messageDetails
-        .filter((detail: any) => detail.success)
-        .map((detail: any) => detail.data);
+        .filter((detail: MessageDetail) => detail.success)
+        .map((detail: MessageDetail) => detail.data);
 
       const failedMessages = messageDetails
-        .filter((detail: any) => !detail.success)
-        .map((detail: any) => ({
+        .filter((detail: MessageDetail) => !detail.success)
+        .map((detail: MessageDetail) => ({
           messageId: detail.messageId,
           error: detail.error,
         }));
@@ -374,7 +420,7 @@ const createServer = (): McpServer => {
     ) => {
       const accessToken = authInfo?.token;
 
-      // Fetch the original message to extract threading information and body
+      // Fetch the original message
       const messageResponse = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
         {
@@ -397,125 +443,49 @@ const createServer = (): McpServer => {
         );
       }
 
-      const originalMessage = await messageResponse.json();
+      const originalMessage: GmailMessage = await messageResponse.json();
       const headers = originalMessage.payload?.headers || [];
-      const threadId = originalMessage.threadId;
 
-      // Helper to extract a header value
-      const getHeader = (name: string) =>
-        headers.find(
-          (h: { name: string; value: string }) =>
-            h.name.toLowerCase() === name.toLowerCase()
-        )?.value;
+      // Extract header values
+      const originalFrom = getHeaderValue(headers, "From");
+      const originalTo = getHeaderValue(headers, "To");
+      const originalCc = getHeaderValue(headers, "Cc");
+      const originalBcc = getHeaderValue(headers, "Bcc");
+      const originalSubject = getHeaderValue(headers, "Subject");
+      const originalMessageId = getHeaderValue(headers, "Message-ID");
+      const originalReferences = getHeaderValue(headers, "References");
+      const originalDate = getHeaderValue(headers, "Date");
 
-      const originalFrom = getHeader("From");
-      const originalTo = getHeader("To");
-      const originalCc = getHeader("Cc");
-      const originalBcc = getHeader("Bcc");
-      const originalSubject = getHeader("Subject");
-      const originalMessageId = getHeader("Message-ID");
-      const originalReferences = getHeader("References");
-      const originalDate = getHeader("Date");
+      // Determine recipients
+      const replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
+      const replyCc = cc?.length ? cc.join(", ") : originalCc;
+      const replyBcc = bcc?.length ? bcc.join(", ") : originalBcc;
 
-      // Determine recipients for the reply
-      const replyTo =
-        to && to.length > 0 ? to.join(", ") : originalTo || originalFrom;
-      const replyCc = cc && cc.length > 0 ? cc.join(", ") : originalCc;
-      const replyBcc = bcc && bcc.length > 0 ? bcc.join(", ") : originalBcc;
-
-      if (!replyTo || replyTo.trim() === "") {
+      if (!replyTo?.trim()) {
         return makeMCPToolTextError(
           "Cannot determine reply-to address from original message"
         );
       }
 
-      // Create subject line for reply
+      // Create subject and headers
       const replySubject = originalSubject?.startsWith("Re:")
         ? originalSubject
         : `Re: ${originalSubject || "No Subject"}`;
-
-      // Create threading headers
-      const threadingHeaders = [
-        originalMessageId ? `In-Reply-To: ${originalMessageId}` : null,
-        originalReferences ? `References: ${originalReferences}` : null,
-        originalMessageId && !originalReferences
-          ? `References: ${originalMessageId}`
-          : null,
-      ].filter(Boolean);
-
-      // Encode subject line using RFC 2047
       const encodedSubject = `=?UTF-8?B?${Buffer.from(replySubject, "utf-8").toString("base64")}?=`;
+      const threadingHeaders = createThreadingHeaders(
+        originalMessageId,
+        originalReferences
+      );
 
-      // Helper to decode Gmail message body
-      function decodeMessageBody(payload: any): string {
-        if (!payload) return "";
-        if (payload.mimeType === "text/plain" && payload.body?.data) {
-          const base64 = payload.body.data
-            .replace(/-/g, "+")
-            .replace(/_/g, "/");
-          return Buffer.from(base64, "base64").toString("utf-8");
-        }
-        if (payload.parts) {
-          for (const part of payload.parts) {
-            const found = decodeMessageBody(part);
-            if (found) return found;
-          }
-        }
-        return "";
-      }
-
+      // Build reply body
       const originalBody = decodeMessageBody(originalMessage.payload);
-
-      // Build reply body based on content type
-      const escapeHtml = (text: string) =>
-        text
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;");
-
-      let fullBody: string;
-      let contentTypeHeader: string;
-
-      if (contentType === "text/html") {
-        // HTML content - don't escape the body, use it as-is
-        const replyText = body.trim();
-
-        // Build quote section if original message exists
-        let quoteSection = "";
-        if (originalBody) {
-          const separator =
-            originalDate && originalFrom
-              ? `On ${escapeHtml(originalDate)}, ${escapeHtml(originalFrom)} wrote:`
-              : `${escapeHtml(originalFrom || "Original sender")} wrote:`;
-
-          const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${escapeHtml(originalBody).replace(/\n/g, "<br>")}</blockquote>`;
-
-          quoteSection = `<br><br><div class="gmail_quote">${separator}<br>${quotedOriginal}</div>`;
-        }
-
-        fullBody = `<div dir="ltr">${replyText}${quoteSection}</div>`;
-        contentTypeHeader = "text/html; charset=UTF-8";
-      } else {
-        // Plain text content - convert to HTML with escaping
-        const replyText = escapeHtml(body.trim()).replace(/\n/g, "<br>");
-
-        // Build quote section if original message exists
-        let quoteSection = "";
-        if (originalBody) {
-          const separator =
-            originalDate && originalFrom
-              ? `On ${escapeHtml(originalDate)}, ${escapeHtml(originalFrom)} wrote:`
-              : `${escapeHtml(originalFrom || "Original sender")} wrote:`;
-
-          const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${escapeHtml(originalBody).replace(/\n/g, "<br>")}</blockquote>`;
-
-          quoteSection = `<br><br><div class="gmail_quote">${separator}<br>${quotedOriginal}</div>`;
-        }
-
-        fullBody = `<div dir="ltr"><div>${replyText}</div>${quoteSection}</div>`;
-        contentTypeHeader = "text/html; charset=UTF-8";
-      }
+      const fullBody = buildReplyBody(
+        body,
+        contentType,
+        originalBody,
+        originalDate,
+        originalFrom
+      );
 
       // Construct the reply message
       const messageLines = [
@@ -523,16 +493,14 @@ const createServer = (): McpServer => {
         replyCc ? `Cc: ${replyCc}` : null,
         replyBcc ? `Bcc: ${replyBcc}` : null,
         `Subject: ${encodedSubject}`,
-        `Content-Type: ${contentTypeHeader}`,
+        "Content-Type: text/html; charset=UTF-8",
         "MIME-Version: 1.0",
         ...threadingHeaders,
-        "", // Empty line to separate headers from body (RFC 2822 compliant)
-        fullBody, // Body content directly without extra CRLF
-      ].filter((line) => line !== null);
+        "",
+        fullBody,
+      ].filter((line): line is string => line !== null);
+
       const message = messageLines.join("\r\n");
-      console.log(
-        "[Gmail Reply Draft MIME Message]\n" + message + "\n[END MIME Message]"
-      );
 
       // Encode the message in base64 as required by the Gmail API
       const encodedMessage = Buffer.from(message)
@@ -541,7 +509,6 @@ const createServer = (): McpServer => {
         .replace(/\//g, "_")
         .replace(/=+$/, "");
 
-      // Create the draft via Gmail API
       const response = await fetch(
         "https://gmail.googleapis.com/gmail/v1/users/me/drafts",
         {
@@ -553,7 +520,7 @@ const createServer = (): McpServer => {
           body: JSON.stringify({
             message: {
               raw: encodedMessage,
-              threadId: threadId,
+              threadId: originalMessage.threadId,
             },
           }),
         }
@@ -574,7 +541,7 @@ const createServer = (): McpServer => {
           draftId: result.id,
           messageId: result.message.id,
           originalMessageId: messageId,
-          replyTo: replyTo,
+          replyTo,
           subject: replySubject,
         },
       });
@@ -582,6 +549,98 @@ const createServer = (): McpServer => {
   );
 
   return server;
+};
+
+const decodeMessageBody = (
+  payload: GmailMessagePayload | undefined
+): string => {
+  if (!payload) return "";
+
+  if (payload.mimeType === "text/plain" && payload.body?.data) {
+    const base64 = payload.body.data.replace(/-/g, "+").replace(/_/g, "/");
+    return Buffer.from(base64, "base64").toString("utf-8");
+  }
+
+  if (payload.parts) {
+    for (const part of payload.parts) {
+      const found = decodeMessageBody(part);
+      if (found) return found;
+    }
+  }
+
+  return "";
+};
+
+const escapeHtml = (text: string): string =>
+  text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
+const createQuoteSection = (
+  originalBody: string,
+  originalDate: string | undefined,
+  originalFrom: string | undefined
+): string => {
+  if (!originalBody) return "";
+
+  const separator =
+    originalDate && originalFrom
+      ? `On ${escapeHtml(originalDate)}, ${escapeHtml(originalFrom)} wrote:`
+      : `${escapeHtml(originalFrom || "Original sender")} wrote:`;
+
+  const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${escapeHtml(originalBody).replace(/\n/g, "<br>")}</blockquote>`;
+
+  return `<br><br><div class="gmail_quote">${separator}<br>${quotedOriginal}</div>`;
+};
+
+const buildReplyBody = (
+  userBody: string,
+  contentType: "text/plain" | "text/html",
+  originalBody: string,
+  originalDate: string | undefined,
+  originalFrom: string | undefined
+): string => {
+  const quoteSection = createQuoteSection(
+    originalBody,
+    originalDate,
+    originalFrom
+  );
+
+  if (contentType === "text/html") {
+    // HTML content - use as-is
+    return `<div dir="ltr">${userBody.trim()}${quoteSection}</div>`;
+  } else {
+    // Plain text content - convert to HTML with escaping
+    const escapedBody = escapeHtml(userBody.trim()).replace(/\n/g, "<br>");
+    return `<div dir="ltr"><div>${escapedBody}</div>${quoteSection}</div>`;
+  }
+};
+
+const getHeaderValue = (
+  headers: GmailHeader[],
+  name: string
+): string | undefined =>
+  headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value;
+
+const createThreadingHeaders = (
+  originalMessageId: string | undefined,
+  originalReferences: string | undefined
+): string[] => {
+  const headers: string[] = [];
+
+  if (originalMessageId) {
+    headers.push(`In-Reply-To: ${originalMessageId}`);
+
+    if (originalReferences) {
+      headers.push(`References: ${originalReferences}`);
+    } else {
+      headers.push(`References: ${originalMessageId}`);
+    }
+  }
+
+  return headers;
 };
 
 export default createServer;
