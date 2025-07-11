@@ -50,7 +50,7 @@ export const DataSourceBuilderSelector = ({
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
   const [navigationHistory, setNavigationHistory] = useState<
-    NavigationHistoryEntry[]
+    NavigationHistoryEntryType[]
   >([{ type: "root" }]);
   const currentNavigationEntry =
     navigationHistory[navigationHistory.length - 1];
@@ -152,7 +152,9 @@ export const DataSourceBuilderSelector = ({
   );
 };
 
-function getBreadcrumbConfig(entry: NavigationHistoryEntry): BreadcrumbItem {
+function getBreadcrumbConfig(
+  entry: NavigationHistoryEntryType
+): BreadcrumbItem {
   switch (entry.type) {
     case "root":
       return {
@@ -174,7 +176,7 @@ function getBreadcrumbConfig(entry: NavigationHistoryEntry): BreadcrumbItem {
 }
 
 function findSpaceFromNavigationHistory(
-  navigationHistory: NavigationHistoryEntry[]
+  navigationHistory: NavigationHistoryEntryType[]
 ): SpaceType | null {
   for (const entry of navigationHistory) {
     if (entry.type === "space") {
@@ -186,7 +188,7 @@ function findSpaceFromNavigationHistory(
 }
 
 function findCategoryFromNavigationHistory(
-  navigationHistory: NavigationHistoryEntry[]
+  navigationHistory: NavigationHistoryEntryType[]
 ): DataSourceViewCategoryWithoutApps | null {
   for (const entry of navigationHistory) {
     if (entry.type === "category") {
@@ -198,7 +200,7 @@ function findCategoryFromNavigationHistory(
 }
 
 function getLatestNodeFromNavigationHistory(
-  navigationHistory: NavigationHistoryEntry[]
+  navigationHistory: NavigationHistoryEntryType[]
 ): DataSourceViewContentNode | null {
   const latestEntry = navigationHistory[navigationHistory.length - 1];
 
