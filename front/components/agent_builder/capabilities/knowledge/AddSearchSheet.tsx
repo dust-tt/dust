@@ -13,11 +13,12 @@ import {
   hasDataSourceSelections,
   isValidPage,
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type {
   AgentBuilderAction,
   SearchAgentBuilderAction,
 } from "@app/components/agent_builder/types";
-import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
@@ -41,7 +42,8 @@ export function AddSearchSheet({
   onClose,
   action,
 }: AddSearchSheetProps) {
-  const { owner, supportedDataSourceViews } = useAgentBuilderContext();
+  const { owner } = useAgentBuilderContext();
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { spaces } = useSpacesContext();
 
   const [currentPageId, setCurrentPageId] = useState<PageId>(
