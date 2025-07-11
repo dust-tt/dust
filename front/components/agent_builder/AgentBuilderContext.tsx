@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 
+import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourceViewsContext";
 import { MCPServerViewsProvider } from "@app/components/agent_builder/MCPServerViewsContext";
 import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanelContext";
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
@@ -34,7 +35,9 @@ export function AgentBuilderProvider({
       <PreviewPanelProvider>
         <SpacesProvider owner={owner}>
           <MCPServerViewsProvider owner={owner}>
-            {children}
+            <DataSourceViewsProvider owner={owner}>
+              {children}
+            </DataSourceViewsProvider>
           </MCPServerViewsProvider>
         </SpacesProvider>
       </PreviewPanelProvider>

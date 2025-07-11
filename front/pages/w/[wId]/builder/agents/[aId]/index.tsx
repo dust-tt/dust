@@ -3,9 +3,6 @@ import type { InferGetServerSidePropsType } from "next";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
-import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
-import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
-import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -89,13 +86,7 @@ export default function EditAgent({
 
   return (
     <AgentBuilderProvider owner={owner} user={user}>
-      <SpacesProvider owner={owner}>
-        <MCPServerViewsProvider owner={owner}>
-          <DataSourceViewsProvider owner={owner}>
-            <AgentBuilder agentConfiguration={agentConfiguration} />
-          </DataSourceViewsProvider>
-        </MCPServerViewsProvider>
-      </SpacesProvider>
+      <AgentBuilder agentConfiguration={agentConfiguration} />
     </AgentBuilderProvider>
   );
 }
