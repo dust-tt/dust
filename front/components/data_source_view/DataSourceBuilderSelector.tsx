@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
-import { DataSourceSearchTable } from "@app/components/data_source_view/DataSourceSearchTable";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import {
   useSpaceDataSourceViewsWithDetails,
@@ -22,7 +21,6 @@ import type {
   DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
 } from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 import { DataSourceSpaceSelector } from "./DataSourceSpaceSelector";
 
@@ -47,8 +45,6 @@ export const DataSourceBuilderSelector = ({
   allowedSpaces,
   dataSourceViews,
   owner,
-  selectionConfigurations,
-  setSelectionConfigurations,
   viewType,
 }: DataSourceBuilderSelectorProps) => {
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
@@ -56,6 +52,8 @@ export const DataSourceBuilderSelector = ({
   const [navigationHistory, setNavigationHistory] = useState<
     NavigationHistoryEntry[]
   >([{ type: "root" }]);
+  const currentNavigationEntry =
+    navigationHistory[navigationHistory.length - 1];
 
   const selectedSpaceId =
     findSpaceFromNavigationHistory(navigationHistory)?.sId;
@@ -91,10 +89,6 @@ export const DataSourceBuilderSelector = ({
     return spaces.filter((s) => spaceIds.has(s.sId));
   }, [spaces, dataSourceViews]);
 
-  const selectedSpace = useMemo(() => {
-    return filteredSpaces.find((s) => s.sId === selectedSpaceId);
-  }, [filteredSpaces, selectedSpaceId]);
-
   const handleSelectCategory = (
     category: DataSourceViewCategoryWithoutApps
   ) => {
@@ -113,14 +107,11 @@ export const DataSourceBuilderSelector = ({
     return <div>No spaces with data sources available.</div>;
   }
 
-  // Determine whether to show search results or node navigation
-  const isSearchActive = searchQuery.length >= MIN_SEARCH_QUERY_SIZE;
-
   return (
     <div className="flex flex-col gap-4">
-      {breadcrumbItems?.length > 0 && <Breadcrumbs items={breadcrumbItems} />}
+      {breadcrumbItems.length > 0 && <Breadcrumbs items={breadcrumbItems} />}
 
-      {!selectedSpace && (
+      {currentNavigationEntry.type === "root" ? (
         <DataSourceSpaceSelector
           spaces={filteredSpaces}
           allowedSpaces={allowedSpaces}
@@ -128,57 +119,34 @@ export const DataSourceBuilderSelector = ({
             setNavigationHistory((prev) => [...prev, { type: "space", space }]);
           }}
         />
+      ) : (
+        <SearchInput
+          name="search"
+          placeholder="Search (Name)"
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
       )}
 
-      {selectedSpace && (
-        <>
-          <SearchInput
-            name="search"
-            placeholder="Search (Name)"
-            value={searchQuery}
-            onChange={setSearchQuery}
-          />
+      {currentNavigationEntry?.type === "space" && (
+        <DataSourceCategoryBrowser
+          owner={owner}
+          space={currentNavigationEntry.space}
+          onSelectCategory={handleSelectCategory}
+        />
+      )}
 
-          {isSearchActive ? (
-            <DataSourceSearchTable
-              owner={owner}
-              dataSourceViews={dataSourceViews.filter(
-                (dsv) => dsv.spaceId === selectedSpace.sId
-              )}
-              selectionConfigurations={selectionConfigurations}
-              setSelectionConfigurations={setSelectionConfigurations}
-              viewType={viewType}
-              space={selectedSpace}
-              onNavigate={(node) => {
-                setNavigationHistory((prev) => [
-                  ...prev,
-                  { type: "node", node },
-                ]);
-              }}
-              searchQuery={searchQuery}
-            />
-          ) : (
-            <>
-              {selectedSpace && !selectedCategory && !traversedNode ? (
-                <DataSourceCategoryBrowser
-                  owner={owner}
-                  space={selectedSpace}
-                  onSelectCategory={handleSelectCategory}
-                />
-              ) : (
-                <DataSourceNodeTable
-                  owner={owner}
-                  viewType={viewType}
-                  categoryDataSourceViews={categoryDataSourceViews}
-                  selectedCategory={selectedCategory || undefined}
-                  traversedNode={traversedNode}
-                  onNavigate={handleNavigateNode}
-                  isCategoryLoading={isCategoryLoading}
-                />
-              )}
-            </>
-          )}
-        </>
+      {(currentNavigationEntry.type === "node" ||
+        currentNavigationEntry.type === "category") && (
+        <DataSourceNodeTable
+          owner={owner}
+          viewType={viewType}
+          categoryDataSourceViews={categoryDataSourceViews}
+          selectedCategory={selectedCategory}
+          traversedNode={traversedNode}
+          onNavigate={handleNavigateNode}
+          isCategoryLoading={isCategoryLoading}
+        />
       )}
     </div>
   );

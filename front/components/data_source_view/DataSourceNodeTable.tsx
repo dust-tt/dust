@@ -29,7 +29,7 @@ interface DataSourceNodeTableProps {
   owner: WorkspaceType;
   viewType: ContentNodesViewType;
   categoryDataSourceViews?: DataSourceViewType[];
-  selectedCategory?: string;
+  selectedCategory: string | null;
   traversedNode: DataSourceViewContentNode | null;
   onNavigate: (node: DataSourceViewContentNode) => void;
   isCategoryLoading?: boolean;
