@@ -13,6 +13,7 @@ import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/cont
 import {
   batchRenderMessages,
   canReadMessage,
+  getMaximalVersionAgentStepContent,
 } from "@app/lib/api/assistant/messages";
 import { getContentFragmentGroupIds } from "@app/lib/api/assistant/permissions";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
@@ -281,6 +282,16 @@ export async function getConversation(
       },
     ],
   });
+
+  // Filter to only keep the step content with the maximum version for each step and index combination.
+  for (const message of messages) {
+    if (message.agentMessage && message.agentMessage.agentStepContents) {
+      message.agentMessage.agentStepContents =
+        getMaximalVersionAgentStepContent(
+          message.agentMessage.agentStepContents
+        );
+    }
+  }
 
   const renderRes = await batchRenderMessages(
     auth,

@@ -1187,8 +1187,8 @@ export async function mcpActionTypesFromAgentMessageIds(
   });
 
   const maxVersionActions = allActions.reduce((acc, current) => {
-    // TODO(durable-agents): remove the default value of -1 once not nullable.
-    const key = current.stepContentId ?? -1;
+    // TODO(durable-agents): remove the default value once stepContentId is not nullable.
+    const key = current.stepContentId ?? current.step;
     const existing = acc.get(key);
     if (!existing || current.version > existing.version) {
       acc.set(key, current);

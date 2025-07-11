@@ -41,6 +41,21 @@ import type {
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 
+export function getMaximalVersionAgentStepContent(
+  agentStepContents: AgentStepContentModel[]
+): AgentStepContentModel[] {
+  const maxVersionStepContents = agentStepContents.reduce((acc, current) => {
+    const key = `${current.step}-${current.index}`;
+    const existing = acc.get(key);
+    if (!existing || current.version > existing.version) {
+      acc.set(key, current);
+    }
+    return acc;
+  }, new Map<string, AgentStepContentModel>());
+
+  return Array.from(maxVersionStepContents.values());
+}
+
 async function batchRenderUserMessages(
   auth: Authenticator,
   messages: Message[]
@@ -422,6 +437,16 @@ async function fetchMessagesForPage(
       },
     ],
   });
+
+  // Filter to only keep the step content with the maximum version for each step and index combination.
+  for (const message of messages) {
+    if (message.agentMessage && message.agentMessage.agentStepContents) {
+      message.agentMessage.agentStepContents =
+        getMaximalVersionAgentStepContent(
+          message.agentMessage.agentStepContents
+        );
+    }
+  }
 
   return {
     hasMore,
