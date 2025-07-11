@@ -10,8 +10,8 @@ import { stat } from "fs/promises";
 import mime from "mime-types";
 import path, { basename, extname } from "path";
 
-const MAX_LINES_TEXT_FILE = 2000;
-const MAX_LINE_LENGTH_TEXT_FILE = 2000;
+export const MAX_LINES_TEXT_FILE = 2000;
+export const MAX_LINE_LENGTH_TEXT_FILE = 2000;
 
 export interface FileInfo {
   path: string;

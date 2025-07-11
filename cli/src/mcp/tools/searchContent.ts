@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { normalizeError } from "../../utils/errors.js";
+import { MAX_LINE_LENGTH_TEXT_FILE } from "../../utils/fileHandling.js";
 import { formatGrepRes, performGrep } from "../../utils/grep.js";
 import type { McpTool } from "../types/tools.js";
 
@@ -63,17 +64,32 @@ export class SearchContentTool implements McpTool {
       });
 
       // Format output with relative paths ordered by line number
-      let output = `Found ${formattedGrep.length} matches for "${pattern}":\n\n`;
+      let output = `Found ${formattedGrep.length} matches for "${pattern}" in the following directories:\n\n`;
 
       Array.from(fileGroups.entries())
         .sort(([a], [b]) => a.localeCompare(b))
         .forEach(([filePath, results]) => {
           output += `${filePath}:\n`;
           results.forEach((result) => {
-            output += `  ${result.lineNumber}: ${result.content}\n`;
+            let truncated = false;
+            if (result.content.length > MAX_LINE_LENGTH_TEXT_FILE) {
+              truncated = true;
+            }
+            output += `  ${result.lineNumber}: ${result.content.substring(
+              0,
+              Math.min(MAX_LINE_LENGTH_TEXT_FILE, result.content.length)
+            )}`;
+            if (truncated) {
+              output += "... [cut]";
+            }
+            output += "\n";
           });
-          output += "\n";
+          output += "----------\n";
         });
+
+      output =
+        `[The content of these files have been partially cut: some lines exceeded maximum length of ${MAX_LINE_LENGTH_TEXT_FILE} characters.]\n` +
+        output;
 
       return {
         content: [
