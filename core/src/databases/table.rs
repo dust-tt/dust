@@ -465,18 +465,17 @@ impl LocalTable {
             .await
         } else {
             // For non-truncate, we instantly save to postgres, and use the background worker for GCS.
-            let rows_clone = rows.clone();
             self.upsert_rows_now(
                 &store,
                 &databases_store,
-                rows,
+                rows.clone(),
                 truncate,
                 true,  /*postgres*/
                 false, /*gcs*/
             )
             .await?;
 
-            self.schedule_background_upsert_or_delete(rows_clone).await
+            self.schedule_background_upsert_or_delete(rows).await
         }
     }
 
