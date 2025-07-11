@@ -1864,7 +1864,7 @@ async function* streamRunAgentEvents(
   // STEP 1: Subscribe to Redis channel FIRST
   // This sets up the event consumer for real-time events only (no history replay).
   // Must happen before agent execution starts to avoid missing events.
-  const { iterator: eventStream } =
+  const { iterator: eventStream, unsubscribe } =
     await redisHybridManager.subscribeAsAsyncIterator<AgentExecutionEvent>({
       channelName: redisChannel,
       lastEventId: null,
@@ -1906,6 +1906,7 @@ async function* streamRunAgentEvents(
       case "agent_generation_cancelled":
       case "agent_message_success":
         yield event;
+        unsubscribe();
         return; // Terminal events - end the stream.
 
       default:
