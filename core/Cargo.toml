@@ -85,6 +85,11 @@ path = "bin/migrations/20250226_backfill_elasticsearch_text_size.rs"
 name = "backfill_tables_gcs_files"
 path = "bin/migrations/20250701_backfill_tables_gcs_files.rs"
 
+
+[[bin]]
+name = "check_table"
+path = "bin/check_table.rs"
+
 [[test]]
 name = "oauth_connections_test"
 path = "src/oauth/tests/functional_connections.rs"
