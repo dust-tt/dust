@@ -1,4 +1,3 @@
-import { Button } from "@dust-tt/sparkle";
 import Head from "next/head";
 import type { ReactElement } from "react";
 
@@ -13,6 +12,8 @@ import {
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import TrustedBy from "@app/components/home/TrustedBy";
+import UTMButton from "@app/components/UTMButton";
+import UTMPageWrapper from "@app/components/UTMPageWrapper";
 import { classNames } from "@app/lib/utils";
 
 // Constants
@@ -129,14 +130,14 @@ function HeroSection() {
             Dust platform.
           </P>
           <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-            <Button
+            <UTMButton
               variant="primary"
               size="md"
               label="Contact support"
               href="/home/contact"
               className="w-full sm:w-auto"
             />
-            <Button
+            <UTMButton
               variant="outline"
               size="md"
               label="Visit our documentation"
@@ -183,7 +184,7 @@ function SupportOptionsSection() {
                 {option.description}
               </P>
               {option.button && (
-                <Button
+                <UTMButton
                   variant="outline"
                   size="sm"
                   label={option.button.label}
@@ -216,7 +217,7 @@ function DocumentationSection() {
               <P size="sm" className="mb-6 flex-grow text-muted-foreground">
                 {resource.description}
               </P>
-              <Button
+              <UTMButton
                 variant="outline"
                 size="sm"
                 label={resource.button.label}
@@ -259,14 +260,14 @@ function JustUseDustSection() {
             Just use Dust
           </H2>
           <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-            <Button
+            <UTMButton
               variant="highlight"
               size="md"
               label="Start Free Trial"
               href="/pricing"
               className="w-full sm:w-auto"
             />
-            <Button
+            <UTMButton
               variant="outline"
               size="md"
               label="Contact Sales"
@@ -282,7 +283,7 @@ function JustUseDustSection() {
 
 export default function Support() {
   return (
-    <>
+    <UTMPageWrapper>
       <Head>
         <title>Dust - Support & Help</title>
         <meta
@@ -310,7 +311,7 @@ export default function Support() {
         <TrustedBy logoSet="landing" />
         <JustUseDustSection />
       </div>
-    </>
+    </UTMPageWrapper>
   );
 }
 
