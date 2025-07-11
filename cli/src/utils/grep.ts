@@ -19,6 +19,8 @@ import { spawn } from "child_process";
 import { EOL } from "os";
 import path from "path";
 
+import { normalizeError } from "./errors.js";
+
 interface grepRes {
   filePath: string;
   content: string;
@@ -103,7 +105,11 @@ export async function performGrep(
 
     return output;
   } catch (grepError: unknown) {
-    console.debug(`GrepLogic: System grep failed: Falling back...`);
+    console.debug(
+      `GrepLogic: System grep failed: ${
+        normalizeError(grepError).message
+      }. Falling back...`
+    );
     return "";
   }
 }
