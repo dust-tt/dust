@@ -123,11 +123,16 @@ async function attachStepContentToMcpActions({
           return false;
         }
 
-        const matchingStepContent = stepContents.find(
+        let matchingStepContent = stepContents.find(
           (sc) =>
             isFunctionCallContent(sc.value) &&
             sc.value.value.id === mcpAction.functionCallId
         );
+
+        // Fallback for actions without functionCallId.
+        if (!matchingStepContent && stepContents.length === 1) {
+          matchingStepContent = stepContents[0];
+        }
 
         if (!matchingStepContent) {
           if (verbose) {
