@@ -1,4 +1,6 @@
 import type {
+  CoreAPIDataSourceDocumentBlob,
+  GetDocumentBlobResponseType,
   GetDocumentsResponseType,
   GetFolderResponseType,
   GetTableResponseType,
@@ -240,13 +242,16 @@ async function _upsertDataSourceDocument({
   );
 }
 
+export type CoreAPIDataSourceDocument =
+  GetDocumentsResponseType["documents"][number];
+
 export async function getDataSourceDocument({
   dataSourceConfig,
   documentId,
 }: {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
-}): Promise<GetDocumentsResponseType["documents"][number] | undefined> {
+}): Promise<CoreAPIDataSourceDocument | undefined> {
   const localLogger = logger.child({
     documentId,
   });
@@ -273,6 +278,41 @@ export async function getDataSourceDocument({
   }
 
   return dustRequestResult.data.documents[0];
+}
+
+export async function getDataSourceDocumentBlob({
+  dataSourceConfig,
+  documentId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  documentId: string;
+}): Promise<CoreAPIDataSourceDocumentBlob | undefined> {
+  const localLogger = logger.child({
+    documentId,
+  });
+
+  const endpoint =
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}/blob`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse<GetDocumentBlobResponseType>;
+  try {
+    dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
+  } catch (e) {
+    localLogger.error({ error: e }, "Error getting document from Dust.");
+    throw e;
+  }
+  if (dustRequestResult.status !== 200) {
+    localLogger.info("Document blob doesn't exist on Dust. Ignoring.");
+    return;
+  }
+
+  return dustRequestResult.data.blob;
 }
 
 export async function deleteDataSourceDocument(
