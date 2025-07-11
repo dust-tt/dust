@@ -683,6 +683,33 @@ export class Authenticator {
     });
   }
 
+  static async internalAdminForWorkspaceWithSubscription(
+    subscription: SubscriptionResource
+  ) {
+    const workspace = await WorkspaceModel.findOne({
+      where: {
+        id: subscription.workspaceId,
+      },
+    });
+
+    if (!workspace) {
+      throw new Error(
+        `Could not find workspace for subscription ${subscription.sId}`
+      );
+    }
+
+    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
+      workspace.id
+    );
+
+    return new Authenticator({
+      workspace,
+      role: "admin",
+      groups: globalGroup ? [globalGroup] : [],
+      subscription,
+    });
+  }
+
   /**
    * Exchanges an Authenticator associated with a system key for one associated with a user.
    *
