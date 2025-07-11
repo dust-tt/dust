@@ -214,6 +214,12 @@ function createServer(
             isError: true,
             content: [
               {
+                type: "text",
+                text:
+                  "Error executing database query: " +
+                  queryResult.error.message,
+              },
+              {
                 type: "resource",
                 resource: {
                   text: EXECUTE_TABLES_QUERY_MARKER,
