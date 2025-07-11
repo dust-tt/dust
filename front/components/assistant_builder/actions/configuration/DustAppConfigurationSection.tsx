@@ -11,12 +11,15 @@ import {
 import { sortBy } from "lodash";
 import React, { useMemo } from "react";
 
-import type { DustAppRunConfigurationType } from "@app/components/actions/dust_app_run/utils";
 import { ConfigurationSectionContainer } from "@app/components/assistant_builder/actions/configuration/ConfigurationSectionContainer";
 import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import { useApps } from "@app/lib/swr/apps";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type {
+  DustAppRunConfigurationType,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 interface DustAppConfigurationSectionProps {
   owner: LightWorkspaceType;
