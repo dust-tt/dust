@@ -438,7 +438,7 @@ class RedisHybridManager {
     origin: RedisUsageTagsType;
   }): Promise<{
     iterator: AsyncGenerator<T, void, unknown>;
-    unsubscribe: () => Promise<void>;
+    unsubscribe: () => void;
   }> {
     // Create a temporary EventEmitter to bridge Redis to fromEvent.
     const eventEmitter = new EventEmitter();
@@ -488,9 +488,9 @@ class RedisHybridManager {
 
     return {
       iterator,
-      unsubscribe: async () => {
+      unsubscribe: () => {
         eventEmitter.emit("end");
-        await unsubscribe();
+        unsubscribe();
       },
     };
   }
