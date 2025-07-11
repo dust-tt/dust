@@ -1,12 +1,11 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
-import { Breadcrumbs, HomeIcon, SearchInput, Spinner } from "@dust-tt/sparkle";
+import { Breadcrumbs, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
 import { DataSourceSearchTable } from "@app/components/data_source_view/DataSourceSearchTable";
-import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import {
   useSpaceDataSourceViewsWithDetails,
@@ -189,8 +188,7 @@ function getBreadcrumbConfig(entry: NavigationHistoryEntry): BreadcrumbItem {
   switch (entry.type) {
     case "root":
       return {
-        label: "Home",
-        icon: HomeIcon,
+        label: "Knowledge",
       };
     case "space":
       return {
@@ -199,12 +197,10 @@ function getBreadcrumbConfig(entry: NavigationHistoryEntry): BreadcrumbItem {
     case "category":
       return {
         label: CATEGORY_DETAILS[entry.category].label,
-        icon: CATEGORY_DETAILS[entry.category].icon,
       };
     case "node":
       return {
         label: entry.node.title,
-        icon: getVisualForDataSourceViewContentNode(entry.node),
       };
   }
 }
