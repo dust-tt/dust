@@ -44,11 +44,6 @@ async function attachStepContentToMcpActions({
   let batchNumber = 0;
 
   if (verbose) {
-    logger.info(
-      { workspaceId: workspace.sId, workspaceName: workspace.name },
-      "Starting to process workspace"
-    );
-
     // Count total actions first.
     const totalCount = await AgentMCPAction.count({
       where: {
@@ -60,7 +55,7 @@ async function attachStepContentToMcpActions({
     });
     logger.info(
       { workspaceId: workspace.sId, totalCount },
-      "Total MCP actions without stepContentId"
+      "Starting to process workspace. Total MCP actions without stepContentId"
     );
 
     if (totalCount === 0) {
@@ -87,7 +82,6 @@ async function attachStepContentToMcpActions({
       );
     }
 
-    const startTime = Date.now();
     const mcpActions = await AgentMCPAction.findAll({
       where: {
         workspaceId: workspace.id,
@@ -102,19 +96,6 @@ async function attachStepContentToMcpActions({
       order: [["id", "ASC"]],
     });
 
-    if (verbose) {
-      const fetchTime = Date.now() - startTime;
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          batchNumber,
-          foundActions: mcpActions.length,
-          fetchTimeMs: fetchTime,
-        },
-        "Fetched MCP actions"
-      );
-    }
-
     if (mcpActions.length === 0) {
       return {
         workspaceId: workspace.sId,
@@ -126,22 +107,8 @@ async function attachStepContentToMcpActions({
 
     const result = await concurrentExecutor(
       mcpActions,
-      async (mcpAction, index) => {
-        if (verbose) {
-          logger.info(
-            {
-              workspaceId: workspace.sId,
-              actionId: mcpAction.id,
-              agentMessageId: mcpAction.agentMessageId,
-              step: mcpAction.step,
-              version: mcpAction.version,
-              progress: `${index + 1}/${mcpActions.length}`,
-            },
-            "Processing MCP action"
-          );
-        }
+      async (mcpAction) => {
         // We look for a matching agent step content.
-        const stepContentStartTime = verbose ? Date.now() : 0;
         const stepContents = await AgentStepContentModel.findAll({
           where: {
             agentMessageId: mcpAction.agentMessageId,
@@ -151,19 +118,6 @@ async function attachStepContentToMcpActions({
             version: mcpAction.version,
           },
         });
-
-        if (verbose) {
-          const stepContentFetchTime = Date.now() - stepContentStartTime;
-          logger.info(
-            {
-              workspaceId: workspace.sId,
-              actionId: mcpAction.id,
-              foundStepContents: stepContents.length,
-              fetchTimeMs: stepContentFetchTime,
-            },
-            "Fetched step contents"
-          );
-        }
 
         if (stepContents.length === 0) {
           return false;
@@ -187,22 +141,7 @@ async function attachStepContentToMcpActions({
 
         // If the step content is found, we can attach it to the MCP action.
         if (execute) {
-          if (verbose) {
-            const updateStartTime = Date.now();
-            await mcpAction.update({ stepContentId: matchingStepContent.id });
-            const updateTime = Date.now() - updateStartTime;
-            logger.info(
-              {
-                workspaceId: workspace.sId,
-                actionId: mcpAction.id,
-                stepContentId: matchingStepContent.id,
-                updateTimeMs: updateTime,
-              },
-              "Updated MCP action with stepContentId"
-            );
-          } else {
-            await mcpAction.update({ stepContentId: matchingStepContent.id });
-          }
+          await mcpAction.update({ stepContentId: matchingStepContent.id });
         }
         return true;
       },
@@ -228,7 +167,7 @@ async function attachStepContentToMcpActions({
             skipped: nbActionsSkipped,
           },
         },
-        "Batch completed"
+        "Batch completed."
       );
     }
   } while (hasMore);
