@@ -24,7 +24,7 @@ import type {
 
 import { DataSourceSpaceSelector } from "./DataSourceSpaceSelector";
 
-type NavigationHistoryEntry =
+type NavigationHistoryEntryType =
   | { type: "root" }
   | { type: "space"; space: SpaceType }
   | { type: "category"; category: DataSourceViewCategoryWithoutApps }
