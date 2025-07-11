@@ -7,8 +7,10 @@ use tracing::{error, info};
 use crate::{
     databases::table::{LocalTable, Table},
     databases_store::{
-        self, gcs::GoogleCloudStorageDatabasesStore,
+        self,
+        gcs::GoogleCloudStorageDatabasesStore,
         gcs_background::GoogleCloudStorageBackgroundProcessingStore,
+        store::{DatabasesStoreStrategy, CURRENT_STRATEGY},
     },
     project::Project,
     stores::{postgres, store},
@@ -179,6 +181,11 @@ impl TableUpsertsBackgroundWorker {
     }
 
     pub async fn main_loop(&mut self) {
+        // Skip the whole background processing if we are using Postgres only.
+        if matches!(CURRENT_STRATEGY, DatabasesStoreStrategy::PostgresOnly) {
+            return;
+        }
+
         loop {
             if let Err(e) = self.loop_iteration().await {
                 error!("Error in TableUpsertsBackgroundWorker loop: {}", e);

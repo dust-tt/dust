@@ -413,6 +413,11 @@ impl LocalTable {
     }
 
     async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
+        // Skip the whole background processing if we are using Postgres only.
+        if matches!(CURRENT_STRATEGY, DatabasesStoreStrategy::PostgresOnly) {
+            return Ok(());
+        }
+
         let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
 
         // Write the rows to GCS for the worker to process
