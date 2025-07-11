@@ -89,6 +89,9 @@ const createServer = (): McpServer => {
     },
     async ({ q, pageToken }, { authInfo }) => {
       const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makeMCPToolTextError("Authentication required");
+      }
 
       const params = new URLSearchParams();
       if (q) {
@@ -98,14 +101,10 @@ const createServer = (): McpServer => {
         params.append("pageToken", pageToken);
       }
 
-      const response = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/drafts?${params.toString()}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      const response = await fetchFromGmail(
+        `/gmail/v1/users/me/drafts?${params.toString()}`,
+        accessToken,
+        { method: "GET" }
       );
 
       if (!response.ok) {
@@ -117,14 +116,10 @@ const createServer = (): McpServer => {
       const drafts = await concurrentExecutor(
         result.drafts ?? [],
         async (draft: { id: string }) => {
-          const draftResponse = await fetch(
-            `https://gmail.googleapis.com/gmail/v1/users/me/drafts/${draft.id}?format=metadata`,
-            {
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
+          const draftResponse = await fetchFromGmail(
+            `/gmail/v1/users/me/drafts/${draft.id}?format=metadata`,
+            accessToken,
+            { method: "GET" }
           );
 
           if (!draftResponse.ok) {
@@ -167,6 +162,9 @@ const createServer = (): McpServer => {
     },
     async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
       const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makeMCPToolTextError("Authentication required");
+      }
 
       // Always encode subject line using RFC 2047 to handle any special characters
       const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, "utf-8").toString("base64")}?=`;
@@ -193,12 +191,12 @@ const createServer = (): McpServer => {
         .replace(/=+$/, "");
 
       // Make the API call to create the draft in Gmail.
-      const response = await fetch(
-        "https://gmail.googleapis.com/gmail/v1/users/me/drafts",
+      const response = await fetchFromGmail(
+        "/gmail/v1/users/me/drafts",
+        accessToken,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -210,8 +208,8 @@ const createServer = (): McpServer => {
       );
 
       if (!response.ok) {
-        const responseText = await response.text();
-        return makeMCPToolTextError(`Failed to create draft: ${responseText}`);
+        const errorText = await getErrorText(response);
+        return makeMCPToolTextError(`Failed to create draft: ${errorText}`);
       }
 
       const result = await response.json();
@@ -236,6 +234,9 @@ const createServer = (): McpServer => {
     },
     async ({ draftId, subject, to }, { authInfo }) => {
       const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makeMCPToolTextError("Authentication required");
+      }
 
       assert(subject, "Subject is required - for user display");
       assert(
@@ -243,14 +244,10 @@ const createServer = (): McpServer => {
         "At least one recipient is required - for user display"
       );
 
-      const response = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/drafts/${draftId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      const response = await fetchFromGmail(
+        `/gmail/v1/users/me/drafts/${draftId}`,
+        accessToken,
+        { method: "DELETE" }
       );
 
       if (!response.ok) {
@@ -287,6 +284,9 @@ const createServer = (): McpServer => {
     },
     async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
       const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makeMCPToolTextError("Authentication required");
+      }
 
       const params = new URLSearchParams();
       if (q) {
@@ -297,18 +297,14 @@ const createServer = (): McpServer => {
         params.append("pageToken", pageToken);
       }
 
-      const response = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages?${params.toString()}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      const response = await fetchFromGmail(
+        `/gmail/v1/users/me/messages?${params.toString()}`,
+        accessToken,
+        { method: "GET" }
       );
 
       if (!response.ok) {
-        const errorText = await response.text().catch(() => "Unknown error");
+        const errorText = await getErrorText(response);
         return makeMCPToolTextError(
           `Failed to get messages: ${response.status} ${response.statusText} - ${errorText}`
         );
@@ -320,20 +316,14 @@ const createServer = (): McpServer => {
       const messageDetails = await concurrentExecutor(
         result.messages ?? [],
         async (message: { id: string }) => {
-          const messageResponse = await fetch(
-            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${message.id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date&metadataHeaders=Message-ID&metadataHeaders=In-Reply-To&metadataHeaders=References`,
-            {
-              method: "GET",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            }
+          const messageResponse = await fetchFromGmail(
+            `/gmail/v1/users/me/messages/${message.id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date&metadataHeaders=Message-ID&metadataHeaders=In-Reply-To&metadataHeaders=References`,
+            accessToken,
+            { method: "GET" }
           );
 
           if (!messageResponse.ok) {
-            const errorText = await messageResponse
-              .text()
-              .catch(() => "Unknown error");
+            const errorText = await getErrorText(messageResponse);
             return {
               success: false,
               messageId: message.id,
@@ -341,9 +331,10 @@ const createServer = (): McpServer => {
             };
           }
 
+          const messageData = await messageResponse.json();
           return {
             success: true,
-            data: await messageResponse.json(),
+            data: messageData,
           };
         },
         { concurrency: 10 }
@@ -419,22 +410,19 @@ const createServer = (): McpServer => {
       { authInfo }
     ) => {
       const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makeMCPToolTextError("Authentication required");
+      }
 
       // Fetch the original message
-      const messageResponse = await fetch(
-        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+      const messageResponse = await fetchFromGmail(
+        `/gmail/v1/users/me/messages/${messageId}?format=full`,
+        accessToken,
+        { method: "GET" }
       );
 
       if (!messageResponse.ok) {
-        const errorText = await messageResponse
-          .text()
-          .catch(() => "Unknown error");
+        const errorText = await getErrorText(messageResponse);
         if (messageResponse.status === 404) {
           return makeMCPToolTextError(`Message not found: ${messageId}`);
         }
@@ -509,12 +497,12 @@ const createServer = (): McpServer => {
         .replace(/\//g, "_")
         .replace(/=+$/, "");
 
-      const response = await fetch(
-        "https://gmail.googleapis.com/gmail/v1/users/me/drafts",
+      const response = await fetchFromGmail(
+        "/gmail/v1/users/me/drafts",
+        accessToken,
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${accessToken}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -527,7 +515,7 @@ const createServer = (): McpServer => {
       );
 
       if (!response.ok) {
-        const errorText = await response.text().catch(() => "Unknown error");
+        const errorText = await getErrorText(response);
         return makeMCPToolTextError(
           `Failed to create reply draft: ${response.status} ${response.statusText} - ${errorText}`
         );
@@ -647,6 +635,28 @@ const createThreadingHeaders = (
   }
 
   return headers;
+};
+
+const fetchFromGmail = async (
+  endpoint: string,
+  accessToken: string,
+  options?: RequestInit
+): Promise<Response> => {
+  return fetch(`https://gmail.googleapis.com${endpoint}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...options?.headers,
+    },
+  });
+};
+
+const getErrorText = async (response: Response): Promise<string> => {
+  try {
+    return await response.text();
+  } catch {
+    return "Unknown error";
+  }
 };
 
 export default createServer;
