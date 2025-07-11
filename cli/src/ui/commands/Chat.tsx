@@ -65,7 +65,7 @@ const CliChat: FC<CliChatProps> = ({
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false);
   const [currentConversationId, setCurrentConversationId] = useState<
     string | null
-  >(null);
+  >(conversationId ? conversationId : null);
   const [conversationItems, setConversationItems] = useState<
     ConversationItem[]
   >([]);
@@ -234,7 +234,7 @@ const CliChat: FC<CliChatProps> = ({
           fileInfos.push(await validateAndGetFileInfo(p));
         }
 
-        let convId = conversationId || currentConversationId;
+        let convId = currentConversationId;
         if (!convId) {
           convId = await createConversationForFiles(
             `File Upload: ${fileInfos.map((f) => f.name).join(", ")}`.slice(
@@ -254,7 +254,7 @@ const CliChat: FC<CliChatProps> = ({
         setError(`File error: ${normalizeError(error).message}`);
       }
     },
-    [conversationId, createConversationForFiles]
+    [currentConversationId, createConversationForFiles]
   );
 
   const handleFileSelectorCancel = useCallback(() => {
@@ -535,9 +535,9 @@ const CliChat: FC<CliChatProps> = ({
                     type: "agent_message_content_line",
                     text: line || " ",
                     index,
-                  }) satisfies ConversationItem & {
+                  } satisfies ConversationItem & {
                     type: "agent_message_content_line";
-                  }
+                  })
               )
               .filter((item) => !prevIds.has(item.key))
               .slice(0, isStreaming ? -1 : undefined);
@@ -559,9 +559,9 @@ const CliChat: FC<CliChatProps> = ({
                       type: "agent_message_cot_line",
                       text: line,
                       index,
-                    }) satisfies ConversationItem & {
+                    } satisfies ConversationItem & {
                       type: "agent_message_cot_line";
-                    }
+                    })
                 )
                 .filter((item) => !prevIds.has(item.key))
                 .slice(0, isStreaming && !contentItems.length ? -1 : undefined);
@@ -668,7 +668,14 @@ const CliChat: FC<CliChatProps> = ({
         setAbortController(null);
       }
     },
-    [selectedAgent, conversationId, me, meError, isMeLoading, uploadedFiles]
+    [
+      selectedAgent,
+      currentConversationId,
+      me,
+      meError,
+      isMeLoading,
+      uploadedFiles,
+    ]
   );
 
   // Handle file upload completion
