@@ -1165,7 +1165,7 @@ export async function mcpActionTypesFromAgentMessageIds(
   auth: Authenticator,
   { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<MCPActionType[]> {
-  const actions = await AgentMCPAction.findAll({
+  const allActions = await AgentMCPAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -1186,7 +1186,17 @@ export async function mcpActionTypesFromAgentMessageIds(
     ],
   });
 
-  return actions.map((action) => {
+  const maxVersionActions = allActions.reduce((acc, current) => {
+    // TODO(durable-agents): remove the default value once stepContentId is not nullable.
+    const key = current.stepContentId ?? current.step;
+    const existing = acc.get(key);
+    if (!existing || current.version > existing.version) {
+      acc.set(key, current);
+    }
+    return acc;
+  }, new Map<number, AgentMCPAction>());
+
+  return Array.from(maxVersionActions.values()).map((action) => {
     return new MCPActionType({
       id: action.id,
       params: action.params,
