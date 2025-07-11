@@ -1,6 +1,7 @@
+use lazy_static::lazy_static;
 use redis::AsyncCommands;
 use rslock::LockManager;
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, env, time::Duration};
 use tracing::{error, info};
 
 use crate::{
@@ -12,11 +13,14 @@ use crate::{
         gcs_background::GoogleCloudStorageBackgroundProcessingStore,
         store::{DatabasesStoreStrategy, CURRENT_STRATEGY},
     },
-    oauth::connection::REDIS_URI,
     project::Project,
     stores::{postgres, store},
     utils,
 };
+
+lazy_static! {
+    pub static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
+}
 
 pub const REDIS_TABLE_UPSERT_HASH_NAME: &str = "TABLE_UPSERT";
 static REDIS_LOCK_TTL_SECONDS: u64 = 15;
