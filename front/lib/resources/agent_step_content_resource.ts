@@ -408,4 +408,111 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     return base;
   }
+
+  static async getNextVersionForStepContent(
+    agentMessageId: ModelId,
+    step: number,
+    index: number,
+    transaction?: Transaction
+  ): Promise<number> {
+    const existingContent = await AgentStepContentModel.findAll({
+      where: {
+        agentMessageId,
+        step,
+        index,
+      },
+      order: [["version", "DESC"]],
+      limit: 1,
+      transaction,
+    });
+
+    return existingContent.length > 0 ? existingContent[0].version + 1 : 0;
+  }
+
+  static async createNewVersion({
+    agentMessageId,
+    workspaceId,
+    step,
+    index,
+    type,
+    value,
+    transaction,
+  }: {
+    agentMessageId: ModelId;
+    workspaceId: ModelId;
+    step: number;
+    index: number;
+    type: "text_content" | "reasoning" | "function_call";
+    value: any;
+    transaction?: Transaction;
+  }): Promise<AgentStepContentResource> {
+    const nextVersion = await this.getNextVersionForStepContent(
+      agentMessageId,
+      step,
+      index,
+      transaction
+    );
+
+    const agentStepContent = await AgentStepContentModel.create(
+      {
+        agentMessageId,
+        workspaceId,
+        step,
+        index,
+        version: nextVersion,
+        type,
+        value,
+      },
+      { transaction }
+    );
+
+    return new AgentStepContentResource(
+      AgentStepContentModel,
+      agentStepContent.get()
+    );
+  }
+
+  static async createNewVersionsBulk({
+    agentMessageId,
+    workspaceId,
+    stepContents,
+    transaction,
+  }: {
+    agentMessageId: ModelId;
+    workspaceId: ModelId;
+    stepContents: Array<{
+      step: number;
+      index: number;
+      type: "text_content" | "reasoning" | "function_call";
+      value: any;
+    }>;
+    transaction?: Transaction;
+  }): Promise<AgentStepContentResource[]> {
+    const versionPromises = stepContents.map(async (content) => {
+      const nextVersion = await this.getNextVersionForStepContent(
+        agentMessageId,
+        content.step,
+        content.index,
+        transaction
+      );
+      return {
+        ...content,
+        agentMessageId,
+        workspaceId,
+        version: nextVersion,
+      };
+    });
+
+    const contentWithVersions = await Promise.all(versionPromises);
+
+    const createdContents = await AgentStepContentModel.bulkCreate(
+      contentWithVersions,
+      { transaction }
+    );
+
+    return createdContents.map(
+      (content) =>
+        new AgentStepContentResource(AgentStepContentModel, content.get())
+    );
+  }
 }
