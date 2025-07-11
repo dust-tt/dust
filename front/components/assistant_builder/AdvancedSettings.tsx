@@ -31,7 +31,6 @@ import {
   GPT_4O_MODEL_ID,
   isSupportingResponseFormat,
   MISTRAL_LARGE_MODEL_ID,
-  REASONING_EFFORT_IDS,
 } from "@app/types";
 
 const CodeEditor = dynamic(
@@ -135,31 +134,13 @@ export function AdvancedSettings({
                   description={modelConfig.shortDescription}
                   label={modelConfig.displayName}
                   onClick={() => {
-                    const currentReasoningEffort =
-                      generationSettings.reasoningEffort;
-                    const reasoningEffortIndex = REASONING_EFFORT_IDS.indexOf(
-                      currentReasoningEffort
-                    );
-                    const minIndex = REASONING_EFFORT_IDS.indexOf(
-                      modelConfig.minimumReasoningEffort
-                    );
-                    const maxIndex = REASONING_EFFORT_IDS.indexOf(
-                      modelConfig.maximumReasoningEffort
-                    );
-
-                    const newReasoningEffort =
-                      reasoningEffortIndex < minIndex ||
-                      reasoningEffortIndex > maxIndex
-                        ? modelConfig.defaultReasoningEffort
-                        : currentReasoningEffort;
-
                     setGenerationSettings({
                       ...generationSettings,
                       modelSettings: {
                         modelId: modelConfig.modelId,
                         providerId: modelConfig.providerId,
                       },
-                      reasoningEffort: newReasoningEffort,
+                      reasoningEffort: modelConfig.defaultReasoningEffort,
                     });
                   }}
                 />
@@ -178,31 +159,13 @@ export function AdvancedSettings({
                   description={modelConfig.shortDescription}
                   label={modelConfig.displayName}
                   onClick={() => {
-                    const currentReasoningEffort =
-                      generationSettings.reasoningEffort;
-                    const reasoningEffortIndex = REASONING_EFFORT_IDS.indexOf(
-                      currentReasoningEffort
-                    );
-                    const minIndex = REASONING_EFFORT_IDS.indexOf(
-                      modelConfig.minimumReasoningEffort
-                    );
-                    const maxIndex = REASONING_EFFORT_IDS.indexOf(
-                      modelConfig.maximumReasoningEffort
-                    );
-
-                    const newReasoningEffort =
-                      reasoningEffortIndex < minIndex ||
-                      reasoningEffortIndex > maxIndex
-                        ? modelConfig.defaultReasoningEffort
-                        : currentReasoningEffort;
-
                     setGenerationSettings({
                       ...generationSettings,
                       modelSettings: {
                         modelId: modelConfig.modelId,
                         providerId: modelConfig.providerId,
                       },
-                      reasoningEffort: newReasoningEffort,
+                      reasoningEffort: modelConfig.defaultReasoningEffort,
                     });
                   }}
                 />
