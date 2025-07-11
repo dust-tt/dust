@@ -1,3 +1,4 @@
+import type { Action } from "@mendable/firecrawl-js";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -15,6 +16,7 @@ export class WebCrawlerConfigurationModel extends ConnectorBaseModel<WebCrawlerC
   declare crawlFrequency: CrawlingFrequency;
   declare lastCrawledAt: Date | null;
   declare crawlId: string | null;
+  declare actions?: Action[];
 }
 
 WebCrawlerConfigurationModel.init(
@@ -57,6 +59,11 @@ WebCrawlerConfigurationModel.init(
     },
     crawlId: {
       type: DataTypes.STRING(64),
+      allowNull: true,
+      defaultValue: null,
+    },
+    actions: {
+      type: DataTypes.JSON,
       allowNull: true,
       defaultValue: null,
     },

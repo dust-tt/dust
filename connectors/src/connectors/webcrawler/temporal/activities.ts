@@ -124,6 +124,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         formats: ["markdown"],
         headers: customHeaders,
         maxAge: 43_200_000, // Use last 12h of cache
+        actions: webCrawlerConfig.actions,
       },
       webhook: {
         url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
