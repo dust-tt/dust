@@ -41,6 +41,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse",
   "google_calendar",
   "slack",
+  "agent_memory",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -304,6 +305,13 @@ export const INTERNAL_MCP_SERVERS: Record<
       upload_file_to_column: "high",
       delete_item: "high",
       delete_group: "high",
+    },
+  },
+  agent_memory: {
+    id: 21,
+    availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_memory_tools");
     },
   },
   search: {

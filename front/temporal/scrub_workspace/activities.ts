@@ -22,6 +22,7 @@ import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -96,6 +97,7 @@ export async function scrubWorkspaceData({
   });
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
+  await deleteAgentMemories(auth);
   await deleteTags(auth);
   await deleteTrackers(auth);
   await deleteDatasources(auth);
@@ -158,6 +160,10 @@ async function archiveAssistants(auth: Authenticator) {
   for (const agentConfiguration of agentConfigurationsToArchive) {
     await archiveAgentConfiguration(auth, agentConfiguration.sId);
   }
+}
+
+async function deleteAgentMemories(auth: Authenticator) {
+  await AgentMemoryResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteTags(auth: Authenticator) {
