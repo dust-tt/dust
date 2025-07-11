@@ -724,6 +724,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "exploded_tables_query"
   | "extended_max_steps_per_run"
   | "google_ai_studio_experimental_models_feature"
+  | "google_sheets_tool"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
