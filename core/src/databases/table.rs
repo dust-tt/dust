@@ -459,10 +459,28 @@ impl LocalTable {
         // We only go through the background worker for non-truncate upserts.
         if truncate {
             // TODO: we should lock on the table to prevent conflicting with the worker
-            self.upsert_rows_now(&store, &databases_store, rows, truncate)
-                .await
+            self.upsert_rows_now(
+                &store,
+                &databases_store,
+                rows,
+                truncate,
+                true, /*postgres*/
+                true, /*gcs*/
+            )
+            .await
         } else {
-            self.schedule_background_upsert_or_delete(rows).await
+            let rows_clone = rows.clone();
+            self.upsert_rows_now(
+                &store,
+                &databases_store,
+                rows,
+                truncate,
+                true,  /*postgres*/
+                false, /*gcs*/
+            )
+            .await?;
+
+            self.schedule_background_upsert_or_delete(rows_clone).await
         }
     }
 
@@ -472,6 +490,8 @@ impl LocalTable {
         databases_store: &Box<dyn DatabasesStore + Sync + Send>,
         rows: Vec<Row>,
         truncate: bool,
+        postgres: bool,
+        gcs: bool,
     ) -> Result<()> {
         let rows = Arc::new(rows);
 
@@ -545,42 +565,16 @@ impl LocalTable {
         let mut upsert_csv_duration: u64 = 0;
         match CURRENT_STRATEGY {
             DatabasesStoreStrategy::PostgresOnly => {
-                databases_store
-                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
-                    .await?;
-
+                if postgres {
+                    databases_store
+                        .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                        .await?;
+                }
                 upsert_rows_duration = utils::now() - now;
             }
             DatabasesStoreStrategy::GCSOnly => {
-                databases_store
-                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
-                    .await?;
-
-                store
-                    .set_data_source_table_migrated_to_csv(
-                        &self.table.project,
-                        &self.table.data_source_id,
-                        &self.table.table_id,
-                        true,
-                        None,
-                    )
-                    .await?;
-
-                upsert_csv_duration = utils::now() - now;
-            }
-            DatabasesStoreStrategy::PostgresAndWriteToGCS => {
-                databases_store
-                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
-                    .await?;
-
-                upsert_rows_duration = utils::now() - now;
-                now = utils::now();
-
-                // Do the same write operation on the GCS store.
-                // Only do it if we are truncating or if the table is already migrated to CSV.
-                if truncate || self.table.migrated_to_csv() {
-                    let gcs_store = GoogleCloudStorageDatabasesStore::new();
-                    gcs_store
+                if gcs {
+                    databases_store
                         .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
                         .await?;
 
@@ -594,30 +588,72 @@ impl LocalTable {
                         )
                         .await?;
                 }
+
+                upsert_csv_duration = utils::now() - now;
+            }
+            DatabasesStoreStrategy::PostgresAndWriteToGCS => {
+                if postgres {
+                    databases_store
+                        .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                        .await?;
+                }
+
+                upsert_rows_duration = utils::now() - now;
+                now = utils::now();
+
+                if gcs {
+                    // Do the same write operation on the GCS store.
+                    // Only do it if we are truncating or if the table is already migrated to CSV.
+                    if truncate || self.table.migrated_to_csv() {
+                        let gcs_store = GoogleCloudStorageDatabasesStore::new();
+                        gcs_store
+                            .batch_upsert_table_rows(
+                                &self.table,
+                                &new_table_schema,
+                                &rows,
+                                truncate,
+                            )
+                            .await?;
+
+                        store
+                            .set_data_source_table_migrated_to_csv(
+                                &self.table.project,
+                                &self.table.data_source_id,
+                                &self.table.table_id,
+                                true,
+                                None,
+                            )
+                            .await?;
+                    }
+                }
                 upsert_csv_duration = utils::now() - now;
             }
             DatabasesStoreStrategy::GCSAndWriteToPostgres => {
-                databases_store
-                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
-                    .await?;
+                if gcs {
+                    databases_store
+                        .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                        .await?;
 
-                store
-                    .set_data_source_table_migrated_to_csv(
-                        &self.table.project,
-                        &self.table.data_source_id,
-                        &self.table.table_id,
-                        true,
-                        None,
-                    )
-                    .await?;
+                    store
+                        .set_data_source_table_migrated_to_csv(
+                            &self.table.project,
+                            &self.table.data_source_id,
+                            &self.table.table_id,
+                            true,
+                            None,
+                        )
+                        .await?;
+                }
 
                 upsert_csv_duration = utils::now() - now;
                 now = utils::now();
 
-                let postgres_store = databases_store::postgres::get_postgres_store().await?;
-                postgres_store
-                    .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
-                    .await?;
+                if postgres {
+                    let postgres_store = databases_store::postgres::get_postgres_store().await?;
+                    postgres_store
+                        .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+                        .await?;
+                }
 
                 upsert_rows_duration = utils::now() - now;
             }
@@ -710,12 +746,31 @@ impl LocalTable {
 
     pub async fn delete_row(
         &self,
-        _: Box<dyn DatabasesStore + Sync + Send>,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
         row_id: &str,
     ) -> Result<()> {
-        // Deletions are conveyed by special rows
-        let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
-        self.schedule_background_upsert_or_delete(rows).await
+        // Delete the table row.
+        // If we are only using one of the stores, the right store is passed in the parameters.
+        // If we are using both, we need to do the operation on the other store manually.
+        match CURRENT_STRATEGY {
+            DatabasesStoreStrategy::PostgresOnly => {
+                databases_store.delete_table_row(&self.table, row_id).await
+            }
+            DatabasesStoreStrategy::GCSOnly => {
+                // Deletions are conveyed by special rows
+                let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
+                self.schedule_background_upsert_or_delete(rows).await
+            }
+            DatabasesStoreStrategy::PostgresAndWriteToGCS
+            | DatabasesStoreStrategy::GCSAndWriteToPostgres => {
+                let postgres_store = databases_store::postgres::get_postgres_store().await?;
+                postgres_store.delete_table_row(&self.table, row_id).await?;
+
+                // Deletions are conveyed by special rows
+                let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
+                self.schedule_background_upsert_or_delete(rows).await
+            }
+        }
     }
 
     pub async fn list_rows(
