@@ -5,6 +5,8 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { removeNulls } from "@app/types";
 
+import { INTERNAL_MIME_TYPES } from "../../../../sdks/js";
+
 export function withToolLogging<T>(
   auth: Authenticator,
   toolName: string,
@@ -40,9 +42,17 @@ export function withToolLogging<T>(
         ...tags,
       ]);
 
-      // Only process text content, resources may be huge.
+      // Only process text and whitelisted resource content, other resources may be huge.
       const error = removeNulls(
-        result.content.map((c) => (c.type === "text" ? c.text : null))
+        result.content.map((c) =>
+          c.type === "text"
+            ? c.text
+            : c.type === "resource" &&
+                c.resource.mimeType ===
+                  INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR
+              ? c.resource.text
+              : null
+        )
       ).join("\n");
 
       logger.error(
