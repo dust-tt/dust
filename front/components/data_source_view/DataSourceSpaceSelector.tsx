@@ -1,4 +1,4 @@
-import { DataTable } from "@dust-tt/sparkle";
+import { Checkbox, DataTable, ScrollableDataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { getSpaceIcon } from "@app/lib/spaces";
@@ -12,14 +12,60 @@ type SpaceRowData = {
 
 const columns: ColumnDef<SpaceRowData>[] = [
   {
+    id: "select",
+    enableSorting: false,
+    enableHiding: false,
+    header: ({ table }) => (
+      <Checkbox
+        size="xs"
+        checked={
+          table.getIsAllRowsSelected()
+            ? true
+            : table.getIsSomeRowsSelected()
+              ? "partial"
+              : false
+        }
+        onClick={(event) => event.stopPropagation()}
+        onCheckedChange={(state) => {
+          if (state === "indeterminate") {
+            return;
+          }
+          table.toggleAllRowsSelected(state);
+        }}
+      />
+    ),
+    cell: ({ row }) => (
+      <div className="flex h-full items-center">
+        <Checkbox
+          size="xs"
+          checked={row.getIsSelected()}
+          disabled={!row.getCanSelect()}
+          onClick={(event) => event.stopPropagation()}
+          onCheckedChange={(state) => {
+            if (state === "indeterminate") {
+              return;
+            }
+            row.toggleSelected(state);
+          }}
+        />
+      </div>
+    ),
+    meta: {
+      sizeRatio: 5,
+    },
+  },
+  {
     accessorKey: "name",
     id: "name",
     header: "Name",
     cell: ({ row }) => (
-      <DataTable.CellContent icon={row.original.icon}>
+      <DataTable.CellContent icon={row.original.icon} className="font-semibold">
         {row.original.name}
       </DataTable.CellContent>
     ),
+    meta: {
+      sizeRatio: 70,
+    },
   },
 ];
 
@@ -41,5 +87,5 @@ export function DataSourceSpaceSelector({
     disabled: allowedSpaces.find((s) => s.sId === space.sId) == null,
   }));
 
-  return <DataTable data={spaceRows} columns={columns} />;
+  return <ScrollableDataTable data={spaceRows} columns={columns} />;
 }
