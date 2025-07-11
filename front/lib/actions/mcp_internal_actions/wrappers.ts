@@ -6,6 +6,18 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { removeNulls } from "@app/types";
 
+function isKnownErrorResource(
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: {
+    text: "string";
+    uri: string;
+  } & { [k: string]: unknown };
+} {
+  return isExecuteTablesQueryErrorResourceType(outputBlock);
+}
+
 export function withToolLogging<T>(
   auth: Authenticator,
   toolName: string,
@@ -46,7 +58,7 @@ export function withToolLogging<T>(
         result.content.map((c) =>
           c.type === "text"
             ? c.text
-            : isExecuteTablesQueryErrorResourceType(c)
+            : isKnownErrorResource(c)
               ? c.resource.text
               : null
         )
