@@ -458,7 +458,7 @@ export const WithConditionalNavigation: Story = {
           disableSave={!description.trim()}
           footerContent={
             <div className="s-w-full s-border s-border-border-dark">
-              Hello bro
+              This is a footer content
             </div>
           }
         />
