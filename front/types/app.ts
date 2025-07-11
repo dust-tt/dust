@@ -34,6 +34,7 @@ export type SpecificationBlockType = {
 
 export type SpecificationType = Array<SpecificationBlockType>;
 
+// TODO Daph refactor this we could simplify this.
 export type DustAppRunConfigurationType = {
   id: ModelId;
   sId: string;
