@@ -554,7 +554,9 @@ const createServer = (): McpServer => {
 const decodeMessageBody = (
   payload: GmailMessagePayload | undefined
 ): string => {
-  if (!payload) return "";
+  if (!payload) {
+    return "";
+  }
 
   if (payload.mimeType === "text/plain" && payload.body?.data) {
     const base64 = payload.body.data.replace(/-/g, "+").replace(/_/g, "/");
@@ -564,7 +566,9 @@ const decodeMessageBody = (
   if (payload.parts) {
     for (const part of payload.parts) {
       const found = decodeMessageBody(part);
-      if (found) return found;
+      if (found) {
+        return found;
+      }
     }
   }
 
@@ -583,7 +587,9 @@ const createQuoteSection = (
   originalDate: string | undefined,
   originalFrom: string | undefined
 ): string => {
-  if (!originalBody) return "";
+  if (!originalBody) {
+    return "";
+  }
 
   const separator =
     originalDate && originalFrom
