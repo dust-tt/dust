@@ -1,10 +1,14 @@
 import type { RedisClientType } from "redis";
 import { createClient } from "redis";
 
+import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 
-let client: RedisClientType;
+const clients: Record<"cache" | "standard", RedisClientType | null> = {
+  cache: null,
+  standard: null,
+};
 
 export type RedisUsageTagsType =
   | "action_validation"
@@ -24,29 +28,43 @@ export type RedisUsageTagsType =
   | "reasoning_generation"
   | "retry_agent_message"
   | "update_authors"
-  | "user_message_events";
+  | "user_message_events"
+  | "cache_with_redis"
+  | "rate_limiter";
+
+export type GetRedisClientOptions = {
+  origin: RedisUsageTagsType;
+  /** Type of redis client being created
+   * standard: has an isolationPoolOptions
+   * cache: does not
+   */
+  type?: "standard" | "cache";
+};
 
 export async function getRedisClient({
   origin,
-}: {
-  origin: RedisUsageTagsType;
-}): Promise<RedisClientType> {
-  if (!client) {
-    const { REDIS_URI } = process.env;
-    if (!REDIS_URI) {
-      throw new Error("REDIS_URI is not defined");
+  type = "standard",
+}: GetRedisClientOptions): Promise<RedisClientType> {
+  let client = clients[type];
+
+  if (client === null) {
+    if (type === "cache") {
+      client = createClient({
+        url: config.getRedisCacheURI(),
+      });
+    } else {
+      client = createClient({
+        url: config.getRedisURI(),
+        isolationPoolOptions: {
+          acquireTimeoutMillis: 10000, // Max time to wait for a connection: 10 seconds.
+          min: 1,
+          max: 800, // Maximum number of concurrent connections for streaming.
+          evictionRunIntervalMillis: 15000, // Check for idle connections every 15 seconds.
+          idleTimeoutMillis: 30000, // Connections idle for more than 30 seconds will be eligible for eviction.
+        },
+      });
     }
 
-    client = createClient({
-      url: REDIS_URI,
-      isolationPoolOptions: {
-        acquireTimeoutMillis: 10000, // Max time to wait for a connection: 10 seconds.
-        min: 1,
-        max: 800, // Maximum number of concurrent connections for streaming.
-        evictionRunIntervalMillis: 15000, // Check for idle connections every 15 seconds.
-        idleTimeoutMillis: 30000, // Connections idle for more than 30 seconds will be eligible for eviction.
-      },
-    });
     client.on("error", (err) => logger.info({ err }, "Redis Client Error"));
     client.on("ready", () => logger.info({}, "Redis Client Ready"));
     client.on("connect", () => {
@@ -59,13 +77,15 @@ export async function getRedisClient({
     });
 
     await client.connect();
+    clients[type] = client;
+    return client;
   }
 
   return client;
 }
 
 export async function runOnRedis<T>(
-  opts: { origin: RedisUsageTagsType },
+  opts: GetRedisClientOptions,
   fn: (client: RedisClientType) => PromiseLike<T>
 ): Promise<T> {
   const client = await getRedisClient(opts);
