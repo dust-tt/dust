@@ -1,4 +1,3 @@
-import type { DustAppRunConfigurationType } from "@app/components/actions/dust_app_run/utils";
 import type {
   ClientSideMCPToolConfigurationType,
   MCPActionType,
@@ -16,6 +15,7 @@ import type {
 import type {
   AgentActionType,
   AgentConfigurationType,
+  DustAppRunConfigurationType,
   TemplateAgentConfigurationType,
 } from "@app/types";
 

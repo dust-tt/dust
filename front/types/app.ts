@@ -33,3 +33,16 @@ export type SpecificationBlockType = {
 };
 
 export type SpecificationType = Array<SpecificationBlockType>;
+
+export type DustAppRunConfigurationType = {
+  id: ModelId;
+  sId: string;
+
+  type: "dust_app_run_configuration";
+
+  appWorkspaceId: string;
+  appId: string;
+
+  name: string;
+  description: string | null;
+};

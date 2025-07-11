@@ -3,7 +3,6 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
-import type { DustAppRunConfigurationType } from "@app/components/actions/dust_app_run/utils";
 import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
@@ -70,6 +69,7 @@ import { statsDClient } from "@app/logger/statsDClient";
 import type {
   AgentConfigurationType,
   AgentMessageType,
+  DustAppRunConfigurationType,
   FileUseCase,
   FileUseCaseMetadata,
   FunctionCallType,

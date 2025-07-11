@@ -5,7 +5,6 @@ import { uniqueId } from "lodash";
 import type React from "react";
 import type { SVGProps } from "react";
 
-import type { DustAppRunConfigurationType } from "@app/components/actions/dust_app_run/utils";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
@@ -19,6 +18,7 @@ import type {
   AgentConfigurationType,
   AgentReasoningEffort,
   DataSourceViewSelectionConfigurations,
+  DustAppRunConfigurationType,
   LightAgentConfigurationType,
   PlanType,
   ReasoningModelConfigurationType,
