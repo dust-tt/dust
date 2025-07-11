@@ -10,6 +10,7 @@ import {
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
@@ -21,8 +22,6 @@ import type {
   DataSourceViewType,
   WorkspaceType,
 } from "@app/types";
-
-import { useTheme } from "../sparkle/ThemeContext";
 
 const PAGE_SIZE = 25;
 
