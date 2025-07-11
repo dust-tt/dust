@@ -23,9 +23,13 @@ const UPDATE_ACTION_CONCURRENCY = 10;
 async function attachStepContentToMcpActions({
   workspace,
   execute,
+  verbose,
+  logger,
 }: {
   workspace: LightWorkspaceType;
   execute: boolean;
+  verbose: boolean;
+  logger: Logger;
 }): Promise<{
   workspaceId: string;
   nbActionsToProcess: number;
@@ -37,8 +41,53 @@ async function attachStepContentToMcpActions({
   let nbActionsSkipped = 0;
   let hasMore = false;
   let lastId = 0;
+  let batchNumber = 0;
+
+  if (verbose) {
+    logger.info(
+      { workspaceId: workspace.sId, workspaceName: workspace.name },
+      "Starting to process workspace"
+    );
+
+    // Count total actions first.
+    const totalCount = await AgentMCPAction.count({
+      where: {
+        workspaceId: workspace.id,
+        stepContentId: {
+          [Op.is]: null,
+        },
+      },
+    });
+    logger.info(
+      { workspaceId: workspace.sId, totalCount },
+      "Total MCP actions without stepContentId"
+    );
+
+    if (totalCount === 0) {
+      return {
+        workspaceId: workspace.sId,
+        nbActionsToProcess: 0,
+        nbActionsLinked: 0,
+        nbActionsSkipped: 0,
+      };
+    }
+  }
 
   do {
+    batchNumber++;
+    if (verbose) {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          batchNumber,
+          lastId,
+          batchSize: FETCH_ACTIONS_BATCH_SIZE,
+        },
+        "Fetching next batch of MCP actions..."
+      );
+    }
+
+    const startTime = Date.now();
     const mcpActions = await AgentMCPAction.findAll({
       where: {
         workspaceId: workspace.id,
@@ -53,6 +102,19 @@ async function attachStepContentToMcpActions({
       order: [["id", "ASC"]],
     });
 
+    if (verbose) {
+      const fetchTime = Date.now() - startTime;
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          batchNumber,
+          foundActions: mcpActions.length,
+          fetchTimeMs: fetchTime,
+        },
+        "Fetched MCP actions"
+      );
+    }
+
     if (mcpActions.length === 0) {
       return {
         workspaceId: workspace.sId,
@@ -64,17 +126,44 @@ async function attachStepContentToMcpActions({
 
     const result = await concurrentExecutor(
       mcpActions,
-      async (mcpAction) => {
+      async (mcpAction, index) => {
+        if (verbose) {
+          logger.info(
+            {
+              workspaceId: workspace.sId,
+              actionId: mcpAction.id,
+              agentMessageId: mcpAction.agentMessageId,
+              step: mcpAction.step,
+              version: mcpAction.version,
+              progress: `${index + 1}/${mcpActions.length}`,
+            },
+            "Processing MCP action"
+          );
+        }
         // We look for a matching agent step content.
+        const stepContentStartTime = verbose ? Date.now() : 0;
         const stepContents = await AgentStepContentModel.findAll({
           where: {
-            workspaceId: workspace.id,
-            type: "function_call",
             agentMessageId: mcpAction.agentMessageId,
             step: mcpAction.step,
+            workspaceId: workspace.id,
+            type: "function_call",
             version: mcpAction.version,
           },
         });
+
+        if (verbose) {
+          const stepContentFetchTime = Date.now() - stepContentStartTime;
+          logger.info(
+            {
+              workspaceId: workspace.sId,
+              actionId: mcpAction.id,
+              foundStepContents: stepContents.length,
+              fetchTimeMs: stepContentFetchTime,
+            },
+            "Fetched step contents"
+          );
+        }
 
         if (stepContents.length === 0) {
           return false;
@@ -87,12 +176,33 @@ async function attachStepContentToMcpActions({
         );
 
         if (!matchingStepContent) {
+          if (verbose) {
+            logger.info(
+              { workspaceId: workspace.sId, actionId: mcpAction.id },
+              "No matching step content found"
+            );
+          }
           return false;
         }
 
         // If the step content is found, we can attach it to the MCP action.
         if (execute) {
-          await mcpAction.update({ stepContentId: matchingStepContent.id });
+          if (verbose) {
+            const updateStartTime = Date.now();
+            await mcpAction.update({ stepContentId: matchingStepContent.id });
+            const updateTime = Date.now() - updateStartTime;
+            logger.info(
+              {
+                workspaceId: workspace.sId,
+                actionId: mcpAction.id,
+                stepContentId: matchingStepContent.id,
+                updateTimeMs: updateTime,
+              },
+              "Updated MCP action with stepContentId"
+            );
+          } else {
+            await mcpAction.update({ stepContentId: matchingStepContent.id });
+          }
         }
         return true;
       },
@@ -103,7 +213,24 @@ async function attachStepContentToMcpActions({
     nbActionsLinked += result.filter((r) => r === true).length;
     nbActionsSkipped += result.filter((r) => r === false).length;
     hasMore = mcpActions.length === FETCH_ACTIONS_BATCH_SIZE;
-    lastId = mcpActions[mcpActions.length - 1].id;
+    if (mcpActions.length > 0) {
+      lastId = mcpActions[mcpActions.length - 1].id;
+    }
+
+    if (verbose) {
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          batchNumber,
+          progress: {
+            processed: nbActionsToProcess,
+            linked: nbActionsLinked,
+            skipped: nbActionsSkipped,
+          },
+        },
+        "Batch completed"
+      );
+    }
   } while (hasMore);
 
   return {
@@ -119,10 +246,19 @@ async function attachStepContentToMcpActions({
  */
 async function migrateForWorkspace(
   workspace: LightWorkspaceType,
-  { execute, logger }: { execute: boolean; logger: Logger }
+  {
+    execute,
+    logger,
+    verbose,
+  }: { execute: boolean; logger: Logger; verbose: boolean }
 ) {
-  const stats = await attachStepContentToMcpActions({ workspace, execute });
-  if (stats.nbActionsToProcess > 0) {
+  const stats = await attachStepContentToMcpActions({
+    workspace,
+    execute,
+    verbose,
+    logger,
+  });
+  if (stats.nbActionsToProcess > 0 || verbose) {
     logger.info(stats, "Completed processing MCP actions for workspace.");
   }
 }
@@ -138,18 +274,30 @@ makeScript(
       description: "Workspace ID to migrate",
       required: false,
     },
+    verbose: {
+      type: "boolean",
+      description: "Enable verbose logging to debug slow queries",
+      required: false,
+      default: false,
+    },
   },
-  async ({ execute, workspaceId }, logger) => {
+  async ({ execute, workspaceId, verbose }, logger) => {
+    if (verbose) {
+      logger.info(
+        { execute, workspaceId },
+        "Starting migration with verbose logging enabled"
+      );
+    }
     if (workspaceId) {
       const workspace = await getWorkspaceInfos(workspaceId);
       if (!workspace) {
         throw new Error(`Workspace ${workspaceId} not found`);
       }
-      await migrateForWorkspace(workspace, { execute, logger });
+      await migrateForWorkspace(workspace, { execute, logger, verbose });
     } else {
       return runOnAllWorkspaces(
         async (workspace) => {
-          await migrateForWorkspace(workspace, { execute, logger });
+          await migrateForWorkspace(workspace, { execute, logger, verbose });
         },
         { concurrency: WORKSPACE_CONCURRENCY }
       );
