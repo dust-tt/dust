@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use cloud_storage::{ErrorList, GoogleErrorResponse, Object};
+use cloud_storage::Object;
 use csv::Writer;
 use tracing::info;
 
@@ -185,51 +185,29 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
 
     async fn delete_table_data(&self, table: &Table) -> Result<()> {
         if table.migrated_to_csv() {
-            match Object::delete(
+            Object::delete(
                 &Self::get_bucket()?,
                 &Self::get_csv_storage_file_path(table),
             )
-            .await
-            {
-                Ok(_) => {}
-                Err(e) => match e {
-                    cloud_storage::Error::Google(GoogleErrorResponse {
-                        error: ErrorList { code: 404, .. },
-                        ..
-                    }) => {
-                        // Silently ignore 404 errors which means the object does not exist
-                        // anymore.
-                    }
-                    e => Err(e)?,
-                },
-            }
+            .await?;
         }
         Ok(())
     }
+
     async fn delete_table_row(&self, table: &Table, row_id: &str) -> Result<()> {
         if table.migrated_to_csv() {
-            match Self::get_rows_from_csv(table).await {
-                Ok(rows) => {
-                    let previous_rows_count = rows.len();
-                    let new_rows = rows
-                        .iter()
-                        .filter(|r| r.row_id != row_id)
-                        .cloned()
-                        .collect::<Vec<_>>();
+            let rows = Self::get_rows_from_csv(table).await?;
+            let previous_rows_count = rows.len();
+            let new_rows = rows
+                .iter()
+                .filter(|r| r.row_id != row_id)
+                .cloned()
+                .collect::<Vec<_>>();
 
-                    if previous_rows_count != new_rows.len() {
-                        let rows = Arc::new(new_rows.clone());
-                        let schema = TableSchema::from_rows_async(rows).await?;
-                        Self::write_rows_to_csv(table, &schema, &new_rows).await?;
-                    }
-                }
-                Err(e) => {
-                    info!(
-                        "Failed to update CSV file after row deletion for table {}. {:#?}",
-                        table.unique_id(),
-                        e
-                    );
-                }
+            if previous_rows_count != new_rows.len() {
+                let rows = Arc::new(new_rows.clone());
+                let schema = TableSchema::from_rows_async(rows).await?;
+                Self::write_rows_to_csv(table, &schema, &new_rows).await?;
             }
         }
 
