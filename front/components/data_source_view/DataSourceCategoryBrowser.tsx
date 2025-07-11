@@ -1,7 +1,13 @@
 import type { WorkspaceType } from "@dust-tt/client";
-import { DataTable, Icon, Spinner } from "@dust-tt/sparkle";
+import {
+  Checkbox,
+  DataTable,
+  Icon,
+  ScrollableDataTable,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -18,6 +24,68 @@ import {
   isDataSourceViewCategoryWithoutApps,
   removeNulls,
 } from "@app/types";
+
+const columns: ColumnDef<CategoryRowData>[] = [
+  {
+    id: "select",
+    enableSorting: false,
+    enableHiding: false,
+    header: ({ table }) => (
+      <Checkbox
+        size="xs"
+        checked={
+          table.getIsAllRowsSelected()
+            ? true
+            : table.getIsSomeRowsSelected()
+              ? "partial"
+              : false
+        }
+        onClick={(event) => event.stopPropagation()}
+        onCheckedChange={(state) => {
+          if (state === "indeterminate") {
+            return;
+          }
+          table.toggleAllRowsSelected(state);
+        }}
+      />
+    ),
+    cell: ({ row }) => (
+      <div className="flex h-full items-center">
+        <Checkbox
+          size="xs"
+          checked={row.getIsSelected()}
+          disabled={!row.getCanSelect()}
+          onClick={(event) => event.stopPropagation()}
+          onCheckedChange={(state) => {
+            if (state === "indeterminate") {
+              return;
+            }
+            row.toggleSelected(state);
+          }}
+        />
+      </div>
+    ),
+    meta: {
+      sizeRatio: 5,
+    },
+  },
+  {
+    accessorKey: "title",
+    id: "name",
+    header: "Name",
+    cell: ({ row }) => (
+      <DataTable.CellContent>
+        <span className="flex items-center gap-2 truncate text-ellipsis font-semibold">
+          {row.original.icon}
+          {row.original.title}
+        </span>
+      </DataTable.CellContent>
+    ),
+    meta: {
+      sizeRatio: 100,
+    },
+  },
+];
 
 interface CategoryRowData {
   title: string;
@@ -36,8 +104,6 @@ export function DataSourceCategoryBrowser({
   space,
   onSelectCategory,
 }: DataSourceCategoryBrowserProps) {
-  const [categoryRows, setCategoryRows] = useState<CategoryRowData[]>([]);
-
   const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space.sId,
@@ -47,54 +113,26 @@ export function DataSourceCategoryBrowser({
     workspaceId: owner.sId,
   });
 
-  useEffect(() => {
+  const categoryRows = useMemo(() => {
     if (!isSpaceInfoLoading && spaceInfo) {
-      const rows = getCategoryRows(
-        spaceInfo.categories,
-        hasFeature,
-        (category) => {
-          if (isDataSourceViewCategoryWithoutApps(category)) {
-            onSelectCategory(category);
-          }
+      return getCategoryRows(spaceInfo.categories, hasFeature, (category) => {
+        if (isDataSourceViewCategoryWithoutApps(category)) {
+          onSelectCategory(category);
         }
-      );
-      setCategoryRows(rows);
+      });
     }
-  }, [spaceInfo, isSpaceInfoLoading, hasFeature, onSelectCategory]);
+    return [];
+  }, [hasFeature, isSpaceInfoLoading, onSelectCategory, spaceInfo]);
 
-  const columns: ColumnDef<CategoryRowData>[] = useMemo(
-    () => [
-      {
-        accessorKey: "title",
-        id: "name",
-        header: "Name",
-        cell: ({ row }) => (
-          <DataTable.CellContent>
-            <span className="flex items-center gap-2 truncate text-ellipsis font-semibold">
-              {row.original.icon}
-              {row.original.title}
-            </span>
-          </DataTable.CellContent>
-        ),
-        meta: {
-          sizeRatio: 100,
-        },
-      },
-    ],
-    []
-  );
+  if (isSpaceInfoLoading) {
+    return (
+      <div className="flex justify-center p-4">
+        <Spinner size="md" />
+      </div>
+    );
+  }
 
-  return (
-    <div>
-      {isSpaceInfoLoading ? (
-        <div className="flex justify-center p-4">
-          <Spinner size="md" />
-        </div>
-      ) : (
-        <DataTable data={categoryRows} columns={columns} />
-      )}
-    </div>
-  );
+  return <ScrollableDataTable data={categoryRows} columns={columns} />;
 }
 
 type SpaceCategory = {
