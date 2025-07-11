@@ -13,6 +13,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   LightAgentConfigurationType,
   ModelId,
@@ -20,8 +21,6 @@ import type {
   UserType,
 } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
-
-import { concurrentExecutor } from "../utils/async_utils";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
