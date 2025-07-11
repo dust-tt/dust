@@ -37,12 +37,8 @@ async function handler(
     });
   }
 
-  const { documentId, dsId, spaceId } = req.query;
-  if (
-    typeof documentId !== "string" ||
-    typeof dsId !== "string" ||
-    typeof spaceId !== "string"
-  ) {
+  const { documentId, dsId } = req.query;
+  if (typeof documentId !== "string" || typeof dsId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -53,11 +49,7 @@ async function handler(
   }
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
-  if (
-    !dataSource ||
-    dataSource.space.sId !== spaceId ||
-    !dataSource.canRead(auth)
-  ) {
+  if (!dataSource || !dataSource.canRead(auth)) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {

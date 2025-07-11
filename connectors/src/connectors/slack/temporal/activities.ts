@@ -521,6 +521,9 @@ export async function syncNonThreadedChunk({
       );
 
       await processAndUpsertNonThreadedMessages({
+        // Do not upsert async if we're splitting work. Subsequent chunks will need to fetch the
+        // document. Setting async to false, ensures that the document exist by the next chunk.
+        asyncUpsert: false,
         channelId,
         channelName,
         connectorId,
@@ -560,6 +563,7 @@ export async function syncNonThreadedChunk({
 
   if (messages.length > 0) {
     await processAndUpsertNonThreadedMessages({
+      asyncUpsert: true,
       channelId,
       channelName,
       connectorId,
@@ -579,6 +583,7 @@ export async function syncNonThreadedChunk({
 }
 
 async function processAndUpsertNonThreadedMessages({
+  asyncUpsert,
   channelId,
   channelName,
   connectorId,
@@ -589,6 +594,7 @@ async function processAndUpsertNonThreadedMessages({
   weekEndTsMs,
   weekStartTsMs,
 }: {
+  asyncUpsert: boolean;
   channelId: string;
   channelName: string;
   connectorId: ModelId;
@@ -721,7 +727,7 @@ async function processAndUpsertNonThreadedMessages({
         .slice(1)
         .join(":") ?? "",
     mimeType: INTERNAL_MIME_TYPES.SLACK.MESSAGES,
-    async: true,
+    async: asyncUpsert,
   });
 }
 

@@ -126,6 +126,9 @@ export async function formatMessagesForUpsert({
     // This allows us to append new message sections while preserving previous ones.
     const existingSections = existingDocumentBlob.section.sections ?? [];
 
+    // Take the first section, which is the previous messages section.
+    const [previousMessagesSections] = existingSections;
+
     return renderDocumentTitleAndContent({
       dataSourceConfig,
       createdAt,
@@ -135,7 +138,7 @@ export async function formatMessagesForUpsert({
         prefix: null,
         content: null,
         sections: [
-          ...existingSections,
+          ...(previousMessagesSections?.sections ?? []),
           ...data.map((d) => ({
             prefix: `>> @${d.authorName} [${d.dateStr}]:\n`,
             content: d.text + "\n",
