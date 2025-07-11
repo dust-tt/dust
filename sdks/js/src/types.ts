@@ -2154,6 +2154,29 @@ const GetDocumentResponseSchema = z.object({
 });
 export type GetDocumentResponseType = z.infer<typeof GetDocumentResponseSchema>;
 
+const CoreAPIDataSourceDocumentBlobSchema = z.object({
+  document_id: z.string(),
+  mime_type: z.string(),
+  parent_id: z.string().nullable(),
+  parents: z.array(z.string()),
+  section: FrontDataSourceDocumentSectionSchema,
+  source_url: z.string().nullable(),
+  tags: z.array(z.string()),
+  timestamp: z.number(),
+  title: z.string(),
+});
+
+export type CoreAPIDataSourceDocumentBlob = z.infer<
+  typeof CoreAPIDataSourceDocumentBlobSchema
+>;
+
+const GetDocumentBlobResponseSchema = z.object({
+  blob: CoreAPIDataSourceDocumentBlobSchema,
+});
+export type GetDocumentBlobResponseType = z.infer<
+  typeof GetDocumentBlobResponseSchema
+>;
+
 const DeleteDocumentResponseSchema = z.object({
   document: z.object({
     document_id: z.string(),
