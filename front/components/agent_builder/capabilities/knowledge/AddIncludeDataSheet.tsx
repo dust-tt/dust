@@ -15,6 +15,7 @@ import {
   isValidPage,
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import type {
   AgentBuilderAction,
   IncludeDataAgentBuilderAction,
@@ -46,7 +47,8 @@ export function AddIncludeDataSheet({
   onClose,
   action,
 }: AddIncludeDataSheetProps) {
-  const { owner, supportedDataSourceViews } = useAgentBuilderContext();
+  const { owner } = useAgentBuilderContext();
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { spaces } = useSpacesContext();
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     PAGE_IDS.DATA_SOURCE_SELECTION
