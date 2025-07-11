@@ -179,6 +179,9 @@ const config = {
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
   },
+  getOAuthJiraClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_JIRA_CLIENT_ID");
+  },
   getOAuthMondayClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MONDAY_CLIENT_ID");
   },
