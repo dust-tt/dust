@@ -32,9 +32,9 @@ lazy_static! {
 }
 
 pub const REDIS_TABLE_UPSERT_HASH_NAME: &str = "TABLE_UPSERT";
-static REDIS_LOCK_TTL_SECONDS: u64 = 15;
+pub const REDIS_LOCK_TTL_SECONDS: u64 = 15;
 
-const UPSERT_DEBOUNCE_TIME_MS: u64 = 30_000;
+const UPSERT_DEBOUNCE_TIME_MS: u64 = 10_000;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct TableUpsertActivityData {
@@ -83,9 +83,11 @@ impl TableUpsertsBackgroundWorker {
             table_data.project_id, table_data.data_source_id, table_data.table_id
         );
 
-        let files =
-            GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(&table)
-                .await?;
+        let files = GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(
+            &table,
+            utils::now(),
+        )
+        .await?;
         let rows =
             GoogleCloudStorageBackgroundProcessingStore::get_dedupped_rows_from_all_files(&files)
                 .await?;
@@ -154,7 +156,7 @@ impl TableUpsertsBackgroundWorker {
 
                     let lock = lock_manager
                         .acquire_no_guard(
-                            format!("upsert:{}", table.unique_id()).as_bytes(),
+                            table.get_background_processing_lock_name().as_bytes(),
                             Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
                         )
                         .await?;

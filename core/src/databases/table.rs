@@ -1,15 +1,18 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
 use redis::AsyncCommands;
+use rslock::LockManager;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
 use crate::databases::table_upserts_background_worker::{
-    TableUpsertActivityData, REDIS_CLIENT, REDIS_TABLE_UPSERT_HASH_NAME,
+    TableUpsertActivityData, REDIS_CLIENT, REDIS_LOCK_TTL_SECONDS, REDIS_TABLE_UPSERT_HASH_NAME,
+    REDIS_URI,
 };
 use crate::databases_store;
 use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
@@ -239,6 +242,9 @@ impl Table {
     pub fn set_remote_database_secret_id(&mut self, remote_database_secret_id: String) {
         self.remote_database_secret_id = Some(remote_database_secret_id);
     }
+    pub fn get_background_processing_lock_name(&self) -> String {
+        format!("upsert:{}", self.unique_id())
+    }
 
     // if search_store is provided, delete the table node from the search index
     pub async fn delete(
@@ -458,7 +464,30 @@ impl LocalTable {
         Self::validate_rows_lowercase(rows.clone()).await?;
 
         if truncate {
-            // For truncate, save instantly to both postgres and
+            let now = utils::now();
+            let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
+
+            // Take the table lock to make sure we don't conflict with processing
+            // happening in the background worker.
+            let lock = lock_manager
+                .acquire_no_guard(
+                    self.table.get_background_processing_lock_name().as_bytes(),
+                    Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
+                )
+                .await?;
+
+            info!(
+                lock_acquisition_duration = utils::now() - now,
+                "Upsert lock acquired in upsert_rows"
+            );
+
+            // Since truncate replaces everything, we get rid of all non-truncate and row deletion
+            // pending operations that got queued before we got called.
+            // And those that arrive later cannot happen until we release the lock.
+            GoogleCloudStorageBackgroundProcessingStore::delete_files_older_than(&self.table, now)
+                .await?;
+
+            // For truncate, save instantly to both postgres and GCS
             self.upsert_rows_now(
                 &store,
                 &databases_store,
@@ -467,7 +496,10 @@ impl LocalTable {
                 true, /*postgres*/
                 true, /*gcs*/
             )
-            .await
+            .await?;
+
+            lock_manager.unlock(&lock).await;
+            Ok(())
         } else {
             // For non-truncate, we instantly save to postgres, and use the background worker for GCS.
             self.upsert_rows_now(
