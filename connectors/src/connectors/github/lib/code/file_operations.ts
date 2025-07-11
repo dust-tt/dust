@@ -1,7 +1,10 @@
 import assert from "assert";
 import { hash as blake3 } from "blake3";
 
-import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
+import {
+  GCSFileNotFoundError,
+  GCSRepositoryManager,
+} from "@connectors/connectors/github/lib/code/gcs_repository";
 import {
   getRepoUrl,
   inferParentsFromGcsPath,
@@ -82,8 +85,27 @@ export async function upsertCodeFile({
   const documentId = parents[0]!;
 
   // Read file content from GCS.
-  const content = await gcsManager.downloadFile(gcsPath);
+  const contentResult = await gcsManager.downloadFile(gcsPath);
 
+  if (contentResult.isErr()) {
+    if (contentResult.error instanceof GCSFileNotFoundError) {
+      logger.warn(
+        {
+          connectorId,
+          repoId,
+          gcsPath,
+          documentId,
+          relativePath,
+        },
+        "File not found in GCS, skipping update"
+      );
+      return { updatedDirectoryIds: new Set<string>() };
+    }
+
+    throw contentResult.error;
+  }
+
+  const content = contentResult.value;
   const contentHash = blake3(content).toString("hex");
 
   // Construct source URL.
