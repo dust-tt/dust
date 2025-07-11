@@ -100,7 +100,7 @@ const createServer = (
 
       const memory = await AgentMemoryResource.retrieveMemory(auth, {
         agentConfiguration,
-        user: user?.toJSON(),
+        user: user.toJSON(),
       });
 
       if (memory.length === 0) {
@@ -148,7 +148,7 @@ const createServer = (
 
       await AgentMemoryResource.recordEntries(auth, {
         agentConfiguration,
-        user: user?.toJSON(),
+        user: user.toJSON(),
         entries,
       });
 
@@ -183,7 +183,7 @@ const createServer = (
 
       await AgentMemoryResource.eraseEntries(auth, {
         agentConfiguration,
-        user: user?.toJSON(),
+        user: user.toJSON(),
         indexes,
       });
 
@@ -227,7 +227,7 @@ const createServer = (
 
       await AgentMemoryResource.editEntries(auth, {
         agentConfiguration,
-        user: user?.toJSON(),
+        user: user.toJSON(),
         edits,
       });
 
