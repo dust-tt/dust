@@ -202,6 +202,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "denied";
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
+  declare stepContent?: NonAttribute<AgentStepContentModel>;
 }
 
 AgentMCPAction.init(
