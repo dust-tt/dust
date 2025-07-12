@@ -6,7 +6,10 @@ use axum::{
     Router,
 };
 use dust::{
-    databases::table::{LocalTable, Table},
+    databases::{
+        table::{LocalTable, Table},
+        table_upserts_background_worker::TableUpsertsBackgroundWorker,
+    },
     databases_store::{self},
     sqlite_workers::{
         client::HEARTBEAT_INTERVAL_MS,
@@ -340,6 +343,12 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
+        // Start the background worker for table upserts. Note that this is not related
+        // to sqlite, but we put it here for convenience.
+        tokio::task::spawn(async move {
+            TableUpsertsBackgroundWorker::start_loop().await;
+        });
+
         tracing_subscriber::registry()
             .with(JsonStorageLayer)
             .with(
