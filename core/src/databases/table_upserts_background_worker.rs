@@ -83,11 +83,9 @@ impl TableUpsertsBackgroundWorker {
             table_data.project_id, table_data.data_source_id, table_data.table_id
         );
 
-        let files = GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(
-            &table,
-            utils::now(),
-        )
-        .await?;
+        let files =
+            GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(&table)
+                .await?;
         let rows =
             GoogleCloudStorageBackgroundProcessingStore::get_dedupped_rows_from_all_files(&files)
                 .await?;

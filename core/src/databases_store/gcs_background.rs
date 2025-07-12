@@ -64,10 +64,7 @@ impl GoogleCloudStorageBackgroundProcessingStore {
         Ok(rows)
     }
 
-    pub async fn get_gcs_csv_file_names_for_table(
-        table: &Table,
-        if_older_than: u64,
-    ) -> Result<Vec<String>> {
+    pub async fn get_gcs_csv_file_names_for_table(table: &Table) -> Result<Vec<String>> {
         let bucket = Self::get_bucket()?;
         let bucket_folder_path = Self::get_csv_storage_folder_path(table);
         let list_request = ListRequest {
@@ -90,10 +87,7 @@ impl GoogleCloudStorageBackgroundProcessingStore {
             match result {
                 Ok(object_list) => {
                     for object in object_list.items {
-                        let created_ts = object.time_created.timestamp() as u64;
-                        if created_ts < if_older_than {
-                            files.push((object.name, object.time_created));
-                        }
+                        files.push((object.name, object.time_created));
                     }
                 }
                 Err(e) => {
@@ -155,8 +149,8 @@ impl GoogleCloudStorageBackgroundProcessingStore {
         Ok(())
     }
 
-    pub async fn delete_files_older_than(table: &Table, older_than: u64) -> Result<()> {
-        let files = Self::get_gcs_csv_file_names_for_table(table, older_than).await?;
+    pub async fn delete_all_files_for_table(table: &Table) -> Result<()> {
+        let files = Self::get_gcs_csv_file_names_for_table(table).await?;
         Self::delete_files(&files).await
     }
 }

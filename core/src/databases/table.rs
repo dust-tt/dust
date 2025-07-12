@@ -484,7 +484,7 @@ impl LocalTable {
             // Since truncate replaces everything, we get rid of all non-truncate and row deletion
             // pending operations that got queued before we got called.
             // And those that arrive later cannot happen until we release the lock.
-            GoogleCloudStorageBackgroundProcessingStore::delete_files_older_than(&self.table, now)
+            GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(&self.table)
                 .await?;
 
             // For truncate, save instantly to both postgres and GCS
