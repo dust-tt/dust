@@ -87,11 +87,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       { where: { id } }
     );
 
-    if (affectedCount === 0) {
-      return new Err(new Error("Workspace not found."));
-    }
-
-    return new Ok(undefined);
+    return this.checkWorkspaceExists(affectedCount);
   }
 
   static async updateConversationsRetention(
@@ -103,11 +99,35 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       { where: { id } }
     );
 
-    if (affectedCount === 0) {
-      return new Err(new Error("Workspace not found."));
-    }
+    return this.checkWorkspaceExists(affectedCount);
+  }
 
-    return new Ok(undefined);
+  static async updateMetadata(
+    id: ModelId,
+    metadata: Record<string, string | number | boolean | object>
+  ): Promise<Result<void, Error>> {
+    const [affectedCount] = await WorkspaceModel.update(
+      { metadata: metadata },
+      {
+        where: { id },
+      }
+    );
+
+    return this.checkWorkspaceExists(affectedCount);
+  }
+
+  static async updateWorkOSOrganizationId(
+    id: ModelId,
+    workOSOrganizationId: string | null
+  ): Promise<Result<void, Error>> {
+    const [affectedCount] = await WorkspaceModel.update(
+      { workOSOrganizationId },
+      {
+        where: { id },
+      }
+    );
+
+    return this.checkWorkspaceExists(affectedCount);
   }
 
   static async disableSSOEnforcement(
@@ -125,42 +145,6 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
     if (affectedCount === 0) {
       return new Err(new Error("SSO enforcement is already disabled."));
-    }
-
-    return new Ok(undefined);
-  }
-
-  static async updateMetadata(
-    id: ModelId,
-    metadata: Record<string, string | number | boolean | object>
-  ): Promise<Result<void, Error>> {
-    const [affectedCount] = await WorkspaceModel.update(
-      { metadata: metadata },
-      {
-        where: { id },
-      }
-    );
-
-    if (affectedCount === 0) {
-      return new Err(new Error("Workspace not found."));
-    }
-
-    return new Ok(undefined);
-  }
-
-  static async updateWorkOSOrganizationId(
-    id: ModelId,
-    workOSOrganizationId: string | null
-  ): Promise<Result<void, Error>> {
-    const [affectedCount] = await WorkspaceModel.update(
-      { workOSOrganizationId },
-      {
-        where: { id },
-      }
-    );
-
-    if (affectedCount === 0) {
-      return new Err(new Error("Workspace not found."));
     }
 
     return new Ok(undefined);
@@ -185,5 +169,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return {
       sId: this.blob.sId,
     };
+  }
+
+  // Helper to check workspace existence by checking the affected count of an update operation.
+  static checkWorkspaceExists(affectedCount: number): Result<void, Error> {
+    if (affectedCount === 0) {
+      return new Err(new Error("Workspace not found."));
+    }
+    return new Ok(undefined);
   }
 }
