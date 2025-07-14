@@ -1,5 +1,6 @@
-import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import type { Transaction } from "sequelize";
+import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
+import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
@@ -56,6 +57,17 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static async fetchByModelIds(ids: ModelId[]): Promise<WorkspaceResource[]> {
     const workspaces = await this.model.findAll({
       where: { id: ids },
+    });
+    return workspaces.map((workspace) => new this(this.model, workspace.get()));
+  }
+
+  static async fetchByIds(wIds: string[]): Promise<WorkspaceResource[]> {
+    const workspaces = await WorkspaceModel.findAll({
+      where: {
+        sId: {
+          [Op.in]: wIds,
+        },
+      },
     });
     return workspaces.map((workspace) => new this(this.model, workspace.get()));
   }
