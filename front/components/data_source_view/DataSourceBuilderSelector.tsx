@@ -160,7 +160,7 @@ export const DataSourceBuilderSelector = ({
         />
       )}
 
-      {currentNavigationEntry?.type === "space" && (
+      {currentNavigationEntry.type === "space" && (
         <DataSourceCategoryBrowser
           owner={owner}
           space={currentNavigationEntry.space}
