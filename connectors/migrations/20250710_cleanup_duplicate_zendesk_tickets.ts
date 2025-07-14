@@ -10,10 +10,10 @@ import { ZendeskTicketModel } from "@connectors/lib/models/zendesk";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 
-const TICKET_BATCH_SIZE = 1024;
-const CONCURRENCY = 16;
+const TICKET_BATCH_SIZE = 512;
+const CONCURRENCY = 4;
 
-async function checkTicketValidity(
+async function getTicketBrandId(
   ticket: ZendeskTicketModel,
   {
     accessToken,
@@ -27,7 +27,7 @@ async function checkTicketValidity(
       brandId: ticket.brandId,
     });
     if (!brand) {
-      return false;
+      return null;
     }
     brandSubdomains.set(ticket.brandId, brand.subdomain);
     brandSubdomain = brand.subdomain;
@@ -39,7 +39,7 @@ async function checkTicketValidity(
     ticketId: ticket.ticketId,
   });
 
-  return fetchedTicket && fetchedTicket.brand_id === ticket.brandId;
+  return fetchedTicket?.brand_id ?? null;
 }
 
 async function cleanupConnector(
@@ -51,67 +51,89 @@ async function cleanupConnector(
     connector.connectionId
   );
   const brandSubdomains = new Map<number, string>();
+  const ticketIdsSeen = new Set();
 
-  let lastId = 0;
-  let tickets: ZendeskTicketModel[] = [];
+  let lastId: number | undefined = 0;
+  let ticketIds: ZendeskTicketModel[] = [];
 
   do {
-    tickets = await ZendeskTicketModel.findAll({
+    ticketIds = await ZendeskTicketModel.findAll({
       where: {
         connectorId: connector.id,
         id: { [Op.gt]: lastId },
       },
+      attributes: ["ticketId", "id"],
       order: [["id", "ASC"]],
       limit: TICKET_BATCH_SIZE,
     });
+    if (ticketIds.length === 0) {
+      break;
+    }
+    const ticketIdsToSee = _.uniq(ticketIds.map((t) => t.ticketId));
+
+    const tickets = await ZendeskTicketModel.findAll({
+      where: {
+        connectorId: connector.id,
+        ticketId: {
+          [Op.in]: ticketIdsToSee.filter(
+            (ticketId) => !ticketIdsSeen.has(ticketId)
+          ),
+        },
+      },
+    });
+
+    ticketIdsSeen.add(ticketIdsToSee);
+
     const ticketsByTicketId = _.groupBy(tickets, (t) => t.ticketId);
-    const duplicateTickets = Object.values(ticketsByTicketId)
-      .filter((t) => t.length > 1)
-      .flat();
+    const duplicateTickets = Object.values(ticketsByTicketId).filter(
+      (t) => t.length > 1
+    );
 
     await concurrentExecutor(
       duplicateTickets,
-      async (ticket) => {
-        const isValid = await checkTicketValidity(ticket, {
+      async (ticketBatch) => {
+        // Skip if there is only one ticket, we can safely assume it's the correct one.
+        if (ticketBatch.length === 1) {
+          return;
+        }
+        // Fetch the first ticket from Zendesk to get the brand ID (they all have the same one).
+        const brandIdFromZendesk = await getTicketBrandId(ticketBatch[0]!, {
           accessToken,
           brandSubdomains,
         });
-        logger.info(
-          {
-            connectorId: connector.id,
+        if (!brandIdFromZendesk) {
+          logger.warn(
+            { ticketId: ticketBatch[0]?.ticketId },
+            "Could not find a brand"
+          );
+          return;
+        }
+
+        for (const ticket of ticketBatch) {
+          const localLogger = logger.child({
             ticketId: ticket.ticketId,
-            brandId: ticket.brandId,
-            isValid,
-          },
-          "Checked duplicate ticket"
-        );
-        if (!isValid) {
+            brandIdOnDb: ticket.brandId,
+            brandIdFromZendesk,
+            lastId,
+          });
+          const isValid = ticket.brandId === brandIdFromZendesk;
+          if (isValid) {
+            localLogger.info("Ticket belongs to the correct brand");
+            continue;
+          }
+
           if (execute) {
             await ticket.destroy();
-            logger.info(
-              {
-                connectorId: connector.id,
-                ticketId: ticket.ticketId,
-                brandId: ticket.brandId,
-              },
-              "Destroyed duplicate ticket"
-            );
+            localLogger.info("Destroyed duplicate ticket");
           } else {
-            logger.info(
-              {
-                connectorId: connector.id,
-                ticketId: ticket.ticketId,
-                brandId: ticket.brandId,
-              },
-              "Would destroy duplicate ticket"
-            );
+            localLogger.info("Would destroy duplicate ticket");
           }
         }
       },
       { concurrency: CONCURRENCY }
     );
-    lastId = tickets[tickets.length - 1]?.id || 0;
-  } while (tickets.length === TICKET_BATCH_SIZE);
+    lastId = ticketIds[ticketIds.length - 1]?.id;
+  } while (ticketIds.length === TICKET_BATCH_SIZE);
 }
 
 makeScript(
