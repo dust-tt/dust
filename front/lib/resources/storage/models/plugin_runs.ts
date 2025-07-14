@@ -28,7 +28,7 @@ export class PluginRunModel extends BaseModel<PluginRunModel> {
 PluginRunModel.init(
   {
     args: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(4096),
       allowNull: true,
     },
     author: {

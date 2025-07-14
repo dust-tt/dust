@@ -16,7 +16,7 @@ export class WebCrawlerConfigurationModel extends ConnectorBaseModel<WebCrawlerC
   declare crawlFrequency: CrawlingFrequency;
   declare lastCrawledAt: Date | null;
   declare crawlId: string | null;
-  declare actions?: Action[];
+  declare actions: Action[] | null;
 }
 
 WebCrawlerConfigurationModel.init(
@@ -63,7 +63,7 @@ WebCrawlerConfigurationModel.init(
       defaultValue: null,
     },
     actions: {
-      type: DataTypes.JSON,
+      type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: null,
     },
