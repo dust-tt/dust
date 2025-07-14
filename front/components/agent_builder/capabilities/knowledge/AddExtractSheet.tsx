@@ -12,6 +12,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
+import { SelectionDisplay } from "@app/components/agent_builder/capabilities/knowledge/shared/SelectionDisplay";
 import {
   getDataSourceConfigurations,
   getJsonSchema,
@@ -191,6 +192,11 @@ export function AddExtractSheet({
         }
         disableSave={
           !hasDataSources || !description.trim() || description.length > 800
+        }
+        footerContent={
+          <SelectionDisplay
+            selectionConfigurations={dataSourceConfigurations}
+          />
         }
       />
     </MultiPageSheet>

@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
+import { SelectionDisplay } from "@app/components/agent_builder/capabilities/knowledge/shared/SelectionDisplay";
 import {
   getDataSourceConfigurations,
   getTimeFrame,
@@ -169,6 +170,11 @@ export function AddIncludeDataSheet({
           currentPageId === PAGE_IDS.DATA_SOURCE_SELECTION && !hasDataSources
         }
         disableSave={!hasDataSources || !description.trim()}
+        footerContent={
+          <SelectionDisplay
+            selectionConfigurations={dataSourceConfigurations}
+          />
+        }
       />
     </MultiPageSheet>
   );
