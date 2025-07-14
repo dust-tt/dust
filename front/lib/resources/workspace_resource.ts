@@ -148,6 +148,24 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return new Ok(undefined);
   }
 
+  static async updateWorkOSOrganizationId(
+    id: ModelId,
+    workOSOrganizationId: string | null
+  ): Promise<Result<void, Error>> {
+    const [affectedCount] = await WorkspaceModel.update(
+      { workOSOrganizationId },
+      {
+        where: { id },
+      }
+    );
+
+    if (affectedCount === 0) {
+      return new Err(new Error("Workspace not found."));
+    }
+
+    return new Ok(undefined);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
