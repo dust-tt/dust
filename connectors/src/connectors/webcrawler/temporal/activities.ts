@@ -1,4 +1,8 @@
-import type { FirecrawlDocument } from "@mendable/firecrawl-js";
+import type {
+  Action,
+  CrawlScrapeOptions,
+  FirecrawlDocument,
+} from "@mendable/firecrawl-js";
 import { FirecrawlError } from "@mendable/firecrawl-js";
 import { Context } from "@temporalio/activity";
 import { randomUUID } from "crypto";
@@ -125,7 +129,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         headers: customHeaders,
         maxAge: 43_200_000, // Use last 12h of cache
         actions: webCrawlerConfig.actions ?? undefined,
-      },
+      } as CrawlScrapeOptions & { actions?: Action[] },
       webhook: {
         url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
         metadata: {
