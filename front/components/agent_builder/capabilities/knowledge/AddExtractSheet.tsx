@@ -12,6 +12,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
+import { SelectionDisplay } from "@app/components/agent_builder/capabilities/knowledge/shared/SelectionDisplay";
 import {
   getDataSourceConfigurations,
   getJsonSchema,
@@ -30,7 +31,6 @@ import type {
   DataSourceViewSelectionConfigurations,
   TimeFrame,
 } from "@app/types";
-import { SelectionDisplay } from "@app/components/agent_builder/capabilities/knowledge/shared/SelectionDisplay";
 
 const DESCRIPTION_MAX_LENGTH = 800;
 

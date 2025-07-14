@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
+import { SelectionDisplay } from "@app/components/agent_builder/capabilities/knowledge/shared/SelectionDisplay";
 import {
   getDataSourceConfigurations,
   getTimeFrame,
@@ -25,7 +26,6 @@ import type {
   DataSourceViewSelectionConfigurations,
   TimeFrame,
 } from "@app/types";
-import { SelectionDisplay } from "@app/components/agent_builder/capabilities/knowledge/shared/SelectionDisplay";
 
 const PAGE_IDS = {
   DATA_SOURCE_SELECTION: "data-source-selection",
