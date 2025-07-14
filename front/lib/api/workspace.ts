@@ -398,20 +398,20 @@ export async function changeWorkspaceName(
   owner: LightWorkspaceType,
   newName: string
 ): Promise<Result<void, Error>> {
-  return WorkspaceResource.updateName(owner.sId, newName);
+  return WorkspaceResource.updateName(owner.id, newName);
 }
 
 export async function updateWorkspaceConversationsRetention(
   owner: LightWorkspaceType,
   nbDays: number
 ): Promise<Result<void, Error>> {
-  return WorkspaceResource.updateConversationsRetention(owner.sId, nbDays);
+  return WorkspaceResource.updateConversationsRetention(owner.id, nbDays);
 }
 
 export async function disableSSOEnforcement(
   owner: LightWorkspaceType
 ): Promise<Result<void, Error>> {
-  return WorkspaceResource.disableSSOEnforcement(owner.sId);
+  return WorkspaceResource.disableSSOEnforcement(owner.id);
 }
 
 export interface WorkspaceMetadata {
@@ -425,7 +425,7 @@ export async function updateWorkspaceMetadata(
 ): Promise<Result<void, Error>> {
   const previousMetadata = owner.metadata || {};
   const newMetadata = { ...previousMetadata, ...metadata };
-  return WorkspaceResource.updateMetadata(owner.sId, newMetadata);
+  return WorkspaceResource.updateMetadata(owner.id, newMetadata);
 }
 
 export async function setWorkspaceRelocating(
@@ -502,7 +502,7 @@ export async function upgradeWorkspaceToBusinessPlan(
     return new Err(new Error("Workspace is already on business plan."));
   }
 
-  return WorkspaceResource.updateMetadata(workspace.sId, {
+  return WorkspaceResource.updateMetadata(workspace.id, {
     ...workspace.metadata,
     isBusiness: true,
   });

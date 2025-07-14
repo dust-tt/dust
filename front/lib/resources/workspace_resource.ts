@@ -79,16 +79,12 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async updateName(
-    wId: string,
+    id: ModelId,
     newName: string
   ): Promise<Result<void, Error>> {
     const [affectedCount] = await WorkspaceModel.update(
       { name: newName },
-      {
-        where: {
-          id: wId,
-        },
-      }
+      { where: { id } }
     );
 
     if (affectedCount === 0) {
@@ -99,16 +95,12 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async updateConversationsRetention(
-    wId: string,
+    id: ModelId,
     nbDays: number
   ): Promise<Result<void, Error>> {
     const [affectedCount] = await WorkspaceModel.update(
       { conversationsRetentionDays: nbDays === -1 ? null : nbDays },
-      {
-        where: {
-          id: wId,
-        },
-      }
+      { where: { id } }
     );
 
     if (affectedCount === 0) {
@@ -119,13 +111,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async disableSSOEnforcement(
-    wId: string
+    id: ModelId
   ): Promise<Result<void, Error>> {
     const [affectedCount] = await WorkspaceModel.update(
       { ssoEnforced: false },
       {
         where: {
-          id: wId,
+          id,
           ssoEnforced: true,
         },
       }
@@ -139,15 +131,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async updateMetadata(
-    wId: string,
+    id: ModelId,
     metadata: Record<string, string | number | boolean | object>
   ): Promise<Result<void, Error>> {
     const [affectedCount] = await WorkspaceModel.update(
       { metadata: metadata },
       {
-        where: {
-          id: wId,
-        },
+        where: { id },
       }
     );
 
