@@ -25,6 +25,18 @@ const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
 const ITEMS_PER_INDEX = 5000; // Files/directories per index file.
 const PARALLEL_INDEX_UPLOADS = 10; // Concurrent index file uploads.
 
+interface DirectoryListing {
+  dirPath: string;
+  gcsPath: string;
+  internalId: string;
+  parentInternalId: string | null;
+}
+
+interface FileListing {
+  gcsPath: string;
+  relativePath: string;
+}
+
 /**
  * A wrapper around GCS operations for GitHub repository code sync.
  * Handles the temporary storage of repository files during sync process.
@@ -238,16 +250,8 @@ export class GCSRepositoryManager {
       options || {};
 
     const indexBasePath = `${gcsBasePath}/${DUST_INTERNAL_INDEX_FILE_PREFIX}`;
-    const directories: Array<{
-      dirPath: string;
-      gcsPath: string;
-      internalId: string;
-      parentInternalId: string | null;
-    }> = [];
-    const files: Array<{
-      gcsPath: string;
-      relativePath: string;
-    }> = [];
+    const directories: Array<DirectoryListing> = [];
+    const files: Array<FileListing> = [];
 
     // Collect all files and directories with pagination.
     let pageToken: string | undefined;
@@ -379,12 +383,7 @@ export class GCSRepositoryManager {
   async readFilesFromIndex(
     indexPath: string,
     expectedGcsBasePath: string
-  ): Promise<
-    Array<{
-      gcsPath: string;
-      relativePath: string;
-    }>
-  > {
+  ): Promise<Array<FileListing>> {
     await this.validateIndexFile(indexPath, expectedGcsBasePath);
 
     const indexContent = await this.downloadFile(indexPath);
@@ -402,14 +401,7 @@ export class GCSRepositoryManager {
   }: {
     indexPath: string;
     expectedGcsBasePath: string;
-  }): Promise<
-    Array<{
-      dirPath: string;
-      gcsPath: string;
-      internalId: string;
-      parentInternalId: string | null;
-    }>
-  > {
+  }): Promise<Array<DirectoryListing>> {
     await this.validateIndexFile(indexPath, expectedGcsBasePath);
 
     const indexContent = await this.downloadFile(indexPath);
