@@ -601,7 +601,7 @@ export async function syncDeltaForRootNodesInDrive({
     rootNodeIds
   );
 
-  const node = nodes[0];
+  let node = nodes[0];
 
   if (nodes.length !== rootNodeIds.length || !node) {
     const logger = getActivityLogger(connector);
@@ -633,6 +633,27 @@ export async function syncDeltaForRootNodesInDrive({
   //
   // If it ever becomes an issue, redis-caching the list and having activities
   // grabbing pages of it can be implemented
+
+  if (!node.deltaLink) {
+    const logger = getActivityLogger(connector);
+    logger.info(
+      { connectorId, internalId: node.internalId },
+      "No delta link for root node, populating delta"
+    );
+    const internalId = node.internalId;
+    await populateDeltas(connectorId, [internalId]);
+    node =
+      (await MicrosoftNodeResource.fetchByInternalId(
+        connectorId,
+        node.internalId
+      )) ?? undefined;
+    if (!node) {
+      throw new Error(
+        `Unreachable: Node ${internalId} (connectorId: ${connectorId}) not found after populateDeltas, skipping delta sync`
+      );
+    }
+  }
+
   const { results, deltaLink } = await getDeltaData({
     logger,
     client,
