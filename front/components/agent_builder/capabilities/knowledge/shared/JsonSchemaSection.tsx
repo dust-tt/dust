@@ -9,44 +9,51 @@ import { useEffect, useState } from "react";
 
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { WorkspaceType } from "@app/types";
+import { useController, useFormContext } from "react-hook-form";
+import { CapabilityFormData } from "@app/components/agent_builder/types";
 
 interface JsonSchemaSectionProps {
   label?: string;
   placeholder?: string;
-  value: JSONSchema | null;
   initialSchemaString?: string | null;
-  onChange: (jsonSchema: JSONSchema | null) => void;
   helpText?: string;
   agentInstructions?: string;
-  agentDescription?: string;
   owner: WorkspaceType;
 }
 
 export function JsonSchemaSection({
   label,
   placeholder,
-  value,
+  // value,
   initialSchemaString,
-  onChange,
+  // onChange,
   helpText,
   agentInstructions,
-  agentDescription,
+  // agentDescription,
   owner,
 }: JsonSchemaSectionProps) {
+  const { getValues } = useFormContext();
+  const { field } = useController<CapabilityFormData, "jsonSchema">({
+    name: "jsonSchema",
+  });
+
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const sendNotification = useSendNotification();
 
   const [jsonSchemaString, setJsonSchemaString] = useState(() => {
-    return initialSchemaString || (value ? JSON.stringify(value, null, 2) : "");
+    return (
+      initialSchemaString ||
+      (field.value ? JSON.stringify(field.value, null, 2) : "")
+    );
   });
 
   // Sync internal state when the external value changes
   useEffect(() => {
     if (!initialSchemaString) {
-      const newString = value ? JSON.stringify(value, null, 2) : "";
+      const newString = field.value ? JSON.stringify(field.value, null, 2) : "";
       setJsonSchemaString(newString);
     }
-  }, [value, initialSchemaString]);
+  }, [field.value, initialSchemaString]);
 
   const schemaValidationResult = jsonSchemaString
     ? validateConfiguredJsonSchema(jsonSchemaString)
@@ -55,13 +62,15 @@ export function JsonSchemaSection({
   const generateSchemaFromInstructions = async () => {
     if (!agentInstructions) {
       setJsonSchemaString("");
-      onChange(null);
+      field.onChange(null);
       return;
     }
 
     setIsGeneratingSchema(true);
+
     try {
       let fullInstructions = agentInstructions;
+      const agentDescription = getValues("agentDescription");
       if (agentDescription) {
         fullInstructions += `\n\nTool description:\n${agentDescription}`;
       }
@@ -90,7 +99,7 @@ export function JsonSchemaSection({
         : null;
 
       setJsonSchemaString(schemaString || "");
-      onChange(schemaObject);
+      field.onChange(schemaObject);
     } catch (e) {
       sendNotification({
         title: "Failed to generate schema.",
@@ -109,12 +118,12 @@ export function JsonSchemaSection({
     // null. Storing a null jsonSchema in the database indicates that
     // the model will auto-generate the schema.
     if (newSchemaString === "") {
-      onChange(null);
+      field.onChange(null);
       return;
     }
     const parsedSchema = validateConfiguredJsonSchema(newSchemaString);
     if (parsedSchema.isOk()) {
-      onChange(newSchemaString ? parsedSchema.value : null);
+      field.onChange(newSchemaString ? parsedSchema.value : null);
     } else {
       // If parsing fails, don't update the form value
       // Let user continue typing to fix the JSON
