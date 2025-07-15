@@ -302,15 +302,15 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-const DataSourcePage = ({
+function FolderDisplay({
   owner,
   dataSource,
-  coreDataSource,
-  connector,
-  temporalWorkspace,
-  temporalRunningWorkflows,
-  features,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) => {
+  onDisplayDocumentSource,
+}: {
+  owner: WorkspaceType;
+  dataSource: DataSourceType;
+  onDisplayDocumentSource: (documentId: string) => void;
+}) {
   const [limit] = useState(10);
   const [offsetDocument, setOffsetDocument] = useState(0);
   const [offsetTable, setOffsetTable] = useState(0);
@@ -332,8 +332,6 @@ const DataSourcePage = ({
   const [displayNameByDocId, setDisplayNameByDocId] = useState<
     Record<string, string>
   >({});
-
-  const router = useRouter();
 
   useEffect(() => {
     if (!isDocumentsLoading && !isDocumentsError) {
@@ -361,6 +359,185 @@ const DataSourcePage = ({
   if (offsetTable + limit > totalTables) {
     lastTable = totalTables;
   }
+
+  return (
+    <>
+      <div className="mt-4 flex flex-row">
+        <div className="flex flex-1">
+          <div className="flex flex-col">
+            <div className="flex flex-row">
+              <div className="flex flex-initial gap-x-2">
+                <Button
+                  variant="ghost"
+                  disabled={offsetDocument < limit}
+                  onClick={() => {
+                    if (offsetDocument >= limit) {
+                      setOffsetDocument(offsetDocument - limit);
+                    } else {
+                      setOffsetDocument(0);
+                    }
+                  }}
+                  label="Previous"
+                />
+                <Button
+                  variant="ghost"
+                  label="Next"
+                  disabled={offsetDocument + limit >= totalDocuments}
+                  onClick={() => {
+                    if (offsetDocument + limit < totalDocuments) {
+                      setOffsetDocument(offsetDocument + limit);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
+              {totalDocuments > 0 && (
+                <span>
+                  Showing documents {offsetDocument + 1} - {lastDocument} of{" "}
+                  {totalDocuments} documents
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+        {documents.length > 0 ? (
+          <ContextItem.List>
+            {documents.map((d) => (
+              <ContextItem
+                key={d.document_id}
+                title={displayNameByDocId[d.document_id]}
+                visual={
+                  <ContextItem.Visual
+                    visual={({ className }) =>
+                      DocumentTextIcon({
+                        className:
+                          className +
+                          " text-muted-foreground dark:text-muted-foreground-night",
+                      })
+                    }
+                  />
+                }
+                action={
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      icon={EyeIcon}
+                      onClick={() => onDisplayDocumentSource(d.document_id)}
+                      tooltip="View"
+                    />
+                  </div>
+                }
+              >
+                <ContextItem.Description>
+                  <div className="pt-2 text-sm text-muted-foreground">
+                    {Math.floor(d.text_size / 1024)} kb,{" "}
+                    {timeAgoFrom(d.timestamp)} ago
+                  </div>
+                </ContextItem.Description>
+              </ContextItem>
+            ))}
+          </ContextItem.List>
+        ) : (
+          <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+            <p>Empty</p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-row">
+        <div className="flex flex-1">
+          <div className="flex flex-col">
+            <div className="flex flex-row">
+              <div className="flex flex-initial gap-x-2">
+                <Button
+                  variant="ghost"
+                  disabled={offsetTable < limit}
+                  onClick={() => {
+                    if (offsetTable >= limit) {
+                      setOffsetTable(offsetTable - limit);
+                    } else {
+                      setOffsetTable(0);
+                    }
+                  }}
+                  label="Previous"
+                />
+                <Button
+                  variant="ghost"
+                  label="Next"
+                  disabled={offsetTable + limit >= totalTables}
+                  onClick={() => {
+                    if (offsetTable + limit < totalTables) {
+                      setOffsetTable(offsetTable + limit);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
+              {totalDocuments > 0 && (
+                <span>
+                  Showing tables {offsetTable + 1} - {lastTable} of{" "}
+                  {totalTables} tables
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+        {tables.length > 0 ? (
+          <ContextItem.List>
+            {tables.map((t) => (
+              <ContextItem
+                key={t.table_id}
+                title={t.name}
+                visual={
+                  <ContextItem.Visual
+                    visual={({ className }) =>
+                      TableIcon({
+                        className:
+                          className +
+                          " text-muted-foreground dark:text-muted-foreground-night",
+                      })
+                    }
+                  />
+                }
+              >
+                <ContextItem.Description>
+                  <div className="pt-2 text-sm text-muted-foreground">
+                    {timeAgoFrom(t.timestamp)} ago
+                  </div>
+                </ContextItem.Description>
+              </ContextItem>
+            ))}
+          </ContextItem.List>
+        ) : (
+          <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+            <p>Empty</p>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+const DataSourcePage = ({
+  owner,
+  dataSource,
+  coreDataSource,
+  connector,
+  temporalWorkspace,
+  temporalRunningWorkflows,
+  features,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) => {
+  const router = useRouter();
 
   const onDisplayDocumentSource = (documentId: string) => {
     if (
@@ -517,172 +694,11 @@ const DataSourcePage = ({
             </div>
           )}
           {!dataSource.connectorId ? (
-            <>
-              <div className="mt-4 flex flex-row">
-                <div className="flex flex-1">
-                  <div className="flex flex-col">
-                    <div className="flex flex-row">
-                      <div className="flex flex-initial gap-x-2">
-                        <Button
-                          variant="ghost"
-                          disabled={offsetDocument < limit}
-                          onClick={() => {
-                            if (offsetDocument >= limit) {
-                              setOffsetDocument(offsetDocument - limit);
-                            } else {
-                              setOffsetDocument(0);
-                            }
-                          }}
-                          label="Previous"
-                        />
-                        <Button
-                          variant="ghost"
-                          label="Next"
-                          disabled={offsetDocument + limit >= totalDocuments}
-                          onClick={() => {
-                            if (offsetDocument + limit < totalDocuments) {
-                              setOffsetDocument(offsetDocument + limit);
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-                      {totalDocuments > 0 && (
-                        <span>
-                          Showing documents {offsetDocument + 1} -{" "}
-                          {lastDocument} of {totalDocuments} documents
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-                {documents.length > 0 ? (
-                  <ContextItem.List>
-                    {documents.map((d) => (
-                      <ContextItem
-                        key={d.document_id}
-                        title={displayNameByDocId[d.document_id]}
-                        visual={
-                          <ContextItem.Visual
-                            visual={({ className }) =>
-                              DocumentTextIcon({
-                                className:
-                                  className +
-                                  " text-muted-foreground dark:text-muted-foreground-night",
-                              })
-                            }
-                          />
-                        }
-                        action={
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              icon={EyeIcon}
-                              onClick={() =>
-                                onDisplayDocumentSource(d.document_id)
-                              }
-                              tooltip="View"
-                            />
-                          </div>
-                        }
-                      >
-                        <ContextItem.Description>
-                          <div className="pt-2 text-sm text-muted-foreground">
-                            {Math.floor(d.text_size / 1024)} kb,{" "}
-                            {timeAgoFrom(d.timestamp)} ago
-                          </div>
-                        </ContextItem.Description>
-                      </ContextItem>
-                    ))}
-                  </ContextItem.List>
-                ) : (
-                  <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-                    <p>Empty</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 flex flex-row">
-                <div className="flex flex-1">
-                  <div className="flex flex-col">
-                    <div className="flex flex-row">
-                      <div className="flex flex-initial gap-x-2">
-                        <Button
-                          variant="ghost"
-                          disabled={offsetTable < limit}
-                          onClick={() => {
-                            if (offsetTable >= limit) {
-                              setOffsetTable(offsetTable - limit);
-                            } else {
-                              setOffsetTable(0);
-                            }
-                          }}
-                          label="Previous"
-                        />
-                        <Button
-                          variant="ghost"
-                          label="Next"
-                          disabled={offsetTable + limit >= totalTables}
-                          onClick={() => {
-                            if (offsetTable + limit < totalTables) {
-                              setOffsetTable(offsetTable + limit);
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-                      {totalDocuments > 0 && (
-                        <span>
-                          Showing tables {offsetTable + 1} - {lastTable} of{" "}
-                          {totalTables} tables
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-                {tables.length > 0 ? (
-                  <ContextItem.List>
-                    {tables.map((t) => (
-                      <ContextItem
-                        key={t.table_id}
-                        title={t.name}
-                        visual={
-                          <ContextItem.Visual
-                            visual={({ className }) =>
-                              TableIcon({
-                                className:
-                                  className +
-                                  " text-muted-foreground dark:text-muted-foreground-night",
-                              })
-                            }
-                          />
-                        }
-                      >
-                        <ContextItem.Description>
-                          <div className="pt-2 text-sm text-muted-foreground">
-                            {timeAgoFrom(t.timestamp)} ago
-                          </div>
-                        </ContextItem.Description>
-                      </ContextItem>
-                    ))}
-                  </ContextItem.List>
-                ) : (
-                  <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-                    <p>Empty</p>
-                  </div>
-                )}
-              </div>
-            </>
+            <FolderDisplay
+              owner={owner}
+              dataSource={dataSource}
+              onDisplayDocumentSource={onDisplayDocumentSource}
+            />
           ) : (
             <PokePermissionTree
               owner={owner}
