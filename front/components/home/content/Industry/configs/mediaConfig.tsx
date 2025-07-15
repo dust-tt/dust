@@ -36,7 +36,7 @@ export const mediaConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.webp",
+      src: "/static/landing/industry/Dust_connectors_microsoft.webp",
       alt: "Media Companies AI-powered workflows illustration",
     },
   },

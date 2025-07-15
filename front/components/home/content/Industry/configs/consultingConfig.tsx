@@ -3,7 +3,7 @@ import { BarChartIcon } from "@dust-tt/sparkle";
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
-export const investmentConfig: IndustryPageConfig = {
+export const consultingConfig: IndustryPageConfig = {
   layout: createLayoutConfig([
     "hero",
     "painPoints",
@@ -12,19 +12,19 @@ export const investmentConfig: IndustryPageConfig = {
   ]),
   hero: {
     chip: {
-      label: "Investment Firms",
+      label: "Consulting Firms",
       color: "blue",
       icon: BarChartIcon,
     },
     title: (
       <>
         Dust for
-        <br /> Investment
+        <br /> Consulting
         <br /> Firms
       </>
     ),
     description:
-      "Accelerate research, enhance due diligence, and streamline operations with AI-powered workflows designed for investment professionals.",
+      "Empower your consultants to deliver more value—faster. Instantly access firm knowledge, automate research and reporting, and accelerate every client engagement with AI.",
     ctaButtons: {
       primary: {
         label: "Get started",
@@ -36,8 +36,8 @@ export const investmentConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.webp",
-      alt: "Investment Firms AI-powered workflows illustration",
+      src: "/static/landing/industry/Dust_connectors_microsoft.webp",
+      alt: "Consulting Firms AI-powered workflows illustration",
     },
   },
   painPoints: {
@@ -45,137 +45,151 @@ export const investmentConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Deal sourcing excellence: accelerated target identification",
+        title: "Break free from busywork",
         description:
-          "Transform deal sourcing with intelligent market scanning and automated target research. Turn scattered industry data into comprehensive investment opportunities with instant competitive intelligence.",
+          "Stop burning senior talent on research and slide-building. Let AI handle the grunt work so your best minds focus on strategy, client relationships, and breakthrough thinking.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Due diligence speed: comprehensive analysis at scale",
+        title: "Never start from scratch again",
         description:
-          "Accelerate due diligence processes with automated document analysis and risk assessment. Transform weeks of manual review into rapid, thorough evaluations with consistent quality.",
+          "Surface insights from every past project, expert call, and client engagement—transforming your firm's collective intelligence into an always-available strategic advantage.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Portfolio optimization: data-driven value creation",
+        title: "Win more with less effort",
         description:
-          "Maximize portfolio performance with real-time monitoring and strategic insights. Convert complex data across investments into actionable recommendations for sustainable growth.",
+          "Generate compelling proposals, spot high-value opportunities, and deliver client-ready insights at machine speed while your competitors are still gathering data.",
         color: "green",
       },
     ],
   },
   dustInAction: {
-    title: "Dust in action",
+    title: "Top Use Cases for Consulting Firms",
     useCases: [
       {
-        title: "Target Identification & Research",
+        title: "Consulting Delivery Operations",
         image: "/static/landing/industry/features/Search_assistant.webp",
         bgColor: "bg-blue-100",
         features: [
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Sector Research",
+            title: "Knowledge Retrieval & Research",
             description:
-              "Research companies operating in specific sectors, including recent funding activity and market positioning.",
+              "Search internal/external knowledge, industry data, and client documentation for project insights.",
           },
           {
             icon: "bg-pink-400 rounded-tr-full",
-            title: "Target Intelligence",
+            title: "Report & Presentation Generation",
             description:
-              "Get snapshots of recent discussions and interactions with potential targets.",
+              "Auto-draft executive summaries, strategic reports, and client presentations.",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Meeting Preparation",
+            title: "Data Analysis Assistant",
             description:
-              "Prepare notes for initial meetings with targets, analyzing past context and interactions.",
+              "Analyze client-level data, build SQL queries, Excel formulas, and generate data-driven recommendations.",
           },
           {
             icon: "bg-yellow-400 rounded-br-full",
-            title: "Industry News",
+            title: "Documentation & CRM Management",
             description:
-              "Monitor industry trends and developments by pulling insights from newsletters, reports, and market intelligence.",
+              "Auto-populate CRM, sanitize client files for archiving, and structure project documentation.",
           },
         ],
       },
       {
-        title: "Due Diligence",
-        image: "/static/landing/industry/features/Doc_analysis_2.webp",
+        title: "Commercial Support",
+        image: "/static/landing/industry/features/Sales_agent.webp",
         bgColor: "bg-rose-100",
         features: [
           {
             icon: "bg-red-500 rounded-br-full",
-            title: "Investment Memo Writing",
+            title: "RFP & Proposal Response",
             description:
-              "Write comprehensive investment memos summarizing findings, risks, and opportunities.",
+              "Craft tailored RFP/proposal responses using internal best practices.",
           },
           {
             icon: "bg-purple-500 rounded-tl-full",
-            title: "Deal Assessment",
+            title: "Proposal Qualification",
             description:
-              "Screen dealflow, evaluate pitch decks, and filter startups matching your investment thesis.",
+              "AI-driven assessment of project quality and conversion likelihood.",
           },
           {
             icon: "bg-blue-500 rounded-tr-full",
-            title: "Document Analysis",
+            title: "CXO Meeting Preparation & Follow-ups",
             description:
-              "Summarize legal documents and extract key insights from due diligence materials.",
+              "Compile CXO-ready briefing packs with client + industry insights.",
+          },
+          {
+            icon: "bg-green-500 rounded-bl-full",
+            title: "Prospect Outreach & Communication",
+            description:
+              "Generate targeted outreach emails, meeting follow-ups, and social posts for prospects.",
+          },
+          {
+            icon: "bg-pink-400",
+            title: "Workforce Planning",
+            description:
+              "Identify best people for RFPs based on skills and former project experience.",
           },
         ],
       },
       {
-        title: "Portfolio Support",
-        image: "/static/landing/industry/features/Radar_partner.webp",
+        title: "Internal Operations & Compliance",
+        image: "/static/landing/industry/features/Doc_analysis_2.webp",
         bgColor: "bg-green-100",
         features: [
           {
             icon: "bg-gray-600 rounded-tl-full",
-            title: "Board Preparation",
-            description: "Prepare materials and briefings for board meetings.",
+            title: "Internal Policy & Compliance Support",
+            description:
+              "Answer policy, HR, governance & compliance questions on demand.",
           },
           {
             icon: "bg-blue-500 rounded-tr-full",
-            title: "Network Intelligence",
+            title: "Project Insights & Post-Mortem Analyzer",
             description:
-              "Identify key contacts from your network who can provide expertise to portfolio companies.",
+              "Extract project lessons learned; drive post-mortem analyses.",
           },
           {
             icon: "bg-yellow-400 rounded-bl-full",
-            title: "Portfolio Monitoring",
+            title: "Financial Support",
             description:
-              "Track news and developments related to your portfolio companies.",
-          },
-          {
-            icon: "bg-green-500",
-            title: "Board Minutes",
-            description:
-              "Create meeting minutes from transcripts with key decisions and action points.",
+              "Automate financial reports, client payment reminders & compliance tasks.",
           },
         ],
       },
       {
-        title: "Reporting & Content",
-        image: "/static/landing/industry/features/Quarterly_update.webp",
+        title: "Marketing & Intelligence",
+        image: "/static/landing/industry/features/Social_post.webp",
         bgColor: "bg-orange-100",
         features: [
           {
             icon: "bg-red-500 rounded-br-full",
-            title: "LP Communications",
-            description: "Generate reports for Limited Partners.",
+            title: "Content Creation & Optimization",
+            description:
+              "Write LinkedIn/blog posts aligned with brand guidelines.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Marketing & Social",
+            title: "Strategic Project Insights",
             description:
-              "Generate content for public audiences including case studies, LinkedIn posts, and thought leadership pieces.",
+              "Generate strategic insights and analysis from internal project data.",
           },
           {
             icon: "bg-sky-400",
-            title: "Compliance Support",
+            title: "Industry Intelligence",
             description:
-              "Handle ESG questionnaires and ensure regulatory compliance across reporting.",
+              "Develop industry radars and competitive landscape reports.",
+          },
+          {
+            icon: "bg-green-500 rounded-tr-full",
+            title: "Competitive Intelligence",
+            description:
+              "Monitor competitor activities, market positioning, and win/loss analysis.",
           },
         ],
       },

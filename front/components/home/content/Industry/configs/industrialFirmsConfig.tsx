@@ -3,7 +3,7 @@ import { BarChartIcon } from "@dust-tt/sparkle";
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
-export const investmentConfig: IndustryPageConfig = {
+export const industrialFirmsConfig: IndustryPageConfig = {
   layout: createLayoutConfig([
     "hero",
     "painPoints",
@@ -12,19 +12,19 @@ export const investmentConfig: IndustryPageConfig = {
   ]),
   hero: {
     chip: {
-      label: "Investment Firms",
+      label: "Industrial Manufacturing",
       color: "blue",
       icon: BarChartIcon,
     },
     title: (
       <>
         Dust for
-        <br /> Investment
-        <br /> Firms
+        <br /> Industrial
+        <br /> Manufacturing
       </>
     ),
     description:
-      "Accelerate research, enhance due diligence, and streamline operations with AI-powered workflows designed for investment professionals.",
+      "Empower every team with AI-powered workflows. From sales proposals to technical troubleshooting, give your entire organization instant access to expertise and streamlined operations.",
     ctaButtons: {
       primary: {
         label: "Get started",
@@ -36,8 +36,8 @@ export const investmentConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.webp",
-      alt: "Investment Firms AI-powered workflows illustration",
+      src: "/static/landing/industry/Dust_connectors_microsoft.webp",
+      alt: "Industrial Manufacturing AI-powered workflows illustration",
     },
   },
   painPoints: {
@@ -45,137 +45,151 @@ export const investmentConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Deal sourcing excellence: accelerated target identification",
+        title: "Give every team the power of AI—leave nobody behind",
         description:
-          "Transform deal sourcing with intelligent market scanning and automated target research. Turn scattered industry data into comprehensive investment opportunities with instant competitive intelligence.",
+          "From sales teams crafting proposals to technicians troubleshooting equipment, ensure every department has access to the same AI-powered capabilities. No more digital divides between functions.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Due diligence speed: comprehensive analysis at scale",
+        title: "Give everyone access to your best knowledge",
         description:
-          "Accelerate due diligence processes with automated document analysis and risk assessment. Transform weeks of manual review into rapid, thorough evaluations with consistent quality.",
+          "Your organization has decades of technical knowledge and commercial experience. Make that expertise instantly available to every employee, regardless of their role or experience level.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Portfolio optimization: data-driven value creation",
+        title: "Accelerate operations without sacrificing precision",
         description:
-          "Maximize portfolio performance with real-time monitoring and strategic insights. Convert complex data across investments into actionable recommendations for sustainable growth.",
+          "Speed up everything from compliance documentation to customer responses while maintaining the quality and standards your industry demands. Let AI handle routine tasks so your teams focus on strategic work.",
         color: "green",
       },
     ],
   },
   dustInAction: {
-    title: "Dust in action",
+    title: "Top Use Cases for Industrial Firms",
     useCases: [
       {
-        title: "Target Identification & Research",
-        image: "/static/landing/industry/features/Search_assistant.webp",
+        title: "Commercial & Sales",
+        image: "/static/landing/industry/features/Sales_agent.webp",
         bgColor: "bg-blue-100",
         features: [
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Sector Research",
+            title: "Proposal & Quote Builder",
             description:
-              "Research companies operating in specific sectors, including recent funding activity and market positioning.",
+              "Create client proposals and presentation slides from RFQ requirements and product catalogs.",
           },
           {
             icon: "bg-pink-400 rounded-tr-full",
-            title: "Target Intelligence",
+            title: "Contract Drafting",
             description:
-              "Get snapshots of recent discussions and interactions with potential targets.",
+              "Generate purchase and service agreements from negotiation notes and standard templates.",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Meeting Preparation",
+            title: "Customer Q&A Bot",
             description:
-              "Prepare notes for initial meetings with targets, analyzing past context and interactions.",
+              "Answer product specs, delivery times, and warranty questions instantly.",
           },
           {
             icon: "bg-yellow-400 rounded-br-full",
-            title: "Industry News",
+            title: "Account Summaries",
             description:
-              "Monitor industry trends and developments by pulling insights from newsletters, reports, and market intelligence.",
+              "Compile install base, order history, and service tickets for sales follow-up.",
           },
         ],
       },
       {
-        title: "Due Diligence",
-        image: "/static/landing/industry/features/Doc_analysis_2.webp",
-        bgColor: "bg-rose-100",
-        features: [
-          {
-            icon: "bg-red-500 rounded-br-full",
-            title: "Investment Memo Writing",
-            description:
-              "Write comprehensive investment memos summarizing findings, risks, and opportunities.",
-          },
-          {
-            icon: "bg-purple-500 rounded-tl-full",
-            title: "Deal Assessment",
-            description:
-              "Screen dealflow, evaluate pitch decks, and filter startups matching your investment thesis.",
-          },
-          {
-            icon: "bg-blue-500 rounded-tr-full",
-            title: "Document Analysis",
-            description:
-              "Summarize legal documents and extract key insights from due diligence materials.",
-          },
-        ],
-      },
-      {
-        title: "Portfolio Support",
-        image: "/static/landing/industry/features/Radar_partner.webp",
+        title: "Technical Operations",
+        image: "/static/landing/industry/features/Document_generator.webp",
         bgColor: "bg-green-100",
         features: [
           {
             icon: "bg-gray-600 rounded-tl-full",
-            title: "Board Preparation",
-            description: "Prepare materials and briefings for board meetings.",
+            title: "Work Instructions & SOPs",
+            description:
+              "Update procedures, maintenance guides, and safety protocols from engineering changes.",
           },
           {
             icon: "bg-blue-500 rounded-tr-full",
-            title: "Network Intelligence",
+            title: "Technical Troubleshooting",
             description:
-              "Identify key contacts from your network who can provide expertise to portfolio companies.",
+              "Help technicians solve equipment problems with expert guidance and solutions.",
           },
           {
             icon: "bg-yellow-400 rounded-bl-full",
-            title: "Portfolio Monitoring",
+            title: "Regulatory Documentation",
             description:
-              "Track news and developments related to your portfolio companies.",
+              "Generate compliance reports, safety filings, and certification materials.",
           },
           {
             icon: "bg-green-500",
-            title: "Board Minutes",
+            title: "Equipment Manual Search",
             description:
-              "Create meeting minutes from transcripts with key decisions and action points.",
+              "Find specific information across technical drawings, specs, and maintenance documents.",
           },
         ],
       },
       {
-        title: "Reporting & Content",
-        image: "/static/landing/industry/features/Quarterly_update.webp",
+        title: "Training & Internal Support",
+        image: "/static/landing/industry/features/Technical_helpdesk.webp",
         bgColor: "bg-orange-100",
         features: [
           {
             icon: "bg-red-500 rounded-br-full",
-            title: "LP Communications",
-            description: "Generate reports for Limited Partners.",
+            title: "Training Material Generation",
+            description:
+              "Create safety training content, equipment guides, and onboarding materials.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Marketing & Social",
+            title: "Meeting Summaries & Project Updates",
             description:
-              "Generate content for public audiences including case studies, LinkedIn posts, and thought leadership pieces.",
+              "Turn project discussions into clear action items and status reports.",
           },
           {
             icon: "bg-sky-400",
-            title: "Compliance Support",
+            title: "Internal Policy Help",
             description:
-              "Handle ESG questionnaires and ensure regulatory compliance across reporting.",
+              "Answer employee questions about company policies, procedures, and guidelines.",
+          },
+          {
+            icon: "bg-green-500 rounded-tr-full",
+            title: "Technical Translation",
+            description:
+              "Translate safety documents, manuals, and procedures between languages.",
+          },
+        ],
+      },
+      {
+        title: "Marketing & Intelligence",
+        image: "/static/landing/industry/features/Radar_monitoring.webp",
+        bgColor: "bg-rose-100",
+        features: [
+          {
+            icon: "bg-red-500 rounded-br-full",
+            title: "Technical Content Creation",
+            description:
+              "Generate product datasheets, application guides, and case studies.",
+          },
+          {
+            icon: "bg-purple-500 rounded-tl-full",
+            title: "Competitive Product Analysis",
+            description:
+              "Track competitor specifications, pricing, and market positioning.",
+          },
+          {
+            icon: "bg-blue-500 rounded-tr-full",
+            title: "Product Descriptions",
+            description:
+              "Create technical specifications and catalog content for new products.",
+          },
+          {
+            icon: "bg-green-500 rounded-bl-full",
+            title: "Supplier Evaluation",
+            description:
+              "Analyze vendor capabilities, performance, and risk assessments.",
           },
         ],
       },
