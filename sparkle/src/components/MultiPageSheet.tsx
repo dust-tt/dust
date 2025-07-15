@@ -74,17 +74,24 @@ const MultiPageSheetContent = React.forwardRef<
     );
     const currentPage = pages[currentPageIndex];
 
-    const handlePrevious = React.useCallback(() => {
+    const handlePrevious = (
+      e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+    ) => {
+      e.stopPropagation();
+      e.preventDefault();
       if (currentPageIndex > 0) {
         onPageChange(pages[currentPageIndex - 1].id);
       }
-    }, [currentPageIndex, pages, onPageChange]);
+    };
 
-    const handleNext = React.useCallback(() => {
+    const handleNext = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      e.preventDefault();
+
       if (currentPageIndex < pages.length - 1) {
         onPageChange(pages[currentPageIndex + 1].id);
       }
-    }, [currentPageIndex, pages, onPageChange]);
+    };
 
     if (!currentPage) {
       console.warn(`Page with id "${currentPageId}" not found`);
