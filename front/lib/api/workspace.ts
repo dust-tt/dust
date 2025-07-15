@@ -394,26 +394,6 @@ export async function deleteWorkspace(
   return new Ok(undefined);
 }
 
-export async function changeWorkspaceName(
-  owner: LightWorkspaceType,
-  newName: string
-): Promise<Result<void, Error>> {
-  return WorkspaceResource.updateName(owner.id, newName);
-}
-
-export async function updateWorkspaceConversationsRetention(
-  owner: LightWorkspaceType,
-  nbDays: number
-): Promise<Result<void, Error>> {
-  return WorkspaceResource.updateConversationsRetention(owner.id, nbDays);
-}
-
-export async function disableSSOEnforcement(
-  owner: LightWorkspaceType
-): Promise<Result<void, Error>> {
-  return WorkspaceResource.disableSSOEnforcement(owner.id);
-}
-
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
   publicApiLimits?: PublicAPILimitsType;
