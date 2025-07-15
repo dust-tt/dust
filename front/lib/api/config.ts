@@ -47,6 +47,9 @@ const config = {
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
   },
+  getIPInfoApiToken: (): string => {
+    return EnvironmentConfig.getEnvVariable("IPINFO_API_TOKEN");
+  },
   getSendgridApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("SENDGRID_API_KEY");
   },
