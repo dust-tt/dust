@@ -35,7 +35,7 @@ interface MultiPageSheetProps {
   className?: string;
   disableNext?: boolean;
   disableSave?: boolean;
-  saveButtonProps?: RegularButtonProps;
+  endButtonProps?: RegularButtonProps;
 }
 
 const MultiPageSheetRoot = Sheet;
@@ -64,7 +64,7 @@ const MultiPageSheetContent = React.forwardRef<
       className,
       disableNext = false,
       disableSave = false,
-      saveButtonProps,
+      endButtonProps,
       ...props
     },
     ref
@@ -161,39 +161,38 @@ const MultiPageSheetContent = React.forwardRef<
             variant: "outline",
             size: "sm",
           }}
+          rightButtonProps={
+            showNavigation && pages.length > 1 && hasPrevious
+              ? {
+                  label: "Previous",
+                  variant: "outline",
+                  size: "sm",
+                  onClick: handlePrevious,
+                }
+              : undefined
+          }
+          rightEndButtonProps={
+            showNavigation && pages.length > 1 && hasNext
+              ? {
+                  label: "Next",
+                  variant: "outline",
+                  size: "sm",
+                  disabled: disableNext,
+                  onClick: handleNext,
+                }
+              : showNavigation && pages.length > 1 && !hasNext && onSave
+                ? {
+                    label: "Save changes",
+                    variant: "primary",
+                    size: "sm",
+                    disabled: disableSave,
+                    onClick: onSave,
+                    ...endButtonProps,
+                  }
+                : undefined
+          }
         >
-          <div className="s-ml-auto s-flex s-items-center s-gap-2">
-            {showNavigation && pages.length > 1 && hasPrevious && (
-              <Button
-                label="Previous"
-                icon={ChevronLeftIcon}
-                variant="outline"
-                size="sm"
-                onClick={handlePrevious}
-              />
-            )}
-            {showNavigation && pages.length > 1 && hasNext && (
-              <Button
-                label="Next"
-                icon={ChevronRightIcon}
-                variant="outline"
-                size="sm"
-                disabled={disableNext}
-                onClick={handleNext}
-              />
-            )}
-            {showNavigation && pages.length > 1 && !hasNext && onSave && (
-              <Button
-                label="Save changes"
-                variant="primary"
-                size="sm"
-                disabled={disableSave}
-                onClick={onSave}
-                {...saveButtonProps}
-              />
-            )}
-            {footerContent}
-          </div>
+          {footerContent}
         </SheetFooter>
       </SheetContent>
     );

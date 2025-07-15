@@ -724,6 +724,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "exploded_tables_query"
   | "extended_max_steps_per_run"
   | "google_ai_studio_experimental_models_feature"
+  | "google_sheets_tool"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
@@ -743,6 +744,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workos"
   | "workos_user_provisioning"
   | "xai_feature"
+  | "agent_memory_tools"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -2152,6 +2154,29 @@ const GetDocumentResponseSchema = z.object({
   document: CoreAPIDocumentSchema,
 });
 export type GetDocumentResponseType = z.infer<typeof GetDocumentResponseSchema>;
+
+const CoreAPIDataSourceDocumentBlobSchema = z.object({
+  document_id: z.string(),
+  mime_type: z.string(),
+  parent_id: z.string().nullable(),
+  parents: z.array(z.string()),
+  section: FrontDataSourceDocumentSectionSchema,
+  source_url: z.string().nullable(),
+  tags: z.array(z.string()),
+  timestamp: z.number(),
+  title: z.string(),
+});
+
+export type CoreAPIDataSourceDocumentBlob = z.infer<
+  typeof CoreAPIDataSourceDocumentBlobSchema
+>;
+
+const GetDocumentBlobResponseSchema = z.object({
+  blob: CoreAPIDataSourceDocumentBlobSchema,
+});
+export type GetDocumentBlobResponseType = z.infer<
+  typeof GetDocumentBlobResponseSchema
+>;
 
 const DeleteDocumentResponseSchema = z.object({
   document: z.object({

@@ -41,6 +41,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse",
   "google_calendar",
   "slack",
+  "agent_memory",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -223,6 +224,8 @@ export const INTERNAL_MCP_SERVERS: Record<
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
+      get_messages: "low",
+      create_reply_draft: "low",
     },
   },
   google_calendar: {
@@ -256,6 +259,9 @@ export const INTERNAL_MCP_SERVERS: Record<
   google_sheets: {
     id: 19,
     availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("google_sheets_tool");
+    },
     tools_stakes: {
       list_spreadsheets: "never_ask",
       get_spreadsheet: "never_ask",
@@ -304,6 +310,13 @@ export const INTERNAL_MCP_SERVERS: Record<
       upload_file_to_column: "high",
       delete_item: "high",
       delete_group: "high",
+    },
+  },
+  agent_memory: {
+    id: 21,
+    availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_memory_tools");
     },
   },
   search: {

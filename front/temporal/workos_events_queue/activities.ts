@@ -58,7 +58,7 @@ async function verifyWorkOSWorkspace<E extends object, R>(
   event: E,
   handler: (workspace: LightWorkspaceType, eventData: E) => R
 ) {
-  if (organizationId === null) {
+  if (!organizationId) {
     return;
   }
 

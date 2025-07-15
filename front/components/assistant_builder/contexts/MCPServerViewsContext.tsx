@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import React, { createContext, memo, useContext } from "react";
+import React, { createContext, useContext, useMemo } from "react";
 
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
@@ -34,28 +34,32 @@ interface MCPServerViewsProviderProps {
   children: ReactNode;
 }
 
-export const MCPServerViewsProvider = memo(
-  ({ owner, children }: MCPServerViewsProviderProps) => {
-    const { spaces, isSpacesLoading } = useSpacesContext();
+export const MCPServerViewsProvider = ({
+  owner,
+  children,
+}: MCPServerViewsProviderProps) => {
+  const { spaces, isSpacesLoading } = useSpacesContext();
 
-    const {
-      serverViews: mcpServerViews,
-      isLoading,
-      isError: isMCPServerViewsError,
-    } = useMCPServerViewsFromSpaces(owner, spaces);
+  // TODO: we should only fetch it on mount.
+  const {
+    serverViews: mcpServerViews,
+    isLoading,
+    isError: isMCPServerViewsError,
+  } = useMCPServerViewsFromSpaces(owner, spaces);
 
-    const value: MCPServerViewsContextType = {
+  const value: MCPServerViewsContextType = useMemo(() => {
+    return {
       mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
       isMCPServerViewsLoading: isLoading || isSpacesLoading, // Spaces is required to fetch server views so we check isSpacesLoading too.
       isMCPServerViewsError,
     };
+  }, [isLoading, isMCPServerViewsError, isSpacesLoading, mcpServerViews]);
 
-    return (
-      <MCPServerViewsContext.Provider value={value}>
-        {children}
-      </MCPServerViewsContext.Provider>
-    );
-  }
-);
+  return (
+    <MCPServerViewsContext.Provider value={value}>
+      {children}
+    </MCPServerViewsContext.Provider>
+  );
+};
 
 MCPServerViewsProvider.displayName = "MCPServerViewsProvider";
