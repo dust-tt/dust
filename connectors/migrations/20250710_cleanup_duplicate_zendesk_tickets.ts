@@ -9,6 +9,9 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ZendeskTicketModel } from "@connectors/lib/models/zendesk";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
+import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 
 const TICKET_BATCH_SIZE = 512;
 const CONCURRENCY = 4;
@@ -124,6 +127,14 @@ async function cleanupConnector(
 
           if (execute) {
             await ticket.destroy();
+            await deleteDataSourceDocument(
+              dataSourceConfigFromConnector(connector),
+              getTicketInternalId({
+                connectorId: connector.id,
+                brandId: ticket.brandId,
+                ticketId: ticket.ticketId,
+              })
+            );
             localLogger.info("Destroyed duplicate ticket");
           } else {
             localLogger.info("Would destroy duplicate ticket");
