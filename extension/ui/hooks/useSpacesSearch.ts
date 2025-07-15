@@ -65,6 +65,13 @@ export function useSpacesSearch({
     if (disabled) {
       return null;
     }
+    // Skip the query if no node IDs were extracted.
+    // Example: a user pastes a Google Drive folder link
+    // It matches a valid provider but we extract no node IDs,
+    // and we don't want to support fetching all contents of a folder.
+    if (!searchQuery.nodeIds?.length) {
+      return [];
+    }
     const res = await dustAPI.searchNodes(searchQuery);
     if (res.isOk()) {
       return res.value;

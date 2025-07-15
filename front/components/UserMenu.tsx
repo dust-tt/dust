@@ -1,3 +1,4 @@
+import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
   ChevronDownIcon,
@@ -167,6 +168,7 @@ export function UserMenu({
           label="Sign&nbsp;out"
           icon={LogoutIcon}
           onClick={() => {
+            datadogLogs.clearUser();
             if (document.cookie.includes("sessionType=workos")) {
               window.location.href = "/api/workos/logout";
             } else {
