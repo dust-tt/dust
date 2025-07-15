@@ -463,6 +463,19 @@ impl LocalTable {
     ) -> Result<()> {
         Self::validate_rows_lowercase(rows.clone()).await?;
 
+        // Start with postgres
+        self.upsert_rows_now(
+            &store,
+            &databases_store,
+            rows.clone(),
+            truncate,
+            true,  /*postgres*/
+            false, /*gcs*/
+        )
+        .await?;
+
+        // For GCS, we write immediately if truncate is true, otherwise we schedule the
+        // background worker to do it later.
         if truncate {
             let now = utils::now();
             let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
@@ -487,31 +500,20 @@ impl LocalTable {
             GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(&self.table)
                 .await?;
 
-            // For truncate, save instantly to both postgres and GCS
             self.upsert_rows_now(
                 &store,
                 &databases_store,
                 rows,
                 truncate,
-                true, /*postgres*/
-                true, /*gcs*/
+                false, /*postgres*/
+                true,  /*gcs*/
             )
             .await?;
 
             lock_manager.unlock(&lock).await;
             Ok(())
         } else {
-            // For non-truncate, we instantly save to postgres, and use the background worker for GCS.
-            self.upsert_rows_now(
-                &store,
-                &databases_store,
-                rows.clone(),
-                truncate,
-                true,  /*postgres*/
-                false, /*gcs*/
-            )
-            .await?;
-
+            // For non-truncate, use the background worker
             self.schedule_background_upsert_or_delete(rows).await
         }
     }
