@@ -52,6 +52,7 @@
   "devDependencies": {
     "@types/express": "^5.0.1",
     "@types/lodash": "^4.17.16",
+    "@types/mime-types": "^3.0.1",
     "@types/node": "^22.13.16",
     "@types/react": "^19.0.12",
     "@types/update-notifier": "^6.0.8",
