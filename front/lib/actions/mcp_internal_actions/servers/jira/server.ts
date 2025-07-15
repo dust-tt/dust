@@ -17,7 +17,8 @@ import {
   updateIssue,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
 import {
-  ERROR_MESSAGES,
+  escapeJQLValue,
+  getJiraResourceInfo,
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
 import {
@@ -40,26 +41,11 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "https://developer.atlassian.com/server/jira/platform/rest/v10007/intro/",
 };
 
-// Helper function to escape JQL values that contain spaces or special characters
-const escapeJQLValue = (value: string): string => {
-  // If the value contains spaces, special characters, or reserved words, wrap it in quotes
-  if (
-    /[\s"'\\]/.test(value) ||
-    /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed|was|in|not|to|from|by|before|after|on|during)$/i.test(
-      value
-    )
-  ) {
-    // Escape any existing quotes in the value
-    return `"${value.replace(/"/g, '\\"')}"`;
-  }
-  return value;
-};
-
 const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
-    "get_issues",
+    "get_issue",
     "Retrieves a single JIRA issue by its key (e.g., 'PROJ-123').",
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
@@ -69,7 +55,10 @@ const createServer = (): McpServer => {
         action: async (baseUrl, accessToken) => {
           const issue = await getIssue(baseUrl, accessToken, issueKey);
           if (!issue) {
-            return makeMCPToolTextError(ERROR_MESSAGES.ISSUE_NOT_FOUND);
+            return makeMCPToolJSONSuccess({
+              message: "No issue found with the specified key",
+              result: { found: false, issueKey },
+            });
           }
           return makeMCPToolJSONSuccess({
             message: "Issue retrieved successfully",
@@ -297,7 +286,7 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "get_issueTypes",
+    "get_issue_types",
     "Retrieves available issue types for a JIRA project.",
     {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
@@ -325,12 +314,22 @@ const createServer = (): McpServer => {
     "Retrieves available fields for creating issues in a JIRA project, optionally filtered by issue type.",
     {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
-      issueTypeId: z.string().optional().describe("Optional issue type ID to filter fields for a specific issue type"),
+      issueTypeId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional issue type ID to filter fields for a specific issue type"
+        ),
     },
     async ({ projectKey, issueTypeId }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await getIssueFields(baseUrl, accessToken, projectKey, issueTypeId);
+          const result = await getIssueFields(
+            baseUrl,
+            accessToken,
+            projectKey,
+            issueTypeId
+          );
           if ("error" in result) {
             return makeMCPToolTextError(result.error);
           }
@@ -422,9 +421,20 @@ const createServer = (): McpServer => {
           if ("error" in result) {
             return makeMCPToolTextError(result.error);
           }
+
+          // Get the proper site URL for the browse link
+          const resourceInfo = await getJiraResourceInfo(accessToken);
+          const browseUrl = resourceInfo?.url
+            ? `${resourceInfo.url}/browse/${result.key}`
+            : `${baseUrl}/browse/${result.key}`; // fallback to old behavior
+
           return makeMCPToolJSONSuccess({
             message: "Issue created successfully",
-            result,
+            result: {
+              issueKey: result.key,
+              issueId: result.id,
+              issueUrl: browseUrl,
+            },
           });
         },
         authInfo,
@@ -515,7 +525,7 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "add_comment",
+    "create_comment",
     "Adds a comment to an existing JIRA issue.",
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
@@ -625,46 +635,55 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "get_jira_user_info",
-    "Gets information about the currently authenticated JIRA user.",
+    "get_connection_info",
+    "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance.",
     {},
     async (_, { authInfo }) => {
-      return withAuth({
-        action: async (baseUrl, accessToken) => {
-          const result = await getUserInfo(baseUrl, accessToken);
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
-          }
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makeMCPToolTextError("No access token found");
+      }
 
-          // Transform the JIRA API response to match the expected format
-          const transformedResult = {
-            account_id: result.accountId,
-            email: result.emailAddress,
-            name: result.displayName,
-            picture: result.avatarUrls["48x48"],
-            account_status: result.active ? "active" : "inactive",
-            characteristics: {
-              not_mentionable: false,
-            },
-            last_updated: new Date().toISOString(),
-            nickname: result.displayName,
-            locale: result.locale || "en-US",
-            extended_profile: {
-              phone_numbers: [],
-              team_type: "Software Development",
-            },
-            account_type: result.accountType,
-            email_verified: true,
-          };
+      try {
+        // Get resource info (cloud ID and site URL)
+        const resourceInfo = await getJiraResourceInfo(accessToken);
+        if (!resourceInfo) {
+          return makeMCPToolTextError(
+            "Failed to retrieve JIRA resource information"
+          );
+        }
 
-          return makeMCPToolJSONSuccess({
-            message: "User information retrieved successfully",
-            result: transformedResult,
-          });
-        },
-        authInfo,
-        params: {},
-      });
+        // Get user info
+        const baseUrl = `https://api.atlassian.com/ex/jira/${resourceInfo.id}`;
+        const userResult = await getUserInfo(baseUrl, accessToken);
+        if ("error" in userResult) {
+          return makeMCPToolTextError(userResult.error);
+        }
+
+        // Combine all information
+        const connectionInfo = {
+          user: {
+            account_id: userResult.accountId,
+            name: userResult.displayName,
+            nickname: userResult.displayName,
+          },
+          instance: {
+            cloud_id: resourceInfo.id,
+            site_url: resourceInfo.url,
+            site_name: resourceInfo.name,
+            api_base_url: baseUrl,
+          },
+        };
+
+        return makeMCPToolJSONSuccess({
+          message: "Connection information retrieved successfully",
+          result: connectionInfo,
+        });
+      } catch (error: any) {
+        return makeMCPToolTextError(
+          error.message || "Failed to retrieve connection information"
+        );
+      }
     }
   );
 

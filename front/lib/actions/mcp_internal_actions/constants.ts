@@ -246,15 +246,25 @@ export const INTERNAL_MCP_SERVERS: Record<
       return !featureFlags.includes("jira_tool");
     },
     tools_stakes: {
-      // Read operations - low friction
-      get_tickets: "never_ask",
-      list_tickets: "never_ask",
+      // Read operations - never ask (no side effects)
+      get_issue: "never_ask",
+      get_projects: "never_ask",
+      get_project: "never_ask",
+      get_issue_types: "never_ask",
+      get_issue_fields: "never_ask",
       get_transitions: "never_ask",
+      get_connection_info: "never_ask",
+      get_issues_by_assignee: "never_ask",
+      get_issues_by_type: "never_ask",
+      get_issues_by_parent: "never_ask",
+      get_issues_by_status: "never_ask",
+      get_issues_by_priority: "never_ask",
+      get_issues_by_project: "never_ask",
 
-      // Write operations - require confirmation
+      // Write operations - require confirmation (have side effects)
       create_issue: "low",
       update_issue: "low",
-      add_comment: "low",
+      create_comment: "low",
       transition_issue: "low",
     },
   },

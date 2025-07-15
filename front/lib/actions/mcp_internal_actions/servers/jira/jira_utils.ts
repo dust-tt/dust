@@ -10,6 +10,21 @@ export const ERROR_MESSAGES = {
   ISSUE_NOT_FOUND: "Issue not found",
 } as const;
 
+// Helper function to escape JQL values that contain spaces or special characters
+export const escapeJQLValue = (value: string): string => {
+  // If the value contains spaces, special characters, or reserved words, wrap it in quotes
+  if (
+    /[\s"'\\]/.test(value) ||
+    /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed|was|in|not|to|from|by|before|after|on|during)$/i.test(
+      value
+    )
+  ) {
+    // Escape any existing quotes in the value
+    return `"${value.replace(/"/g, '\\"')}"`;
+  }
+  return value;
+};
+
 export const withAuth = async ({
   action,
   params,
@@ -38,7 +53,26 @@ export const withAuth = async ({
   }
 };
 
+export async function getJiraCloudId(
+  accessToken: string
+): Promise<string | null> {
+  const resourceInfo = await getJiraResourceInfo(accessToken);
+  return resourceInfo?.id || null;
+}
+
 async function getJiraBaseUrl(accessToken: string): Promise<string | null> {
+  const cloudId = await getJiraCloudId(accessToken);
+  if (cloudId) {
+    return `https://api.atlassian.com/ex/jira/${cloudId}`;
+  }
+  return null;
+}
+
+export async function getJiraResourceInfo(accessToken: string): Promise<{
+  id: string;
+  url: string;
+  name: string;
+} | null> {
   try {
     const response = await fetch(
       "https://api.atlassian.com/oauth/token/accessible-resources",
@@ -62,10 +96,14 @@ async function getJiraBaseUrl(accessToken: string): Promise<string | null> {
 
     const resources = await response.json();
 
-    // Get the first accessible resource (primary workspace) and use its CloudID
+    // Get the first accessible resource (primary workspace) and return its info
     if (resources && resources.length > 0) {
-      const cloudId = resources[0].id;
-      return `https://api.atlassian.com/ex/jira/${cloudId}`;
+      const resource = resources[0];
+      return {
+        id: resource.id,
+        url: resource.url,
+        name: resource.name,
+      };
     }
 
     return null;
