@@ -259,7 +259,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     },
   },
   conversation_files: {
-    id: 19,
+    id: 17,
     availability: "auto_hidden_builder",
   },
   slack: {

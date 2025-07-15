@@ -33,7 +33,18 @@ async function jiraApiCall<T>(
       return { error: msg };
     }
 
-    const rawData = await response.json();
+    // Handle empty responses (like 204 No Content)
+    const responseText = await response.text();
+    if (!responseText) {
+      // For void responses, return undefined if schema expects void
+      const parseResult = schema.safeParse(undefined);
+      if (parseResult.success) {
+        return parseResult.data;
+      }
+      return { error: "Empty response from JIRA API" };
+    }
+
+    const rawData = JSON.parse(responseText);
     const parseResult = schema.safeParse(rawData);
 
     if (!parseResult.success) {
@@ -113,7 +124,14 @@ const JiraProjectSchema = z.object({
 
 const JiraCommentSchema = z.object({
   id: z.string(),
-  body: z.string(),
+  body: z.union([
+    z.string(),
+    z.object({
+      type: z.string(),
+      version: z.number(),
+      content: z.array(z.any()),
+    }),
+  ]),
   author: z.object({
     displayName: z.string(),
     emailAddress: z.string(),
@@ -375,7 +393,23 @@ export const addComment = async (
     value: string;
   }
 ): Promise<AddCommentResult> => {
-  const requestBody: any = { body: commentBody };
+  const requestBody: any = { 
+    body: {
+      type: "doc",
+      version: 1,
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: commentBody,
+            },
+          ],
+        },
+      ],
+    }
+  };
   if (visibility) {
     requestBody.visibility = visibility;
   }
