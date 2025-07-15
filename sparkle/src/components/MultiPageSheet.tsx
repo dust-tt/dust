@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { Button, Icon, RegularButtonProps } from "@sparkle/components";
+import { Button, Icon } from "@sparkle/components";
 import {
   Sheet,
   SheetClose,
@@ -31,11 +31,10 @@ interface MultiPageSheetProps {
   trapFocusScope?: boolean;
   showNavigation?: boolean;
   footerContent?: React.ReactNode;
-  onSave?: () => void;
+  onSave?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   className?: string;
   disableNext?: boolean;
   disableSave?: boolean;
-  endButtonProps?: RegularButtonProps;
 }
 
 const MultiPageSheetRoot = Sheet;
@@ -64,7 +63,6 @@ const MultiPageSheetContent = React.forwardRef<
       className,
       disableNext = false,
       disableSave = false,
-      endButtonProps,
       ...props
     },
     ref
@@ -77,7 +75,6 @@ const MultiPageSheetContent = React.forwardRef<
     const handlePrevious = (
       e: React.MouseEvent<HTMLButtonElement, MouseEvent>
     ) => {
-      e.stopPropagation();
       e.preventDefault();
       if (currentPageIndex > 0) {
         onPageChange(pages[currentPageIndex - 1].id);
@@ -85,7 +82,6 @@ const MultiPageSheetContent = React.forwardRef<
     };
 
     const handleNext = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-      e.stopPropagation();
       e.preventDefault();
 
       if (currentPageIndex < pages.length - 1) {
@@ -193,8 +189,11 @@ const MultiPageSheetContent = React.forwardRef<
                     variant: "primary",
                     size: "sm",
                     disabled: disableSave,
-                    onClick: onSave,
-                    ...endButtonProps,
+                    onClick: (
+                      e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+                    ) => {
+                      onSave(e);
+                    },
                   }
                 : undefined
           }
