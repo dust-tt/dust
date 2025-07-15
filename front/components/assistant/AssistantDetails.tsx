@@ -23,15 +23,19 @@ import {
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { BrainIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
 import { AssistantDetailsPerformance } from "@app/components/assistant/AssistantDetailsPerformance";
+import { AgentMemorySection } from "@app/components/assistant/details/AgentMemorySection";
 import { AssistantEditedSection } from "@app/components/assistant/details/AssistantEditedSection";
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/AssistantKnowledgeSection";
 import { AssistantToolsSection } from "@app/components/assistant/details/AssistantToolsSection";
 import { ReadOnlyTextArea } from "@app/components/assistant/ReadOnlyTextArea";
 import { RestoreAssistantDialog } from "@app/components/assistant/RestoreAssistantDialog";
+import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
+import { MembersList } from "@app/components/members/MembersList";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
 import type {
@@ -42,9 +46,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { GLOBAL_AGENTS_SID, isAdmin } from "@app/types";
-
-import { AddEditorDropdown } from "../members/AddEditorsDropdown";
-import { MembersList } from "../members/MembersList";
 
 export const SCOPE_INFO: Record<
   AgentConfigurationScope,
@@ -228,7 +229,7 @@ export function AssistantDetails({
   user,
 }: AssistantDetailsProps) {
   const [selectedTab, setSelectedTab] = useState<
-    "info" | "performance" | "editors"
+    "info" | "performance" | "editors" | "agent_memory"
   >("info");
   const {
     agentConfiguration,
@@ -251,6 +252,9 @@ export function AssistantDetails({
 
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const showEditorsTabs = assistantId != null && !isGlobalAgent;
+  const showAgentMemory = !!agentConfiguration?.actions.find(
+    (a) => a.name === "agent_memory"
+  );
 
   const showPerformanceTabs =
     (agentConfiguration?.canEdit || isAdmin(owner)) &&
@@ -364,6 +368,14 @@ export function AssistantDetails({
                         onClick={() => setSelectedTab("editors")}
                       />
                     )}
+                    {showAgentMemory && (
+                      <TabsTrigger
+                        value="agent_memory"
+                        label="Memory"
+                        icon={BrainIcon}
+                        onClick={() => setSelectedTab("agent_memory")}
+                      />
+                    )}
                   </TabsList>
                 </Tabs>
               ) : (
@@ -392,6 +404,14 @@ export function AssistantDetails({
                       user={user}
                       agentConfiguration={agentConfiguration}
                     />
+                  )}
+                  {showAgentMemory && selectedTab === "agent_memory" && (
+                    <>
+                      <AgentMemorySection
+                        owner={owner}
+                        agentConfiguration={agentConfiguration}
+                      />
+                    </>
                   )}
                 </>
               )}
