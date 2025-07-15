@@ -235,14 +235,13 @@ export const Select = <T extends BaseItem>({
         </Box>
       )}
 
-      {((enableSearch && searchQuery !== "") || !enableSearch) &&
-        totalPages > 1 && (
-          <Box marginTop={1} justifyContent="center">
-            <Text dimColor>
-              --- Page {currentPage + 1} of {totalPages} ---
-            </Text>
-          </Box>
-        )}
+      {(!enableSearch || searchQuery !== "") && totalPages > 1 && (
+        <Box marginTop={1} justifyContent="center">
+          <Text dimColor>
+            --- Page {currentPage + 1} of {totalPages} ---
+          </Text>
+        </Box>
+      )}
     </Box>
   );
 };
