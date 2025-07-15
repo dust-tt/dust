@@ -129,7 +129,7 @@ export const energyConfig: IndustryPageConfig = {
       },
       {
         title: "Field operations",
-        image: "/static/landing/industry/features/Document_generation.webp",
+        image: "/static/landing/industry/features/Document_generator.webp",
         bgColor: "bg-golden-100",
         features: [
           {

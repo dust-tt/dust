@@ -70,7 +70,7 @@ export const industrialFirmsConfig: IndustryPageConfig = {
     useCases: [
       {
         title: "Commercial & Sales",
-        image: "/static/landing/industry/features/Search_assistant.webp",
+        image: "/static/landing/industry/features/Sales_agent.webp",
         bgColor: "bg-blue-100",
         features: [
           {
@@ -100,39 +100,8 @@ export const industrialFirmsConfig: IndustryPageConfig = {
         ],
       },
       {
-        title: "Marketing & Intelligence",
-        image: "/static/landing/industry/features/Doc_analysis.webp",
-        bgColor: "bg-rose-100",
-        features: [
-          {
-            icon: "bg-red-500 rounded-br-full",
-            title: "Technical Content Creation",
-            description:
-              "Generate product datasheets, application guides, and case studies.",
-          },
-          {
-            icon: "bg-purple-500 rounded-tl-full",
-            title: "Competitive Product Analysis",
-            description:
-              "Track competitor specifications, pricing, and market positioning.",
-          },
-          {
-            icon: "bg-blue-500 rounded-tr-full",
-            title: "Product Descriptions",
-            description:
-              "Create technical specifications and catalog content for new products.",
-          },
-          {
-            icon: "bg-green-500 rounded-bl-full",
-            title: "Supplier Evaluation",
-            description:
-              "Analyze vendor capabilities, performance, and risk assessments.",
-          },
-        ],
-      },
-      {
-        title: "Operations & Compliance",
-        image: "/static/landing/industry/features/Radar_partner.webp",
+        title: "Technical Operations",
+        image: "/static/landing/industry/features/Document_generator.webp",
         bgColor: "bg-green-100",
         features: [
           {
@@ -163,7 +132,7 @@ export const industrialFirmsConfig: IndustryPageConfig = {
       },
       {
         title: "Training & Internal Support",
-        image: "/static/landing/industry/features/Document_generation.webp",
+        image: "/static/landing/industry/features/Technical_helpdesk.webp",
         bgColor: "bg-orange-100",
         features: [
           {
@@ -189,6 +158,37 @@ export const industrialFirmsConfig: IndustryPageConfig = {
             title: "Technical Translation",
             description:
               "Translate safety documents, manuals, and procedures between languages.",
+          },
+        ],
+      },
+      {
+        title: "Marketing & Intelligence",
+        image: "/static/landing/industry/features/Radar_monitoring.webp",
+        bgColor: "bg-rose-100",
+        features: [
+          {
+            icon: "bg-red-500 rounded-br-full",
+            title: "Technical Content Creation",
+            description:
+              "Generate product datasheets, application guides, and case studies.",
+          },
+          {
+            icon: "bg-purple-500 rounded-tl-full",
+            title: "Competitive Product Analysis",
+            description:
+              "Track competitor specifications, pricing, and market positioning.",
+          },
+          {
+            icon: "bg-blue-500 rounded-tr-full",
+            title: "Product Descriptions",
+            description:
+              "Create technical specifications and catalog content for new products.",
+          },
+          {
+            icon: "bg-green-500 rounded-bl-full",
+            title: "Supplier Evaluation",
+            description:
+              "Analyze vendor capabilities, performance, and risk assessments.",
           },
         ],
       },
