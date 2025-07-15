@@ -1,7 +1,5 @@
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { MCPConfigurationServerRunner } from "@app/lib/actions/mcp";
-import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
-import { SearchLabelsConfigurationServerRunner } from "@app/lib/actions/search_labels";
 import type {
   BaseActionConfigurationServerRunner,
   BaseActionConfigurationServerRunnerConstructor,
@@ -10,12 +8,10 @@ import type {
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 
 interface ActionToConfigTypeMap {
-  search_labels_configuration: SearchLabelsConfigurationType;
   mcp_configuration: MCPToolConfigurationType;
 }
 
 interface ActionTypeToClassMap {
-  search_labels_configuration: SearchLabelsConfigurationServerRunner;
   mcp_configuration: MCPConfigurationServerRunner;
 }
 
@@ -55,7 +51,6 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
       CombinedMap[K]["configType"]
     >;
 } = {
-  search_labels_configuration: SearchLabelsConfigurationServerRunner,
   mcp_configuration: MCPConfigurationServerRunner,
 } as const;
 

@@ -71,19 +71,43 @@ export function isExtractDataAction(
   return action.type === "EXTRACT_DATA";
 }
 
-// Knowledge server names that require configuration sheets
-export const KNOWLEDGE_SERVER_NAMES = [
+// MCP server names that map to agent builder actions
+export const AGENT_BUILDER_MCP_SERVERS = [
+  "extract_data",
   "search",
   "include_data",
   "extract_data",
   "query_tables",
 ] as const;
-export type KnowledgeServerName = (typeof KNOWLEDGE_SERVER_NAMES)[number];
+export type AgentBuilderMCPServerName =
+  (typeof AGENT_BUILDER_MCP_SERVERS)[number];
+
+// Type for the supported action types that can be transformed from MCP server configurations
+export type SupportedAgentBuilderActionType =
+  | "EXTRACT_DATA"
+  | "SEARCH"
+  | "INCLUDE_DATA";
+
+// Mapping of specific MCP server names to form action types
+export const MCP_SERVER_TO_ACTION_TYPE_MAP: Record<
+  AgentBuilderMCPServerName,
+  SupportedAgentBuilderActionType
+> = {
+  extract_data: "EXTRACT_DATA",
+  search: "SEARCH",
+  include_data: "INCLUDE_DATA",
+} as const;
+
+// Legacy alias for backward compatibility
+export const KNOWLEDGE_SERVER_NAMES = AGENT_BUILDER_MCP_SERVERS;
+export type KnowledgeServerName = AgentBuilderMCPServerName;
 
 export function isKnowledgeServerName(
   serverName: string
 ): serverName is KnowledgeServerName {
-  return KNOWLEDGE_SERVER_NAMES.includes(serverName as KnowledgeServerName);
+  return AGENT_BUILDER_MCP_SERVERS.includes(
+    serverName as AgentBuilderMCPServerName
+  );
 }
 
 export const AGENT_CREATIVITY_LEVELS = [
@@ -151,3 +175,26 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
 
 export type ConfigurationSheetPageId =
   (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
+  
+// Zod validation schema for data source configuration - defines the contract/shape
+export const dataSourceConfigurationSchema = z.object({
+  sId: z.string().optional(),
+  workspaceId: z.string(),
+  dataSourceViewId: z.string().min(1, "DataSourceViewId cannot be empty"),
+  filter: z.object({
+    parents: z
+      .object({
+        in: z.array(z.string()),
+        not: z.array(z.string()),
+      })
+      .nullable(),
+    tags: z
+      .object({
+        in: z.array(z.string()),
+        not: z.array(z.string()),
+        mode: z.enum(["custom", "auto"]),
+      })
+      .nullable()
+      .optional(),
+  }),
+});

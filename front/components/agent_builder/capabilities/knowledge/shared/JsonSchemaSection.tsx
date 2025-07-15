@@ -1,13 +1,9 @@
-import {
-  Button,
-  SparklesIcon,
-  TextArea,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { Button, SparklesIcon, TextArea } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { WorkspaceType } from "@app/types";
 

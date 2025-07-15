@@ -7,10 +7,6 @@ import type {
   MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import type {
-  SearchLabelsActionRunningEvents,
-  SearchLabelsConfigurationType,
-} from "@app/lib/actions/search_labels";
 
 /**
  * Agent Action configuration when setting up the agent.
@@ -20,10 +16,7 @@ export type AgentActionConfigurationType = MCPServerConfigurationType;
 /**
  * Action configuration type that can be used to run the action.
  */
-export type ActionConfigurationType =
-  | Exclude<AgentActionConfigurationType, MCPServerConfigurationType>
-  | MCPToolConfigurationType
-  | SearchLabelsConfigurationType;
+export type ActionConfigurationType = MCPToolConfigurationType;
 
 /**
  * Type guard to check if a value is of type ActionConfigurationType
@@ -33,7 +26,6 @@ export function isActionConfigurationType(
 ): value is ActionConfigurationType {
   switch (value.type) {
     case "mcp_configuration":
-    case "search_labels_configuration":
       return true;
     case "mcp_server_configuration":
       return false;
@@ -140,6 +132,4 @@ export function inputSchemaToDustAppRunInputs(
 }
 
 // Event sent during the execution of an action. These are action-specific.
-export type AgentActionSpecificEvent =
-  | SearchLabelsActionRunningEvents
-  | MCPActionRunningEvents;
+export type AgentActionSpecificEvent = MCPActionRunningEvents;

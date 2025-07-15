@@ -1,7 +1,3 @@
-import { Op } from "sequelize";
-
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Mention } from "@app/lib/models/assistant/conversation";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -10,37 +6,6 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
-
-async function deleteRetrievalConfigurationForAgent(
-  workspace: LightWorkspaceType,
-  agent: AgentConfiguration
-) {
-  const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
-    where: {
-      agentConfigurationId: agent.id,
-      workspaceId: workspace.id,
-    },
-  });
-
-  if (retrievalConfigurations.length === 0) {
-    return;
-  }
-
-  await AgentDataSourceConfiguration.destroy({
-    where: {
-      retrievalConfigurationId: {
-        [Op.in]: retrievalConfigurations.map((r) => r.id),
-      },
-    },
-  });
-
-  await AgentRetrievalConfiguration.destroy({
-    where: {
-      agentConfigurationId: agent.id,
-      workspaceId: workspace.id,
-    },
-  });
-}
 
 /**
  * Destroys a draft agent configuration and all associated configurations.
@@ -77,9 +42,6 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
   if (!execute) {
     return true;
   }
-
-  // Delete the retrieval configurations.
-  await deleteRetrievalConfigurationForAgent(workspace, agent);
 
   // Finally delete the agent configuration.
   await AgentConfiguration.destroy({

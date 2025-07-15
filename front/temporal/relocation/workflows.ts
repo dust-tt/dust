@@ -21,7 +21,7 @@ import type {
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import type { ModelId } from "@app/types";
 
-const CHUNK_SIZE = 5000;
+const CHUNK_SIZE = 3000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
 const TEMPORAL_CORE_DATA_SOURCE_RELOCATION_CONCURRENCY = 20;
 

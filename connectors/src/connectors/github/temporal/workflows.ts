@@ -55,7 +55,6 @@ const { githubUpsertIssueActivity, githubUpsertDiscussionActivity } =
   });
 
 const {
-  githubCleanupCodeSyncActivity,
   githubEnsureCodeSyncEnabledActivity,
   githubGetGcsFilesActivity,
   githubProcessDirectoryChunkActivity,
@@ -64,10 +63,16 @@ const {
   startToCloseTimeout: "10 minute",
 });
 
+const { githubCleanupCodeSyncActivity } = proxyActivities<
+  typeof activitiesSyncCode
+>({
+  startToCloseTimeout: "20 minute",
+});
+
 const { githubExtractToGcsActivity } = proxyActivities<
   typeof activitiesSyncCode
 >({
-  startToCloseTimeout: "60 minute",
+  startToCloseTimeout: "120 minute",
 });
 
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;

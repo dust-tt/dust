@@ -175,28 +175,24 @@ export function getCitationsCount({
 }): number {
   const action = stepActions[stepActionIndex];
 
-  switch (action.type) {
-    case "search_labels_configuration":
-      return 0;
-    case "mcp_configuration":
-      if (isMCPInternalWebsearch(action)) {
-        return getWebsearchNumResults({
-          stepActions,
-        });
-      }
-      if (isMCPInternalSlack(action)) {
-        return SLACK_SEARCH_ACTION_NUM_RESULTS;
-      }
-      if (isMCPInternalNotion(action)) {
-        return NOTION_SEARCH_ACTION_NUM_RESULTS;
-      }
-      return getRetrievalTopK({
-        agentConfiguration,
-        stepActions,
-      });
-    default:
-      assertNever(action);
+  if (isMCPInternalWebsearch(action)) {
+    return getWebsearchNumResults({
+      stepActions,
+    });
   }
+
+  if (isMCPInternalSlack(action)) {
+    return SLACK_SEARCH_ACTION_NUM_RESULTS;
+  }
+
+  if (isMCPInternalNotion(action)) {
+    return NOTION_SEARCH_ACTION_NUM_RESULTS;
+  }
+
+  return getRetrievalTopK({
+    agentConfiguration,
+    stepActions,
+  });
 }
 
 /**

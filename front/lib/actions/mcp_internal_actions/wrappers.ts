@@ -1,9 +1,22 @@
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type {
+  CallToolResult,
+  EmbeddedResource,
+} from "@modelcontextprotocol/sdk/types.js";
 
+import { isExecuteTablesQueryErrorResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { removeNulls } from "@app/types";
+
+function isKnownErrorResource(
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: { text: "string" } & EmbeddedResource["resource"];
+} {
+  return isExecuteTablesQueryErrorResourceType(outputBlock);
+}
 
 export function withToolLogging<T>(
   auth: Authenticator,
@@ -16,7 +29,6 @@ export function withToolLogging<T>(
     const loggerArgs = {
       workspace: {
         sId: owner.sId,
-        name: owner.name,
         plan_code: auth.plan()?.code || null,
       },
       toolName,
@@ -27,7 +39,6 @@ export function withToolLogging<T>(
     const tags = [
       `action:${toolName}`,
       `workspace:${owner.sId}`,
-      `workspace_name:${owner.name}`,
       `workspace_plan_code:${auth.plan()?.code || null}`,
     ];
 
@@ -42,9 +53,15 @@ export function withToolLogging<T>(
         ...tags,
       ]);
 
-      // Only process text content, resources may be huge.
+      // Only process text content and known error resources, other resources may be huge.
       const error = removeNulls(
-        result.content.map((c) => (c.type === "text" ? c.text : null))
+        result.content.map((c) =>
+          c.type === "text"
+            ? c.text
+            : isKnownErrorResource(c)
+              ? c.resource.text
+              : null
+        )
       ).join("\n");
 
       logger.error(

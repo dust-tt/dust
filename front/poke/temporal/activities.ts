@@ -17,12 +17,9 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentChildAgentConfiguration,
-  AgentMCPAction,
-  AgentMCPActionOutputItem,
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import {
   AgentConfiguration,
@@ -246,28 +243,6 @@ export async function deleteAgentsActivity({
       },
     });
 
-    const mcpActions = await AgentMCPAction.findAll({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
-        },
-      },
-    });
-
-    await AgentMCPActionOutputItem.destroy({
-      where: {
-        agentMCPActionId: {
-          [Op.in]: mcpActions.map((r) => r.id),
-        },
-      },
-    });
-    await AgentMCPAction.destroy({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
-        },
-      },
-    });
     await AgentChildAgentConfiguration.destroy({
       where: {
         mcpServerConfigurationId: {
@@ -277,26 +252,6 @@ export async function deleteAgentsActivity({
       },
     });
     await AgentMCPServerConfiguration.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const retrievalConfigurations = await AgentRetrievalConfiguration.findAll({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-    await AgentDataSourceConfiguration.destroy({
-      where: {
-        retrievalConfigurationId: {
-          [Op.in]: retrievalConfigurations.map((r) => r.id),
-        },
-      },
-    });
-    await AgentRetrievalConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,
@@ -371,14 +326,14 @@ export async function deleteRunOnDustAppsActivity({
     throw new Error("Could not find the workspace.");
   }
 
+  const localLogger = hardDeleteLogger.child({ workspaceId });
+
   const BATCH_SIZE = 10_000;
-  let currentOffset = 0;
+  let deletedRuns = 0;
 
   // Fetch the total of runs to fetch to max end to not go over.
-  const totalRunsToFetch = await RunResource.countByWorkspace(workspace, {
-    skipCutoffDate: true,
-  });
-  hardDeleteLogger.info(
+  const totalRunsToFetch = await RunResource.countByWorkspace(workspace);
+  localLogger.info(
     { totalRuns: totalRunsToFetch },
     "Numbers of runs to be deleted"
   );
@@ -386,15 +341,12 @@ export async function deleteRunOnDustAppsActivity({
   do {
     const runs = await RunResource.listByWorkspace(workspace, {
       includeApp: true,
-      // We want to fetch ALL runs, not just the one created after the cutoff date
-      skipCutoffDate: true,
       limit: BATCH_SIZE,
-      offset: currentOffset,
       order: [["createdAt", "ASC"]],
     });
 
-    hardDeleteLogger.info(
-      { batchSize: runs.length, currentOffset },
+    localLogger.info(
+      { batchSize: runs.length, deletedRuns },
       "Processing batch of runs"
     );
 
@@ -411,18 +363,26 @@ export async function deleteRunOnDustAppsActivity({
         await run.delete(auth);
 
         if (idx % 500) {
-          hardDeleteLogger.debug({ idx, runId: run.id }, "Run deleted");
+          localLogger.info({ idx, runId: run.id }, "Run deleted");
         }
       },
       { concurrency: 12 }
     );
 
+    localLogger.info(
+      { deletedRuns, batchRunsDeleted: runs.length },
+      "Processed batch of runs"
+    );
+
     // The last fetch was less than the batch size, so we know there is no batch after that.
     if (runs.length < BATCH_SIZE) {
+      localLogger.info(
+        "Exiting the loop as there is less runs than the batch size"
+      );
       break;
     }
-    currentOffset += runs.length;
-  } while (currentOffset <= totalRunsToFetch);
+    deletedRuns += runs.length;
+  } while (deletedRuns <= totalRunsToFetch);
 }
 
 export const deleteRemoteMCPServersActivity = async ({

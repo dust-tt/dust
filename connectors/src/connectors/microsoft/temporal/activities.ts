@@ -604,7 +604,17 @@ export async function syncDeltaForRootNodesInDrive({
   const node = nodes[0];
 
   if (nodes.length !== rootNodeIds.length || !node) {
-    throw new Error(`Root or node resource ${nodes} not found`);
+    const logger = getActivityLogger(connector);
+    logger.error(
+      {
+        connectorId,
+        rootNodeIds,
+        foundNodes: nodes.length,
+        expectedNodes: rootNodeIds.length,
+      },
+      "Some root nodes not found in database, skipping delta sync for this drive"
+    );
+    return;
   }
 
   const client = await getClient(connector.connectionId);
@@ -1150,9 +1160,40 @@ export async function microsoftGarbageCollectionActivity({
   const chunkedRequests = _.chunk(requests, 20);
 
   for (const chunk of chunkedRequests) {
-    const batchRes = await clientApiPost(logger, client, "/$batch", {
-      requests: chunk,
-    });
+    let batchRes: {
+      responses: Array<{
+        id: string;
+        status: number;
+        body: unknown;
+      }>;
+    };
+    try {
+      batchRes = await clientApiPost(logger, client, "/$batch", {
+        requests: chunk,
+      });
+    } catch (error) {
+      if (isItemNotFoundError(error)) {
+        logger.info(
+          {
+            connectorId,
+            error: error.message,
+            chunkSize: chunk.length,
+          },
+          "Batch request failed with 404, treating all items as deleted"
+        );
+        // Create fake 404 responses for all items in the chunk
+        batchRes = {
+          responses: chunk.map((req) => ({
+            id: req.id,
+            status: 404,
+            body: null,
+          })),
+        };
+      } else {
+        throw error;
+      }
+    }
+
     for (const res of batchRes.responses) {
       const node = nodesToCheck[Number(res.id)];
       if (node && (res.status === 200 || res.status === 404)) {
@@ -1249,13 +1290,27 @@ const cachedGetParentFromGraphAPI = cacheWithRedis(
       return null;
     }
 
-    const driveItem: DriveItem = await getItem(logger, client, itemAPIPath);
+    try {
+      const driveItem: DriveItem = await getItem(logger, client, itemAPIPath);
 
-    if (!driveItem.parentReference) {
-      throw new Error("Unexpected: no parent reference for drive item");
+      if (!driveItem.parentReference) {
+        throw new Error("Unexpected: no parent reference for drive item");
+      }
+
+      return getParentReferenceInternalId(driveItem.parentReference);
+    } catch (error) {
+      if (isItemNotFoundError(error)) {
+        logger.info(
+          {
+            parentInternalId,
+            error: error.message,
+          },
+          "Parent item not found, treating as no parent"
+        );
+        return null;
+      }
+      throw error;
     }
-
-    return getParentReferenceInternalId(driveItem.parentReference);
   },
   ({
     parentInternalId,

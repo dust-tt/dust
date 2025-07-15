@@ -32,6 +32,7 @@ import {
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
+  extractFromTags,
   getSlackChannelSourceUrl,
   getWeekEnd,
   getWeekStart,
@@ -45,6 +46,7 @@ import { cacheSet } from "@connectors/lib/cache";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
+  getDataSourceDocumentBlob,
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
@@ -194,6 +196,20 @@ export async function syncChannel(
 
     if (!isIndexable) {
       // Skip non-user messages unless from whitelisted bot/workflow.
+
+      logger.info(
+        {
+          connectorId,
+          channelId,
+          message: {
+            bot_id: message.bot_id,
+            thread_ts: message.thread_ts,
+            ts: message.ts,
+            user: message.user,
+          },
+        },
+        "Skipping message - not from a user or whitelisted bot/workflow"
+      );
       continue;
     }
     let skip = false;
@@ -465,6 +481,21 @@ export async function syncNonThreadedChunk({
       );
 
       if (!isIndexable) {
+        // Skip non-user messages unless from whitelisted bot/workflow.
+        logger.info(
+          {
+            connectorId,
+            channelId,
+            message: {
+              bot_id: message.bot_id,
+              thread_ts: message.thread_ts,
+              ts: message.ts,
+              user: message.user,
+            },
+          },
+          "Skipping message - not from a user or whitelisted bot/workflow"
+        );
+
         continue;
       }
       if (!message.thread_ts && message.ts) {
@@ -491,6 +522,9 @@ export async function syncNonThreadedChunk({
       );
 
       await processAndUpsertNonThreadedMessages({
+        // Do not upsert async if we're splitting work. Subsequent chunks will need to fetch the
+        // document. Setting async to false, ensures that the document exist by the next chunk.
+        asyncUpsert: false,
         channelId,
         channelName,
         connectorId,
@@ -530,6 +564,7 @@ export async function syncNonThreadedChunk({
 
   if (messages.length > 0) {
     await processAndUpsertNonThreadedMessages({
+      asyncUpsert: true,
       channelId,
       channelName,
       connectorId,
@@ -549,6 +584,7 @@ export async function syncNonThreadedChunk({
 }
 
 async function processAndUpsertNonThreadedMessages({
+  asyncUpsert,
   channelId,
   channelName,
   connectorId,
@@ -559,6 +595,7 @@ async function processAndUpsertNonThreadedMessages({
   weekEndTsMs,
   weekStartTsMs,
 }: {
+  asyncUpsert: boolean;
   channelId: string;
   channelName: string;
   connectorId: ModelId;
@@ -575,17 +612,6 @@ async function processAndUpsertNonThreadedMessages({
 
   messages.reverse();
 
-  const content = await withSlackErrorHandling(() =>
-    formatMessagesForUpsert({
-      dataSourceConfig,
-      channelName,
-      messages,
-      isThread: false,
-      connectorId,
-      slackClient,
-    })
-  );
-
   const startDate = new Date(weekStartTsMs);
   const endDate = new Date(weekEndTsMs);
 
@@ -597,6 +623,26 @@ async function processAndUpsertNonThreadedMessages({
       startDate,
       endDate,
     });
+
+  // Non-threaded messages from the same week are stored in a single document.
+  // Since we process the week in chunks, we need to check for and append to any existing document.
+  const existingDocumentBlob = await getDataSourceDocumentBlob({
+    dataSourceConfig,
+    documentId,
+  });
+
+  const content = await withSlackErrorHandling(() =>
+    formatMessagesForUpsert({
+      dataSourceConfig,
+      channelName,
+      messages,
+      isThread: false,
+      connectorId,
+      slackClient,
+      existingDocumentBlob,
+    })
+  );
+
   const firstMessage = messages[0];
   let sourceUrl: string | undefined = undefined;
 
@@ -634,7 +680,14 @@ async function processAndUpsertNonThreadedMessages({
     ? parseInt(lastMessage.ts, 10) * 1000
     : undefined;
 
-  const tags = getTagsForPage(documentId, channelId, channelName);
+  const tags = getTagsForPage({
+    channelId,
+    channelName,
+    createdAt: messages[0]?.ts
+      ? new Date(parseInt(messages[0].ts, 10) * 1000)
+      : new Date(),
+    documentId,
+  });
 
   // Only create the document if it doesn't already exist based on the documentId
   const existingMessages = await SlackMessages.findAll({
@@ -668,14 +721,12 @@ async function processAndUpsertNonThreadedMessages({
     upsertContext: {
       sync_type: isBatchSync ? "batch" : "incremental",
     },
-    title:
-      tags
-        .find((t) => t.startsWith("title:"))
-        ?.split(":")
-        .slice(1)
-        .join(":") ?? "",
+    title: extractFromTags({
+      tagPrefix: "title:",
+      tags,
+    }),
     mimeType: INTERNAL_MIME_TYPES.SLACK.MESSAGES,
-    async: true,
+    async: asyncUpsert,
   });
 }
 
@@ -922,7 +973,15 @@ export async function syncThread(
     ? parseInt(lastMessage.ts, 10) * 1000
     : undefined;
 
-  const tags = getTagsForPage(documentId, channelId, channelName, threadTs);
+  const tags = getTagsForPage({
+    channelId,
+    channelName,
+    createdAt: allMessages[0]?.ts
+      ? new Date(parseInt(allMessages[0].ts, 10) * 1000)
+      : new Date(),
+    documentId,
+    threadTs,
+  });
 
   const firstMessageObject = await SlackMessages.findOne({
     where: {
@@ -1054,15 +1113,23 @@ export async function getChannel(
   return getChannelById(slackClient, connectorId, channelId);
 }
 
-function getTagsForPage(
-  documentId: string,
-  channelId: string,
-  channelName: string,
-  threadTs?: string
-): string[] {
+function getTagsForPage({
+  channelId,
+  channelName,
+  createdAt,
+  documentId,
+  threadTs,
+}: {
+  channelId: string;
+  channelName: string;
+  createdAt: Date;
+  documentId: string;
+  threadTs?: string;
+}): string[] {
   const tags: string[] = [
     `channelId:${channelId}`,
     `channelName:${channelName}`,
+    `createdAt:${createdAt.getTime()}`,
   ];
   if (threadTs) {
     tags.push(`threadId:${threadTs}`);

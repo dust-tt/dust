@@ -11,7 +11,6 @@ import {
   SheetTitle,
   SheetTrigger,
   TextArea,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { mutate } from "swr";
@@ -20,6 +19,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useChangeMembersRoles } from "@app/hooks/useChangeMembersRoles";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import {
   MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
@@ -109,18 +109,19 @@ export function InviteEmailButtonWithModal({
 
     const invitesByCase = {
       activeSameRole: existingMembers.filter(
-        (m) => m && m.workspaces.role === invitationRole
+        (m) => m && m.workspaces?.role === invitationRole
       ),
       activeDifferentRole: existingMembers.filter(
         (m) =>
           m &&
-          m.workspaces.role !== invitationRole &&
-          m.workspaces.role !== "none"
+          m.workspaces?.role !== invitationRole &&
+          m.workspaces?.role !== "none"
       ),
       notInWorkspace: inviteEmailsList.filter(
         (m) =>
           !existingMembers.find((x) => x.email === m) ||
-          existingMembers.find((x) => x.email === m)?.workspaces.role === "none"
+          existingMembers.find((x) => x.email === m)?.workspaces?.role ===
+            "none"
       ),
     };
 

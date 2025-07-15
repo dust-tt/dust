@@ -1,5 +1,4 @@
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
 import type {
   ActionGeneratedFileType,
   BaseAgentActionType,
@@ -121,9 +120,7 @@ export function isUserMessageType(
  */
 export type ConfigurableAgentActionType = MCPActionType;
 
-export type AgentActionType =
-  | ConfigurableAgentActionType
-  | SearchLabelsActionType;
+export type AgentActionType = ConfigurableAgentActionType;
 
 export type AgentMessageStatus =
   | "created"
@@ -132,7 +129,6 @@ export type AgentMessageStatus =
   | "cancelled";
 
 export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
-  search_labels_action: "Searching labels",
   tool_action: "Using a tool",
 };
 

@@ -133,9 +133,15 @@ function createServer(
         };
       });
       if (configuredTables.length === 0) {
-        return makeMCPToolTextError(
-          "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
-        );
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
+            },
+          ],
+        };
       }
       config.DATABASE_SCHEMA = {
         type: "database_schema",

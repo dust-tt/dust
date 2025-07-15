@@ -111,7 +111,9 @@ export function getAttachmentFromContentNodeContentFragment(
   const isSearchable =
     isSearchableContentType(cf.contentType) && !isUnmaterializedTable;
   const isExtractable =
-    isExtractableContentType(cf.contentType) && !isUnmaterializedTable;
+    isExtractableContentType(cf.contentType) &&
+    !isUnmaterializedTable &&
+    !isQueryable;
 
   const baseAttachment: BaseConversationAttachmentType = {
     title: cf.title,
@@ -149,7 +151,8 @@ export function getAttachmentFromFileContentFragment(
   const isQueryable = canDoJIT && isQueryableContentType(cf.contentType);
   const isIncludable = isConversationIncludableFileContentType(cf.contentType);
   const isSearchable = canDoJIT && isSearchableContentType(cf.contentType);
-  const isExtractable = canDoJIT && isExtractableContentType(cf.contentType);
+  const isExtractable =
+    canDoJIT && isExtractableContentType(cf.contentType) && !isQueryable;
   const baseAttachment: BaseConversationAttachmentType = {
     title: cf.title,
     contentType: cf.contentType,
@@ -190,7 +193,8 @@ export function getAttachmentFromToolOutput({
   const isIncludable = isConversationIncludableFileContentType(contentType);
   const isQueryable = canDoJIT && isQueryableContentType(contentType);
   const isSearchable = canDoJIT && isSearchableContentType(contentType);
-  const isExtractable = canDoJIT && isExtractableContentType(contentType);
+  const isExtractable =
+    canDoJIT && isExtractableContentType(contentType) && !isQueryable;
 
   return {
     fileId,

@@ -57,7 +57,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "list_spreadsheets",
-    "List Google Sheets spreadsheets accessible by the user. Supports pagination and search.",
+    "List Google Sheets spreadsheets accessible by the user from both personal drive and shared drives. Supports pagination and search.",
     {
       nameFilter: z
         .string()
@@ -88,6 +88,9 @@ const createServer = (): McpServer => {
           pageSize: pageSize ? Math.min(pageSize, 1000) : undefined,
           fields:
             "nextPageToken, files(id, name, createdTime, modifiedTime, owners, webViewLink)",
+          includeItemsFromAllDrives: true,
+          supportsAllDrives: true,
+          corpora: "allDrives",
         });
 
         return makeMCPToolJSONSuccess({
@@ -568,6 +571,55 @@ const createServer = (): McpServer => {
       } catch (err) {
         return makeMCPToolTextError(
           normalizeError(err).message || "Failed to format cells"
+        );
+      }
+    }
+  );
+
+  server.tool(
+    "copy_sheet",
+    "Copy a sheet from one Google Sheets spreadsheet to another spreadsheet.",
+    {
+      sourceSpreadsheetId: z
+        .string()
+        .describe(
+          "The ID of the source spreadsheet containing the sheet to copy."
+        ),
+      sheetId: z
+        .number()
+        .describe("The ID of the sheet to copy from the source spreadsheet."),
+      destinationSpreadsheetId: z
+        .string()
+        .describe(
+          "The ID of the destination spreadsheet where the sheet will be copied."
+        ),
+    },
+    async (
+      { sourceSpreadsheetId, sheetId, destinationSpreadsheetId },
+      { authInfo }
+    ) => {
+      const sheets = await getSheetsClient(authInfo);
+      if (!sheets) {
+        return makeMCPToolTextError(
+          "Failed to authenticate with Google Sheets"
+        );
+      }
+
+      try {
+        const res = await sheets.spreadsheets.sheets.copyTo({
+          spreadsheetId: sourceSpreadsheetId,
+          sheetId: sheetId,
+          requestBody: {
+            destinationSpreadsheetId: destinationSpreadsheetId,
+          },
+        });
+
+        return makeMCPToolJSONSuccess({
+          result: res.data,
+        });
+      } catch (err) {
+        return makeMCPToolTextError(
+          normalizeError(err).message || "Failed to copy sheet"
         );
       }
     }

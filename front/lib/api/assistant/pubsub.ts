@@ -1,4 +1,9 @@
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
+import {
+  editUserMessage,
+  postUserMessage,
+  retryAgentMessage,
+} from "@app/lib/api/assistant/conversation";
 import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -33,12 +38,6 @@ import type {
   UserMessageNewEvent,
 } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
-
-import {
-  editUserMessage,
-  postUserMessage,
-  retryAgentMessage,
-} from "./conversation";
 
 export async function postUserMessageWithPubSub(
   auth: Authenticator,
@@ -214,7 +213,6 @@ async function handleUserMessageEvents(
             case "agent_generation_cancelled":
             case "agent_message_success":
             case "generation_tokens":
-            case "search_labels_params":
             case "tool_approve_execution":
             case "tool_notification":
             case "tool_params": {
@@ -375,7 +373,6 @@ export async function retryAgentMessageWithPubSub(
               case "agent_generation_cancelled":
               case "agent_message_success":
               case "generation_tokens":
-              case "search_labels_params":
               case "tool_approve_execution":
               case "tool_notification":
               case "tool_params": {

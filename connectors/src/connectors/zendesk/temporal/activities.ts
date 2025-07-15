@@ -660,7 +660,7 @@ export async function syncZendeskTicketBatchActivity({
   }
 
   const ticketsToSync = tickets.filter((t) =>
-    shouldSyncTicket(t, configuration)
+    shouldSyncTicket(t, configuration, { brandId })
   );
 
   const comments2d = await concurrentExecutor(

@@ -1,7 +1,12 @@
+import type { CoreAPIDataSourceDocumentBlob } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
 
-import { getUserName } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import {
+  getBotOrUserName,
+  getUserName,
+} from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { extractFromTags } from "@connectors/connectors/slack/lib/utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
@@ -48,6 +53,7 @@ export async function formatMessagesForUpsert({
   isThread,
   connectorId,
   slackClient,
+  existingDocumentBlob,
 }: {
   dataSourceConfig: DataSourceConfig;
   channelName: string;
@@ -55,6 +61,7 @@ export async function formatMessagesForUpsert({
   isThread: boolean;
   connectorId: ModelId;
   slackClient: WebClient;
+  existingDocumentBlob?: CoreAPIDataSourceDocumentBlob;
 }): Promise<CoreAPIDataSourceDocumentSection> {
   const data = await Promise.all(
     messages.map(async (message) => {
@@ -64,8 +71,8 @@ export async function formatMessagesForUpsert({
         slackClient
       );
 
-      const userName = await getUserName(
-        message.user as string,
+      const authorName = await getBotOrUserName(
+        message,
         connectorId,
         slackClient
       );
@@ -84,7 +91,7 @@ export async function formatMessagesForUpsert({
       return {
         messageDate,
         dateStr: messageDateStr,
-        userName,
+        authorName,
         text: text + filesInfo,
         content: text + "\n",
         sections: [],
@@ -104,6 +111,45 @@ export async function formatMessagesForUpsert({
       }`
     : `Messages in #${channelName}`;
 
+  // If the document already exists, only append new sections to the existing document.
+  if (existingDocumentBlob) {
+    // Get the createdAt tag from the existing document blob.
+    const createdAtTag = extractFromTags({
+      tagPrefix: "createdAt:",
+      tags: existingDocumentBlob.tags,
+    });
+
+    const createdAt = createdAtTag
+      ? new Date(parseInt(createdAtTag, 10))
+      : first.messageDate;
+
+    // Get any existing message sections from the document blob, defaulting to an empty array.
+    // This allows us to append new message sections while preserving previous ones.
+    const existingSections = existingDocumentBlob.section.sections ?? [];
+
+    // Take the first section, which is the previous messages section.
+    const [previousMessagesSections] = existingSections;
+
+    return renderDocumentTitleAndContent({
+      dataSourceConfig,
+      createdAt,
+      title,
+      updatedAt: last.messageDate,
+      content: {
+        prefix: null,
+        content: null,
+        sections: [
+          ...(previousMessagesSections?.sections ?? []),
+          ...data.map((d) => ({
+            prefix: `>> @${d.authorName} [${d.dateStr}]:\n`,
+            content: d.text + "\n",
+            sections: [],
+          })),
+        ],
+      },
+    });
+  }
+
   return renderDocumentTitleAndContent({
     dataSourceConfig,
     title,
@@ -113,7 +159,7 @@ export async function formatMessagesForUpsert({
       prefix: null,
       content: null,
       sections: data.map((d) => ({
-        prefix: `>> @${d.userName} [${d.dateStr}]:\n`,
+        prefix: `>> @${d.authorName} [${d.dateStr}]:\n`,
         content: d.text + "\n",
         sections: [],
       })),

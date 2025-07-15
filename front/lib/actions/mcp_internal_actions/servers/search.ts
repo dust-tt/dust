@@ -18,6 +18,7 @@ import {
   getCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/servers/utils";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
@@ -113,15 +114,9 @@ export async function searchFunction({
   );
 
   if (coreSearchArgs.length === 0) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: "text",
-          text: "Search action must have at least one data source configured.",
-        },
-      ],
-    };
+    return makeMCPToolTextError(
+      "Search action must have at least one data source configured."
+    );
   }
 
   const conflictingTagsError = checkConflictingTags(coreSearchArgs, {
@@ -170,27 +165,13 @@ export async function searchFunction({
   );
 
   if (searchResults.isErr()) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: "text",
-          text: searchResults.error.message,
-        },
-      ],
-    };
+    return makeMCPToolTextError(searchResults.error.message);
   }
 
   if (refsOffset + topK > getRefs().length) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: "text",
-          text: "The search exhausted the total number of references available for citations",
-        },
-      ],
-    };
+    return makeMCPToolTextError(
+      "The search exhausted the total number of references available for citations"
+    );
   }
 
   const refs = getRefs().slice(refsOffset, refsOffset + topK);

@@ -7,7 +7,6 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
 import type { ReactElement } from "react";
 import React from "react";
@@ -22,6 +21,7 @@ import {
   useEditingPlan,
 } from "@app/components/poke/plans/form";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanTypeSchema } from "@app/pages/api/poke/plans";

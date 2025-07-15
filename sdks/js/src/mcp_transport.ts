@@ -42,7 +42,7 @@ export class DustMcpServerTransport implements Transport {
       serverName: this.serverName,
     });
     if (registerRes.isErr()) {
-      logger.error(`Failed to register MCP server: ${registerRes.error}`);
+      this.logError(`Failed to register MCP server: ${registerRes.error}`);
       return false;
     }
 
@@ -77,7 +77,7 @@ export class DustMcpServerTransport implements Transport {
           ? heartbeatRes.error
           : new Error("Server not registered");
 
-        logger.error(`Failed to heartbeat MCP server: ${error}`);
+        this.logError(`Failed to heartbeat MCP server: ${error}`);
         await this.registerServer();
       }
     }, HEARTBEAT_INTERVAL_MS);
@@ -98,9 +98,9 @@ export class DustMcpServerTransport implements Transport {
       // Connect to the workspace-scoped requests endpoint.
       await this.connectToRequestsStream();
 
-      this.log("MCP transport started successfully");
+      this.logInfo("MCP transport started successfully");
     } catch (error) {
-      logger.error("Failed to start MCP transport:", error);
+      this.logError("Failed to start MCP transport:", error);
       this.onerror?.(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
@@ -111,7 +111,7 @@ export class DustMcpServerTransport implements Transport {
    */
   private async connectToRequestsStream(): Promise<void> {
     if (!this.serverId) {
-      logger.error("Server ID is not set");
+      this.logError("Server ID is not set");
       return;
     }
 
@@ -157,7 +157,7 @@ export class DustMcpServerTransport implements Transport {
         // The actual request is in the data property.
         const { data } = eventData;
         if (!data) {
-          logger.error("No data field found in the event");
+          this.logError("No data field found in the event");
           return;
         }
 
@@ -165,7 +165,7 @@ export class DustMcpServerTransport implements Transport {
         if (this.onmessage) {
           this.onmessage(data);
         } else {
-          logger.error(
+          this.logError(
             "ERROR: onmessage handler not set - MCP response won't be sent"
           );
         }
@@ -176,26 +176,26 @@ export class DustMcpServerTransport implements Transport {
     };
 
     this.eventSource.onerror = (error) => {
-      logger.error("Error in MCP EventSource connection:", error);
+      this.logError("Error in MCP EventSource connection:", error);
       this.onerror?.(new Error(`SSE connection error: ${error}`));
 
       // Attempt to reconnect after a delay.
       setTimeout(() => {
         if (this.eventSource) {
-          this.log("Attempting to reconnect to SSE...");
+          this.logInfo("Attempting to reconnect to SSE...");
           void this.connectToRequestsStream().catch((reconnectError) => {
-            logger.error("Failed to reconnect:", reconnectError);
+            this.logError("Failed to reconnect:", reconnectError);
           });
         }
       }, RECONNECT_DELAY_MS); // Wait before reconnecting.
     };
 
     this.eventSource.onopen = () => {
-      this.log("MCP SSE connection established");
+      this.logInfo("MCP SSE connection established");
     };
 
     this.eventSource.addEventListener("close", () => {
-      this.log("MCP SSE connection closed");
+      this.logInfo("MCP SSE connection closed");
       this.onclose?.();
     });
   }
@@ -206,7 +206,7 @@ export class DustMcpServerTransport implements Transport {
    */
   async send(message: JSONRPCMessage): Promise<void> {
     if (!this.serverId) {
-      logger.error("Server ID is not set");
+      this.logError("Server ID is not set");
       return;
     }
 
@@ -217,7 +217,7 @@ export class DustMcpServerTransport implements Transport {
     });
 
     if (postResultsRes.isErr()) {
-      logger.error("Failed to send MCP result:", postResultsRes.error);
+      this.logError("Failed to send MCP result:", postResultsRes.error);
       this.onerror?.(
         new Error(`Failed to send MCP result: ${postResultsRes.error}`)
       );
@@ -237,7 +237,7 @@ export class DustMcpServerTransport implements Transport {
 
     // Close SSE connection.
     if (this.eventSource) {
-      this.log("Closing MCP SSE connection");
+      this.logInfo("Closing MCP SSE connection");
       this.eventSource.close();
       this.eventSource = null;
     }
@@ -246,9 +246,15 @@ export class DustMcpServerTransport implements Transport {
     this.onclose?.();
   }
 
-  log(message: string): void {
+  logError(...args: unknown[]): void {
     if (this.verbose) {
-      logger.log(message);
+      logger.error(...args);
+    }
+  }
+
+  logInfo(...args: unknown[]): void {
+    if (this.verbose) {
+      logger.log(...args);
     }
   }
 

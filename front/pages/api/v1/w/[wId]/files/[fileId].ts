@@ -16,7 +16,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { getSecureFileAction } from "@app/pages/api/w/[wId]/files/[fileId]";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isPublicySupportedUseCase } from "@app/types";
+import { isPubliclySupportedUseCase } from "@app/types";
 
 export const config = {
   api: {
@@ -58,7 +58,7 @@ async function handler(
 
   if (!auth.isSystemKey()) {
     // Limit use-case if not a system key.
-    if (!isPublicySupportedUseCase(file.useCase)) {
+    if (!isPubliclySupportedUseCase(file.useCase)) {
       return apiError(req, res, {
         status_code: 400,
         api_error: {

@@ -186,7 +186,15 @@ export function AssistantInputBar({
   }, []);
 
   const handleNodesAttachmentSelect = (node: DataSourceViewContentNodeType) => {
-    setAttachedNodes((prev) => [...prev, node]);
+    const isNodeAlreadyAttached = attachedNodes.some(
+      (attachedNode) =>
+        attachedNode.internalId === node.internalId &&
+        attachedNode.dataSourceView.dataSource.sId ===
+          node.dataSourceView.dataSource.sId
+    );
+    if (!isNodeAlreadyAttached) {
+      setAttachedNodes((prev) => [...prev, node]);
+    }
   };
 
   const handleNodesAttachmentRemove = (node: DataSourceViewContentNodeType) => {

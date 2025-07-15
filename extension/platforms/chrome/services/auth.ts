@@ -11,6 +11,7 @@ import {
   getDustDomain,
 } from "@app/shared/services/auth";
 import type { StorageService } from "@app/shared/services/storage";
+import { datadogLogs } from "@datadog/browser-logs";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { jwtDecode } from "jwt-decode";
@@ -109,7 +110,12 @@ export class ChromeAuthService extends AuthService {
         dustDomain,
         selectedWorkspace: workspaces.length === 1 ? workspaces[0].sId : null,
       });
-
+      datadogLogs.setUser({
+        id: user.sId,
+      });
+      if (workspaces.length === 1) {
+        datadogLogs.setGlobalContext({ workspaceId: workspaces[0].sId });
+      }
       return new Ok({ tokens, user });
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
@@ -130,6 +136,8 @@ export class ChromeAuthService extends AuthService {
       log("Logout failed: Unknown error.", error);
       return false;
     } finally {
+      datadogLogs.clearUser();
+      datadogLogs.setGlobalContext({});
       await this.storage.clear();
     }
   }
@@ -164,6 +172,15 @@ export class ChromeAuthService extends AuthService {
 
   async getStoredUser() {
     const result = await this.storage.get<StoredUser>("user");
+
+    if (result) {
+      datadogLogs.setUser({
+        id: result.sId,
+      });
+      if (result.selectedWorkspace) {
+        datadogLogs.setGlobalContext({ workspaceId: result.selectedWorkspace });
+      }
+    }
 
     return result ?? null;
   }

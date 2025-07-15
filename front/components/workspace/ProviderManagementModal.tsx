@@ -15,7 +15,6 @@ import {
   SheetTitle,
   SheetTrigger,
   SliderToggle,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import { isEqual, uniqBy } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -26,6 +25,7 @@ import {
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useWorkspace } from "@app/lib/swr/workspaces";
 import type { ModelProviderIdType, WorkspaceType } from "@app/types";
 import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@app/types";

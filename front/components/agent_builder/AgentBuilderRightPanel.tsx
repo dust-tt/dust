@@ -1,6 +1,7 @@
 import {
   BarChartIcon,
   Button,
+  ScrollArea,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
   Tabs,
@@ -8,11 +9,11 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import { ScrollArea } from "@dust-tt/sparkle";
 import React, { useContext, useState } from "react";
 
-import { AgentBuilderContext } from "./AgentBuilderContext";
-import { AgentBuilderPreview } from "./AgentBuilderPreview";
+import { AgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
+import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 
 type AgentBuilderRightPanelTabType = "testing" | "performance";
 
@@ -103,9 +104,13 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
 
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
+  agentConfigurationSId?: string;
 }
 
-function ExpandedContent({ selectedTab }: ExpandedContentProps) {
+function ExpandedContent({
+  selectedTab,
+  agentConfigurationSId,
+}: ExpandedContentProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {selectedTab === "testing" && (
@@ -113,16 +118,24 @@ function ExpandedContent({ selectedTab }: ExpandedContentProps) {
           <AgentBuilderPreview />
         </div>
       )}
-      {selectedTab === "performance" && (
+      {selectedTab === "performance" && agentConfigurationSId && (
         <div className="flex-1 overflow-y-auto p-4">
-          <div className="space-y-4">Performance</div>
+          <AgentBuilderPerformance
+            agentConfigurationSId={agentConfigurationSId}
+          />
         </div>
       )}
     </div>
   );
 }
 
-export function AgentBuilderRightPanel() {
+interface AgentBuilderRightPanelProps {
+  agentConfigurationSId?: string;
+}
+
+export function AgentBuilderRightPanel({
+  agentConfigurationSId,
+}: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     useContext(AgentBuilderContext);
   const [selectedTab, setSelectedTab] =
@@ -150,7 +163,10 @@ export function AgentBuilderRightPanel() {
         onTabChange={handleTabChange}
       />
       {isPreviewPanelOpen ? (
-        <ExpandedContent selectedTab={selectedTab} />
+        <ExpandedContent
+          selectedTab={selectedTab}
+          agentConfigurationSId={agentConfigurationSId}
+        />
       ) : (
         <CollapsedTabs onTabSelect={handleTabSelect} />
       )}

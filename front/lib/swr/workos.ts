@@ -1,5 +1,4 @@
-import { useSendNotification } from "@dust-tt/sparkle";
-
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   emptyArray,
   fetcher,

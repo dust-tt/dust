@@ -15,7 +15,6 @@ import {
   SheetTrigger,
   SlackLogo,
   SliderToggle,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useCallback, useEffect, useState } from "react";
@@ -26,6 +25,8 @@ import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
+import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -33,6 +34,7 @@ import {
   useConnectorConfig,
   useToggleSlackChatBot,
 } from "@app/lib/swr/connectors";
+import logger from "@app/logger/logger";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   DataSourceType,
@@ -40,10 +42,12 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
+import { ConnectorsAPI } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
+  isSlackDataSourceBotEnabled: boolean;
   slackBotDataSource: DataSourceType | null;
   systemSpace: SpaceType;
 }>(async (context, auth) => {
@@ -55,9 +59,25 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const slackBotDataSource =
-    (await DataSourceResource.listByConnectorProvider(auth, "slack_bot"))[0] ??
-    null;
+  const [[slackDataSource], [slackBotDataSource]] = await Promise.all([
+    DataSourceResource.listByConnectorProvider(auth, "slack"),
+    DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
+  ]);
+
+  let isSlackDataSourceBotEnabled = false;
+  if (slackDataSource && slackDataSource.connectorId) {
+    const connectorsAPI = new ConnectorsAPI(
+      config.getConnectorsAPIConfig(),
+      logger
+    );
+    const configRes = await connectorsAPI.getConnectorConfig(
+      slackDataSource.connectorId,
+      "botEnabled"
+    );
+    if (configRes.isOk()) {
+      isSlackDataSourceBotEnabled = configRes.value.configValue === "true";
+    }
+  }
 
   const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
@@ -65,6 +85,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     props: {
       owner,
       subscription,
+      isSlackDataSourceBotEnabled,
       slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
       systemSpace: systemSpace.toJSON(),
     },
@@ -74,6 +95,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function WorkspaceAdmin({
   owner,
   subscription,
+  isSlackDataSourceBotEnabled,
   slackBotDataSource,
   systemSpace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -208,14 +230,16 @@ export default function WorkspaceAdmin({
               <ProviderManagementModal owner={owner} />
             </div>
           </Page.Vertical>
-          <Page.Vertical align="stretch" gap="md">
-            <Page.H variant="h4">Integrations</Page.H>
-            <SlackBotToggle
-              owner={owner}
-              slackBotDataSource={slackBotDataSource}
-              systemSpace={systemSpace}
-            />
-          </Page.Vertical>
+          {!isSlackDataSourceBotEnabled && (
+            <Page.Vertical align="stretch" gap="md">
+              <Page.H variant="h4">Integrations</Page.H>
+              <SlackBotToggle
+                owner={owner}
+                slackBotDataSource={slackBotDataSource}
+                systemSpace={systemSpace}
+              />
+            </Page.Vertical>
+          )}
         </Page.Vertical>
       </AppContentLayout>
     </>

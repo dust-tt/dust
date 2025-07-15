@@ -138,12 +138,6 @@ export function withSessionAuthenticationForWorkspace<T>(
         });
       }
 
-      // Set permanent cookie with current workspace ID
-      res.appendHeader(
-        "Set-Cookie",
-        `lastWorkspaceId=${wId}; Path=/; SameSite=Lax; Max-Age=31536000`
-      );
-
       const auth = await Authenticator.fromSession(session, wId);
 
       const owner = auth.workspace();
@@ -579,8 +573,6 @@ async function handleWorkOSAuth<T>(
       });
     }
 
-    // TODO(workos): Actively log errors when WorkOS is the sole login method.
-    // logger.error(decoded.error, "Failed to verify WorkOS token");
     return new Err({
       status_code: 401,
       api_error: {

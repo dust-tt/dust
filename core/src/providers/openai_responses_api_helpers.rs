@@ -200,19 +200,16 @@ fn responses_api_input_from_chat_messages(
                 });
             }
             ChatMessage::System(system_msg) => {
-                if transform_system_messages != TransformSystemMessages::Remove {
-                    let role = if transform_system_messages
-                        == TransformSystemMessages::ReplaceWithDeveloper
-                    {
+                let role =
+                    if transform_system_messages == TransformSystemMessages::ReplaceWithDeveloper {
                         OpenAIChatMessageRole::Developer
                     } else {
                         OpenAIChatMessageRole::System
                     };
-                    input_items.push(OpenAIResponseInputItem::Message {
-                        role,
-                        content: system_msg.content.clone(),
-                    });
-                }
+                input_items.push(OpenAIResponseInputItem::Message {
+                    role,
+                    content: system_msg.content.clone(),
+                });
             }
             ChatMessage::Assistant(assistant_msg) => {
                 for item in assistant_msg.contents.as_ref().unwrap_or(&vec![]) {

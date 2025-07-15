@@ -41,12 +41,20 @@ const FileUploadUrlRequestSchema = t.union([
     contentType: t.string,
     fileName: t.string,
     fileSize: t.number,
-    useCase: t.union([
-      t.literal("avatar"),
-      t.literal("upsert_document"),
-      t.literal("upsert_table"),
-    ]),
+    useCase: t.union([t.literal("avatar"), t.literal("upsert_document")]),
     useCaseMetadata: t.undefined,
+  }),
+  t.type({
+    contentType: t.string,
+    fileName: t.string,
+    fileSize: t.number,
+    useCase: t.literal("upsert_table"),
+    useCaseMetadata: t.union([
+      t.type({
+        spaceId: t.string,
+      }),
+      t.undefined,
+    ]),
   }),
 ]);
 

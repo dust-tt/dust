@@ -1,4 +1,6 @@
 import type {
+  CoreAPIDataSourceDocumentBlob,
+  GetDocumentBlobResponseType,
   GetDocumentsResponseType,
   GetFolderResponseType,
   GetTableResponseType,
@@ -7,7 +9,8 @@ import type {
   UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import type { AxiosRequestConfig, AxiosResponse } from "axios";
+import type { AxiosError } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
@@ -240,13 +243,16 @@ async function _upsertDataSourceDocument({
   );
 }
 
+export type CoreAPIDataSourceDocument =
+  GetDocumentsResponseType["documents"][number];
+
 export async function getDataSourceDocument({
   dataSourceConfig,
   documentId,
 }: {
   dataSourceConfig: DataSourceConfig;
   documentId: string;
-}): Promise<GetDocumentsResponseType["documents"][number] | undefined> {
+}): Promise<CoreAPIDataSourceDocument | undefined> {
   const localLogger = logger.child({
     documentId,
   });
@@ -273,6 +279,42 @@ export async function getDataSourceDocument({
   }
 
   return dustRequestResult.data.documents[0];
+}
+
+export async function getDataSourceDocumentBlob({
+  dataSourceConfig,
+  documentId,
+}: {
+  dataSourceConfig: DataSourceConfig;
+  documentId: string;
+}): Promise<CoreAPIDataSourceDocumentBlob | undefined> {
+  const localLogger = logger.child({
+    documentId,
+  });
+
+  const endpoint =
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}/blob`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+  };
+
+  let dustRequestResult: AxiosResponse<GetDocumentBlobResponseType>;
+  try {
+    dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
+  } catch (e) {
+    if (axios.isAxiosError(e) && e.response?.status === 404) {
+      localLogger.info("Document doesn't exist on Dust. Ignoring.");
+      return undefined;
+    }
+
+    localLogger.error({ error: e }, "Error getting document from Dust.");
+    throw e;
+  }
+
+  return dustRequestResult.data.blob;
 }
 
 export async function deleteDataSourceDocument(

@@ -1,5 +1,4 @@
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
-import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentActionType, LightWorkspaceType } from "@app/types";
 import { ACTION_RUNNING_LABELS } from "@app/types";
@@ -25,10 +24,6 @@ type ActionSpecifications = {
 };
 
 const actionsSpecification: ActionSpecifications = {
-  search_labels_action: {
-    detailsComponent: SearchLabelsActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.search_labels_action,
-  },
   tool_action: {
     detailsComponent: MCPActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.tool_action,

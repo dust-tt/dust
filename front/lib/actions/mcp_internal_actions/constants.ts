@@ -27,6 +27,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "image_generation",
   "include_data",
   "missing_action_catcher",
+  "monday",
   "notion",
   "primitive_types_debugger",
   "query_tables",
@@ -40,6 +41,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "web_search_&_browse",
   "google_calendar",
   "slack",
+  "agent_memory",
 ] as const;
 
 // Whether the server is available by default in the global space.
@@ -211,9 +213,9 @@ export const INTERNAL_MCP_SERVERS: Record<
       return !isAvailable;
     },
     tools_stakes: {
-      execute_read_query: "low",
-      list_objects: "low",
-      describe_object: "low",
+      execute_read_query: "never_ask",
+      list_objects: "never_ask",
+      describe_object: "never_ask",
     },
   },
   gmail: {
@@ -222,6 +224,8 @@ export const INTERNAL_MCP_SERVERS: Record<
     tools_stakes: {
       get_drafts: "never_ask",
       create_draft: "low",
+      get_messages: "low",
+      create_reply_draft: "low",
     },
   },
   google_calendar: {
@@ -255,6 +259,9 @@ export const INTERNAL_MCP_SERVERS: Record<
   google_sheets: {
     id: 19,
     availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("google_sheets_tool");
+    },
     tools_stakes: {
       list_spreadsheets: "never_ask",
       get_spreadsheet: "never_ask",
@@ -266,6 +273,50 @@ export const INTERNAL_MCP_SERVERS: Record<
       add_worksheet: "low",
       delete_worksheet: "low",
       format_cells: "low",
+    },
+  },
+  monday: {
+    id: 20,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("monday_tool");
+    },
+    tools_stakes: {
+      // Read operations
+      get_boards: "never_ask",
+      get_board_items: "never_ask",
+      get_item_details: "never_ask",
+      search_items: "never_ask",
+      get_items_by_column_value: "never_ask",
+      find_user_by_name: "never_ask",
+      get_board_values: "never_ask",
+      get_column_values: "never_ask",
+      get_file_column_values: "never_ask",
+      get_group_details: "never_ask",
+      get_subitem_values: "never_ask",
+      get_user_details: "never_ask",
+
+      // Write operations - High stakes
+      create_item: "high",
+      update_item: "high",
+      update_item_name: "high",
+      create_update: "high",
+      create_board: "high",
+      create_column: "high",
+      create_group: "high",
+      create_subitem: "high",
+      update_subitem: "high",
+      duplicate_group: "high",
+      upload_file_to_column: "high",
+      delete_item: "high",
+      delete_group: "high",
+    },
+  },
+  agent_memory: {
+    id: 21,
+    availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_memory_tools");
     },
   },
   search: {

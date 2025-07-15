@@ -19,10 +19,22 @@ import {
   assertNever,
   BuilderEmojiSuggestionsResponseBodySchema,
   BuilderSuggestionsResponseBodySchema,
+  GEMINI_2_FLASH_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   InternalPostBuilderSuggestionsRequestBodySchema,
 } from "@app/types";
+
+// Minimum number of suggestions output by the suggestion app.
+const SUGGESTIONS_MIN_COUNT = 8;
+// Maximum number of suggestions output by the suggestion app.
+const SUGGESTIONS_MAX_COUNT = 16;
+// Maximum length of each suggestion, in number of characters.
+const SUGGESTION_MAX_LENGTH = 100;
+
+// Threshold on the score output by the suggestion app at which we consider the instructions
+// to be good enough and not require any additional suggestions.
+const SCORE_THRESHOLD = 50;
 
 async function handler(
   req: NextApiRequest,
@@ -56,6 +68,9 @@ async function handler(
         case "instructions":
           model = getLargeWhitelistedModel(owner);
           break;
+        case "autocompletion":
+          model = GEMINI_2_FLASH_MODEL_CONFIG;
+          break;
         case "name":
         case "description":
         case "emoji":
@@ -83,12 +98,17 @@ async function handler(
       );
       config.CREATE_SUGGESTIONS.provider_id = model.providerId;
       config.CREATE_SUGGESTIONS.model_id = model.modelId;
+      const additionalConfiguration = {
+        minSuggestionCount: SUGGESTIONS_MIN_COUNT,
+        maxSuggestionCount: SUGGESTIONS_MAX_COUNT,
+        maxSuggestionLength: SUGGESTION_MAX_LENGTH,
+      };
 
       const suggestionsResponse = await runAction(
         auth,
         `assistant-builder-${suggestionsType}-suggestions`,
         config,
-        [suggestionsInputs]
+        [{ ...suggestionsInputs, ...additionalConfiguration }]
       );
 
       if (suggestionsResponse.isErr() || !suggestionsResponse.value.results) {
@@ -125,12 +145,19 @@ async function handler(
       const suggestions = responseValidation.right as {
         status: "ok";
         suggestions: string[] | null | undefined;
+        score: number | null | undefined;
       };
       if (suggestionsType === "name") {
         suggestions.suggestions = await filterSuggestedNames(
           owner,
           suggestions.suggestions
         );
+      }
+      if (
+        typeof suggestions.score === "number" &&
+        suggestions.score > SCORE_THRESHOLD
+      ) {
+        return res.status(200).json({ ...suggestions, suggestions: [] });
       }
 
       return res.status(200).json(suggestions);

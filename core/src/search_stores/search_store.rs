@@ -242,13 +242,22 @@ impl QueryClauseCounter {
 }
 
 /// Boost factor applied to exact matches to increase their relevance in search results.
-const EXACT_MATCH_BOOST: f32 = 2.0;
+const EXACT_MATCH_BOOST: f32 = 10.0;
+
+/// Boost factor applied to phrase prefix matches (for better prefix matching with punctuation).
+const PHRASE_PREFIX_BOOST: f32 = 5.0;
 
 /// Boost factor applied to data sources to increase their relevance in search results.
 const DATA_SOURCE_BOOST: f32 = 2.0;
 
 /// Boost factor applied to data source nodes to increase their relevance in search results.
 const DATA_SOURCE_NODE_BOOST: f32 = 1.0;
+
+/// Boost factor applied to standard text matches for better relevance calculation.
+const STANDARD_TEXT_MATCH_BOOST: f32 = 2.0;
+
+/// Multiplier for exact keyword match boost (applied to EXACT_MATCH_BOOST).
+const EXACT_KEYWORD_MATCH_MULTIPLIER: f32 = 2.0;
 
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
@@ -817,25 +826,55 @@ impl ElasticsearchSearchStore {
         counter: &mut QueryClauseCounter,
     ) -> Result<BoolQuery> {
         let edge_field = format!("{}.edge", field);
+        let keyword_field = format!("{}.keyword", field);
 
-        counter.add(2);
+        // Check if the query contains punctuation that might be split by word_delimiter
+        let contains_punctuation = query
+            .chars()
+            .any(|c| !c.is_alphanumeric() && !c.is_whitespace());
 
-        Ok(Query::bool()
-            .should(vec![
-                // Primary match using edge n-grams for partial matching.
-                // - Uses the `.edge` analyzer for prefix matching on terms.
-                // - All terms must be present when operator is AND.
-                // - Terms can appear in any order.
-                // - Enables search-as-you-type behavior.
-                Query::from(Query::r#match(edge_field, query).operator(Operator::And)),
-                // Exact phrase match for higher relevance.
-                // - Requires terms to appear in exact order
-                // - Gives higher score (EXACT_MATCH_BOOST) for exact matches
-                // - Stricter matching than regular match query
-                // - Perfect for catching exact title matches.
-                Query::from(Query::r#match_phrase(field, query).boost(EXACT_MATCH_BOOST)),
-            ])
-            .minimum_should_match(1))
+        let mut should_queries = vec![
+            // Primary match using edge n-grams for partial matching.
+            // - Uses the `.edge` analyzer for prefix matching on terms.
+            // - All terms must be present when operator is AND.
+            // - Terms can appear in any order.
+            // - Enables search-as-you-type behavior.
+            Query::from(Query::r#match(edge_field.clone(), query).operator(Operator::And)),
+            // Standard text match for better relevance calculation
+            // - Uses standard analyzer without edge n-grams
+            // - Helps with scoring when terms are complete words
+            Query::from(
+                Query::r#match(field, query)
+                    .operator(Operator::And)
+                    .boost(STANDARD_TEXT_MATCH_BOOST),
+            ),
+            // Exact phrase match for higher relevance.
+            // - Requires terms to appear in exact order
+            // - Gives higher score (EXACT_MATCH_BOOST) for exact matches
+            // - Stricter matching than regular match query
+            // - Perfect for catching exact title matches.
+            Query::from(Query::r#match_phrase(field, query).boost(EXACT_MATCH_BOOST)),
+            // Exact keyword match for perfect exact matches (case insensitive)
+            // - Uses term query on keyword field with lowercase
+            // - Highest boost for exact title matches
+            Query::from(
+                Query::term(keyword_field, query.to_lowercase())
+                    .boost(EXACT_MATCH_BOOST * EXACT_KEYWORD_MATCH_MULTIPLIER),
+            ),
+        ];
+
+        // If query contains punctuation, also try matching as a phrase on edge field
+        // This helps "hello.w" match "hello.world" by treating it as a phrase prefix
+        if contains_punctuation {
+            counter.add(1);
+            should_queries.push(Query::from(
+                Query::r#match_phrase(edge_field, query).boost(PHRASE_PREFIX_BOOST),
+            ));
+        }
+
+        counter.add(4);
+
+        Ok(Query::bool().should(should_queries).minimum_should_match(1))
     }
 
     fn build_data_sources_content_query(

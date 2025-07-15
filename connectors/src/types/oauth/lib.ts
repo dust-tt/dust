@@ -23,6 +23,7 @@ export const OAUTH_PROVIDERS = [
   "microsoft",
   "zendesk",
   "salesforce",
+  "monday",
 ] as const;
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];

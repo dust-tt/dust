@@ -31,7 +31,7 @@ type RunResourceWithApp = RunResource & { app: AppModel };
 
 export type FetchRunOptions<T extends boolean> = {
   includeApp?: T;
-  skipCutoffDate?: boolean;
+  since?: Date;
   order?: [string, "ASC" | "DESC"][];
   limit?: number;
   offset?: number;
@@ -76,8 +76,12 @@ export class RunResource extends BaseResource<RunModel> {
       result.offset = options.offset;
     }
 
-    if (!options?.skipCutoffDate) {
-      result.where = addCreatedAtClause({});
+    if (options?.since) {
+      result.where = {
+        createdAt: {
+          [Op.gt]: options.since,
+        },
+      };
     }
 
     if (options?.order) {
@@ -113,9 +117,8 @@ export class RunResource extends BaseResource<RunModel> {
 
   static async countByWorkspace(
     workspace: LightWorkspaceType,
-    options: Pick<FetchRunOptions<boolean>, "skipCutoffDate">
+    options?: Pick<FetchRunOptions<boolean>, "since">
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Disabled error for unused includeDeleted
     const { where } = this.getOptions(options);
 
     return this.model.count({
