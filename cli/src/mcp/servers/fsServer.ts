@@ -5,11 +5,18 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ReadFileTool } from "../tools/readFile.js";
 import { SearchContentTool } from "../tools/searchContent.js";
 import { SearchFilesTool } from "../tools/searchFiles.js";
+import { EditFileTool } from "../tools/editFile.js";
 
 // Add local development tools to the MCP server
 export const useFileSystemServer = async (
   dustAPI: DustAPI,
-  onServerIdReceived: (serverId: string) => void
+  onServerIdReceived: (serverId: string) => void,
+  diffApprovalCallback?: (
+    originalContent: string,
+    updatedContent: string,
+    diffLines: string[],
+    filePath: string
+  ) => Promise<boolean>
 ) => {
   const server = new McpServer({
     name: "fs-cli",
@@ -19,13 +26,19 @@ export const useFileSystemServer = async (
   const readFileTool = new ReadFileTool();
   const searchFilesTool = new SearchFilesTool();
   const searchContentTool = new SearchContentTool();
+  const editFileTool = new EditFileTool();
+
+  if (diffApprovalCallback) {
+    console.log("callback set");
+    editFileTool.setDiffApprovalCallback(diffApprovalCallback);
+  }
 
   // File operations
   server.tool(
     readFileTool.name,
     readFileTool.description,
     readFileTool.inputSchema.shape,
-    readFileTool.execute
+    readFileTool.execute.bind(readFileTool)
   );
 
   // Development utilities
@@ -33,14 +46,21 @@ export const useFileSystemServer = async (
     searchFilesTool.name,
     searchFilesTool.description,
     searchFilesTool.inputSchema.shape,
-    searchFilesTool.execute
+    searchFilesTool.execute.bind(searchFilesTool)
   );
 
   server.tool(
     searchContentTool.name,
     searchContentTool.description,
     searchContentTool.inputSchema.shape,
-    searchContentTool.execute
+    searchContentTool.execute.bind(searchContentTool)
+  );
+
+  server.tool(
+    editFileTool.name,
+    editFileTool.description,
+    editFileTool.inputSchema.shape,
+    editFileTool.execute.bind(editFileTool)
   );
 
   // Connect to Dust with enhanced error handling

@@ -276,3 +276,64 @@ export async function processFile(
       throw new Error("We should now have reached this statement");
   }
 }
+
+export function editFile(
+  filePath: string,
+  old_string: string,
+  new_string: string,
+  expected_replacements: number
+) {
+  // Validate file exists and is readable
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`File not found: ${filePath}`);
+  }
+
+  // Read file content
+  const originalContent = fs.readFileSync(filePath, "utf-8");
+
+  // Count occurrences of old_string
+  const regex = new RegExp(
+    old_string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+    "g"
+  );
+  const matches = originalContent.match(regex);
+  const occurrences = matches ? matches.length : 0;
+
+  if (occurrences === 0) {
+    throw new Error(`String not found in file: "${old_string}"`);
+  }
+
+  if (occurrences !== expected_replacements) {
+    throw new Error(
+      `Expected ${expected_replacements} replacements, but found ${occurrences} occurrences`
+    );
+  }
+
+  // Create diff layout showing what will be changed
+  const diffLines = [];
+  const lines = originalContent.split("\n");
+  let lineNumber = 1;
+
+  for (const line of lines) {
+    if (line.includes(old_string)) {
+      // Show lines being removed
+      diffLines.push(`- ${lineNumber}: ${line}`);
+      // Show lines being added
+      const newLine = line.replace(regex, new_string);
+      diffLines.push(`+ ${lineNumber}: ${newLine}`);
+    }
+    lineNumber++;
+  }
+
+  const diffOutput = diffLines.join("\n");
+
+  // Perform the replacement
+  const updatedContent = originalContent.replace(regex, new_string);
+
+  // Write the updated content back to the file
+  fs.writeFileSync(filePath, updatedContent, "utf-8");
+
+  const message = `Successfully replaced ${occurrences} occurrence${
+    occurrences === 1 ? "" : "s"
+  } in ${filePath}\n\nDiff:\n${diffOutput}`;
+}

@@ -30,6 +30,7 @@ import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
 import { ToolApprovalSelector } from "../components/ToolApprovalSelector.js";
+import { DiffApprovalSelector } from "../components/DiffApprovalSelector.js";
 import {
   sendNonInteractiveMessage,
   validateNonInteractiveFlags,
@@ -94,6 +95,13 @@ const CliChat: FC<CliChatProps> = ({
   const [pendingApproval, setPendingApproval] =
     useState<AgentActionSpecificEvent | null>(null);
   const [approvalResolver, setApprovalResolver] = useState<
+    ((approved: boolean) => void) | null
+  >(null);
+  const [pendingDiffApproval, setPendingDiffApproval] = useState<{
+    diffLines: string[];
+    filePath: string;
+  } | null>(null);
+  const [diffApprovalResolver, setDiffApprovalResolver] = useState<
     ((approved: boolean) => void) | null
   >(null);
   const [pendingFiles, setPendingFiles] = useState<FileInfo[]>([]);
@@ -193,6 +201,35 @@ const CliChat: FC<CliChatProps> = ({
       }
     },
     [approvalResolver, pendingApproval]
+  );
+
+  const handleDiffApproval = useCallback(
+    async (approved: boolean) => {
+      if (diffApprovalResolver && pendingDiffApproval) {
+        diffApprovalResolver(approved);
+        setPendingDiffApproval(null);
+        setDiffApprovalResolver(null);
+      }
+    },
+    [diffApprovalResolver, pendingDiffApproval]
+  );
+
+  const requestDiffApproval = useCallback(
+    async (
+      originalContent: string,
+      updatedContent: string,
+      diffLines: string[],
+      filePath: string
+    ): Promise<boolean> => {
+      return new Promise<boolean>((resolve) => {
+        console.log("originalContent: ", originalContent);
+        console.log("updatedContent: ", updatedContent);
+        console.log("diff lines in callback:", diffLines);
+        setPendingDiffApproval({ diffLines, filePath });
+        setDiffApprovalResolver(() => resolve);
+      });
+    },
+    []
   );
 
   const clearFiles = useCallback(() => {
@@ -757,7 +794,7 @@ const CliChat: FC<CliChatProps> = ({
   // Handle keyboard events.
   useInput((input, key) => {
     // Skip input handling when there's a pending approval
-    if (pendingApproval) {
+    if (pendingApproval || pendingDiffApproval) {
       return;
     }
 
@@ -1214,9 +1251,13 @@ const CliChat: FC<CliChatProps> = ({
             if (!dustClient) {
               throw new Error("No Dust API set.");
             }
-            await useFileSystemServer(dustClient, (serverId) => {
-              setFileSystemServerId(serverId);
-            });
+            await useFileSystemServer(
+              dustClient,
+              (serverId) => {
+                setFileSystemServerId(serverId);
+              },
+              requestDiffApproval
+            );
           }
           setChosenFileSystemUsage(true);
         }}
@@ -1239,6 +1280,21 @@ const CliChat: FC<CliChatProps> = ({
         onApproval={async (approved, cachedApproval) => {
           await clearTerminal();
           await handleApproval(approved, cachedApproval);
+        }}
+      />
+    );
+  }
+
+  // Show diff approval prompt if pending
+  if (pendingDiffApproval) {
+    console.log("diff lines num: ", pendingDiffApproval.diffLines.length);
+    return (
+      <DiffApprovalSelector
+        diffLines={pendingDiffApproval.diffLines}
+        filePath={pendingDiffApproval.filePath}
+        onApproval={async (approved) => {
+          await clearTerminal();
+          await handleDiffApproval(approved);
         }}
       />
     );
