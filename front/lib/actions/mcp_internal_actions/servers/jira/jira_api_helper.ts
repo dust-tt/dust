@@ -344,6 +344,9 @@ export interface CreateIssueRequest {
     accountId: string;
   };
   labels?: string[];
+  parent?: {
+    key: string;
+  };
 }
 
 export const createIssue = async (
@@ -393,7 +396,7 @@ export const addComment = async (
     value: string;
   }
 ): Promise<AddCommentResult> => {
-  const requestBody: any = { 
+  const requestBody: any = {
     body: {
       type: "doc",
       version: 1,
@@ -408,7 +411,7 @@ export const addComment = async (
           ],
         },
       ],
-    }
+    },
   };
   if (visibility) {
     requestBody.visibility = visibility;
@@ -500,12 +503,27 @@ export const getIssueTypes = async (
   accessToken: string,
   projectKey: string
 ): Promise<GetIssueTypesResult> => {
-  return jiraApiCall(
+  // The API returns an object with issueTypes field (capital T)
+  const IssueTypesResponseSchema = z.object({
+    issueTypes: z.array(JiraIssueTypeSchema),
+    maxResults: z.number().optional(),
+    startAt: z.number().optional(),
+    total: z.number().optional(),
+  });
+
+  const result = await jiraApiCall(
     `/rest/api/3/issue/createmeta/${projectKey}/issuetypes`,
     accessToken,
-    z.array(JiraIssueTypeSchema),
+    IssueTypesResponseSchema,
     { baseUrl }
   );
+
+  if ("error" in result) {
+    return result;
+  }
+
+  // Return just the issueTypes array
+  return result.issueTypes;
 };
 
 export const getIssueFields = async (
@@ -514,27 +532,10 @@ export const getIssueFields = async (
   projectKey: string,
   issueTypeId?: string
 ): Promise<GetIssueFieldsResult> => {
-  const params = new URLSearchParams({
-    projectKeys: projectKey,
-    expand: "projects.issuetypes.fields",
-  });
-  if (issueTypeId) {
-    params.append("issuetypeIds", issueTypeId);
-  }
-
-  // Use a more lenient schema to capture the actual response structure
-  const LenientCreateMetaSchema = z
-    .object({
-      projects: z.array(z.any()),
-    })
-    .passthrough();
-
-  return jiraApiCall(
-    `/rest/api/3/issue/createmeta?${params.toString()}`,
-    accessToken,
-    LenientCreateMetaSchema,
-    { baseUrl }
-  );
+  // Use a very lenient schema that accepts anything
+  const LenientSchema = z.any();
+  const endpoint = `/rest/api/3/issue/createmeta/${projectKey}/issuetypes/${issueTypeId}`;
+  return jiraApiCall(endpoint, accessToken, LenientSchema, { baseUrl });
 };
 
 export const getUserInfo = async (

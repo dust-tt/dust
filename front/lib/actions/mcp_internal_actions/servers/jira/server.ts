@@ -369,6 +369,12 @@ const createServer = (): McpServer => {
         .array(z.string())
         .optional()
         .describe("Array of labels to add to the issue"),
+      parentIssueKey: z
+        .string()
+        .optional()
+        .describe(
+          "Parent issue key to create this issue as a child (e.g., 'PROJ-123')"
+        ),
     },
     async (
       {
@@ -379,6 +385,7 @@ const createServer = (): McpServer => {
         priority,
         assigneeAccountId,
         labels,
+        parentIssueKey,
       },
       { authInfo }
     ) => {
@@ -415,6 +422,9 @@ const createServer = (): McpServer => {
           }
           if (labels) {
             issueData.labels = labels;
+          }
+          if (parentIssueKey) {
+            issueData.parent = { key: parentIssueKey };
           }
 
           const result = await createIssue(baseUrl, accessToken, issueData);
@@ -562,7 +572,10 @@ const createServer = (): McpServer => {
           }
           return makeMCPToolJSONSuccess({
             message: "Comment added successfully",
-            result,
+            result: {
+              issueKey,
+              comment,
+            },
           });
         },
         authInfo,
