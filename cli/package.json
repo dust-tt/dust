@@ -39,6 +39,7 @@
     "keytar": "^7.9.0",
     "lodash": "^4.17.21",
     "meow": "^13.2.0",
+    "mime-types": "^3.0.1",
     "node-fetch": "^3.3.2",
     "npm": "^11.2.0",
     "open": "^10.1.0",
@@ -52,6 +53,7 @@
   "devDependencies": {
     "@types/express": "^5.0.1",
     "@types/lodash": "^4.17.16",
+    "@types/mime-types": "^3.0.1",
     "@types/node": "^22.13.16",
     "@types/react": "^19.0.12",
     "@types/update-notifier": "^6.0.8",
