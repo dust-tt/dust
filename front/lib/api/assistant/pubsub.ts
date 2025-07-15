@@ -33,7 +33,6 @@ import type {
 } from "@app/types";
 import type {
   AgentMessageNewEvent,
-  ConversationTitleEvent,
   UserMessageErrorEvent,
   UserMessageNewEvent,
 } from "@app/types";
@@ -130,8 +129,7 @@ type ConversationAsyncEvents =
   | UserMessageErrorEvent
   | UserMessageNewEvent
   | AgentMessageNewEvent
-  | AgentDisabledErrorEvent
-  | ConversationTitleEvent;
+  | AgentDisabledErrorEvent;
 
 function isEndOfStreamEvent(
   event: ConversationAsyncEvents
@@ -185,8 +183,7 @@ async function handleUserMessageEvents(
         for await (const event of generator) {
           switch (event.type) {
             case "user_message_new":
-            case "agent_message_new":
-            case "conversation_title": {
+            case "agent_message_new": {
               const pubsubChannel = getConversationChannelId(conversation.sId);
 
               await publishEvent({
@@ -449,8 +446,7 @@ export async function* getConversationEvents({
     data:
       | UserMessageNewEvent
       | AgentMessageNewEvent
-      | AgentGenerationCancelledEvent
-      | ConversationTitleEvent;
+      | AgentGenerationCancelledEvent;
   },
   void
 > {
