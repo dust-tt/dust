@@ -375,6 +375,17 @@ async function handler(
         });
       }
 
+      // To write we must have canWrite or be a systemAPIKey
+      if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
+          },
+        });
+      }
+
       if (!auth.isSystemKey()) {
         const remaining = await rateLimiter({
           key: `upsert-document-w-${owner.sId}`,
@@ -725,6 +736,17 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message: "You cannot delete a document from a managed data source.",
+          },
+        });
+      }
+
+      // To write we must have canWrite or be a systemAPIKey
+      if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
           },
         });
       }
