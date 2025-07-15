@@ -312,15 +312,36 @@ export async function githubProcessDirectoryChunkActivity({
   return { processedDirectories: results.length };
 }
 
-// Activity to process a chunk of files with concurrency control.
-export async function githubProcessFileChunkActivity({
+// Activity to create multiple index files with file paths to optimize temporal memory usage.
+export async function githubCreateGcsIndexActivity({
+  gcsBasePath,
+  repoId,
+}: {
+  gcsBasePath: string;
+  repoId: number;
+}): Promise<{
+  indexPaths: string[];
+}> {
+  const gcsManager = new GCSRepositoryManager();
+
+  const indexPaths = await gcsManager.createIndexFiles(gcsBasePath, repoId, {
+    childLogger: logger.child({ repoId, gcsBasePath }),
+  });
+
+  return {
+    indexPaths,
+  };
+}
+
+// Activity to process all files from a single index file.
+export async function githubProcessIndexFileActivity({
   codeSyncStartedAtMs,
   connectorId,
   dataSourceConfig,
   defaultBranch,
-  files,
   forceResync = false,
   gcsBasePath,
+  indexPath,
   isBatchSync = false,
   repoId,
   repoLogin,
@@ -330,24 +351,32 @@ export async function githubProcessFileChunkActivity({
   connectorId: number;
   dataSourceConfig: DataSourceConfig;
   defaultBranch: string;
-  files: Array<{
-    gcsPath: string;
-    relativePath: string;
-  }>;
   forceResync?: boolean;
   gcsBasePath: string;
+  indexPath: string;
   isBatchSync?: boolean;
   repoId: number;
   repoLogin: string;
   repoName: string;
 }): Promise<{
   processedFiles: number;
+  processedDirectories: number;
   updatedDirectoryIds: string[];
 }> {
+  const gcsManager = new GCSRepositoryManager();
+
+  // Read all files and directories from this index.
+  const files = await gcsManager.readFilesFromIndex(indexPath, gcsBasePath);
+  const directories = await gcsManager.readDirectoriesFromIndex({
+    expectedGcsBasePath: gcsBasePath,
+    indexPath,
+  });
+
   const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
   const updatedDirectoryIdsSet = new Set<string>();
 
-  const results = await concurrentExecutor(
+  // Process all files.
+  const fileResults = await concurrentExecutor(
     files,
     async (file) => {
       const result = await upsertCodeFile({
@@ -375,8 +404,28 @@ export async function githubProcessFileChunkActivity({
     { concurrency: PARALLEL_FILE_UPLOADS }
   );
 
+  // Process all directories.
+  const directoryResults = await concurrentExecutor(
+    directories,
+    async (dir) => {
+      await upsertCodeDirectory({
+        codeSyncStartedAt,
+        connectorId,
+        dataSourceConfig,
+        defaultBranch,
+        dirPath: dir.dirPath,
+        repoId,
+        repoLogin,
+        repoName,
+        updatedDirectoryIds: updatedDirectoryIdsSet,
+      });
+    },
+    { concurrency: PARALLEL_DIRECTORY_UPLOADS }
+  );
+
   return {
-    processedFiles: results.length,
+    processedFiles: fileResults.length,
+    processedDirectories: directoryResults.length,
     updatedDirectoryIds: Array.from(updatedDirectoryIdsSet),
   };
 }
