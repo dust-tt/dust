@@ -1,7 +1,7 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
 import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -41,13 +41,6 @@ interface CapabilitiesConfigurationSheetProps {
   action?: AgentBuilderAction;
 }
 
-const FORM_ID = "capabilities-form";
-
-const endButtonProps = {
-  type: "submit",
-  form: FORM_ID,
-};
-
 export function CapabilitiesConfigurationSheet({
   capability,
   onSave,
@@ -57,10 +50,6 @@ export function CapabilitiesConfigurationSheet({
 }: CapabilitiesConfigurationSheetProps) {
   // We store as state to control the timing to update the content for exit animation.
   const [config, setConfig] = useState<CapabilityConfig | null>(null);
-  // We don't want to close the dialog when there is a form error when it's submitted, but we want to let it close
-  // after even if there is an error. The only solution I can think of is manually set this on submit, and reset it
-  // inside the onOpenChange so that users can close it after they've seen it once.
-  const preventSheetCloseRef = useRef(false);
 
   const handleClose = () => {
     onClose();
@@ -81,10 +70,9 @@ export function CapabilitiesConfigurationSheet({
     <MultiPageSheet
       open={isOpen}
       onOpenChange={(open) => {
-        if (!open && !preventSheetCloseRef.current) {
+        if (!open) {
           handleClose();
         }
-        preventSheetCloseRef.current = false;
       }}
     >
       {config && (
@@ -93,7 +81,6 @@ export function CapabilitiesConfigurationSheet({
           onClose={handleClose}
           action={action}
           onSave={onSave}
-          preventSheetCloseRef={preventSheetCloseRef}
         />
       )}
     </MultiPageSheet>
@@ -105,7 +92,6 @@ interface CapabilitiesConfigurationSheetContent {
   action?: AgentBuilderAction;
   onSave: (action: AgentBuilderAction) => void;
   onClose: () => void;
-  preventSheetCloseRef: any;
 }
 
 // This component gets unmounted when config is null so no need to reset the state.
@@ -114,7 +100,6 @@ function CapabilitiesConfigurationSheetContent({
   onSave,
   config,
   onClose,
-  preventSheetCloseRef,
 }: CapabilitiesConfigurationSheetContent) {
   const { owner, supportedDataSourceViews } = useAgentBuilderContext();
   const { spaces } = useSpacesContext();
@@ -233,7 +218,7 @@ function CapabilitiesConfigurationSheetContent({
       description: config.configPageDescription,
       icon: config.icon,
       content: (
-        <FormProvider form={form} onSubmit={handleSave} formId={FORM_ID}>
+        <FormProvider form={form} onSubmit={handleSave}>
           <div className="space-y-6">
             {config.hasTimeFrame && (
               <TimeFrameSection
@@ -265,8 +250,14 @@ function CapabilitiesConfigurationSheetContent({
       pages={pages}
       currentPageId={currentPageId}
       onPageChange={handlePageChange}
-      onSave={() => {
-        preventSheetCloseRef.current = true;
+      onSave={async (e) => {
+        e.preventDefault();
+
+        const isValid = await form.trigger();
+
+        if (isValid) {
+          await form.handleSubmit(handleSave)();
+        }
       }}
       size="lg"
       showNavigation={true}
@@ -275,7 +266,6 @@ function CapabilitiesConfigurationSheetContent({
         !hasDataSources
       }
       disableSave={!hasDataSources}
-      endButtonProps={endButtonProps}
     />
   );
 }
