@@ -1,5 +1,7 @@
 import { TextArea } from "@dust-tt/sparkle";
-import { useFormContext } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
+
+import type { CapabilityFormData } from "@app/components/agent_builder/types";
 
 interface DescriptionSectionProps {
   title: string;
@@ -20,6 +22,9 @@ export function DescriptionSection({
   helpText,
 }: DescriptionSectionProps) {
   const { register } = useFormContext();
+  const { fieldState } = useController<CapabilityFormData, "description">({
+    name: "description",
+  });
 
   return (
     <div className="space-y-4">
@@ -35,6 +40,7 @@ export function DescriptionSection({
           {...register(FIELD_NAME)}
           rows={4}
           showErrorLabel={true}
+          error={fieldState.error?.message}
         />
         {helpText && (
           <p className="text-xs text-muted-foreground">{helpText}</p>
