@@ -164,7 +164,7 @@ export const industrialFirmsConfig: IndustryPageConfig = {
       },
       {
         title: "Marketing & Intelligence",
-        image: "/static/landing/industry/features/Radar_monitoring.webp",
+        image: "/static/landing/industry/features/Radar_Monitoring.webp",
         bgColor: "bg-rose-100",
         features: [
           {
