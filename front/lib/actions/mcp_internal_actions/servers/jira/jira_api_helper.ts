@@ -155,12 +155,14 @@ const JiraFieldSchema = z.object({
   fieldId: z.string().optional(),
   name: z.string(),
   required: z.boolean(),
-  schema: z.object({
-    type: z.string(),
-    system: z.string().optional(),
-    custom: z.string().optional(),
-    customId: z.number().optional(),
-  }).optional(),
+  schema: z
+    .object({
+      type: z.string(),
+      system: z.string().optional(),
+      custom: z.string().optional(),
+      customId: z.number().optional(),
+    })
+    .optional(),
   operations: z.array(z.string()).optional(),
   allowedValues: z.array(z.any()).optional(),
   defaultValue: z.any().optional(),
@@ -226,9 +228,6 @@ type JiraTransitionsResponse = z.infer<typeof JiraTransitionsResponseSchema>;
 type JiraProject = z.infer<typeof JiraProjectSchema>;
 type JiraCreateIssueResponse = z.infer<typeof JiraCreateIssueResponseSchema>;
 type JiraIssueType = z.infer<typeof JiraIssueTypeSchema>;
-type JiraField = z.infer<typeof JiraFieldSchema>;
-type JiraIssueTypeWithFields = z.infer<typeof JiraIssueTypeWithFieldsSchema>;
-type JiraProjectMeta = z.infer<typeof JiraProjectMetaSchema>;
 type JiraCreateMeta = z.infer<typeof JiraCreateMetaSchema>;
 type JiraUserInfo = z.infer<typeof JiraUserInfoSchema>;
 
@@ -481,16 +480,21 @@ export const getIssueFields = async (
   projectKey: string,
   issueTypeId?: string
 ): Promise<GetIssueFieldsResult> => {
-  const params = new URLSearchParams({ projectKeys: projectKey, expand: "projects.issuetypes.fields" });
+  const params = new URLSearchParams({
+    projectKeys: projectKey,
+    expand: "projects.issuetypes.fields",
+  });
   if (issueTypeId) {
     params.append("issuetypeIds", issueTypeId);
   }
-  
+
   // Use a more lenient schema to capture the actual response structure
-  const LenientCreateMetaSchema = z.object({
-    projects: z.array(z.any()),
-  }).passthrough();
-  
+  const LenientCreateMetaSchema = z
+    .object({
+      projects: z.array(z.any()),
+    })
+    .passthrough();
+
   return jiraApiCall(
     `/rest/api/3/issue/createmeta?${params.toString()}`,
     accessToken,
