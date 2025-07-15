@@ -2,26 +2,38 @@ import type { RowSelectionState } from "@tanstack/react-table";
 import { createContext, useContext, useReducer } from "react";
 
 import type { SpaceType } from "@app/types";
+import { removeNulls } from "@app/types";
 
 type SpaceTypeForm = SpaceType & {
-  nodes: { id: string; excludes: string[] }[];
+  /**
+   * Selected node under a space.
+   * Can be a category or a straight node.
+   * The key represent a path, can be `folder.[folderId]` or `managed.[managedId].[folderId]`
+   * And the values are the excluded sub folder, one level deep in the given path.
+   */
+  nodes: Record<string, string[]>;
+  excludedPath: string[];
 };
 
 export type DataSourceBuilderContextState = {
   spaces: Record<string, SpaceTypeForm>;
 };
 
+type ActionSetSpacePayload = Record<string, SpaceType>;
+type ActionSetNodesPayload = {
+  spaceId: string;
+  path?: string;
+  rowSelectionState: RowSelectionState;
+};
+
 type DataSourceBuilderContextAction =
   | {
       type: "set-spaces";
-      payload: Record<string, SpaceType>;
+      payload: ActionSetSpacePayload;
     }
   | {
       type: "set-nodes";
-      payload: {
-        prefix: string;
-        rowSelectionState: RowSelectionState;
-      };
+      payload: ActionSetNodesPayload;
     };
 
 type DataSourceBuilderContextDispatch = (
@@ -48,7 +60,15 @@ function dataSourceContextReducer(
       };
     }
     case "set-nodes":
-      return state;
+      return {
+        ...state,
+        spaces: {
+          [action.payload.spaceId]: {
+            ...state.spaces[action.payload.spaceId],
+            ...computeNewSelectedNodes(state.spaces, action.payload),
+          },
+        },
+      };
   }
 }
 
@@ -97,10 +117,47 @@ function mergeSpaces(
     } else {
       spaces[id] = {
         ...newSpace,
-        nodes: [],
+        nodes: {},
+        excludedPath: [],
       };
     }
   }
 
   return spaces;
+}
+
+function computeNewSelectedNodes(
+  spaces: Record<string, SpaceTypeForm>,
+  { spaceId, path, rowSelectionState }: ActionSetNodesPayload
+): Pick<SpaceTypeForm, "nodes" | "excludedPath"> {
+  const space = spaces[spaceId];
+  const nodes: Record<string, string[]> = {};
+  const excludedPath: string[] = [];
+
+  console.log("Current nodes", space.nodes);
+
+  for (const [id, selected] of Object.entries(rowSelectionState)) {
+    const fullPath = removeNulls([path, id]).join(".");
+    const existingNode = space?.nodes[fullPath];
+
+    // Node is still selected and it existing so we keep the excluded paths
+    if (selected && existingNode) {
+      nodes[fullPath] = existingNode;
+    } else if (selected && !existingNode) {
+      nodes[fullPath] = [];
+    } else {
+      excludedPath.push(fullPath);
+    }
+  }
+
+  // Clean node that might have been deleted
+  for (const existingNode of Object.keys(space.nodes)) {
+    if (!rowSelectionState[existingNode]) {
+      excludedPath.push(existingNode);
+    }
+  }
+
+  const res = { nodes, excludedPath };
+  console.log("Result", res);
+  return res;
 }
