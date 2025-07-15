@@ -9,13 +9,11 @@ export class ReadFileTool implements McpTool {
   description =
     "Reads a given file from the local filesystem and returns its contents. Supports PDF files, text, and picture files (PNG, JPG, GIF, WEBP, SVG, and BMP). It can read certain line ranges from text files.";
 
-  // also most schema names and descriptions gotten from Google's Gemini
-  // add default values to descriptions?
   inputSchema = z.object({
     path: z
       .string()
       .describe(
-        "The absolute path (such as '/home/user/project/file.txt') to the file to be read. There is no support for relative routes. You have to give an absolute route."
+        "The absolute path (such as '/user/folder/document.txt') to the file to be read. There is no support for relative routes. You have to give an absolute route."
       ),
     offset: z
       .number()
