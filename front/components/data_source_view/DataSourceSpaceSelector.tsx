@@ -1,12 +1,11 @@
 import { Checkbox, DataTable, ScrollableDataTable } from "@dust-tt/sparkle";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { useMemo } from "react";
-import { useFieldArray } from "react-hook-form";
 
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
 
-import type { DataSourceBuilderSelectorForm } from "./DataSourceBuilderSelector";
+import { useDataSourceBuilderContext } from "./DataSourceBuilderContext";
 
 type SpaceRowData = {
   id: string;
@@ -85,12 +84,7 @@ export function DataSourceSpaceSelector({
   allowedSpaces = [],
   onSelectSpace,
 }: DataSourceSpaceSelectorProps) {
-  const { fields, replace } = useFieldArray<
-    DataSourceBuilderSelectorForm,
-    "spaces"
-  >({
-    name: "spaces",
-  });
+  const { state, dispatch } = useDataSourceBuilderContext();
 
   const spaceRows: SpaceRowData[] = spaces.map((space) => ({
     id: space.sId,
@@ -101,35 +95,27 @@ export function DataSourceSpaceSelector({
   }));
 
   const rowSelection = useMemo(() => {
-    return fields.reduce(
-      (acc, value) => {
-        acc[value.sId] = true;
-        return acc;
-      },
-      {} as Record<string, boolean>
-    );
-  }, [fields]);
+    const selection: Record<string, boolean> = {};
+    for (const spaceId in state.spaces) {
+      selection[spaceId] = true;
+    }
+    return selection;
+  }, [state.spaces]);
 
   const setRowSelection = (state: RowSelectionState) => {
     // Transform the table selection state to the form
-    const derivedState = Object.entries(state).reduce(
-      (acc, [id, selected]) => {
-        if (selected) {
-          const space = spaces.find((s) => s.sId === id);
-          if (space) {
-            acc.push({
-              sId: id,
-              type: space?.kind === "global" ? "company" : "restricted",
-              nodes: [],
-            });
-          }
-        }
-        return acc;
-      },
-      [] as DataSourceBuilderSelectorForm["spaces"]
-    );
+    const newSpaces: Record<string, SpaceType> = {};
 
-    replace(derivedState);
+    for (const [id, selected] of Object.entries(state)) {
+      if (selected) {
+        const space = spaces.find((s) => s.sId === id);
+        if (space) {
+          newSpaces[id] = space;
+        }
+      }
+    }
+
+    dispatch({ type: "set-spaces", payload: newSpaces });
   };
 
   return (

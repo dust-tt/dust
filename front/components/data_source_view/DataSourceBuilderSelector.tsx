@@ -1,10 +1,7 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import { Breadcrumbs, SearchInput, Spinner } from "@dust-tt/sparkle";
-import { zodResolver } from "@hookform/resolvers/zod";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
-import { z } from "zod";
 
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
@@ -25,6 +22,7 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 
+import { DataSourceBuilderProvider } from "./DataSourceBuilderContext";
 import { DataSourceSpaceSelector } from "./DataSourceSpaceSelector";
 
 type NavigationHistoryEntryType =
@@ -89,24 +87,6 @@ interface DataSourceBuilderSelectorProps {
   viewType: ContentNodesViewType;
 }
 
-const dataSourceBuilderSelectorFormValues = z.object({
-  spaces: z.array(
-    z.object({
-      type: z.union([z.literal("company"), z.literal("restricted")]),
-      sId: z.string(),
-      nodes: z.array(
-        z.object({
-          id: z.string(),
-          excludes: z.array(z.string()),
-        })
-      ),
-    })
-  ),
-});
-export type DataSourceBuilderSelectorForm = z.infer<
-  typeof dataSourceBuilderSelectorFormValues
->;
-
 export const DataSourceBuilderSelector = ({
   allowedSpaces,
   dataSourceViews,
@@ -126,13 +106,6 @@ export const DataSourceBuilderSelector = ({
   const traversedNode = getLatestNodeFromNavigationHistory(navigationHistory);
 
   const [searchQuery, setSearchQuery] = useState("");
-
-  const form = useForm({
-    resolver: zodResolver(dataSourceBuilderSelectorFormValues),
-    defaultValues: {
-      spaces: [],
-    },
-  });
 
   // Fetch category data when a category is selected
   const {
@@ -170,7 +143,7 @@ export const DataSourceBuilderSelector = ({
   }
 
   return (
-    <FormProvider {...form}>
+    <DataSourceBuilderProvider>
       <div className="flex flex-col gap-4">
         {breadcrumbItems.length > 0 && <Breadcrumbs items={breadcrumbItems} />}
 
@@ -210,7 +183,7 @@ export const DataSourceBuilderSelector = ({
           />
         )}
       </div>
-    </FormProvider>
+    </DataSourceBuilderProvider>
   );
 };
 
