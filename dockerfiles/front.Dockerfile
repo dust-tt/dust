@@ -53,7 +53,7 @@ RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
         --project-path=front \
         --release-version=$COMMIT_HASH \
         --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
-        find .next -type f -name "*.map" -print -delete \
+        find .next -type f -name "*.map" -print -delete; \
     fi
 
 # Preload jemalloc for all processes:
