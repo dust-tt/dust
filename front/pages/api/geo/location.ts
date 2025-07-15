@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { isGDPRCountry } from "@app/lib/geo/eu-detection";
 import logger from "@app/logger/logger";
+import { isString } from "@app/types";
 
 export type GeoLocationResponse = {
   isGDPR: boolean;
@@ -19,10 +20,9 @@ export default async function handler(
   }
 
   try {
-    // Get client IP
-    const forwarded = req.headers["x-forwarded-for"];
-    const ip = forwarded
-      ? (forwarded as string).split(",")[0].trim()
+    const { "x-forwarded-for": forwarded } = req.headers;
+    const ip = isString(forwarded)
+      ? forwarded.split(",")[0].trim()
       : req.socket.remoteAddress;
 
     if (!ip) {
@@ -64,7 +64,6 @@ export default async function handler(
     });
   } catch (error) {
     logger.error({ error }, "Error in geolocation API");
-    // Default to non-GDPR on error
     return res.status(200).json({ isGDPR: false });
   }
 }

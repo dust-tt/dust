@@ -19,6 +19,7 @@ import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 // import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
+import { useGeolocation } from "@app/lib/swr/geo";
 import { classNames } from "@app/lib/utils";
 
 export interface LandingLayoutProps {
@@ -39,44 +40,33 @@ export default function LandingLayout({
   const [cookies, setCookie] = useCookies(["dust-cookies-accepted"]);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
-  const [geoChecked, setGeoChecked] = useState<boolean>(false);
+  
+  const cookieValue = cookies["dust-cookies-accepted"];
+  const shouldCheckGeo = !cookieValue;
+  
+  const { geoData } = useGeolocation({ disabled: !shouldCheckGeo });
 
   useEffect(() => {
-    const cookieValue = cookies["dust-cookies-accepted"];
     const hasAcceptedTracking =
       cookieValue === "true" || cookieValue === "auto";
     setHasAcceptedCookies(hasAcceptedTracking);
 
-    const checkGeolocation = async () => {
-      try {
-        const response = await fetch("/api/geo/location");
-        if (response.ok) {
-          const data = await response.json();
-          setGeoChecked(true);
-
-          if (data.isGDPR) {
-            setShowCookieBanner(!cookieValue);
-          } else {
-            setHasAcceptedCookies(true);
-            setShowCookieBanner(false);
-            setCookie("dust-cookies-accepted", "auto", {
-              path: "/",
-              maxAge: 183 * 24 * 60 * 60, // 6 months
-              sameSite: "lax",
-            });
-          }
-        }
-      } catch (error) {
-        setShowCookieBanner(!cookieValue);
-      }
-    };
-
-    if (!cookieValue && !geoChecked) {
-      void checkGeolocation();
-    } else if (cookieValue) {
+    if (cookieValue) {
       setShowCookieBanner(false);
+    } else if (geoData) {
+      if (geoData.isGDPR) {
+        setShowCookieBanner(true);
+      } else {
+        setHasAcceptedCookies(true);
+        setShowCookieBanner(false);
+        setCookie("dust-cookies-accepted", "auto", {
+          path: "/",
+          maxAge: 183 * 24 * 60 * 60, // 6 months
+          sameSite: "lax",
+        });
+      }
     }
-  }, [cookies, setCookie, geoChecked]);
+  }, [cookieValue, geoData, setCookie]);
 
   return (
     <>
