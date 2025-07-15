@@ -244,8 +244,7 @@ pub trait Store {
         document_ids: &Option<Vec<String>>,
         limit_offset: Option<(usize, usize)>,
         remove_system_tags: bool,
-        include_count: bool,
-    ) -> Result<(Vec<Document>, usize)>;
+    ) -> Result<Vec<Document>>;
     async fn delete_data_source_document(
         &self,
         project: &Project,
