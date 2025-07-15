@@ -40,10 +40,10 @@ export default function LandingLayout({
   const [cookies, setCookie] = useCookies(["dust-cookies-accepted"]);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
-  
+
   const cookieValue = cookies["dust-cookies-accepted"];
   const shouldCheckGeo = !cookieValue;
-  
+
   const { geoData } = useGeolocation({ disabled: !shouldCheckGeo });
 
   useEffect(() => {
