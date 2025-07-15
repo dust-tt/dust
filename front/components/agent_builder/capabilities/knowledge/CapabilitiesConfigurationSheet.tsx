@@ -122,12 +122,7 @@ function CapabilitiesConfigurationSheetContent({
     },
   });
 
-  const { watch, setValue, getValues, formState } = form;
-  const [description, timeFrame, jsonSchema] = watch([
-    "description",
-    "timeFrame",
-    "jsonSchema",
-  ]);
+  const { getValues, formState } = form;
 
   const hasDataSources = hasDataSourceSelections(dataSourceConfigurations);
 
@@ -228,8 +223,6 @@ function CapabilitiesConfigurationSheetContent({
           <div className="space-y-6">
             {config.hasTimeFrame && (
               <TimeFrameSection
-                timeFrame={timeFrame}
-                setTimeFrame={(timeFrame) => setValue("timeFrame", timeFrame)}
                 actionType={
                   config.name === "extract_data" ? "extract" : "include"
                 }
@@ -237,15 +230,12 @@ function CapabilitiesConfigurationSheetContent({
             )}
             {config.hasJsonSchema && (
               <JsonSchemaSection
-                value={jsonSchema}
                 initialSchemaString={
                   action && getJsonSchema(action)
                     ? JSON.stringify(getJsonSchema(action), null, 2)
                     : null
                 }
-                onChange={(schema) => setValue("jsonSchema", schema)}
                 agentInstructions={instructions}
-                agentDescription={description}
                 owner={owner}
               />
             )}
