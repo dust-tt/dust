@@ -323,9 +323,8 @@ export async function unsafeGetWorkspacesByModelId(
   if (modelIds.length === 0) {
     return [];
   }
-  return (await WorkspaceResource.fetchByModelIds(modelIds)).map((w) =>
-    renderLightWorkspaceType({ workspace: w })
-  );
+  const workspaces = await WorkspaceResource.fetchByModelIds(modelIds);
+  return workspaces.map((w) => renderLightWorkspaceType({ workspace: w }));
 }
 
 export async function areAllSubscriptionsCanceled(
