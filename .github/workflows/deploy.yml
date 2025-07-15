@@ -143,7 +143,7 @@ jobs:
           component: ${{ inputs.component }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
           depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
-          datadog_api_key: ${{ secrets.DD_API_KEY }}
+          dd_api_key: ${{ secrets.DD_API_KEY }}
           dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
           commit_sha: ${{ needs.prepare.outputs.short_sha }}
           commit_sha_long: ${{ needs.prepare.outputs.long_sha }}

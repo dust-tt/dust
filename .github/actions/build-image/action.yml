@@ -17,7 +17,7 @@ inputs:
   depot_token:
     description: "Depot project token"
     required: true
-  datadog_api_key:
+  dd_api_key:
     description: "Datadog api key"
     required: false
   dd_client_token:
@@ -80,8 +80,8 @@ runs:
         done < "$CONFIG_FILE"
 
         # Only set the Datadog API key if provided
-        if [[ -n "${{ inputs.DATADOG_API_KEY }}" ]]; then
-          build_args+=("--build-arg DATADOG_API_KEY=${{ inputs.DATADOG_API_KEY }}")
+        if [[ -n "${{ inputs.dd_api_key }}" ]]; then
+          build_args+=("--build-arg DATADOG_API_KEY=${{ inputs.dd_api_key }}")
         fi
 
         # Only set the Datadog client token for front and front-edge builds
