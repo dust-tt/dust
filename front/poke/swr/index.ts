@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
-import { emptyArray,fetcher } from "@app/lib/swr/swr";
+import { emptyArray, fetcher } from "@app/lib/swr/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
 import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";
 import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/documents";
