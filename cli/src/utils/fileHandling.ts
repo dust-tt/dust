@@ -220,7 +220,7 @@ export async function processFile(
 ) {
   // check for existence
   if (!fs.existsSync(filePath)) {
-    throw new Error("");
+    throw new Error(`File at ${filePath} does not exist.`);
   }
 
   // get stats, checks for file size and for whether it actually is a file and not a directory
@@ -273,6 +273,6 @@ export async function processFile(
         data: resContent,
       };
     default:
-      throw new Error("We should now have reached this statement");
+      throw new Error("We should not have reached this statement");
   }
 }
