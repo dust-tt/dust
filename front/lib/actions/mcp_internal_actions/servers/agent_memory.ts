@@ -84,6 +84,37 @@ const createServer = (
     return server;
   }
 
+  const renderMemory = (
+    memory: { lastUpdated: Date; content: string }[]
+  ): {
+    isError: boolean;
+    content: { type: "text"; text: string }[];
+  } => {
+    if (memory.length === 0) {
+      return {
+        isError: false,
+        content: [
+          {
+            type: "text",
+            text: "(memory empty)",
+          },
+        ],
+      };
+    }
+
+    return {
+      isError: false,
+      content: [
+        {
+          type: "text",
+          text: memory
+            .map((entry, i) => `[${i}] ${entry.content}`)
+            .join("\n---\n"),
+        },
+      ],
+    };
+  };
+
   server.tool(
     "retrieve",
     `Retrieve all agent memories${isUserScopedMemory ? " for the current user" : ""}`,
@@ -102,30 +133,7 @@ const createServer = (
         agentConfiguration,
         user: user.toJSON(),
       });
-
-      if (memory.length === 0) {
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text: "(memory empty)",
-            },
-          ],
-        };
-      }
-
-      return {
-        isError: false,
-        content: [
-          {
-            type: "text",
-            text: memory
-              .map((entry, i) => `[${i + 1}] ${entry.content}`)
-              .join("\n---\n"),
-          },
-        ],
-      };
+      return renderMemory(memory);
     }
   );
 
@@ -146,21 +154,12 @@ const createServer = (
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
-      await AgentMemoryResource.recordEntries(auth, {
+      const memory = await AgentMemoryResource.recordEntries(auth, {
         agentConfiguration,
         user: user.toJSON(),
         entries,
       });
-
-      return {
-        isError: false,
-        content: [
-          {
-            type: "text",
-            text: "Memory entries recorded.",
-          },
-        ],
-      };
+      return renderMemory(memory);
     }
   );
 
@@ -181,21 +180,12 @@ const createServer = (
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
-      await AgentMemoryResource.eraseEntries(auth, {
+      const memory = await AgentMemoryResource.eraseEntries(auth, {
         agentConfiguration,
         user: user.toJSON(),
         indexes,
       });
-
-      return {
-        isError: false,
-        content: [
-          {
-            type: "text",
-            text: "Memory entries erased.",
-          },
-        ],
-      };
+      return renderMemory(memory);
     }
   );
 
@@ -225,21 +215,12 @@ const createServer = (
       );
       const { agentConfiguration } = agentLoopContext.runContext;
 
-      await AgentMemoryResource.editEntries(auth, {
+      const memory = await AgentMemoryResource.editEntries(auth, {
         agentConfiguration,
         user: user.toJSON(),
         edits,
       });
-
-      return {
-        isError: false,
-        content: [
-          {
-            type: "text",
-            text: "Memory overwritten.",
-          },
-        ],
-      };
+      return renderMemory(memory);
     }
   );
 

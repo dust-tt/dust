@@ -135,7 +135,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       user: UserType | null;
       entries: string[];
     }
-  ): Promise<undefined> {
+  ): Promise<{ lastUpdated: Date; content: string }[]> {
     await concurrentExecutor(
       entries,
       async (content) => {
@@ -147,6 +147,11 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       },
       { concurrency: 4 }
     );
+
+    return AgentMemoryResource.retrieveMemory(auth, {
+      agentConfiguration,
+      user,
+    });
   }
 
   static async eraseEntries(
@@ -160,7 +165,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       user: UserType | null;
       indexes: number[];
     }
-  ): Promise<undefined> {
+  ): Promise<{ lastUpdated: Date; content: string }[]> {
     await frontSequelize.transaction(async (t) => {
       const memories = (
         await this.findByAgentConfigurationAndUser(
@@ -181,6 +186,11 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
         { concurrency: 4 }
       );
     });
+
+    return AgentMemoryResource.retrieveMemory(auth, {
+      agentConfiguration,
+      user,
+    });
   }
 
   static async editEntries(
@@ -194,7 +204,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       user: UserType | null;
       edits: { index: number; content: string }[];
     }
-  ): Promise<undefined> {
+  ): Promise<{ lastUpdated: Date; content: string }[]> {
     await frontSequelize.transaction(async (t) => {
       const memories = (
         await this.findByAgentConfigurationAndUser(
@@ -228,6 +238,11 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
         },
         { concurrency: 4 }
       );
+    });
+
+    return AgentMemoryResource.retrieveMemory(auth, {
+      agentConfiguration,
+      user,
     });
   }
 
