@@ -456,46 +456,6 @@ async function handler(
 
       const fullText = sectionFullText(section);
 
-      // Enforce plan limits: DataSource documents count.
-      // We only load the number of documents if the limit is not -1 (unlimited).
-      // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
-      // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
-      if (plan.limits.dataSources.documents.count != -1) {
-        const documents = await coreAPI.getDataSourceDocuments(
-          {
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceId: dataSource.dustAPIDataSourceId,
-          },
-          { limit: 1, offset: 0 }
-        );
-
-        if (documents.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "data_source_error",
-              message: "There was an error retrieving the data source.",
-              data_source_error: documents.error,
-            },
-          });
-        }
-
-        if (
-          plan.limits.dataSources.documents.count != -1 &&
-          documents.value.total >= plan.limits.dataSources.documents.count
-        ) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "data_source_quota_error",
-              message:
-                `Data sources are limited to ${plan.limits.dataSources.documents.count} ` +
-                `documents on your current plan. Contact support@dust.tt if you want to increase this limit.`,
-            },
-          });
-        }
-      }
-
       if (
         plan.limits.dataSources.documents.sizeMb != -1 &&
         fullText.length > 1024 * 1024 * plan.limits.dataSources.documents.sizeMb
