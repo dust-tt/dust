@@ -2081,7 +2081,6 @@ async fn data_sources_documents_list(
             &document_ids,
             limit_offset,
             true, // remove system tags
-            true,
         )
         .await
     {
@@ -2091,18 +2090,40 @@ async fn data_sources_documents_list(
             "Failed to list data source",
             Some(e),
         ),
-        Ok((documents, total)) => (
-            StatusCode::OK,
-            Json(APIResponse {
-                error: None,
-                response: Some(json!({
-                    "documents": documents,
-                    "limit": query.limit,
-                    "offset": query.offset,
-                    "total": total,
-                })),
-            }),
-        ),
+        Ok(documents) => {
+            let stats = state
+                .search_store
+                .get_data_source_stats(vec![data_source_id.clone()])
+                .await;
+
+            let total = match stats {
+                Ok((data_source_stats, _)) => data_source_stats
+                    .first()
+                    .map(|ds| ds.document_count as usize)
+                    .unwrap_or(0),
+                Err(e) => {
+                    error!(
+                        error = %e,
+                        data_source_id = data_source_id,
+                        "Failed to get document count from Elasticsearch"
+                    );
+                    0
+                }
+            };
+
+            return (
+                StatusCode::OK,
+                Json(APIResponse {
+                    error: None,
+                    response: Some(json!({
+                        "documents": documents,
+                        "limit": query.limit,
+                        "offset": query.offset,
+                        "total": total,
+                    })),
+                }),
+            );
+        }
     }
 }
 
