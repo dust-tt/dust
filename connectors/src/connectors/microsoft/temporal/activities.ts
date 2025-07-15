@@ -633,6 +633,15 @@ export async function syncDeltaForRootNodesInDrive({
   //
   // If it ever becomes an issue, redis-caching the list and having activities
   // grabbing pages of it can be implemented
+
+  if (!node.deltaLink) {
+    logger.info(
+      { connectorId, rootNodeIds },
+      "No delta link for root node, skipping delta sync"
+    );
+    return;
+  }
+
   const { results, deltaLink } = await getDeltaData({
     logger,
     client,
