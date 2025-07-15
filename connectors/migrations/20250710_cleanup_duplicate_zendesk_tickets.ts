@@ -85,7 +85,7 @@ async function cleanupConnector(
       },
     });
 
-    ticketIdsSeen.add(ticketIdsToSee);
+    ticketIdsToSee.forEach((id) => ticketIdsSeen.add(id));
 
     const ticketsByTicketId = _.groupBy(tickets, (t) => t.ticketId);
     const duplicateTickets = Object.values(ticketsByTicketId).filter(
