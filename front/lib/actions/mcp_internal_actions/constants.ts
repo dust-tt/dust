@@ -9,6 +9,7 @@ import type {
 import { Err, Ok } from "@app/types";
 
 export const ADVANCED_SEARCH_SWITCH = "advanced_search";
+export const SEARCH_TOOL_NAME = "semantic_search";
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:

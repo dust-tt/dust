@@ -4,6 +4,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
+import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -63,7 +64,6 @@ import {
   timeFrameFromNow,
 } from "@app/types";
 
-const SEARCH_TOOL_NAME = "semantic_search";
 const FILESYSTEM_TOOL_NAME = "filesystem_navigation";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -792,7 +792,7 @@ const createServer = (
 
   if (!areTagsDynamic) {
     server.tool(
-      "search",
+      SEARCH_TOOL_NAME,
       "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
         "children of the designated nodes will be searched.",
       SearchToolInputSchema.shape,
@@ -811,7 +811,7 @@ const createServer = (
     );
 
     server.tool(
-      "search",
+      SEARCH_TOOL_NAME,
       "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
         "children of the designated nodes will be searched.",
       {
