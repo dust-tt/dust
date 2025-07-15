@@ -56,7 +56,11 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   static async fetchByModelIds(ids: ModelId[]): Promise<WorkspaceResource[]> {
     const workspaces = await this.model.findAll({
-      where: { id: ids },
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
     });
     return workspaces.map((workspace) => new this(this.model, workspace.get()));
   }
