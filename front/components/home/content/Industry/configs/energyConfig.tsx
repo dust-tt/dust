@@ -36,7 +36,7 @@ export const energyConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.webp",
+      src: "/static/landing/industry/Dust_connectors_microsoft.webp",
       alt: "Energy & Utilities AI-powered automation illustration",
     },
   },

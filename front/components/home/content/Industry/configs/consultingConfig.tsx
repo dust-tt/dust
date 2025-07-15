@@ -35,7 +35,7 @@ export const consultingConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.webp",
+      src: "/static/landing/industry/Dust_connectors_microsoft.webp",
       alt: "Consulting Firms AI-powered workflows illustration",
     },
   },
@@ -101,7 +101,7 @@ export const consultingConfig: IndustryPageConfig = {
       },
       {
         title: "Commercial Support",
-        image: "/static/landing/industry/features/Doc_analysis.webp",
+        image: "/static/landing/industry/features/Sales_agent.webp",
         bgColor: "bg-rose-100",
         features: [
           {
@@ -138,7 +138,7 @@ export const consultingConfig: IndustryPageConfig = {
       },
       {
         title: "Internal Operations & Compliance",
-        image: "/static/landing/industry/features/Radar_partner.webp",
+        image: "/static/landing/industry/features/Doc_analysis_2.webp",
         bgColor: "bg-green-100",
         features: [
           {
@@ -163,7 +163,7 @@ export const consultingConfig: IndustryPageConfig = {
       },
       {
         title: "Marketing & Intelligence",
-        image: "/static/landing/industry/features/Document_generation.webp",
+        image: "/static/landing/industry/features/Social_post.webp",
         bgColor: "bg-orange-100",
         features: [
           {

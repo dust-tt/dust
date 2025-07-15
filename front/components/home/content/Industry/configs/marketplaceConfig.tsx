@@ -168,7 +168,7 @@ export const marketplaceConfig: IndustryPageConfig = {
       },
       {
         title: "Community operations",
-        image: "/static/landing/industry/features/Compliance_verification.webp",
+        image: "/static/landing/industry/features/Contact_analysis.webp",
         bgColor: "bg-rose-100",
         features: [
           {

@@ -102,7 +102,7 @@ export const investmentConfig: IndustryPageConfig = {
       },
       {
         title: "Due Diligence",
-        image: "/static/landing/industry/features/Doc_analysis.webp",
+        image: "/static/landing/industry/features/Doc_analysis_2.webp",
         bgColor: "bg-rose-100",
         features: [
           {
@@ -157,7 +157,7 @@ export const investmentConfig: IndustryPageConfig = {
       },
       {
         title: "Reporting & Content",
-        image: "/static/landing/industry/features/Document_generation.webp",
+        image: "/static/landing/industry/features/Quarterly_update.webp",
         bgColor: "bg-orange-100",
         features: [
           {
