@@ -4,13 +4,12 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useEffect, useState } from "react";
+import { useController, useFormContext } from "react-hook-form";
 
+import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { WorkspaceType } from "@app/types";
-import { useController, useFormContext } from "react-hook-form";
-import { CapabilityFormData } from "@app/components/agent_builder/types";
 
 interface JsonSchemaSectionProps {
   label?: string;
@@ -24,12 +23,9 @@ interface JsonSchemaSectionProps {
 export function JsonSchemaSection({
   label,
   placeholder,
-  // value,
   initialSchemaString,
-  // onChange,
   helpText,
   agentInstructions,
-  // agentDescription,
   owner,
 }: JsonSchemaSectionProps) {
   const { getValues } = useFormContext();
