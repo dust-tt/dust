@@ -31,14 +31,12 @@ export class ReadFileTool implements McpTool {
       ),
   });
 
-  // add logic for formatting the lines and further logic for adding small message in case of truncation
   async execute({
     path: filePath,
     offset = 0,
     limit = 5000,
   }: z.infer<typeof this.inputSchema>) {
     try {
-      // add logic for is readable type
       const content = await processFile(filePath, offset, limit);
 
       return {
