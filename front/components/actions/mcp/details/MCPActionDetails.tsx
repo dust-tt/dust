@@ -71,12 +71,18 @@ export function MCPActionDetails(
   const isFilesystemPath = props.action.output?.some(isFilesystemPathType);
 
   if (isSearch) {
+    const fcName = props.action.functionCallName;
+    const isSearchTool = fcName?.startsWith("search");
+    const actionName = fcName && !isSearchTool ? fcName : "Search data";
+    const visual = isSearchTool
+      ? MagnifyingGlassIcon
+      : MCP_SPECIFICATION.cardIcon;
     return (
       <SearchResultDetails
-        actionName="Search data"
+        actionName={actionName}
         actionOutput={props.action.output}
         defaultOpen={props.defaultOpen}
-        visual={MagnifyingGlassIcon}
+        visual={visual}
       />
     );
   } else if (isInclude) {
