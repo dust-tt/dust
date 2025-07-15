@@ -6,9 +6,12 @@ import {
   addComment,
   createIssue,
   getIssue,
+  getIssueFields,
+  getIssueTypes,
   getProject,
   getProjects,
   getTransitions,
+  getUserInfo,
   searchIssues,
   transitionIssue,
   updateIssue,
@@ -35,6 +38,21 @@ const serverInfo: InternalMCPServerDefinitionType = {
   icon: "JiraLogo",
   documentationUrl:
     "https://developer.atlassian.com/server/jira/platform/rest/v10007/intro/",
+};
+
+// Helper function to escape JQL values that contain spaces or special characters
+const escapeJQLValue = (value: string): string => {
+  // If the value contains spaces, special characters, or reserved words, wrap it in quotes
+  if (
+    /[\s"'\\]/.test(value) ||
+    /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed|was|in|not|to|from|by|before|after|on|during)$/i.test(
+      value
+    )
+  ) {
+    // Escape any existing quotes in the value
+    return `"${value.replace(/"/g, '\\"')}"`;
+  }
+  return value;
 };
 
 const createServer = (): McpServer => {
@@ -72,6 +90,9 @@ const createServer = (): McpServer => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
           const result = await getProjects(baseUrl, accessToken);
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Projects retrieved successfully",
             result,
@@ -95,8 +116,11 @@ const createServer = (): McpServer => {
           const result = await searchIssues(
             baseUrl,
             accessToken,
-            `assignee = ${assigneeAccountId}`
+            `assignee = ${escapeJQLValue(assigneeAccountId)}`
           );
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Issues retrieved successfully",
             result,
@@ -120,8 +144,11 @@ const createServer = (): McpServer => {
           const result = await searchIssues(
             baseUrl,
             accessToken,
-            `issueType = ${issueType}`
+            `issueType = ${escapeJQLValue(issueType)}`
           );
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Issues retrieved successfully",
             result,
@@ -145,8 +172,11 @@ const createServer = (): McpServer => {
           const result = await searchIssues(
             baseUrl,
             accessToken,
-            `parent = ${parentIssueKey}`
+            `parent = ${escapeJQLValue(parentIssueKey)}`
           );
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Issues retrieved successfully",
             result,
@@ -170,8 +200,11 @@ const createServer = (): McpServer => {
           const result = await searchIssues(
             baseUrl,
             accessToken,
-            `status = ${status}`
+            `status = ${escapeJQLValue(status)}`
           );
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Issues retrieved successfully",
             result,
@@ -195,8 +228,11 @@ const createServer = (): McpServer => {
           const result = await searchIssues(
             baseUrl,
             accessToken,
-            `priority = ${priority}`
+            `priority = ${escapeJQLValue(priority)}`
           );
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Issues retrieved successfully",
             result,
@@ -220,8 +256,11 @@ const createServer = (): McpServer => {
           const result = await searchIssues(
             baseUrl,
             accessToken,
-            `project = ${projectKey}`
+            `project = ${escapeJQLValue(projectKey)}`
           );
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Issues retrieved successfully",
             result,
@@ -243,6 +282,9 @@ const createServer = (): McpServer => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
           const result = await getProject(baseUrl, accessToken, projectKey);
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Project retrieved successfully",
             result,
@@ -250,6 +292,55 @@ const createServer = (): McpServer => {
         },
         authInfo,
         params: { projectKey },
+      });
+    }
+  );
+
+  server.tool(
+    "get_issueTypes",
+    "Retrieves available issue types for a JIRA project.",
+    {
+      projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
+    },
+    async ({ projectKey }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await getIssueTypes(baseUrl, accessToken, projectKey);
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Issue types retrieved successfully",
+            result,
+          });
+        },
+        authInfo,
+        params: { projectKey },
+      });
+    }
+  );
+
+  server.tool(
+    "get_issue_fields",
+    "Retrieves available fields for creating issues in a JIRA project, optionally filtered by issue type.",
+    {
+      projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
+      issueTypeId: z.string().optional().describe("Optional issue type ID to filter fields for a specific issue type"),
+    },
+    async ({ projectKey, issueTypeId }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await getIssueFields(baseUrl, accessToken, projectKey, issueTypeId);
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Issue fields retrieved successfully",
+            result,
+          });
+        },
+        authInfo,
+        params: { projectKey, issueTypeId },
       });
     }
   );
@@ -301,7 +392,21 @@ const createServer = (): McpServer => {
           };
 
           if (description) {
-            issueData.description = description;
+            issueData.description = {
+              type: "doc",
+              version: 1,
+              content: [
+                {
+                  type: "paragraph",
+                  content: [
+                    {
+                      type: "text",
+                      text: description,
+                    },
+                  ],
+                },
+              ],
+            };
           }
           if (priority) {
             issueData.priority = { name: priority };
@@ -314,6 +419,9 @@ const createServer = (): McpServer => {
           }
 
           const result = await createIssue(baseUrl, accessToken, issueData);
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Issue created successfully",
             result,
@@ -360,7 +468,21 @@ const createServer = (): McpServer => {
             updateData.summary = summary;
           }
           if (description) {
-            updateData.description = description;
+            updateData.description = {
+              type: "doc",
+              version: 1,
+              content: [
+                {
+                  type: "paragraph",
+                  content: [
+                    {
+                      type: "text",
+                      text: description,
+                    },
+                  ],
+                },
+              ],
+            };
           }
           if (priority) {
             updateData.priority = { name: priority };
@@ -372,7 +494,15 @@ const createServer = (): McpServer => {
             updateData.labels = labels;
           }
 
-          await updateIssue(baseUrl, accessToken, issueKey, updateData);
+          const result = await updateIssue(
+            baseUrl,
+            accessToken,
+            issueKey,
+            updateData
+          );
+          if (result && "error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Issue updated successfully",
             result: { issueKey, updatedFields: Object.keys(updateData) },
@@ -417,6 +547,9 @@ const createServer = (): McpServer => {
             comment,
             visibility
           );
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Comment added successfully",
             result,
@@ -442,13 +575,16 @@ const createServer = (): McpServer => {
     async ({ issueKey, transitionId, comment }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          await transitionIssue(
+          const result = await transitionIssue(
             baseUrl,
             accessToken,
             issueKey,
             transitionId,
             comment
           );
+          if (result && "error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Issue transitioned successfully",
             result: {
@@ -474,6 +610,9 @@ const createServer = (): McpServer => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
           const result = await getTransitions(baseUrl, accessToken, issueKey);
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
           return makeMCPToolJSONSuccess({
             message: "Transitions retrieved successfully",
             result,
@@ -481,6 +620,50 @@ const createServer = (): McpServer => {
         },
         authInfo,
         params: { issueKey },
+      });
+    }
+  );
+
+  server.tool(
+    "get_jira_user_info",
+    "Gets information about the currently authenticated JIRA user.",
+    {},
+    async (_, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await getUserInfo(baseUrl, accessToken);
+          if ("error" in result) {
+            return makeMCPToolTextError(result.error);
+          }
+
+          // Transform the JIRA API response to match the expected format
+          const transformedResult = {
+            account_id: result.accountId,
+            email: result.emailAddress,
+            name: result.displayName,
+            picture: result.avatarUrls["48x48"],
+            account_status: result.active ? "active" : "inactive",
+            characteristics: {
+              not_mentionable: false,
+            },
+            last_updated: new Date().toISOString(),
+            nickname: result.displayName,
+            locale: result.locale || "en-US",
+            extended_profile: {
+              phone_numbers: [],
+              team_type: "Software Development",
+            },
+            account_type: result.accountType,
+            email_verified: true,
+          };
+
+          return makeMCPToolJSONSuccess({
+            message: "User information retrieved successfully",
+            result: transformedResult,
+          });
+        },
+        authInfo,
+        params: {},
       });
     }
   );

@@ -56,7 +56,10 @@ const JiraIssueSchema = z.object({
   self: z.string(),
   fields: z.object({
     summary: z.string(),
-    description: z.union([z.string(), z.object({}).passthrough()]).optional(),
+    description: z
+      .union([z.string(), z.object({}).passthrough()])
+      .nullable()
+      .optional(),
     status: z.object({
       name: z.string(),
       statusCategory: z.object({
@@ -67,6 +70,7 @@ const JiraIssueSchema = z.object({
       .object({
         name: z.string(),
       })
+      .nullable()
       .optional(),
     assignee: z
       .object({
@@ -131,24 +135,117 @@ const JiraTransitionsResponseSchema = z.object({
   transitions: z.array(JiraTransitionSchema),
 });
 
+const JiraCreateIssueResponseSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  self: z.string(),
+});
+
+const JiraIssueTypeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  iconUrl: z.string().optional(),
+  avatarId: z.number().optional(),
+  subtask: z.boolean(),
+  hierarchyLevel: z.number().optional(),
+});
+
+const JiraFieldSchema = z.object({
+  fieldId: z.string().optional(),
+  name: z.string(),
+  required: z.boolean(),
+  schema: z.object({
+    type: z.string(),
+    system: z.string().optional(),
+    custom: z.string().optional(),
+    customId: z.number().optional(),
+  }).optional(),
+  operations: z.array(z.string()).optional(),
+  allowedValues: z.array(z.any()).optional(),
+  defaultValue: z.any().optional(),
+  key: z.string().optional(),
+  hasDefaultValue: z.boolean().optional(),
+  autoCompleteUrl: z.string().optional(),
+});
+
+const JiraIssueTypeWithFieldsSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  iconUrl: z.string().optional(),
+  avatarId: z.number().optional(),
+  subtask: z.boolean(),
+  hierarchyLevel: z.number().optional(),
+  fields: z.record(z.string(), JiraFieldSchema).optional(),
+});
+
+const JiraProjectMetaSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  name: z.string(),
+  issuetypes: z.array(JiraIssueTypeWithFieldsSchema),
+});
+
+const JiraCreateMetaSchema = z.object({
+  projects: z.array(JiraProjectMetaSchema),
+  expand: z.string().optional(),
+});
+
+const JiraUserInfoSchema = z.object({
+  accountId: z.string(),
+  emailAddress: z.string(),
+  displayName: z.string(),
+  avatarUrls: z.object({
+    "48x48": z.string(),
+  }),
+  accountType: z.string(),
+  active: z.boolean(),
+  timeZone: z.string().optional(),
+  locale: z.string().optional(),
+  groups: z
+    .object({
+      size: z.number(),
+      items: z.array(z.any()),
+    })
+    .optional(),
+  applicationRoles: z
+    .object({
+      size: z.number(),
+      items: z.array(z.any()),
+    })
+    .optional(),
+  expand: z.string().optional(),
+});
+
 // Extract TypeScript types from schemas
 type JiraIssue = z.infer<typeof JiraIssueSchema>;
 type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
 type JiraComment = z.infer<typeof JiraCommentSchema>;
 type JiraTransitionsResponse = z.infer<typeof JiraTransitionsResponseSchema>;
 type JiraProject = z.infer<typeof JiraProjectSchema>;
+type JiraCreateIssueResponse = z.infer<typeof JiraCreateIssueResponseSchema>;
+type JiraIssueType = z.infer<typeof JiraIssueTypeSchema>;
+type JiraField = z.infer<typeof JiraFieldSchema>;
+type JiraIssueTypeWithFields = z.infer<typeof JiraIssueTypeWithFieldsSchema>;
+type JiraProjectMeta = z.infer<typeof JiraProjectMetaSchema>;
+type JiraCreateMeta = z.infer<typeof JiraCreateMetaSchema>;
+type JiraUserInfo = z.infer<typeof JiraUserInfoSchema>;
 
 type JiraErrorResult = { error: string };
 
 type GetIssueResult = JiraIssue | null | JiraErrorResult;
 type SearchIssuesResult = JiraSearchResult | JiraErrorResult;
-type CreateIssueResult = JiraIssue | JiraErrorResult;
+type CreateIssueResult = JiraCreateIssueResponse | JiraErrorResult;
 type UpdateIssueResult = void | JiraErrorResult;
 type AddCommentResult = JiraComment | JiraErrorResult;
 type GetTransitionsResult = JiraTransitionsResponse | JiraErrorResult;
 type TransitionIssueResult = void | JiraErrorResult;
 type GetProjectsResult = JiraProject[] | JiraErrorResult;
 type GetProjectResult = JiraProject | JiraErrorResult;
+type GetIssueTypesResult = JiraIssueType[] | JiraErrorResult;
+type GetIssueFieldsResult = JiraCreateMeta | JiraErrorResult;
+type GetUserInfoResult = JiraUserInfo | JiraErrorResult;
 
 export const getIssue = async (
   baseUrl: string,
@@ -185,12 +282,41 @@ export const searchIssues = async (
   );
 };
 
+// Helper function to convert plain text to Atlassian Document Format
+/*const convertTextToADF = (text: string) => {
+  return {
+    type: "doc",
+    version: 1,
+    content: [
+      {
+        type: "paragraph",
+        content: [
+          {
+            type: "text",
+            text: text,
+          },
+        ],
+      },
+    ],
+  };
+};*/
+
 export interface CreateIssueRequest {
   project: {
     key: string;
   };
   summary: string;
-  description?: string;
+  description?: {
+    type: string;
+    version: number;
+    content: Array<{
+      type: string;
+      content?: Array<{
+        type: string;
+        text?: string;
+      }>;
+    }>;
+  };
   issuetype: {
     name: string;
   };
@@ -208,11 +334,16 @@ export const createIssue = async (
   accessToken: string,
   issueData: CreateIssueRequest
 ): Promise<CreateIssueResult> => {
-  return jiraApiCall("/rest/api/3/issue", accessToken, JiraIssueSchema, {
-    method: "POST",
-    body: { fields: issueData },
-    baseUrl,
-  });
+  return jiraApiCall(
+    "/rest/api/3/issue",
+    accessToken,
+    JiraCreateIssueResponseSchema,
+    {
+      method: "POST",
+      body: { fields: issueData },
+      baseUrl,
+    }
+  );
 };
 
 export const updateIssue = async (
@@ -329,4 +460,50 @@ export const transitionIssue = async (
       baseUrl,
     }
   );
+};
+
+export const getIssueTypes = async (
+  baseUrl: string,
+  accessToken: string,
+  projectKey: string
+): Promise<GetIssueTypesResult> => {
+  return jiraApiCall(
+    `/rest/api/3/issue/createmeta/${projectKey}/issuetypes`,
+    accessToken,
+    z.array(JiraIssueTypeSchema),
+    { baseUrl }
+  );
+};
+
+export const getIssueFields = async (
+  baseUrl: string,
+  accessToken: string,
+  projectKey: string,
+  issueTypeId?: string
+): Promise<GetIssueFieldsResult> => {
+  const params = new URLSearchParams({ projectKeys: projectKey, expand: "projects.issuetypes.fields" });
+  if (issueTypeId) {
+    params.append("issuetypeIds", issueTypeId);
+  }
+  
+  // Use a more lenient schema to capture the actual response structure
+  const LenientCreateMetaSchema = z.object({
+    projects: z.array(z.any()),
+  }).passthrough();
+  
+  return jiraApiCall(
+    `/rest/api/3/issue/createmeta?${params.toString()}`,
+    accessToken,
+    LenientCreateMetaSchema,
+    { baseUrl }
+  );
+};
+
+export const getUserInfo = async (
+  baseUrl: string,
+  accessToken: string
+): Promise<GetUserInfoResult> => {
+  return jiraApiCall("/rest/api/3/myself", accessToken, JiraUserInfoSchema, {
+    baseUrl,
+  });
 };

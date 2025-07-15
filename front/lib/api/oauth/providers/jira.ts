@@ -24,6 +24,9 @@ export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
       "read:project:jira",
       "read:user:jira",
 
+      // Write permissions
+      "write:jira-work",
+
       // Required for OAuth refresh token
       "offline_access",
     ];
