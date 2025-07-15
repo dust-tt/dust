@@ -3,6 +3,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types";
 
 export const ERROR_MESSAGES = {
   NO_ACCESS_TOKEN: "No access token found",
@@ -48,7 +49,7 @@ export const withAuth = async ({
     }
 
     return await action(baseUrl, accessToken);
-  } catch (error: any) {
+  } catch (error: unknown) {
     return logAndReturnError({ error, params, message: "Operation failed" });
   }
 };
@@ -118,7 +119,7 @@ function logAndReturnError({
   params,
   message,
 }: {
-  error: any;
+  error: unknown;
   params?: Record<string, any>;
   message: string;
 }): CallToolResult {
@@ -129,7 +130,5 @@ function logAndReturnError({
     },
     `[JIRA MCP Server] ${message}`
   );
-  return makeMCPToolTextError(
-    error.response?.body?.message ?? error.message ?? message
-  );
+  return makeMCPToolTextError(normalizeError(error).message);
 }

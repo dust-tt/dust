@@ -26,6 +26,7 @@ import {
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import { normalizeError } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "jira",
@@ -692,9 +693,10 @@ const createServer = (): McpServer => {
           message: "Connection information retrieved successfully",
           result: connectionInfo,
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         return makeMCPToolTextError(
-          error.message || "Failed to retrieve connection information"
+          normalizeError(error).message ||
+            "Failed to retrieve connection information"
         );
       }
     }

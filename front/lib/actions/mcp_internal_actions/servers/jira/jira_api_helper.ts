@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import logger from "@app/logger/logger";
-
+import { normalizeError } from "@app/types";
 const MAX_LIMIT = 50;
 
 // Generic wrapper for JIRA API calls with validation
@@ -33,10 +33,8 @@ async function jiraApiCall<T>(
       return { error: msg };
     }
 
-    // Handle empty responses (like 204 No Content)
     const responseText = await response.text();
     if (!responseText) {
-      // For void responses, return undefined if schema expects void
       const parseResult = schema.safeParse(undefined);
       if (parseResult.success) {
         return parseResult.data;
@@ -54,13 +52,12 @@ async function jiraApiCall<T>(
     }
 
     return parseResult.data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error(`JIRA API call failed for ${endpoint}:`, error);
-    return { error: error?.message || "Unknown JIRA API error" };
+    return { error: normalizeError(error).message };
   }
 }
 
-// Zod schemas for JIRA API responses
 const JiraIssueSchema = z.object({
   id: z.string(),
   key: z.string(),
@@ -248,9 +245,7 @@ type JiraCreateIssueResponse = z.infer<typeof JiraCreateIssueResponseSchema>;
 type JiraIssueType = z.infer<typeof JiraIssueTypeSchema>;
 type JiraCreateMeta = z.infer<typeof JiraCreateMetaSchema>;
 type JiraUserInfo = z.infer<typeof JiraUserInfoSchema>;
-
 type JiraErrorResult = { error: string };
-
 type GetIssueResult = JiraIssue | null | JiraErrorResult;
 type SearchIssuesResult = JiraSearchResult | JiraErrorResult;
 type CreateIssueResult = JiraCreateIssueResponse | JiraErrorResult;
@@ -275,8 +270,6 @@ export const getIssue = async (
     JiraIssueSchema,
     { baseUrl }
   );
-
-  // Handle 404 case specifically
   if ("error" in result && result.error.includes("404")) {
     return null;
   }
@@ -298,26 +291,6 @@ export const searchIssues = async (
     { baseUrl }
   );
 };
-
-// Helper function to convert plain text to Atlassian Document Format
-/*const convertTextToADF = (text: string) => {
-  return {
-    type: "doc",
-    version: 1,
-    content: [
-      {
-        type: "paragraph",
-        content: [
-          {
-            type: "text",
-            text: text,
-          },
-        ],
-      },
-    ],
-  };
-};*/
-
 export interface CreateIssueRequest {
   project: {
     key: string;
@@ -503,7 +476,6 @@ export const getIssueTypes = async (
   accessToken: string,
   projectKey: string
 ): Promise<GetIssueTypesResult> => {
-  // The API returns an object with issueTypes field (capital T)
   const IssueTypesResponseSchema = z.object({
     issueTypes: z.array(JiraIssueTypeSchema),
     maxResults: z.number().optional(),
@@ -522,7 +494,6 @@ export const getIssueTypes = async (
     return result;
   }
 
-  // Return just the issueTypes array
   return result.issueTypes;
 };
 
@@ -532,7 +503,6 @@ export const getIssueFields = async (
   projectKey: string,
   issueTypeId?: string
 ): Promise<GetIssueFieldsResult> => {
-  // Use a very lenient schema that accepts anything
   const LenientSchema = z.any();
   const endpoint = `/rest/api/3/issue/createmeta/${projectKey}/issuetypes/${issueTypeId}`;
   return jiraApiCall(endpoint, accessToken, LenientSchema, { baseUrl });
