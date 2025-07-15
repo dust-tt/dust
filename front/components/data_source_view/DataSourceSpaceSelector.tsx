@@ -1,10 +1,15 @@
 import { Checkbox, DataTable, ScrollableDataTable } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import { useMemo } from "react";
+import { useFieldArray } from "react-hook-form";
 
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
 
+import type { DataSourceBuilderSelectorForm } from "./DataSourceBuilderSelector";
+
 type SpaceRowData = {
+  id: string;
   name: string;
   icon: React.ComponentType;
   onClick: () => void;
@@ -80,12 +85,61 @@ export function DataSourceSpaceSelector({
   allowedSpaces = [],
   onSelectSpace,
 }: DataSourceSpaceSelectorProps) {
+  const { fields, replace } = useFieldArray<
+    DataSourceBuilderSelectorForm,
+    "spaces"
+  >({
+    name: "spaces",
+  });
+
   const spaceRows: SpaceRowData[] = spaces.map((space) => ({
+    id: space.sId,
     name: space.name,
     icon: getSpaceIcon(space),
     onClick: () => onSelectSpace(space),
     disabled: allowedSpaces.find((s) => s.sId === space.sId) == null,
   }));
 
-  return <ScrollableDataTable data={spaceRows} columns={columns} />;
+  const rowSelection = useMemo(() => {
+    return fields.reduce(
+      (acc, value) => {
+        acc[value.sId] = true;
+        return acc;
+      },
+      {} as Record<string, boolean>
+    );
+  }, [fields]);
+
+  const setRowSelection = (state: RowSelectionState) => {
+    // Transform the table selection state to the form
+    const derivedState = Object.entries(state).reduce(
+      (acc, [id, selected]) => {
+        if (selected) {
+          const space = spaces.find((s) => s.sId === id);
+          if (space) {
+            acc.push({
+              sId: id,
+              type: space?.kind === "global" ? "company" : "restricted",
+              nodes: [],
+            });
+          }
+        }
+        return acc;
+      },
+      [] as DataSourceBuilderSelectorForm["spaces"]
+    );
+
+    replace(derivedState);
+  };
+
+  return (
+    <ScrollableDataTable
+      data={spaceRows}
+      columns={columns}
+      enableRowSelection
+      rowSelection={rowSelection}
+      getRowId={(originalRow) => originalRow.id}
+      setRowSelection={setRowSelection}
+    />
+  );
 }

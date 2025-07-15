@@ -1,7 +1,10 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import { Breadcrumbs, SearchInput, Spinner } from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useMemo, useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
@@ -86,6 +89,24 @@ interface DataSourceBuilderSelectorProps {
   viewType: ContentNodesViewType;
 }
 
+const dataSourceBuilderSelectorFormValues = z.object({
+  spaces: z.array(
+    z.object({
+      type: z.union([z.literal("company"), z.literal("restricted")]),
+      sId: z.string(),
+      nodes: z.array(
+        z.object({
+          id: z.string(),
+          excludes: z.array(z.string()),
+        })
+      ),
+    })
+  ),
+});
+export type DataSourceBuilderSelectorForm = z.infer<
+  typeof dataSourceBuilderSelectorFormValues
+>;
+
 export const DataSourceBuilderSelector = ({
   allowedSpaces,
   dataSourceViews,
@@ -105,6 +126,13 @@ export const DataSourceBuilderSelector = ({
   const traversedNode = getLatestNodeFromNavigationHistory(navigationHistory);
 
   const [searchQuery, setSearchQuery] = useState("");
+
+  const form = useForm({
+    resolver: zodResolver(dataSourceBuilderSelectorFormValues),
+    defaultValues: {
+      spaces: [],
+    },
+  });
 
   // Fetch category data when a category is selected
   const {
@@ -142,45 +170,47 @@ export const DataSourceBuilderSelector = ({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {breadcrumbItems.length > 0 && <Breadcrumbs items={breadcrumbItems} />}
+    <FormProvider {...form}>
+      <div className="flex flex-col gap-4">
+        {breadcrumbItems.length > 0 && <Breadcrumbs items={breadcrumbItems} />}
 
-      {currentNavigationEntry.type === "root" ? (
-        <DataSourceSpaceSelector
-          spaces={filteredSpaces}
-          allowedSpaces={allowedSpaces}
-          onSelectSpace={setSpace}
-        />
-      ) : (
-        <SearchInput
-          name="search"
-          placeholder="Search (Name)"
-          value={searchQuery}
-          onChange={setSearchQuery}
-        />
-      )}
+        {currentNavigationEntry.type === "root" ? (
+          <DataSourceSpaceSelector
+            spaces={filteredSpaces}
+            allowedSpaces={allowedSpaces}
+            onSelectSpace={setSpace}
+          />
+        ) : (
+          <SearchInput
+            name="search"
+            placeholder="Search (Name)"
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
+        )}
 
-      {currentNavigationEntry.type === "space" && (
-        <DataSourceCategoryBrowser
-          owner={owner}
-          space={currentNavigationEntry.space}
-          onSelectCategory={setCategory}
-        />
-      )}
+        {currentNavigationEntry.type === "space" && (
+          <DataSourceCategoryBrowser
+            owner={owner}
+            space={currentNavigationEntry.space}
+            onSelectCategory={setCategory}
+          />
+        )}
 
-      {(currentNavigationEntry.type === "node" ||
-        currentNavigationEntry.type === "category") && (
-        <DataSourceNodeTable
-          owner={owner}
-          viewType={viewType}
-          categoryDataSourceViews={categoryDataSourceViews}
-          selectedCategory={selectedCategory}
-          traversedNode={traversedNode}
-          onNavigate={addNode}
-          isCategoryLoading={isCategoryLoading}
-        />
-      )}
-    </div>
+        {(currentNavigationEntry.type === "node" ||
+          currentNavigationEntry.type === "category") && (
+          <DataSourceNodeTable
+            owner={owner}
+            viewType={viewType}
+            categoryDataSourceViews={categoryDataSourceViews}
+            selectedCategory={selectedCategory}
+            traversedNode={traversedNode}
+            onNavigate={addNode}
+            isCategoryLoading={isCategoryLoading}
+          />
+        )}
+      </div>
+    </FormProvider>
   );
 };
 
