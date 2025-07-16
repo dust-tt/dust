@@ -91,14 +91,7 @@ impl TableUpsertsBackgroundWorker {
                 .await?;
         let local_table = LocalTable::from_table(table.clone()).unwrap();
         local_table
-            .upsert_rows_now(
-                &self.store,
-                &self.gcs_db_store,
-                rows,
-                false,
-                false, /*postgres*/
-                true,  /*gcs*/
-            )
+            .upsert_rows_gcs(&self.store, &self.gcs_db_store, rows, false)
             .await?;
 
         let _: () = self
