@@ -92,6 +92,7 @@ import {
   removeNulls,
   stripNullBytes,
 } from "@app/types";
+import { AgentMCPActionType } from "@app/types/assistant/agent_message_content";
 
 const MAX_BLOB_SIZE_BYTES = 1024 * 1024 * 10; // 10MB
 
@@ -1178,68 +1179,41 @@ async function handleBase64Upload(
  * Action rendering.
  */
 
-// Internal interface for the retrieval and rendering of an MCPAction action. Should not be used
-// outside api/assistant. We allow a ModelId interface here because we don't have `sId` on actions
-// (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
-// This function only returns the actions with the maximum version for each step.
-export async function mcpActionTypesFromAgentMessageIds(
+export function renderAgentMCPAction(
   auth: Authenticator,
-  { agentMessageIds }: { agentMessageIds: ModelId[] }
-): Promise<MCPActionType[]> {
-  const actions = await AgentMCPAction.findAll({
-    where: {
-      agentMessageId: agentMessageIds,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-    include: [
-      {
-        model: AgentMCPActionOutputItem,
-        as: "outputItems",
-        required: false,
-        include: [
-          {
-            model: FileModel,
-            as: "file",
-            required: false,
-          },
-        ],
-      },
-    ],
-  });
+  action: AgentMCPActionType
+): MCPActionType {
+  return new MCPActionType({
+    id: action.id,
+    params: action.params,
+    output: removeNulls(action.outputItems.map(hideFileFromActionOutput)),
+    functionCallId: action.functionCallId,
+    functionCallName: action.functionCallName,
+    agentMessageId: action.agentMessageModelId,
+    step: action.step,
+    mcpServerConfigurationId: action.mcpServerConfigurationId,
+    executionState: action.executionState,
+    isError: action.isError,
+    type: "tool_action",
+    generatedFiles: removeNulls(
+      action.outputItems.map((o) => {
+        if (!o.file) {
+          return null;
+        }
 
-  return actions.map((action) => {
-    return new MCPActionType({
-      id: action.id,
-      params: action.params,
-      output: removeNulls(action.outputItems.map(hideFileFromActionOutput)),
-      functionCallId: action.functionCallId,
-      functionCallName: action.functionCallName,
-      agentMessageId: action.agentMessageId,
-      step: action.step,
-      mcpServerConfigurationId: action.mcpServerConfigurationId,
-      executionState: action.executionState,
-      isError: action.isError,
-      type: "tool_action",
-      generatedFiles: removeNulls(
-        action.outputItems.map((o) => {
-          if (!o.file) {
-            return null;
-          }
+        const file = o.file;
+        const fileSid = FileResource.modelIdToSId({
+          id: file.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        });
 
-          const file = o.file;
-          const fileSid = FileResource.modelIdToSId({
-            id: file.id,
-            workspaceId: action.workspaceId,
-          });
-
-          return {
-            fileId: fileSid,
-            contentType: file.contentType,
-            title: file.fileName,
-            snippet: file.snippet,
-          };
-        })
-      ),
-    });
+        return {
+          fileId: fileSid,
+          contentType: file.contentType,
+          title: file.fileName,
+          snippet: file.snippet,
+        };
+      })
+    ),
   });
 }
