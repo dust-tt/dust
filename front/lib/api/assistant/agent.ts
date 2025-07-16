@@ -261,6 +261,7 @@ async function runMultiActionsAgentLoop(
                 conversationId: conversation.sId,
                 error: event.error,
                 publicMessage,
+                retryCount: autoRetryCount,
               },
               "Auto-retrying multi-actions agent."
             );
