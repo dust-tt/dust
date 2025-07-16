@@ -4,20 +4,9 @@ use async_trait::async_trait;
 use crate::databases::table::{Row, Table};
 use crate::databases::table_schema::TableSchema;
 
-#[derive(Debug)]
-pub enum DatabasesStoreStrategy {
-    PostgresOnly,
-    PostgresAndWriteToGCS,
-
-    // Migration MUST be completed for this to work in production.
-    GCSAndWriteToPostgres,
-
-    // Useful for testing but in production there would be no going back to postgres with a migration to re-insert the missing data in postgres.
-    // Make sure that ALLOW_USAGE_OF_CSV_FILES is set to true in sqlite_workers/sqlite_database.rs to use this strategy.
-    GCSOnly,
-}
-
-pub const CURRENT_STRATEGY: DatabasesStoreStrategy = DatabasesStoreStrategy::PostgresAndWriteToGCS;
+// These flags are transitional while we migrate to GCS. Eventually, we will only use GCS.
+pub const SAVE_TABLES_TO_POSTGRES: bool = true;
+pub const SAVE_TABLES_TO_GCS: bool = true;
 
 #[async_trait]
 pub trait DatabasesStore {

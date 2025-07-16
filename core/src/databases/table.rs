@@ -14,10 +14,9 @@ use crate::databases::table_upserts_background_worker::{
     TableUpsertActivityData, REDIS_CLIENT, REDIS_LOCK_TTL_SECONDS, REDIS_TABLE_UPSERT_HASH_NAME,
     REDIS_URI,
 };
-use crate::databases_store;
 use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
 use crate::databases_store::gcs_background::GoogleCloudStorageBackgroundProcessingStore;
-use crate::databases_store::store::{DatabasesStoreStrategy, CURRENT_STRATEGY};
+use crate::databases_store::store::{SAVE_TABLES_TO_GCS, SAVE_TABLES_TO_POSTGRES};
 use crate::search_stores::search_store::NodeItem;
 use crate::{
     data_sources::node::ProviderVisibility,
@@ -275,8 +274,19 @@ impl Table {
             )
             .await?;
 
-            // Delete the table rows.
-            databases_store.delete_table_data(&self).await?;
+            // Delete the table data from the stores that are enabled
+
+            if SAVE_TABLES_TO_POSTGRES {
+                databases_store.delete_table_data(&self).await?;
+            }
+
+            if SAVE_TABLES_TO_GCS {
+                // For now, we don't propagate failures since it's just a shadow operation
+                let gcs_store = GoogleCloudStorageDatabasesStore::new();
+                if let Err(e) = gcs_store.delete_table_data(&self).await {
+                    tracing::error!("Failed to delete table data from GCS: {:?}", e);
+                }
+            }
         }
 
         store
@@ -401,11 +411,6 @@ impl LocalTable {
     }
 
     async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
-        // Skip the whole background processing if we are using Postgres only.
-        if matches!(CURRENT_STRATEGY, DatabasesStoreStrategy::PostgresOnly) {
-            return Ok(());
-        }
-
         let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
 
         // Write the rows to GCS for the worker to process
@@ -445,45 +450,22 @@ impl LocalTable {
     ) -> Result<()> {
         Self::validate_rows_lowercase(rows.clone()).await?;
 
-        // Start with postgres
-        self.upsert_rows_postgres(&store, &databases_store, rows.clone(), truncate)
-            .await?;
-
-        // For GCS, we write immediately if truncate is true, otherwise we schedule the
-        // background worker to do it later.
-        if truncate {
-            let now = utils::now();
-            let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
-
-            // Take the table lock to make sure we don't conflict with processing
-            // happening in the background worker.
-            let lock = lock_manager
-                .acquire_no_guard(
-                    self.table.get_background_processing_lock_name().as_bytes(),
-                    Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
-                )
+        if SAVE_TABLES_TO_POSTGRES {
+            self.upsert_rows_postgres(&store, &databases_store, rows.clone(), truncate)
                 .await?;
-
-            info!(
-                lock_acquisition_duration = utils::now() - now,
-                "Upsert lock acquired in upsert_rows"
-            );
-
-            // Since truncate replaces everything, we get rid of all non-truncate and row deletion
-            // pending operations that got queued before we got called.
-            // And those that arrive later cannot happen until we release the lock.
-            GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(&self.table)
-                .await?;
-
-            self.upsert_rows_gcs(&store, &databases_store, rows, truncate)
-                .await?;
-
-            lock_manager.unlock(&lock).await;
-            Ok(())
-        } else {
-            // For non-truncate, use the background worker
-            self.schedule_background_upsert_or_delete(rows).await
         }
+
+        if SAVE_TABLES_TO_GCS {
+            // For now, we don't propagate failures since it's just a shadow operation
+            if let Err(e) = self
+                .upsert_rows_to_gcs_or_queue_work(&store, &databases_store, rows, truncate)
+                .await
+            {
+                tracing::error!("Failed to upsert rows to GCS or queue work: {:?}", e);
+            }
+        }
+
+        Ok(())
     }
 
     pub async fn upsert_rows_postgres(
@@ -561,8 +543,7 @@ impl LocalTable {
         // backward-compatible with the previous one. The other way around would not be true -- old
         // schema doesn't necessarily work with the new rows. This is why we cannot `try_join_all`.
 
-        let postgres_store = databases_store::postgres::get_postgres_store().await?;
-        postgres_store
+        databases_store
             .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
             .await?;
         info!(
@@ -602,10 +583,53 @@ impl LocalTable {
         Ok(())
     }
 
-    pub async fn upsert_rows_gcs(
+    pub async fn upsert_rows_to_gcs_or_queue_work(
         &self,
         store: &Box<dyn Store + Sync + Send>,
         databases_store: &Box<dyn DatabasesStore + Sync + Send>,
+        rows: Vec<Row>,
+        truncate: bool,
+    ) -> Result<()> {
+        if truncate {
+            let now = utils::now();
+            let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
+
+            // Take the table lock to make sure we don't conflict with processing
+            // happening in the background worker.
+            let lock = lock_manager
+                .acquire_no_guard(
+                    self.table.get_background_processing_lock_name().as_bytes(),
+                    Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
+                )
+                .await?;
+
+            info!(
+                lock_acquisition_duration = utils::now() - now,
+                "Upsert lock acquired in upsert_rows"
+            );
+
+            // Since truncate replaces everything, we get rid of all non-truncate and row deletion
+            // pending operations that got queued before we got called.
+            // And those that arrive later cannot happen until we release the lock.
+            GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(&self.table)
+                .await?;
+
+            self.upsert_rows_gcs(store, databases_store, rows, truncate)
+                .await?;
+
+            lock_manager.unlock(&lock).await;
+            Ok(())
+        } else {
+            // For non-truncate, use the background worker
+            self.schedule_background_upsert_or_delete(rows).await
+        }
+    }
+
+    pub async fn upsert_rows_gcs(
+        &self,
+        store: &Box<dyn Store + Sync + Send>,
+        // TODO: use this as databases_store once we fully migrate to GCS
+        _: &Box<dyn DatabasesStore + Sync + Send>,
         rows: Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
@@ -784,26 +808,23 @@ impl LocalTable {
         row_id: &str,
     ) -> Result<()> {
         // Delete the table row.
-        // If we are only using one of the stores, the right store is passed in the parameters.
-        // If we are using both, we need to do the operation on the other store manually.
-        match CURRENT_STRATEGY {
-            DatabasesStoreStrategy::PostgresOnly => {
-                databases_store.delete_table_row(&self.table, row_id).await
-            }
-            DatabasesStoreStrategy::GCSOnly => {
-                // Deletions are conveyed by special rows
-                let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
-                self.schedule_background_upsert_or_delete(rows).await
-            }
-            DatabasesStoreStrategy::PostgresAndWriteToGCS
-            | DatabasesStoreStrategy::GCSAndWriteToPostgres => {
-                let postgres_store = databases_store::postgres::get_postgres_store().await?;
-                postgres_store.delete_table_row(&self.table, row_id).await?;
 
-                // Deletions are conveyed by special rows
-                let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
-                self.schedule_background_upsert_or_delete(rows).await
+        if SAVE_TABLES_TO_POSTGRES {
+            databases_store
+                .delete_table_row(&self.table, row_id)
+                .await?
+        }
+
+        // Deletions are conveyed by special rows
+        if SAVE_TABLES_TO_GCS {
+            // For now, we don't propagate failures since it's just a shadow operation
+            let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
+            if let Err(e) = self.schedule_background_upsert_or_delete(rows).await {
+                tracing::error!("delete_row: failed to schedule background work: {:?}", e);
             }
+            Ok(())
+        } else {
+            Ok(())
         }
     }
 
