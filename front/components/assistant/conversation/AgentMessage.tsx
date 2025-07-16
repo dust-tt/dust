@@ -551,6 +551,7 @@ export function AgentMessage({
             agentMessage.error || {
               message: "Unexpected Error",
               code: "unexpected_error",
+              metadata: {},
             }
           }
           retryHandler={async () => retryHandler(agentMessage)}

@@ -9,6 +9,7 @@ import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
+  AgentErrorContent,
   LightAgentConfigurationType,
 } from "./agent";
 import type { AgentContentItemType } from "./agent_message_content";
@@ -154,11 +155,7 @@ export type BaseAgentMessageType = {
   status: AgentMessageStatus;
   content: string | null;
   chainOfThought: string | null;
-  error: {
-    code: string;
-    message: string;
-    metadata: Record<string, string | number | boolean> | null;
-  } | null;
+  error: AgentErrorContent | null;
 };
 
 export type AgentMessageType = BaseAgentMessageType & {
