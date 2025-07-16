@@ -156,16 +156,32 @@ impl AnthropicLLM {
             None => None,
         };
 
+        let body = res.bytes().await?;
+
+        let mut b: Vec<u8> = vec![];
+        body.reader().read_to_end(&mut b)?;
+        let c: &[u8] = &b;
         let response = match status {
-            _ => Err(ModelError {
-                request_id: request_id.clone(),
-                message: "AnthropicError: overloaded_error".to_string(),
-                retryable: Some(ModelErrorRetryOptions {
-                    sleep: Duration::from_millis(500),
-                    factor: 1,
-                    retries: 1,
-                }),
-            }),
+            reqwest::StatusCode::OK => Ok(serde_json::from_slice(c)?),
+            _ => {
+                let error: AnthropicError = serde_json::from_slice(c)?;
+                Err(ModelError {
+                    request_id: request_id.clone(),
+                    message: error.message(),
+                    retryable: match error.retryable() {
+                        true => Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 2,
+                            retries: 3,
+                        }),
+                        false => Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(500),
+                            factor: 1,
+                            retries: 1,
+                        }),
+                    },
+                })
+            }
         }?;
 
         Ok((response, request_id))

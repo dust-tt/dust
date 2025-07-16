@@ -197,12 +197,6 @@ pub async fn handle_streaming_response(
             error!("Error sending event: {:?}", e);
         }
     };
-    return Err(ModelError {
-        request_id: request_id.clone(),
-        message: "AnthropicError: [overloaded_error]".to_string(),
-        retryable: None,
-    }
-    .into());
 
     'stream: loop {
         match stream.try_next().await {
