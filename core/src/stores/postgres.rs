@@ -2063,8 +2063,7 @@ impl Store for PostgresStore {
         document_ids: &Option<Vec<String>>,
         limit_offset: Option<(usize, usize)>,
         remove_system_tags: bool,
-        include_count: bool,
-    ) -> Result<(Vec<Document>, usize)> {
+    ) -> Result<Vec<Document>> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
 
@@ -2198,30 +2197,7 @@ impl Store for PostgresStore {
             })
             .collect::<Result<Vec<_>>>()?;
 
-        let total: usize = if include_count {
-            match limit_offset {
-                None => documents.len(),
-                Some(_) => {
-                    let stmt = c
-                        .prepare(
-                            format!(
-                                "SELECT COUNT(*) FROM data_sources_documents dsd \
-                                    INNER JOIN data_sources_nodes dsn ON dsn.document=dsd.id \
-                                    WHERE {}",
-                                where_clauses.join(" AND ")
-                            )
-                            .as_str(),
-                        )
-                        .await?;
-                    let t: i64 = c.query_one(&stmt, &params).await?.get(0);
-                    t as usize
-                }
-            }
-        } else {
-            0
-        };
-
-        Ok((documents, total))
+        Ok(documents)
     }
 
     async fn delete_data_source_document(

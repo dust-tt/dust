@@ -22,6 +22,7 @@ import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
+import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   isBrowseResultResourceType,
   isDataSourceNodeContentType,
@@ -71,12 +72,18 @@ export function MCPActionDetails(
   const isFilesystemPath = props.action.output?.some(isFilesystemPathType);
 
   if (isSearch) {
+    const fcName = props.action.functionCallName;
+    const isSearchTool = fcName?.endsWith(SEARCH_TOOL_NAME);
+    const actionName = fcName && !isSearchTool ? fcName : "Search data";
+    const visual = isSearchTool
+      ? MagnifyingGlassIcon
+      : MCP_SPECIFICATION.cardIcon;
     return (
       <SearchResultDetails
-        actionName="Search data"
+        actionName={actionName}
         actionOutput={props.action.output}
         defaultOpen={props.defaultOpen}
-        visual={MagnifyingGlassIcon}
+        visual={visual}
       />
     );
   } else if (isInclude) {

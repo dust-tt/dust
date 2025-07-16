@@ -1,7 +1,7 @@
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { LightWorkspaceType } from "@app/types";
 
 export function makeEnterpriseConnectionName(workspaceId: string) {
@@ -12,11 +12,7 @@ export async function makeEnterpriseConnectionInitiateLoginUrl(
   workspaceId: string,
   returnTo: string | null
 ) {
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      sId: workspaceId,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
 
   if (!workspace || !workspace.workOSOrganizationId) {
     return `${config.getClientFacingUrl()}/api/workos/login`;

@@ -5,6 +5,7 @@ RUN apt-get update && \
 
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
+ARG DATADOG_API_KEY
 ARG NEXT_PUBLIC_VIZ_URL
 ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
 ARG NEXT_PUBLIC_GTM_TRACKING_ID
@@ -39,7 +40,21 @@ RUN find . -name "*.test.tsx" -delete
 
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
-RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
+# DATADOG_API_KEY is used to conditionally enable source map generation and upload to Datadog
+RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
+    FRONT_DATABASE_URI="sqlite:foo.sqlite" \
+    npm run build && \
+    if [ -n "$DATADOG_API_KEY" ]; then \
+        DATADOG_SITE=datadoghq.eu \
+        DATADOG_API_KEY=$DATADOG_API_KEY \
+        npx --yes @datadog/datadog-ci sourcemaps upload ./.next \
+        --minified-path-prefix=/_next/ \
+        --repository-url=https://github.com/dust-tt/dust \
+        --project-path=front \
+        --release-version=$COMMIT_HASH \
+        --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
+        find .next -type f -name "*.map" -print -delete; \
+    fi
 
 # Preload jemalloc for all processes:
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2

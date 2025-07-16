@@ -1,7 +1,6 @@
 import _, { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 
-import { runActionStreamed } from "@app/lib/actions/server";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import { runAgentWithStreaming } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
@@ -10,13 +9,13 @@ import {
   getLightAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
   batchRenderMessages,
   canReadMessage,
   getMaximalVersionAgentStepContent,
 } from "@app/lib/api/assistant/messages";
 import { getContentFragmentGroupIds } from "@app/lib/api/assistant/permissions";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -35,7 +34,6 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -66,7 +64,6 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
   ContentFragmentType,
-  ConversationTitleEvent,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -88,7 +85,6 @@ import {
   assertNever,
   ConversationError,
   Err,
-  getLargeNonAnthropicWhitelistedModel,
   isAgentMention,
   isAgentMessageType,
   isContentFragmentInputWithContentNode,
@@ -367,123 +363,6 @@ export async function getConversationMessageType(
   return null;
 }
 
-/**
- * Title generation
- */
-
-export async function generateConversationTitle(
-  auth: Authenticator,
-  conversation: ConversationType
-): Promise<Result<string, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const model = getLargeNonAnthropicWhitelistedModel(owner);
-  if (!model) {
-    return new Err(
-      new Error(`Failed to find a whitelisted model to generate title`)
-    );
-  }
-
-  const MIN_GENERATION_TOKENS = 1024;
-
-  // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel(auth, {
-    conversation,
-    model,
-    prompt: "", // There is no prompt for title generation.
-    tools: "",
-    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
-    excludeActions: true,
-    excludeImages: true,
-  });
-
-  if (modelConversationRes.isErr()) {
-    return modelConversationRes;
-  }
-
-  const c = modelConversationRes.value.modelConversation;
-  if (c.messages.length === 0) {
-    // It is possible that no message were selected if the context size of the small model was
-    // overflown by the initial user message. In that case we just skip title generation for now (it
-    // will get attempted again with follow-up messages being added to the conversation).
-    return new Err(
-      new Error(
-        `Error generating conversation title: rendered conversation is empty`
-      )
-    );
-  }
-
-  // Note: the last message is generally not a user message (though it can happen if no agent were
-  // mentioned) which, without stitching, will cause the title generation to fail since models
-  // expect a user message to be the last message. The stitching is done in the
-  // `assistant-v2-title-generator` app.
-
-  const config = cloneBaseConfig(
-    getDustProdAction("assistant-v2-title-generator").config
-  );
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-
-  const res = await runActionStreamed(
-    auth,
-    "assistant-v2-title-generator",
-    config,
-    [
-      {
-        conversation: c,
-      },
-    ],
-    {
-      conversationId: conversation.sId,
-      workspaceId: conversation.owner.sId,
-    }
-  );
-
-  if (res.isErr()) {
-    return new Err(
-      new Error(`Error generating conversation title: ${res.error}`)
-    );
-  }
-
-  const { eventStream } = res.value;
-
-  let title: string | null = null;
-
-  for await (const event of eventStream) {
-    if (event.type === "error") {
-      return new Err(
-        new Error(
-          `Error generating conversation title: ${event.content.message}`
-        )
-      );
-    }
-
-    if (event.type === "block_execution") {
-      const e = event.content.execution[0][0];
-      if (e.error) {
-        return new Err(
-          new Error(`Error generating conversation title: ${e.error}`)
-        );
-      }
-
-      if (event.content.block_name === "OUTPUT" && e.value) {
-        const v = e.value as any;
-        if (v.conversation_title) {
-          title = v.conversation_title;
-        }
-      }
-    }
-  }
-
-  if (title === null) {
-    return new Err(
-      new Error(`Error generating conversation title: malformed output`)
-    );
-  }
-
-  return new Ok(title);
-}
-
 export async function getLastUserMessage(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
@@ -603,8 +482,7 @@ export async function* postUserMessage(
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | ConversationTitleEvent,
+  | AgentMessageSuccessEvent,
   void
 > {
   const user = auth.user();
@@ -932,6 +810,13 @@ export async function* postUserMessage(
     };
   }
 
+  // It's fine to start the workflow here because the workflow will sleep for one hour before
+  // computing usage.
+  await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
+
+  // Generate a new title if the conversation does not have one already.
+  await ensureConversationTitle(auth, conversation, userMessage);
+
   const eventStreamGenerators = agentMessages.map((agentMessage, i) => {
     // We stitch the conversation to add the user message and only that agent message
     // so that it can be used to prompt the agent.
@@ -965,63 +850,6 @@ export async function* postUserMessage(
       yield winner.v.value;
     }
   }
-
-  // Generate a new title if the conversation does not have one already.
-  if (conversation.title === null) {
-    const titleRes = await generateConversationTitle(auth, {
-      ...conversation,
-      content: [
-        ...conversation.content,
-        [userMessage],
-        ...agentMessages.map((m) => [m]),
-      ],
-    });
-    if (titleRes.isErr()) {
-      logger.error(
-        {
-          error: titleRes.error,
-        },
-        "Conversation title generation error"
-      );
-    } else {
-      const title = titleRes.value;
-      await ConversationResource.updateTitle(auth, conversation.sId, title);
-      yield {
-        type: "conversation_title",
-        created: Date.now(),
-        title,
-      };
-    }
-  }
-
-  await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
-
-  // Temporary: we want to monitor if we need to prevent it or not
-  async function logIfUserUnknown() {
-    try {
-      if (!user && context.email) {
-        const macthingUser = await UserResource.fetchByEmail(context.email);
-
-        if (!macthingUser) {
-          logger.warn(
-            {
-              conversationId: conversation.sId,
-              workspaceId: owner?.sId,
-            },
-            "[postUserMessage] Generated a message for a user with an unknown email address."
-          );
-        }
-      }
-    } catch (e) {
-      logger.error(
-        {
-          error: e,
-        },
-        "[postUserMessage] Failed to check if user is known."
-      );
-    }
-  }
-  void logIfUserUnknown();
 }
 
 /**

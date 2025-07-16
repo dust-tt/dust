@@ -1,6 +1,6 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { changeWorkspaceName } from "@app/lib/api/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { Err, normalizeError, Ok } from "@app/types";
 
 export const renameWorkspace = createPlugin({
@@ -25,8 +25,8 @@ export const renameWorkspace = createPlugin({
       );
     }
 
-    const res = await changeWorkspaceName(
-      auth.getNonNullableWorkspace(),
+    const res = await WorkspaceResource.updateName(
+      auth.getNonNullableWorkspace().id,
       newName
     );
     if (res.isErr()) {

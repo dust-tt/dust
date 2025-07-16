@@ -276,25 +276,7 @@ impl Table {
             .await?;
 
             // Delete the table rows.
-            // If we are only using one of the stores, the right store is passed in the parameters.
-            // If we are using both, we need to do the operation on the other store manually.
-            match CURRENT_STRATEGY {
-                DatabasesStoreStrategy::PostgresOnly | DatabasesStoreStrategy::GCSOnly => {
-                    databases_store.delete_table_data(&self).await?;
-                }
-                DatabasesStoreStrategy::PostgresAndWriteToGCS => {
-                    databases_store.delete_table_data(&self).await?;
-
-                    let gcs_store = GoogleCloudStorageDatabasesStore::new();
-                    gcs_store.delete_table_data(&self).await?;
-                }
-                DatabasesStoreStrategy::GCSAndWriteToPostgres => {
-                    databases_store.delete_table_data(&self).await?;
-
-                    let postgres_store = databases_store::postgres::get_postgres_store().await?;
-                    postgres_store.delete_table_data(&self).await?;
-                }
-            }
+            databases_store.delete_table_data(&self).await?;
         }
 
         store

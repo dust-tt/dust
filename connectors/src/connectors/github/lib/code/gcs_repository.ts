@@ -1,19 +1,41 @@
 import type { Bucket, File } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
+import { chunk } from "lodash";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
+import { getCodeDirInternalId } from "@connectors/connectors/github/lib/utils";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { isDevelopment } from "@connectors/types";
 
 export const DIRECTORY_PLACEHOLDER_FILE = ".gitkeep";
 export const DIRECTORY_PLACEHOLDER_METADATA = "isDirectoryPlaceholder";
+const DUST_INTERNAL_MARKER = "dustInternalMarker";
+const DUST_INTERNAL_INDEX_FILE = "DUST_INTERNAL_INDEX_v1";
+
+const DUST_INTERNAL_INDEX_FILE_PREFIX = "._dust_internal_index";
 
 const DEFAULT_MAX_RESULTS = 1000;
 const STREAM_THRESHOLD_BYTES = 1024 * 1024; // 1MB - files smaller than this will be buffered.
 const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
+
+const ITEMS_PER_INDEX = 3000; // Files/directories per index file.
+const PARALLEL_INDEX_UPLOADS = 10; // Concurrent index file uploads.
+
+interface DirectoryListing {
+  dirPath: string;
+  gcsPath: string;
+  internalId: string;
+  parentInternalId: string | null;
+}
+
+interface FileListing {
+  gcsPath: string;
+  relativePath: string;
+}
 
 /**
  * A wrapper around GCS operations for GitHub repository code sync.
@@ -106,9 +128,14 @@ export class GCSRepositoryManager {
       await file.save(content, {
         metadata: {
           contentType: options?.contentType || "text/plain",
-          customMetadata: options?.metadata,
         },
       });
+
+      if (options?.metadata) {
+        await file.setMetadata({
+          metadata: options.metadata,
+        });
+      }
     } catch (error) {
       logger.error({ error, gcsPath }, "Failed to upload file to GCS");
       throw new Error(`Failed to upload file: ${gcsPath}`);
@@ -204,5 +231,182 @@ export class GCSRepositoryManager {
       );
       throw new Error(`Failed to upload file stream: ${gcsPath}`);
     }
+  }
+
+  /**
+   * Create an index file containing all file and directory paths for the repository.
+   * This is used to optimize memory usage in temporal workflows by storing paths in GCS
+   * instead of passing large arrays through temporal activities.
+   */
+  async createIndexFiles(
+    gcsBasePath: string,
+    repoId: number,
+    options?: {
+      batchSize?: number;
+      childLogger?: Logger;
+    }
+  ): Promise<string[]> {
+    const { batchSize = DEFAULT_MAX_RESULTS, childLogger = logger } =
+      options || {};
+
+    const indexBasePath = `${gcsBasePath}/${DUST_INTERNAL_INDEX_FILE_PREFIX}`;
+    const directories: Array<DirectoryListing> = [];
+    const files: Array<FileListing> = [];
+
+    // Collect all files and directories with pagination.
+    let pageToken: string | undefined;
+    do {
+      const result = await this.listFiles(gcsBasePath, {
+        maxResults: batchSize,
+        pageToken,
+      });
+
+      for (const file of result.files) {
+        const relativePath = file.name.replace(`${gcsBasePath}/`, "");
+
+        if (file.name.endsWith(`/${DIRECTORY_PLACEHOLDER_FILE}`)) {
+          // This is a directory placeholder.
+          const dirPath = relativePath.replace(
+            `/${DIRECTORY_PLACEHOLDER_FILE}`,
+            ""
+          );
+          directories.push({
+            gcsPath: file.name,
+            dirPath,
+            internalId: getCodeDirInternalId(repoId, dirPath),
+            parentInternalId: dirPath.includes("/")
+              ? getCodeDirInternalId(
+                  repoId,
+                  dirPath.split("/").slice(0, -1).join("/")
+                )
+              : null,
+          });
+        } else {
+          // This is a regular file.
+          files.push({
+            gcsPath: file.name,
+            relativePath,
+          });
+        }
+      }
+
+      pageToken = result.nextPageToken;
+    } while (pageToken);
+
+    childLogger.info(
+      {
+        gcsBasePath,
+        totalFiles: files.length,
+        totalDirectories: directories.length,
+      },
+      "Creating multiple index files for repository"
+    );
+
+    // Split files and directories into multiple index files.
+    const fileChunks = chunk(files, ITEMS_PER_INDEX);
+    const directoryChunks = chunk(directories, ITEMS_PER_INDEX);
+    const totalChunks = Math.max(fileChunks.length, directoryChunks.length);
+    const indexPaths: string[] = [];
+
+    // Create index data for all chunks.
+    const indexChunks = Array.from({ length: totalChunks }, (_, index) => ({
+      index,
+      path: `${indexBasePath}_${index}.json`,
+      data: {
+        files: fileChunks[index] || [], // Empty array if no files for this chunk.
+        directories: directoryChunks[index] || [], // Empty array if no directories for this chunk.
+        indexNumber: index,
+        totalIndexes: totalChunks,
+        createdAt: new Date().toISOString(),
+      },
+    }));
+
+    // Upload index files.
+    await concurrentExecutor(
+      indexChunks,
+      async (chunk) => {
+        await this.uploadFile(chunk.path, JSON.stringify(chunk.data), {
+          contentType: "application/json",
+          metadata: {
+            [DUST_INTERNAL_MARKER]: DUST_INTERNAL_INDEX_FILE,
+            repoId: repoId.toString(),
+            gcsBasePath,
+            indexNumber: chunk.index.toString(),
+          },
+        });
+
+        indexPaths.push(chunk.path);
+        return chunk.path;
+      },
+      { concurrency: PARALLEL_INDEX_UPLOADS }
+    );
+
+    childLogger.info(
+      {
+        gcsBasePath,
+        totalIndexes: indexPaths.length,
+        itemsPerIndex: ITEMS_PER_INDEX,
+        totalIndexFiles: indexPaths.length,
+      },
+      "Created multiple index files for repository"
+    );
+
+    return indexPaths;
+  }
+
+  /**
+   * Validate that an index file was created by Dust and is safe to read.
+   */
+  private async validateIndexFile(
+    indexPath: string,
+    expectedGcsBasePath: string
+  ): Promise<void> {
+    const file = this.bucket.file(indexPath);
+    const [metadata] = await file.getMetadata();
+
+    // Check if this is a Dust internal index file.
+    if (
+      metadata.metadata?.[DUST_INTERNAL_MARKER] !== DUST_INTERNAL_INDEX_FILE
+    ) {
+      throw new Error("Invalid index file: not a Dust internal index file");
+    }
+
+    // Validate that the index file matches the expected GCS base path.
+    if (metadata.metadata.gcsBasePath !== expectedGcsBasePath) {
+      throw new Error("Invalid index file: GCS base path mismatch");
+    }
+  }
+
+  /**
+   * Read all files from a specific index file.
+   */
+  async readFilesFromIndex(
+    indexPath: string,
+    expectedGcsBasePath: string
+  ): Promise<Array<FileListing>> {
+    await this.validateIndexFile(indexPath, expectedGcsBasePath);
+
+    const indexContent = await this.downloadFile(indexPath);
+    const indexData = JSON.parse(indexContent.toString());
+
+    return indexData.files;
+  }
+
+  /**
+   * Read all directories from a specific index file.
+   */
+  async readDirectoriesFromIndex({
+    indexPath,
+    expectedGcsBasePath,
+  }: {
+    indexPath: string;
+    expectedGcsBasePath: string;
+  }): Promise<Array<DirectoryListing>> {
+    await this.validateIndexFile(indexPath, expectedGcsBasePath);
+
+    const indexContent = await this.downloadFile(indexPath);
+    const indexData = JSON.parse(indexContent.toString());
+
+    return indexData.directories;
   }
 }

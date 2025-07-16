@@ -36,7 +36,7 @@ export const energyConfig: IndustryPageConfig = {
       },
     },
     heroImage: {
-      src: "/static/landing/industry/Dust_Connectors.webp",
+      src: "/static/landing/industry/Dust_connectors_microsoft.webp",
       alt: "Energy & Utilities AI-powered automation illustration",
     },
   },
@@ -129,7 +129,7 @@ export const energyConfig: IndustryPageConfig = {
       },
       {
         title: "Field operations",
-        image: "/static/landing/industry/features/Document_generation.webp",
+        image: "/static/landing/industry/features/Document_generator.webp",
         bgColor: "bg-golden-100",
         features: [
           {

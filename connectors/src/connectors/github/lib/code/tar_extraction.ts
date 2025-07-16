@@ -19,7 +19,6 @@ import {
 } from "@connectors/connectors/github/lib/errors";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
-import logger from "@connectors/logger/logger";
 
 const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024; // 3MB
 const MAX_CONCURRENT_GCS_UPLOADS = 200;
@@ -123,7 +122,8 @@ function parseGitHubPath(
 
 export async function extractGitHubTarballToGCS(
   tarballStream: Readable,
-  { repoId, connectorId }: TarExtractionOptions
+  { repoId, connectorId }: TarExtractionOptions,
+  logger: Logger
 ): Promise<
   Result<
     TarExtractionResult,
@@ -146,9 +146,7 @@ export async function extractGitHubTarballToGCS(
   const extract = tar.extract();
 
   const childLogger = logger.child({
-    connectorId,
     gcsBasePath,
-    repoId,
   });
 
   childLogger.info(

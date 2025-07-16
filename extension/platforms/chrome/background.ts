@@ -371,7 +371,7 @@ chrome.runtime.onMessage.addListener(
         return false;
 
       default:
-        log(`Unknown message: ${message}.`);
+        log(`Unknown message: ${JSON.stringify(message, null, 2)}.`);
     }
   }
 );
