@@ -73,7 +73,9 @@ export const InputBarAttachmentsPicker = ({
   });
 
   const attachedNodeIds = useMemo(() => {
-    return attachedNodes.map((node) => node.internalId);
+    return attachedNodes.map(
+      (node) => `${node.internalId}-${node.dataSourceView.dataSource.sId}`
+    );
   }, [attachedNodes]);
 
   const spacesMap = useMemo(
@@ -196,7 +198,9 @@ export const InputBarAttachmentsPicker = ({
                       />
                     }
                     description={`${getLocationForDataSourceViewContentNode(item)}`}
-                    checked={attachedNodeIds.includes(item.internalId)}
+                    checked={attachedNodeIds.includes(
+                      `${item.internalId}-${item.dataSourceView.dataSource.sId}`
+                    )}
                     onCheckedChange={(checked) => {
                       if (checked) {
                         onNodeSelect(item);
