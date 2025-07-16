@@ -28,7 +28,11 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SubscriptionType, UserTypeWithWorkspaces, WorkspaceType } from "@app/types";
+import type {
+  SubscriptionType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
 export function UserMenu({
