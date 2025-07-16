@@ -75,11 +75,7 @@ export function withToolLogging<T>(
     }
 
     const elapsed = performance.now() - startTime;
-    statsDClient.distribution(
-      "run_tool.duration.distribution",
-      elapsed,
-      tags
-    );
+    statsDClient.distribution("run_tool.duration.distribution", elapsed, tags);
 
     return result;
   };
