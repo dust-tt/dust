@@ -55,7 +55,9 @@ impl TableUpsertsBackgroundWorker {
                 let store = postgres::PostgresStore::new(&db_uri).await;
                 Box::new(store.unwrap())
             }
-            Err(_) => panic!("CORE_DATABASE_URI is required (postgres)"),
+            Err(_) => {
+                return Err(anyhow::anyhow!("CORE_DATABASE_URI is required (postgres)"));
+            }
         };
 
         let gcs_db_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> =
