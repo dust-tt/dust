@@ -202,8 +202,6 @@ export type ActionSpecificationWithType = ActionSpecification & {
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
 export function getDefaultAssistantState() {
   return {
-    // Data Visualization is not an action but we show it like an action.
-    // Visualization is now disabled by default.
     actions: [],
     handle: null,
     scope: "hidden",
