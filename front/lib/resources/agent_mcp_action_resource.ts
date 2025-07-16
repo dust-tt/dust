@@ -15,6 +15,7 @@ import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+import type { AgentMCPActionType } from "@app/types/assistant/agent_message_content";
 
 type AgentMCPActionWithConversation = AgentMCPAction & {
   agent_message: AgentMessage & {
@@ -63,7 +64,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     });
   }
 
-  toJSON() {
+  toJSON(): AgentMCPActionType {
     const stepContentSId = this.stepContentId
       ? makeSId("agent_step_content", {
           id: this.stepContentId,
@@ -72,13 +73,19 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       : undefined;
 
     return {
+      id: this.id,
       sId: this.sId,
       createdAt: this.createdAt.toISOString(),
+      functionCallId: this.functionCallId,
       functionCallName: this.functionCallName,
       params: this.params,
       executionState: this.executionState,
       isError: this.isError,
       stepContentSId,
+      step: this.step,
+      version: this.version,
+      agentMessageModelId: this.agentMessageId,
+      mcpServerConfigurationId: this.mcpServerConfigurationId,
     };
   }
 
