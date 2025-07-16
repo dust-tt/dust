@@ -57,7 +57,7 @@ AgentStepContentModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        isIn: [["text_content", "reasoning", "function_call"]],
+        isIn: [["text_content", "reasoning", "function_call", "error"]],
       },
     },
     value: {

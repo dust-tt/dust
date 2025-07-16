@@ -74,7 +74,8 @@ const MAX_AUTO_RETRY = 3;
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
   event: AgentMessageEvents,
-  agentMessageRow: AgentMessage
+  agentMessageRow: AgentMessage,
+  step: number
 ): Promise<void> {
   switch (event.type) {
     case "agent_error":
@@ -84,6 +85,26 @@ async function processEventForDatabase(
         errorCode: event.error.code,
         errorMessage: event.error.message,
         errorMetadata: event.error.metadata,
+      });
+      // Create error step content to track which step the error occurred at
+      await AgentStepContentResource.makeNew({
+        workspaceId: agentMessageRow.workspaceId,
+        agentMessageId: agentMessageRow.id,
+        step,
+        index: 0, // Errors are the only content for this step
+        type: "error",
+        value: {
+          type: "error",
+          value: {
+            code: event.error.code,
+            message: event.error.message,
+            metadata: {
+              ...event.error.metadata,
+              category: event.error.metadata?.category || "",
+            },
+          },
+        },
+        version: 0,
       });
       break;
 
@@ -112,10 +133,11 @@ async function processEventForDatabase(
 async function updateResourceAndPublishEvent(
   event: AgentMessageEvents,
   conversation: ConversationType,
-  agentMessageRow: AgentMessage
+  agentMessageRow: AgentMessage,
+  step: number
 ): Promise<void> {
   // Process database operations BEFORE publishing to Redis.
-  await processEventForDatabase(event, agentMessageRow);
+  await processEventForDatabase(event, agentMessageRow, step);
 
   await publishConversationRelatedEvent(event, {
     conversationId: conversation.sId,
@@ -365,7 +387,8 @@ async function runMultiActionsAgent(
         error,
       },
       conversation,
-      agentMessageRow
+      agentMessageRow,
+      step
     );
   }
 
@@ -375,7 +398,8 @@ async function runMultiActionsAgent(
       await updateResourceAndPublishEvent(
         tokenEvent,
         conversation,
-        agentMessageRow
+        agentMessageRow,
+        step
       );
     }
   }
@@ -737,7 +761,8 @@ async function runMultiActionsAgent(
           messageId: agentMessage.sId,
         },
         conversation,
-        agentMessageRow
+        agentMessageRow,
+        step
       );
       return null;
     }
@@ -749,7 +774,8 @@ async function runMultiActionsAgent(
         await updateResourceAndPublishEvent(
           tokenEvent,
           conversation,
-          agentMessageRow
+          agentMessageRow,
+          step
         );
       }
     }
@@ -765,7 +791,8 @@ async function runMultiActionsAgent(
           text: event.content.tokens.text,
         },
         conversation,
-        agentMessageRow
+        agentMessageRow,
+        step
       );
       nativeChainOfThought += event.content.tokens.text;
     }
@@ -781,7 +808,8 @@ async function runMultiActionsAgent(
           text: "\n\n",
         },
         conversation,
-        agentMessageRow
+        agentMessageRow,
+        step
       );
       nativeChainOfThought += "\n\n";
     }
@@ -874,7 +902,8 @@ async function runMultiActionsAgent(
     await updateResourceAndPublishEvent(
       tokenEvent,
       conversation,
-      agentMessageRow
+      agentMessageRow,
+      step
     );
   }
 
@@ -950,7 +979,8 @@ async function runMultiActionsAgent(
         runIds: [...runIds, await dustRunId],
       },
       conversation,
-      agentMessageRow
+      agentMessageRow,
+      step
     );
 
     return null;
@@ -1064,7 +1094,8 @@ async function runMultiActionsAgent(
     await updateResourceAndPublishEvent(
       tokenEvent,
       conversation,
-      agentMessageRow
+      agentMessageRow,
+      step
     );
   }
 
@@ -1156,7 +1187,8 @@ async function runAction(
               },
             },
             conversation,
-            agentMessageRow
+            agentMessageRow,
+            step
           );
           return;
 
@@ -1170,7 +1202,8 @@ async function runAction(
               action: event.action,
             },
             conversation,
-            agentMessageRow
+            agentMessageRow,
+            step
           );
 
           // We stitch the action into the agent message. The conversation is expected to include
@@ -1184,7 +1217,8 @@ async function runAction(
           await updateResourceAndPublishEvent(
             event,
             conversation,
-            agentMessageRow
+            agentMessageRow,
+            step
           );
           break;
 
