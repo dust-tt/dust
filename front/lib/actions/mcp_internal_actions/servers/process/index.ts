@@ -310,7 +310,8 @@ function createServer(
           .describe(
             "The time frame to use for documents retrieval (e.g. last 7 days, last 2 months). Leave null to search all documents regardless of time."
           )
-          .nullable(),
+          .nullable()
+          .default(null),
   };
 
   const toolDescription =
