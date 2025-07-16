@@ -22,8 +22,8 @@ export function DescriptionSection({
   helpText,
 }: DescriptionSectionProps) {
   const { register } = useFormContext();
-  const { fieldState } = useController<CapabilityFormData, "description">({
-    name: "description",
+  const { fieldState } = useController<CapabilityFormData, typeof FIELD_NAME>({
+    name: FIELD_NAME,
   });
 
   return (

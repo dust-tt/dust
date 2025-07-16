@@ -225,7 +225,7 @@ function KnowledgeConfigurationSheetContent({
         }
       }}
       size="lg"
-      showNavigation={true}
+      showNavigation
       disableNext={
         currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION &&
         !hasDataSources
