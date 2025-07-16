@@ -605,7 +605,7 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
         );
       }
 
-      const auth = await Authenticator.internalAdminForWorkspace(args.wId);
+      const auth = await Authenticator.internalAdminForWorkspace(String(args.wId));
 
       const key = await KeyResource.fetchByName(auth, { name: args.name });
       if (!key) {
