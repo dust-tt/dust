@@ -1,11 +1,9 @@
-import { FormEvent } from "react";
 import type { FieldValues, UseFormReturn } from "react-hook-form";
 import { FormProvider as ReactHookFromProvider } from "react-hook-form";
 
 interface FormProviderProps<TFormData extends FieldValues> {
   children: React.ReactNode;
   form: UseFormReturn<TFormData>;
-  formId?: string;
   onSubmit?: (data: TFormData) => void | Promise<void>;
 }
 
@@ -16,7 +14,6 @@ interface FormProviderProps<TFormData extends FieldValues> {
 export function FormProvider<TFormData extends FieldValues>({
   children,
   form,
-  formId,
   onSubmit,
 }: FormProviderProps<TFormData>) {
   const handleSubmit = async (data: TFormData) => {
@@ -30,7 +27,6 @@ export function FormProvider<TFormData extends FieldValues>({
   return (
     <ReactHookFromProvider {...form}>
       <form
-        id={formId}
         onSubmit={(e) => {
           e.stopPropagation();
           e.preventDefault();
