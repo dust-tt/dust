@@ -30,9 +30,6 @@ export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
 
-export const DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME =
-  "extract_conversation_files";
-
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";
 

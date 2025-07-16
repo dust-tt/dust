@@ -3,7 +3,6 @@ import assert from "assert";
 
 import {
   isConversationIncludableFileContentType,
-  isExtractableContentType,
   isQueryableContentType,
   isSearchableContentType,
 } from "@app/lib/api/assistant/conversation/content_types";
@@ -32,7 +31,6 @@ export type BaseConversationAttachmentType = {
   isIncludable: boolean;
   isSearchable: boolean;
   isQueryable: boolean;
-  isExtractable: boolean;
 };
 
 export type FileAttachmentType = BaseConversationAttachmentType & {
@@ -110,10 +108,6 @@ export function getAttachmentFromContentNodeContentFragment(
     isQueryable && cf.contentType !== CONTENT_NODE_MIME_TYPES.NOTION.DATABASE;
   const isSearchable =
     isSearchableContentType(cf.contentType) && !isUnmaterializedTable;
-  const isExtractable =
-    isExtractableContentType(cf.contentType) &&
-    !isUnmaterializedTable &&
-    !isQueryable;
 
   const baseAttachment: BaseConversationAttachmentType = {
     title: cf.title,
@@ -126,7 +120,6 @@ export function getAttachmentFromContentNodeContentFragment(
     isIncludable,
     isQueryable,
     isSearchable,
-    isExtractable,
   };
 
   return {
@@ -151,8 +144,6 @@ export function getAttachmentFromFileContentFragment(
   const isQueryable = canDoJIT && isQueryableContentType(cf.contentType);
   const isIncludable = isConversationIncludableFileContentType(cf.contentType);
   const isSearchable = canDoJIT && isSearchableContentType(cf.contentType);
-  const isExtractable =
-    canDoJIT && isExtractableContentType(cf.contentType) && !isQueryable;
   const baseAttachment: BaseConversationAttachmentType = {
     title: cf.title,
     contentType: cf.contentType,
@@ -169,7 +160,6 @@ export function getAttachmentFromFileContentFragment(
     isIncludable,
     isQueryable,
     isSearchable,
-    isExtractable,
   };
 
   return {
@@ -193,8 +183,6 @@ export function getAttachmentFromToolOutput({
   const isIncludable = isConversationIncludableFileContentType(contentType);
   const isQueryable = canDoJIT && isQueryableContentType(contentType);
   const isSearchable = canDoJIT && isSearchableContentType(contentType);
-  const isExtractable =
-    canDoJIT && isExtractableContentType(contentType) && !isQueryable;
 
   return {
     fileId,
@@ -207,7 +195,6 @@ export function getAttachmentFromToolOutput({
     isIncludable,
     isQueryable,
     isSearchable,
-    isExtractable,
   };
 }
 
@@ -226,7 +213,6 @@ export function renderAttachmentXml({
     `isIncludable="${attachment.isIncludable}"`,
     `isQueryable="${attachment.isQueryable}"`,
     `isSearchable="${attachment.isSearchable}"`,
-    `isExtractable="${attachment.isExtractable}"`,
   ];
 
   let tag = `<attachment ${params.join(" ")}`;
