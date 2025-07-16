@@ -27,7 +27,8 @@ export class ReadFileTool implements McpTool {
       .number()
       .optional()
       .describe(
-        "Optional: The maximum number of lines to read from text files. To paginate across significant files, use 'offset'. The tool reads the whole file (up to a default limit, if possible) if it is not specified."
+        "Optional: The maximum number of lines to read from text files. To paginate across significant files, use 'offset'. " +
+          "The tool reads the whole file (up to a default limit, unless the file contains fewer lines than this limit) if it is not specified."
       ),
   });
 
