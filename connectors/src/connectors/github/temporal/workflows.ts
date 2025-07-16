@@ -52,15 +52,19 @@ const { githubUpsertIssueActivity, githubUpsertDiscussionActivity } =
     startToCloseTimeout: "60 minute",
   });
 
-const { githubEnsureCodeSyncEnabledActivity, githubCreateGcsIndexActivity } =
-  proxyActivities<typeof activitiesSyncCode>({
-    startToCloseTimeout: "10 minute",
-  });
+const { githubEnsureCodeSyncEnabledActivity } = proxyActivities<
+  typeof activitiesSyncCode
+>({
+  startToCloseTimeout: "10 minute",
+});
 
-const { githubCleanupCodeSyncActivity, githubProcessIndexFileActivity } =
-  proxyActivities<typeof activitiesSyncCode>({
-    startToCloseTimeout: "20 minute",
-  });
+const {
+  githubCleanupCodeSyncActivity,
+  githubCreateGcsIndexActivity,
+  githubProcessIndexFileActivity,
+} = proxyActivities<typeof activitiesSyncCode>({
+  startToCloseTimeout: "30 minute",
+});
 
 const { githubExtractToGcsActivity } = proxyActivities<
   typeof activitiesSyncCode
