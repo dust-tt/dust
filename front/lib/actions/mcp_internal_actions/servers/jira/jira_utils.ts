@@ -69,6 +69,7 @@ async function getJiraBaseUrl(accessToken: string): Promise<string | null> {
   return null;
 }
 
+// Use this to get the JIRA base URL and the JIRA cloud ID
 export async function getJiraResourceInfo(accessToken: string): Promise<{
   id: string;
   url: string;
@@ -97,7 +98,6 @@ export async function getJiraResourceInfo(accessToken: string): Promise<{
 
     const resources = await response.json();
 
-    // Get the first accessible resource (primary workspace) and return its info
     if (resources && resources.length > 0) {
       const resource = resources[0];
       return {

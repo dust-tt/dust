@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
-const MAX_LIMIT = 50;
+
+import { getJiraResourceInfo } from "./jira_utils";
+const MAX_LIMIT = 20;
 
 // Generic wrapper for JIRA API calls with validation
 async function jiraApiCall<T>(
@@ -58,193 +60,84 @@ async function jiraApiCall<T>(
   }
 }
 
-const JiraIssueSchema = z.object({
-  id: z.string(),
-  key: z.string(),
-  self: z.string(),
-  fields: z.object({
-    summary: z.string(),
-    description: z
-      .union([z.string(), z.object({}).passthrough()])
-      .nullable()
-      .optional(),
-    status: z.object({
-      name: z.string(),
-      statusCategory: z.object({
-        name: z.string(),
-      }),
-    }),
-    priority: z
-      .object({
-        name: z.string(),
-      })
-      .nullable()
-      .optional(),
-    assignee: z
-      .object({
-        displayName: z.string(),
-        emailAddress: z.string(),
-      })
-      .nullable()
-      .optional(),
-    reporter: z
-      .object({
-        displayName: z.string(),
-        emailAddress: z.string(),
-      })
-      .nullable()
-      .optional(),
-    created: z.string(),
-    updated: z.string(),
-    issuetype: z.object({
-      name: z.string(),
-    }),
-    project: z.object({
-      key: z.string(),
-      name: z.string(),
-    }),
-  }),
-});
+const JiraIssueSchema = z
+  .object({
+    //id: z.string(),
+    code: z.string().optional(),
+  })
+  .passthrough();
+type JiraIssue = z.infer<typeof JiraIssueSchema>;
 
 const JiraSearchResultSchema = z.object({
-  issues: z.array(JiraIssueSchema),
-  total: z.number(),
-  startAt: z.number(),
-  maxResults: z.number(),
+  issues: z.array(
+    z.object({
+      id: z.string(),
+      key: z.string(),
+      self: z.string(),
+      fields: z
+        .object({
+          summary: z.string(),
+        })
+        .passthrough(),
+    })
+  ),
+  isLast: z.boolean(),
 });
+type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
 
 const JiraProjectSchema = z.object({
   id: z.string(),
   key: z.string(),
   name: z.string(),
 });
+type JiraProject = z.infer<typeof JiraProjectSchema>;
 
 const JiraCommentSchema = z.object({
   id: z.string(),
-  body: z.union([
-    z.string(),
-    z.object({
-      type: z.string(),
-      version: z.number(),
-      content: z.array(z.any()),
-    }),
-  ]),
-  author: z.object({
-    displayName: z.string(),
-    emailAddress: z.string(),
-  }),
-  created: z.string(),
-  updated: z.string(),
-});
-
-const JiraTransitionSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  to: z.object({
-    id: z.string(),
-    name: z.string(),
+  body: z.object({
+    type: z.string(),
+    version: z.number(),
   }),
 });
+type JiraComment = z.infer<typeof JiraCommentSchema>;
 
 const JiraTransitionsResponseSchema = z.object({
-  transitions: z.array(JiraTransitionSchema),
-});
-
-const JiraCreateIssueResponseSchema = z.object({
-  id: z.string(),
-  key: z.string(),
-  self: z.string(),
-});
-
-const JiraIssueTypeSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().optional(),
-  iconUrl: z.string().optional(),
-  avatarId: z.number().optional(),
-  subtask: z.boolean(),
-  hierarchyLevel: z.number().optional(),
-});
-
-const JiraFieldSchema = z.object({
-  fieldId: z.string().optional(),
-  name: z.string(),
-  required: z.boolean(),
-  schema: z
-    .object({
-      type: z.string(),
-      system: z.string().optional(),
-      custom: z.string().optional(),
-      customId: z.number().optional(),
+  transitions: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
     })
-    .optional(),
-  operations: z.array(z.string()).optional(),
-  allowedValues: z.array(z.any()).optional(),
-  defaultValue: z.any().optional(),
-  key: z.string().optional(),
-  hasDefaultValue: z.boolean().optional(),
-  autoCompleteUrl: z.string().optional(),
+  ),
 });
+type JiraTransitionsResponse = z.infer<typeof JiraTransitionsResponseSchema>;
 
-const JiraIssueTypeWithFieldsSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().optional(),
-  iconUrl: z.string().optional(),
-  avatarId: z.number().optional(),
-  subtask: z.boolean(),
-  hierarchyLevel: z.number().optional(),
-  fields: z.record(z.string(), JiraFieldSchema).optional(),
-});
+const JiraCreateIssueResponseSchema = z
+  .object({
+    id: z.string(),
+    key: z.string(),
+  })
+  .passthrough();
+type JiraCreateIssueResponse = z.infer<typeof JiraCreateIssueResponseSchema>;
 
-const JiraProjectMetaSchema = z.object({
-  id: z.string(),
-  key: z.string(),
-  name: z.string(),
-  issuetypes: z.array(JiraIssueTypeWithFieldsSchema),
-});
+type JiraIssueType = z.infer<typeof JiraIssueTypeSchema>;
+const JiraIssueTypeSchema = z.unknown();
 
 const JiraCreateMetaSchema = z.object({
-  projects: z.array(JiraProjectMetaSchema),
-  expand: z.string().optional(),
+  fields: z.record(z.string(), z.unknown()),
 });
-
-const JiraUserInfoSchema = z.object({
-  accountId: z.string(),
-  emailAddress: z.string(),
-  displayName: z.string(),
-  avatarUrls: z.object({
-    "48x48": z.string(),
-  }),
-  accountType: z.string(),
-  active: z.boolean(),
-  timeZone: z.string().optional(),
-  locale: z.string().optional(),
-  groups: z
-    .object({
-      size: z.number(),
-      items: z.array(z.any()),
-    })
-    .optional(),
-  applicationRoles: z
-    .object({
-      size: z.number(),
-      items: z.array(z.any()),
-    })
-    .optional(),
-  expand: z.string().optional(),
-});
-
-// Extract TypeScript types from schemas
-type JiraIssue = z.infer<typeof JiraIssueSchema>;
-type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
-type JiraComment = z.infer<typeof JiraCommentSchema>;
-type JiraTransitionsResponse = z.infer<typeof JiraTransitionsResponseSchema>;
-type JiraProject = z.infer<typeof JiraProjectSchema>;
-type JiraCreateIssueResponse = z.infer<typeof JiraCreateIssueResponseSchema>;
-type JiraIssueType = z.infer<typeof JiraIssueTypeSchema>;
 type JiraCreateMeta = z.infer<typeof JiraCreateMetaSchema>;
+
+const JiraUserInfoSchema = z
+  .object({
+    accountId: z.string(),
+    emailAddress: z.string(),
+    displayName: z.string(),
+    accountType: z.string(),
+    locale: z.string().optional(),
+  })
+  .passthrough();
 type JiraUserInfo = z.infer<typeof JiraUserInfoSchema>;
+
 type JiraErrorResult = { error: string };
 type GetIssueResult = JiraIssue | null | JiraErrorResult;
 type SearchIssuesResult = JiraSearchResult | JiraErrorResult;
@@ -270,7 +163,11 @@ export const getIssue = async (
     JiraIssueSchema,
     { baseUrl }
   );
-  if ("error" in result && result.error.includes("404")) {
+  if (
+    "error" in result &&
+    typeof result.error === "string" &&
+    result.error.includes("404")
+  ) {
     return null;
   }
 
@@ -284,12 +181,26 @@ export const searchIssues = async (
   startAt: number = 0,
   maxResults: number = MAX_LIMIT
 ): Promise<SearchIssuesResult> => {
-  return jiraApiCall(
-    `/rest/api/3/search?jql=${encodeURIComponent(jql)}&startAt=${startAt}&maxResults=${maxResults}`,
+  const result = await jiraApiCall(
+    `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&startAt=${startAt}&maxResults=${maxResults}&fields=summary`,
     accessToken,
     JiraSearchResultSchema,
     { baseUrl }
   );
+
+  if ("error" in result) {
+    return result;
+  }
+
+  const resourceInfo = await getJiraResourceInfo(accessToken);
+  if (resourceInfo && result.issues) {
+    result.issues = result.issues.map((issue) => ({
+      ...issue,
+      browseUrl: `${resourceInfo.url}/browse/${issue.key}`,
+    }));
+  }
+
+  return result;
 };
 export interface CreateIssueRequest {
   project: {

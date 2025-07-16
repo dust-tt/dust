@@ -54,17 +54,26 @@ const createServer = (): McpServer => {
     async ({ issueKey }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const issue = await getIssue(baseUrl, accessToken, issueKey);
-          if (!issue) {
+          try {
+            const issue = await getIssue(baseUrl, accessToken, issueKey);
+            if (!issue) {
+              return makeMCPToolJSONSuccess({
+                message: "No issue found with the specified key",
+                result: { found: false, issueKey },
+              });
+            }
+            if ("error" in issue) {
+              return makeMCPToolTextError(
+                `Error retrieving issue: ${issue.error}`
+              );
+            }
             return makeMCPToolJSONSuccess({
-              message: "No issue found with the specified key",
-              result: { found: false, issueKey },
+              message: "Issue retrieved successfully",
+              result: issue,
             });
+          } catch (error) {
+            return makeMCPToolTextError(`Error retrieving issue: ${error}`);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issue retrieved successfully",
-            result: issue,
-          });
         },
         authInfo,
         params: { issueKey },
@@ -79,14 +88,20 @@ const createServer = (): McpServer => {
     async (_, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await getProjects(baseUrl, accessToken);
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+          try {
+            const result = await getProjects(baseUrl, accessToken);
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error retrieving projects: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Projects retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(`Error retrieving projects: ${error}`);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Projects retrieved successfully",
-            result,
-          });
         },
         authInfo,
         params: {},
@@ -103,18 +118,26 @@ const createServer = (): McpServer => {
     async ({ assigneeAccountId }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchIssues(
-            baseUrl,
-            accessToken,
-            `assignee = ${escapeJQLValue(assigneeAccountId)}`
-          );
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+          try {
+            const result = await searchIssues(
+              baseUrl,
+              accessToken,
+              `assignee = ${escapeJQLValue(assigneeAccountId)}`
+            );
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error searching issues by assignee: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issues retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Error searching issues by assignee: ${error}`
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issues retrieved successfully",
-            result,
-          });
         },
         authInfo,
         params: { assigneeAccountId },
@@ -131,18 +154,26 @@ const createServer = (): McpServer => {
     async ({ issueType }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchIssues(
-            baseUrl,
-            accessToken,
-            `issueType = ${escapeJQLValue(issueType)}`
-          );
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+          try {
+            const result = await searchIssues(
+              baseUrl,
+              accessToken,
+              `issueType = ${escapeJQLValue(issueType)}`
+            );
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error searching issues by type: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issues retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Error searching issues by type: ${error}`
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issues retrieved successfully",
-            result,
-          });
         },
         authInfo,
         params: { issueType },
@@ -159,18 +190,26 @@ const createServer = (): McpServer => {
     async ({ parentIssueKey }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchIssues(
-            baseUrl,
-            accessToken,
-            `parent = ${escapeJQLValue(parentIssueKey)}`
-          );
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+          try {
+            const result = await searchIssues(
+              baseUrl,
+              accessToken,
+              `parent = ${escapeJQLValue(parentIssueKey)}`
+            );
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error searching issues by parent: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issues retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Error searching issues by parent: ${error}`
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issues retrieved successfully",
-            result,
-          });
         },
         authInfo,
         params: { parentIssueKey },
@@ -187,18 +226,26 @@ const createServer = (): McpServer => {
     async ({ status }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchIssues(
-            baseUrl,
-            accessToken,
-            `status = ${escapeJQLValue(status)}`
-          );
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+          try {
+            const result = await searchIssues(
+              baseUrl,
+              accessToken,
+              `status = ${escapeJQLValue(status)}`
+            );
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error searching issues by status: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issues retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Error searching issues by status: ${error}`
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issues retrieved successfully",
-            result,
-          });
         },
         authInfo,
         params: { status },
@@ -215,18 +262,26 @@ const createServer = (): McpServer => {
     async ({ priority }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchIssues(
-            baseUrl,
-            accessToken,
-            `priority = ${escapeJQLValue(priority)}`
-          );
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+          try {
+            const result = await searchIssues(
+              baseUrl,
+              accessToken,
+              `priority = ${escapeJQLValue(priority)}`
+            );
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error searching issues by priority: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issues retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Error searching issues by priority: ${error}`
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issues retrieved successfully",
-            result,
-          });
         },
         authInfo,
         params: { priority },
@@ -243,18 +298,26 @@ const createServer = (): McpServer => {
     async ({ projectKey }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchIssues(
-            baseUrl,
-            accessToken,
-            `project = ${escapeJQLValue(projectKey)}`
-          );
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+          try {
+            const result = await searchIssues(
+              baseUrl,
+              accessToken,
+              `project = ${escapeJQLValue(projectKey)}`
+            );
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error searching issues by project: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issues retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Error searching issues by project: ${error}`
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issues retrieved successfully",
-            result,
-          });
         },
         authInfo,
         params: { projectKey },
@@ -271,14 +334,20 @@ const createServer = (): McpServer => {
     async ({ projectKey }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await getProject(baseUrl, accessToken, projectKey);
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+          try {
+            const result = await getProject(baseUrl, accessToken, projectKey);
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error retrieving project: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Project retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(`Error retrieving project: ${error}`);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Project retrieved successfully",
-            result,
-          });
         },
         authInfo,
         params: { projectKey },
@@ -295,14 +364,26 @@ const createServer = (): McpServer => {
     async ({ projectKey }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await getIssueTypes(baseUrl, accessToken, projectKey);
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+          try {
+            const result = await getIssueTypes(
+              baseUrl,
+              accessToken,
+              projectKey
+            );
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error retrieving issue types: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issue types retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Error retrieving issue types: ${error}`
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issue types retrieved successfully",
-            result,
-          });
         },
         authInfo,
         params: { projectKey },
@@ -325,19 +406,27 @@ const createServer = (): McpServer => {
     async ({ projectKey, issueTypeId }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await getIssueFields(
-            baseUrl,
-            accessToken,
-            projectKey,
-            issueTypeId
-          );
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+          try {
+            const result = await getIssueFields(
+              baseUrl,
+              accessToken,
+              projectKey,
+              issueTypeId
+            );
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error retrieving issue fields: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issue fields retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Error retrieving issue fields: ${error}`
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issue fields retrieved successfully",
-            result,
-          });
         },
         authInfo,
         params: { projectKey, issueTypeId },
@@ -392,61 +481,67 @@ const createServer = (): McpServer => {
     ) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const issueData: CreateIssueRequest = {
-            project: { key: projectKey },
-            summary,
-            issuetype: { name: issueType },
-          };
-
-          if (description) {
-            issueData.description = {
-              type: "doc",
-              version: 1,
-              content: [
-                {
-                  type: "paragraph",
-                  content: [
-                    {
-                      type: "text",
-                      text: description,
-                    },
-                  ],
-                },
-              ],
+          try {
+            const issueData: CreateIssueRequest = {
+              project: { key: projectKey },
+              summary,
+              issuetype: { name: issueType },
             };
-          }
-          if (priority) {
-            issueData.priority = { name: priority };
-          }
-          if (assigneeAccountId) {
-            issueData.assignee = { accountId: assigneeAccountId };
-          }
-          if (labels) {
-            issueData.labels = labels;
-          }
-          if (parentIssueKey) {
-            issueData.parent = { key: parentIssueKey };
-          }
 
-          const result = await createIssue(baseUrl, accessToken, issueData);
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+            if (description) {
+              issueData.description = {
+                type: "doc",
+                version: 1,
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [
+                      {
+                        type: "text",
+                        text: description,
+                      },
+                    ],
+                  },
+                ],
+              };
+            }
+            if (priority) {
+              issueData.priority = { name: priority };
+            }
+            if (assigneeAccountId) {
+              issueData.assignee = { accountId: assigneeAccountId };
+            }
+            if (labels) {
+              issueData.labels = labels;
+            }
+            if (parentIssueKey) {
+              issueData.parent = { key: parentIssueKey };
+            }
+
+            const result = await createIssue(baseUrl, accessToken, issueData);
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error creating issue: ${result.error}`
+              );
+            }
+
+            // Get the proper site URL for the browse link
+            const resourceInfo = await getJiraResourceInfo(accessToken);
+            const browseUrl = resourceInfo?.url
+              ? `${resourceInfo.url}/browse/${result.key}`
+              : `${baseUrl}/browse/${result.key}`; // fallback to old behavior
+
+            return makeMCPToolJSONSuccess({
+              message: "Issue created successfully",
+              result: {
+                issueKey: result.key,
+                issueId: result.id,
+                issueUrl: browseUrl,
+              },
+            });
+          } catch (error) {
+            return makeMCPToolTextError(`Error creating issue: ${error}`);
           }
-
-          // Get the proper site URL for the browse link
-          const resourceInfo = await getJiraResourceInfo(accessToken);
-          const browseUrl = resourceInfo?.url
-            ? `${resourceInfo.url}/browse/${result.key}`
-            : `${baseUrl}/browse/${result.key}`; // fallback to old behavior
-
-          return makeMCPToolJSONSuccess({
-            message: "Issue created successfully",
-            result: {
-              issueKey: result.key,
-              issueId: result.id,
-              issueUrl: browseUrl,
-            },
-          });
         },
         authInfo,
         params: { projectKey, summary, issueType },
@@ -483,51 +578,57 @@ const createServer = (): McpServer => {
     ) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const updateData: Partial<CreateIssueRequest> = {};
+          try {
+            const updateData: Partial<CreateIssueRequest> = {};
 
-          if (summary) {
-            updateData.summary = summary;
-          }
-          if (description) {
-            updateData.description = {
-              type: "doc",
-              version: 1,
-              content: [
-                {
-                  type: "paragraph",
-                  content: [
-                    {
-                      type: "text",
-                      text: description,
-                    },
-                  ],
-                },
-              ],
-            };
-          }
-          if (priority) {
-            updateData.priority = { name: priority };
-          }
-          if (assigneeAccountId) {
-            updateData.assignee = { accountId: assigneeAccountId };
-          }
-          if (labels) {
-            updateData.labels = labels;
-          }
+            if (summary) {
+              updateData.summary = summary;
+            }
+            if (description) {
+              updateData.description = {
+                type: "doc",
+                version: 1,
+                content: [
+                  {
+                    type: "paragraph",
+                    content: [
+                      {
+                        type: "text",
+                        text: description,
+                      },
+                    ],
+                  },
+                ],
+              };
+            }
+            if (priority) {
+              updateData.priority = { name: priority };
+            }
+            if (assigneeAccountId) {
+              updateData.assignee = { accountId: assigneeAccountId };
+            }
+            if (labels) {
+              updateData.labels = labels;
+            }
 
-          const result = await updateIssue(
-            baseUrl,
-            accessToken,
-            issueKey,
-            updateData
-          );
-          if (result && "error" in result) {
-            return makeMCPToolTextError(result.error);
+            const result = await updateIssue(
+              baseUrl,
+              accessToken,
+              issueKey,
+              updateData
+            );
+            if (result && "error" in result) {
+              return makeMCPToolTextError(
+                `Error updating issue: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issue updated successfully",
+              result: { issueKey, updatedFields: Object.keys(updateData) },
+            });
+          } catch (error) {
+            return makeMCPToolTextError(`Error updating issue: ${error}`);
           }
-          return makeMCPToolJSONSuccess({
-            message: "Issue updated successfully",
-            result: { issueKey, updatedFields: Object.keys(updateData) },
-          });
         },
         authInfo,
         params: { issueKey },
@@ -556,28 +657,34 @@ const createServer = (): McpServer => {
     ) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const visibility =
-            visibilityType && visibilityValue
-              ? { type: visibilityType, value: visibilityValue }
-              : undefined;
+          try {
+            const visibility =
+              visibilityType && visibilityValue
+                ? { type: visibilityType, value: visibilityValue }
+                : undefined;
 
-          const result = await addComment(
-            baseUrl,
-            accessToken,
-            issueKey,
-            comment,
-            visibility
-          );
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
-          }
-          return makeMCPToolJSONSuccess({
-            message: "Comment added successfully",
-            result: {
+            const result = await addComment(
+              baseUrl,
+              accessToken,
               issueKey,
               comment,
-            },
-          });
+              visibility
+            );
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error adding comment: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Comment added successfully",
+              result: {
+                issueKey,
+                comment,
+              },
+            });
+          } catch (error) {
+            return makeMCPToolTextError(`Error adding comment: ${error}`);
+          }
         },
         authInfo,
         params: { issueKey },
@@ -591,32 +698,32 @@ const createServer = (): McpServer => {
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       transitionId: z.string().describe("The ID of the transition to perform"),
-      comment: z
-        .string()
-        .optional()
-        .describe("Optional comment to add during transition"),
     },
-    async ({ issueKey, transitionId, comment }, { authInfo }) => {
+    async ({ issueKey, transitionId }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await transitionIssue(
-            baseUrl,
-            accessToken,
-            issueKey,
-            transitionId,
-            comment
-          );
-          if (result && "error" in result) {
-            return makeMCPToolTextError(result.error);
-          }
-          return makeMCPToolJSONSuccess({
-            message: "Issue transitioned successfully",
-            result: {
+          try {
+            const result = await transitionIssue(
+              baseUrl,
+              accessToken,
               issueKey,
-              transitionId,
-              ...(comment && { comment }),
-            },
-          });
+              transitionId
+            );
+            if (result && "error" in result) {
+              return makeMCPToolTextError(
+                `Error transitioning issue: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issue transitioned successfully",
+              result: {
+                issueKey,
+                transitionId,
+              },
+            });
+          } catch (error) {
+            return makeMCPToolTextError(`Error transitioning issue: ${error}`);
+          }
         },
         authInfo,
         params: { issueKey, transitionId },
@@ -633,14 +740,22 @@ const createServer = (): McpServer => {
     async ({ issueKey }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await getTransitions(baseUrl, accessToken, issueKey);
-          if ("error" in result) {
-            return makeMCPToolTextError(result.error);
+          try {
+            const result = await getTransitions(baseUrl, accessToken, issueKey);
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error retrieving transitions: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Transitions retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Error retrieving transitions: ${error}`
+            );
           }
-          return makeMCPToolJSONSuccess({
-            message: "Transitions retrieved successfully",
-            result,
-          });
         },
         authInfo,
         params: { issueKey },
@@ -659,7 +774,6 @@ const createServer = (): McpServer => {
       }
 
       try {
-        // Get resource info (cloud ID and site URL)
         const resourceInfo = await getJiraResourceInfo(accessToken);
         if (!resourceInfo) {
           return makeMCPToolTextError(
@@ -667,14 +781,14 @@ const createServer = (): McpServer => {
           );
         }
 
-        // Get user info
         const baseUrl = `https://api.atlassian.com/ex/jira/${resourceInfo.id}`;
         const userResult = await getUserInfo(baseUrl, accessToken);
-        if ("error" in userResult) {
-          return makeMCPToolTextError(userResult.error);
+        if (!userResult || "error" in userResult) {
+          return makeMCPToolTextError(
+            `Failed to retrieve user information: ${userResult && "error" in userResult ? userResult.error : "Unknown error"}`
+          );
         }
 
-        // Combine all information
         const connectionInfo = {
           user: {
             account_id: userResult.accountId,
