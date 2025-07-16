@@ -4,7 +4,8 @@ import fs from "fs";
 import { normalizeError } from "../../utils/errors.js";
 import type { McpTool } from "../types/tools.js";
 import { ReadFileTool } from "./readFile.js";
-import { diff } from "fast-myers-diff";
+
+const CONTEXT_LINES = 3;
 
 export class EditFileTool implements McpTool {
   // TODO: change prompt
@@ -12,9 +13,9 @@ export class EditFileTool implements McpTool {
   private diffApprovalCallback?: (
     originalContent: string,
     updatedContent: string,
-    diffLines: string[],
     filePath: string
-  ) => Promise<boolean>;
+  ) => Promise<{ diff: string; approved: boolean }>;
+
   description = `Replaces text within a file. By default, replaces a single occurrence, but can replace multiple occurrences when \`expected_replacements\` is specified. This tool requires providing significant context around the change to ensure precise targeting. Always use the ${ReadFileTool.name} tool to examine the file's current content before attempting a text replacement.
 
       The user has the ability to modify the \`new_string\` content. If modified, this will be stated in the response.
@@ -61,9 +62,8 @@ Expectation for required parameters:
     callback: (
       originalContent: string,
       updatedContent: string,
-      diffLines: string[],
       filePath: string
-    ) => Promise<boolean>
+    ) => Promise<{ diff: string; approved: boolean }>
   ) {
     this.diffApprovalCallback = callback;
   }
@@ -101,45 +101,14 @@ Expectation for required parameters:
         );
       }
 
-      // Create diff layout showing what will be changed
       const updatedContent = originalContent.replace(regex, new_string);
-      const originalLines = originalContent.split("\n");
-      const updatedLines = updatedContent.split("\n");
-      const diffLines: string[] = [];
-
-      for (const [i, N, j, M] of diff(originalLines, updatedLines)) {
-        const removed = originalLines.slice(i, i + N);
-        const added = updatedLines.slice(j, j + M);
-
-        if (N && !M) {
-          // Lines removed
-          for (const line of removed) {
-            diffLines.push(`- ${line}`);
-          }
-        } else if (!N && M) {
-          // Lines added
-          for (const line of added) {
-            diffLines.push(`+ ${line}`);
-          }
-        } else if (N && M) {
-          // Lines changed - show both removed and added
-          for (const line of removed) {
-            diffLines.push(`- ${line}`);
-          }
-          for (const line of added) {
-            diffLines.push(`+ ${line}`);
-          }
-        }
-      }
-
-      const diffOutput = diffLines.join("\n");
 
       // Request approval if callback is set
+      let diffOutput = "";
       if (this.diffApprovalCallback) {
-        const approved = await this.diffApprovalCallback(
+        const { diff, approved } = await this.diffApprovalCallback(
           originalContent,
           updatedContent,
-          diffLines,
           filePath
         );
         if (!approved) {
@@ -152,6 +121,8 @@ Expectation for required parameters:
             ],
           };
         }
+
+        diffOutput = diff;
       }
 
       // Write the updated content back to the file

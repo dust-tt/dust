@@ -98,7 +98,8 @@ const CliChat: FC<CliChatProps> = ({
     ((approved: boolean) => void) | null
   >(null);
   const [pendingDiffApproval, setPendingDiffApproval] = useState<{
-    diffLines: string[];
+    originalContent: string;
+    updatedContent: string;
     filePath: string;
   } | null>(null);
   const [diffApprovalResolver, setDiffApprovalResolver] = useState<
@@ -218,14 +219,10 @@ const CliChat: FC<CliChatProps> = ({
     async (
       originalContent: string,
       updatedContent: string,
-      diffLines: string[],
       filePath: string
-    ): Promise<boolean> => {
-      return new Promise<boolean>((resolve) => {
-        console.log("originalContent: ", originalContent);
-        console.log("updatedContent: ", updatedContent);
-        console.log("diff lines in callback:", diffLines);
-        setPendingDiffApproval({ diffLines, filePath });
+    ): Promise<{ diff: string; approved: boolean }> => {
+      return new Promise<{ diff: string; approved: boolean }>((resolve) => {
+        setPendingDiffApproval({ originalContent, updatedContent, filePath });
         setDiffApprovalResolver(() => resolve);
       });
     },
@@ -1286,10 +1283,10 @@ const CliChat: FC<CliChatProps> = ({
 
   // Show diff approval prompt if pending
   if (pendingDiffApproval) {
-    console.log("diff lines num: ", pendingDiffApproval.diffLines.length);
     return (
       <DiffApprovalSelector
-        diffLines={pendingDiffApproval.diffLines}
+        originalContent={pendingDiffApproval.originalContent}
+        updatedContent={pendingDiffApproval.updatedContent}
         filePath={pendingDiffApproval.filePath}
         onApproval={async (approved) => {
           await clearTerminal();

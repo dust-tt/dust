@@ -1,9 +1,11 @@
 import { Box, Text, useInput } from "ink";
 import type { FC } from "react";
 import React, { useState } from "react";
+import chalk from "chalk";
+import { StructuredPatch, structuredPatch } from "diff";
 
 interface DiffLine {
-  type: "remove" | "add";
+  type: "remove" | "add" | "context";
   lineNumber: number;
   content: string;
 }
@@ -11,57 +13,104 @@ interface DiffLine {
 interface ApprovalOption {
   id: "accept" | "reject";
   label: string;
+  symbol: string;
 }
 
 const APPROVAL_OPTIONS: ApprovalOption[] = [
-  { id: "accept", label: "Accept" },
-  { id: "reject", label: "Reject" },
+  { id: "accept", label: "Accept", symbol: "✓" },
+  { id: "reject", label: "Reject", symbol: "✗" },
 ];
 
+// Modern pastel color palette inspired by contemporary CLI tools
+const COLORS = {
+  // Pastel greens for additions - softer than traditional bright green
+  addedBg: "#B5EAD7", // Mint green pastel
+  addedFg: "#2D5A3D", // Darker green for contrast
+  addedAccent: "#A8FFB8", // Light mint accent
+
+  // Pastel corals/reds for removals - warmer than harsh red
+  removedBg: "#FFD4D4", // Soft coral pink
+  removedFg: "#8B3A3A", // Muted red-brown
+  removedAccent: "#FFB8B8", // Light coral
+
+  // Neutral pastels for context and UI
+  contextFg: "#6B7280", // Soft gray
+  headerBg: "#F8FAFC", // Very light blue-gray
+  headerFg: "#4A5568", // Darker gray for headers
+
+  // Accent colors for interactive elements
+  focusColor: "#A78BFA", // Soft purple
+  borderColor: "#E2E8F0", // Light gray border
+
+  // Background tones
+  cardBg: "#FEFEFE", // Off-white
+  subtleBg: "#F7FAFC", // Very light blue tint
+};
+
 interface DiffApprovalSelectorProps {
-  diffLines: string[];
+  originalContent: string;
+  updatedContent: string;
   filePath: string;
   onApproval: (approved: boolean) => void;
 }
 
-const parseDiffLines = (diffLines: string[]): DiffLine[] => {
-  return diffLines.map((line) => {
-    const isRemoval = line.startsWith("- ");
-    const isAddition = line.startsWith("+ ");
+const parseDiffLines = (patch: StructuredPatch): DiffLine[] => {
+  const parsedDiffLines: DiffLine[] = [];
+  patch.hunks.forEach((hunk) => {
+    let oldLineNum = hunk.oldStart;
+    let newLineNum = hunk.newStart;
 
-    if (isRemoval || isAddition) {
-      const type = isRemoval ? "remove" : "add";
-      const content = line.substring(2);
-      const colonIndex = content.indexOf(": ");
-      const lineNumber =
-        colonIndex > 0 ? parseInt(content.substring(0, colonIndex)) : 0;
-      const lineContent =
-        colonIndex > 0 ? content.substring(colonIndex + 2) : content;
-
-      return {
-        type,
-        lineNumber,
-        content: lineContent,
-      };
-    }
-
-    return {
-      type: "add",
-      lineNumber: 0,
-      content: line,
-    };
+    hunk.lines.forEach((line) => {
+      if (line.startsWith("-")) {
+        parsedDiffLines.push({
+          type: "remove",
+          lineNumber: oldLineNum,
+          content: line.substring(1),
+        });
+        oldLineNum++;
+      } else if (line.startsWith("+")) {
+        parsedDiffLines.push({
+          type: "add",
+          lineNumber: newLineNum,
+          content: line.substring(1),
+        });
+        newLineNum++;
+      } else {
+        parsedDiffLines.push({
+          type: "context",
+          lineNumber: oldLineNum,
+          content: line.substring(1),
+        });
+        oldLineNum++;
+        newLineNum++;
+      }
+    });
   });
+  return parsedDiffLines;
 };
 
 export const DiffApprovalSelector: FC<DiffApprovalSelectorProps> = ({
-  diffLines,
+  originalContent,
+  updatedContent,
   filePath,
   onApproval,
 }) => {
   const [cursor, setCursor] = useState(0);
-  const parsedDiffLines = parseDiffLines(diffLines);
 
-  console.log("num of diff lines", diffLines.length);
+  const patch = structuredPatch(
+    filePath,
+    filePath,
+    originalContent,
+    updatedContent,
+    undefined,
+    undefined,
+    {
+      context: 3,
+    }
+  );
+
+  const parsedDiffLines = parseDiffLines(patch);
+
   useInput((input, key) => {
     if (key.upArrow) {
       setCursor((prev) => (prev > 0 ? prev - 1 : APPROVAL_OPTIONS.length - 1));
@@ -82,50 +131,104 @@ export const DiffApprovalSelector: FC<DiffApprovalSelectorProps> = ({
   });
 
   return (
-    <Box flexDirection="column">
+    <Box flexDirection="column" gap={1}>
+      {/* Modern header with subtle styling */}
       <Box
         flexDirection="column"
         borderStyle="round"
-        borderColor="yellow"
-        paddingX={1}
-        marginTop={1}
+        borderColor="gray"
+        paddingX={3}
+        paddingY={1}
+        marginBottom={1}
       >
-        <Text color="yellow" bold>
-          Diff Preview for {filePath}
-        </Text>
+        <Box marginBottom={1}>
+          <Text color="blue" bold>
+            {chalk.hex(COLORS.headerFg)("Changes Preview")}
+          </Text>
+          <Text color="gray">
+            {chalk.hex(COLORS.contextFg)(` • ${filePath}`)}
+          </Text>
+        </Box>
 
-        <Box flexDirection="column" marginTop={1}>
+        {/* Diff content with modern pastel styling */}
+        <Box flexDirection="column" gap={0}>
           {parsedDiffLines.map((line, index) => (
-            <Box key={index}>
-              <Text color={line.type === "remove" ? "red" : "green"}>
-                {line.type === "remove" ? "- " : "+ "}
-                {line.lineNumber > 0 && `${line.lineNumber}: `}
-                {line.content}
-              </Text>
+            <Box key={index} paddingLeft={1}>
+              {line.type === "remove" && (
+                <Box>
+                  <Text>
+                    {chalk.hex(COLORS.removedFg)("▌ ")}
+                    {chalk.hex(COLORS.removedFg)(
+                      `${line.lineNumber > 0 ? `${line.lineNumber}: ` : ""}${
+                        line.content
+                      }`
+                    )}
+                  </Text>
+                </Box>
+              )}
+
+              {line.type === "add" && (
+                <Box>
+                  <Text>
+                    {chalk.hex(COLORS.addedFg)("▌ ")}
+                    {chalk.hex(COLORS.addedFg)(
+                      `${line.lineNumber > 0 ? `${line.lineNumber}: ` : ""}${
+                        line.content
+                      }`
+                    )}
+                  </Text>
+                </Box>
+              )}
+
+              {line.type === "context" && (
+                <Box>
+                  <Text>
+                    {chalk.hex(COLORS.contextFg)("  ")}
+                    {chalk.hex(COLORS.contextFg)(line.content)}
+                  </Text>
+                </Box>
+              )}
             </Box>
           ))}
         </Box>
       </Box>
 
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        <Text bold>
-          Do you approve these changes? Use ↑/↓ arrows to navigate, Enter to
-          confirm:
+      {/* Modern action section with glassmorphism-inspired styling */}
+      <Box flexDirection="column" paddingX={3} gap={1}>
+        <Box marginBottom={1}>
+          <Text>
+            {
+              chalk
+                .hex(COLORS.headerFg)
+                .bold("Review Decision") /* Professional, no emoji */
+            }
+          </Text>
+        </Box>
+
+        <Text>
+          {chalk.hex(COLORS.contextFg)("Use ↑/↓ to navigate, Enter to confirm")}
         </Text>
-        <Box flexDirection="column" marginTop={1}>
+
+        <Box flexDirection="column" gap={0} marginTop={1}>
           {APPROVAL_OPTIONS.map((option, index) => {
             const isFocused = index === cursor;
+            const isAccept = option.id === "accept";
+
             return (
-              <Box key={option.id} marginY={0}>
-                <Text color={isFocused ? "white" : "gray"}>
-                  {isFocused ? "> " : "  "}
-                </Text>
-                <Text
-                  bold={isFocused}
-                  backgroundColor={isFocused ? "gray" : undefined}
-                  color={option.id === "accept" ? "green" : "red"}
-                >
-                  {option.label}
+              <Box key={option.id} paddingY={0}>
+                <Text>
+                  {isFocused ? chalk.hex(COLORS.focusColor)("▶ ") : "  "}
+                  {isFocused
+                    ? chalk
+                        .hex(COLORS.focusColor)
+                        .bold(`${option.symbol} ${option.label}`)
+                    : isAccept
+                    ? chalk.hex(COLORS.addedFg)(
+                        `${option.symbol} ${option.label}`
+                      )
+                    : chalk.hex(COLORS.removedFg)(
+                        `${option.symbol} ${option.label}`
+                      )}
                 </Text>
               </Box>
             );
