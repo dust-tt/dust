@@ -8,10 +8,11 @@ import {
 } from "@dust-tt/sparkle";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
+import type { AgentErrorContent } from "@app/types";
 import { truncate } from "@app/types/shared/utils/string_utils";
 
 interface ErrorMessageProps {
-  error: { code: string; message: string };
+  error: AgentErrorContent;
   retryHandler: () => void;
 }
 
