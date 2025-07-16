@@ -265,13 +265,14 @@ export async function processFile(
       };
     case "image":
     case "pdf":
-    case "audio":
-    case "video":
       const contentBuffer = await fs.promises.readFile(filePath);
       const base64Data = contentBuffer.toString("base64");
       return {
         data: base64Data,
       };
+    case "audio":
+    case "video":
+      return new Error("Video and audio content is not yet supported.");
     default:
       throw new Error("We should now have reached this statement");
   }
