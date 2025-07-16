@@ -15,11 +15,7 @@ import {
   getActivitiesForConnector,
   getConnectorIdFromWorkflow,
 } from "../../../lib/temporal_queue_routing";
-import {
-  getWeekEnd,
-  getWeekStart,
-  MAX_SYNC_NON_THREAD_MESSAGES,
-} from "../lib/utils";
+import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
 
@@ -126,17 +122,15 @@ function getSlackActivities() {
     },
   });
 
-  const { syncNonThreadedChunk } = getActivitiesForConnector<typeof activities>(
-    {
-      baseQueue: QUEUE_NAME,
-      connectorId,
-      slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
-      activityOptions: {
-        heartbeatTimeout: "5 minutes",
-        startToCloseTimeout: "20 minutes",
-      },
-    }
-  );
+  const { syncNonThreaded } = getActivitiesForConnector<typeof activities>({
+    baseQueue: QUEUE_NAME,
+    connectorId,
+    slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
+    activityOptions: {
+      heartbeatTimeout: "5 minutes",
+      startToCloseTimeout: "60 minutes",
+    },
+  });
 
   return {
     attemptChannelJoinActivity,
@@ -149,7 +143,7 @@ function getSlackActivities() {
     saveSuccessSyncActivity,
     syncChannel,
     syncChannelMetadata,
-    syncNonThreadedChunk,
+    syncNonThreaded,
     syncThread,
   };
 }
@@ -321,8 +315,6 @@ export async function syncOneThreadDebounced(
   // call here, which will allow the signal handler to be executed by the nodejs event loop. /!\
 }
 
-const INITIAL_CHUNK_SIZE_MS = 24 * 60 * 60 * 1000; // 24 hours.
-
 export async function syncOneMessageDebounced(
   connectorId: ModelId,
   channelId: string,
@@ -371,48 +363,20 @@ export async function syncOneMessageDebounced(
     const messageTs = parseInt(threadTs, 10) * 1000;
     const startTsMs = getWeekStart(new Date(messageTs)).getTime();
     const endTsMs = getWeekEnd(new Date(messageTs)).getTime();
+
     await getSlackActivities().syncChannelMetadata(
       connectorId,
       channelId,
       endTsMs
     );
 
-    let currentStartTsMs = startTsMs;
-    let totalMessagesProcessed = 0;
-    let cursor: string | undefined = undefined;
-
-    while (
-      currentStartTsMs < endTsMs &&
-      totalMessagesProcessed < MAX_SYNC_NON_THREAD_MESSAGES
-    ) {
-      const chunkEndTsMs = Math.min(
-        currentStartTsMs + INITIAL_CHUNK_SIZE_MS,
-        endTsMs
-      );
-
-      const result = await getSlackActivities().syncNonThreadedChunk({
-        channelId,
-        channelName: channel.name,
-        connectorId,
-        endTsMs: chunkEndTsMs,
-        isBatchSync: false,
-        startTsMs: currentStartTsMs,
-        weekStartTsMs: startTsMs,
-        weekEndTsMs: endTsMs,
-        cursor,
-      });
-
-      totalMessagesProcessed += result.messagesProcessed;
-
-      if (result.completed) {
-        currentStartTsMs = chunkEndTsMs;
-        // Reset cursor for next time range.
-        cursor = undefined;
-      } else {
-        // Keep same time range but continue with cursor.
-        cursor = result.nextCursor;
-      }
-    }
+    await getSlackActivities().syncNonThreaded({
+      channelId,
+      channelName: channel.name,
+      connectorId,
+      endTsMs,
+      startTsMs,
+    });
 
     await getSlackActivities().saveSuccessSyncActivity(connectorId);
   }
