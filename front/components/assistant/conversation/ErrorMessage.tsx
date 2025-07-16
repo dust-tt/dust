@@ -12,6 +12,13 @@ import type { AgentErrorContent } from "@app/types";
 import { isAgentErrorCategory } from "@app/types";
 import { truncate } from "@app/types/shared/utils/string_utils";
 
+function getErrorChipColor(error: AgentErrorContent) {
+  return isAgentErrorCategory(error.metadata?.category) &&
+    error.metadata?.category === "retryable_model_error"
+    ? "golden"
+    : "warning";
+}
+
 interface ErrorMessageProps {
   error: AgentErrorContent;
   retryHandler: () => void;
@@ -29,12 +36,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
     <div className="flex flex-col gap-9">
       <div className="flex flex-col gap-1 sm:flex-row">
         <Chip
-          color={
-            isAgentErrorCategory(error.metadata?.category) &&
-            error.metadata?.category === "retryable_model_error"
-              ? "golden"
-              : "warning"
-          }
+          color={getErrorChipColor(error)}
           label={"Error: " + truncate(error.message, 30)}
           size="xs"
         />
