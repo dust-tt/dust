@@ -1,3 +1,4 @@
+import assert from "assert";
 import tracer from "dd-trace";
 import memoizer from "lru-memoizer";
 import type {
@@ -62,6 +63,15 @@ export type PublicAPIAuthMethod = "api_key" | "access_token";
 export const getAuthType = (token: string): PublicAPIAuthMethod => {
   return token.startsWith(SECRET_KEY_PREFIX) ? "api_key" : "access_token";
 };
+
+export interface AuthenticatorType {
+  workspaceId: string | null;
+  userId: string | null;
+  role: RoleType;
+  groupIds: string[];
+  subscriptionId: string | null;
+  key?: KeyAuthType;
+}
 
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
@@ -981,6 +991,75 @@ export class Authenticator {
 
   key(): KeyAuthType | null {
     return this._key ?? null;
+  }
+
+  toJSON(): AuthenticatorType {
+    return {
+      workspaceId: this._workspace?.sId ?? null,
+      userId: this._user?.sId ?? null,
+      role: this._role,
+      groupIds: this._groups.map((g) => g.sId),
+      subscriptionId: this._subscription?.sId ?? null,
+      key: this._key,
+    };
+  }
+
+  static async fromJSON(authType: AuthenticatorType): Promise<Authenticator> {
+    const [workspace, user] = await Promise.all([
+      authType.workspaceId
+        ? WorkspaceModel.findOne({
+            where: { sId: authType.workspaceId },
+          })
+        : null,
+      authType.userId ? UserResource.fetchById(authType.userId) : null,
+    ]);
+
+    const lightWorkspace = workspace
+      ? renderLightWorkspaceType({ workspace })
+      : null;
+
+    const subscription =
+      authType.subscriptionId && lightWorkspace
+        ? await SubscriptionResource.fetchActiveByWorkspace(lightWorkspace)
+        : null;
+
+    assert(
+      !authType.subscriptionId ||
+        !subscription ||
+        subscription.sId === authType.subscriptionId,
+      `Subscription mismatch: expected ${authType.subscriptionId} but got ${subscription?.sId}`
+    );
+
+    let groups: GroupResource[] = [];
+    if (authType.groupIds.length > 0 && workspace) {
+      // Create a temporary authenticator for fetching groups
+      const tempAuth = new Authenticator({
+        workspace,
+        user,
+        role: authType.role,
+        groups: [],
+        subscription,
+        key: authType.key,
+      });
+
+      const groupsResult = await GroupResource.fetchByIds(
+        tempAuth,
+        authType.groupIds
+      );
+
+      if (groupsResult.isOk()) {
+        groups = groupsResult.value;
+      }
+    }
+
+    return new Authenticator({
+      workspace,
+      user,
+      role: authType.role,
+      groups,
+      subscription,
+      key: authType.key,
+    });
   }
 }
 
