@@ -270,6 +270,10 @@ AgentMCPAction.init(
         fields: ["workspaceId", "agentMessageId"],
         concurrently: true,
       },
+      {
+        fields: ["stepContentId"],
+        concurrently: true,
+      },
     ],
   }
 );
