@@ -179,7 +179,7 @@ async function runMultiActionsAgentLoop(
   let citationsRefsOffset = 0;
 
   // Track step content IDs by function call ID for later use in actions.
-  const functionCallStepContentIds: Record<string, ModelId> = {};
+  let functionCallStepContentIds: Record<string, ModelId> = {};
 
   for (let i = 0; i < maxStepsPerRun + 1; i++) {
     const localLogger = logger.child({
@@ -218,6 +218,9 @@ async function runMultiActionsAgentLoop(
       // Generation completed or error occurred
       return;
     }
+
+    // Update functionCallStepContentIds with the new IDs from runMultiActionsAgent
+    functionCallStepContentIds = result.functionCallStepContentIds;
 
     // We have actions to run
     localLogger.info(
@@ -296,7 +299,7 @@ async function runMultiActionsAgent(
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
   }
-): Promise<{ actions: AgentActionsEvent["actions"]; runId: string } | null> {
+): Promise<{ actions: AgentActionsEvent["actions"]; runId: string; functionCallStepContentIds: Record<string, ModelId> } | null> {
   const redisHybridManager = getRedisHybridManager();
 
   const publishEvent = async (event: AgentLoopEvent) => {
@@ -892,6 +895,9 @@ async function runMultiActionsAgent(
     return null;
   }
 
+  // Create a new object to avoid mutation
+  const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
+
   for (const [i, content] of output.contents.entries()) {
     const stepContent = await AgentStepContentResource.makeNew({
       workspaceId: conversation.owner.id,
@@ -908,7 +914,7 @@ async function runMultiActionsAgent(
       content.type === "function_call" &&
       content.value.id
     ) {
-      functionCallStepContentIds[content.value.id] = stepContent.id;
+      updatedFunctionCallStepContentIds[content.value.id] = stepContent.id;
     }
 
     agentMessage.contents.push({
@@ -1130,6 +1136,7 @@ async function runMultiActionsAgent(
   return {
     actions,
     runId: await dustRunId,
+    functionCallStepContentIds: updatedFunctionCallStepContentIds,
   };
 }
 
