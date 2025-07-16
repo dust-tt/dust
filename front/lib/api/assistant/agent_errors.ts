@@ -1,3 +1,5 @@
+import type { AgentErrorCategory } from "@app/types";
+
 /**
  * Get a user-friendly error message from an API error.
  * This function handles various error cases from different model providers (Anthropic, OpenAI)
@@ -19,13 +21,7 @@ export const categorizeAgentErrorMessage = (error: {
   message: string;
   code: string;
 }): {
-  category:
-    | "retryable_model_error"
-    | "context_window_exceeded"
-    | "provider_internal_error"
-    | "stream_error"
-    | "unknown_error"
-    | "invalid_response_format_configuration";
+  category: AgentErrorCategory;
   publicMessage: string;
 } => {
   if (error.code == "multi_actions_error") {
