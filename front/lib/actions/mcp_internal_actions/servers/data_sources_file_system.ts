@@ -122,7 +122,7 @@ const SearchToolInputSchema = z.object({
     .string()
     .describe(
       "The query to search for. This is a natural language query. It doesn't support any " +
-        "specific filter syntax. This parameter is mutually exclusive with the `sortBy` parameter."
+        "specific filter syntax."
     ),
   relativeTimeFrame: z
     .string()
@@ -515,7 +515,8 @@ const createServer = (
         .describe(
           "The title to search for. This supports partial matching and does not require the " +
             "exact title. For example, searching for 'budget' will find 'Budget 2024.xlsx', " +
-            "'Q1 Budget Report', etc."
+            "'Q1 Budget Report', etc. This parameter is mutually exclusive with the `sortBy` " +
+            "parameter."
         ),
       rootNodeId: z
         .string()
