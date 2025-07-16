@@ -189,13 +189,22 @@ export const EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT = 128;
  * Agent events
  */
 
-export type AgentErrorCategory =
-  | "retryable_model_error"
-  | "context_window_exceeded"
-  | "provider_internal_error"
-  | "stream_error"
-  | "unknown_error"
-  | "invalid_response_format_configuration";
+export const AgentErrorCategories = [
+  "retryable_model_error",
+  "context_window_exceeded",
+  "provider_internal_error",
+  "stream_error",
+  "unknown_error",
+  "invalid_response_format_configuration",
+] as const;
+
+export type AgentErrorCategory = (typeof AgentErrorCategories)[number];
+
+export function isAgentErrorCategory(
+  category: unknown
+): category is AgentErrorCategory {
+  return AgentErrorCategories.includes(category as AgentErrorCategory);
+}
 
 // Event sent when an agent error occurred before we have an agent message in the database.
 export type AgentMessageErrorEvent = {
