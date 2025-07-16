@@ -1,5 +1,4 @@
 import {
-  ScrollArea,
   Sheet,
   SheetContainer,
   SheetContent,
