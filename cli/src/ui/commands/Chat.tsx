@@ -232,7 +232,7 @@ const CliChat: FC<CliChatProps> = ({
       for (const p of paths) {
         const fileInfoRes = await validateAndGetFileInfo(p);
         if (fileInfoRes.isErr()) {
-          setError(`File error: ${normalizeError(error).message}`);
+          setError(`File error: ${normalizeError(fileInfoRes.error).message}`);
           return;
         }
 
