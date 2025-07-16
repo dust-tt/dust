@@ -229,7 +229,7 @@ export async function processFile(
 
   switch (fileInfoRes.value.fileType) {
     case "binary":
-      throw new Error("cannot handle binary files");
+      return new Err(new Error("Cannot handle binary files."));
     case "image":
     case "pdf":
       const contentBuffer = await fs.promises.readFile(filePath);
