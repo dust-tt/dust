@@ -9,7 +9,7 @@ import { uniqueId } from "lodash";
 
 import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
@@ -73,15 +73,9 @@ export async function getOrCreateWorkOSOrganization(
       });
     }
 
-    await WorkspaceModel.update(
-      {
-        workOSOrganizationId: organization.id,
-      },
-      {
-        where: {
-          id: workspace.id,
-        },
-      }
+    await WorkspaceResource.updateWorkOSOrganizationId(
+      workspace.id,
+      organization.id
     );
 
     return new Ok(organization);
