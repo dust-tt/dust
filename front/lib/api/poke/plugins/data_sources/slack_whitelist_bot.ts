@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
+import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import logger from "@app/logger/logger";
 import type { AdminCommandType } from "@app/types";
@@ -124,9 +125,10 @@ export const slackWhitelistBotPlugin = createPlugin({
       );
     }
 
-    const metabaseUrl =
-      `https://metabase.dust.tt/question/637-whitelisted-bots-given-connector` +
-      `?connectorId=${resource.connectorId}`;
+    const isEU = regionsConfig.getCurrentRegion() === "europe-west1";
+    const metabaseUrl = isEU
+      ? `https://eu.metabase.dust.tt/question/46-whitelisted-bots-given-connector?connectorId=${resource.connectorId}`
+      : `https://metabase.dust.tt/question/637-whitelisted-bots-given-connector?connectorId=${resource.connectorId}`;
 
     return new Ok({
       display: "textWithLink",
