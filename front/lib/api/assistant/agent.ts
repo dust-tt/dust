@@ -404,7 +404,7 @@ async function runMultiActionsAgentLoop(
       autoRetryCount++;
     } while (autoRetryCount <= MAX_AUTO_RETRY);
 
-    // The loop should also return, auto retrying more than MAX_AUTO_RETRY times errors as well.
+    // The loop must always return, retrying more than MAX_AUTO_RETRY times errors and returns.
     throw new Error("Unreachable: loop should have returned");
   }
 }
