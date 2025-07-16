@@ -253,8 +253,11 @@ async function runMultiActionsAgentLoop(
               );
               publishEvent({
                 ...event,
-                error: { ...event.error, message: publicMessage },
-              });
+                error: {
+                  ...event.error,
+                  message: publicMessage,
+                },
+              };
               return;
             }
 
