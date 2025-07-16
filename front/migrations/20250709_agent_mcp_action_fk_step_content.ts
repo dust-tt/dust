@@ -158,6 +158,34 @@ async function attachStepContentToMcpActions({
           });
         }
 
+        // Fallback for actions with an urls param that can be matched to a step content.
+        if (
+          !matchingStepContent &&
+          Array.isArray(mcpAction.params?.urls) &&
+          mcpAction.params.urls.length > 0
+        ) {
+          matchingStepContent = stepContents.find((sc) => {
+            if (isFunctionCallContent(sc.value)) {
+              try {
+                return (
+                  sc.value.value.arguments === JSON.stringify(mcpAction.params)
+                );
+              } catch (e) {
+                logger.error(
+                  {
+                    workspaceId: workspace.sId,
+                    actionId: mcpAction.id,
+                    stepContentId: sc.id,
+                    error: e,
+                  },
+                  "Error parsing function call arguments."
+                );
+              }
+            }
+            return false;
+          });
+        }
+
         if (!matchingStepContent) {
           if (verbose) {
             logger.info(
