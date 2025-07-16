@@ -3,6 +3,7 @@ import { glob } from "glob";
 import path from "path";
 import { z } from "zod";
 
+import { concurrentExecutor } from "../../utils/concurrentExecutor.js";
 import { normalizeError } from "../../utils/errors.js";
 import type { McpTool } from "../types/tools.js";
 
@@ -92,16 +93,21 @@ export class SearchFilesTool implements McpTool {
 
       // Sort by modification time if requested.
       if (sort_by_modified) {
-        const fileResultsWithMtime = await Promise.all(
-          fileResults.map(async (file) => {
+        const fileResultsWithMtime = await concurrentExecutor(
+          fileResults,
+          async (
+            file
+          ): Promise<{ path: string; relativePath: string; mtime: Date }> => {
             try {
               const stats = await fs.promises.stat(file.path);
               return { ...file, mtime: stats.mtime };
             } catch {
               return { ...file, mtime: new Date(0) };
             }
-          })
+          },
+          { concurrency: 10 }
         );
+
         fileResults = fileResultsWithMtime.sort(
           (a, b) => b.mtime.getTime() - a.mtime.getTime()
         );
