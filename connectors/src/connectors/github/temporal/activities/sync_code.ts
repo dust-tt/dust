@@ -41,8 +41,10 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types";
 
-const PARALLEL_FILE_UPLOADS = 15;
-const PARALLEL_DIRECTORY_UPLOADS = 10;
+// Files are uploaded asynchronously, so we can use a high number of parallel uploads.
+const PARALLEL_FILE_UPLOADS = 128;
+// Directories are uploaded synchronously, so we need to use a lower number of parallel uploads.
+const PARALLEL_DIRECTORY_UPLOADS = 64;
 const GCS_FILES_BATCH_SIZE = 500;
 
 const GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes.
