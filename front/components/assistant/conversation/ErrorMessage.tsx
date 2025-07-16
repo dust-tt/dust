@@ -17,7 +17,7 @@ interface ErrorMessageProps {
 
 export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
   const fullMessage =
-    "ERROR: " + error.message + (error.code ? ` (code: ${error.code})` : "");
+    error.message + (error.code ? ` (code: ${error.code})` : "");
 
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () => retryHandler()
@@ -26,11 +26,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
   return (
     <div className="flex flex-col gap-9">
       <div className="flex flex-col gap-1 sm:flex-row">
-        <Chip
-          color="warning"
-          label={"ERROR: " + truncate(error.message, 30)}
-          size="xs"
-        />
+        <Chip color="warning" label={truncate(error.message, 32)} size="xs" />
         <Popover
           popoverTriggerAsChild
           trigger={
