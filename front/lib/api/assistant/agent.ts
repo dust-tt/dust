@@ -892,10 +892,25 @@ async function* runMultiActionsAgent(
           return;
         }
 
+        const contents = (block.message.contents ?? []).map((content) => {
+          if (content.type === "reasoning") {
+            return {
+              ...content,
+              value: {
+                ...content.value,
+                // TODO(DURABLE-AGENTS 2025-07-16): correct value for tokens.
+                tokens: 0,
+                provider: model.providerId,
+              },
+            } satisfies ReasoningContentType;
+          }
+          return content;
+        });
+
         output = {
           actions: [],
           generation: null,
-          contents: block.message.contents ?? [],
+          contents,
         };
 
         if (block.message.function_calls?.length) {
