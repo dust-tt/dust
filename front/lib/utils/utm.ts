@@ -37,7 +37,6 @@ export const getStoredUTMParams = (): { [key: string]: string } => {
     const storedData = sessionStorage?.getItem("utm_data");
     return storedData ? JSON.parse(storedData) : {};
   } catch (error) {
-    console.error("Error retrieving UTM parameters:", error);
     return {};
   }
 };
