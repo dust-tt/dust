@@ -18,12 +18,13 @@
  * Changes: Adapted parts of the code to work with our existing structure and internal systems.
  */
 
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { spawn } from "child_process";
 import { EOL } from "os";
 import path from "path";
 
 import { normalizeError } from "./errors.js";
-import { Err, Ok, Result } from "@dust-tt/client";
 
 interface GrepResult {
   filePath: string;
