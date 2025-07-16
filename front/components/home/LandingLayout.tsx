@@ -182,7 +182,7 @@ export default function LandingLayout({
                   var value = urlParams.get(param);
                   if (value) {
                     utmParams[param] = value;
-                    sessionStorage.setItem('utm_' + param, value);
+                    sessionStorage.setItem(param, value);
                   }
                 });
               })();
