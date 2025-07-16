@@ -386,30 +386,6 @@ impl LocalTable {
         }
     }
 
-    async fn validate_rows_lowercase(rows: Vec<Row>) -> Result<()> {
-        let now = utils::now();
-        let rows_count = rows.len();
-        tokio::task::spawn_blocking(move || {
-            // Validate that all rows keys are lowercase. We run it in a spawn_blocking since it is CPU
-            // bound (even if running fast for reasonably sized tables);
-            for row in rows.iter() {
-                for key in row.value().keys() {
-                    if key.to_lowercase() != *key {
-                        return Err(anyhow!("Row key '{}' is not lowercase", key));
-                    }
-                }
-            }
-            Ok::<_, anyhow::Error>(())
-        })
-        .await??;
-        info!(
-            duration = utils::now() - now,
-            rows_count = rows_count,
-            "DSSTRUCTSTAT [validate_rows_lowercase] validation"
-        );
-        Ok(())
-    }
-
     async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
         let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
 
@@ -448,17 +424,52 @@ impl LocalTable {
         rows: Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
-        Self::validate_rows_lowercase(rows.clone()).await?;
+        let rows = Arc::new(rows);
+
+        let now = utils::now();
+        // Validate that all rows keys are lowercase. We run it in a spawn_blocking since it is CPU
+        // bound (even if running fast for resaonably sized tables);
+        {
+            let rows = rows.clone();
+            tokio::task::spawn_blocking(move || {
+                for (row_index, row) in rows.iter().enumerate() {
+                    match row.value().keys().find(|key| match key.chars().next() {
+                        Some(c) => c.is_ascii_uppercase(),
+                        None => false,
+                    }) {
+                        Some(key) => Err(anyhow!(
+                            "Row {} has a key '{}' that contains uppercase characters",
+                            row_index,
+                            key
+                        ))?,
+                        None => (),
+                    }
+                }
+                Ok::<_, anyhow::Error>(())
+            })
+            .await??;
+        }
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            rows_count = rows.len(),
+            "DSSTRUCTSTAT [upsert_rows] validation"
+        );
 
         if SAVE_TABLES_TO_POSTGRES {
-            self.upsert_rows_postgres(&store, &databases_store, rows.clone(), truncate)
+            self.upsert_rows_postgres(&store, &databases_store, rows.as_ref().clone(), truncate)
                 .await?;
         }
 
         if SAVE_TABLES_TO_GCS {
             // For now, we don't propagate failures since it's just a shadow operation
             if let Err(e) = self
-                .upsert_rows_to_gcs_or_queue_work(&store, &databases_store, rows, truncate)
+                .upsert_rows_to_gcs_or_queue_work(
+                    &store,
+                    &databases_store,
+                    rows.as_ref().clone(),
+                    truncate,
+                )
                 .await
             {
                 tracing::error!("Failed to upsert rows to GCS or queue work: {:?}", e);
