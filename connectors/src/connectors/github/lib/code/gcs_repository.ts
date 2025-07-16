@@ -22,7 +22,7 @@ const DEFAULT_MAX_RESULTS = 1000;
 const STREAM_THRESHOLD_BYTES = 1024 * 1024; // 1MB - files smaller than this will be buffered.
 const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
 
-const ITEMS_PER_INDEX = 5000; // Files/directories per index file.
+const ITEMS_PER_INDEX = 3000; // Files/directories per index file.
 const PARALLEL_INDEX_UPLOADS = 10; // Concurrent index file uploads.
 
 interface DirectoryListing {
