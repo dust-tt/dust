@@ -195,6 +195,10 @@ export async function extractGitHubTarballToGCS(
                 childLogger,
               });
             } catch (error) {
+              logger.error(
+                { error, gcsPath, fileName },
+                "Error uploading file to GCS"
+              );
               uploadErrors.push(error);
             }
           });
@@ -281,7 +285,7 @@ export async function extractGitHubTarballToGCS(
 
   if (uploadErrors.length > 0) {
     childLogger.error(
-      { errors: uploadErrors },
+      { errorCount: uploadErrors.length },
       "Received GCS uploads errors, aborting"
     );
     return new Err(new Error("GCS upload errors occurred"));
