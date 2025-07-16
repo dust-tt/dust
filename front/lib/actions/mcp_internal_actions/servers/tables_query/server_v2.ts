@@ -223,7 +223,10 @@ function createServer(
         });
         if (queryResult.isErr()) {
           return {
-            isError: true,
+            // Certain errors we don't track as they can occur in the context of a normal execution.
+            isError: !["too_many_result_rows", "table_not_found"].includes(
+              queryResult.error.code
+            ),
             content: [
               {
                 type: "resource",
