@@ -22,7 +22,7 @@ const DEFAULT_MAX_RESULTS = 1000;
 const STREAM_THRESHOLD_BYTES = 3 * 1024 * 1024; // 3MB - files smaller than this will be buffered.
 const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
 
-// Files are faster to read than directories, so we can afford to have more files per index file.
+// Files are faster to upsert than directories, so we can afford to have more files per index file.
 const FILES_PER_INDEX = 4000; // Files per index file.
 const DIRECTORIES_PER_INDEX = 1500; // Directories per index file.
 
@@ -317,7 +317,7 @@ export class GCSRepositoryManager {
     const indexChunks = [
       // File chunks.
       ...fileChunks.map((fileChunk, index) => ({
-        index: index,
+        index,
         path: `${indexBasePath}_files_${index}.json`,
         data: {
           files: fileChunk,
@@ -331,11 +331,11 @@ export class GCSRepositoryManager {
       // Directory chunks.
       ...directoryChunks.map((directoryChunk, index) => ({
         index: fileChunks.length + index, // Continue numbering after file chunks.
-        path: `${indexBasePath}_directories_${index}.json`,
+        path: `${indexBasePath}_directories_${fileChunks.length + index}.json`,
         data: {
           files: [], // No files in directory chunks.
           directories: directoryChunk,
-          indexNumber: index,
+          indexNumber: fileChunks.length + index,
           totalFileIndexes: fileChunks.length,
           totalDirectoryIndexes: directoryChunks.length,
           createdAt: new Date().toISOString(),
