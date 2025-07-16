@@ -20,7 +20,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
-import { CapabilitiesConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/CapabilitiesConfigurationSheet";
+import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { KnowledgeServerName } from "@app/components/agent_builder/types";
 import { isKnowledgeServerName } from "@app/components/agent_builder/types";
@@ -236,7 +236,7 @@ export function AgentBuilderCapabilitiesBlock() {
         )}
       </div>
 
-      <CapabilitiesConfigurationSheet
+      <KnowledgeConfigurationSheet
         capability={openSheet}
         isOpen={openSheet !== null}
         onClose={handleCloseSheet}

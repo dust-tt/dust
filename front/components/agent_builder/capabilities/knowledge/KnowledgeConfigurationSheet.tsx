@@ -33,7 +33,7 @@ import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/D
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
-interface CapabilitiesConfigurationSheetProps {
+interface KnowledgeConfigurationSheetProps {
   capability: KnowledgeServerName | null;
   onSave: (action: AgentBuilderAction) => void;
   isOpen: boolean;
@@ -41,19 +41,20 @@ interface CapabilitiesConfigurationSheetProps {
   action?: AgentBuilderAction;
 }
 
-export function CapabilitiesConfigurationSheet({
+export function KnowledgeConfigurationSheet({
   capability,
   onSave,
   isOpen,
   onClose,
   action,
-}: CapabilitiesConfigurationSheetProps) {
+}: KnowledgeConfigurationSheetProps) {
   // We store as state to control the timing to update the content for exit animation.
   const [config, setConfig] = useState<CapabilityConfig | null>(null);
 
   const handleClose = () => {
     onClose();
 
+    // TODO: This is a hack and we should find a proper solution.
     // Wait until closing animation ends, otherwise exit animation won't work.
     setTimeout(() => {
       setConfig(null);
@@ -76,7 +77,7 @@ export function CapabilitiesConfigurationSheet({
       }}
     >
       {config && (
-        <CapabilitiesConfigurationSheetContent
+        <KnowledgeConfigurationSheetContent
           config={config}
           onClose={handleClose}
           action={action}
@@ -87,7 +88,7 @@ export function CapabilitiesConfigurationSheet({
   );
 }
 
-interface CapabilitiesConfigurationSheetContent {
+interface KnowledgeConfigurationSheetContent {
   config: CapabilityConfig;
   action?: AgentBuilderAction;
   onSave: (action: AgentBuilderAction) => void;
@@ -95,12 +96,12 @@ interface CapabilitiesConfigurationSheetContent {
 }
 
 // This component gets unmounted when config is null so no need to reset the state.
-function CapabilitiesConfigurationSheetContent({
+function KnowledgeConfigurationSheetContent({
   action,
   onSave,
   config,
   onClose,
-}: CapabilitiesConfigurationSheetContent) {
+}: KnowledgeConfigurationSheetContent) {
   const { owner, supportedDataSourceViews } = useAgentBuilderContext();
   const { spaces } = useSpacesContext();
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
