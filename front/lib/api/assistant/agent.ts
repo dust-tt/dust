@@ -37,7 +37,8 @@ import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import type { Authenticator } from "@app/lib/auth";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -215,7 +216,7 @@ async function runMultiActionsAgentLoop(
         : // Otherwise, we let the agent decide which action to run (if any).
           configuration.actions;
 
-    const loopIterationStream = runMultiActionsAgent(auth, {
+    const loopIterationStream = runMultiActionsAgent(auth.toJSON(), {
       agentConfiguration: configuration,
       conversation,
       userMessage,
@@ -383,7 +384,7 @@ async function runMultiActionsAgentLoop(
 // This method is used by the multi-actions execution loop to pick the next action to execute and
 // generate its inputs.
 async function* runMultiActionsAgent(
-  auth: Authenticator,
+  authType: AuthenticatorType,
   {
     agentConfiguration,
     conversation,
@@ -411,6 +412,9 @@ async function* runMultiActionsAgent(
   | AgentContentEvent
   | AgentStepContentEvent
 > {
+  // Recreate the Authenticator instance from the serialized type
+  const auth = await Authenticator.fromJSON(authType);
+
   const model = getSupportedModelConfig(agentConfiguration.model);
 
   if (!model) {
