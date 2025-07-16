@@ -24,7 +24,7 @@ import path from "path";
 
 import { normalizeError } from "./errors.js";
 
-interface grepRes {
+interface GrepResult {
   filePath: string;
   content: string;
   lineNumber: number;
@@ -118,7 +118,7 @@ export async function performGrep(
 }
 
 export function formatGrepRes(unformattedGrep: string, basePath: string) {
-  const grepRes: grepRes[] = [];
+  const grepResults: GrepResult[] = [];
 
   let grepLines = unformattedGrep.split(EOL);
   grepLines.forEach((line) => {
@@ -151,12 +151,12 @@ export function formatGrepRes(unformattedGrep: string, basePath: string) {
     // Handle content formatting
     const content = line.substring(secondColon + 1);
 
-    grepRes.push({
+    grepResults.push({
       filePath: relativePath,
       lineNumber: lineNumber,
       content: content,
     });
   });
 
-  return grepRes;
+  return grepResults;
 }
