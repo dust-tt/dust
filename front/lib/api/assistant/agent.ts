@@ -165,6 +165,7 @@ async function runMultiActionsAgentLoop(
   configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
+  // TODO(DURABLE-AGENTS 2025-07-10): DRY those two arguments to stick with only one.
   agentMessage: AgentMessageType,
   redisChannel: string,
   agentMessageRow: AgentMessage
@@ -258,8 +259,8 @@ async function runMultiActionsAgentLoop(
           // against the model outputting something unreasonable.
           event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
-          const eventStreamGenerators = event.actions.map(
-            ({ action, inputs, functionCallId }, index) => {
+          await Promise.all(
+            event.actions.map(({ action, inputs, functionCallId }, index) => {
               // Find the step content ID for this function call
               const stepContentId = functionCallId
                 ? functionCallStepContentIds[functionCallId]
@@ -277,30 +278,11 @@ async function runMultiActionsAgentLoop(
                 stepActions: event.actions.map((a) => a.action),
                 citationsRefsOffset,
                 stepContentId,
+                agentMessageRow,
+                redisChannel,
               });
-            }
+            })
           );
-
-          const eventStreamPromises = eventStreamGenerators.map((gen) =>
-            gen.next()
-          );
-          while (eventStreamPromises.length > 0) {
-            const winner = await Promise.race(
-              eventStreamPromises.map(async (p, i) => {
-                return { v: await p, offset: i };
-              })
-            );
-            if (winner.v.done) {
-              eventStreamGenerators.splice(winner.offset, 1);
-              // eslint-disable-next-line @typescript-eslint/no-floating-promises
-              eventStreamPromises.splice(winner.offset, 1);
-            } else {
-              eventStreamPromises[winner.offset] =
-                eventStreamGenerators[winner.offset].next();
-              await publishEvent(winner.v.value);
-            }
-          }
-
           // After we are done running actions, we update the inter-step refsOffset.
           for (let j = 0; j < event.actions.length; j++) {
             citationsRefsOffset += getCitationsCount({
@@ -1206,7 +1188,7 @@ async function* runMultiActionsAgent(
   return;
 }
 
-async function* runAction(
+async function runAction(
   auth: Authenticator,
   {
     configuration,
@@ -1220,6 +1202,9 @@ async function* runAction(
     stepActions,
     citationsRefsOffset,
     stepContentId,
+    // TODO(DURABLE-AGENTS 2025-07-10): DRY those arguments with agentMessage to stick with only one
+    agentMessageRow,
+    redisChannel,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: ActionConfigurationType;
@@ -1232,11 +1217,22 @@ async function* runAction(
     stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
     stepContentId?: ModelId;
+    agentMessageRow: AgentMessage;
+    redisChannel: string;
   }
-): AsyncGenerator<
-  AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
-  void
-> {
+): Promise<void> {
+  const redisHybridManager = getRedisHybridManager();
+
+  const publishEvent = async (event: AgentLoopEvent) => {
+    // Process database operations BEFORE publishing to Redis.
+    await processEventForDatabase(event, agentMessageRow);
+    await redisHybridManager.publish(
+      redisChannel,
+      JSON.stringify(event),
+      "agent_execution"
+    );
+  };
+
   if (isMCPToolConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
@@ -1256,7 +1252,7 @@ async function* runAction(
     for await (const event of eventStream) {
       switch (event.type) {
         case "tool_error":
-          yield {
+          await publishEvent({
             type: "agent_error",
             created: event.created,
             configurationId: configuration.sId,
@@ -1266,33 +1262,27 @@ async function* runAction(
               message: event.error.message,
               metadata: event.error.metadata,
             },
-          };
+          });
           return;
 
-        case "tool_params":
-          yield event;
-          break;
-
         case "tool_success":
-          yield {
+          await publishEvent({
             type: "agent_action_success",
             created: event.created,
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             action: event.action,
-          };
+          });
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
           agentMessage.actions.push(event.action);
           break;
 
+        case "tool_params":
         case "tool_approve_execution":
-          yield event;
-          break;
-
         case "tool_notification":
-          yield event;
+          await publishEvent(event);
           break;
 
         default:
