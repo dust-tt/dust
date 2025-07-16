@@ -235,29 +235,21 @@ async function runMultiActionsAgentLoop(
               event.error
             );
 
-            if (category !== "retryable_model_error") {
+            if (
+              category !== "retryable_model_error" ||
+              autoRetryCount >= MAX_AUTO_RETRY
+            ) {
               localLogger.error(
                 {
                   elapsedTime: Date.now() - now,
                   error: event.error,
                   publicMessage,
                 },
-                "Error running multi-actions agent."
-              );
-              yield {
-                ...event,
-                error: { ...event.error, message: publicMessage },
-              };
-              return;
-            }
-            if (autoRetryCount >= MAX_AUTO_RETRY) {
-              localLogger.error(
-                {
-                  elapsedTime: Date.now() - now,
-                  error: event.error,
-                  publicMessage,
-                },
-                "Error running multi-actions agent (max retries reached)."
+                `Error running multi-actions agent (${
+                  category === "retryable_model_error"
+                    ? "max retries reached"
+                    : "not retryable"
+                }).`
               );
               publishEvent({
                 ...event,
