@@ -3,6 +3,7 @@ import { Readable } from "node:stream";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { UploadResult } from "convertapi";
 import ConvertAPI from "convertapi";
+import { marked } from "marked";
 import { extname } from "path";
 import { z } from "zod";
 
@@ -26,7 +27,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
 
 const OUTPUT_FORMATS = [
   "csv",
-  "doc",
   "docx",
   "gif",
   "html",
@@ -41,11 +41,26 @@ const OUTPUT_FORMATS = [
   "xlsx",
   "xml",
 ] as const;
-
 type OutputFormatType = (typeof OUTPUT_FORMATS)[number];
+
+const BINARY_FORMATS: OutputFormatType[] = [
+  "docx",
+  "pdf",
+  "pptx",
+  "xls",
+  "xlsx",
+  "gif",
+  "jpg",
+  "png",
+  "webp",
+];
 
 function isValidOutputType(extension: string): extension is OutputFormatType {
   return OUTPUT_FORMATS.includes(extension as OutputFormatType);
+}
+
+function isBinaryFormat(extension: string): extension is OutputFormatType {
+  return BINARY_FORMATS.includes(extension as OutputFormatType);
 }
 
 function getContentTypeFromOutputFormat(
@@ -58,8 +73,6 @@ function getContentTypeFromOutputFormat(
       return "image/gif";
     case "pdf":
       return "application/pdf";
-    case "doc":
-      return "application/msword";
     case "docx":
       return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     case "pptx":
@@ -231,8 +244,15 @@ const createServer = (auth: Authenticator): McpServer => {
         .describe(
           "The content of the file to generate. You can either provide the id of a file in the conversation (note: if the file ID is already in the desired format, no conversion is needed), the url to a file or the content directly."
         ),
+      source_format: z
+        .enum(["text", "markdown", "html"])
+        .optional()
+        .default("text")
+        .describe(
+          "The format of the input content. Use 'markdown' for markdown-formatted text, 'html' for HTML content, or 'text' for plain text (default)."
+        ),
     },
-    async ({ file_name, file_content }) => {
+    async ({ file_name, file_content, source_format = "text" }) => {
       if (!process.env.CONVERTAPI_API_KEY) {
         return makeMCPToolTextError("Missing environment variable.");
       }
@@ -251,6 +271,145 @@ const createServer = (auth: Authenticator): McpServer => {
         };
       }
 
+      // If the format requires conversion and we have plain text content,
+      // we need to convert it to HTML first.
+      if (
+        isBinaryFormat(extension) &&
+        !validateUrl(file_content).valid &&
+        !getResourceNameAndIdFromSId(file_content)
+      ) {
+        const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
+
+        try {
+          let htmlContent: string;
+
+          // Convert content to HTML based on source format
+          switch (source_format) {
+            case "markdown": {
+              // Parse markdown to HTML
+              const parsedMarkdown = await marked.parse(file_content);
+              htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
+h1, h2, h3, h4, h5, h6 { margin-top: 1em; margin-bottom: 0.5em; }
+p { margin-bottom: 10px; }
+code { background-color: #f4f4f4; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+pre { background-color: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }
+pre code { padding: 0; }
+blockquote { border-left: 4px solid #ddd; padding-left: 1em; margin-left: 0; color: #666; }
+ul, ol { margin-bottom: 10px; }
+li { margin-bottom: 5px; }
+strong { font-weight: bold; }
+em { font-style: italic; }
+a { color: #0066cc; text-decoration: none; }
+a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+${parsedMarkdown}
+</body>
+</html>`;
+              break;
+            }
+
+            case "html": {
+              // If already HTML, ensure it has proper structure
+              if (
+                file_content.includes("<html") &&
+                file_content.includes("<body")
+              ) {
+                htmlContent = file_content;
+              } else {
+                // Wrap partial HTML in document structure
+                htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
+</style>
+</head>
+<body>
+${file_content}
+</body>
+</html>`;
+              }
+              break;
+            }
+
+            case "text":
+            default: {
+              // Convert plain text to paragraphs
+              htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
+p { margin-bottom: 10px; }
+</style>
+</head>
+<body>
+${file_content
+  .split("\n")
+  .map((line) => `<p>${line || "&nbsp;"}</p>`)
+  .join("\n")}
+</body>
+</html>`;
+              break;
+            }
+          }
+
+          const tempFileName = file_name.replace(`.${extension}`, "");
+          const uploadResult = await convertapi.upload(
+            Readable.from(htmlContent),
+            `${tempFileName}.html`
+          );
+
+          const result = await convertapi.convert(
+            extension,
+            {
+              File: uploadResult,
+            },
+            "html"
+          );
+
+          if (result.files.length > 0) {
+            const file = result.files[0];
+            const response = await fetch(file.url);
+            const buffer = await response.arrayBuffer();
+            const base64 = Buffer.from(buffer).toString("base64");
+
+            return {
+              isError: false,
+              content: [
+                {
+                  type: "resource" as const,
+                  resource: {
+                    name: file_name,
+                    blob: base64,
+                    text: "Your file was generated successfully.",
+                    mimeType: getContentTypeFromOutputFormat(extension),
+                    uri: "",
+                  },
+                },
+              ],
+            };
+          }
+        } catch (e) {
+          return makeMCPToolTextError(
+            `There was an error generating your ${extension} file: ${normalizeError(
+              e
+            )}. ` +
+              `For complex conversions, consider using the convert_file_format tool instead.`
+          );
+        }
+      }
+
+      // Basic case: we have a text-based format and we can generate the file directly.
       return {
         isError: false,
         content: [
