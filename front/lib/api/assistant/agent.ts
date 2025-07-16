@@ -395,7 +395,7 @@ async function runMultiActionsAgentLoop(
       }
 
       autoRetryCount++;
-    } while (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY);
+    } while (isRetryableModelError && autoRetryCount <= MAX_AUTO_RETRY);
   }
 }
 
