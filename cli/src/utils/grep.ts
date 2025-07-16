@@ -23,6 +23,7 @@ import { EOL } from "os";
 import path from "path";
 
 import { normalizeError } from "./errors.js";
+import { Err, Ok, Result } from "@dust-tt/client";
 
 interface GrepResult {
   filePath: string;
@@ -32,9 +33,9 @@ interface GrepResult {
 
 export async function performGrep(
   pattern: string,
-  path: string,
+  searchPath: string,
   file_pattern?: string
-): Promise<string> {
+): Promise<Result<string, Error>> {
   // recursive, number lines, include filename, no escape needed
   const grepArgs = ["-r", "-n", "-H", "-E"];
   const commonExcludes = [".git", "node_modules", "bower_components"];
@@ -49,7 +50,7 @@ export async function performGrep(
   try {
     const output = await new Promise<string>((resolve, reject) => {
       const child = spawn("grep", grepArgs, {
-        cwd: path,
+        cwd: searchPath,
         windowsHide: true,
       });
       const stdoutChunks: Buffer[] = [];
@@ -106,14 +107,9 @@ export async function performGrep(
       child.on("close", onClose);
     });
 
-    return output;
+    return new Ok(output);
   } catch (grepError: unknown) {
-    console.debug(
-      `GrepLogic: System grep failed: ${
-        normalizeError(grepError).message
-      }. Falling back...`
-    );
-    return "";
+    return new Err(normalizeError(grepError));
   }
 }
 
@@ -127,11 +123,11 @@ export function formatGrepRes(unformattedGrep: string, basePath: string) {
     }
 
     const firstColon = line.indexOf(":");
-    if (firstColon == -1) {
+    if (firstColon === -1) {
       return;
     }
     const secondColon = line.indexOf(":", firstColon + 1);
-    if (secondColon == -1) {
+    if (secondColon === -1) {
       return;
     }
 

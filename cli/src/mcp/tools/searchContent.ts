@@ -27,90 +27,90 @@ export class SearchContentTool implements McpTool {
     path = ".",
     file_pattern = "*",
   }: z.infer<typeof this.inputSchema>) {
-    try {
-      const grepRes = await performGrep(pattern, path, file_pattern);
-      const formattedGrep = formatGrepRes(grepRes, path);
-
-      if (formattedGrep.length === 0) {
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `No matches found for: ${pattern}`,
-            },
-          ],
-        };
-      }
-
-      // Group results by file path and sort by line number
-      const fileGroups = new Map<
-        string,
-        Array<{ lineNumber: number; content: string }>
-      >();
-
-      formattedGrep.forEach((result) => {
-        if (!fileGroups.has(result.filePath)) {
-          fileGroups.set(result.filePath, []);
-        }
-        fileGroups.get(result.filePath)!.push({
-          lineNumber: result.lineNumber,
-          content: result.content,
-        });
-      });
-
-      // Sort each file's results by line number
-      fileGroups.forEach((results) => {
-        results.sort((a, b) => a.lineNumber - b.lineNumber);
-      });
-
-      // Format output with relative paths ordered by line number
-      let output = `Found ${formattedGrep.length} matches for "${pattern}" in the following directories:\n\n`;
-
-      Array.from(fileGroups.entries())
-        .sort(([a], [b]) => a.localeCompare(b))
-        .forEach(([filePath, results]) => {
-          output += `${filePath}:\n`;
-          results.forEach((result) => {
-            let truncated = false;
-            if (result.content.length > MAX_LINE_LENGTH_TEXT_FILE) {
-              truncated = true;
-            }
-            output += `  ${result.lineNumber}: ${result.content.substring(
-              0,
-              Math.min(MAX_LINE_LENGTH_TEXT_FILE, result.content.length)
-            )}`;
-            if (truncated) {
-              output += "... [cut]";
-            }
-            output += "\n";
-          });
-          output += "----------\n";
-        });
-
-      output =
-        `[The content of these files have been partially cut: some lines exceeded maximum length of ${MAX_LINE_LENGTH_TEXT_FILE} characters.]\n` +
-        output;
-
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: output.trim(),
-          },
-        ],
-      };
-    } catch (error) {
+    const grepRes = await performGrep(pattern, path, file_pattern);
+    if (grepRes.isErr()) {
       return {
         content: [
           {
             type: "text" as const,
             text: `Error searching for "${pattern}": ${
-              normalizeError(error).message
+              normalizeError(grepRes.error).message
             }`,
           },
         ],
         isError: true,
       };
     }
+
+    const formattedGrep = formatGrepRes(grepRes.value, path);
+
+    if (formattedGrep.length === 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `No matches found for: ${pattern}`,
+          },
+        ],
+      };
+    }
+
+    // Group results by file path and sort by line number
+    const fileGroups = new Map<
+      string,
+      Array<{ lineNumber: number; content: string }>
+    >();
+
+    formattedGrep.forEach((result) => {
+      if (!fileGroups.has(result.filePath)) {
+        fileGroups.set(result.filePath, []);
+      }
+      fileGroups.get(result.filePath)!.push({
+        lineNumber: result.lineNumber,
+        content: result.content,
+      });
+    });
+
+    // Sort each file's results by line number
+    fileGroups.forEach((results) => {
+      results.sort((a, b) => a.lineNumber - b.lineNumber);
+    });
+
+    // Format output with relative paths ordered by line number
+    let output = `Found ${formattedGrep.length} matches for "${pattern}" in the following directories:\n\n`;
+
+    Array.from(fileGroups.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .forEach(([filePath, results]) => {
+        output += `${filePath}:\n`;
+        results.forEach((result) => {
+          let truncated = false;
+          if (result.content.length > MAX_LINE_LENGTH_TEXT_FILE) {
+            truncated = true;
+          }
+          output += `  ${result.lineNumber}: ${result.content.substring(
+            0,
+            Math.min(MAX_LINE_LENGTH_TEXT_FILE, result.content.length)
+          )}`;
+          if (truncated) {
+            output += "... [cut]";
+          }
+          output += "\n";
+        });
+        output += "----------\n";
+      });
+
+    output =
+      `[The content of these files have been partially cut: some lines exceeded maximum length of ${MAX_LINE_LENGTH_TEXT_FILE} characters.]\n` +
+      output;
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: output.trim(),
+        },
+      ],
+    };
   }
 }
