@@ -902,20 +902,40 @@ async function* runMultiActionsAgent(
           return;
         }
 
+        // Extract token usage from block execution metadata
+        const meta = e.meta as {
+          token_usage?: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            reasoning_tokens?: number;
+          };
+        } | null;
+        const reasoningTokens = meta?.token_usage?.reasoning_tokens || 0;
+
         const contents = (block.message.contents ?? []).map((content) => {
           if (content.type === "reasoning") {
             return {
               ...content,
               value: {
                 ...content.value,
-                // TODO(DURABLE-AGENTS 2025-07-16): correct value for tokens.
-                tokens: 0,
+                tokens: 0, // Will be updated for the last reasoning item
                 provider: model.providerId,
               },
             } satisfies ReasoningContentType;
           }
           return content;
         });
+
+        // We unfortunately don't currently have a proper breakdown of reasoning tokens per item,
+        // so we set the reasoning token count on the last reasoning item.
+        for (let i = contents.length - 1; i >= 0; i--) {
+          const content = contents[i];
+          if (content.type === "reasoning") {
+            content.value.tokens = reasoningTokens;
+            contents[i] = content;
+            break;
+          }
+        }
 
         output = {
           actions: [],
