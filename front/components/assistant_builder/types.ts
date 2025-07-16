@@ -203,8 +203,8 @@ export type ActionSpecificationWithType = ActionSpecification & {
 export function getDefaultAssistantState() {
   return {
     // Data Visualization is not an action but we show it like an action.
-    // We enable it by default so we should push it to actions list.
-    actions: [getDataVisualizationActionConfiguration()],
+    // Visualization is now disabled by default.
+    actions: [],
     handle: null,
     scope: "hidden",
     description: null,
@@ -220,7 +220,7 @@ export function getDefaultAssistantState() {
         CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     tags: [],
     editors: [],
