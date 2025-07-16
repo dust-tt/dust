@@ -324,19 +324,17 @@ export class GCSRepositoryManager {
           directories: [], // No directories in file chunks.
           indexNumber: index,
           totalFileIndexes: fileChunks.length,
-          totalDirectoryIndexes: directoryChunks.length,
           createdAt: new Date().toISOString(),
         },
       })),
       // Directory chunks.
       ...directoryChunks.map((directoryChunk, index) => ({
         index: fileChunks.length + index, // Continue numbering after file chunks.
-        path: `${indexBasePath}_directories_${fileChunks.length + index}.json`,
+        path: `${indexBasePath}_directories_${index}.json`,
         data: {
           files: [], // No files in directory chunks.
           directories: directoryChunk,
-          indexNumber: fileChunks.length + index,
-          totalFileIndexes: fileChunks.length,
+          indexNumber: index,
           totalDirectoryIndexes: directoryChunks.length,
           createdAt: new Date().toISOString(),
         },
