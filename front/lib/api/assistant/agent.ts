@@ -215,160 +215,194 @@ async function runMultiActionsAgentLoop(
         : // Otherwise, we let the agent decide which action to run (if any).
           configuration.actions;
 
-    const loopIterationStream = runMultiActionsAgent(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      userMessage,
-      agentMessage,
-      agentActions: actions,
-      isLastGenerationIteration,
-      isLegacyAgent,
-    });
+    let autoRetryCount = 0;
 
-    for await (const event of loopIterationStream) {
-      switch (event.type) {
-        case "agent_error":
-          const { publicMessage } = categorizeAgentErrorMessage(event.error);
+    do {
+      const loopIterationStream = runMultiActionsAgent(auth, {
+        agentConfiguration: configuration,
+        conversation,
+        userMessage,
+        agentMessage,
+        agentActions: actions,
+        isLastGenerationIteration,
+        isLegacyAgent,
+      });
 
-          localLogger.error(
-            {
-              elapsedTime: Date.now() - now,
-              error: event.error,
-              publicErrorMessage: publicMessage,
-            },
-            "Error running multi-actions agent."
-          );
+      for await (const event of loopIterationStream) {
+        switch (event.type) {
+          case "agent_error":
+            const { category, publicMessage } = categorizeAgentErrorMessage(
+              event.error
+            );
 
-          await publishEvent({
-            ...event,
-            error: { ...event.error, message: publicMessage },
-          });
-          return;
-        case "agent_actions":
-          runIds.push(event.runId);
-
-          localLogger.info(
-            {
-              elapsed: Date.now() - now,
-            },
-            "[ASSISTANT_TRACE] Action inputs generation"
-          );
-
-          // We received the actions to run, but will enforce a limit on the number of actions (16)
-          // which is very high. Over that the latency will just be too high. This is a guardrail
-          // against the model outputting something unreasonable.
-          event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
-
-          await Promise.all(
-            event.actions.map(({ action, inputs, functionCallId }, index) => {
-              // Find the step content ID for this function call
-              const stepContentId = functionCallId
-                ? functionCallStepContentIds[functionCallId]
-                : undefined;
-
-              return runAction(auth, {
-                configuration,
-                actionConfiguration: action,
-                conversation,
-                agentMessage,
-                inputs,
-                functionCallId,
-                step: i,
-                stepActionIndex: index,
-                stepActions: event.actions.map((a) => a.action),
-                citationsRefsOffset,
-                stepContentId,
-                agentMessageRow,
-                redisChannel,
+            if (
+              category !== "retryable_model_error" ||
+              autoRetryCount >= MAX_AUTO_RETRY
+            ) {
+              localLogger.error(
+                {
+                  elapsedTime: Date.now() - now,
+                  error: event.error,
+                  publicMessage,
+                },
+                `Error running multi-actions agent (${
+                  category === "retryable_model_error"
+                    ? "max retries reached"
+                    : "not retryable"
+                }).`
+              );
+              await publishEvent({
+                ...event,
+                error: {
+                  ...event.error,
+                  message: publicMessage,
+                },
               });
-            })
-          );
-          // After we are done running actions, we update the inter-step refsOffset.
-          for (let j = 0; j < event.actions.length; j++) {
-            citationsRefsOffset += getCitationsCount({
-              agentConfiguration: configuration,
-              stepActions: event.actions.map((a) => a.action),
-              stepActionIndex: j,
+              return;
+            }
+
+            logger.warn(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                error: event.error,
+                publicMessage,
+                retryCount: autoRetryCount,
+              },
+              "Auto-retrying multi-actions agent."
+            );
+            // We assume here that runMultiActionsAgent returns after yielding an agent_error, so
+            // that simply breaking the switch here will loop.
+            break;
+          case "agent_actions":
+            runIds.push(event.runId);
+
+            localLogger.info(
+              {
+                elapsed: Date.now() - now,
+              },
+              "[ASSISTANT_TRACE] Action inputs generation"
+            );
+
+            // We received the actions to run, but will enforce a limit on the number of actions (16)
+            // which is very high. Over that the latency will just be too high. This is a guardrail
+            // against the model outputting something unreasonable.
+            event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
+
+            await Promise.all(
+              event.actions.map(({ action, inputs, functionCallId }, index) => {
+                // Find the step content ID for this function call
+                const stepContentId = functionCallId
+                  ? functionCallStepContentIds[functionCallId]
+                  : undefined;
+
+                return runAction(auth, {
+                  configuration,
+                  actionConfiguration: action,
+                  conversation,
+                  agentMessage,
+                  inputs,
+                  functionCallId,
+                  step: i,
+                  stepActionIndex: index,
+                  stepActions: event.actions.map((a) => a.action),
+                  citationsRefsOffset,
+                  stepContentId,
+                  agentMessageRow,
+                  redisChannel,
+                });
+              })
+            );
+            // After we are done running actions, we update the inter-step refsOffset.
+            for (let j = 0; j < event.actions.length; j++) {
+              citationsRefsOffset += getCitationsCount({
+                agentConfiguration: configuration,
+                stepActions: event.actions.map((a) => a.action),
+                stepActionIndex: j,
+              });
+            }
+
+            break;
+
+          case "agent_message_content":
+            processedContent += event.processedContent;
+            break;
+
+          case "agent_step_content":
+            const stepContent = await AgentStepContentResource.makeNew({
+              workspaceId: conversation.owner.id,
+              agentMessageId: agentMessage.agentMessageId,
+              step: i,
+              index: event.index,
+              type: event.content.type,
+              value: event.content,
+              version: autoRetryCount,
             });
-          }
 
-          break;
+            // If this is a function call step content, track its ID.
+            if (
+              event.content.type === "function_call" &&
+              event.content.value.id
+            ) {
+              functionCallStepContentIds[event.content.value.id] =
+                stepContent.id;
+            }
 
-        case "agent_message_content":
-          processedContent += event.processedContent;
-          break;
+            agentMessage.contents.push({
+              step: i,
+              content: event.content,
+            });
+            break;
 
-        case "agent_step_content":
-          const stepContent = await AgentStepContentResource.makeNew({
-            workspaceId: conversation.owner.id,
-            agentMessageId: agentMessage.agentMessageId,
-            step: i,
-            index: event.index,
-            type: event.content.type,
-            value: event.content,
-            version: 0,
-          });
+          // Generation events
+          case "generation_tokens":
+            await publishEvent(event);
+            break;
+          case "generation_cancel":
+            await publishEvent({
+              type: "agent_generation_cancelled",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+            });
+            return;
+          case "generation_success":
+            if (event.chainOfThought.length) {
+              if (!agentMessage.chainOfThought) {
+                agentMessage.chainOfThought = "";
+              }
+              agentMessage.chainOfThought += event.chainOfThought;
+            }
+            agentMessage.content = processedContent;
+            agentMessage.status = "succeeded";
 
-          // If this is a function call step content, track its ID.
-          if (
-            event.content.type === "function_call" &&
-            event.content.value.id
-          ) {
-            functionCallStepContentIds[event.content.value.id] = stepContent.id;
-          }
+            runIds.push(event.runId);
 
-          agentMessage.contents.push({
-            step: i,
-            content: event.content,
-          });
-          break;
+            await publishEvent({
+              type: "agent_message_success",
+              created: Date.now(),
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              message: agentMessage,
+              runIds: runIds,
+            });
+            return;
 
-        // Generation events
-        case "generation_tokens":
-          await publishEvent(event);
-          break;
-        case "generation_cancel":
-          await publishEvent({
-            type: "agent_generation_cancelled",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-          });
-          return;
-        case "generation_success":
-          if (event.chainOfThought.length) {
+          case "agent_chain_of_thought":
             if (!agentMessage.chainOfThought) {
               agentMessage.chainOfThought = "";
             }
             agentMessage.chainOfThought += event.chainOfThought;
-          }
-          agentMessage.content = processedContent;
-          agentMessage.status = "succeeded";
+            // This event is not useful outside of the multi-actions loop, so we don't yield it.
+            break;
 
-          runIds.push(event.runId);
-
-          await publishEvent({
-            type: "agent_message_success",
-            created: Date.now(),
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            message: agentMessage,
-            runIds: runIds,
-          });
-          return;
-
-        case "agent_chain_of_thought":
-          if (!agentMessage.chainOfThought) {
-            agentMessage.chainOfThought = "";
-          }
-          agentMessage.chainOfThought += event.chainOfThought;
-          // This event is not useful outside of the multi-actions loop, so we don't yield it.
-          break;
-
-        default:
-          assertNever(event);
+          default:
+            assertNever(event);
+        }
       }
-    }
+
+      autoRetryCount++;
+    } while (autoRetryCount <= MAX_AUTO_RETRY);
   }
 }
 
@@ -644,76 +678,34 @@ async function* runMultiActionsAgent(
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
-  let autoRetryCount = 0;
-  let isRetryableModelError = false;
-  let res;
-
-  do {
-    res = await runActionStreamed(
-      auth,
-      "assistant-v2-multi-actions-agent",
-      runConfig,
-      [
-        {
-          conversation: modelConversationRes.value.modelConversation,
-          specifications,
-          prompt,
-        },
-      ],
+  const res = await runActionStreamed(
+    auth,
+    "assistant-v2-multi-actions-agent",
+    runConfig,
+    [
       {
-        conversationId: conversation.sId,
-        workspaceId: conversation.owner.sId,
-        userMessageId: userMessage.sId,
-      }
-    );
-
-    if (res.isErr()) {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          error: res.error,
-        },
-        "Error running multi-actions agent."
-      );
-
-      const { category } = categorizeAgentErrorMessage({
-        code: "multi_actions_error",
-        message: res.error.message,
-      });
-
-      isRetryableModelError = category === "retryable_model_error";
-
-      if (!(isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY)) {
-        yield {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "multi_actions_error",
-            message: `Error running agent: [${res.error.type}] ${res.error.message}`,
-            metadata: null,
-          },
-        } satisfies AgentErrorEvent;
-
-        return;
-      }
-
-      logger.warn(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          error: res.error.message,
-        },
-        "Auto-retrying multi-actions agent."
-      );
+        conversation: modelConversationRes.value.modelConversation,
+        specifications,
+        prompt,
+      },
+    ],
+    {
+      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      userMessageId: userMessage.sId,
     }
-
-    autoRetryCount += 1;
-  } while (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY);
+  );
 
   if (res.isErr()) {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        error: res.error,
+      },
+      "Error running multi-actions agent."
+    );
+
     yield {
       type: "agent_error",
       created: Date.now(),
@@ -725,7 +717,6 @@ async function* runMultiActionsAgent(
         metadata: null,
       },
     } satisfies AgentErrorEvent;
-
     return;
   }
 
