@@ -24,6 +24,7 @@ import {
 } from "@connectors/connectors/github/lib/code/supported_files";
 import {
   isBadCredentials,
+  isGithubIssueWasDeletedError,
   isGithubRequestErrorNotFound,
   isGithubRequestErrorRepositoryAccessBlocked,
   isGithubRequestRedirectCountExceededError,
@@ -315,10 +316,10 @@ export async function getIssue(
     // by safely ignoring the issue and logging the error.
     if (
       isGithubRequestRedirectCountExceededError(err) ||
-      isGithubRequestErrorNotFound(err)
+      isGithubRequestErrorNotFound(err) ||
+      isGithubIssueWasDeletedError(err)
     ) {
       logger.info({ err: err.message }, "Failed to get issue.");
-
       return null;
     }
 
