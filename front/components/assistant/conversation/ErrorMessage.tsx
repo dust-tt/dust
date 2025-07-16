@@ -26,7 +26,11 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
   return (
     <div className="flex flex-col gap-9">
       <div className="flex flex-col gap-1 sm:flex-row">
-        <Chip color="warning" label={truncate(error.message, 32)} size="xs" />
+        <Chip
+          color="warning"
+          label={"Error: " + truncate(error.message, 30)}
+          size="xs"
+        />
         <Popover
           popoverTriggerAsChild
           trigger={
