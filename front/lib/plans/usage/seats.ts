@@ -1,16 +1,12 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 export async function countActiveSeatsInWorkspace(
   workspaceId: string
 ): Promise<number> {
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      sId: workspaceId,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
     throw new Error(`Workspace not found for sId: ${workspaceId}`);
   }
