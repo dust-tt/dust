@@ -82,9 +82,15 @@ function createServer(
       }
       const tableConfigurations = tableConfigurationsRes.value;
       if (tableConfigurations.length === 0) {
-        return makeMCPToolTextError(
-          "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
-        );
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
+            },
+          ],
+        };
       }
       const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
         ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
@@ -177,9 +183,15 @@ function createServer(
         }
         const tableConfigurations = tableConfigurationsRes.value;
         if (tableConfigurations.length === 0) {
-          return makeMCPToolTextError(
-            "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool."
-          );
+          return {
+            isError: false,
+            content: [
+              {
+                type: "text",
+                text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
+              },
+            ],
+          };
         }
         const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
           ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
@@ -211,7 +223,10 @@ function createServer(
         });
         if (queryResult.isErr()) {
           return {
-            isError: true,
+            // Certain errors we don't track as they can occur in the context of a normal execution.
+            isError: !["too_many_result_rows", "table_not_found"].includes(
+              queryResult.error.code
+            ),
             content: [
               {
                 type: "resource",
