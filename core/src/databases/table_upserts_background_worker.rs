@@ -87,7 +87,7 @@ impl TableUpsertsBackgroundWorker {
             GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(&table)
                 .await?;
         let rows =
-            GoogleCloudStorageBackgroundProcessingStore::get_dedupped_rows_from_all_files(&files)
+            GoogleCloudStorageBackgroundProcessingStore::get_deduped_rows_from_all_files(&files)
                 .await?;
         let local_table = LocalTable::from_table(table.clone()).unwrap();
         local_table

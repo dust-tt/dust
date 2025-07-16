@@ -103,7 +103,7 @@ impl GoogleCloudStorageBackgroundProcessingStore {
         Ok(files.into_iter().map(|(name, _)| name).collect())
     }
 
-    pub async fn get_dedupped_rows_from_all_files(files: &Vec<String>) -> Result<Vec<Row>> {
+    pub async fn get_deduped_rows_from_all_files(files: &Vec<String>) -> Result<Vec<Row>> {
         let mut all_rows = Vec::new();
 
         for file in files {
