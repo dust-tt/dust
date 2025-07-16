@@ -375,7 +375,11 @@ export async function syncNonThreaded({
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const slackClient = await getSlackClient(connectorId);
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    // TODO(SLACK-PANIC): Remove/uncomment.
+    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
+  });
   const nextCursor: string | undefined = undefined;
   const messages: MessageElement[] = [];
 
