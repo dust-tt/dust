@@ -601,8 +601,15 @@ impl LocalTable {
             lock_manager.unlock(&lock).await;
             Ok(())
         } else {
-            // For non-truncate, use the background worker
-            self.schedule_background_upsert_or_delete(rows).await
+            // We can only handle non-truncate upserts if the table is already migrated.
+            // Otherwise, we have no base data to make the incremental updates against.
+            if self.table.migrated_to_csv() {
+                // For non-truncate, use the background worker
+                self.schedule_background_upsert_or_delete(rows).await
+            } else {
+                info!("upsert_rows_to_gcs_or_queue_work: table not migrated to CSV, skipping GCS upsert for non-truncate");
+                Ok(())
+            }
         }
     }
 
@@ -682,23 +689,20 @@ impl LocalTable {
         // backward-compatible with the previous one. The other way around would not be true -- old
         // schema doesn't necessarily work with the new rows. This is why we cannot `try_join_all`.
 
-        // Only do it if we are truncating or if the table is already migrated to CSV.
-        if truncate || self.table.migrated_to_csv() {
-            let gcs_store = GoogleCloudStorageDatabasesStore::new();
-            gcs_store
-                .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
-                .await?;
+        let gcs_store = GoogleCloudStorageDatabasesStore::new();
+        gcs_store
+            .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+            .await?;
 
-            store
-                .set_data_source_table_migrated_to_csv(
-                    &self.table.project,
-                    &self.table.data_source_id,
-                    &self.table.table_id,
-                    true,
-                    None,
-                )
-                .await?;
-        }
+        store
+            .set_data_source_table_migrated_to_csv(
+                &self.table.project,
+                &self.table.data_source_id,
+                &self.table.table_id,
+                true,
+                None,
+            )
+            .await?;
 
         info!(
             duration = utils::now() - now,
