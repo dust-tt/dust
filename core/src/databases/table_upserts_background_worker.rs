@@ -110,16 +110,20 @@ impl TableUpsertsBackgroundWorker {
             .hgetall(REDIS_TABLE_UPSERT_HASH_NAME)
             .await?;
 
-        // This includes both upserts and deletes
-        let mut active_tables: Vec<(String, TableUpsertActivityData)> = all_values
-            .into_iter()
-            .filter_map(|(key, json_value)| {
-                serde_json::from_str(&json_value)
-                    .ok()
-                    .map(|call_data| (key, call_data))
-            })
-            .collect();
-        active_tables.sort_by(|a, b| a.1.time.cmp(&b.1.time));
+        // Get the list of tables for which there has been non-truncate activity (upserts or deletes)
+        let active_tables = tokio::task::spawn_blocking(move || {
+            let mut active_tables: Vec<(String, TableUpsertActivityData)> = all_values
+                .into_iter()
+                .filter_map(|(key, json_value)| {
+                    serde_json::from_str(&json_value)
+                        .ok()
+                        .map(|call_data| (key, call_data))
+                })
+                .collect();
+            active_tables.sort_by(|a, b| a.1.time.cmp(&b.1.time));
+            active_tables
+        })
+        .await?;
 
         for (key, table_data) in active_tables {
             // They're ordered from oldest to newest, meaning we first see those that are most
