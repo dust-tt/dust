@@ -564,6 +564,7 @@ impl LocalTable {
         Ok(())
     }
 
+    // Either directly upsert rows to GCS, or queue work for the background worker to process.
     pub async fn upsert_rows_to_gcs_or_queue_work(
         &self,
         store: &Box<dyn Store + Sync + Send>,
