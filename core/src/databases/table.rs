@@ -526,6 +526,7 @@ impl LocalTable {
         databases_store
             .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
             .await?;
+
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
