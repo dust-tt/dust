@@ -141,6 +141,7 @@ export async function extractGitHubTarballToGCS(
 
   // Create upload queue to limit concurrent GCS uploads.
   const uploadQueue = new PQueue({ concurrency: MAX_CONCURRENT_GCS_UPLOADS });
+  const uploadErrors: unknown[] = [];
 
   // Create tar stream extractor.
   const extract = tar.extract();
@@ -181,17 +182,25 @@ export async function extractGitHubTarballToGCS(
           // Upload file to GCS using hybrid approach.
           filesUploaded++;
           childLogger.info(
-            { gcsPath, fileName, filePath, filesUploaded },
+            { gcsPath, fileName, filePath, filesUploaded, size: header.size },
             "Uploading file to GCS"
           );
 
           // Queue the upload.
           void uploadQueue.add(async () => {
-            return gcsManager.uploadFileStream(gcsPath, stream, {
-              size: header.size,
-              contentType: "text/plain",
-              childLogger,
-            });
+            try {
+              await gcsManager.uploadFileStream(gcsPath, stream, {
+                size: header.size,
+                contentType: "text/plain",
+                childLogger,
+              });
+            } catch (error) {
+              logger.error(
+                { error, gcsPath, fileName },
+                "Error uploading file to GCS"
+              );
+              uploadErrors.push(error);
+            }
           });
 
           // Continue tar extraction immediately.
@@ -273,6 +282,14 @@ export async function extractGitHubTarballToGCS(
 
   // Wait for all queued uploads to complete.
   await uploadQueue.onIdle();
+
+  if (uploadErrors.length > 0) {
+    childLogger.error(
+      { errorCount: uploadErrors.length },
+      "Received GCS uploads errors, aborting"
+    );
+    return new Err(new Error("GCS upload errors occurred"));
+  }
 
   childLogger.info(
     {
