@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
+import { SelectionDisplay } from "@app/components/agent_builder/capabilities/knowledge/shared/SelectionDisplay";
 import {
   getDataSourceConfigurations,
   getTimeFrame,
@@ -21,7 +22,7 @@ import type {
   AgentBuilderAction,
   IncludeDataAgentBuilderAction,
 } from "@app/components/agent_builder/types";
-import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
+import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import type {
   DataSourceViewSelectionConfigurations,
   TimeFrame,
@@ -115,15 +116,13 @@ export function AddIncludeDataSheet({
             id="dataSourceViewsSelector"
             className="overflow-y-auto scrollbar-hide"
           >
-            <DataSourceViewsSpaceSelector
-              useCase="assistantBuilder"
+            <DataSourceBuilderSelector
               dataSourceViews={supportedDataSourceViews}
               allowedSpaces={spaces}
               owner={owner}
               selectionConfigurations={dataSourceConfigurations}
               setSelectionConfigurations={setDataSourceConfigurations}
               viewType="document"
-              isRootSelectable={true}
             />
           </div>
         </div>
@@ -171,6 +170,11 @@ export function AddIncludeDataSheet({
           currentPageId === PAGE_IDS.DATA_SOURCE_SELECTION && !hasDataSources
         }
         disableSave={!hasDataSources || !description.trim()}
+        footerContent={
+          <SelectionDisplay
+            selectionConfigurations={dataSourceConfigurations}
+          />
+        }
       />
     </MultiPageSheet>
   );

@@ -172,37 +172,39 @@ const SheetFooter = ({
 }: SheetFooterProps) => (
   <div
     className={cn(
-      "s-flex s-flex-none s-flex-row s-gap-2 s-border-t s-px-3 s-py-3",
+      "s-flex s-flex-none s-flex-col s-gap-2 s-border-t s-px-3 s-py-3",
       "s-border-border dark:s-border-border-night",
       className
     )}
     {...props}
   >
-    {leftButtonProps &&
-      (leftButtonProps.disabled ? (
-        <Button {...leftButtonProps} />
-      ) : (
-        <SheetClose className={sheetCloseClassName} asChild>
+    <div className="s-flex s-flex-row s-gap-2">
+      {leftButtonProps &&
+        (leftButtonProps.disabled ? (
           <Button {...leftButtonProps} />
-        </SheetClose>
-      ))}
-    <div className="s-flex-grow" />
-    {rightButtonProps &&
-      (rightButtonProps.disabled ? (
-        <Button {...rightButtonProps} />
-      ) : (
-        <SheetClose className={sheetCloseClassName} asChild>
+        ) : (
+          <SheetClose className={sheetCloseClassName} asChild>
+            <Button {...leftButtonProps} />
+          </SheetClose>
+        ))}
+      <div className="s-flex-grow" />
+      {rightButtonProps &&
+        (rightButtonProps.disabled ? (
           <Button {...rightButtonProps} />
-        </SheetClose>
-      ))}
-    {rightEndButtonProps &&
-      (rightEndButtonProps.disabled ? (
-        <Button {...rightEndButtonProps} />
-      ) : (
-        <SheetClose className={sheetCloseClassName} asChild>
+        ) : (
+          <SheetClose className={sheetCloseClassName} asChild>
+            <Button {...rightButtonProps} />
+          </SheetClose>
+        ))}
+      {rightEndButtonProps &&
+        (rightEndButtonProps.disabled ? (
           <Button {...rightEndButtonProps} />
-        </SheetClose>
-      ))}
+        ) : (
+          <SheetClose className={sheetCloseClassName} asChild>
+            <Button {...rightEndButtonProps} />
+          </SheetClose>
+        ))}
+    </div>
     {children}
   </div>
 );

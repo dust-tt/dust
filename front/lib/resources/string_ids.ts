@@ -35,6 +35,7 @@ const RESOURCES_PREFIX = {
   tag: "tag",
   transcripts_configuration: "tsc",
   agent_step_content: "asc",
+  agent_memory: "amm",
 
   // Action (used for tool approval currently).
   mcp_action: "act",

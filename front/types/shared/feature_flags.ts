@@ -45,6 +45,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   google_ai_studio_experimental_models_feature: {
     description: "Access to experimental Google AI Studio models",
   },
+  google_sheets_tool: {
+    description: "Google Sheets MCP tool",
+  },
   index_private_slack_channel: {
     description: "Allow indexing of private Slack channels",
   },
@@ -94,6 +97,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   monday_tool: {
     description: "Monday MCP tool",
+  },
+  agent_memory_tools: {
+    description: "Agent memory tools",
   },
 } as const;
 
