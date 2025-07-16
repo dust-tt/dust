@@ -3,6 +3,7 @@ import { glob } from "glob";
 import path from "path";
 import { z } from "zod";
 
+import { concurrentExecutor } from "../../utils/concurrentExecutor.js";
 import { normalizeError } from "../../utils/errors.js";
 import type { McpTool } from "../types/tools.js";
 
@@ -33,6 +34,8 @@ export class SearchFilesTool implements McpTool {
 
     limit: z
       .number()
+      .int()
+      .positive()
       .optional()
       .describe(
         "Optional: Controls the maximum count of files included in search results. Prevents overwhelming output for large directories (default: 100)"
@@ -46,16 +49,15 @@ export class SearchFilesTool implements McpTool {
       ),
   });
 
-  // API gotten from Google's Gemini
   async execute({
     pattern,
-    directory = ".",
+    directory = process.cwd(),
     case_sensitive = false,
     limit = 100,
     sort_by_modified = false,
   }: z.infer<typeof this.inputSchema>) {
     try {
-      // Use glob for proper glob pattern support
+      // Use glob for proper glob pattern support.
       const globOptions = {
         cwd: directory,
         nocase: !case_sensitive,
@@ -83,27 +85,35 @@ export class SearchFilesTool implements McpTool {
         };
       }
 
-      // Get full paths and file stats if sorting by modification time
+      // Get full paths and file stats if sorting by modification time.
       let fileResults = files.map((file) => {
         const fullPath = path.resolve(directory, file);
         return { path: fullPath, relativePath: file };
       });
 
-      // Sort by modification time if requested
+      // Sort by modification time if requested.
       if (sort_by_modified) {
-        fileResults = fileResults
-          .map((file) => {
+        const fileResultsWithMtime = await concurrentExecutor(
+          fileResults,
+          async (
+            file
+          ): Promise<{ path: string; relativePath: string; mtime: Date }> => {
             try {
-              const stats = fs.statSync(file.path);
+              const stats = await fs.promises.stat(file.path);
               return { ...file, mtime: stats.mtime };
             } catch {
               return { ...file, mtime: new Date(0) };
             }
-          })
-          .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+          },
+          { concurrency: 10 }
+        );
+
+        fileResults = fileResultsWithMtime.sort(
+          (a, b) => b.mtime.getTime() - a.mtime.getTime()
+        );
       }
 
-      // Apply limit
+      // Apply limit.
       const limitedResults = fileResults.slice(0, limit);
       const resultPaths = limitedResults.map((f) => f.relativePath);
 

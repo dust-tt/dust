@@ -277,36 +277,35 @@ const CliChat: FC<CliChatProps> = ({
   const handleFileSelected = useCallback(
     async (filePathOrPaths: string | string[]) => {
       setShowFileSelector(false);
-      try {
-        // Normalize to array for unified handling
-        const paths = Array.isArray(filePathOrPaths)
-          ? filePathOrPaths
-          : [filePathOrPaths];
+      // Normalize to array for unified handling
+      const paths = Array.isArray(filePathOrPaths)
+        ? filePathOrPaths
+        : [filePathOrPaths];
 
-        const fileInfos = [];
-        for (const p of paths) {
-          fileInfos.push(await validateAndGetFileInfo(p));
+      const fileInfos = [];
+      for (const p of paths) {
+        const fileInfoRes = await validateAndGetFileInfo(p);
+        if (fileInfoRes.isErr()) {
+          setError(`File error: ${normalizeError(fileInfoRes.error).message}`);
+          return;
         }
 
-        let convId = currentConversationId;
-        if (!convId) {
-          convId = await createConversationForFiles(
-            `File Upload: ${fileInfos.map((f) => f.name).join(", ")}`.slice(
-              0,
-              50
-            )
-          );
-          if (!convId) {
-            // error already handled in createConversationForFiles
-            return;
-          }
-        }
-
-        setPendingFiles(fileInfos);
-        setIsUploadingFiles(true);
-      } catch (error) {
-        setError(`File error: ${normalizeError(error).message}`);
+        fileInfos.push(fileInfoRes.value);
       }
+
+      let convId = currentConversationId;
+      if (!convId) {
+        convId = await createConversationForFiles(
+          `File Upload: ${fileInfos.map((f) => f.name).join(", ")}`.slice(0, 50)
+        );
+        if (!convId) {
+          // error already handled in createConversationForFiles
+          return;
+        }
+      }
+
+      setPendingFiles(fileInfos);
+      setIsUploadingFiles(true);
     },
     [currentConversationId, createConversationForFiles]
   );
