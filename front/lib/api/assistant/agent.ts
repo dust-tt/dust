@@ -228,20 +228,20 @@ async function runMultiActionsAgentLoop(
     for await (const event of loopIterationStream) {
       switch (event.type) {
         case "agent_error":
-          const { publicMessage } = categorizeAgentErrorMessage(event.error);
-
           localLogger.error(
             {
               elapsedTime: Date.now() - now,
               error: event.error,
-              publicErrorMessage: publicMessage,
             },
             "Error running multi-actions agent."
           );
 
           await publishEvent({
             ...event,
-            error: { ...event.error, message: publicMessage },
+            error: {
+              ...event.error,
+              message: event.error.publicMessage || event.error.message,
+            },
           });
           return;
         case "agent_actions":
@@ -810,7 +810,7 @@ async function* runMultiActionsAgent(
       if (e.error) {
         yield* contentParser.flushTokens();
 
-        const { category } = categorizeAgentErrorMessage({
+        const { category, publicMessage } = categorizeAgentErrorMessage({
           code: "multi_actions_error",
           message: e.error,
         });
@@ -852,6 +852,7 @@ async function* runMultiActionsAgent(
             code: "multi_actions_error",
             message: `Error running agent: ${e.error}`,
             metadata: null,
+            publicMessage,
           },
         } satisfies AgentErrorEvent;
         return;
