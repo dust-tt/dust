@@ -94,7 +94,8 @@ const OPTION_PARAMETERS = {
       "Field to sort the results by. 'title' sorts alphabetically A-Z, 'timestamp' sorts by " +
         "most recent first. If not specified, results are returned in default order, which is " +
         "folders first, then both documents and tables and alphabetically by title. " +
-        "The default order should be kept unless there is a specific reason to change it."
+        "The default order should be kept unless there is a specific reason to change it. " +
+        "This parameter is mutually exclusive with the query parameter."
     ),
   nextPageCursor: z
     .string()
@@ -121,7 +122,7 @@ const SearchToolInputSchema = z.object({
     .string()
     .describe(
       "The query to search for. This is a natural language query. It doesn't support any " +
-        "specific filter syntax."
+        "specific filter syntax. This parameter is mutually exclusive with the sortBy parameter."
     ),
   relativeTimeFrame: z
     .string()
