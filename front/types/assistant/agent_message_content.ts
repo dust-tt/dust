@@ -1,4 +1,5 @@
 import type { ModelId } from "@app/types";
+import type { ModelProviderIdType } from "@app/types/assistant/assistant";
 import type { FunctionCallType } from "@app/types/assistant/generation";
 
 export type TextContentType = {
@@ -11,6 +12,8 @@ export type ReasoningContentType = {
   value: {
     reasoning?: string;
     metadata: string;
+    tokens: number;
+    provider: ModelProviderIdType;
   };
 };
 
