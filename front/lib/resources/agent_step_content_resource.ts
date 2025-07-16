@@ -172,19 +172,20 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     );
   }
 
-  static async fetchByAgentMessages({
-    auth,
-    agentMessageIds,
-    transaction,
-    includeMCPActions = false,
-    latestVersionsOnly = false,
-  }: {
-    auth: Authenticator;
-    agentMessageIds: number[];
-    transaction?: Transaction;
-    includeMCPActions?: boolean;
-    latestVersionsOnly?: boolean;
-  }): Promise<AgentStepContentResource[]> {
+  static async fetchByAgentMessages(
+    auth: Authenticator,
+    {
+      agentMessageIds,
+      transaction,
+      includeMCPActions = false,
+      latestVersionsOnly = false,
+    }: {
+      agentMessageIds: number[];
+      transaction?: Transaction;
+      includeMCPActions?: boolean;
+      latestVersionsOnly?: boolean;
+    }
+  ): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
     // Check authorization - will throw if unauthorized
@@ -231,21 +232,22 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return this.createResources(contents);
   }
 
-  static async fetchByAgentMessageAndStep({
-    auth,
-    agentMessageId,
-    step,
-    transaction,
-    includeMCPActions = false,
-    latestVersionsOnly = false,
-  }: {
-    auth: Authenticator;
-    agentMessageId: number;
-    step: number;
-    transaction?: Transaction;
-    includeMCPActions?: boolean;
-    latestVersionsOnly?: boolean;
-  }): Promise<AgentStepContentResource[]> {
+  static async fetchByAgentMessageAndStep(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      step,
+      transaction,
+      includeMCPActions = false,
+      latestVersionsOnly = false,
+    }: {
+      agentMessageId: number;
+      step: number;
+      transaction?: Transaction;
+      includeMCPActions?: boolean;
+      latestVersionsOnly?: boolean;
+    }
+  ): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
     // Check authorization - will throw if unauthorized
