@@ -56,7 +56,7 @@ export class SearchFilesTool implements McpTool {
     sort_by_modified = false,
   }: z.infer<typeof this.inputSchema>) {
     try {
-      // Use glob for proper glob pattern support
+      // Use glob for proper glob pattern support.
       const globOptions = {
         cwd: directory,
         nocase: !case_sensitive,
@@ -84,13 +84,13 @@ export class SearchFilesTool implements McpTool {
         };
       }
 
-      // Get full paths and file stats if sorting by modification time
+      // Get full paths and file stats if sorting by modification time.
       let fileResults = files.map((file) => {
         const fullPath = path.resolve(directory, file);
         return { path: fullPath, relativePath: file };
       });
 
-      // Sort by modification time if requested
+      // Sort by modification time if requested.
       if (sort_by_modified) {
         const fileResultsWithMtime = await Promise.all(
           fileResults.map(async (file) => {
@@ -107,7 +107,7 @@ export class SearchFilesTool implements McpTool {
         );
       }
 
-      // Apply limit
+      // Apply limit.
       const limitedResults = fileResults.slice(0, limit);
       const resultPaths = limitedResults.map((f) => f.relativePath);
 
