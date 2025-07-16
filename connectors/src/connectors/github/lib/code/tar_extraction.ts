@@ -181,7 +181,7 @@ export async function extractGitHubTarballToGCS(
           // Upload file to GCS using hybrid approach.
           filesUploaded++;
           childLogger.info(
-            { gcsPath, fileName, filePath, filesUploaded },
+            { gcsPath, fileName, filePath, filesUploaded, size: header.size },
             "Uploading file to GCS"
           );
 
