@@ -265,6 +265,7 @@ async function runMultiActionsAgentLoop(
               },
               "Auto-retrying multi-actions agent."
             );
+            // We assume here that runMultiActionsAgent returns after yielding an agent_error.
             break;
           case "agent_actions":
             runIds.push(event.runId);
