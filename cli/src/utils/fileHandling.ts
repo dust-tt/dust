@@ -1,4 +1,5 @@
-import type { SupportedFileContentType } from "@dust-tt/client";
+import type { Result, SupportedFileContentType } from "@dust-tt/client";
+import { Ok, Err } from "@dust-tt/client";
 import {
   isSupportedFileContentType,
   supportedFileExtensions,
@@ -217,7 +218,7 @@ export async function processFile(
   filePath: string,
   offset: number = 0,
   limit: number = MAX_LINES_TEXT_FILE
-) {
+): Promise<Result<{ data: string }, Error>> {
   // check for existence
   if (!fs.existsSync(filePath)) {
     throw new Error(`File at ${filePath} does not exist.`);
@@ -235,9 +236,9 @@ export async function processFile(
     case "video":
       const contentBuffer = await fs.promises.readFile(filePath);
       const base64Data = contentBuffer.toString("base64");
-      return {
+      return new Ok({
         data: base64Data,
-      };
+      });
     case "text":
       const content = await fs.promises.readFile(filePath, "utf-8");
       const lines = content.split("\n");
@@ -269,10 +270,10 @@ export async function processFile(
 
       const resContent = cutMessage + formattedLines.join("\n");
 
-      return {
+      return new Ok({
         data: resContent,
-      };
+      });
     default:
-      throw new Error("We should not have reached this statement");
+      return new Err(new Error("We should not have reached this statement"));
   }
 }

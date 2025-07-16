@@ -36,27 +36,26 @@ export class ReadFileTool implements McpTool {
     offset = 0,
     limit = 5000,
   }: z.infer<typeof this.inputSchema>) {
-    try {
-      const content = await processFile(filePath, offset, limit);
-
+    const content = await processFile(filePath, offset, limit);
+    if (content.isErr()) {
       return {
         content: [
           {
             type: "text" as const,
-            text: content.data,
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${normalizeError(error).message}`,
+            text: `Error: ${normalizeError(content.error).message}`,
           },
         ],
         isError: true,
       };
     }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: content.value.data,
+        },
+      ],
+    };
   }
 }
