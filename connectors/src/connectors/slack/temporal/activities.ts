@@ -480,7 +480,6 @@ export async function syncNonThreaded({
           channelId,
           startTsMs,
           endTsMs,
-          latestTsSec,
           nextCursor,
         },
         "Giving up on syncNonThreaded: too many messages"
