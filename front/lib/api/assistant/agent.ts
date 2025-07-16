@@ -241,6 +241,27 @@ async function runMultiActionsAgentLoop(
             "Error running multi-actions agent."
           );
 
+          // Create error step content to track which step the error occurred at
+          await AgentStepContentResource.makeNew({
+            workspaceId: conversation.owner.id,
+            agentMessageId: agentMessage.agentMessageId,
+            step: i,
+            index: 0, // Errors are the only content for this step
+            type: "error",
+            value: {
+              type: "error",
+              value: {
+                code: event.error.code,
+                message: publicMessage,
+                metadata: {
+                  ...event.error.metadata,
+                  category,
+                },
+              },
+            },
+            version: 0,
+          });
+
           await publishEvent({
             ...event,
             error: {
