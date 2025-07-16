@@ -1,5 +1,9 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import { MultiPageSheet, MultiPageSheetContent } from "@dust-tt/sparkle";
+import {
+  MultiPageSheet,
+  MultiPageSheetContent,
+  ScrollArea,
+} from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
@@ -32,9 +36,11 @@ import {
   CONFIGURATION_SHEET_PAGE_IDS,
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
-import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
+import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
+
+import { useDataSourceViewsContext } from "../../DataSourceViewsContext";
 
 interface KnowledgeConfigurationSheetProps {
   capability: KnowledgeServerName | null;
@@ -105,8 +111,10 @@ function KnowledgeConfigurationSheetContent({
   config,
   onClose,
 }: KnowledgeConfigurationSheetContentProps) {
-  const { owner, supportedDataSourceViews } = useAgentBuilderContext();
+  const { owner } = useAgentBuilderContext();
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { spaces } = useSpacesContext();
+
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
@@ -159,21 +167,16 @@ function KnowledgeConfigurationSheetContent({
       icon: config.icon,
       content: (
         <div className="space-y-4">
-          <div
-            id="dataSourceViewsSelector"
-            className="overflow-y-auto scrollbar-hide"
-          >
-            <DataSourceViewsSpaceSelector
-              useCase="assistantBuilder"
+          <ScrollArea>
+            <DataSourceBuilderSelector
               dataSourceViews={supportedDataSourceViews}
               allowedSpaces={spaces}
               owner={owner}
               selectionConfigurations={dataSourceConfigurations}
               setSelectionConfigurations={setDataSourceConfigurations}
-              viewType={config.viewType}
-              isRootSelectable={true}
+              viewType="document"
             />
-          </div>
+          </ScrollArea>
         </div>
       ),
     },
