@@ -274,7 +274,7 @@ impl Table {
             )
             .await?;
 
-            // Delete the table data from the stores that are enabled
+            // Delete the table rows.
 
             if SAVE_TABLES_TO_POSTGRES {
                 databases_store.delete_table_data(&self).await?;
@@ -824,7 +824,7 @@ impl LocalTable {
         if SAVE_TABLES_TO_POSTGRES {
             databases_store
                 .delete_table_row(&self.table, row_id)
-                .await?
+                .await?;
         }
 
         // Deletions are conveyed by special rows
