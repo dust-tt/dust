@@ -216,7 +216,6 @@ async function runMultiActionsAgentLoop(
           configuration.actions;
 
     let autoRetryCount = 0;
-    let isRetryableModelError = false;
 
     do {
       const loopIterationStream = runMultiActionsAgent(auth, {
@@ -236,18 +235,30 @@ async function runMultiActionsAgentLoop(
               event.error
             );
 
-            localLogger.error(
-              {
-                elapsedTime: Date.now() - now,
-                error: event.error,
-                publicMessage,
-              },
-              "Error running multi-actions agent."
-            );
-
-            isRetryableModelError = category === "retryable_model_error";
-
-            if (!isRetryableModelError || autoRetryCount >= MAX_AUTO_RETRY) {
+            if (category !== "retryable_model_error") {
+              localLogger.error(
+                {
+                  elapsedTime: Date.now() - now,
+                  error: event.error,
+                  publicMessage,
+                },
+                "Error running multi-actions agent."
+              );
+              yield {
+                ...event,
+                error: { ...event.error, message: publicMessage },
+              };
+              return;
+            }
+            if (autoRetryCount >= MAX_AUTO_RETRY) {
+              localLogger.error(
+                {
+                  elapsedTime: Date.now() - now,
+                  error: event.error,
+                  publicMessage,
+                },
+                "Error running multi-actions agent (max retries reached)."
+              );
               publishEvent({
                 ...event,
                 error: { ...event.error, message: publicMessage },
@@ -395,7 +406,10 @@ async function runMultiActionsAgentLoop(
       }
 
       autoRetryCount++;
-    } while (isRetryableModelError && autoRetryCount <= MAX_AUTO_RETRY);
+    } while (autoRetryCount <= MAX_AUTO_RETRY);
+
+    // The loop should also return, auto retrying more than MAX_AUTO_RETRY times errors as well.
+    throw new Error("Unreachable: loop should have returned");
   }
 }
 
