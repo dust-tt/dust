@@ -9,7 +9,6 @@ export class SearchContentTool implements McpTool {
   name = "search_content";
   description = "Search for content within files";
 
-  // is there a reason for the difference between using the word path and directory?
   inputSchema = z.object({
     pattern: z.string().describe("The text to search for"),
     path: z
@@ -65,10 +64,13 @@ export class SearchContentTool implements McpTool {
       if (!fileGroups.has(result.filePath)) {
         fileGroups.set(result.filePath, []);
       }
-      fileGroups.get(result.filePath)!.push({
-        lineNumber: result.lineNumber,
-        content: result.content,
-      });
+      const group = fileGroups.get(result.filePath);
+      if (group) {
+        group.push({
+          lineNumber: result.lineNumber,
+          content: result.content,
+        });
+      }
     });
 
     // Sort each file's results by line number
@@ -77,22 +79,24 @@ export class SearchContentTool implements McpTool {
     });
 
     // Format output with relative paths ordered by line number
-    let output = `Found ${formattedGrep.length} matches for "${pattern}" in the following directories:\n\n`;
+    let output = `Found ${formattedGrep.length} matches for "${pattern}" in the following files:\n\n`;
 
+    let anyCut = false;
     Array.from(fileGroups.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .forEach(([filePath, results]) => {
         output += `${filePath}:\n`;
         results.forEach((result) => {
-          let truncated = false;
+          let cut = false;
           if (result.content.length > MAX_LINE_LENGTH_TEXT_FILE) {
-            truncated = true;
+            cut = true;
+            anyCut = true;
           }
           output += `  ${result.lineNumber}: ${result.content.substring(
             0,
             Math.min(MAX_LINE_LENGTH_TEXT_FILE, result.content.length)
           )}`;
-          if (truncated) {
+          if (cut) {
             output += "... [cut]";
           }
           output += "\n";
@@ -100,9 +104,11 @@ export class SearchContentTool implements McpTool {
         output += "----------\n";
       });
 
-    output =
-      `[The content of these files have been partially cut: some lines exceeded maximum length of ${MAX_LINE_LENGTH_TEXT_FILE} characters.]\n` +
-      output;
+    if (anyCut) {
+      output =
+        `[The content of these files have been partially cut: some lines exceeded maximum length of ${MAX_LINE_LENGTH_TEXT_FILE} characters.]\n` +
+        output;
+    }
 
     return {
       content: [
