@@ -17,7 +17,10 @@ import {
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
 import type { CapabilityConfig } from "@app/components/agent_builder/capabilities/knowledge/utils";
-import { CAPABILITY_CONFIGS } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import {
+  CAPABILITY_CONFIGS,
+  generateActionFromFormData,
+} from "@app/components/agent_builder/capabilities/knowledge/utils";
 import type {
   CapabilityFormData,
   ConfigurationSheetPageId,
@@ -88,7 +91,7 @@ export function KnowledgeConfigurationSheet({
   );
 }
 
-interface KnowledgeConfigurationSheetContent {
+interface KnowledgeConfigurationSheetContentProps {
   config: CapabilityConfig;
   action?: AgentBuilderAction;
   onSave: (action: AgentBuilderAction) => void;
@@ -101,7 +104,7 @@ function KnowledgeConfigurationSheetContent({
   onSave,
   config,
   onClose,
-}: KnowledgeConfigurationSheetContent) {
+}: KnowledgeConfigurationSheetContentProps) {
   const { owner, supportedDataSourceViews } = useAgentBuilderContext();
   const { spaces } = useSpacesContext();
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
@@ -128,57 +131,18 @@ function KnowledgeConfigurationSheetContent({
   const hasDataSources = hasDataSourceSelections(dataSourceConfigurations);
 
   const handleSave = (formData: CapabilityFormData) => {
-    let newAction: AgentBuilderAction;
+    const newAction = generateActionFromFormData({
+      config,
+      formData,
+      dataSourceConfigurations,
+      actionId: action?.id,
+    });
 
-    switch (config.actionType) {
-      case "SEARCH":
-        newAction = {
-          id: action?.id || `${config.name}_${Date.now()}`,
-          type: "SEARCH",
-          name: config.actionName,
-          description: formData.description,
-          configuration: {
-            type: "SEARCH",
-            dataSourceConfigurations,
-          },
-          noConfigurationRequired: false,
-        };
-        break;
-      case "INCLUDE_DATA":
-        newAction = {
-          id: action?.id || `include_data_${Date.now()}`,
-          type: "INCLUDE_DATA",
-          name: config.actionName,
-          description: formData.description,
-          configuration: {
-            type: "INCLUDE_DATA",
-            dataSourceConfigurations,
-            timeFrame: formData.timeFrame,
-          },
-          noConfigurationRequired: false,
-        };
-        break;
-      case "EXTRACT_DATA":
-        newAction = {
-          id: action?.id || `extract_data_${Date.now()}`,
-          type: "EXTRACT_DATA",
-          name: config.actionName,
-          description: formData.description,
-          configuration: {
-            type: "EXTRACT_DATA",
-            dataSourceConfigurations,
-            timeFrame: formData.timeFrame,
-            jsonSchema: formData.jsonSchema,
-          },
-          noConfigurationRequired: false,
-        };
-        break;
-      default:
-        return;
+    if (newAction) {
+      onSave(newAction);
     }
 
     onClose();
-    onSave(newAction);
   };
 
   const handlePageChange = (pageId: string) => {

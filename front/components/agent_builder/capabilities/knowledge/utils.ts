@@ -6,10 +6,11 @@ import {
   TableIcon,
 } from "@dust-tt/sparkle";
 
-import type {AgentBuilderAction, KnowledgeServerName} from "@app/components/agent_builder/types";
+import type {AgentBuilderAction, CapabilityFormData, KnowledgeServerName} from "@app/components/agent_builder/types";
 import {
   DESCRIPTION_MAX_LENGTH
 } from "@app/components/agent_builder/types";
+import type { DataSourceViewSelectionConfigurations } from "@app/types";
 
 export interface CapabilityConfig {
   name: KnowledgeServerName;
@@ -121,3 +122,63 @@ export const CAPABILITY_CONFIGS: Record<KnowledgeServerName, CapabilityConfig> =
       },
     },
   };
+
+export function generateActionFromFormData({
+  config, formData, dataSourceConfigurations, actionId
+}: {
+  config: CapabilityConfig,
+  formData: CapabilityFormData,
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations
+  actionId?: string
+}) {
+  let newAction: AgentBuilderAction;
+
+    switch (config.actionType) {
+      case "SEARCH":
+        newAction = {
+          id: actionId || `${config.name}_${Date.now()}`,
+          type: "SEARCH",
+          name: config.actionName,
+          description: formData.description,
+          configuration: {
+            type: "SEARCH",
+            dataSourceConfigurations,
+          },
+          noConfigurationRequired: false,
+        };
+        break;
+      case "INCLUDE_DATA":
+        newAction = {
+          id: actionId || `include_data_${Date.now()}`,
+          type: "INCLUDE_DATA",
+          name: config.actionName,
+          description: formData.description,
+          configuration: {
+            type: "INCLUDE_DATA",
+            dataSourceConfigurations,
+            timeFrame: formData.timeFrame,
+          },
+          noConfigurationRequired: false,
+        };
+        break;
+      case "EXTRACT_DATA":
+        newAction = {
+          id: actionId || `extract_data_${Date.now()}`,
+          type: "EXTRACT_DATA",
+          name: config.actionName,
+          description: formData.description,
+          configuration: {
+            type: "EXTRACT_DATA",
+            dataSourceConfigurations,
+            timeFrame: formData.timeFrame,
+            jsonSchema: formData.jsonSchema,
+          },
+          noConfigurationRequired: false,
+        };
+        break;
+      default:
+        return;
+    }
+
+    return newAction;
+}

@@ -1,4 +1,5 @@
 import {
+  ScrollArea,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -117,10 +118,7 @@ export default function AssistantBuilderDataSourceModal({
           <SheetTitle>Manage data sources selection</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div
-            id="dataSourceViewsSelector"
-            className="overflow-y-auto scrollbar-hide"
-          >
+          <ScrollArea>
             <DataSourceViewsSpaceSelector
               useCase="assistantBuilder"
               dataSourceViews={supportedDataSourceViewsForViewType}
@@ -131,7 +129,7 @@ export default function AssistantBuilderDataSourceModal({
               viewType={viewType}
               isRootSelectable={true}
             />
-          </div>
+          </ScrollArea>
         </SheetContainer>
         {selectedTableCount !== null && (
           <div className="flex flex-col border-t border-border/60 bg-background p-3 text-sm dark:border-border-night/60 dark:bg-background-night">
