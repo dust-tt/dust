@@ -386,37 +386,6 @@ impl LocalTable {
         }
     }
 
-    async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
-        let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
-
-        // Write the rows to GCS for the worker to process
-        let rows_arc = Arc::new(rows);
-        let schema = TableSchema::from_rows_async(rows_arc.clone()).await?;
-        GoogleCloudStorageBackgroundProcessingStore::write_rows_to_csv(
-            &self.table,
-            &schema,
-            &rows_arc,
-        )
-        .await?;
-
-        // Tell the worker that there are things to process for this table.
-        let upsert_call = TableUpsertActivityData {
-            time: utils::now(),
-            project_id: self.table.project().project_id(),
-            data_source_id: self.table.data_source_id().to_string(),
-            table_id: self.table.table_id().to_string(),
-        };
-        let _: () = redis_conn
-            .hset(
-                REDIS_TABLE_UPSERT_HASH_NAME,
-                self.table.unique_id(),
-                serde_json::to_string(&upsert_call)?,
-            )
-            .await?;
-
-        Ok(())
-    }
-
     pub async fn upsert_rows(
         &self,
         store: Box<dyn Store + Sync + Send>,
@@ -763,6 +732,37 @@ impl LocalTable {
             table_id = self.table.table_id(),
             "DSSTRUCTSTAT [upsert_rows] invalidate dbs"
         );
+
+        Ok(())
+    }
+
+    async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
+        let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
+
+        // Write the rows to GCS for the worker to process
+        let rows_arc = Arc::new(rows);
+        let schema = TableSchema::from_rows_async(rows_arc.clone()).await?;
+        GoogleCloudStorageBackgroundProcessingStore::write_rows_to_csv(
+            &self.table,
+            &schema,
+            &rows_arc,
+        )
+        .await?;
+
+        // Tell the worker that there are things to process for this table.
+        let upsert_call = TableUpsertActivityData {
+            time: utils::now(),
+            project_id: self.table.project().project_id(),
+            data_source_id: self.table.data_source_id().to_string(),
+            table_id: self.table.table_id().to_string(),
+        };
+        let _: () = redis_conn
+            .hset(
+                REDIS_TABLE_UPSERT_HASH_NAME,
+                self.table.unique_id(),
+                serde_json::to_string(&upsert_call)?,
+            )
+            .await?;
 
         Ok(())
     }
