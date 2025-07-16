@@ -1014,7 +1014,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               if (isBlobResource(block)) {
                 const fileName = isResourceWithName(block)
                   ? block.name
-                  : `generated-file-${Date.now()}.${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
+                  : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
 
                 return handleBase64Upload(
                   block.resource.blob,

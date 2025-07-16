@@ -168,31 +168,37 @@ export const marketplaceConfig: IndustryPageConfig = {
       },
       {
         title: "Community operations",
-        image: "/static/landing/industry/features/Compliance_verification.webp",
+        image: "/static/landing/industry/features/Contact_analysis.webp",
         bgColor: "bg-rose-100",
         features: [
           {
-            icon: "bg-blue-500",
-            title: "Automated KYC & verification",
+            icon: "bg-yellow-400",
+            title: "Contact deflection",
             description:
-              "Extract and validate information from provider documents, flagging issues for KYC and compliance checks.",
+              "Automate responses to common inquiries, enabling your team to be more responsive and freeing up resources for higher-value interactions.",
           },
           {
-            icon: "bg-pink-400 rounded-tl-full",
-            title: "Community engagement",
+            icon: "bg-indigo-500",
+            title: "Community insights",
             description:
-              "Generate targeted content to keep your provider community engaged.",
+              "Extract actionable insights: identify top ambassadors, uncover key community topics, and detect gaps in documentation.",
           },
           {
             icon: "bg-red-500",
             title: "Community education",
             description:
-              "Deliver updates and education to keep your providers active and successful.",
+              "Create and deliver high-quality educational resources—bridging knowledge gaps and empowering your audience to succeed with your product or service.",
+          },
+          {
+            icon: "bg-pink-400 rounded-tl-full",
+            title: "Community engagement",
+            description:
+              "Generate high quality content, deepening engagement and encouraging active participation from your community.",
           },
         ],
       },
       {
-        title: "Marketing & marketplace intelligence",
+        title: "Marketing & intelligence",
         image: "/static/landing/industry/features/Content_localization.webp",
         bgColor: "bg-yellow-100",
         features: [
@@ -200,7 +206,7 @@ export const marketplaceConfig: IndustryPageConfig = {
             icon: "bg-yellow-400 rounded-tr-full",
             title: "Content creation & localization",
             description:
-              "Turn raw notes into SEO-optimized communications across multiple languages.",
+              "Turn raw notes into SEO-optimized and brand-compliant communications across multiple languages.",
           },
           {
             icon: "bg-blue-500",

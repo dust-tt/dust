@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
-import { fetcher, emptyArray } from "@app/lib/swr/swr";
+import { emptyArray, fetcher } from "@app/lib/swr/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
 import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";
 import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/documents";
@@ -10,12 +10,9 @@ import type { GetTablesResponseBody } from "@app/pages/api/poke/workspaces/[wId]
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 import type {
   ConversationType,
-  CoreAPIDocument,
-  CoreAPITable,
   DataSourceType,
   LightWorkspaceType,
 } from "@app/types";
-import { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 
 export function usePokePullTemplates() {
   const { mutateAssistantTemplates } = usePokeAssistantTemplates();

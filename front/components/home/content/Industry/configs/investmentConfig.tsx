@@ -8,7 +8,6 @@ export const investmentConfig: IndustryPageConfig = {
     "hero",
     "painPoints",
     "dustInAction",
-    "customerStories",
     "justUseDust",
   ]),
   hero: {
@@ -73,28 +72,28 @@ export const investmentConfig: IndustryPageConfig = {
       {
         title: "Target Identification & Research",
         image: "/static/landing/industry/features/Search_assistant.webp",
-        bgColor: "bg-pink-100",
+        bgColor: "bg-blue-100",
         features: [
           {
-            icon: "bg-pink-500",
+            icon: "bg-blue-500 rounded-tl-full",
             title: "Sector Research",
             description:
               "Research companies operating in specific sectors, including recent funding activity and market positioning.",
           },
           {
-            icon: "bg-purple-500 rounded-tl-full",
+            icon: "bg-pink-400 rounded-tr-full",
             title: "Target Intelligence",
             description:
               "Get snapshots of recent discussions and interactions with potential targets.",
           },
           {
-            icon: "bg-blue-500 rounded-tr-full",
+            icon: "bg-green-500 rounded-bl-full",
             title: "Meeting Preparation",
             description:
               "Prepare notes for initial meetings with targets, analyzing past context and interactions.",
           },
           {
-            icon: "bg-green-500 rounded-bl-full",
+            icon: "bg-yellow-400 rounded-br-full",
             title: "Industry News",
             description:
               "Monitor industry trends and developments by pulling insights from newsletters, reports, and market intelligence.",
@@ -103,11 +102,11 @@ export const investmentConfig: IndustryPageConfig = {
       },
       {
         title: "Due Diligence",
-        image: "/static/landing/industry/features/Doc_analysis.webp",
-        bgColor: "bg-yellow-100",
+        image: "/static/landing/industry/features/Doc_analysis_2.webp",
+        bgColor: "bg-rose-100",
         features: [
           {
-            icon: "bg-yellow-500",
+            icon: "bg-red-500 rounded-br-full",
             title: "Investment Memo Writing",
             description:
               "Write comprehensive investment memos summarizing findings, risks, and opportunities.",
@@ -129,27 +128,27 @@ export const investmentConfig: IndustryPageConfig = {
       {
         title: "Portfolio Support",
         image: "/static/landing/industry/features/Radar_partner.webp",
-        bgColor: "bg-gray-100",
+        bgColor: "bg-green-100",
         features: [
           {
-            icon: "bg-gray-600",
+            icon: "bg-gray-600 rounded-tl-full",
             title: "Board Preparation",
             description: "Prepare materials and briefings for board meetings.",
           },
           {
-            icon: "bg-blue-500 rounded-tl-full",
+            icon: "bg-blue-500 rounded-tr-full",
             title: "Network Intelligence",
             description:
               "Identify key contacts from your network who can provide expertise to portfolio companies.",
           },
           {
-            icon: "bg-green-500 rounded-tr-full",
+            icon: "bg-yellow-400 rounded-bl-full",
             title: "Portfolio Monitoring",
             description:
               "Track news and developments related to your portfolio companies.",
           },
           {
-            icon: "bg-purple-500 rounded-bl-full",
+            icon: "bg-green-500",
             title: "Board Minutes",
             description:
               "Create meeting minutes from transcripts with key decisions and action points.",
@@ -158,11 +157,11 @@ export const investmentConfig: IndustryPageConfig = {
       },
       {
         title: "Reporting & Content",
-        image: "/static/landing/industry/features/Document_generation.webp",
+        image: "/static/landing/industry/features/Quarterly_update.webp",
         bgColor: "bg-orange-100",
         features: [
           {
-            icon: "bg-orange-500",
+            icon: "bg-red-500 rounded-br-full",
             title: "LP Communications",
             description: "Generate reports for Limited Partners.",
           },
@@ -173,7 +172,7 @@ export const investmentConfig: IndustryPageConfig = {
               "Generate content for public audiences including case studies, LinkedIn posts, and thought leadership pieces.",
           },
           {
-            icon: "bg-purple-500 rounded-tr-full",
+            icon: "bg-sky-400",
             title: "Compliance Support",
             description:
               "Handle ESG questionnaires and ensure regulatory compliance across reporting.",

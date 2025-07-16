@@ -472,40 +472,6 @@ export async function upsertDocument({
 
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   const plan = auth.getNonNullablePlan();
-  // Enforce plan limits: DataSource documents count.
-  // We only load the number of documents if the limit is not -1 (unlimited).
-  // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
-  // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
-  if (plan.limits.dataSources.documents.count !== -1) {
-    const documents = await coreAPI.getDataSourceDocuments(
-      {
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-      },
-      { limit: 1, offset: 0 }
-    );
-    if (documents.isErr()) {
-      return new Err(
-        new DustError(
-          "core_api_error",
-          "There was an error retrieving the data source."
-        )
-      );
-    }
-
-    if (
-      plan.limits.dataSources.documents.count != -1 &&
-      documents.value.total >= plan.limits.dataSources.documents.count
-    ) {
-      return new Err(
-        new DustError(
-          "data_source_quota_error",
-          `Data sources are limited to ${plan.limits.dataSources.documents.count} ` +
-            `documents on your current plan. Contact support@dust.tt if you want to increase this limit.`
-        )
-      );
-    }
-  }
 
   // Enforce plan limits: DataSource document size.
   if (

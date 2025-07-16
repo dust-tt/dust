@@ -1,5 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { disableSSOEnforcement } from "@app/lib/api/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { Err, Ok } from "@app/types";
 
 export const disableSSOPlugin = createPlugin({
@@ -28,7 +28,7 @@ export const disableSSOPlugin = createPlugin({
       );
     }
 
-    const res = await disableSSOEnforcement(workspace);
+    const res = await WorkspaceResource.disableSSOEnforcement(workspace.id);
 
     if (res.isErr()) {
       return new Err(res.error);

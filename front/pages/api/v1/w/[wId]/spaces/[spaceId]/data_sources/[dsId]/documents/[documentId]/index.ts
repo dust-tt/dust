@@ -375,6 +375,17 @@ async function handler(
         });
       }
 
+      // To write we must have canWrite or be a systemAPIKey
+      if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
+          },
+        });
+      }
+
       if (!auth.isSystemKey()) {
         const remaining = await rateLimiter({
           key: `upsert-document-w-${owner.sId}`,
@@ -444,46 +455,6 @@ async function handler(
       }
 
       const fullText = sectionFullText(section);
-
-      // Enforce plan limits: DataSource documents count.
-      // We only load the number of documents if the limit is not -1 (unlimited).
-      // the `getDataSourceDocuments` query involves a SELECT COUNT(*) in the DB that is not
-      // optimized, so we avoid it for large workspaces if we know we're unlimited anyway
-      if (plan.limits.dataSources.documents.count != -1) {
-        const documents = await coreAPI.getDataSourceDocuments(
-          {
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceId: dataSource.dustAPIDataSourceId,
-          },
-          { limit: 1, offset: 0 }
-        );
-
-        if (documents.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "data_source_error",
-              message: "There was an error retrieving the data source.",
-              data_source_error: documents.error,
-            },
-          });
-        }
-
-        if (
-          plan.limits.dataSources.documents.count != -1 &&
-          documents.value.total >= plan.limits.dataSources.documents.count
-        ) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "data_source_quota_error",
-              message:
-                `Data sources are limited to ${plan.limits.dataSources.documents.count} ` +
-                `documents on your current plan. Contact support@dust.tt if you want to increase this limit.`,
-            },
-          });
-        }
-      }
 
       if (
         plan.limits.dataSources.documents.sizeMb != -1 &&
@@ -725,6 +696,17 @@ async function handler(
           api_error: {
             type: "data_source_auth_error",
             message: "You cannot delete a document from a managed data source.",
+          },
+        });
+      }
+
+      // To write we must have canWrite or be a systemAPIKey
+      if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You are not allowed to update data in this data source.",
           },
         });
       }

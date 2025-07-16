@@ -161,7 +161,10 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (error) {
-    logger.error({ error }, "Error in authenticate proxy");
+    logger.error(
+      { error, query: req.query, provider: getProvider(req.query) },
+      "Error in authenticate proxy"
+    );
     res.status(500).json({ error: "Internal server error" });
   }
 }

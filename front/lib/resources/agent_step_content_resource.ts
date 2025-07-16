@@ -302,6 +302,19 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }
 
   toJSON(): AgentStepContentType {
+    let value = this.value;
+    if (this.type === "reasoning" && value.type === "reasoning") {
+      value = {
+        ...value,
+        value: {
+          ...value.value,
+          // TODO(DURABLE-AGENTS 2025-07-16): remove defaults once backfill is done.
+          tokens: value.value.tokens ?? 0,
+          provider: value.value.provider ?? "openai",
+        },
+      };
+    }
+
     const base: AgentStepContentType = {
       id: this.id,
       sId: this.sId,
@@ -312,7 +325,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       index: this.index,
       version: this.version,
       type: this.type,
-      value: this.value,
+      value,
     };
 
     if ("agentMCPActions" in this && Array.isArray(this.agentMCPActions)) {

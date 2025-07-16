@@ -12,10 +12,11 @@ import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
@@ -48,11 +49,7 @@ import { frontSequelize } from "../resources/storage";
 export async function getWorkspaceInfos(
   wId: string
 ): Promise<LightWorkspaceType | null> {
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      sId: wId,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchById(wId);
 
   if (!workspace) {
     return null;
@@ -74,11 +71,7 @@ export async function removeAllWorkspaceDomains(
 export async function getWorkspaceCreationDate(
   workspaceId: string
 ): Promise<Date> {
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      sId: workspaceId,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
 
   if (!workspace) {
     throw new Error("Workspace not found.");
@@ -98,19 +91,13 @@ export async function setInternalWorkspaceSegmentation(
     throw new Error("Forbidden update to workspace segmentation.");
   }
 
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      id: owner.id,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchByModelId(owner.id);
 
   if (!workspace) {
     throw new Error("Could not find workspace.");
   }
 
-  await workspace.update({
-    segmentation,
-  });
+  await workspace.updateSegmentation(segmentation);
 
   return renderLightWorkspaceType({ workspace });
 }
@@ -336,13 +323,8 @@ export async function unsafeGetWorkspacesByModelId(
   if (modelIds.length === 0) {
     return [];
   }
-  return (
-    await WorkspaceModel.findAll({
-      where: {
-        id: modelIds,
-      },
-    })
-  ).map((w) => renderLightWorkspaceType({ workspace: w }));
+  const workspaces = await WorkspaceResource.fetchByModelIds(modelIds);
+  return workspaces.map((w) => renderLightWorkspaceType({ workspace: w }));
 }
 
 export async function areAllSubscriptionsCanceled(
@@ -411,67 +393,7 @@ export async function deleteWorkspace(
   return new Ok(undefined);
 }
 
-export async function changeWorkspaceName(
-  owner: LightWorkspaceType,
-  newName: string
-): Promise<Result<void, Error>> {
-  const [affectedCount] = await WorkspaceModel.update(
-    { name: newName },
-    {
-      where: {
-        id: owner.id,
-      },
-    }
-  );
-
-  if (affectedCount === 0) {
-    return new Err(new Error("Workspace not found."));
-  }
-
-  return new Ok(undefined);
-}
-
-export async function updateWorkspaceConversationsRetention(
-  owner: LightWorkspaceType,
-  nbDays: number
-): Promise<Result<void, Error>> {
-  const [affectedCount] = await WorkspaceModel.update(
-    { conversationsRetentionDays: nbDays === -1 ? null : nbDays },
-    {
-      where: {
-        id: owner.id,
-      },
-    }
-  );
-
-  if (affectedCount === 0) {
-    return new Err(new Error("Workspace not found."));
-  }
-
-  return new Ok(undefined);
-}
-
-export async function disableSSOEnforcement(
-  owner: LightWorkspaceType
-): Promise<Result<void, Error>> {
-  const [affectedCount] = await WorkspaceModel.update(
-    { ssoEnforced: false },
-    {
-      where: {
-        id: owner.id,
-        ssoEnforced: true,
-      },
-    }
-  );
-
-  if (affectedCount === 0) {
-    return new Err(new Error("SSO enforcement is already disabled."));
-  }
-
-  return new Ok(undefined);
-}
-
-interface WorkspaceMetadata {
+export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
   publicApiLimits?: PublicAPILimitsType;
 }
@@ -482,20 +404,7 @@ export async function updateWorkspaceMetadata(
 ): Promise<Result<void, Error>> {
   const previousMetadata = owner.metadata || {};
   const newMetadata = { ...previousMetadata, ...metadata };
-  const [affectedCount] = await WorkspaceModel.update(
-    { metadata: newMetadata },
-    {
-      where: {
-        id: owner.id,
-      },
-    }
-  );
-
-  if (affectedCount === 0) {
-    return new Err(new Error("Workspace not found."));
-  }
-
-  return new Ok(undefined);
+  return WorkspaceResource.updateMetadata(owner.id, newMetadata);
 }
 
 export async function setWorkspaceRelocating(
@@ -572,19 +481,10 @@ export async function upgradeWorkspaceToBusinessPlan(
     return new Err(new Error("Workspace is already on business plan."));
   }
 
-  await WorkspaceModel.update(
-    {
-      metadata: {
-        ...workspace.metadata,
-        isBusiness: true,
-      },
-    },
-    {
-      where: { sId: workspace.sId },
-    }
-  );
-
-  return new Ok(undefined);
+  return WorkspaceResource.updateMetadata(workspace.id, {
+    ...workspace.metadata,
+    isBusiness: true,
+  });
 }
 
 export async function checkSeatCountForWorkspace(
@@ -691,9 +591,8 @@ export async function getWorkspaceAdministrationVersionLock(
 export async function findWorkspaceByWorkOSOrganizationId(
   workOSOrganizationId: string
 ): Promise<LightWorkspaceType | null> {
-  const workspace = await WorkspaceModel.findOne({
-    where: { workOSOrganizationId },
-  });
+  const workspace =
+    await WorkspaceResource.fetchByWorkOSOrganizationId(workOSOrganizationId);
 
   if (!workspace) {
     return null;

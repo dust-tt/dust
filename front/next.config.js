@@ -93,7 +93,13 @@ module.exports = {
       },
     ];
   },
-  webpack: (config) => {
+  webpack(config) {
+    if (process.env.BUILD_WITH_SOURCE_MAPS === "true") {
+      // Force webpack to generate source maps for both client and server code
+      // This is used in production builds to upload source maps to Datadog for error tracking
+      // Note: Next.js normally only generates source maps for client code in development
+      config.devtool = "source-map";
+    }
     // For `types` package import (which includes some dependence to server code).
     // Otherwise client-side code will throw an error when importing the packaged file.
     config.resolve.fallback = {

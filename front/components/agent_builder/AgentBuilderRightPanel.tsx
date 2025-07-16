@@ -9,11 +9,11 @@ import {
   TabsTrigger,
   TestTubeIcon,
 } from "@dust-tt/sparkle";
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 
-import { AgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
+import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 
 type AgentBuilderRightPanelTabType = "testing" | "performance";
 
@@ -137,7 +137,7 @@ export function AgentBuilderRightPanel({
   agentConfigurationSId,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
-    useContext(AgentBuilderContext);
+    usePreviewPanelContext();
   const [selectedTab, setSelectedTab] =
     useState<AgentBuilderRightPanelTabType>("testing");
 

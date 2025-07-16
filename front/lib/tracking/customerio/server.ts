@@ -3,9 +3,9 @@ import * as _ from "lodash";
 import config from "@app/lib/api/config";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -175,11 +175,9 @@ export class CustomerioServerSideTracking {
       });
 
     const workspaces = _.keyBy(
-      await WorkspaceModel.findAll({
-        where: {
-          id: userMemberships.map((m) => m.workspaceId),
-        },
-      }),
+      await WorkspaceResource.fetchByModelIds(
+        userMemberships.map((m) => m.workspaceId)
+      ),
       "id"
     );
 

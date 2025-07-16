@@ -15,6 +15,7 @@ import {
   InteractiveImageGrid,
   Markdown,
   Separator,
+  Tooltip,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
@@ -590,16 +591,24 @@ export function AgentMessage({
             owner={owner}
           />
 
-          {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Agent thoughts" variant="primary">
-              <Markdown
-                content={agentMessage.chainOfThought}
-                isStreaming={false}
-                forcedTextSize="text-sm"
-                textColor="text-muted-foreground"
-                isLastMessage={false}
-              />
-            </ContentMessage>
+          {agentMessage.chainOfThought?.trim().length ? (
+            <Tooltip
+              label="Agent thoughts"
+              trigger={
+                <div>
+                  <ContentMessage variant="primary">
+                    <Markdown
+                      content={agentMessage.chainOfThought}
+                      isStreaming={false}
+                      forcedTextSize="text-sm"
+                      textColor="text-muted-foreground"
+                      isLastMessage={false}
+                    />
+                  </ContentMessage>
+                </div>
+              }
+              tooltipTriggerAsChild
+            />
           ) : null}
         </div>
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
