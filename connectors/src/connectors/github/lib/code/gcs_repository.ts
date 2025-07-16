@@ -19,7 +19,7 @@ const DUST_INTERNAL_INDEX_FILE = "DUST_INTERNAL_INDEX_v1";
 const DUST_INTERNAL_INDEX_FILE_PREFIX = "._dust_internal_index";
 
 const DEFAULT_MAX_RESULTS = 1000;
-const STREAM_THRESHOLD_BYTES = 3 * 1024 * 1024; // 3MB - files smaller than this will be buffered.
+const STREAM_THRESHOLD_BYTES = 2 * 1024 * 1024; // 2MB - files smaller than this will be buffered.
 const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
 
 // Files are faster to upsert than directories, so we can afford to have more files per index file.

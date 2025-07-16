@@ -20,7 +20,7 @@ import {
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
 
-const MAX_FILE_SIZE_BYTES = 3 * 1024 * 1024; // 3MB
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 const MAX_CONCURRENT_GCS_UPLOADS = 200;
 
 interface TarExtractionOptions {
