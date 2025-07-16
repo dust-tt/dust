@@ -154,33 +154,40 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
 
             let previous_rows = Self::get_rows_from_csv(table).await?;
 
-            // Use Hashmaps with the row_id as the key.
-            let previous_rows_map = previous_rows
-                .into_iter()
-                .map(|r| (r.row_id.clone(), r.clone()))
-                .collect::<HashMap<_, _>>();
+            // Use spawn_blocking to offload the merge operation to a blocking thread.
+            let merged = tokio::task::spawn_blocking({
+                move || {
+                    // Use Hashmaps with the row_id as the key.
+                    let previous_rows_map = previous_rows
+                        .into_iter()
+                        .map(|r| (r.row_id.clone(), r.clone()))
+                        .collect::<HashMap<_, _>>();
 
-            let new_rows_map = new_rows
-                .into_iter()
-                .map(|r| (r.row_id.clone(), r.clone()))
-                .collect::<HashMap<_, _>>();
+                    let new_rows_map = new_rows
+                        .into_iter()
+                        .map(|r| (r.row_id.clone(), r.clone()))
+                        .collect::<HashMap<_, _>>();
 
-            // Merge the two maps to get the final rows.
-            // New ones take precedence, which includes the case where a 'delete' row
-            // replaces a regular row.
-            let merged_rows_map = previous_rows_map
-                .into_iter()
-                .chain(new_rows_map.into_iter())
-                .collect::<HashMap<_, _>>();
+                    // Merge the two maps to get the final rows.
+                    // New ones take precedence, which includes the case where a 'delete' row
+                    // replaces a regular row.
+                    let merged_rows_map = previous_rows_map
+                        .into_iter()
+                        .chain(new_rows_map.into_iter())
+                        .collect::<HashMap<_, _>>();
 
-            // Remove all rows marked as is_delete. Note that there is no delete action to
-            // take here, as the row is simply not included in the final result.
-            let merged_rows_map = merged_rows_map
-                .into_iter()
-                .filter(|(_, row)| !row.is_delete)
-                .collect::<HashMap<_, _>>();
+                    // Remove all rows marked as is_delete. Note that there is no delete action to
+                    // take here, as the row is simply not included in the final result.
+                    let merged_rows_map = merged_rows_map
+                        .into_iter()
+                        .filter(|(_, row)| !row.is_delete)
+                        .collect::<HashMap<_, _>>();
 
-            new_rows = merged_rows_map.into_values().collect();
+                    merged_rows_map.into_values().collect::<Vec<Row>>()
+                }
+            })
+            .await?;
+            new_rows = merged;
 
             merge_rows_duration = utils::now() - now;
             now = utils::now();
