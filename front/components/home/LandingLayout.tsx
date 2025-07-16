@@ -39,12 +39,13 @@ export default function LandingLayout({
 
   const [cookies, setCookie] = useCookies(["dust-cookies-accepted"]);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
-  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
-
   const cookieValue = cookies["dust-cookies-accepted"];
+  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(
+    ["true", "auto"].includes(cookieValue)
+  );
   const shouldCheckGeo = !cookieValue;
 
-  const { geoData, isGeoDataLoading, isGeoDataError } = useGeolocation({
+  const { geoData, isGeoDataLoading } = useGeolocation({
     disabled: !shouldCheckGeo,
   });
 
@@ -66,29 +67,21 @@ export default function LandingLayout({
   );
 
   useEffect(() => {
-    const hasAcceptedTracking =
-      cookieValue === "true" || cookieValue === "auto";
-    setHasAcceptedCookies(hasAcceptedTracking);
-
     if (cookieValue) {
       setShowCookieBanner(false);
-    } else if (geoData) {
-      if (geoData.isGDPR) {
-        setShowCookieBanner(true);
-      } else {
-        setCookieApproval("auto");
-      }
-    } else if (!isGeoDataLoading && (isGeoDataError || !geoData)) {
+      return;
+    }
+
+    if (isGeoDataLoading) {
+      return;
+    }
+
+    if (geoData && geoData.isGDPR === false) {
+      setCookieApproval("auto");
+    } else {
       setShowCookieBanner(true);
     }
-  }, [
-    cookieValue,
-    geoData,
-    isGeoDataLoading,
-    isGeoDataError,
-    setCookie,
-    setCookieApproval,
-  ]);
+  }, [geoData, isGeoDataLoading, setCookieApproval, cookieValue]);
 
   return (
     <>
