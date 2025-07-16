@@ -23,7 +23,6 @@ import UTMButton from "@app/components/UTMButton";
 import UTMHandler from "@app/components/UTMHandler";
 import { useGeolocation } from "@app/lib/swr/geo";
 import { classNames } from "@app/lib/utils";
-import { appendUTMParams } from "@app/lib/utils/utm";
 
 export interface LandingLayoutProps {
   shape: number;
