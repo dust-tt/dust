@@ -1,9 +1,13 @@
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import {
   editUserMessage,
-  postUserMessage,
   retryAgentMessage,
 } from "@app/lib/api/assistant/conversation";
+import {
+  getEventMessageChannelId,
+  getMessageChannelId,
+  isEndOfAgentMessageStreamEvent,
+} from "@app/lib/api/assistant/streaming/helpers";
 import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -21,7 +25,6 @@ import type {
   GenerationTokensEvent,
   MentionType,
   PubSubError,
-  UserMessageContext,
   UserMessageType,
 } from "@app/types";
 import type { Result } from "@app/types";
@@ -37,46 +40,6 @@ import type {
   UserMessageNewEvent,
 } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
-
-export async function postUserMessageWithPubSub(
-  auth: Authenticator,
-  {
-    conversation,
-    content,
-    mentions,
-    context,
-    skipToolsValidation,
-  }: {
-    conversation: ConversationType;
-    content: string;
-    mentions: MentionType[];
-    context: UserMessageContext;
-    skipToolsValidation: boolean;
-  },
-  { resolveAfterFullGeneration }: { resolveAfterFullGeneration: boolean }
-): Promise<
-  Result<
-    {
-      userMessage: UserMessageType;
-      agentMessages?: AgentMessageType[];
-    },
-    PubSubError
-  >
-> {
-  const postMessageEvents = postUserMessage(auth, {
-    conversation,
-    content,
-    mentions,
-    context,
-    skipToolsValidation,
-  });
-
-  return handleUserMessageEvents(auth, {
-    conversation,
-    generator: postMessageEvents,
-    resolveAfterFullGeneration,
-  });
-}
 
 export async function editUserMessageWithPubSub(
   auth: Authenticator,
@@ -130,12 +93,6 @@ type ConversationAsyncEvents =
   | UserMessageNewEvent
   | AgentMessageNewEvent
   | AgentDisabledErrorEvent;
-
-function isEndOfStreamEvent(
-  event: ConversationAsyncEvents
-): event is AgentMessageSuccessEvent | AgentErrorEvent {
-  return ["agent_message_success", "agent_error"].includes(event.type);
-}
 
 function addEndOfStreamToMessageChannel({ channel }: { channel: string }) {
   return publishEvent({
@@ -228,7 +185,7 @@ async function handleUserMessageEvents(
                 agentMessages.push(event.message);
               }
 
-              if (isEndOfStreamEvent(event)) {
+              if (isEndOfAgentMessageStreamEvent(event)) {
                 // Maybe compute tokens consumed by the runs.
                 if (event.type === "agent_message_success") {
                   const { runIds } = event;
@@ -380,7 +337,7 @@ export async function retryAgentMessageWithPubSub(
                   event: JSON.stringify(event),
                 });
 
-                if (isEndOfStreamEvent(event)) {
+                if (isEndOfAgentMessageStreamEvent(event)) {
                   // Maybe compute tokens consumed by the runs.
                   if (event.type === "agent_message_success") {
                     const { runIds } = event;
@@ -629,21 +586,6 @@ export async function* getMessagesEvents(
 
 function getConversationChannelId(channelId: string) {
   return `conversation-${channelId}`;
-}
-
-export function getEventMessageChannelId(event: AgentMessageAsyncEvents) {
-  // Tool approve execution can come from a sub agent, and in that case we want to send an event
-  // to the main conversation.
-  if (event.type === "tool_approve_execution") {
-    return getMessageChannelId(
-      event.metadata.pubsubMessageId ?? event.messageId
-    );
-  }
-  return getMessageChannelId(event.messageId);
-}
-
-export function getMessageChannelId(messageId: string) {
-  return `message-${messageId}`;
 }
 
 export async function publishEvent({

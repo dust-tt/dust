@@ -11,13 +11,14 @@ import {
   createConversation,
   getConversation,
   postNewContentFragment,
+  postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   apiErrorForConversation,
   isUserMessageContextOverflowing,
 } from "@app/lib/api/assistant/conversation/helper";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
 import type { Authenticator } from "@app/lib/auth";
@@ -337,28 +338,41 @@ async function handler(
 
       if (message) {
         // If a message was provided we do await for the message to be created before returning the
-        // conversation along with the message. PostUserMessageWithPubSub returns swiftly since it
-        // only waits for the initial message creation event (or error)
-        const messageRes = await postUserMessageWithPubSub(
-          auth,
-          {
-            conversation,
-            content: message.content,
-            mentions: message.mentions,
-            context: {
-              timezone: message.context.timezone,
-              username: message.context.username,
-              fullName: message.context.fullName ?? null,
-              email: message.context.email ?? null,
-              profilePictureUrl: message.context.profilePictureUrl ?? null,
-              origin: message.context.origin ?? "api",
-              clientSideMCPServerIds:
-                message.context.clientSideMCPServerIds ?? [],
-            },
-            skipToolsValidation: skipToolsValidation ?? false,
-          },
-          { resolveAfterFullGeneration: blocking === true }
-        );
+        // conversation along with the message.
+        const messageRes =
+          blocking === true
+            ? await postUserMessageAndWaitForCompletion(auth, {
+                conversation,
+                content: message.content,
+                mentions: message.mentions,
+                context: {
+                  timezone: message.context.timezone,
+                  username: message.context.username,
+                  fullName: message.context.fullName ?? null,
+                  email: message.context.email ?? null,
+                  profilePictureUrl: message.context.profilePictureUrl ?? null,
+                  origin: message.context.origin ?? "api",
+                  clientSideMCPServerIds:
+                    message.context.clientSideMCPServerIds ?? [],
+                },
+                skipToolsValidation: skipToolsValidation ?? false,
+              })
+            : await postUserMessage(auth, {
+                conversation,
+                content: message.content,
+                mentions: message.mentions,
+                context: {
+                  timezone: message.context.timezone,
+                  username: message.context.username,
+                  fullName: message.context.fullName ?? null,
+                  email: message.context.email ?? null,
+                  profilePictureUrl: message.context.profilePictureUrl ?? null,
+                  origin: message.context.origin ?? "api",
+                  clientSideMCPServerIds:
+                    message.context.clientSideMCPServerIds ?? [],
+                },
+                skipToolsValidation: skipToolsValidation ?? false,
+              });
 
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

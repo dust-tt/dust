@@ -9,7 +9,7 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
@@ -658,7 +658,7 @@ export async function processTranscriptActivity(
 
     let conversation = conversationRes.value;
 
-    const messageRes = await postUserMessageWithPubSub(
+    const messageRes = await postUserMessageAndWaitForCompletion(
       auth,
       {
         conversation,
@@ -669,8 +669,7 @@ export async function processTranscriptActivity(
         // we skip all of them and run the tools by default. This is in tension with the admin
         // settings and could be revisited if needed.
         skipToolsValidation: true,
-      },
-      { resolveAfterFullGeneration: true }
+      }
     );
 
     if (messageRes.isErr()) {

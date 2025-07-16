@@ -4,12 +4,15 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import {
+  getConversation,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
 import {
   apiErrorForConversation,
   isUserMessageContextOverflowing,
 } from "@app/lib/api/assistant/conversation/helper";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
 import type { Authenticator } from "@app/lib/auth";
@@ -161,25 +164,38 @@ async function handler(
         }
       }
 
-      const messageRes = await postUserMessageWithPubSub(
-        auth,
-        {
-          conversation,
-          content,
-          mentions,
-          context: {
-            timezone: context.timezone,
-            username: context.username,
-            fullName: context.fullName ?? null,
-            email: context.email ?? null,
-            profilePictureUrl: context.profilePictureUrl ?? null,
-            origin: context.origin ?? "api",
-            clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
-          },
-          skipToolsValidation: skipToolsValidation ?? false,
-        },
-        { resolveAfterFullGeneration: blocking === true }
-      );
+      const messageRes =
+        blocking === true
+          ? await postUserMessageAndWaitForCompletion(auth, {
+              conversation,
+              content,
+              mentions,
+              context: {
+                timezone: context.timezone,
+                username: context.username,
+                fullName: context.fullName ?? null,
+                email: context.email ?? null,
+                profilePictureUrl: context.profilePictureUrl ?? null,
+                origin: context.origin ?? "api",
+                clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
+              },
+              skipToolsValidation: skipToolsValidation ?? false,
+            })
+          : await postUserMessage(auth, {
+              conversation,
+              content,
+              mentions,
+              context: {
+                timezone: context.timezone,
+                username: context.username,
+                fullName: context.fullName ?? null,
+                email: context.email ?? null,
+                profilePictureUrl: context.profilePictureUrl ?? null,
+                origin: context.origin ?? "api",
+                clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
+              },
+              skipToolsValidation: skipToolsValidation ?? false,
+            });
       if (messageRes.isErr()) {
         return apiError(req, res, messageRes.error);
       }

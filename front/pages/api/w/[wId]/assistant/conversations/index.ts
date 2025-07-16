@@ -7,9 +7,9 @@ import {
   createConversation,
   getConversation,
   postNewContentFragment,
+  postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -162,29 +162,24 @@ async function handler(
 
       if (message) {
         // If a message was provided we do await for the message to be created before returning the
-        // conversation along with the message. PostUserMessageWithPubSub returns swiftly since it
-        // only waits for the initial message creation event (or error) */
-        const messageRes = await postUserMessageWithPubSub(
-          auth,
-          {
-            conversation,
-            content: message.content,
-            mentions: message.mentions,
-            context: {
-              timezone: message.context.timezone,
-              username: user.username,
-              fullName: user.fullName(),
-              email: user.email,
-              profilePictureUrl: message.context.profilePictureUrl,
-              origin: "web",
-              clientSideMCPServerIds:
-                message.context.clientSideMCPServerIds ?? [],
-            },
-            // For now we never skip tools when interacting with agents from the web client.
-            skipToolsValidation: false,
+        // conversation along with the message.
+        const messageRes = await postUserMessage(auth, {
+          conversation,
+          content: message.content,
+          mentions: message.mentions,
+          context: {
+            timezone: message.context.timezone,
+            username: user.username,
+            fullName: user.fullName(),
+            email: user.email,
+            profilePictureUrl: message.context.profilePictureUrl,
+            origin: "web",
+            clientSideMCPServerIds:
+              message.context.clientSideMCPServerIds ?? [],
           },
-          { resolveAfterFullGeneration: false }
-        );
+          // For now we never skip tools when interacting with agents from the web client.
+          skipToolsValidation: false,
+        });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);
         }
