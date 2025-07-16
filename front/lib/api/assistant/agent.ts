@@ -384,6 +384,7 @@ async function* runMultiActionsAgent(
     agentActions,
     isLastGenerationIteration,
     isLegacyAgent,
+    retryCount = 0,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
@@ -392,6 +393,7 @@ async function* runMultiActionsAgent(
     agentActions: AgentActionConfigurationType[];
     isLastGenerationIteration: boolean;
     isLegacyAgent: boolean;
+    retryCount?: number;
   }
 ): AsyncGenerator<
   | AgentErrorEvent
@@ -850,6 +852,40 @@ async function* runMultiActionsAgent(
       const e = event.content.execution[0][0];
       if (e.error) {
         yield* contentParser.flushTokens();
+
+        const { category } = categorizeAgentErrorMessage({
+          code: "multi_actions_error",
+          message: e.error,
+        });
+
+        // We check whether the error is retryable here (we flag certain errors as such).
+        if (
+          category === "retryable_model_error" &&
+          retryCount < MAX_AUTO_RETRY
+        ) {
+          logger.warn(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              error: e.error,
+            },
+            "Auto-retrying multi-actions agent."
+          );
+
+          // Retry the multi-actions agent entirely.
+          return runMultiActionsAgent(auth, {
+            agentConfiguration,
+            conversation,
+            userMessage,
+            agentMessage,
+            agentActions,
+            isLastGenerationIteration,
+            isLegacyAgent,
+            retryCount: retryCount + 1,
+          });
+        }
+
+        // Otherwise we yield the error and return.
         yield {
           type: "agent_error",
           created: Date.now(),
