@@ -188,7 +188,11 @@ impl TableUpsertsBackgroundWorker {
     }
 
     pub async fn start_loop() {
-        let mut worker = TableUpsertsBackgroundWorker::new().await.unwrap();
-        worker.main_loop().await;
+        match TableUpsertsBackgroundWorker::new().await {
+            Ok(mut worker) => worker.main_loop().await,
+            Err(e) => {
+                error!("Failed to start TableUpsertsBackgroundWorker: {}", e);
+            }
+        }
     }
 }
