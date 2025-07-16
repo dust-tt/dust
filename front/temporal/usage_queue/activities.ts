@@ -2,16 +2,12 @@ import { Plan, Subscription } from "@app/lib/models/plan";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 
 export async function recordUsageActivity(workspaceId: string) {
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      sId: workspaceId,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
 
   const logger = mainLogger.child({ workspaceId });
   logger.info({}, "[UsageQueue] Recording usage for worskpace.");

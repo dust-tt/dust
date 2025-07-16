@@ -23,6 +23,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -148,9 +149,7 @@ async function handler(
               throw new Error("Missing required data in event.");
             }
 
-            const workspace = await WorkspaceModel.findOne({
-              where: { sId: workspaceId },
-            });
+            const workspace = await WorkspaceResource.fetchById(workspaceId);
             if (!workspace) {
               logger.warn(
                 {
