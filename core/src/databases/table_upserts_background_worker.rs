@@ -49,7 +49,7 @@ pub struct TableUpsertsBackgroundWorker {
 }
 
 impl TableUpsertsBackgroundWorker {
-    pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new() -> Result<Self, anyhow::Error> {
         let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
             Ok(db_uri) => {
                 let store = postgres::PostgresStore::new(&db_uri).await;
@@ -75,7 +75,7 @@ impl TableUpsertsBackgroundWorker {
         table: &Table,
         key: String,
         table_data: TableUpsertActivityData,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), anyhow::Error> {
         info!(
             "Processing upsert for project_id: {}, data_source_id: {}, table_id: {}",
             table_data.project_id, table_data.data_source_id, table_data.table_id
@@ -102,7 +102,7 @@ impl TableUpsertsBackgroundWorker {
         Ok(())
     }
 
-    async fn loop_iteration(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn loop_iteration(&mut self) -> Result<(), anyhow::Error> {
         let all_values: HashMap<String, String> = self
             .redis_conn
             .hgetall(REDIS_TABLE_UPSERT_HASH_NAME)
