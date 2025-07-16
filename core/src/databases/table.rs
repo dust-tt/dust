@@ -586,7 +586,7 @@ impl LocalTable {
 
             info!(
                 lock_acquisition_duration = utils::now() - now,
-                "Upsert lock acquired in upsert_rows"
+                "Upsert lock acquired in upsert_rows_to_gcs_or_queue_work"
             );
 
             // Since truncate replaces everything, we get rid of all non-truncate and row deletion
@@ -634,7 +634,7 @@ impl LocalTable {
             duration = utils::now() - now,
             table_id = self.table.table_id(),
             rows_count = rows.len(),
-            "DSSTRUCTSTAT [upsert_rows] table schema"
+            "DSSTRUCTSTAT [upsert_rows_gcs] table schema"
         );
 
         now = utils::now();
@@ -649,7 +649,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            "DSSTRUCTSTAT [upsert_rows] update table_schema"
+            "DSSTRUCTSTAT [upsert_rows_gcs] update table_schema"
         );
 
         now = utils::now();
@@ -672,7 +672,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            "DSSTRUCTSTAT [upsert_rows] invalidate table schema"
+            "DSSTRUCTSTAT [upsert_rows_gcs] invalidate table schema"
         );
 
         now = utils::now();
@@ -704,7 +704,7 @@ impl LocalTable {
             duration = utils::now() - now,
             table_id = self.table.table_id(),
             rows_count = rows.len(),
-            "DSSTRUCTSTAT [upsert_rows] rows upsert"
+            "DSSTRUCTSTAT [upsert_rows_gcs] rows upsert"
         );
 
         now = utils::now();
@@ -731,7 +731,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            "DSSTRUCTSTAT [upsert_rows] invalidate dbs"
+            "DSSTRUCTSTAT [upsert_rows_gcs] invalidate dbs"
         );
 
         Ok(())
