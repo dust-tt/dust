@@ -5,10 +5,7 @@ import type { Readable } from "stream";
 import { upsertCodeDirectory } from "@connectors/connectors/github/lib/code/directory_operations";
 import { upsertCodeFile } from "@connectors/connectors/github/lib/code/file_operations";
 import { garbageCollectCodeSync } from "@connectors/connectors/github/lib/code/garbage_collect";
-import {
-  DIRECTORY_PLACEHOLDER_FILE,
-  GCSRepositoryManager,
-} from "@connectors/connectors/github/lib/code/gcs_repository";
+import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
 import { extractGitHubTarballToGCS } from "@connectors/connectors/github/lib/code/tar_extraction";
 import {
   isGithubRequestErrorNotFound,
@@ -21,7 +18,6 @@ import {
   isRepoTooLarge,
 } from "@connectors/connectors/github/lib/github_code";
 import {
-  getCodeDirInternalId,
   getCodeRootInternalId,
   getRepositoryInternalId,
   getRepoUrl,
@@ -37,13 +33,12 @@ import {
   GithubConnectorState,
 } from "@connectors/lib/models/github";
 import { heartbeat } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 
 const PARALLEL_FILE_UPLOADS = 15;
 const PARALLEL_DIRECTORY_UPLOADS = 10;
-const GCS_FILES_BATCH_SIZE = 500;
 
 const GITHUB_TARBALL_DOWNLOAD_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes.
 
@@ -54,7 +49,7 @@ export async function githubExtractToGcsActivity({
   repoName,
   repoId,
 }: {
-  connectorId: number;
+  connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   repoLogin: string;
   repoName: string;
@@ -67,6 +62,13 @@ export async function githubExtractToGcsActivity({
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+
+  const logger = getActivityLogger(connector, {
+    repoName,
+    repoLogin,
+    repoId,
+    activityName: "githubExtractToGcsActivity",
+  });
 
   // Local cleanup function to handle missing/inaccessible repositories
   const cleanupMissingRepository = async (loggerTask: string) => {
@@ -120,6 +122,8 @@ export async function githubExtractToGcsActivity({
     },
   });
 
+  logger.info("Fetching GitHub repository tarball");
+
   // Get tarball stream from GitHub.
   let tarballResponse;
   try {
@@ -152,10 +156,16 @@ export async function githubExtractToGcsActivity({
 
   const tarballStream = (tarballResponse as { data: Readable }).data;
 
-  const extractResult = await extractGitHubTarballToGCS(tarballStream, {
-    repoId,
-    connectorId,
-  });
+  logger.info("Extracting GitHub repository tarball to GCS");
+
+  const extractResult = await extractGitHubTarballToGCS(
+    tarballStream,
+    {
+      repoId,
+      connectorId,
+    },
+    logger
+  );
 
   if (extractResult.isErr()) {
     if (
@@ -183,149 +193,38 @@ export async function githubExtractToGcsActivity({
   };
 }
 
-export interface DirectoryListing {
-  dirPath: string;
-  gcsPath: string;
-  internalId: string;
-  parentInternalId: string | null;
-}
-
-interface FileListing {
-  gcsPath: string;
-  relativePath: string;
-}
-
-// Activity to get GCS files with simple pagination to avoid Temporal return size limits.
-export async function githubGetGcsFilesActivity({
-  batchSize = GCS_FILES_BATCH_SIZE,
-  gcsBasePath,
-  pageToken,
-  repoId,
-}: {
-  batchSize?: number;
-  gcsBasePath: string;
-  pageToken?: string;
-  repoId: number;
-}): Promise<{
-  directories: DirectoryListing[];
-  files: FileListing[];
-  nextPageToken?: string;
-  hasMore: boolean;
-}> {
-  const gcsManager = new GCSRepositoryManager();
-  const {
-    files: paginatedFiles,
-    nextPageToken,
-    hasMore,
-  } = await gcsManager.listFiles(gcsBasePath, {
-    maxResults: batchSize,
-    pageToken,
-  });
-
-  const directories: DirectoryListing[] = [];
-  const files: FileListing[] = [];
-
-  for (const file of paginatedFiles) {
-    const relativePath = file.name.replace(`${gcsBasePath}/`, "");
-
-    if (file.name.endsWith(`/${DIRECTORY_PLACEHOLDER_FILE}`)) {
-      // This is a directory placeholder.
-      const dirPath = relativePath.replace(
-        `/${DIRECTORY_PLACEHOLDER_FILE}`,
-        ""
-      );
-      directories.push({
-        gcsPath: file.name,
-        dirPath,
-        internalId: getCodeDirInternalId(repoId, dirPath),
-        parentInternalId: dirPath.includes("/")
-          ? getCodeDirInternalId(
-              repoId,
-              dirPath.split("/").slice(0, -1).join("/")
-            )
-          : null,
-      });
-    } else {
-      // This is a regular file.
-      files.push({
-        gcsPath: file.name,
-        relativePath,
-      });
-    }
-  }
-
-  return {
-    directories,
-    files,
-    nextPageToken,
-    hasMore,
-  };
-}
-
-// Activity to process a chunk of directories with concurrency control.
-export async function githubProcessDirectoryChunkActivity({
-  codeSyncStartedAtMs,
+// Activity to create multiple index files with file paths to optimize temporal memory usage.
+export async function githubCreateGcsIndexActivity({
   connectorId,
-  dataSourceConfig,
-  defaultBranch,
-  directories,
+  gcsBasePath,
   repoId,
   repoLogin,
   repoName,
-  updatedDirectoryIdsArray,
 }: {
-  codeSyncStartedAtMs: number;
-  connectorId: number;
-  dataSourceConfig: DataSourceConfig;
-  defaultBranch: string;
-  directories: Array<{
-    gcsPath: string;
-    dirPath: string;
-    internalId: string;
-    parentInternalId: string | null;
-  }>;
+  connectorId: ModelId;
+  gcsBasePath: string;
   repoId: number;
   repoLogin: string;
   repoName: string;
-  updatedDirectoryIdsArray?: string[];
-}) {
-  const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
-
-  const results = await concurrentExecutor(
-    directories,
-    async (dir) => {
-      await upsertCodeDirectory({
-        codeSyncStartedAt,
-        connectorId,
-        dataSourceConfig,
-        defaultBranch,
-        dirPath: dir.dirPath,
-        repoId,
-        repoLogin,
-        repoName,
-        updatedDirectoryIds: new Set(updatedDirectoryIdsArray),
-      });
-    },
-    { concurrency: PARALLEL_DIRECTORY_UPLOADS }
-  );
-
-  return { processedDirectories: results.length };
-}
-
-// Activity to create multiple index files with file paths to optimize temporal memory usage.
-export async function githubCreateGcsIndexActivity({
-  gcsBasePath,
-  repoId,
-}: {
-  gcsBasePath: string;
-  repoId: number;
 }): Promise<{
   indexPaths: string[];
 }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector, {
+    repoId,
+    repoLogin,
+    repoName,
+    gcsBasePath,
+    activityName: "githubCreateGcsIndexActivity",
+  });
   const gcsManager = new GCSRepositoryManager();
 
   const indexPaths = await gcsManager.createIndexFiles(gcsBasePath, repoId, {
-    childLogger: logger.child({ repoId, gcsBasePath }),
+    childLogger: logger,
   });
 
   return {
@@ -363,6 +262,20 @@ export async function githubProcessIndexFileActivity({
   processedDirectories: number;
   updatedDirectoryIds: string[];
 }> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector, {
+    repoId,
+    repoLogin,
+    repoName,
+    gcsBasePath,
+    indexPath,
+    activityName: "githubProcessIndexFileActivity",
+  });
+
   const gcsManager = new GCSRepositoryManager();
 
   // Read all files and directories from this index.
@@ -374,6 +287,8 @@ export async function githubProcessIndexFileActivity({
 
   const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
   const updatedDirectoryIdsSet = new Set<string>();
+
+  logger.info("Processed index file");
 
   // Process all files.
   const fileResults = await concurrentExecutor(
@@ -392,6 +307,10 @@ export async function githubProcessIndexFileActivity({
         relativePath: file.relativePath,
         forceResync,
         isBatchSync,
+        logger: logger.child({
+          task: "upsertCodeFile",
+          relativePath: file.relativePath,
+        }),
       });
 
       // Aggregate updated directory IDs.
@@ -418,9 +337,21 @@ export async function githubProcessIndexFileActivity({
         repoLogin,
         repoName,
         updatedDirectoryIds: updatedDirectoryIdsSet,
+        logger: logger.child({
+          task: "upsertCodeDirectory",
+          dirPath: dir.dirPath,
+        }),
       });
     },
     { concurrency: PARALLEL_DIRECTORY_UPLOADS }
+  );
+
+  logger.info(
+    {
+      processedFiles: fileResults.length,
+      processedDirectories: directoryResults.length,
+    },
+    "Processed index file"
   );
 
   return {
@@ -447,6 +378,11 @@ export async function githubCleanupCodeSyncActivity({
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+
+  const logger = getActivityLogger(connector, {
+    repoId,
+    activityName: "githubCleanupCodeSyncActivity",
+  });
 
   const codeSyncStartedAt = new Date(codeSyncStartedAtMs);
 
@@ -498,6 +434,13 @@ export async function githubEnsureCodeSyncEnabledActivity({
   if (!connector) {
     throw new Error(`Connector not found (connectorId: ${connectorId})`);
   }
+
+  const logger = getActivityLogger(connector, {
+    repoId,
+    repoLogin,
+    repoName,
+    activityName: "githubEnsureCodeSyncEnabledActivity",
+  });
 
   const connectorState = await GithubConnectorState.findOne({
     where: {

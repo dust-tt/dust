@@ -123,7 +123,8 @@ function parseGitHubPath(
 
 export async function extractGitHubTarballToGCS(
   tarballStream: Readable,
-  { repoId, connectorId }: TarExtractionOptions
+  { repoId, connectorId }: TarExtractionOptions,
+  logger: Logger
 ): Promise<
   Result<
     TarExtractionResult,
@@ -146,9 +147,7 @@ export async function extractGitHubTarballToGCS(
   const extract = tar.extract();
 
   const childLogger = logger.child({
-    connectorId,
     gcsBasePath,
-    repoId,
   });
 
   childLogger.info(

@@ -12,7 +12,7 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import { GithubCodeFile } from "@connectors/lib/models/github";
-import logger from "@connectors/logger/logger";
+import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -47,8 +47,9 @@ export async function upsertCodeFile({
   repoLogin,
   repoName,
   relativePath,
-  forceResync = false,
-  isBatchSync = false,
+  forceResync,
+  isBatchSync,
+  logger,
 }: {
   codeSyncStartedAt: Date;
   connectorId: ModelId;
@@ -60,8 +61,9 @@ export async function upsertCodeFile({
   repoLogin: string;
   repoName: string;
   relativePath: string;
-  forceResync?: boolean;
-  isBatchSync?: boolean;
+  forceResync: boolean;
+  isBatchSync: boolean;
+  logger: Logger;
 }): Promise<{
   updatedDirectoryIds: Set<string>;
 }> {

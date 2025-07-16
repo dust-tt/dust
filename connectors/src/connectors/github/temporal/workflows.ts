@@ -518,8 +518,11 @@ export async function githubCodeSyncStatelessWorkflow({
 
   // Create multiple index files containing all file paths to optimize memory usage.
   const indexResult = await githubCreateGcsIndexActivity({
+    connectorId,
     gcsBasePath: extractResult.gcsBasePath,
     repoId,
+    repoLogin,
+    repoName,
   });
 
   const allUpdatedDirectoryIds = new Set<string>();
