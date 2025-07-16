@@ -1,7 +1,6 @@
 import assert from "assert";
 
 import {
-  DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
@@ -87,13 +86,9 @@ export async function getJITServers(
   // Check files for the retrieval query action.
   const filesUsableAsRetrievalQuery = attachments.filter((f) => f.isSearchable);
 
-  // Check files for the process action.
-  const filesUsableForExtracting = attachments.filter((f) => f.isExtractable);
-
   if (
     filesUsableAsTableQuery.length === 0 &&
-    filesUsableAsRetrievalQuery.length === 0 &&
-    filesUsableForExtracting.length === 0
+    filesUsableAsRetrievalQuery.length === 0
   ) {
     return jitServers;
   }
@@ -198,18 +193,6 @@ export async function getJITServers(
     "MCP server view not found for search. Ensure auto tools are created."
   );
 
-  // Get the extract_data view once - we'll need it for extract functionality
-  const extractDataView =
-    await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-      auth,
-      "extract_data"
-    );
-
-  assert(
-    extractDataView,
-    "MCP server view not found for extract_data. Ensure auto tools are created."
-  );
-
   if (filesUsableAsRetrievalQuery.length > 0) {
     const contentNodeAttachments: ContentNodeAttachmentType[] = [];
     for (const f of filesUsableAsRetrievalQuery) {
@@ -258,55 +241,6 @@ export async function getJITServers(
     jitServers.push(retrievalServer);
   }
 
-  // Add extract data MCP server for processable files
-  if (filesUsableForExtracting.length > 0) {
-    const contentNodeAttachments: ContentNodeAttachmentType[] = [];
-    for (const f of filesUsableForExtracting) {
-      if (isContentNodeAttachmentType(f)) {
-        contentNodeAttachments.push(f);
-      }
-    }
-    const dataSources: DataSourceConfiguration[] = contentNodeAttachments
-      // For each extractable content node, we add its datasourceview with itself as parent filter.
-      .map((f) => ({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dataSourceViewId: f.nodeDataSourceViewId,
-        filter: {
-          parents: {
-            in: [f.nodeId],
-            not: [],
-          },
-          tags: null,
-        },
-      }));
-    if (conversationDataSourceView) {
-      dataSources.push({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dataSourceViewId: conversationDataSourceView.sId,
-        filter: { parents: null, tags: null },
-      });
-    }
-
-    const extractServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME,
-      description: `Extract structured data from the 'extractable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``,
-      dataSources,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      mcpServerViewId: extractDataView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: extractDataView.mcpServerId,
-    };
-    jitServers.push(extractServer);
-  }
-
   const searchableFolders: ContentNodeAttachmentType[] = [];
   for (const attachment of attachments) {
     if (
@@ -353,26 +287,6 @@ export async function getJITServers(
       internalMCPServerId: retrievalView.mcpServerId,
     };
     jitServers.push(folderSearchServer);
-
-    // add extract server for the folder
-    const folderExtractServer: ServerSideMCPServerConfigurationType = {
-      id: -1,
-      sId: generateRandomModelSId(),
-      type: "mcp_server_configuration",
-      name: `extract_folder_${i}`,
-      description: `Extract structured data from the documents inside "${folder.title}"`,
-      dataSources,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      mcpServerViewId: extractDataView.sId,
-      dustAppConfiguration: null,
-      internalMCPServerId: extractDataView.mcpServerId,
-    };
-    jitServers.push(folderExtractServer);
   }
 
   return jitServers;
