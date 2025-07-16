@@ -134,6 +134,30 @@ async function attachStepContentToMcpActions({
           matchingStepContent = stepContents[0];
         }
 
+        // Fallback for actions with a query param that can be matched to a step content.
+        if (!matchingStepContent && mcpAction.params?.query) {
+          const query = mcpAction.params.query;
+          matchingStepContent = stepContents.find((sc) => {
+            if (isFunctionCallContent(sc.value)) {
+              try {
+                const functionCallArgs = JSON.parse(sc.value.value.arguments);
+                return functionCallArgs.query === query;
+              } catch (e) {
+                logger.error(
+                  {
+                    workspaceId: workspace.sId,
+                    actionId: mcpAction.id,
+                    stepContentId: sc.id,
+                    error: e,
+                  },
+                  "Error parsing function call arguments."
+                );
+              }
+            }
+            return false;
+          });
+        }
+
         if (!matchingStepContent) {
           if (verbose) {
             logger.info(
