@@ -94,7 +94,8 @@ const OPTION_PARAMETERS = {
       "Field to sort the results by. 'title' sorts alphabetically A-Z, 'timestamp' sorts by " +
         "most recent first. If not specified, results are returned in default order, which is " +
         "folders first, then both documents and tables and alphabetically by title. " +
-        "The default order should be kept unless there is a specific reason to change it."
+        "The default order should be kept unless there is a specific reason to change it. " +
+        "This parameter is mutually exclusive with the `query` parameter."
     ),
   nextPageCursor: z
     .string()
@@ -514,7 +515,8 @@ const createServer = (
         .describe(
           "The title to search for. This supports partial matching and does not require the " +
             "exact title. For example, searching for 'budget' will find 'Budget 2024.xlsx', " +
-            "'Q1 Budget Report', etc."
+            "'Q1 Budget Report', etc. This parameter is mutually exclusive with the `sortBy` " +
+            "parameter."
         ),
       rootNodeId: z
         .string()
