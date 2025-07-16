@@ -78,13 +78,7 @@ const MAX_AUTO_RETRY = 3;
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
-  event:
-    | AgentErrorEvent
-    | AgentActionSpecificEvent
-    | AgentActionSuccessEvent
-    | GenerationTokensEvent
-    | AgentGenerationCancelledEvent
-    | AgentMessageSuccessEvent,
+  event: AgentLoopEvent,
   agentMessageRow: AgentMessage
 ): Promise<void> {
   switch (event.type) {
@@ -147,43 +141,47 @@ export async function runAgentWithStreaming(
     throw new Error("Unreachable: could not find owner workspace for agent");
   }
 
-  const redisHybridManager = getRedisHybridManager();
-  const stream = runMultiActionsAgentLoop(
+  await runMultiActionsAgentLoop(
     auth,
     fullConfiguration,
     conversation,
     userMessage,
-    agentMessage
+    agentMessage,
+    redisChannel,
+    agentMessageRow
   );
-
-  for await (const event of stream) {
-    // Process database operations BEFORE publishing to Redis.
-    await processEventForDatabase(event, agentMessageRow);
-
-    // Then publish the event to Redis for consumers.
-    await redisHybridManager.publish(
-      redisChannel,
-      JSON.stringify(event),
-      "agent_execution"
-    );
-  }
 }
 
-async function* runMultiActionsAgentLoop(
-  auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  agentMessage: AgentMessageType
-): AsyncGenerator<
+type AgentLoopEvent =
   | AgentErrorEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
   | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-> {
+  | AgentMessageSuccessEvent;
+
+async function runMultiActionsAgentLoop(
+  auth: Authenticator,
+  configuration: AgentConfigurationType,
+  conversation: ConversationType,
+  userMessage: UserMessageType,
+  agentMessage: AgentMessageType,
+  redisChannel: string,
+  agentMessageRow: AgentMessage
+): Promise<void> {
   const now = Date.now();
+
+  const redisHybridManager = getRedisHybridManager();
+
+  const publishEvent = async (event: AgentLoopEvent) => {
+    // Process database operations BEFORE publishing to Redis.
+    await processEventForDatabase(event, agentMessageRow);
+    await redisHybridManager.publish(
+      redisChannel,
+      JSON.stringify(event),
+      "agent_execution"
+    );
+  };
 
   const isLegacyAgent = isLegacyAgentConfiguration(configuration);
   const maxStepsPerRun = isLegacyAgent ? 1 : configuration.maxStepsPerRun;
@@ -240,10 +238,10 @@ async function* runMultiActionsAgentLoop(
             "Error running multi-actions agent."
           );
 
-          yield {
+          await publishEvent({
             ...event,
             error: { ...event.error, message: publicMessage },
-          };
+          });
           return;
         case "agent_actions":
           runIds.push(event.runId);
@@ -299,7 +297,7 @@ async function* runMultiActionsAgentLoop(
             } else {
               eventStreamPromises[winner.offset] =
                 eventStreamGenerators[winner.offset].next();
-              yield winner.v.value;
+              await publishEvent(winner.v.value);
             }
           }
 
@@ -345,15 +343,15 @@ async function* runMultiActionsAgentLoop(
 
         // Generation events
         case "generation_tokens":
-          yield event;
+          await publishEvent(event);
           break;
         case "generation_cancel":
-          yield {
+          await publishEvent({
             type: "agent_generation_cancelled",
             created: event.created,
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
-          } satisfies AgentGenerationCancelledEvent;
+          });
           return;
         case "generation_success":
           if (event.chainOfThought.length) {
@@ -367,14 +365,14 @@ async function* runMultiActionsAgentLoop(
 
           runIds.push(event.runId);
 
-          yield {
+          await publishEvent({
             type: "agent_message_success",
             created: Date.now(),
             configurationId: configuration.sId,
             messageId: agentMessage.sId,
             message: agentMessage,
             runIds: runIds,
-          } satisfies AgentMessageSuccessEvent;
+          });
           return;
 
         case "agent_chain_of_thought":
