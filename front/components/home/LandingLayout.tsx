@@ -19,6 +19,7 @@ import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 // import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
+import UTMButton from "@app/components/UTMButton";
 import UTMHandler from "@app/components/UTMHandler";
 import { useGeolocation } from "@app/lib/swr/geo";
 import { classNames } from "@app/lib/utils";
@@ -121,8 +122,8 @@ export default function LandingLayout({
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
-            <Button
-              href={appendUTMParams("/home/contact")}
+            <UTMButton
+              href="/home/contact"
               className="hidden xs:inline-flex"
               variant="outline"
               size="sm"
@@ -133,10 +134,7 @@ export default function LandingLayout({
               size="sm"
               label="Sign in"
               icon={LoginIcon}
-              onClick={() => {
-                const returnToWithUtm = appendUTMParams(postLoginReturnToUrl);
-                window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(returnToWithUtm)}`;
-              }}
+              href={`/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`}
             />
           </div>
         </div>
