@@ -590,8 +590,8 @@ export function AgentMessage({
             owner={owner}
           />
 
-          {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Agent thoughts" variant="primary">
+          {agentMessage.chainOfThought?.trim().length ? (
+            <ContentMessage variant="primary">
               <Markdown
                 content={agentMessage.chainOfThought}
                 isStreaming={false}
