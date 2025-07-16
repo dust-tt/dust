@@ -33,6 +33,8 @@ export class SearchFilesTool implements McpTool {
 
     limit: z
       .number()
+      .int()
+      .positive()
       .optional()
       .describe(
         "Optional: Controls the maximum count of files included in search results. Prevents overwhelming output for large directories (default: 100)"
@@ -46,10 +48,9 @@ export class SearchFilesTool implements McpTool {
       ),
   });
 
-  // API gotten from Google's Gemini
   async execute({
     pattern,
-    directory = ".",
+    directory = process.cwd(),
     case_sensitive = false,
     limit = 100,
     sort_by_modified = false,
@@ -91,16 +92,19 @@ export class SearchFilesTool implements McpTool {
 
       // Sort by modification time if requested
       if (sort_by_modified) {
-        fileResults = fileResults
-          .map((file) => {
+        const fileResultsWithMtime = await Promise.all(
+          fileResults.map(async (file) => {
             try {
-              const stats = fs.statSync(file.path);
+              const stats = await fs.promises.stat(file.path);
               return { ...file, mtime: stats.mtime };
             } catch {
               return { ...file, mtime: new Date(0) };
             }
           })
-          .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+        );
+        fileResults = fileResultsWithMtime.sort(
+          (a, b) => b.mtime.getTime() - a.mtime.getTime()
+        );
       }
 
       // Apply limit
