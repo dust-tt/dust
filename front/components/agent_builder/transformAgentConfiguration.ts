@@ -177,6 +177,18 @@ function createTypedAction(
             baseAction.configuration.dataSourceConfigurations,
         },
       };
+
+    case "QUERY_TABLES":
+      return {
+        ...baseAction,
+        type: "QUERY_TABLES",
+        configuration: {
+          type: "QUERY_TABLES",
+          dataSourceConfigurations:
+            baseAction.configuration.dataSourceConfigurations,
+          timeFrame: config.timeFrame,
+        },
+      };
   }
 }
 
