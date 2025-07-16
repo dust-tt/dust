@@ -11,6 +11,7 @@ import { useController, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 
@@ -59,7 +60,8 @@ function SlackPopoverContent({
 }
 
 export function AgentBuilderSlackSelector() {
-  const { owner, supportedDataSourceViews } = useAgentBuilderContext();
+  const { owner } = useAgentBuilderContext();
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
 
   const [slackDrawerOpened, setSlackDrawerOpened] = useState(false);
 

@@ -21,11 +21,12 @@ import {
   isValidPage,
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type {
   AgentBuilderAction,
   ExtractDataAgentBuilderAction,
 } from "@app/components/agent_builder/types";
-import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import type {
   DataSourceViewSelectionConfigurations,
@@ -54,7 +55,8 @@ export function AddExtractSheet({
   onClose,
   action,
 }: AddExtractSheetProps) {
-  const { owner, supportedDataSourceViews } = useAgentBuilderContext();
+  const { owner } = useAgentBuilderContext();
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { spaces } = useSpacesContext();
   const instructions = useWatch<AgentBuilderFormData, "instructions">({
     name: "instructions",

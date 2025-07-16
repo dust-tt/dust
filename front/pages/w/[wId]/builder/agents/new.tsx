@@ -3,9 +3,6 @@ import type { ParsedUrlQuery } from "querystring";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
-import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
-import { MCPServerViewsProvider } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
-import { SpacesProvider } from "@app/components/assistant_builder/contexts/SpacesContext";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
@@ -143,13 +140,7 @@ export default function CreateAgent({
 
   return (
     <AgentBuilderProvider owner={owner} user={user}>
-      <SpacesProvider owner={owner}>
-        <MCPServerViewsProvider owner={owner}>
-          <DataSourceViewsProvider owner={owner}>
-            <AgentBuilder />
-          </DataSourceViewsProvider>
-        </MCPServerViewsProvider>
-      </SpacesProvider>
+      <AgentBuilder />
     </AgentBuilderProvider>
   );
 }

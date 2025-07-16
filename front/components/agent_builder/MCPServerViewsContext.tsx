@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import React, { createContext, useContext, useMemo } from "react";
 
-import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { mcpServerViewSortingFn } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
@@ -47,18 +47,13 @@ export const MCPServerViewsProvider = ({
     isError: isMCPServerViewsError,
   } = useMCPServerViewsFromSpaces(owner, spaces);
 
-  const sortedMCPServerViews = useMemo(
-    () => mcpServerViews.sort(mcpServerViewSortingFn),
-    [mcpServerViews]
-  );
-
   const value: MCPServerViewsContextType = useMemo(() => {
     return {
-      mcpServerViews: sortedMCPServerViews,
+      mcpServerViews: mcpServerViews.sort(mcpServerViewSortingFn),
       isMCPServerViewsLoading: isLoading || isSpacesLoading, // Spaces is required to fetch server views so we check isSpacesLoading too.
       isMCPServerViewsError,
     };
-  }, [isLoading, isMCPServerViewsError, isSpacesLoading, sortedMCPServerViews]);
+  }, [isLoading, isMCPServerViewsError, isSpacesLoading, mcpServerViews]);
 
   return (
     <MCPServerViewsContext.Provider value={value}>

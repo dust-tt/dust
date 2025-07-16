@@ -16,11 +16,12 @@ import {
   isValidPage,
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type {
   AgentBuilderAction,
   IncludeDataAgentBuilderAction,
 } from "@app/components/agent_builder/types";
-import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import type {
   DataSourceViewSelectionConfigurations,
@@ -47,7 +48,8 @@ export function AddIncludeDataSheet({
   onClose,
   action,
 }: AddIncludeDataSheetProps) {
-  const { owner, supportedDataSourceViews } = useAgentBuilderContext();
+  const { owner } = useAgentBuilderContext();
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { spaces } = useSpacesContext();
   const [currentPageId, setCurrentPageId] = useState<PageId>(
     PAGE_IDS.DATA_SOURCE_SELECTION

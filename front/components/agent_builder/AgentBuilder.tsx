@@ -9,12 +9,13 @@ import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuild
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
-import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -35,7 +36,8 @@ interface AgentBuilderProps {
 export default function AgentBuilder({
   agentConfiguration,
 }: AgentBuilderProps) {
-  const { owner, user, supportedDataSourceViews } = useAgentBuilderContext();
+  const { owner, user } = useAgentBuilderContext();
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
   const router = useRouter();
