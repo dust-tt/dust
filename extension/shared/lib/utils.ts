@@ -2,7 +2,10 @@
  * Utils to generate PKCE code verifier and challenge.
  */
 
-import type { LightAgentConfigurationType } from "@dust-tt/client";
+import type {
+  DataSourceViewContentNodeType,
+  LightAgentConfigurationType,
+} from "@dust-tt/client";
 
 const base64URLEncode = (buffer: ArrayBuffer): string => {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)))
@@ -168,6 +171,13 @@ export function filterAndSortAgents(
 
   return filtered;
 }
+
+export const isEqualNode = (
+  lhs: DataSourceViewContentNodeType,
+  rhs: DataSourceViewContentNodeType
+) =>
+  lhs.internalId === rhs.internalId &&
+  lhs.dataSourceView.dataSource.sId === rhs.dataSourceView.dataSource.sId;
 
 // This function implements our general strategy to sort agents to users (input bar, agent list,
 // agent suggestions...).
