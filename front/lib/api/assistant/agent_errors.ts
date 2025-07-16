@@ -19,10 +19,13 @@ export const categorizeAgentErrorMessage = (error: {
   message: string;
   code: string;
 }): {
-  category?:
+  category:
     | "retryable_model_error"
     | "context_window_exceeded"
-    | "provider_internal_error";
+    | "provider_internal_error"
+    | "stream_error"
+    | "unknown_error"
+    | "invalid_response_format_configuration";
   publicMessage: string;
 } => {
   if (error.code == "multi_actions_error") {
@@ -64,6 +67,7 @@ export const categorizeAgentErrorMessage = (error: {
       } else if (error.message.includes("Invalid schema for response_format")) {
         const contextPart = error.message.split("In context=")[1];
         return {
+          category: "invalid_response_format_configuration",
           publicMessage: `Your agent is configured to return a response in a format that is not supported by the model: ${contextPart}. Please update your agent configuration in Instructions > Advanced Settings > Structured Response Format.`,
         };
       } else if (error.message.includes("server_error")) {
@@ -78,6 +82,7 @@ export const categorizeAgentErrorMessage = (error: {
       error.message.includes("Error parsing error")
     ) {
       return {
+        category: "stream_error",
         publicMessage:
           "There was an error streaming the answer to your query. Please try again.",
       };
@@ -85,6 +90,7 @@ export const categorizeAgentErrorMessage = (error: {
   }
   // The original message is used as a fallback.
   return {
+    category: "unknown_error",
     publicMessage: `Error running agent: [${error.code}] ${error.message}`,
   };
 };
