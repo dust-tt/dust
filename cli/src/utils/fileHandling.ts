@@ -1,5 +1,5 @@
 import type { Result, SupportedFileContentType } from "@dust-tt/client";
-import { Ok, Err } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import {
   isSupportedFileContentType,
   supportedFileExtensions,
@@ -88,48 +88,45 @@ export function formatFileSize(bytes: number): string {
  */
 export async function validateAndGetFileInfo(
   filePath: string
-): Promise<FileInfo> {
-  try {
-    const stats = await stat(filePath);
+): Promise<Result<FileInfo, Error>> {
+  const stats = await stat(filePath);
 
-    if (!stats.isFile()) {
-      throw new Error(`Path is not a file: ${filePath}`);
-    }
+  if (!stats.isFile()) {
+    return new Err(new Error(`Path is not a file: ${filePath}`));
+  }
 
-    const name = basename(filePath);
-    const extension = extname(filePath);
-    const size = stats.size;
+  const name = basename(filePath);
+  const extension = extname(filePath);
+  const size = stats.size;
 
-    if (!isSupportedFileType(extension)) {
-      throw new Error(
+  if (!isSupportedFileType(extension)) {
+    return new Err(
+      new Error(
         `Unsupported file type: ${extension}. Supported types: ${supportedFileExtensions.join(
           ", "
         )}`
-      );
-    }
+      )
+    );
+  }
 
-    if (size > MAX_FILE_SIZE) {
-      throw new Error(
+  if (size > MAX_FILE_SIZE) {
+    return new Err(
+      new Error(
         `File too large: ${formatFileSize(
           size
         )}. Maximum size: ${formatFileSize(MAX_FILE_SIZE)}`
-      );
-    }
-
-    return {
-      path: filePath,
-      name,
-      size,
-      type: getMimeType(extension),
-      extension,
-      fileType: detectFileType(filePath),
-    };
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error(`Failed to validate file: ${String(error)}`);
+      )
+    );
   }
+
+  return new Ok({
+    path: filePath,
+    name,
+    size,
+    type: getMimeType(extension),
+    extension,
+    fileType: detectFileType(filePath),
+  });
 }
 
 /**
@@ -221,13 +218,16 @@ export async function processFile(
 ): Promise<Result<{ data: string }, Error>> {
   // check for existence
   if (!fs.existsSync(filePath)) {
-    throw new Error(`File at ${filePath} does not exist.`);
+    return new Err(new Error(`File at ${filePath} does not exist.`));
   }
 
   // get stats, checks for file size and for whether it actually is a file and not a directory
-  const { fileType } = await validateAndGetFileInfo(filePath);
+  const fileInfoRes = await validateAndGetFileInfo(filePath);
+  if (fileInfoRes.isErr()) {
+    return fileInfoRes;
+  }
 
-  switch (fileType) {
+  switch (fileInfoRes.value.fileType) {
     case "binary":
       throw new Error("cannot handle binary files");
     case "image":
