@@ -747,6 +747,7 @@ pub async fn openai_compatible_chat_completion(
         usage: c.usage.map(|usage| LLMTokenUsage {
             prompt_tokens: usage.prompt_tokens,
             completion_tokens: usage.completion_tokens.unwrap_or(0),
+            reasoning_tokens: None,
         }),
         provider_request_id: request_id,
         logprobs: logprobs_from_choices(&c.choices),

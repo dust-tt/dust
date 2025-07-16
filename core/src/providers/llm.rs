@@ -84,6 +84,8 @@ pub struct ChatFunction {
 pub struct LLMTokenUsage {
     pub prompt_tokens: u64,
     pub completion_tokens: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reasoning_tokens: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

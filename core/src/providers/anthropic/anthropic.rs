@@ -532,6 +532,7 @@ impl LLM for AnthropicLLM {
             usage: Some(LLMTokenUsage {
                 prompt_tokens: c.usage.input_tokens,
                 completion_tokens: c.usage.output_tokens,
+                reasoning_tokens: None,
             }),
             completions: AssistantChatMessage::try_from(c).into_iter().collect(),
             provider_request_id: request_id,
