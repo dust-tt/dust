@@ -96,23 +96,25 @@ export function UserMenu({
             }
             clickable
           />
-          <div className="flex flex-col items-start">
+          <div className="flex min-w-0 flex-1 flex-col items-start">
             <span
               className={cn(
-                "heading-sm transition-colors duration-200",
+                "heading-sm w-full truncate transition-colors duration-200",
                 "text-foreground group-hover:text-primary-600 group-active:text-primary-950 dark:text-foreground-night dark:group-hover:text-muted-foreground-night dark:group-active:text-primary-700"
               )}
             >
               {user.firstName}
             </span>
-            <span className="-mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <span className="w-full truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
               {owner.name}
             </span>
           </div>
-          <Icon
-            visual={ChevronDownIcon}
-            className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
-          />
+          <div className="flex-shrink-0">
+            <Icon
+              visual={ChevronDownIcon}
+              className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950 dark:text-muted-foreground-night dark:group-hover:text-foreground-night dark:group-active:text-primary-700"
+            />
+          </div>
         </div>
       </DropdownMenuTrigger>
 
