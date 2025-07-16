@@ -10,7 +10,7 @@ import {
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { A } from "@app/components/home/ContentComponents";
@@ -44,7 +44,24 @@ export default function LandingLayout({
   const cookieValue = cookies["dust-cookies-accepted"];
   const shouldCheckGeo = !cookieValue;
 
-  const { geoData } = useGeolocation({ disabled: !shouldCheckGeo });
+  const { geoData, isGeoDataLoading, isGeoDataError } = useGeolocation({
+    disabled: !shouldCheckGeo,
+  });
+
+  const setCookieApproval = useCallback(
+    (type: "true" | "auto" | "essentials") => {
+      if (type === "true" || type === "auto") {
+        setHasAcceptedCookies(true);
+      }
+      setShowCookieBanner(false);
+      setCookie("dust-cookies-accepted", type, {
+        path: "/",
+        maxAge: 183 * 24 * 60 * 60, // 6 months
+        sameSite: "lax",
+      });
+    },
+    [setCookie]
+  );
 
   useEffect(() => {
     const hasAcceptedTracking =
@@ -57,16 +74,19 @@ export default function LandingLayout({
       if (geoData.isGDPR) {
         setShowCookieBanner(true);
       } else {
-        setHasAcceptedCookies(true);
-        setShowCookieBanner(false);
-        setCookie("dust-cookies-accepted", "auto", {
-          path: "/",
-          maxAge: 183 * 24 * 60 * 60, // 6 months
-          sameSite: "lax",
-        });
+        setCookieApproval("auto");
       }
+    } else if (!isGeoDataLoading && (isGeoDataError || !geoData)) {
+      setShowCookieBanner(true);
     }
-  }, [cookieValue, geoData, setCookie]);
+  }, [
+    cookieValue,
+    geoData,
+    isGeoDataLoading,
+    isGeoDataError,
+    setCookie,
+    setCookieApproval,
+  ]);
 
   return (
     <>
@@ -132,21 +152,10 @@ export default function LandingLayout({
           className="fixed bottom-0 left-0 z-50 w-full"
           show={showCookieBanner}
           onClickAccept={() => {
-            setCookie("dust-cookies-accepted", "true", {
-              path: "/",
-              maxAge: 183 * 24 * 60 * 60, // 6 months in seconds
-              sameSite: "lax",
-            });
-            setHasAcceptedCookies(true);
-            setShowCookieBanner(false);
+            setCookieApproval("true");
           }}
           onClickRefuse={() => {
-            setCookie("dust-cookies-accepted", "essentials", {
-              path: "/",
-              maxAge: 183 * 24 * 60 * 60, // 6 months
-              sameSite: "lax",
-            });
-            setShowCookieBanner(false);
+            setCookieApproval("essentials");
           }}
         />
         {hasAcceptedCookies && (
@@ -213,7 +222,7 @@ const CookieBanner = ({
         <Button
           variant="outline"
           size="sm"
-          label="Accept Essentials"
+          label="Reject All"
           onClick={() => {
             setIsVisible(false);
             onClickRefuse();
@@ -222,7 +231,7 @@ const CookieBanner = ({
         <Button
           variant="highlight"
           size="sm"
-          label="Accept All Cookies"
+          label="Accept All"
           onClick={() => {
             setIsVisible(false);
             onClickAccept();

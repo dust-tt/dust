@@ -11,10 +11,8 @@ export function useGeolocation({ disabled }: { disabled?: boolean } = {}) {
     disabled ? null : "/api/geo/location",
     geoFetcher,
     {
-      disabled,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      // Cache for the session duration
       dedupingInterval: 60 * 60 * 1000, // 1 hour
     }
   );
