@@ -232,8 +232,6 @@ export async function processFile(
       throw new Error("cannot handle binary files");
     case "image":
     case "pdf":
-    case "audio":
-    case "video":
       const contentBuffer = await fs.promises.readFile(filePath);
       const base64Data = contentBuffer.toString("base64");
       return new Ok({
@@ -273,7 +271,12 @@ export async function processFile(
       return new Ok({
         data: resContent,
       });
+    case "audio":
+    case "video":
+      return new Err(
+        new Error("Video and audio content is not yet supported.")
+      );
     default:
-      return new Err(new Error("We should not have reached this statement"));
+      return new Err(new Error("We should not have reached this statement."));
   }
 }
