@@ -212,7 +212,6 @@ export type AgentErrorEvent = {
     code: string;
     message: string;
     metadata: Record<string, string | number | boolean> | null;
-    publicMessage?: string;
   };
 };
 
