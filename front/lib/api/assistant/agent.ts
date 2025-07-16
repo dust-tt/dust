@@ -251,13 +251,13 @@ async function runMultiActionsAgentLoop(
                     : "not retryable"
                 }).`
               );
-              publishEvent({
+              await publishEvent({
                 ...event,
                 error: {
                   ...event.error,
                   message: publicMessage,
                 },
-              };
+              });
               return;
             }
 
@@ -308,11 +308,11 @@ async function runMultiActionsAgentLoop(
                   stepActions: event.actions.map((a) => a.action),
                   citationsRefsOffset,
                   stepContentId,
-                agentMessageRow,
-            redisChannel,
-              });
-            })
-          );
+                  agentMessageRow,
+                  redisChannel,
+                });
+              })
+            );
             // After we are done running actions, we update the inter-step refsOffset.
             for (let j = 0; j < event.actions.length; j++) {
               citationsRefsOffset += getCitationsCount({
@@ -359,12 +359,12 @@ async function runMultiActionsAgentLoop(
             await publishEvent(event);
             break;
           case "generation_cancel":
-            await publishEvent( {
+            await publishEvent({
               type: "agent_generation_cancelled",
               created: event.created,
               configurationId: configuration.sId,
               messageId: agentMessage.sId,
-            } );
+            });
             return;
           case "generation_success":
             if (event.chainOfThought.length) {
@@ -378,14 +378,14 @@ async function runMultiActionsAgentLoop(
 
             runIds.push(event.runId);
 
-            await publishEvent( {
+            await publishEvent({
               type: "agent_message_success",
               created: Date.now(),
               configurationId: configuration.sId,
               messageId: agentMessage.sId,
               message: agentMessage,
               runIds: runIds,
-            } );
+            });
             return;
 
           case "agent_chain_of_thought":
@@ -403,9 +403,6 @@ async function runMultiActionsAgentLoop(
 
       autoRetryCount++;
     } while (autoRetryCount <= MAX_AUTO_RETRY);
-
-    // The loop must always return, retrying more than MAX_AUTO_RETRY times errors and returns.
-    throw new Error("Unreachable: loop should have returned");
   }
 }
 
