@@ -49,7 +49,9 @@ export default function LandingLayout({
   });
 
   const setCookieApproval = useCallback(
-    (type: "true" | "auto" | "essentials") => {
+    (type: "true" | "auto" | "false") => {
+      // true is when the user accepts all cookies.
+      // auto is when not in GDPR region
       if (type === "true" || type === "auto") {
         setHasAcceptedCookies(true);
       }
@@ -155,7 +157,7 @@ export default function LandingLayout({
             setCookieApproval("true");
           }}
           onClickRefuse={() => {
-            setCookieApproval("essentials");
+            setCookieApproval("false");
           }}
         />
         {hasAcceptedCookies && (

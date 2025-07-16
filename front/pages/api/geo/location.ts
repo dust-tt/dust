@@ -26,7 +26,8 @@ export default async function handler(
       : req.socket.remoteAddress;
 
     if (!ip) {
-      return res.status(200).json({ isGDPR: false });
+      logger.error("No IP address found in request");
+      return res.status(400).json({ error: "No IP address found" });
     }
 
     // Handle localhost IPs in development
@@ -52,7 +53,9 @@ export default async function handler(
         },
         "Failed to fetch geolocation data from IPinfo"
       );
-      return res.status(200).json({ isGDPR: false });
+      return res.status(502).json({ 
+        error: `Failed to fetch geolocation data: ${response.statusText}` 
+      });
     }
 
     const data = await response.json();
@@ -64,6 +67,8 @@ export default async function handler(
     });
   } catch (error) {
     logger.error({ error }, "Error in geolocation API");
-    return res.status(200).json({ isGDPR: false });
+    return res.status(500).json({ 
+      error: "Internal server error while fetching geolocation" 
+    });
   }
 }
