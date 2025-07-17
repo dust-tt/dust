@@ -120,7 +120,7 @@ export function useDraftAgent() {
       return;
     }
 
-    // Create the first version here, after that we will update the draft agent on form submission.
+    // Create the first version here, after that we will update the draft agent on form submission or name changes.
     if (!draftAgent) {
       const hasContent =
         (formData.actions && formData.actions.length > 0) ||
