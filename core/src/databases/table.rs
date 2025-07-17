@@ -971,7 +971,8 @@ pub struct Row {
     // To keep track of pending delete actions, we use a special marker row.
     // This allows us to keep all the row data in the same format, which keeps the
     // implementation simpler.
-    #[serde(default)]
+    // Note that this is internal state, and it is not serialized
+    #[serde(skip_serializing, default)]
     pub is_delete: bool,
 }
 
