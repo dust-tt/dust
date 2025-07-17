@@ -586,21 +586,29 @@ impl LocalTable {
                 .await?;
 
             info!(
+                table_id = self.table.table_id(),
                 lock_acquisition_duration = utils::now() - now,
                 "Upsert lock acquired in upsert_rows_to_gcs_or_queue_work"
             );
 
-            // Since truncate replaces everything, we get rid of all non-truncate and row deletion
-            // pending operations that got queued before we got called.
-            // And those that arrive later cannot happen until we release the lock.
-            GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(&self.table)
+            // Is there is an error, don't propagate it until the lock is released below.
+            let result = async {
+                // Since truncate replaces everything, we get rid of all non-truncate and row deletion
+                // pending operations that got queued before we got called.
+                // And those that arrive later cannot happen until we release the lock.
+                GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(
+                    &self.table,
+                )
                 .await?;
 
-            self.upsert_rows_gcs(store, databases_store, rows, truncate)
-                .await?;
+                self.upsert_rows_gcs(store, databases_store, rows, truncate)
+                    .await
+            }
+            .await;
 
             lock_manager.unlock(&lock).await;
-            Ok(())
+
+            result
         } else {
             // We can only handle non-truncate upserts if the table is already migrated.
             // Otherwise, we have no base data to make the incremental updates against.

@@ -169,11 +169,19 @@ impl TableUpsertsBackgroundWorker {
                         .await?;
 
                     info!(
-                        lock_acquisition_duration = utils::now() - now,
+                        table_id = table.table_id(),
+                        duration = utils::now() - now,
                         "TableUpsertsBackgroundWorker: Upsert lock acquired"
                     );
 
-                    self.process_table(&table, key.clone(), table_data).await?;
+                    // If it fails, log an error but continue processing other tables.
+                    // Also, we need to make sure the lock is always released.
+                    if let Err(e) = self.process_table(&table, key.clone(), table_data).await {
+                        error!(
+                            table_id = table.table_id(),
+                            "TableUpsertsBackgroundWorker: Failed to process table: {}", e
+                        );
+                    }
 
                     lock_manager.unlock(&lock).await;
                 }
