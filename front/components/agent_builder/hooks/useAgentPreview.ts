@@ -89,12 +89,13 @@ export function useDraftAgent() {
       getValues,
     ]);
 
-const debouncedCreateDraftAgent = useMemo(
-  () => debounce(() => {
-    void createDraftAgent();
-  }, 500),
-  [createDraftAgent]
-);
+  const debouncedCreateDraftAgent = useMemo(
+    () =>
+      debounce(() => {
+        void createDraftAgent();
+      }, 500),
+    [createDraftAgent]
+  );
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
       const formData = getValues();
