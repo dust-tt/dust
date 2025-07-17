@@ -6,7 +6,7 @@ use crate::databases::table_schema::TableSchema;
 
 // These flags are transitional while we migrate to GCS. Eventually, we will only use GCS.
 pub const SAVE_TABLES_TO_POSTGRES: bool = true;
-pub const SAVE_TABLES_TO_GCS: bool = true;
+pub const SAVE_TABLES_TO_GCS: bool = false;
 
 #[async_trait]
 pub trait DatabasesStore {
