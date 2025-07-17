@@ -93,6 +93,12 @@ makeScript(
             `Failed to delete data source`
           );
         }
+        logger.info({ connectorId }, `[LIVE] deleted slack connector`);
+      } else {
+        logger.info(
+          { connectorId },
+          `[DRY] would have deleted slack connector`
+        );
       }
     }
   }
