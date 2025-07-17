@@ -65,17 +65,13 @@ export function AgentBuilderPreview() {
     getDraftAgent,
   });
 
-  const renderContent = () => {
-    if (!draftAgent) {
-      return (
-        <EmptyState
-          message="Ready to test your agent?"
-          description="Add some instructions or actions to your agent to start testing it here."
-        />
-      );
-    }
+  // Show loading spinner only when the first time we create a draft agent. After that the spinner is shown
+  // inside the button in the input bar. This way we don't have to unmount the conversation viewer every time.
+  const showLoader =
+    !draftAgent && (isMCPServerViewsLoading || isSavingDraftAgent);
 
-    if (!draftAgent && draftCreationFailed) {
+  const renderContent = () => {
+    if (draftCreationFailed) {
       return (
         <EmptyState
           message="Unable to create preview"
@@ -84,8 +80,17 @@ export function AgentBuilderPreview() {
       );
     }
 
-    if (!draftAgent && (isMCPServerViewsLoading || isSavingDraftAgent)) {
+    if (showLoader) {
       return <LoadingState message="Preparing your agent..." />;
+    }
+
+    if (!draftAgent) {
+      return (
+        <EmptyState
+          message="Ready to test your agent?"
+          description="Add some instructions or actions to your agent to start testing it here."
+        />
+      );
     }
 
     return (
