@@ -1,3 +1,5 @@
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -592,19 +594,22 @@ impl LocalTable {
             );
 
             // Is there is an error, don't propagate it until the lock is released below.
-            let result = async {
-                // Since truncate replaces everything, we get rid of all non-truncate and row deletion
-                // pending operations that got queued before we got called.
-                // And those that arrive later cannot happen until we release the lock.
-                GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(
-                    &self.table,
-                )
-                .await?;
+            let result = {
+                // Run the two operations concurrently, as they are independent
+                let delete_future =
+                    GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(
+                        &self.table,
+                    );
+                let upsert_future = self.upsert_rows_gcs(store, databases_store, rows, truncate);
 
-                self.upsert_rows_gcs(store, databases_store, rows, truncate)
-                    .await
-            }
-            .await;
+                let results = try_join_all(vec![
+                    Box::pin(delete_future) as Pin<Box<dyn Future<Output = Result<()>> + Send>>,
+                    Box::pin(upsert_future),
+                ])
+                .await;
+
+                results.map(|_| ())
+            };
 
             lock_manager.unlock(&lock).await;
 
