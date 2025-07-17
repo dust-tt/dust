@@ -80,6 +80,7 @@ async function handler(
       id: user.id,
       createdAt: user.createdAt.getTime(),
       username: user.username,
+      provider: user.provider,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,

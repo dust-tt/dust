@@ -76,10 +76,20 @@ export type ExtensionWorkspaceType = WorkspaceType & {
   blacklistedDomains: string[] | null;
 };
 
+export type UserProviderType =
+  | "auth0"
+  | "github"
+  | "google"
+  | "okta"
+  | "samlp"
+  | "waad"
+  | null;
+
 export type UserType = {
   sId: string;
   id: ModelId;
   createdAt: number;
+  provider: UserProviderType;
   username: string;
   email: string;
   firstName: string;

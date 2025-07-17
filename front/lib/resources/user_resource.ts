@@ -16,7 +16,13 @@ import {
   UserModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
+import type {
+  LightWorkspaceType,
+  ModelId,
+  Result,
+  UserProviderType,
+  UserType,
+} from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 export interface SearchMembersPaginationParams {
@@ -45,9 +51,14 @@ export class UserResource extends BaseResource<UserModel> {
   static async makeNew(
     blob: Omit<
       Attributes<UserModel>,
-      "id" | "createdAt" | "updatedAt" | "isDustSuperUser" | "imageUrl"
+      | "id"
+      | "createdAt"
+      | "updatedAt"
+      | "isDustSuperUser"
+      | "providerId"
+      | "imageUrl"
     > &
-      Partial<Pick<Attributes<UserModel>, "imageUrl">>
+      Partial<Pick<Attributes<UserModel>, "providerId" | "imageUrl">>
   ): Promise<UserResource> {
     const lowerCaseEmail = blob.email?.toLowerCase();
     const user = await UserModel.create({ ...blob, email: lowerCaseEmail });
@@ -149,6 +160,19 @@ export class UserResource extends BaseResource<UserModel> {
     });
 
     return user ? new UserResource(UserModel, user.get()) : null;
+  }
+
+  async updateAuth0Sub({
+    sub,
+    provider,
+  }: {
+    sub: string;
+    provider: UserProviderType;
+  }) {
+    return this.update({
+      auth0Sub: sub,
+      provider,
+    });
   }
 
   async updateWorkOSUserId({ workOSUserId }: { workOSUserId: string }) {
@@ -306,6 +330,7 @@ export class UserResource extends BaseResource<UserModel> {
       sId: this.sId,
       id: this.id,
       createdAt: this.createdAt.getTime(),
+      provider: this.provider,
       username: this.username,
       email: this.email,
       firstName: this.firstName,
