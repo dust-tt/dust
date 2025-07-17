@@ -94,18 +94,20 @@ export const fetchDatasets = async ({
 }: {
   credentials: BigQueryCredentialsWithLocation;
   connection?: BigQuery;
-  logger: Logger;
+  logger?: Logger;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
   try {
     const r = await conn.getDatasets();
     const datasets = r[0];
-    logger.info(
-      {
-        datasetsCount: datasets.length,
-      },
-      "[BigQuery] fetchDatasets"
-    );
+    if (logger) {
+      logger.info(
+        {
+          datasetsCount: datasets.length,
+        },
+        "[BigQuery] fetchDatasets"
+      );
+    }
     return new Ok(
       removeNulls(
         datasets.map((dataset) => {
@@ -148,7 +150,7 @@ export const fetchTables = async ({
   dataset: string;
   fetchTablesDescription: boolean;
   connection?: BigQuery;
-  logger: Logger;
+  logger?: Logger;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
   try {
@@ -161,7 +163,7 @@ export const fetchTables = async ({
     const d = conn.dataset(dataset);
     const r = await d.getTables();
     const tables = r[0];
-    logger.info(
+    logger?.info(
       {
         tablesCount: tables.length,
         dataset,
@@ -179,7 +181,7 @@ export const fetchTables = async ({
           if (fetchTablesDescription) {
             try {
               const metadata = await table.getMetadata();
-              logger.info(
+              logger?.info(
                 {
                   dataset,
                   table: table.id,
@@ -202,7 +204,7 @@ export const fetchTables = async ({
                   typeof error.message === "string"
                     ? error.message
                     : "Permission denied";
-                logger.warn(
+                logger?.warn(
                   {
                     projectId: credentials.project_id,
                     dataset,
