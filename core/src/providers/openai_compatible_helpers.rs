@@ -1024,7 +1024,6 @@ async fn streamed_chat_completion(
                     }
                     _ => {
                         let index = chunks.len();
-                        println!("\n\nEVENT {}\n\n", e.data.as_str());
 
                         let chunk: ChatChunk = match serde_json::from_str(e.data.as_str()) {
                             Ok(c) => c,
