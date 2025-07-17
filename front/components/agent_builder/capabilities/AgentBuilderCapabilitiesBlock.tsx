@@ -20,9 +20,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
-import { AddExtractSheet } from "@app/components/agent_builder/capabilities/knowledge/AddExtractSheet";
-import { AddIncludeDataSheet } from "@app/components/agent_builder/capabilities/knowledge/AddIncludeDataSheet";
-import { AddSearchSheet } from "@app/components/agent_builder/capabilities/knowledge/AddSearchSheet";
+import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import type { KnowledgeServerName } from "@app/components/agent_builder/types";
 import { isKnowledgeServerName } from "@app/components/agent_builder/types";
@@ -238,37 +236,12 @@ export function AgentBuilderCapabilitiesBlock() {
         )}
       </div>
 
-      <AddSearchSheet
-        isOpen={openSheet === "search"}
+      <KnowledgeConfigurationSheet
+        capability={openSheet}
+        isOpen={openSheet !== null}
         onClose={handleCloseSheet}
         onSave={handleEditSave}
-        action={
-          editingAction?.action.type === "SEARCH"
-            ? editingAction.action
-            : undefined
-        }
-      />
-
-      <AddIncludeDataSheet
-        isOpen={openSheet === "include_data"}
-        onClose={handleCloseSheet}
-        onSave={handleEditSave}
-        action={
-          editingAction?.action.type === "INCLUDE_DATA"
-            ? editingAction.action
-            : undefined
-        }
-      />
-
-      <AddExtractSheet
-        isOpen={openSheet === "extract_data"}
-        onClose={handleCloseSheet}
-        onSave={handleEditSave}
-        action={
-          editingAction?.action.type === "EXTRACT_DATA"
-            ? editingAction.action
-            : undefined
-        }
+        action={editingAction?.action}
       />
     </div>
   );

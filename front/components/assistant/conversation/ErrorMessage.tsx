@@ -8,16 +8,22 @@ import {
 } from "@dust-tt/sparkle";
 
 import { useSubmitFunction } from "@app/lib/client/utils";
+import type { AgentErrorContent } from "@app/types";
+import { isAgentErrorCategory } from "@app/types";
 import { truncate } from "@app/types/shared/utils/string_utils";
 
 interface ErrorMessageProps {
-  error: { code: string; message: string };
+  error: AgentErrorContent;
   retryHandler: () => void;
 }
 
 export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
   const fullMessage =
-    "ERROR: " + error.message + (error.code ? ` (code: ${error.code})` : "");
+    error.message + (error.code ? ` (code: ${error.code})` : "");
+
+  const errorIsRetryable =
+    isAgentErrorCategory(error.metadata?.category) &&
+    error.metadata?.category === "retryable_model_error";
 
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () => retryHandler()
@@ -27,8 +33,8 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
     <div className="flex flex-col gap-9">
       <div className="flex flex-col gap-1 sm:flex-row">
         <Chip
-          color="warning"
-          label={"ERROR: " + truncate(error.message, 30)}
+          color={errorIsRetryable ? "golden" : "warning"}
+          label={"Error: " + truncate(error.message, 30)}
           size="xs"
         />
         <Popover

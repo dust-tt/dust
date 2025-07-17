@@ -40,6 +40,7 @@ interface InputBarAttachmentsPickerProps {
   onNodeUnselect: (node: DataSourceViewContentNodeType) => void;
   isLoading?: boolean;
   attachedNodes: DataSourceViewContentNodeType[];
+  side?: "top" | "right" | "bottom" | "left";
 }
 
 export const InputBarAttachmentsPicker = ({
@@ -48,6 +49,7 @@ export const InputBarAttachmentsPicker = ({
   onNodeUnselect,
   attachedNodes,
   isLoading = false,
+  side = "bottom",
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
@@ -73,7 +75,9 @@ export const InputBarAttachmentsPicker = ({
   });
 
   const attachedNodeIds = useMemo(() => {
-    return attachedNodes.map((node) => node.internalId);
+    return attachedNodes.map(
+      (node) => `${node.internalId}-${node.dataSourceView.dataSource.sId}`
+    );
   }, [attachedNodes]);
 
   const spacesMap = useMemo(
@@ -134,7 +138,7 @@ export const InputBarAttachmentsPicker = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         className="min-w-64 max-w-96"
-        side="bottom"
+        side={side}
         align="end"
         onInteractOutside={() => setIsOpen(false)}
         onEscapeKeyDown={() => setIsOpen(false)}
@@ -196,7 +200,9 @@ export const InputBarAttachmentsPicker = ({
                       />
                     }
                     description={`${getLocationForDataSourceViewContentNode(item)}`}
-                    checked={attachedNodeIds.includes(item.internalId)}
+                    checked={attachedNodeIds.includes(
+                      `${item.internalId}-${item.dataSourceView.dataSource.sId}`
+                    )}
                     onCheckedChange={(checked) => {
                       if (checked) {
                         onNodeSelect(item);

@@ -81,6 +81,14 @@ const extractDataActionConfigurationSchema = z.object({
   timeFrame: timeFrameSchema,
   jsonSchema: z.custom<JSONSchema>().nullable(),
 });
+const queryTablesActionConfigurationSchema = z.object({
+  type: z.literal("QUERY_TABLES"),
+  dataSourceConfigurations: z.record(
+    z.string(),
+    dataSourceViewSelectionConfigurationSchema
+  ),
+  timeFrame: timeFrameSchema,
+});
 
 const baseActionSchema = z.object({
   id: z.string(),
@@ -117,11 +125,17 @@ const extractDataActionSchema = baseActionSchema.extend({
   configuration: extractDataActionConfigurationSchema,
 });
 
+const queryTablesActionSchema = baseActionSchema.extend({
+  type: z.literal("QUERY_TABLES"),
+  configuration: queryTablesActionConfigurationSchema,
+});
+
 const actionSchema = z.discriminatedUnion("type", [
   searchActionSchema,
   dataVisualizationActionSchema,
   includeDataActionSchema,
   extractDataActionSchema,
+  queryTablesActionSchema,
 ]);
 
 const userSchema = z.object({

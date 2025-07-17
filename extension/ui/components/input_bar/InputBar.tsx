@@ -3,7 +3,11 @@ import { usePlatform } from "@app/shared/context/PlatformContext";
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getSpaceIcon } from "@app/shared/lib/spaces";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
-import { classNames, compareAgentsForSort } from "@app/shared/lib/utils";
+import {
+  classNames,
+  compareAgentsForSort,
+  isEqualNode,
+} from "@app/shared/lib/utils";
 import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
 import { useFileDrop } from "@app/ui/components/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
@@ -46,6 +50,7 @@ export function AssistantInputBar({
   isTabIncluded,
   setIncludeTab,
   isSubmitting,
+  attachmentPickerSide,
 }: {
   owner: ExtensionWorkspaceType;
   onSubmit: (
@@ -60,6 +65,7 @@ export function AssistantInputBar({
   isTabIncluded: boolean;
   setIncludeTab: (includeTab: boolean) => void;
   isSubmitting?: boolean;
+  attachmentPickerSide?: "top" | "right" | "bottom" | "left";
 }) {
   const platform = usePlatform();
   const dustAPI = useDustAPI();
@@ -186,11 +192,8 @@ export function AssistantInputBar({
   }, []);
 
   const handleNodesAttachmentSelect = (node: DataSourceViewContentNodeType) => {
-    const isNodeAlreadyAttached = attachedNodes.some(
-      (attachedNode) =>
-        attachedNode.internalId === node.internalId &&
-        attachedNode.dataSourceView.dataSource.sId ===
-          node.dataSourceView.dataSource.sId
+    const isNodeAlreadyAttached = attachedNodes.some((attachedNode) =>
+      isEqualNode(attachedNode, node)
     );
     if (!isNodeAlreadyAttached) {
       setAttachedNodes((prev) => [...prev, node]);
@@ -198,9 +201,7 @@ export function AssistantInputBar({
   };
 
   const handleNodesAttachmentRemove = (node: DataSourceViewContentNodeType) => {
-    setAttachedNodes((prev) =>
-      prev.filter((n) => n.internalId !== node.internalId)
-    );
+    setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
   };
 
   // GenerationContext: to know if we are generating or not
@@ -379,6 +380,7 @@ export function AssistantInputBar({
                 onNodeSelect={handleNodesAttachmentSelect}
                 onNodeUnselect={handleNodesAttachmentRemove}
                 attachedNodes={attachedNodes}
+                attachmentPickerSide={attachmentPickerSide}
               />
             </div>
           </div>

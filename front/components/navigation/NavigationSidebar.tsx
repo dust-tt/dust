@@ -173,13 +173,13 @@ export const NavigationSidebar = React.forwardRef<
       {user && (
         <div
           className={classNames(
-            "flex items-center gap-2 border-t p-2",
+            "flex items-center border-t px-1 py-2",
             "border-border-dark dark:border-border-dark-night",
             "text-foreground dark:text-foreground-night"
           )}
         >
           <UserMenu user={user} owner={owner} subscription={subscription} />
-          <div className="flex-grow" />
+          <div className="flex-1" />
           <HelpDropdown owner={owner} user={user} />
         </div>
       )}

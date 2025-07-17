@@ -60,7 +60,11 @@ function extractUsageFromExecutions(
     tracesInner.forEach((trace) => {
       if (trace?.meta) {
         const { token_usage } = trace.meta as {
-          token_usage: { prompt_tokens: number; completion_tokens: number };
+          token_usage: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            reasoning_tokens?: number;
+          };
         };
         if (token_usage) {
           const promptTokens = token_usage.prompt_tokens;

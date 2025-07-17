@@ -54,12 +54,3 @@ export function isSearchableContentType(
   // For now we allow searching everything else.
   return true;
 }
-
-export function isExtractableContentType(
-  contentType: SupportedContentFragmentType
-): boolean {
-  if (isSupportedImageContentType(contentType)) {
-    return false;
-  }
-  return true;
-}

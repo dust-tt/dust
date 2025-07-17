@@ -38,7 +38,8 @@ import type { AgentMessageAsyncEvents } from "@app/lib/api/assistant/streaming/t
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import type { Authenticator } from "@app/lib/auth";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -190,7 +191,7 @@ async function runMultiActionsAgentLoop(
   let citationsRefsOffset = 0;
 
   let processedContent = "";
-  const runIds = [];
+  const runIds: string[] = [];
 
   // Track step content IDs by function call ID for later use in actions.
   const functionCallStepContentIds: Record<string, ModelId> = {};
@@ -214,7 +215,7 @@ async function runMultiActionsAgentLoop(
         : // Otherwise, we let the agent decide which action to run (if any).
           configuration.actions;
 
-    const loopIterationStream = runMultiActionsAgent(auth, {
+    const loopIterationStream = runMultiActionsAgent(auth.toJSON(), {
       agentConfiguration: configuration,
       conversation,
       userMessage,
@@ -224,11 +225,13 @@ async function runMultiActionsAgentLoop(
       isLegacyAgent,
     });
 
-    void wakeLock(async () => {
+    await wakeLock(async () => {
       for await (const event of loopIterationStream) {
         switch (event.type) {
           case "agent_error":
-            const { publicMessage } = categorizeAgentErrorMessage(event.error);
+            const { category, publicMessage } = categorizeAgentErrorMessage(
+              event.error
+            );
 
             localLogger.error(
               {
@@ -239,15 +242,21 @@ async function runMultiActionsAgentLoop(
               "Error running multi-actions agent."
             );
 
-            await updateResourceAndPublishEvent(
+            return updateResourceAndPublishEvent(
               {
                 ...event,
-                error: { ...event.error, message: publicMessage },
+                error: {
+                  ...event.error,
+                  message: publicMessage,
+                  metadata: {
+                    category,
+                  },
+                },
               },
               conversation,
               agentMessageRow
             );
-            return;
+
           case "agent_actions":
             runIds.push(event.runId);
 
@@ -392,7 +401,7 @@ async function runMultiActionsAgentLoop(
 // This method is used by the multi-actions execution loop to pick the next action to execute and
 // generate its inputs.
 async function* runMultiActionsAgent(
-  auth: Authenticator,
+  authType: AuthenticatorType,
   {
     agentConfiguration,
     conversation,
@@ -420,6 +429,9 @@ async function* runMultiActionsAgent(
   | AgentContentEvent
   | AgentStepContentEvent
 > {
+  // Recreate the Authenticator instance from the serialized type
+  const auth = await Authenticator.fromJSON(authType);
+
   const model = getSupportedModelConfig(agentConfiguration.model);
 
   if (!model) {
@@ -710,7 +722,9 @@ async function* runMultiActionsAgent(
           error: {
             code: "multi_actions_error",
             message: `Error running agent: [${res.error.type}] ${res.error.message}`,
-            metadata: null,
+            metadata: {
+              category,
+            },
           },
         } satisfies AgentErrorEvent;
 
@@ -909,20 +923,40 @@ async function* runMultiActionsAgent(
           return;
         }
 
+        // Extract token usage from block execution metadata
+        const meta = e.meta as {
+          token_usage?: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            reasoning_tokens?: number;
+          };
+        } | null;
+        const reasoningTokens = meta?.token_usage?.reasoning_tokens || 0;
+
         const contents = (block.message.contents ?? []).map((content) => {
           if (content.type === "reasoning") {
             return {
               ...content,
               value: {
                 ...content.value,
-                // TODO(DURABLE-AGENTS 2025-07-16): correct value for tokens.
-                tokens: 0,
+                tokens: 0, // Will be updated for the last reasoning item
                 provider: model.providerId,
               },
             } satisfies ReasoningContentType;
           }
           return content;
         });
+
+        // We unfortunately don't currently have a proper breakdown of reasoning tokens per item,
+        // so we set the reasoning token count on the last reasoning item.
+        for (let i = contents.length - 1; i >= 0; i--) {
+          const content = contents[i];
+          if (content.type === "reasoning") {
+            content.value.tokens = reasoningTokens;
+            contents[i] = content;
+            break;
+          }
+        }
 
         output = {
           actions: [],
