@@ -219,6 +219,8 @@ export const DEEPSEEK_CHAT_MODEL_ID = "deepseek-chat" as const;
 export const DEEPSEEK_REASONER_MODEL_ID = "deepseek-reasoner" as const;
 export const FIREWORKS_DEEPSEEK_R1_MODEL_ID =
   "accounts/fireworks/models/deepseek-r1" as const;
+export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
+  "accounts/fireworks/models/kimi-k2-instruct" as const;
 
 export const GROK_3_MODEL_ID = "grok-3-latest" as const;
 export const GROK_3_MINI_MODEL_ID = "grok-3-mini-latest" as const;
@@ -270,6 +272,7 @@ export const MODEL_IDS = [
   DEEPSEEK_CHAT_MODEL_ID,
   DEEPSEEK_REASONER_MODEL_ID,
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
+  FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   GROK_3_MODEL_ID,
   GROK_3_MINI_MODEL_ID,
   GROK_3_FAST_MODEL_ID,
@@ -1169,6 +1172,24 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
 };
 
+export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelId: FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
+  displayName: "Kimi K2 Instruct (Fireworks)",
+  contextSize: 131_072,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "Kimi's K2 Instruct model (131k context, served via Fireworks).",
+  shortDescription: "Kimi's K2 Instruct model.",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: false,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "none",
+  defaultReasoningEffort: "none",
+};
+
 export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
   modelId: GROK_3_MODEL_ID,
@@ -1293,6 +1314,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   DEEPSEEK_CHAT_MODEL_CONFIG,
   DEEPSEEK_REASONER_MODEL_CONFIG,
   FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG,
   GROK_3_MODEL_CONFIG,
   GROK_3_MINI_MODEL_CONFIG,
   GROK_3_FAST_MODEL_CONFIG,
