@@ -237,11 +237,9 @@ async function runMultiActionsAgentLoop(
                 event.error
               );
 
-              const errorIsRetryable = [
-                "stream_error",
-                "retryable_model_error",
-              ].includes(category);
-              shouldRetry = errorIsRetryable;
+              shouldRetry = ["stream_error", "retryable_model_error"].includes(
+                category
+              );
 
               await updateResourceAndPublishEvent(
                 {
@@ -258,7 +256,7 @@ async function runMultiActionsAgentLoop(
                 agentMessageRow
               );
 
-              if (!errorIsRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
+              if (!shouldRetry || autoRetryCount >= MAX_AUTO_RETRY) {
                 localLogger.error(
                   {
                     elapsedTime: Date.now() - now,
@@ -266,7 +264,7 @@ async function runMultiActionsAgentLoop(
                     publicErrorMessage: publicMessage,
                   },
                   `Error running multi-actions agent (${
-                    errorIsRetryable ? "max retries reached" : "not retryable"
+                    shouldRetry ? "max retries reached" : "not retryable"
                   }).`
                 );
                 return;
