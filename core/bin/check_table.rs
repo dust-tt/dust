@@ -5,6 +5,7 @@ use dust::{
     project::Project,
     stores::{postgres, store},
 };
+use tracing::debug;
 
 #[derive(Parser)]
 #[command(
@@ -25,6 +26,8 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let args = Args::parse();
 
     let project = Project::new_from_id(args.project_id);
@@ -67,7 +70,28 @@ async fn main() -> Result<()> {
             println!("Remote database secret ID: {}", remote_database_secret_id);
 
             println!("\nInstantiating remote database connection...");
-            let remote_db = get_remote_database(remote_database_secret_id).await?;
+            debug!(
+                "About to call get_remote_database with secret_id: {}",
+                remote_database_secret_id
+            );
+            let start_time = std::time::Instant::now();
+            let remote_db = match get_remote_database(remote_database_secret_id).await {
+                Ok(db) => {
+                    debug!(
+                        "Successfully created remote database connection in {:?}",
+                        start_time.elapsed()
+                    );
+                    db
+                }
+                Err(e) => {
+                    debug!(
+                        "Failed to create remote database connection after {:?}: {:?}",
+                        start_time.elapsed(),
+                        e
+                    );
+                    return Err(e.into());
+                }
+            };
 
             let dialect_name = match remote_db.dialect() {
                 SqlDialect::DustSqlite => "DustSqlite",

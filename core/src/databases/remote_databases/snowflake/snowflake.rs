@@ -1,5 +1,5 @@
 use std::{collections::HashSet, env};
-use tracing::info;
+use tracing::{debug, info};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -188,10 +188,14 @@ impl SnowflakeRemoteDatabase {
     pub fn new(
         credentials: serde_json::Map<String, serde_json::Value>,
     ) -> Result<Self, QueryDatabaseError> {
+        debug!("SnowflakeRemoteDatabase::new() called");
+        debug!("Deserializing credentials...");
         let connection_details: SnowflakeConnectionDetails =
             serde_json::from_value(serde_json::Value::Object(credentials)).map_err(|e| {
+                debug!("Failed to deserialize credentials: {}", e);
                 QueryDatabaseError::GenericError(anyhow!("Error deserializing credentials: {}", e))
             })?;
+        debug!("Successfully deserialized credentials");
 
         let (username, auth_method, account, role, warehouse) = match &connection_details {
             SnowflakeConnectionDetails::Password {
@@ -233,6 +237,12 @@ impl SnowflakeRemoteDatabase {
             }
         };
 
+        debug!("Creating SnowflakeClient with:");
+        debug!("  - username: {}", username);
+        debug!("  - account: {}", account);
+        debug!("  - role: {}", role);
+        debug!("  - warehouse: {}", warehouse);
+
         let mut client = SnowflakeClient::new(
             &username,
             auth_method,
@@ -246,8 +256,11 @@ impl SnowflakeRemoteDatabase {
             },
         )
         .map_err(|e| {
+            debug!("Failed to create SnowflakeClient: {}", e);
             QueryDatabaseError::GenericError(anyhow!("Error creating Snowflake client: {}", e))
         })?;
+
+        debug!("SnowflakeClient created successfully");
 
         if let (Ok(proxy_host), Ok(proxy_port), Ok(proxy_user_name), Ok(proxy_user_password)) = (
             env::var("PROXY_HOST"),
@@ -270,6 +283,7 @@ impl SnowflakeRemoteDatabase {
                 })?;
         }
 
+        debug!("SnowflakeRemoteDatabase created successfully");
         Ok(Self { client, warehouse })
     }
 
