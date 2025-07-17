@@ -852,7 +852,7 @@ impl LocalTable {
                     tracing::error!("delete_row: failed to schedule background work: {:?}", e);
                 }
             } else {
-                info!("upsert_rows_to_gcs_or_queue_work: table not migrated to CSV, skipping GCS upsert for non-truncate");
+                info!("delete_row: table not migrated to CSV, skipping GCS delete non-truncate");
             }
             Ok(())
         } else {
