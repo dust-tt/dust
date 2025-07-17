@@ -60,7 +60,6 @@ import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -1166,7 +1165,7 @@ export async function mcpActionTypesFromAgentMessageIds(
   auth: Authenticator,
   { agentMessageIds }: { agentMessageIds: ModelId[] }
 ): Promise<MCPActionType[]> {
-  const allActions = await AgentMCPAction.findAll({
+  const actions = await AgentMCPAction.findAll({
     where: {
       agentMessageId: agentMessageIds,
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -1184,27 +1183,10 @@ export async function mcpActionTypesFromAgentMessageIds(
           },
         ],
       },
-      {
-        model: AgentStepContentModel,
-        as: "stepContent",
-        required: false,
-      },
     ],
   });
 
-  const maxVersionActions = allActions.reduce((acc, current) => {
-    // TODO(durable-agents): remove the default value once stepContentId is not nullable.
-    const key = current.stepContent
-      ? `${current.stepContent.step}-${current.stepContent.index}`
-      : `${current.step}`;
-    const existing = acc.get(key);
-    if (!existing || current.version > existing.version) {
-      acc.set(key, current);
-    }
-    return acc;
-  }, new Map<string, AgentMCPAction>());
-
-  return Array.from(maxVersionActions.values()).map((action) => {
+  return actions.map((action) => {
     return new MCPActionType({
       id: action.id,
       params: action.params,
