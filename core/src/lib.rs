@@ -47,6 +47,7 @@ pub mod databases {
             pub mod snowflake;
         }
     }
+    pub mod table_upserts_background_worker;
     pub mod transient_database;
 }
 pub mod project;
@@ -119,6 +120,7 @@ pub mod deno {
 
 pub mod databases_store {
     pub mod gcs;
+    pub mod gcs_background;
     pub mod postgres;
     pub mod store;
 }

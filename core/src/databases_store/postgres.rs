@@ -226,10 +226,10 @@ impl DatabasesStore for PostgresDatabasesStore {
             let stmt = c
                 .prepare(
                     "INSERT INTO tables_rows
-                    (table_id, row_id, created, content)
-                    SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[])
-                    ON CONFLICT (table_id, row_id) DO UPDATE
-                    SET content = EXCLUDED.content",
+                        (table_id, row_id, created, content)
+                        SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[])
+                        ON CONFLICT (table_id, row_id) DO UPDATE
+                        SET content = EXCLUDED.content",
                 )
                 .await?;
 

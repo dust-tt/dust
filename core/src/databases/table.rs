@@ -1,12 +1,22 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
+use redis::AsyncCommands;
+use rslock::LockManager;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
+use crate::databases::table_upserts_background_worker::{
+    TableUpsertActivityData, REDIS_CLIENT, REDIS_LOCK_TTL_SECONDS, REDIS_TABLE_UPSERT_HASH_NAME,
+    REDIS_URI,
+};
+use crate::databases_store::gcs::GoogleCloudStorageDatabasesStore;
+use crate::databases_store::gcs_background::GoogleCloudStorageBackgroundProcessingStore;
+use crate::databases_store::store::{SAVE_TABLES_TO_GCS, SAVE_TABLES_TO_POSTGRES};
 use crate::search_stores::search_store::NodeItem;
 use crate::{
     data_sources::node::ProviderVisibility,
@@ -231,6 +241,9 @@ impl Table {
     pub fn set_remote_database_secret_id(&mut self, remote_database_secret_id: String) {
         self.remote_database_secret_id = Some(remote_database_secret_id);
     }
+    pub fn get_background_processing_lock_name(&self) -> String {
+        format!("upsert:{}", self.unique_id())
+    }
 
     // if search_store is provided, delete the table node from the search index
     pub async fn delete(
@@ -262,7 +275,18 @@ impl Table {
             .await?;
 
             // Delete the table rows.
-            databases_store.delete_table_data(&self).await?;
+
+            if SAVE_TABLES_TO_POSTGRES {
+                databases_store.delete_table_data(&self).await?;
+            }
+
+            if SAVE_TABLES_TO_GCS {
+                // For now, we don't propagate failures since it's just a shadow operation
+                let gcs_store = GoogleCloudStorageDatabasesStore::new();
+                if let Err(e) = gcs_store.delete_table_data(&self).await {
+                    tracing::error!("Failed to delete table data from GCS: {:?}", e);
+                }
+            }
         }
 
         store
@@ -371,7 +395,7 @@ impl LocalTable {
     ) -> Result<()> {
         let rows = Arc::new(rows);
 
-        let mut now = utils::now();
+        let now = utils::now();
         // Validate that all rows keys are lowercase. We run it in a spawn_blocking since it is CPU
         // bound (even if running fast for resaonably sized tables);
         {
@@ -401,7 +425,39 @@ impl LocalTable {
             "DSSTRUCTSTAT [upsert_rows] validation"
         );
 
-        now = utils::now();
+        if SAVE_TABLES_TO_POSTGRES {
+            self.upsert_rows_postgres(&store, &databases_store, rows.as_ref().clone(), truncate)
+                .await?;
+        }
+
+        if SAVE_TABLES_TO_GCS {
+            // For now, we don't propagate failures since it's just a shadow operation
+            if let Err(e) = self
+                .upsert_rows_to_gcs_or_queue_work(
+                    &store,
+                    &databases_store,
+                    rows.as_ref().clone(),
+                    truncate,
+                )
+                .await
+            {
+                tracing::error!("Failed to upsert rows to GCS or queue work: {:?}", e);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn upsert_rows_postgres(
+        &self,
+        store: &Box<dyn Store + Sync + Send>,
+        databases_store: &Box<dyn DatabasesStore + Sync + Send>,
+        rows: Vec<Row>,
+        truncate: bool,
+    ) -> Result<()> {
+        let rows = Arc::new(rows);
+
+        let mut now = utils::now();
         let new_table_schema = match truncate {
             // If the new rows replace existing ones, we need to clear the schema cache.
             true => TableSchema::from_rows_async(rows.clone()).await?,
@@ -508,6 +564,224 @@ impl LocalTable {
         Ok(())
     }
 
+    // Either directly upsert rows to GCS, or queue work for the background worker to process.
+    pub async fn upsert_rows_to_gcs_or_queue_work(
+        &self,
+        store: &Box<dyn Store + Sync + Send>,
+        databases_store: &Box<dyn DatabasesStore + Sync + Send>,
+        rows: Vec<Row>,
+        truncate: bool,
+    ) -> Result<()> {
+        if truncate {
+            let now = utils::now();
+            let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
+
+            // Take the table lock to make sure we don't conflict with processing
+            // happening in the background worker.
+            let lock = lock_manager
+                .acquire_no_guard(
+                    self.table.get_background_processing_lock_name().as_bytes(),
+                    Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
+                )
+                .await?;
+
+            info!(
+                lock_acquisition_duration = utils::now() - now,
+                "Upsert lock acquired in upsert_rows_to_gcs_or_queue_work"
+            );
+
+            // Since truncate replaces everything, we get rid of all non-truncate and row deletion
+            // pending operations that got queued before we got called.
+            // And those that arrive later cannot happen until we release the lock.
+            GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(&self.table)
+                .await?;
+
+            self.upsert_rows_gcs(store, databases_store, rows, truncate)
+                .await?;
+
+            lock_manager.unlock(&lock).await;
+            Ok(())
+        } else {
+            // We can only handle non-truncate upserts if the table is already migrated.
+            // Otherwise, we have no base data to make the incremental updates against.
+            if self.table.migrated_to_csv() {
+                // For non-truncate, use the background worker
+                self.schedule_background_upsert_or_delete(rows).await
+            } else {
+                info!("upsert_rows_to_gcs_or_queue_work: table not migrated to CSV, skipping GCS upsert for non-truncate");
+                Ok(())
+            }
+        }
+    }
+
+    pub async fn upsert_rows_gcs(
+        &self,
+        store: &Box<dyn Store + Sync + Send>,
+        // TODO: use this as databases_store once we fully migrate to GCS
+        _: &Box<dyn DatabasesStore + Sync + Send>,
+        rows: Vec<Row>,
+        truncate: bool,
+    ) -> Result<()> {
+        let rows = Arc::new(rows);
+
+        let mut now = utils::now();
+        let new_table_schema = match truncate {
+            // If the new rows replace existing ones, we need to clear the schema cache.
+            true => TableSchema::from_rows_async(rows.clone()).await?,
+            false => match self.table.schema_cached() {
+                // If there is no existing schema cache, simply use the new schema.
+                None => TableSchema::from_rows_async(rows.clone()).await?,
+                Some(existing_table_schema) => {
+                    // If there is an existing schema cache, merge it with the new schema.
+                    existing_table_schema
+                        .merge(&TableSchema::from_rows_async(rows.clone()).await?)?
+                }
+            },
+        };
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            rows_count = rows.len(),
+            "DSSTRUCTSTAT [upsert_rows_gcs] table schema"
+        );
+
+        now = utils::now();
+        store
+            .update_data_source_table_schema(
+                &self.table.project,
+                &self.table.data_source_id,
+                &self.table.table_id,
+                &new_table_schema,
+            )
+            .await?;
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            "DSSTRUCTSTAT [upsert_rows_gcs] update table_schema"
+        );
+
+        now = utils::now();
+        if !truncate {
+            // When doing incremental updates to a table's rows, the schema may become too wide.
+            // For example, if a column has only integers, it's an integer column. If a new row has
+            // a string in that column, the column becomes a string column.
+            // However, if that row is later updated to have an integer, the column should become
+            // an integer column again, but we cannot know that without looking at all the rows.
+            // This is why we invalidate the schema when doing incremental updates, and next time
+            // the schema is requested, it will be recomputed from all the rows.
+            store
+                .invalidate_data_source_table_schema(
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
+                )
+                .await?;
+        }
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            "DSSTRUCTSTAT [upsert_rows_gcs] invalidate table schema"
+        );
+
+        now = utils::now();
+        // Upsert the rows in the table.
+        // Note: if this fails, the Table will still contain the new schema, but the rows will not
+        // be updated. This isn't too bad, because the merged schema is necessarily
+        // backward-compatible with the previous one. The other way around would not be true -- old
+        // schema doesn't necessarily work with the new rows. This is why we cannot `try_join_all`.
+
+        let gcs_store = GoogleCloudStorageDatabasesStore::new();
+        gcs_store
+            .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
+            .await?;
+
+        store
+            .set_data_source_table_migrated_to_csv(
+                &self.table.project,
+                &self.table.data_source_id,
+                &self.table.table_id,
+                true,
+                None,
+            )
+            .await?;
+
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            rows_count = rows.len(),
+            "DSSTRUCTSTAT [upsert_rows_gcs] rows upsert"
+        );
+
+        now = utils::now();
+        // Invalidate the databases that use the table.
+        try_join_all(
+            (store
+                .find_databases_using_table(
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
+                    HEARTBEAT_INTERVAL_MS,
+                )
+                .await?)
+                .into_iter()
+                .map(|db| {
+                    let store = store.clone();
+                    async move {
+                        db.invalidate(store).await?;
+                        Ok::<_, anyhow::Error>(())
+                    }
+                }),
+        )
+        .await?;
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            "DSSTRUCTSTAT [upsert_rows_gcs] invalidate dbs"
+        );
+
+        Ok(())
+    }
+
+    async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
+        let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
+
+        let now = utils::now();
+
+        // Write the rows to GCS for the worker to process
+        let rows_arc = Arc::new(rows);
+        let schema = TableSchema::from_rows_async(rows_arc.clone()).await?;
+        GoogleCloudStorageBackgroundProcessingStore::write_rows_to_csv(
+            &self.table,
+            &schema,
+            &rows_arc,
+        )
+        .await?;
+
+        // Tell the worker that there are things to process for this table.
+        let upsert_call = TableUpsertActivityData {
+            time: utils::now(),
+            project_id: self.table.project().project_id(),
+            data_source_id: self.table.data_source_id().to_string(),
+            table_id: self.table.table_id().to_string(),
+        };
+        let _: () = redis_conn
+            .hset(
+                REDIS_TABLE_UPSERT_HASH_NAME,
+                self.table.unique_id(),
+                serde_json::to_string(&upsert_call)?,
+            )
+            .await?;
+
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            rows_count = rows_arc.len(),
+            "DSSTRUCTSTAT [schedule_background_upsert_or_delete]"
+        );
+
+        Ok(())
+    }
+
     pub async fn upsert_csv_content(
         &self,
         store: Box<dyn Store + Sync + Send>,
@@ -560,11 +834,24 @@ impl LocalTable {
         row_id: &str,
     ) -> Result<()> {
         // Delete the table row.
-        databases_store
-            .delete_table_row(&self.table, row_id)
-            .await?;
 
-        Ok(())
+        if SAVE_TABLES_TO_POSTGRES {
+            databases_store
+                .delete_table_row(&self.table, row_id)
+                .await?;
+        }
+
+        // Deletions are conveyed by special rows
+        if SAVE_TABLES_TO_GCS {
+            // For now, we don't propagate failures since it's just a shadow operation
+            let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
+            if let Err(e) = self.schedule_background_upsert_or_delete(rows).await {
+                tracing::error!("delete_row: failed to schedule background work: {:?}", e);
+            }
+            Ok(())
+        } else {
+            Ok(())
+        }
     }
 
     pub async fn list_rows(
@@ -681,11 +968,27 @@ impl Filterable for Table {
 pub struct Row {
     pub row_id: String,
     pub value: serde_json::Map<String, serde_json::Value>,
+    // To keep track of pending delete actions, we use a special marker row.
+    // This allows us to keep all the row data in the same format, which keeps the
+    // implementation simpler.
+    pub is_delete: bool,
 }
 
 impl Row {
     pub fn new(row_id: String, value: serde_json::Map<String, serde_json::Value>) -> Self {
-        Row { row_id, value }
+        Row {
+            row_id,
+            value,
+            is_delete: false,
+        }
+    }
+
+    pub fn new_delete_marker_row(row_id: String) -> Self {
+        Row {
+            row_id,
+            value: serde_json::Map::new(),
+            is_delete: true,
+        }
     }
 
     /// This method implements our interpretation of CSVs into Table rows.
