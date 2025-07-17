@@ -118,6 +118,7 @@ async function handler(
           tags: agentConfiguration.tags,
           canRead: agentConfiguration.canRead,
           canEdit: agentConfiguration.canEdit,
+          editors: [],
         },
       });
       return;
