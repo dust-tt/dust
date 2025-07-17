@@ -198,21 +198,21 @@ const CliChat: FC<CliChatProps> = ({
     [diffApprovalResolver, pendingDiffApproval]
   );
 
-  const requestDiffApproval = useCallback(
-    async (
-      originalContent: string,
-      updatedContent: string,
-      filePath: string
-    ): Promise<boolean> => {
-      return new Promise<boolean>((resolve) => {
-        setPendingDiffApproval({ originalContent, updatedContent, filePath });
-        setDiffApprovalResolver(() => (approved: boolean) => {
-          resolve(approved);
-        });
-      });
-    },
-    []
-  );
+  // const requestDiffApproval = useCallback(
+  //   async (
+  //     originalContent: string,
+  //     updatedContent: string,
+  //     filePath: string
+  //   ): Promise<boolean> => {
+  //     return new Promise<boolean>((resolve) => {
+  //       setPendingDiffApproval({ originalContent, updatedContent, filePath });
+  //       setDiffApprovalResolver(() => (approved: boolean) => {
+  //         resolve(approved);
+  //       });
+  //     });
+  //   },
+  //   []
+  // );
 
   const clearFiles = useCallback(() => {
     setUploadedFiles([]);
