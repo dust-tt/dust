@@ -1,5 +1,5 @@
 import { debounce, isEqual } from "lodash";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -89,13 +89,12 @@ export function useDraftAgent() {
       getValues,
     ]);
 
-  const debouncedCreateDraftAgent = useCallback(
-    debounce(() => {
-      void createDraftAgent();
-    }, 500),
-    []
-  );
-
+const debouncedCreateDraftAgent = useMemo(
+  () => debounce(() => {
+    void createDraftAgent();
+  }, 500),
+  [createDraftAgent]
+);
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
       const formData = getValues();
