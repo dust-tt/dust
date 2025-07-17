@@ -93,10 +93,12 @@ impl TableUpsertsBackgroundWorker {
             "TableUpsertsBackgroundWorker: Processing upserts"
         );
 
-        let local_table = LocalTable::from_table(table.clone())?;
-        local_table
-            .upsert_rows_gcs(&self.store, &self.gcs_db_store, rows, false)
-            .await?;
+        if !rows.is_empty() {
+            let local_table = LocalTable::from_table(table.clone())?;
+            local_table
+                .upsert_rows_gcs(&self.store, &self.gcs_db_store, rows, false)
+                .await?;
+        }
 
         let _: () = self
             .redis_conn

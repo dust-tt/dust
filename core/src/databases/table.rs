@@ -843,10 +843,16 @@ impl LocalTable {
 
         // Deletions are conveyed by special rows
         if SAVE_TABLES_TO_GCS {
-            // For now, we don't propagate failures since it's just a shadow operation
-            let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
-            if let Err(e) = self.schedule_background_upsert_or_delete(rows).await {
-                tracing::error!("delete_row: failed to schedule background work: {:?}", e);
+            // We can only handle non-truncate deletes if the table is already migrated.
+            // Otherwise, we have no base data to make the incremental changes against.
+            if self.table.migrated_to_csv() {
+                // For now, we don't propagate failures since it's just a shadow operation
+                let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
+                if let Err(e) = self.schedule_background_upsert_or_delete(rows).await {
+                    tracing::error!("delete_row: failed to schedule background work: {:?}", e);
+                }
+            } else {
+                info!("upsert_rows_to_gcs_or_queue_work: table not migrated to CSV, skipping GCS upsert for non-truncate");
             }
             Ok(())
         } else {
