@@ -1194,13 +1194,15 @@ export async function mcpActionTypesFromAgentMessageIds(
 
   const maxVersionActions = allActions.reduce((acc, current) => {
     // TODO(durable-agents): remove the default value once stepContentId is not nullable.
-    const key = current.stepContent?.step ?? current.step;
+    const key = current.stepContent
+      ? `${current.stepContent.step}-${current.stepContent.index}`
+      : `${current.step}`;
     const existing = acc.get(key);
     if (!existing || current.version > existing.version) {
       acc.set(key, current);
     }
     return acc;
-  }, new Map<number, AgentMCPAction>());
+  }, new Map<string, AgentMCPAction>());
 
   return Array.from(maxVersionActions.values()).map((action) => {
     return new MCPActionType({
