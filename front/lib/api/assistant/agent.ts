@@ -673,78 +673,34 @@ async function* runMultiActionsAgent(
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
-  let autoRetryCount = 0;
-  let isRetryableModelError = false;
-  let res;
-
-  do {
-    res = await runActionStreamed(
-      auth,
-      "assistant-v2-multi-actions-agent",
-      runConfig,
-      [
-        {
-          conversation: modelConversationRes.value.modelConversation,
-          specifications,
-          prompt,
-        },
-      ],
+  const res = await runActionStreamed(
+    auth,
+    "assistant-v2-multi-actions-agent",
+    runConfig,
+    [
       {
-        conversationId: conversation.sId,
-        workspaceId: conversation.owner.sId,
-        userMessageId: userMessage.sId,
-      }
-    );
-
-    if (res.isErr()) {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          error: res.error,
-        },
-        "Error running multi-actions agent."
-      );
-
-      const { category } = categorizeAgentErrorMessage({
-        code: "multi_actions_error",
-        message: res.error.message,
-      });
-
-      isRetryableModelError = category === "retryable_model_error";
-
-      if (!(isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY)) {
-        yield {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "multi_actions_error",
-            message: `Error running agent: [${res.error.type}] ${res.error.message}`,
-            metadata: {
-              category,
-            },
-          },
-        } satisfies AgentErrorEvent;
-
-        return;
-      }
-
-      logger.warn(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          error: res.error.message,
-        },
-        "Auto-retrying multi-actions agent."
-      );
+        conversation: modelConversationRes.value.modelConversation,
+        specifications,
+        prompt,
+      },
+    ],
+    {
+      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      userMessageId: userMessage.sId,
     }
-
-    autoRetryCount += 1;
-  } while (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY);
+  );
 
   if (res.isErr()) {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        error: res.error,
+      },
+      "Error running multi-actions agent."
+    );
+
     yield {
       type: "agent_error",
       created: Date.now(),
@@ -756,7 +712,6 @@ async function* runMultiActionsAgent(
         metadata: null,
       },
     } satisfies AgentErrorEvent;
-
     return;
   }
 
