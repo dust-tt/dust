@@ -47,11 +47,9 @@ export function isFunctionCallContent(
 
 // Type matching AgentMCPActionResource.toJSON() output
 export type AgentMCPActionType = {
-  id: ModelId;
   sId: string;
   createdAt: string;
   functionCallName: string | null;
-  functionCallId: string | null;
   params: Record<string, unknown>;
   executionState:
     | "pending"
@@ -61,10 +59,6 @@ export type AgentMCPActionType = {
     | "denied";
   isError: boolean;
   stepContentSId?: string;
-  step: number;
-  version: number;
-  agentMessageModelId: ModelId;
-  mcpServerConfigurationId: string;
 };
 
 export type AgentStepContentType = {

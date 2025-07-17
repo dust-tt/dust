@@ -1,6 +1,7 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -16,12 +17,12 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  AgentActionType,
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
@@ -39,7 +40,6 @@ import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import { renderAgentMCPAction } from "@app/lib/actions/mcp";
 
 export function getMaximalVersionAgentStepContent(
   agentStepContents: AgentStepContentModel[]
@@ -164,15 +164,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       return agents as LightAgentConfigurationType[];
     })(),
-    (async () => {
-      const agentStepContents =
-        await AgentStepContentResource.fetchByAgentMessages(auth, {
-          agentMessageIds,
-          includeMCPActions: true,
-          latestVersionsOnly: true,
-        });
-      return agentStepContents.map((sc) => sc.toJSON().mcpActions ?? []).flat();
-    })(),
+    (async () =>
+      mcpActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
   ]);
 
   if (!agentConfigurations) {
@@ -192,8 +185,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       const agentMessage = message.agentMessage;
 
-      const actions = agentMCPActions
-        .filter((a) => a.agentMessageModelId === agentMessage.id)
+      const actions: AgentActionType[] = [agentMCPActions]
+        .flat()
+        .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);
 
       const agentConfiguration = agentConfigurations.find(
@@ -286,7 +280,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         parentMessageId:
           messages.find((m) => m.id === message.parentId)?.sId ?? null,
         status: agentMessage.status,
-        actions: actions.map((a) => renderAgentMCPAction(auth, a)),
+        actions,
         content,
         chainOfThought,
         rawContents: textContents.map((c) => ({

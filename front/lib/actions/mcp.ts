@@ -93,7 +93,6 @@ import {
   removeNulls,
   stripNullBytes,
 } from "@app/types";
-import { AgentMCPActionType } from "@app/types/assistant/agent_message_content";
 
 const MAX_BLOB_SIZE_BYTES = 1024 * 1024 * 10; // 10MB
 
@@ -1158,45 +1157,6 @@ const buildErrorEvent = (
 /**
  * Action rendering.
  */
-
-export function renderAgentMCPAction(
-  auth: Authenticator,
-  action: AgentMCPActionType
-): MCPActionType {
-  return new MCPActionType({
-    id: action.id,
-    params: action.params,
-    output: removeNulls(action.outputItems.map(hideFileFromActionOutput)),
-    functionCallId: action.functionCallId,
-    functionCallName: action.functionCallName,
-    agentMessageId: action.agentMessageModelId,
-    step: action.step,
-    mcpServerConfigurationId: action.mcpServerConfigurationId,
-    executionState: action.executionState,
-    isError: action.isError,
-    type: "tool_action",
-    generatedFiles: removeNulls(
-      action.outputItems.map((o) => {
-        if (!o.file) {
-          return null;
-        }
-
-        const file = o.file;
-        const fileSid = FileResource.modelIdToSId({
-          id: file.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        });
-
-        return {
-          fileId: fileSid,
-          contentType: file.contentType,
-          title: file.fileName,
-          snippet: file.snippet,
-        };
-      })
-    ),
-  });
-}
 
 // Internal interface for the retrieval and rendering of an MCPAction action. Should not be used
 // outside api/assistant. We allow a ModelId interface here because we don't have `sId` on actions
