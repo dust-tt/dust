@@ -6,7 +6,6 @@ import type { McpTool } from "../types/tools.js";
 import { ReadFileTool } from "./readFile.js";
 
 export class EditFileTool implements McpTool {
-  // TODO: change prompt
   name = "edit_file";
   private diffApprovalCallback?: (
     originalContent: string,
@@ -14,37 +13,41 @@ export class EditFileTool implements McpTool {
     filePath: string
   ) => Promise<boolean>;
 
-  description = `Replaces text within a file. By default, replaces a single occurrence, but can replace multiple occurrences when \`expected_replacements\` is specified. This tool requires providing significant context around the change to ensure precise targeting. Always use the ${ReadFileTool.name} tool to examine the file's current content before attempting a text replacement.
+  description =
+    "Modifies content within a file by substituting specified text segments. " +
+    "Performs single substitution by default, or multiple substitutions when `expected_replacements` is defined. " +
+    "This function demands comprehensive contextual information surrounding the target modification to ensure accurate targeting. " +
+    `Always utilize the ${ReadFileTool.name} tool to review the file's existing content prior to executing any text substitution. ` +
+    "Requirements for mandatory parameters:\n" +
+    "1. `path` NEEDS TO use absolute path notation; relative paths will trigger an error.\n" +
+    "2. `old_string` NEEDS TO contain the precise literal content for substitution (preserving all spacing, formatting, line breaks, and etc).\n" +
+    "3. `new_string` NEEDS TO contain the precise literal content that will substitute `old_string` (maintaining all spacing, formatting, line breaks, and etc). " +
+    "Verify the output maintains proper syntax and follows best practices.\n" +
+    "4. DO NOT apply escaping to `old_string` or `new_string`, as this violates the literal text requirement.\n\n" +
+    "**Critical:** Failure to meet these requirements will cause tool failure.\n" +
+    "ESSENTIAL for `old_string`: Must provide unique identification for the specific instance requiring modification. " +
+    "Include minimum 3 lines of surrounding context BEFORE and AFTER the target content, preserving exact spacing and formatting. Multiple matches or inexact matches will cause failure." +
+    "**Batch replacements:** Define `expected_replacements` with the number of instances to modify. The tool will modify ALL instances matching `old_string` precisely. " +
+    "Verify the replacement count aligns with your intentions.";
 
-      The user has the ability to modify the \`new_string\` content. If modified, this will be stated in the response.
-
-Expectation for required parameters:
-1. \`file_path\` MUST be an absolute path; otherwise an error will be thrown.
-2. \`old_string\` MUST be the exact literal text to replace (including all whitespace, indentation, newlines, and surrounding code etc.).
-3. \`new_string\` MUST be the exact literal text to replace \`old_string\` with (also including all whitespace, indentation, newlines, and surrounding code etc.). Ensure the resulting code is correct and idiomatic.
-4. NEVER escape \`old_string\` or \`new_string\`, that would break the exact literal text requirement.
-**Important:** If ANY of the above are not satisfied, the tool will fail. CRITICAL for \`old_string\`: Must uniquely identify the single instance to change. Include at least 3 lines of context BEFORE and AFTER the target text, matching whitespace and indentation precisely. If this string matches multiple locations, or does not match exactly, the tool will fail.
-**Multiple replacements:** Set \`expected_replacements\` to the number of occurrences you want to replace. The tool will replace ALL occurrences that match \`old_string\` exactly. Ensure the number of replacements matches your expectation.`;
-
-  // also most schema names and descriptions gotten from Google's Gemini
-  // add default values to descriptions?
   inputSchema = z.object({
     path: z
       .string()
       .describe(
-        "The absolute path (such as '/home/user/project/file.txt') to the file to be edited. There is no support for relative routes. You have to give an absolute route."
+        "The complete absolute file path (example: '/home/user/project/file.txt') for the target file. Relative paths are not supported. Must provide full absolute path."
       ),
     old_string: z
       .string()
       .describe(
-        "The exact literal text to replace, preferably unescaped. For single replacements (default), include at least 3 lines of context BEFORE and AFTER the target text, " +
-          "matching whitespace and indentation precisely. For multiple replacements, specify expected_replacements parameter. " +
-          "If this string is not the exact literal text (i.e. you escaped it) or does not match exactly, the tool will fail."
+        "The exact text to find and change - write it exactly as it appears in the file. " +
+          "For single changes: Include 3+ lines before and after your target text with exact spacing. " +
+          "For multiple changes: Set expected_replacements too. " +
+          "If the text doesn't match exactly, the tool won't work."
       ),
     new_string: z
       .string()
       .describe(
-        "The exact literal text to replace `old_string` with, preferably unescaped. Provide the EXACT text. Ensure the resulting code is correct and idiomatic."
+        "The exact text to replace `old_string` with - write it exactly how you want it to appear. Make sure the result makes sense in the context, whether it be a letter, mathematical formula or code."
       ),
     expected_replacements: z
       .number()
@@ -52,7 +55,7 @@ Expectation for required parameters:
       .positive()
       .optional()
       .describe(
-        "(OPTIONAL) Number of replacements expected. Defaults to 1 if not specified. Use when you want to replace multiple occurrences."
+        "(OPTIONAL) How many times to make the change. Leave empty for just one change (default). Use when you want to change multiple identical pieces of text."
       ),
   });
 
