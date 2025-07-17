@@ -20,6 +20,10 @@ import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
+import {
+  publishConversationRelatedEvent,
+  publishMessageEventsOnMessageEdited,
+} from "@app/lib/api/assistant/streaming/events";
 import { getAgentExecutionChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
@@ -52,7 +56,6 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
   AgentActionSuccessEvent,
-  AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageErrorEvent,
@@ -76,7 +79,6 @@ import type {
   PlanType,
   Result,
   UserMessageContext,
-  UserMessageErrorEvent,
   UserMessageNewEvent,
   UserMessageType,
   UserMessageWithRankType,
@@ -838,10 +840,12 @@ function canAccessAgent(
   }
 }
 
+class UserMessageError extends Error {}
+
 /**
  * This method creates a new user message version, and if there are new agent mentions, run them.
  */
-export async function* editUserMessage(
+export async function editUserMessage(
   auth: Authenticator,
   {
     conversation,
@@ -856,68 +860,54 @@ export async function* editUserMessage(
     mentions: MentionType[];
     skipToolsValidation: boolean;
   }
-): AsyncGenerator<
-  | UserMessageNewEvent
-  | UserMessageErrorEvent
-  | AgentMessageNewEvent
-  | AgentDisabledErrorEvent
-  | AgentErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
-  void
+): Promise<
+  Result<
+    { userMessage: UserMessageType; agentMessages: AgentMessageType[] },
+    APIErrorWithStatusCode
+  >
 > {
   const user = auth.user();
   const owner = auth.workspace();
 
   if (!owner || owner.id !== conversation.owner.id) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "conversation_not_found",
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "conversation_not_found",
         message: "The conversation does not exist.",
       },
-    };
-    return;
+    });
   }
 
   if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "conversation_access_restricted",
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "conversation_access_restricted",
         message: "Conversation cannot be accessed.",
       },
-    };
-    return;
+    });
   }
 
   if (auth.user()?.id !== message.user?.id) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "not_allowed",
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
         message: "Only the author of the message can edit it",
       },
-    };
-    return;
+    });
   }
+
   if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "not_allowed",
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
         message:
           "Editing a message that already has agent mentions is not yet supported",
       },
-    };
-    return;
+    });
   }
 
   if (
@@ -926,20 +916,18 @@ export async function* editUserMessage(
     ) &&
     mentions.filter((m) => isAgentMention(m)).length > 0
   ) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "edition_unsupported",
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
         message:
-          "Adding agent mentions when editing is only supported for the last message of the conversation",
+          "Adding agent mentions when editing is only supported for the last message " +
+          "of the conversation",
       },
-    };
-    return;
+    });
   }
 
-  // local error class to differentiate from other errors
-  class UserMessageError extends Error {}
+  // Local error class to differentiate from other errors.
 
   let userMessage: UserMessageWithRankType | null = null;
   let agentMessages: AgentMessageWithRankType[] = [];
@@ -958,33 +946,28 @@ export async function* editUserMessage(
 
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
-      yield {
-        type: "agent_disabled_error",
-        created: Date.now(),
-        configurationId: agentConfig.sId,
-        error: {
-          code: "not_allowed",
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message:
             "This agent is either disabled or you don't have access to it.",
         },
-      };
-      return;
+      });
     }
 
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
-      yield {
-        type: "agent_disabled_error",
-        created: Date.now(),
-        configurationId: agentConfig.sId,
-        error: {
-          code: "provider_disabled",
+      // Stop processing if any agent uses a disabled provider.
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
-      };
-      return; // Stop processing if any agent uses a disabled provider
+      });
     }
   }
 
@@ -1204,30 +1187,22 @@ export async function* editUserMessage(
     }
   } catch (e) {
     if (e instanceof UserMessageError) {
-      yield {
-        type: "user_message_error",
-        created: Date.now(),
-        error: {
-          code: "edit_invalid_error",
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message: e.message,
         },
-      };
-      return;
+      });
     } else {
       throw e;
     }
   }
 
-  if (agentMessageRows.length !== agentMessages.length) {
-    throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
-  }
-
-  yield {
-    type: "user_message_new",
-    created: Date.now(),
-    messageId: userMessage.sId,
-    message: userMessage,
-  };
+  assert(
+    agentMessageRows.length === agentMessages.length,
+    "Unreachable: agentMessageRows and agentMessages mismatch"
+  );
 
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
@@ -1238,54 +1213,54 @@ export async function* editUserMessage(
     }
   }
 
-  for (let i = 0; i < agentMessages.length; i++) {
-    const agentMessage = agentMessages[i];
-
-    yield {
-      type: "agent_message_new",
-      created: Date.now(),
-      configurationId: agentMessage.configuration.sId,
-      messageId: agentMessage.sId,
-      message: agentMessage,
-    };
+  const agentMessageRowsById = new Map<ModelId, AgentMessage>();
+  for (const agentMessageRow of agentMessageRows) {
+    agentMessageRowsById.set(agentMessageRow.id, agentMessageRow);
   }
 
-  const eventStreamGenerators = agentMessages.map((agentMessage, i) => {
-    if (!userMessage) {
-      throw new Error("Unreachable: userMessage is null");
-    }
-    // We stitch the conversation to add the user message and only that agent message
-    // so that it can be used to prompt the agent.
-    return streamRunAgentEvents(
-      auth,
-      agentMessage.configuration,
-      {
+  await concurrentExecutor(
+    agentMessages,
+    async (agentMessage) => {
+      // We stitch the conversation to add the user message and only that agent message
+      // so that it can be used to prompt the agent.
+      const enrichedConversation = {
         ...conversation,
         content: [...conversation.content, [userMessage], [agentMessage]],
-      },
-      userMessage,
-      agentMessages[i],
-      agentMessageRows[i]
-    );
-  });
+      };
 
-  const eventStreamsPromises = eventStreamGenerators.map((gen) => gen.next());
-  while (eventStreamsPromises.length > 0) {
-    const winner = await Promise.race(
-      eventStreamsPromises.map(async (p, i) => {
-        return { v: await p, offset: i };
-      })
-    );
-    if (winner.v.done) {
-      eventStreamGenerators.splice(winner.offset, 1);
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      eventStreamsPromises.splice(winner.offset, 1);
-    } else {
-      eventStreamsPromises[winner.offset] =
-        eventStreamGenerators[winner.offset].next();
-      yield winner.v.value;
-    }
-  }
+      // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
+      const agentMessageRow = agentMessageRowsById.get(
+        agentMessage.agentMessageId
+      );
+      assert(
+        agentMessageRow,
+        `Agent message row not found for agent message ${agentMessage.agentMessageId}`
+      );
+
+      void runAgentWithStreaming(
+        auth,
+        agentMessage.configuration,
+        enrichedConversation,
+        userMessage,
+        agentMessage,
+        agentMessageRow
+      );
+    },
+    { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
+  );
+
+  // TODO(DURABLE-AGENTS 2025-07-17): Temporary hack to publish the event messages. Removes once
+  // the UI is updated to use the API directly.
+  await publishMessageEventsOnMessageEdited(
+    conversation,
+    userMessage,
+    agentMessages
+  );
+
+  return new Ok({
+    userMessage,
+    agentMessages,
+  });
 }
 
 // This method is in charge of re-running an agent interaction (generating a new

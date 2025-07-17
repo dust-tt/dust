@@ -1,8 +1,5 @@
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
-import {
-  editUserMessage,
-  retryAgentMessage,
-} from "@app/lib/api/assistant/conversation";
+import { retryAgentMessage } from "@app/lib/api/assistant/conversation";
 import {
   getEventMessageChannelId,
   getMessageChannelId,
@@ -19,80 +16,19 @@ import { createCallbackReader } from "@app/lib/utils";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import type {
-  AgentDisabledErrorEvent,
   AgentMessageType,
   ConversationType,
   GenerationTokensEvent,
-  MentionType,
   PubSubError,
-  UserMessageType,
 } from "@app/types";
 import type { Result } from "@app/types";
 import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
 } from "@app/types";
-import type {
-  AgentMessageNewEvent,
-  UserMessageErrorEvent,
-  UserMessageNewEvent,
-} from "@app/types";
+import type { AgentMessageNewEvent, UserMessageNewEvent } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
-
-export async function editUserMessageWithPubSub(
-  auth: Authenticator,
-  {
-    conversation,
-    message,
-    content,
-    mentions,
-    skipToolsValidation,
-  }: {
-    conversation: ConversationType;
-    message: UserMessageType;
-    content: string;
-    mentions: MentionType[];
-    skipToolsValidation: boolean;
-  }
-): Promise<
-  Result<
-    {
-      userMessage: UserMessageType;
-      agentMessages?: AgentMessageType[];
-    },
-    PubSubError
-  >
-> {
-  const editMessageEvents = editUserMessage(auth, {
-    conversation,
-    message,
-    content,
-    mentions,
-    skipToolsValidation,
-  });
-  return handleUserMessageEvents(auth, {
-    conversation,
-    generator: editMessageEvents,
-    resolveAfterFullGeneration: false,
-  });
-}
-
-type AgentMessageAsyncEvents =
-  | AgentErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent;
-
-type ConversationAsyncEvents =
-  | AgentMessageAsyncEvents
-  | UserMessageErrorEvent
-  | UserMessageNewEvent
-  | AgentMessageNewEvent
-  | AgentDisabledErrorEvent;
 
 function addEndOfStreamToMessageChannel({ channel }: { channel: string }) {
   return publishEvent({
@@ -100,178 +36,6 @@ function addEndOfStreamToMessageChannel({ channel }: { channel: string }) {
     channel,
     event: JSON.stringify({ type: "end-of-stream" }),
   });
-}
-
-async function handleUserMessageEvents(
-  auth: Authenticator,
-  {
-    conversation,
-    generator,
-    resolveAfterFullGeneration = false,
-  }: {
-    conversation: ConversationType;
-    generator: AsyncGenerator<ConversationAsyncEvents, void>;
-    resolveAfterFullGeneration?: boolean;
-  }
-): Promise<
-  Result<
-    {
-      userMessage: UserMessageType;
-      agentMessages?: AgentMessageType[];
-    },
-    PubSubError
-  >
-> {
-  const promise: Promise<
-    Result<
-      {
-        userMessage: UserMessageType;
-        agentMessages?: AgentMessageType[];
-      },
-      PubSubError
-    >
-  > = new Promise((resolve) => {
-    void wakeLock(async () => {
-      let didResolve = false;
-
-      let userMessage: UserMessageType | undefined = undefined;
-      const agentMessages: AgentMessageType[] = [];
-      try {
-        for await (const event of generator) {
-          switch (event.type) {
-            case "user_message_new":
-            case "agent_message_new": {
-              const pubsubChannel = getConversationChannelId(conversation.sId);
-
-              await publishEvent({
-                origin: "user_message_events",
-                channel: pubsubChannel,
-                event: JSON.stringify(event),
-              });
-
-              if (event.type === "user_message_new") {
-                userMessage = event.message;
-                if (!resolveAfterFullGeneration) {
-                  didResolve = true;
-                  resolve(
-                    new Ok({
-                      userMessage,
-                    })
-                  );
-                }
-              }
-              break;
-            }
-            case "agent_action_success":
-            case "agent_error":
-            case "agent_generation_cancelled":
-            case "agent_message_success":
-            case "generation_tokens":
-            case "tool_approve_execution":
-            case "tool_notification":
-            case "tool_params": {
-              const pubsubChannel = getEventMessageChannelId(event);
-
-              await publishEvent({
-                origin: "user_message_events",
-                channel: pubsubChannel,
-                event: JSON.stringify(event),
-              });
-
-              if (
-                event.type === "agent_message_success" &&
-                resolveAfterFullGeneration
-              ) {
-                agentMessages.push(event.message);
-              }
-
-              if (isEndOfAgentMessageStreamEvent(event)) {
-                // Maybe compute tokens consumed by the runs.
-                if (event.type === "agent_message_success") {
-                  const { runIds } = event;
-
-                  await maybeTrackTokenUsageCost(auth, { dustRunIds: runIds });
-                }
-
-                await addEndOfStreamToMessageChannel({
-                  channel: pubsubChannel,
-                });
-              }
-              break;
-            }
-            case "agent_disabled_error":
-            case "user_message_error": {
-              //  We resolve the promise with an error as we were not able to
-              //  create the user message. This is possible for a variety of
-              //  reason and will get turned into a 400 in the API route calling
-              //  `{post/edit}UserMessageWithPubSub`, except for the case of used
-              //  up messages for the test plan, handled separately
-
-              didResolve = true;
-              if (event.error.code === "plan_message_limit_exceeded") {
-                resolve(
-                  new Err({
-                    status_code: 403,
-                    api_error: {
-                      type: "plan_message_limit_exceeded",
-                      message: event.error.message,
-                    },
-                  })
-                );
-              }
-              resolve(
-                new Err({
-                  status_code: 400,
-                  api_error: {
-                    type: "invalid_request_error",
-                    message: event.error.message,
-                  },
-                })
-              );
-              break;
-            }
-            default:
-              assertNever(event);
-          }
-        }
-        if (resolveAfterFullGeneration && userMessage && !didResolve) {
-          didResolve = true;
-          resolve(
-            new Ok({
-              userMessage,
-              agentMessages,
-            })
-          );
-        }
-      } catch (e) {
-        logger.error(
-          {
-            error: e,
-            conversationId: conversation.sId,
-            workspaceId: conversation.owner.sId,
-            type: "handle_user_message_events",
-            userMessageId: userMessage?.sId,
-            agentMessageIds: agentMessages.map((m) => m.sId),
-          },
-          "Error Posting message"
-        );
-      } finally {
-        if (!didResolve) {
-          resolve(
-            new Err({
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: `Never got the resolved event for ${conversation.sId} (resolveAfterFullGeneration: ${resolveAfterFullGeneration})`,
-              },
-            })
-          );
-        }
-      }
-    });
-  });
-
-  return promise;
 }
 
 export async function retryAgentMessageWithPubSub(

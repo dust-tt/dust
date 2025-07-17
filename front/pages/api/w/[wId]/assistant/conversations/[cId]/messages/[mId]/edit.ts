@@ -3,9 +3,11 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import {
+  editUserMessage,
+  getConversation,
+} from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { editUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -83,7 +85,7 @@ async function handler(
       }
       const { content, mentions } = bodyValidation.right;
 
-      const editedMessageRes = await editUserMessageWithPubSub(auth, {
+      const editedMessageRes = await editUserMessage(auth, {
         conversation,
         message,
         content,

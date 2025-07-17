@@ -344,6 +344,7 @@ async function runMultiActionsAgentLoop(
               agentMessageRow
             );
             break;
+
           case "generation_cancel":
             await updateResourceAndPublishEvent(
               {
@@ -356,6 +357,7 @@ async function runMultiActionsAgentLoop(
               agentMessageRow
             );
             return;
+
           case "generation_success":
             if (event.chainOfThought.length) {
               if (!agentMessage.chainOfThought) {
