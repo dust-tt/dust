@@ -92,9 +92,12 @@ function parseGitHubPath(
   filePath: string[];
   fileName: string;
 } {
+  // Sanitize the original path first to handle any problematic characters.
+  const sanitizedPath = sanitizeGcsObjectName(originalPath);
+
   // GitHub tarballs have format: "reponame-hash/path/to/file.ext".
   // We need to remove the first part (reponame-hash).
-  const pathParts = originalPath.split("/").slice(1);
+  const pathParts = sanitizedPath.split("/").slice(1);
 
   assert(pathParts.length > 0, `Invalid path: ${originalPath}`);
 
@@ -106,7 +109,7 @@ function parseGitHubPath(
     const parentPath = cleanParts.slice(0, -1);
 
     return {
-      cleanPath: sanitizeGcsObjectName(cleanParts.join("/")),
+      cleanPath: cleanParts.join("/"),
       filePath: parentPath,
       fileName: dirName,
     };
@@ -117,7 +120,7 @@ function parseGitHubPath(
     const filePath = pathParts.slice(0, -1);
     const cleanPath = pathParts.join("/");
 
-    return { cleanPath: sanitizeGcsObjectName(cleanPath), filePath, fileName };
+    return { cleanPath, filePath, fileName };
   }
 }
 
