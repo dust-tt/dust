@@ -163,7 +163,7 @@ export function useDraftAgent() {
   };
 }
 
-export function usePreview({
+export function useDraftConversation({
   draftAgent,
   getDraftAgent,
 }: {

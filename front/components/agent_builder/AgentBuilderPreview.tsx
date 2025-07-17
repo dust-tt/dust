@@ -4,7 +4,7 @@ import React from "react";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
   useDraftAgent,
-  usePreview,
+  useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
@@ -60,7 +60,7 @@ export function AgentBuilderPreview() {
     setStickyMentions,
   } = useDraftAgent();
 
-  const { conversation, handleSubmit } = usePreview({
+  const { conversation, handleSubmit } = useDraftConversation({
     draftAgent,
     getDraftAgent,
   });
