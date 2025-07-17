@@ -21,9 +21,6 @@ export const DEFAULT_AGENT_ROUTER_ACTION_NAME = "agent_router";
 export const DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION =
   "Tools with access to the published agents of the workspace.";
 
-// TODO(durable-agents): remove this (only used in the non-MCP variant, inlined in the MCP tool definition).
-export const DEFAULT_SEARCH_LABELS_ACTION_NAME = "search_labels";
-
 export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME = "list_files";
 
 export const DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME = "include_file";
