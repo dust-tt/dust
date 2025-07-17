@@ -19,6 +19,7 @@ import {
 } from "@connectors/connectors/github/lib/errors";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
+import { removeEmojis } from "@connectors/types/shared/utils/string_utils";
 
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 const MAX_CONCURRENT_GCS_UPLOADS = 200;
@@ -105,7 +106,7 @@ function parseGitHubPath(
     const parentPath = cleanParts.slice(0, -1);
 
     return {
-      cleanPath: cleanParts.join("/"),
+      cleanPath: removeEmojis(cleanParts.join("/")),
       filePath: parentPath,
       fileName: dirName,
     };
@@ -116,7 +117,7 @@ function parseGitHubPath(
     const filePath = pathParts.slice(0, -1);
     const cleanPath = pathParts.join("/");
 
-    return { cleanPath, filePath, fileName };
+    return { cleanPath: removeEmojis(cleanPath), filePath, fileName };
   }
 }
 

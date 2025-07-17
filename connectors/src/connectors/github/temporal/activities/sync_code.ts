@@ -72,7 +72,7 @@ export async function githubExtractToGcsActivity({
     activityName: "githubExtractToGcsActivity",
   });
 
-  // Local cleanup function to handle missing/inaccessible repositories
+  // Local cleanup function to handle missing/inaccessible repositories.
   const cleanupMissingRepository = async (loggerTask: string) => {
     await garbageCollectCodeSync(
       dataSourceConfig,
@@ -84,7 +84,7 @@ export async function githubExtractToGcsActivity({
 
     await heartbeat();
 
-    // Deleting the code root folder from data_source_folders (core)
+    // Deleting the code root folder from data_source_folders (core).
     await deleteDataSourceFolder({
       dataSourceConfig,
       folderId: getCodeRootInternalId(repoId),
