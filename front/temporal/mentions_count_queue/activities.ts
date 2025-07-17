@@ -3,10 +3,10 @@ import {
   storeCountsInRedis,
 } from "@app/lib/api/assistant/agent_usage";
 import { runOnRedis } from "@app/lib/api/redis";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 export async function mentionsCountActivity(workspaceId: string) {
-  const owner = await WorkspaceModel.findOne({ where: { sId: workspaceId } });
+  const owner = await WorkspaceResource.fetchById(workspaceId);
   if (!owner) {
     throw new Error(`Workspace ${workspaceId} not found`);
   }

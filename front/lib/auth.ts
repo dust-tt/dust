@@ -23,10 +23,10 @@ import {
   SECRET_KEY_PREFIX,
 } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -86,7 +86,7 @@ export class Authenticator {
   _subscription: SubscriptionResource | null;
   _user: UserResource | null;
   _groups: GroupResource[];
-  _workspace: WorkspaceModel | null;
+  _workspace: WorkspaceResource | null;
 
   // Should only be called from the static methods below.
   constructor({
@@ -97,7 +97,7 @@ export class Authenticator {
     subscription,
     key,
   }: {
-    workspace?: WorkspaceModel | null;
+    workspace?: WorkspaceResource | null;
     user?: UserResource | null;
     role: RoleType;
     groups: GroupResource[];
@@ -192,11 +192,7 @@ export class Authenticator {
   ): Promise<Authenticator> {
     return tracer.trace("fromSession", async () => {
       const [workspace, user] = await Promise.all([
-        WorkspaceModel.findOne({
-          where: {
-            sId: wId,
-          },
-        }),
+        WorkspaceResource.fetchById(wId),
         this.userFromSession(session),
       ]);
 
@@ -244,11 +240,7 @@ export class Authenticator {
     wId: string | null
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
-      wId
-        ? WorkspaceModel.findOne({
-            where: { sId: wId },
-          })
-        : null,
+      wId ? WorkspaceResource.fetchById(wId) : null,
       this.userFromSession(session),
     ]);
 
@@ -289,11 +281,7 @@ export class Authenticator {
     wId: string
   ): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
-      WorkspaceModel.findOne({
-        where: {
-          sId: wId,
-        },
-      }),
+      WorkspaceResource.fetchById(wId),
       UserResource.fetchById(uId),
     ]);
 
@@ -353,11 +341,7 @@ export class Authenticator {
       return new Err({ code: "user_not_found" });
     }
 
-    const workspace = await WorkspaceModel.findOne({
-      where: {
-        sId: wId,
-      },
-    });
+    const workspace = await WorkspaceResource.fetchById(wId);
     if (!workspace) {
       return new Err({ code: "workspace_not_found" });
     }
@@ -423,11 +407,7 @@ export class Authenticator {
       return new Err({ code: "user_not_found" });
     }
 
-    const workspace = await WorkspaceModel.findOne({
-      where: {
-        sId: wId,
-      },
-    });
+    const workspace = await WorkspaceResource.fetchById(wId);
     if (!workspace) {
       return new Err({ code: "workspace_not_found" });
     }
@@ -484,18 +464,10 @@ export class Authenticator {
   }> {
     const [workspace, keyWorkspace] = await Promise.all([
       (async () => {
-        return WorkspaceModel.findOne({
-          where: {
-            sId: wId,
-          },
-        });
+        return WorkspaceResource.fetchById(wId);
       })(),
       (async () => {
-        return WorkspaceModel.findOne({
-          where: {
-            id: key.workspaceId,
-          },
-        });
+        return WorkspaceResource.fetchByModelId(key.workspaceId);
       })(),
     ]);
 
@@ -515,7 +487,7 @@ export class Authenticator {
       }
     }
 
-    const getSubscriptionForWorkspace = (workspace: WorkspaceModel) =>
+    const getSubscriptionForWorkspace = (workspace: WorkspaceResource) =>
       SubscriptionResource.fetchActiveByWorkspace(
         renderLightWorkspaceType({ workspace })
       );
@@ -586,11 +558,7 @@ export class Authenticator {
       throw new Error("Invalid secret for registry lookup");
     }
 
-    const workspace = await WorkspaceModel.findOne({
-      where: {
-        sId: workspaceId,
-      },
-    });
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
@@ -624,11 +592,7 @@ export class Authenticator {
   static async internalBuilderForWorkspace(
     workspaceId: string
   ): Promise<Authenticator> {
-    const workspace = await WorkspaceModel.findOne({
-      where: {
-        sId: workspaceId,
-      },
-    });
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
@@ -659,11 +623,7 @@ export class Authenticator {
       dangerouslyRequestAllGroups: boolean;
     }
   ): Promise<Authenticator> {
-    const workspace = await WorkspaceModel.findOne({
-      where: {
-        sId: workspaceId,
-      },
-    });
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }

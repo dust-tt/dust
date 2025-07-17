@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { makeEnterpriseConnectionName } from "@app/lib/api/enterprise_connection";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 
 type Provider = {
@@ -83,11 +83,7 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const workspace = workspaceId
-    ? await WorkspaceModel.findOne({
-        where: {
-          sId: workspaceId,
-        },
-      })
+    ? await WorkspaceResource.fetchById(workspaceId)
     : null;
 
   const provider = await getProvider(query);

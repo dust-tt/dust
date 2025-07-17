@@ -2,8 +2,8 @@ import { promises as fs } from "fs";
 
 import { Authenticator } from "@app/lib/auth";
 import { mergeUserIdentities } from "@app/lib/iam/users";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { normalizeError } from "@app/types";
 
 import { makeScript } from "./helpers";
@@ -59,7 +59,7 @@ makeScript(
     },
   },
   async ({ workspaceId, file, execute }, logger) => {
-    const workspace = await WorkspaceModel.findByPk(workspaceId);
+    const workspace = await WorkspaceResource.fetchByModelId(workspaceId);
     if (!workspace) {
       logger.error({ workspaceId }, "Workspace not found");
       return;

@@ -9,8 +9,8 @@ import { callDocTrackerRetrievalAction } from "@app/lib/document_upsert_hooks/ho
 import { callDocTrackerScoreDocsAction } from "@app/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_score_docs";
 import { callDocTrackerSuggestChangesAction } from "@app/lib/document_upsert_hooks/hooks/tracker/actions/doc_tracker_suggest_changes";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type {
   ConnectorProvider,
@@ -593,11 +593,7 @@ async function getDataSourceDocument({
 }): Promise<
   Result<{ document: CoreAPIDocument; data_source: CoreAPIDataSource }, Error>
 > {
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      sId: workspaceId,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
     return new Err(new Error(`Could not find workspace ${workspaceId}`));
   }
