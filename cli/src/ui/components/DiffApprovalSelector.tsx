@@ -2,24 +2,7 @@ import { Box, Text, useInput } from "ink";
 import type { FC } from "react";
 import React, { useState } from "react";
 import chalk from "chalk";
-import { StructuredPatch, structuredPatch } from "diff";
-
-interface DiffLine {
-  type: "remove" | "add" | "context";
-  lineNumber: number;
-  content: string;
-}
-
-interface ApprovalOption {
-  id: "accept" | "reject";
-  label: string;
-  symbol: string;
-}
-
-const APPROVAL_OPTIONS: ApprovalOption[] = [
-  { id: "accept", label: "Accept", symbol: "✓" },
-  { id: "reject", label: "Reject", symbol: "✗" },
-];
+import { structuredPatch } from "diff";
 
 // Modern pastel color palette inspired by contemporary CLI tools
 const COLORS = {
@@ -45,7 +28,30 @@ const COLORS = {
   // Background tones
   cardBg: "#FEFEFE", // Off-white
   subtleBg: "#F7FAFC", // Very light blue tint
+} as const;
+
+const TYPE_MAP = {
+  remove: { color: COLORS.removedFg, symbol: "▌ " },
+  add: { color: COLORS.addedFg, symbol: "▌ " },
+  context: { color: COLORS.contextFg, symbol: "  " },
 };
+
+interface DiffLine {
+  type: "remove" | "add" | "context";
+  lineNumber: number;
+  content: string;
+}
+
+interface ApprovalOption {
+  id: "accept" | "reject";
+  label: string;
+  symbol: string;
+}
+
+const APPROVAL_OPTIONS: ApprovalOption[] = [
+  { id: "accept", label: "Accept", symbol: "✓" },
+  { id: "reject", label: "Reject", symbol: "✗" },
+];
 
 interface DiffApprovalSelectorProps {
   originalContent: string;
@@ -53,41 +59,6 @@ interface DiffApprovalSelectorProps {
   filePath: string;
   onApproval: (approved: boolean) => void;
 }
-
-const parseDiffLines = (patch: StructuredPatch): DiffLine[] => {
-  const parsedDiffLines: DiffLine[] = [];
-  patch.hunks.forEach((hunk) => {
-    let oldLineNum = hunk.oldStart;
-    let newLineNum = hunk.newStart;
-
-    hunk.lines.forEach((line) => {
-      if (line.startsWith("-")) {
-        parsedDiffLines.push({
-          type: "remove",
-          lineNumber: oldLineNum,
-          content: line.substring(1),
-        });
-        oldLineNum++;
-      } else if (line.startsWith("+")) {
-        parsedDiffLines.push({
-          type: "add",
-          lineNumber: newLineNum,
-          content: line.substring(1),
-        });
-        newLineNum++;
-      } else {
-        parsedDiffLines.push({
-          type: "context",
-          lineNumber: oldLineNum,
-          content: line.substring(1),
-        });
-        oldLineNum++;
-        newLineNum++;
-      }
-    });
-  });
-  return parsedDiffLines;
-};
 
 export const DiffApprovalSelector: FC<DiffApprovalSelectorProps> = ({
   originalContent,
@@ -109,7 +80,40 @@ export const DiffApprovalSelector: FC<DiffApprovalSelectorProps> = ({
     }
   );
 
-  const parsedDiffLines = parseDiffLines(patch);
+  const parsedDiffLines: DiffLine[] = [];
+  patch.hunks.forEach((hunk) => {
+    let oldLineNum = hunk.oldStart;
+    let newLineNum = hunk.newStart;
+
+    hunk.lines.forEach((line) => {
+      if (line.startsWith("-")) {
+        parsedDiffLines.push({
+          type: "remove",
+          lineNumber: oldLineNum,
+          content: line.substring(1),
+        });
+        oldLineNum++;
+      } else if (line.startsWith("+")) {
+        parsedDiffLines.push({
+          type: "add",
+          lineNumber: newLineNum,
+          content: line.substring(1),
+        });
+        newLineNum++;
+      } else {
+        if (line === "\\ No newline at end of file") {
+          return;
+        }
+        parsedDiffLines.push({
+          type: "context",
+          lineNumber: oldLineNum,
+          content: line.substring(1),
+        });
+        oldLineNum++;
+        newLineNum++;
+      }
+    });
+  });
 
   useInput((input, key) => {
     if (key.upArrow) {
@@ -152,44 +156,18 @@ export const DiffApprovalSelector: FC<DiffApprovalSelectorProps> = ({
 
         {/* Diff content with modern pastel styling */}
         <Box flexDirection="column" gap={0}>
-          {parsedDiffLines.map((line, index) => (
-            <Box key={index} paddingLeft={1}>
-              {line.type === "remove" && (
-                <Box>
-                  <Text>
-                    {chalk.hex(COLORS.removedFg)("▌ ")}
-                    {chalk.hex(COLORS.removedFg)(
-                      `${line.lineNumber > 0 ? `${line.lineNumber}: ` : ""}${
-                        line.content
-                      }`
-                    )}
-                  </Text>
-                </Box>
-              )}
+          {parsedDiffLines.map((line, index) => {
+            const { color, symbol } = TYPE_MAP[line.type] || {};
 
-              {line.type === "add" && (
-                <Box>
-                  <Text>
-                    {chalk.hex(COLORS.addedFg)("▌ ")}
-                    {chalk.hex(COLORS.addedFg)(
-                      `${line.lineNumber > 0 ? `${line.lineNumber}: ` : ""}${
-                        line.content
-                      }`
-                    )}
-                  </Text>
-                </Box>
-              )}
-
-              {line.type === "context" && (
-                <Box>
-                  <Text>
-                    {chalk.hex(COLORS.contextFg)("  ")}
-                    {chalk.hex(COLORS.contextFg)(line.content)}
-                  </Text>
-                </Box>
-              )}
-            </Box>
-          ))}
+            return (
+              <Box key={index} paddingLeft={1}>
+                <Text>
+                  {chalk.hex(color)(symbol)}
+                  {chalk.hex(color)(`${line.lineNumber}: ${line.content}`)}
+                </Text>
+              </Box>
+            );
+          })}
         </Box>
       </Box>
 

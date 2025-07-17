@@ -220,10 +220,12 @@ const CliChat: FC<CliChatProps> = ({
       originalContent: string,
       updatedContent: string,
       filePath: string
-    ): Promise<{ diff: string; approved: boolean }> => {
-      return new Promise<{ diff: string; approved: boolean }>((resolve) => {
+    ): Promise<boolean> => {
+      return new Promise<boolean>((resolve) => {
         setPendingDiffApproval({ originalContent, updatedContent, filePath });
-        setDiffApprovalResolver(() => resolve);
+        setDiffApprovalResolver(() => (approved: boolean) => {
+          resolve(approved);
+        });
       });
     },
     []

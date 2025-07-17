@@ -5,8 +5,6 @@ import { normalizeError } from "../../utils/errors.js";
 import type { McpTool } from "../types/tools.js";
 import { ReadFileTool } from "./readFile.js";
 
-const CONTEXT_LINES = 3;
-
 export class EditFileTool implements McpTool {
   // TODO: change prompt
   name = "edit_file";
@@ -14,7 +12,7 @@ export class EditFileTool implements McpTool {
     originalContent: string,
     updatedContent: string,
     filePath: string
-  ) => Promise<{ diff: string; approved: boolean }>;
+  ) => Promise<boolean>;
 
   description = `Replaces text within a file. By default, replaces a single occurrence, but can replace multiple occurrences when \`expected_replacements\` is specified. This tool requires providing significant context around the change to ensure precise targeting. Always use the ${ReadFileTool.name} tool to examine the file's current content before attempting a text replacement.
 
@@ -63,7 +61,7 @@ Expectation for required parameters:
       originalContent: string,
       updatedContent: string,
       filePath: string
-    ) => Promise<{ diff: string; approved: boolean }>
+    ) => Promise<boolean>
   ) {
     this.diffApprovalCallback = callback;
   }
@@ -104,9 +102,8 @@ Expectation for required parameters:
       const updatedContent = originalContent.replace(regex, new_string);
 
       // Request approval if callback is set
-      let diffOutput = "";
       if (this.diffApprovalCallback) {
-        const { diff, approved } = await this.diffApprovalCallback(
+        const approved = await this.diffApprovalCallback(
           originalContent,
           updatedContent,
           filePath
@@ -116,13 +113,11 @@ Expectation for required parameters:
             content: [
               {
                 type: "text" as const,
-                text: `File edit was rejected by user.\n\nProposed changes:\n${diffOutput}`,
+                text: `File edit was rejected by user.`,
               },
             ],
           };
         }
-
-        diffOutput = diff;
       }
 
       // Write the updated content back to the file
@@ -130,7 +125,7 @@ Expectation for required parameters:
 
       const message = `Successfully replaced ${occurrences} occurrence${
         occurrences === 1 ? "" : "s"
-      } in ${filePath}\n\nDiff:\n${diffOutput}`;
+      } in ${filePath}`;
 
       return {
         content: [

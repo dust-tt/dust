@@ -15,7 +15,7 @@ export const useFileSystemServer = async (
     originalContent: string,
     updatedContent: string,
     filePath: string
-  ) => Promise<{ diff: string; approved: boolean }>
+  ) => Promise<boolean>
 ) => {
   const server = new McpServer({
     name: "fs-cli",
@@ -28,7 +28,6 @@ export const useFileSystemServer = async (
   const editFileTool = new EditFileTool();
 
   if (diffApprovalCallback) {
-    console.log("callback set");
     editFileTool.setDiffApprovalCallback(diffApprovalCallback);
   }
 
