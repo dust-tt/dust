@@ -45,6 +45,7 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("sync-space"),
     t.literal("unignore-near-rate-limit"),
     t.literal("update-parents"),
+    t.literal("skip-page"),
     t.literal("upsert-page"),
     t.literal("upsert-pages"),
   ]),
@@ -73,6 +74,14 @@ export const ConfluenceUpsertPageResponseSchema = t.type({
 });
 export type ConfluenceUpsertPageResponseType = t.TypeOf<
   typeof ConfluenceUpsertPageResponseSchema
+>;
+
+export const ConfluenceSkipPageResponseSchema = t.type({
+  skipped: t.boolean,
+  reason: t.union([t.string, t.undefined]),
+});
+export type ConfluenceSkipPageResponseType = t.TypeOf<
+  typeof ConfluenceSkipPageResponseSchema
 >;
 
 export const ConfluenceCheckSpaceAccessResponseSchema = t.type({
