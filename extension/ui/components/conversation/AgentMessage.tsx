@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { usePlatform } from "@app/shared/context/PlatformContext";
 import { retryMessage } from "@app/shared/lib/conversation";
 import type { StoredUser } from "@app/shared/services/auth";
@@ -25,16 +24,12 @@ import {
 } from "@app/ui/components/markdown/MentionBlock";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import { useEventSource } from "@app/ui/hooks/useEventSource";
-import { useTheme } from "@app/ui/hooks/useTheme";
 import type {
   AgentMessagePublicType,
   LightWorkspaceType,
   RetrievalDocumentPublicType,
   SearchResultResourceType,
-  WebsearchActionPublicType,
-  WebsearchResultPublicType,
   WebsearchResultResourceType,
-  WorkspaceType,
 } from "@dust-tt/client";
 import {
   assertNever,
@@ -74,7 +69,6 @@ import {
   useState,
 } from "react";
 import type { Components } from "react-markdown";
-import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
 
@@ -83,13 +77,7 @@ function cleanUpCitations(message: string): string {
   return message.replace(regex, "");
 }
 
-export const FeedbackSelectorPopoverContent = ({
-  owner,
-  agentMessageToRender,
-}: {
-  owner: WorkspaceType;
-  agentMessageToRender: AgentMessagePublicType;
-}) => {
+export const FeedbackSelectorPopoverContent = () => {
   return (
     <div className="mb-4 mt-2 flex flex-col gap-2">
       <Page.P variant="secondary">
@@ -181,7 +169,6 @@ export function AgentMessage({
 }: AgentMessageProps) {
   const platform = usePlatform();
   const sendNotification = useSendNotification();
-  const { theme } = useTheme();
 
   const [messageStreamState, dispatch] = useReducer(
     messageReducer,
@@ -220,10 +207,6 @@ export function AgentMessage({
         assertNever(messageStreamState.message.status);
     }
   })();
-
-  const [lastTokenClassification, setLastTokenClassification] = useState<
-    null | "tokens" | "chain_of_thought"
-  >(null);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -416,7 +399,7 @@ export function AgentMessage({
 
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
-      visualization: (props: ReactMarkdownProps) => (
+      visualization: () => (
         <div className="w-full flex justify-center">
           <Button
             label="See visualization on Dust website"
@@ -445,13 +428,8 @@ export function AgentMessage({
   );
 
   const PopoverContent = useCallback(
-    () => (
-      <FeedbackSelectorPopoverContent
-        owner={owner}
-        agentMessageToRender={agentMessageToRender}
-      />
-    ),
-    [owner, agentMessageToRender]
+    () => <FeedbackSelectorPopoverContent />,
+    []
   );
 
   const buttons =
@@ -521,7 +499,8 @@ export function AgentMessage({
           agentMessage: agentMessageToRender,
           references: references,
           streaming: shouldStream,
-          lastTokenClassification: lastTokenClassification,
+          lastTokenClassification:
+            messageStreamState.agentState === "thinking" ? "tokens" : null,
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
