@@ -170,7 +170,7 @@ export class DustMcpServerTransport implements Transport {
           );
         }
       } catch (error) {
-        console.error("Failed to parse MCP request:", error);
+        this.logError("Failed to parse MCP request:", error);
         this.onerror?.(new Error(`Failed to parse MCP request: ${error}`));
       }
     };
