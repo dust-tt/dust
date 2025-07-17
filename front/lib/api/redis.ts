@@ -8,8 +8,6 @@ let client: RedisClientType;
 
 export type RedisUsageTagsType =
   | "action_validation"
-  // TODO(DURABLE-AGENTS 2025-07-16): Remove this once we removed proxy from all places.
-  | "agent_execution"
   | "agent_recent_authors"
   | "agent_usage"
   | "assistant_generation"

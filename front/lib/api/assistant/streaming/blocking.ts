@@ -16,10 +16,13 @@ import type {
 } from "@app/types";
 import { Ok } from "@app/types";
 
+// We wait for 60 seconds for agent messages to complete.
+const WAIT_FOR_AGENT_COMPLETION_TIMEOUT_MS = 60000;
+
 /**
- * Waits for all agent messages to complete by subscribing to their Redis channels
- * and listening for "end-of-stream" events. This function is used to implement
- * blocking behavior for public API endpoints that need to wait for agent responses.
+ * Waits for all agent messages to complete by subscribing to their Redis channels and listening
+ * for "end-of-stream" events. This function is used to implement blocking behavior for public API
+ * endpoints that need to wait for agent responses.
  *
  * @param agentMessages - Array of agent messages to wait for completion
  * @returns Promise that resolves with the completed agent messages
@@ -28,7 +31,7 @@ import { Ok } from "@app/types";
  * - Subscribes to each agent message's Redis channel
  * - Listens for "end-of-stream" or "close" events to detect completion
  * - Handles agent errors by removing failed messages from the expected set
- * - Times out after 30 seconds to prevent hanging
+ * - Times out after `WAIT_FOR_AGENT_COMPLETION_TIMEOUT_MS` milliseconds to prevent hanging
  * - Cleans up all subscriptions when done to avoid memory leaks
  */
 async function waitForAgentCompletion(
@@ -117,7 +120,7 @@ async function waitForAgentCompletion(
         cleanup();
         return resolve(completedMessages);
       }
-    }, 30000);
+    }, WAIT_FOR_AGENT_COMPLETION_TIMEOUT_MS);
 
     // Start subscription setup.
     setupSubscriptions().catch(() => {

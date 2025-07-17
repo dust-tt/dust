@@ -2,7 +2,6 @@ import assert from "assert";
 import _, { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 
-import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import { runAgentWithStreaming } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
@@ -24,9 +23,7 @@ import {
   publishAgentMessageEventOnMessageRetry,
   publishMessageEventsOnMessageEdit,
 } from "@app/lib/api/assistant/streaming/events";
-import { getAgentExecutionChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
-import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -55,10 +52,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
-  AgentActionSuccessEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
   AgentMessageType,
   AgentMessageWithRankType,
   APIErrorWithStatusCode,
@@ -69,7 +62,6 @@ import type {
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
-  GenerationTokensEvent,
   LightAgentConfigurationType,
   MaxMessagesTimeframeType,
   MentionType,
@@ -99,15 +91,6 @@ import {
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
-
-// Type alias for agent execution events.
-type AgentExecutionEvent =
-  | AgentErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent;
 
 function getTimeframeSecondsFromLiteral(
   timeframeLiteral: MaxMessagesTimeframeType
@@ -1577,85 +1560,6 @@ export async function postNewContentFragment(
   });
 
   return new Ok(render);
-}
-
-async function* streamRunAgentEvents(
-  auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  agentMessage: AgentMessageType,
-  agentMessageRow: AgentMessage
-): AsyncGenerator<AgentExecutionEvent, void> {
-  if (!canReadMessage(auth, agentMessage)) {
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: agentMessage.configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "agent_not_allowed",
-        message: "Agent cannot be used by this user",
-        metadata: null,
-      },
-    };
-    return;
-  }
-
-  const redisChannel = getAgentExecutionChannelId(agentMessage.sId);
-  const redisHybridManager = getRedisHybridManager();
-
-  // STEP 1: Subscribe to Redis channel FIRST
-  // This sets up the event consumer for real-time events only (no history replay).
-  // Must happen before agent execution starts to avoid missing events.
-  const { iterator: eventStream, unsubscribe } =
-    await redisHybridManager.subscribeAsAsyncIterator<AgentExecutionEvent>({
-      channelName: redisChannel,
-      lastEventId: null,
-      origin: "agent_execution",
-      // Don't include history for now. Might be revisited when using a temporal workflow.
-      includeHistory: false,
-    });
-
-  // STEP 2: Start agent execution (fire-and-forget)
-  // We use 'void' to:
-  // - Start agent execution immediately without blocking
-  // - Avoid awaiting (which would cause deadlock since we need to consume events)
-  // - Silence TypeScript "floating promise" warning (intentional fire-and-forget)
-  void runAgentWithStreaming(
-    auth,
-    agentConfiguration,
-    conversation,
-    userMessage,
-    agentMessage,
-    agentMessageRow
-  );
-
-  // STEP 3: Process events as they arrive
-  // Only real-time events will flow as the agent publishes them to Redis.
-  // Database operations are now handled in runAgent before publishing.
-  // TODO(DURABLE-AGENT 2025-07-10): Remove this event proxy to only consume at the endpoints level.
-  for await (const event of eventStream) {
-    switch (event.type) {
-      case "agent_action_success":
-      case "generation_tokens":
-      case "tool_approve_execution":
-      case "tool_notification":
-      case "tool_params":
-        yield event;
-        break;
-
-      case "agent_error":
-      case "agent_generation_cancelled":
-      case "agent_message_success":
-        yield event;
-        unsubscribe();
-        return; // Terminal events - end the stream.
-
-      default:
-        assertNever(event);
-    }
-  }
 }
 
 export interface MessageLimit {

@@ -1,10 +1,6 @@
 import type { AgentMessageAsyncEvents } from "@app/lib/api/assistant/streaming/types";
 import type { AgentErrorEvent, AgentMessageSuccessEvent } from "@app/types";
 
-export function getAgentExecutionChannelId(agentMessageId: string) {
-  return `agent-execution-${agentMessageId}`;
-}
-
 const END_OF_STREAM_EVENT = {
   type: "end-of-stream",
 };
