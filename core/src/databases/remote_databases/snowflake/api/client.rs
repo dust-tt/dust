@@ -1,5 +1,6 @@
 use reqwest::{Client, ClientBuilder, Proxy};
 use std::time::Duration;
+use tracing::debug;
 
 use super::{auth::login, error::Result, session::SnowflakeSession};
 
@@ -38,7 +39,17 @@ impl SnowflakeClient {
         auth: SnowflakeAuthMethod,
         config: SnowflakeClientConfig,
     ) -> Result<Self> {
-        let client = ClientBuilder::new().gzip(true).use_rustls_tls().build()?;
+        let mut builder = ClientBuilder::new()
+            .gzip(true)
+            .use_rustls_tls()
+            .timeout(std::time::Duration::from_secs(60));
+        
+        // Only enable verbose connection logging in debug mode
+        if tracing::enabled!(tracing::Level::DEBUG) {
+            builder = builder.connection_verbose(true);
+        }
+        
+        let client = builder.build()?;
         Ok(Self {
             http: client,
             username: username.to_string(),
@@ -51,11 +62,18 @@ impl SnowflakeClient {
         let proxy = Proxy::all(format!("http://{}:{}", host, port).as_str())?
             .basic_auth(username, password);
 
-        let client = ClientBuilder::new()
+        let mut builder = ClientBuilder::new()
             .gzip(true)
             .use_rustls_tls()
             .proxy(proxy)
-            .build()?;
+            .timeout(std::time::Duration::from_secs(60));
+        
+        // Only enable verbose connection logging in debug mode
+        if tracing::enabled!(tracing::Level::DEBUG) {
+            builder = builder.connection_verbose(true);
+        }
+        
+        let client = builder.build()?;
         Ok(Self {
             http: client,
             username: self.username,
@@ -65,13 +83,27 @@ impl SnowflakeClient {
     }
 
     pub async fn create_session(&self) -> Result<SnowflakeSession> {
-        let session_token = login(&self.http, &self.username, &self.auth, &self.config).await?;
-        Ok(SnowflakeSession {
+        debug!("SnowflakeClient::create_session() called");
+        debug!("Attempting login for user: {}", self.username);
+        let session_token = match login(&self.http, &self.username, &self.auth, &self.config).await {
+            Ok(token) => {
+                debug!("Login successful, got session token");
+                token
+            }
+            Err(e) => {
+                debug!("Login failed: {:?}", e);
+                return Err(e);
+            }
+        };
+        
+        let session = SnowflakeSession {
             http: self.http.clone(),
             // Replace any `_` with `-` in the account name for nginx proxy.
             account: self.config.account.clone().replace('_', "-"),
             session_token,
             timeout: self.config.timeout,
-        })
+        };
+        debug!("SnowflakeSession created successfully");
+        Ok(session)
     }
 }

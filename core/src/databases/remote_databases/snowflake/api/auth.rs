@@ -7,6 +7,7 @@ use rsa::pkcs1::DecodeRsaPrivateKey;
 use rsa::RsaPrivateKey;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use tracing::debug;
 
 use super::{
     client::SnowflakeAuthMethod, client::SnowflakeClientConfig, error::Error, error::Result,
@@ -19,10 +20,12 @@ pub async fn login(
     auth: &SnowflakeAuthMethod,
     config: &SnowflakeClientConfig,
 ) -> Result<String> {
+    debug!("login() called");
     let url = format!(
         "https://{account}.snowflakecomputing.com/session/v1/login-request",
         account = config.account
     );
+    debug!("Login URL: {}", url);
 
     let mut queries = vec![];
     if let Some(warehouse) = &config.warehouse {
@@ -39,17 +42,33 @@ pub async fn login(
     }
 
     let login_data = login_request_data(username, auth, config)?;
-    let response = http
+    debug!("Sending login request...");
+    debug!("Query params: {:?}", queries);
+    
+    let start_time = std::time::Instant::now();
+    let response = match http
         .post(url)
         .query(&queries)
         .json(&json!({
             "data": login_data
         }))
         .send()
-        .await?;
+        .await {
+            Ok(resp) => {
+                debug!("Got response after {:?}", start_time.elapsed());
+                resp
+            }
+            Err(e) => {
+                debug!("Request failed after {:?}: {:?}", start_time.elapsed(), e);
+                return Err(e.into());
+            }
+        };
+    
     let status = response.status();
+    debug!("Response status: {}", status);
     let body = response.text().await?;
     if !status.is_success() {
+        debug!("Login failed with status {}: {}", status, body);
         return Err(Error::Communication(body));
     }
 
