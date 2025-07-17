@@ -26,7 +26,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
 };
 
 const MAX_INSTRUCTIONS_LENGTH = 1000;
-const LIST_AGENTS_TOOL_NAME = "list_all_published_agents";
+const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
 
 const SERVER_INSTRUCTIONS = `These tools provide discoverability to published agents available in the workspace.
@@ -39,7 +39,7 @@ const createServer = (auth: Authenticator): McpServer => {
   });
 
   server.tool(
-    LIST_AGENTS_TOOL_NAME,
+    LIST_ALL_AGENTS_TOOL_NAME,
     "Returns a complete list of all published agents in the workspace.",
     {},
     async () => {
