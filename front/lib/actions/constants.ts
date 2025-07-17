@@ -17,6 +17,10 @@ export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search_&_browse";
 export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION =
   "Agent can search (Google) and retrieve information from specific websites.";
 
+export const DEFAULT_AGENT_ROUTER_ACTION_NAME = "agent_router";
+export const DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION =
+  "Tools with access to the published agents of the workspace.";
+
 // TODO(durable-agents): remove this (only used in the non-MCP variant, inlined in the MCP tool definition).
 export const DEFAULT_SEARCH_LABELS_ACTION_NAME = "search_labels";
 

@@ -3,6 +3,8 @@ import path from "path";
 import { promisify } from "util";
 
 import {
+  DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
+  DEFAULT_AGENT_ROUTER_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
@@ -10,12 +12,10 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  LIST_ALL_AGENTS_TOOL_NAME,
-  SUGGEST_AGENTS_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agent_metadata";
 import config from "@app/lib/api/config";
@@ -181,27 +181,10 @@ function _getAgentRouterToolsConfiguration(
   return [
     {
       id: -1,
-      sId: agentId + "-agent-router-list-action",
+      sId: agentId + "-agent-router",
       type: "mcp_server_configuration",
-      name: LIST_ALL_AGENTS_TOOL_NAME,
-      description: "List the published agents of the workspace.",
-      mcpServerViewId: mcpServerView.sId,
-      internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      reasoningModel: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-    },
-    {
-      id: -1,
-      sId: agentId + "-agent-router-suggest-agents",
-      type: "mcp_server_configuration",
-      name: SUGGEST_AGENTS_TOOL_NAME,
-      description: "Suggest agents based on the user's query.",
+      name: DEFAULT_AGENT_ROUTER_ACTION_NAME satisfies InternalMCPServerNameType,
+      description: DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
       mcpServerViewId: mcpServerView.sId,
       internalMCPServerId,
       dataSources: null,
@@ -1611,7 +1594,8 @@ The agent should not provide additional information or content that the user did
    in which case it is better to search only on the specific data source.
    It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
    If no relevant information is found but the user's question seems to be internal to the company,
-   the agent should use the ${SUGGEST_AGENTS_TOOL_NAME} tool to suggest an agent that might be able to handle the request.
+   the agent should use the ${DEFAULT_AGENT_ROUTER_ACTION_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME}
+   tool to suggest an agent that might be able to handle the request.
 
 2. If the user's question requires information that is recent and likely to be found on the public 
    internet, the agent should use the internet to answer the question.
