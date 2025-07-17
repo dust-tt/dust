@@ -53,16 +53,14 @@ async function waitForAgentCompletion(
       }
       isResolved = true;
 
-      // Clean up subscriptions asynchronously to avoid stack overflow.
-      setTimeout(() => {
-        subscriptions.forEach((unsub) => {
-          try {
-            unsub();
-          } catch (error) {
-            // Ignore cleanup errors.
-          }
-        });
-      }, 0);
+      // Clean up all subscriptions.
+      subscriptions.forEach((unsub) => {
+        try {
+          unsub();
+        } catch (error) {
+          // Ignore individual unsubscribe errors to ensure all subscriptions are cleaned up.
+        }
+      });
     };
 
     const checkCompletion = () => {
