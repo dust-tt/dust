@@ -385,23 +385,27 @@ export class GroupResource extends BaseResource<GroupModel> {
     key: KeyResource,
     groupKinds: GroupKind[] = ["global", "regular", "system"]
   ): Promise<GroupResource[]> {
-    const whereCondition: WhereOptions<GroupModel> = key.isSystem
-      ? // If the key is a system key, we include all groups in the workspace.
-        {
+    let groups: GroupModel[] = [];
+
+    if (key.isSystem) {
+      groups = await this.model.findAll({
+        where: {
           workspaceId: key.workspaceId,
           kind: {
             [Op.in]: groupKinds,
           },
-        }
-      : // If it's not a system key, we only fetch the associated group.
-        {
+        },
+      });
+    } else {
+      // If the key is not a system key, we fetch the associated group and the global group.
+      // Because if it's a restricted key, we still want to be able to access the global group.
+      groups = await this.model.findAll({
+        where: {
           workspaceId: key.workspaceId,
-          id: key.groupId,
-        };
-
-    const groups = await this.model.findAll({
-      where: whereCondition,
-    });
+          [Op.or]: [{ id: key.groupId }, { kind: "global" }],
+        },
+      });
+    }
 
     if (groups.length === 0) {
       throw new Error("Group for key not found.");
