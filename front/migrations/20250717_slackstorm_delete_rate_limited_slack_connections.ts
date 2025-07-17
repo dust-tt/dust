@@ -1,3 +1,4 @@
+import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -82,12 +83,17 @@ makeScript(
       }
 
       if (execute) {
+        const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
+          auth,
+          dataSource
+        );
+        if (delRes.isErr()) {
+          logger.error(
+            { error: delRes.error, connectorId },
+            `Failed to delete data source`
+          );
+        }
       }
-      await execute({
-        type: "delete",
-        resource: "slack_connection",
-        id: connectorId,
-      });
     }
   }
 );
