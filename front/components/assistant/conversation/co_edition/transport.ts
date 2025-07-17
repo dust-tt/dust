@@ -44,7 +44,8 @@ export class CoEditionTransport implements Transport {
   constructor(
     private readonly owner: LightWorkspaceType,
     private readonly onServerIdReceived: (serverId: string) => void,
-    private readonly serverName: string = "Co-Edition"
+    private readonly serverName: string = "Co-Edition",
+    private readonly verbose: boolean = false
   ) {}
 
   /**
@@ -62,7 +63,7 @@ export class CoEditionTransport implements Transport {
     });
 
     if (!response.ok) {
-      logger.error(`Failed to register MCP server: ${response.statusText}`);
+      this.logError(`Failed to register MCP server: ${response.statusText}`);
       return false;
     }
 
@@ -100,7 +101,7 @@ export class CoEditionTransport implements Transport {
 
       const body = await response.json();
       if (!response.ok || isFailedHeartbeatResponse(body)) {
-        logger.error(`Failed to heartbeat MCP server: ${response.statusText}`);
+        this.logError(`Failed to heartbeat MCP server: ${response.statusText}`);
         await this.registerServer();
       }
     }, HEARTBEAT_INTERVAL_MS);
@@ -121,9 +122,9 @@ export class CoEditionTransport implements Transport {
       // Connect to the workspace-scoped requests endpoint.
       await this.connectToRequestsStream();
 
-      logger.log("MCP transport started successfully");
+      this.logInfo("MCP transport started successfully");
     } catch (error) {
-      logger.error("Failed to start MCP transport:", error);
+      this.logError("Failed to start MCP transport:", error);
       this.onerror?.(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
@@ -166,7 +167,7 @@ export class CoEditionTransport implements Transport {
         // The actual request is in the data property.
         const { data } = eventData;
         if (!data) {
-          logger.error("No data field found in the event");
+          this.logError("No data field found in the event");
           return;
         }
 
@@ -174,37 +175,37 @@ export class CoEditionTransport implements Transport {
         if (this.onmessage) {
           this.onmessage(data);
         } else {
-          logger.error(
+          this.logError(
             "ERROR: onmessage handler not set - MCP response won't be sent"
           );
         }
       } catch (error) {
-        logger.error("Failed to parse MCP request:", error);
+        this.logError("Failed to parse MCP request:", error);
         this.onerror?.(new Error(`Failed to parse MCP request: ${error}`));
       }
     };
 
     this.eventSource.onerror = (error) => {
-      logger.error("Error in MCP EventSource connection:", error);
+      this.logError("Error in MCP EventSource connection:", error);
       this.onerror?.(new Error(`SSE connection error: ${error}`));
 
       // Attempt to reconnect after a delay.
       setTimeout(() => {
         if (this.eventSource) {
-          logger.log("Attempting to reconnect to SSE...");
+          this.logInfo("Attempting to reconnect to SSE...");
           void this.connectToRequestsStream().catch((reconnectError) => {
-            logger.error("Failed to reconnect:", reconnectError);
+            this.logError("Failed to reconnect:", reconnectError);
           });
         }
       }, RECONNECT_DELAY_MS); // Wait before reconnecting.
     };
 
     this.eventSource.onopen = () => {
-      logger.log("MCP SSE connection established");
+      this.logInfo("MCP SSE connection established");
     };
 
     this.eventSource.addEventListener("close", () => {
-      logger.log("MCP SSE connection closed");
+      this.logInfo("MCP SSE connection closed");
       this.onclose?.();
     });
   }
@@ -229,7 +230,7 @@ export class CoEditionTransport implements Transport {
     });
 
     if (!response.ok) {
-      logger.error("Failed to send MCP result:", response.statusText);
+      this.logError("Failed to send MCP result:", response.statusText);
       this.onerror?.(
         new Error(`Failed to send MCP result: ${response.statusText}`)
       );
@@ -249,13 +250,25 @@ export class CoEditionTransport implements Transport {
 
     // Close SSE connection.
     if (this.eventSource) {
-      logger.log("Closing MCP SSE connection");
+      this.logInfo("Closing MCP SSE connection");
       this.eventSource.close();
       this.eventSource = null;
     }
 
     // Trigger onclose callback.
     this.onclose?.();
+  }
+
+  logError(...args: unknown[]): void {
+    if (this.verbose) {
+      logger.error(...args);
+    }
+  }
+
+  logInfo(...args: unknown[]): void {
+    if (this.verbose) {
+      logger.log(...args);
+    }
   }
 
   /**
