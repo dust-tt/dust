@@ -45,7 +45,15 @@ async function getParentsToAdd({
       throw searchResult.error;
     }
 
-    nodes = searchResult.value.nodes;
+    // The Elasticsearch analyzer splits punctuation (like '#inc-') into tokens,
+    // causing the search to match documents containing the prefix anywhere in the title,
+    // not just at the beginning. This post-search filter ensures we only get
+    // documents whose titles actually start with the specified prefix.
+    const filteredNodes = searchResult.value.nodes.filter((node: any) =>
+      node.title.toLowerCase().startsWith(namePrefix.toLowerCase())
+    );
+
+    nodes = filteredNodes;
 
     if (execute) {
       logger.info(`Found ${nodes.length} parents to add.`);
