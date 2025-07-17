@@ -96,7 +96,9 @@ const createServer = (auth: Authenticator): McpServer => {
 
   server.tool(
     "suggest_agents_for_content",
-    "Analyzes a user query and returns relevant specialized agents that might be better suited to handle specific requests. The tool uses semantic matching to find agents whose capabilities align with the query content.",
+    "Analyzes a user query and returns relevant specialized agents that might be better " +
+      "suited to handling specific requests. The tool uses semantic matching to find agents " +
+      "whose capabilities align with the query content.",
     {
       userMessage: z.string().describe("The user's message."),
       conversationId: z.string().describe("The conversation id."),
