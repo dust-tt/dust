@@ -67,21 +67,9 @@ export const useFileSystemServer = async (
     (serverId) => {
       onServerIdReceived(serverId);
     },
-    "fs-cli"
-  ); // Enable verbose logging
-
-  // Add error handling for connection issues
-  transport.onerror = (error) => {
-    console.error("[MCP Transport Error]", error.message);
-    if (error.message.includes("No activity within")) {
-      console.error(
-        "[MCP Transport] Connection timeout - this may indicate server-side issues"
-      );
-      console.error(
-        "[MCP Transport] Consider checking network connectivity and server health"
-      );
-    }
-  };
+    "fs-cli",
+    false
+  );
 
   try {
     await server.connect(transport);
