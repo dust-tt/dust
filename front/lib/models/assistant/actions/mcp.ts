@@ -202,6 +202,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "denied";
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
+  declare stepContent?: NonAttribute<AgentStepContentModel>;
 }
 
 AgentMCPAction.init(
@@ -288,6 +289,7 @@ AgentMessage.hasMany(AgentMCPAction, {
 
 AgentMCPAction.belongsTo(AgentStepContentModel, {
   foreignKey: { name: "stepContentId", allowNull: true },
+  as: "stepContent",
   onDelete: "RESTRICT",
 });
 
