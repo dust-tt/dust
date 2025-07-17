@@ -71,7 +71,7 @@ const CONVERSATION_HISTORY_LIMIT = 100;
 
 // Maximum number of messages we process in a single syncNonThreaded call (1 week of unthreaded
 // messages). Some channels have integrations that post a lot of messages. Beyond this number (more
-// that 500 messages per week), the information is very likely useless.
+// that 1000 messages per week), the information is very likely useless.
 const MAX_SYNC_NON_THREAD_MESSAGES = 1000;
 
 interface SyncChannelRes {
