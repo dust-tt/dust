@@ -10,5 +10,7 @@ RUN cargo build --release --bin core-api --bin sqlite-worker
 
 EXPOSE 3001
 
+ENV OTEL_RESOURCE_ATTRIBUTES=service.version=$VERSION,service.cell=$CELL,cloud.region=$REGION,k8s.pod.name=$POD_NAME,deployment.environment=prod
+
 # Set a default command, it will start the API service if no command is provided
 CMD ["cargo", "run", "--release", "--bin", "core-api"]
