@@ -262,46 +262,45 @@ export const fetchTree = async ({
       async (db) => {
         return {
           ...db,
-          schemas: await Promise.all(
-            schemas
-              .filter((s) => s.database_name === db.name)
-              .map(async (schema) => {
-                const tablesRes = await fetchTables({
-                  credentials,
-                  dataset: schema.name,
-                  fetchTablesDescription,
-                  logger,
-                });
-                if (tablesRes.isErr()) {
-                  throw tablesRes.error;
-                }
-                const tables = tablesRes.value;
+          schemas: await concurrentExecutor(
+            schemas.filter((s) => s.database_name === db.name),
+            async (schema) => {
+              const tablesRes = await fetchTables({
+                credentials,
+                dataset: schema.name,
+                fetchTablesDescription,
+                logger,
+              });
+              if (tablesRes.isErr()) {
+                throw tablesRes.error;
+              }
+              const tables = tablesRes.value;
 
-                // Do not store if too many tables, the sync will be too long and it's quite likely that these are useless tables.
-                if (tables.length > MAX_TABLES_PER_SCHEMA) {
-                  logger.warn(
-                    `[BigQuery] Skipping schema ${schema.name} with ${tables.length} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
-                  );
-                  return {
-                    name:
-                      schema.name +
-                      ` (sync skipped: exceeded ${MAX_TABLES_PER_SCHEMA} tables limit)`,
-                    database_name: credentials.project_id,
-                    tables: [],
-                  };
-                }
-
+              // Do not store if too many tables, the sync will be too long and it's quite likely that these are useless tables.
+              if (tables.length > MAX_TABLES_PER_SCHEMA) {
+                logger.warn(
+                  `[BigQuery] Skipping schema ${schema.name} with ${tables.length} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
+                );
                 return {
-                  ...schema,
-                  tables,
+                  name:
+                    schema.name +
+                    ` (sync skipped: exceeded ${MAX_TABLES_PER_SCHEMA} tables limit)`,
+                  database_name: credentials.project_id,
+                  tables: [],
                 };
-              })
+              }
+
+              return {
+                ...schema,
+                tables,
+              };
+            },
+            { concurrency: 4 }
           ),
         };
       },
-      {
-        concurrency: 4,
-      }
+      // There's only one database in BigQuery, so we can use concurrency 1.
+      { concurrency: 1 }
     ),
   };
 
