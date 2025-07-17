@@ -297,28 +297,24 @@ async function runMultiActionsAgentLoop(
               event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
               await Promise.all(
-                event.actions.map(
-                  ({ action, inputs, functionCallId }, index) => {
+                event.actions.map(({ action, inputs, functionCallId }, index) =>
+                  runAction(auth, {
+                    configuration,
+                    actionConfiguration: action,
+                    conversation,
+                    agentMessage,
+                    inputs,
+                    functionCallId,
+                    step: i,
+                    stepActionIndex: index,
+                    stepActions: event.actions.map((a) => a.action),
+                    citationsRefsOffset,
                     // Find the step content ID for this function call
-                    const stepContentId = functionCallId
+                    stepContentId: functionCallId
                       ? functionCallStepContentIds[functionCallId]
-                      : undefined;
-
-                    return runAction(auth, {
-                      configuration,
-                      actionConfiguration: action,
-                      conversation,
-                      agentMessage,
-                      inputs,
-                      functionCallId,
-                      step: i,
-                      stepActionIndex: index,
-                      stepActions: event.actions.map((a) => a.action),
-                      citationsRefsOffset,
-                      stepContentId,
-                      agentMessageRow,
-                    });
-                  }
+                      : undefined,
+                    agentMessageRow,
+                  })
                 )
               );
               // After we are done running actions, we update the inter-step refsOffset.
