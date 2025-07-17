@@ -1,7 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import emojiRegex from "emoji-regex";
-import { deburr } from "lodash";
 
 /**
  * Substring that ensures we don't cut a string in the middle of a unicode
