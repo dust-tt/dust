@@ -78,17 +78,21 @@ impl TableUpsertsBackgroundWorker {
         key: String,
         table_data: TableUpsertActivityData,
     ) -> Result<(), anyhow::Error> {
-        info!(
-            "Processing upsert for project_id: {}, data_source_id: {}, table_id: {}",
-            table_data.project_id, table_data.data_source_id, table_data.table_id
-        );
-
         let files =
             GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(&table)
                 .await?;
         let rows =
             GoogleCloudStorageBackgroundProcessingStore::get_deduped_rows_from_all_files(&files)
                 .await?;
+        info!(
+            project_id = table_data.project_id,
+            data_source_id = table_data.data_source_id,
+            table_id = table_data.table_id,
+            file_count = files.len(),
+            row_count = rows.len(),
+            "TableUpsertsBackgroundWorker: Processing upserts"
+        );
+
         let local_table = LocalTable::from_table(table.clone())?;
         local_table
             .upsert_rows_gcs(&self.store, &self.gcs_db_store, rows, false)
@@ -125,6 +129,12 @@ impl TableUpsertsBackgroundWorker {
         })
         .await?;
 
+        if !active_tables.is_empty() {
+            info!(
+                table_count = active_tables.len(),
+                "TableUpsertsBackgroundWorker: active tables to process",
+            );
+        }
         for (key, table_data) in active_tables {
             // They're ordered from oldest to newest, meaning we first see those that are most
             // likely to be past the debounce time. As soon as we find one that is not
@@ -158,7 +168,7 @@ impl TableUpsertsBackgroundWorker {
 
                     info!(
                         lock_acquisition_duration = utils::now() - now,
-                        "Upsert lock acquired"
+                        "TableUpsertsBackgroundWorker: Upsert lock acquired"
                     );
 
                     self.process_table(&table, key.clone(), table_data).await?;
@@ -167,7 +177,7 @@ impl TableUpsertsBackgroundWorker {
                 }
                 None => {
                     error!(
-                        "Table not found for project_id: {}, data_source_id: {}, table_id: {}",
+                        "TableUpsertsBackgroundWorker: Table not found for project_id: {}, data_source_id: {}, table_id: {}",
                         table_data.project_id, table_data.data_source_id, table_data.table_id
                     );
                 }
@@ -179,13 +189,15 @@ impl TableUpsertsBackgroundWorker {
 
     pub async fn main_loop(&mut self) {
         if !SAVE_TABLES_TO_GCS {
-            info!("We're not saving tables to GCS, skipping TableUpsertsBackgroundWorker loop");
+            info!("TableUpsertsBackgroundWorker: We're not saving tables to GCS, skipping loop");
             return;
         }
 
+        info!("TableUpsertsBackgroundWorker: starting main loop");
+
         loop {
             if let Err(e) = self.loop_iteration().await {
-                error!("Error in TableUpsertsBackgroundWorker loop: {}", e);
+                error!("TableUpsertsBackgroundWorker: Error in loop: {}", e);
             }
             tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
@@ -195,7 +207,10 @@ impl TableUpsertsBackgroundWorker {
         match TableUpsertsBackgroundWorker::new().await {
             Ok(mut worker) => worker.main_loop().await,
             Err(e) => {
-                error!("Failed to start TableUpsertsBackgroundWorker: {}", e);
+                error!(
+                    "TableUpsertsBackgroundWorker: Failed to start worker: {}",
+                    e
+                );
             }
         }
     }

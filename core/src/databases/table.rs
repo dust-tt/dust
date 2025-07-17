@@ -745,6 +745,8 @@ impl LocalTable {
     async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
         let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
 
+        let now = utils::now();
+
         // Write the rows to GCS for the worker to process
         let rows_arc = Arc::new(rows);
         let schema = TableSchema::from_rows_async(rows_arc.clone()).await?;
@@ -769,6 +771,13 @@ impl LocalTable {
                 serde_json::to_string(&upsert_call)?,
             )
             .await?;
+
+        info!(
+            duration = utils::now() - now,
+            table_id = self.table.table_id(),
+            rows_count = rows_arc.len(),
+            "DSSTRUCTSTAT [schedule_background_upsert_or_delete]"
+        );
 
         Ok(())
     }
