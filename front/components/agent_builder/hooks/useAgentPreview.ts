@@ -23,9 +23,8 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-export function usePreviewAgent() {
+export function useDraftAgent() {
   const { owner } = useAgentBuilderContext();
-  const { user } = useUser();
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
   const sendNotification = useSendNotification();
@@ -89,6 +88,91 @@ export function usePreviewAgent() {
       isMCPServerViewsLoading,
       getValues,
     ]);
+
+  const debouncedCreateDraftAgent = useCallback(
+    debounce(() => {
+      void createDraftAgent();
+    }, 500),
+    []
+  );
+
+  const getDraftAgent =
+    useCallback(async (): Promise<LightAgentConfigurationType | null> => {
+      const formData = getValues();
+      if (
+        lastFormDataRef.current &&
+        isEqual(lastFormDataRef.current, formData)
+      ) {
+        return draftAgent;
+      }
+
+      return createDraftAgent();
+    }, [draftAgent, createDraftAgent, getValues]);
+
+  useEffect(() => {
+    return () => {
+      debouncedCreateDraftAgent.cancel();
+    };
+  }, [debouncedCreateDraftAgent]);
+
+  useEffect(() => {
+    if (isMCPServerViewsLoading) {
+      return;
+    }
+
+    // Create the first version here, after that we will update the draft agent on form submission.
+    if (!draftAgent) {
+      const hasContent =
+        (formData.actions && formData.actions.length > 0) ||
+        formData.instructions?.trim();
+
+      if (!isSavingDraftAgent && hasContent) {
+        void debouncedCreateDraftAgent();
+      }
+
+      return;
+    }
+
+    // If agent name is updated, we need to update the @mention in the input box,
+    // so we will update the draft agent.
+    if (
+      lastFormDataRef.current &&
+      lastFormDataRef.current?.agentSettings.name !==
+        formData.agentSettings?.name
+    ) {
+      void debouncedCreateDraftAgent();
+    }
+
+    setDraftCreationFailed(false);
+  }, [
+    formData,
+    draftAgent,
+    debouncedCreateDraftAgent,
+    isMCPServerViewsLoading,
+    isSavingDraftAgent,
+    getValues,
+  ]);
+
+  return {
+    draftAgent,
+    isSavingDraftAgent,
+    draftCreationFailed,
+    getDraftAgent,
+    stickyMentions,
+    setStickyMentions,
+  };
+}
+
+export function usePreview({
+  draftAgent,
+  getDraftAgent,
+}: {
+  draftAgent: LightAgentConfigurationType | null;
+  getDraftAgent: () => Promise<LightAgentConfigurationType | null>;
+}) {
+  const { owner } = useAgentBuilderContext();
+  const { user } = useUser();
+  const sendNotification = useSendNotification();
 
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
@@ -186,71 +270,7 @@ export function usePreviewAgent() {
     }
   };
 
-  const debouncedCreateDraftAgent = useCallback(
-    debounce(async () => {
-      void createDraftAgent();
-    }, 500),
-    [createDraftAgent]
-  );
-
-  const getDraftAgent =
-    useCallback(async (): Promise<LightAgentConfigurationType | null> => {
-      const formData = getValues();
-      if (lastFormDataRef.current && isEqual(lastFormDataRef.current, formData)) {
-        return draftAgent;
-      }
-
-     return createDraftAgent();
-    }, [draftAgent, createDraftAgent, getValues]);
-
-  useEffect(() => {
-    return () => {
-      debouncedCreateDraftAgent.cancel();
-    };
-  }, [debouncedCreateDraftAgent]);
-
-  useEffect(() => {
-    if (isMCPServerViewsLoading) {
-      return;
-    }
-
-    // Create the first version here, after that we will update the draft agent on form submission.
-    if (!draftAgent) {
-    const hasContent =
-      (formData.actions && formData.actions.length > 0) ||
-      formData.instructions?.trim();
-
-      if (!isSavingDraftAgent && hasContent) {
-        void debouncedCreateDraftAgent();
-      }
-
-      return;
-    } 
-
-    // If agent name is updated, we need to update the @mention in the input box,
-    // so we will update the draft agent.
-    // const currentFormData = getValues();
-    console.log(lastFormDataRef.current);
-    if (lastFormDataRef.current && lastFormDataRef.current?.agentSettings.name !== formData.agentSettings?.name ) {
-      void debouncedCreateDraftAgent();
-    }
-
-    setDraftCreationFailed(false);
-  }, [
-    formData,
-    draftAgent,
-    debouncedCreateDraftAgent,
-    isMCPServerViewsLoading,
-    isSavingDraftAgent,
-    getValues,
-  ]);
-
   return {
-    draftAgent,
-    isSavingDraftAgent,
-    draftCreationFailed,
-    stickyMentions,
-    setStickyMentions,
     conversation,
     setConversation,
     handleSubmit,

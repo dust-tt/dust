@@ -1,12 +1,10 @@
 import { Spinner } from "@dust-tt/sparkle";
 import React from "react";
-import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
-  usePreviewAgent,
-  useTryAgentCore,
+  useDraftAgent,
+  usePreview,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
@@ -55,13 +53,17 @@ export function AgentBuilderPreview() {
 
   const {
     draftAgent,
+    getDraftAgent,
     isSavingDraftAgent,
     draftCreationFailed,
     stickyMentions,
     setStickyMentions,
-    conversation,
-    handleSubmit,
-  } = usePreviewAgent();
+  } = useDraftAgent();
+
+  const { conversation, handleSubmit } = usePreview({
+    draftAgent,
+    getDraftAgent,
+  });
 
   const renderContent = () => {
     if (!draftAgent) {
