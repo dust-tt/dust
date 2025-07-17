@@ -1185,9 +1185,9 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
-  defaultReasoningEffort: "none",
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
 };
 
 export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
