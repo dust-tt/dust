@@ -197,7 +197,7 @@ export const FILE_FORMATS = {
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
     cat: "data",
-    exts: [".doc", ".docx"],
+    exts: [".docx", ".doc"],
     isSafeToDisplay: true,
   },
   "application/vnd.ms-powerpoint": {
