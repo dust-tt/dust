@@ -777,6 +777,7 @@ export const AdminResponseSchema = t.union([
   CheckFileGenericResponseSchema,
   ConfluenceCheckPageExistsResponseSchema,
   ConfluenceCheckSpaceAccessResponseSchema,
+  ConfluenceSkipPageResponseSchema,
   ConfluenceMeResponseSchema,
   ConfluenceResolveSpaceFromUrlResponseSchema,
   ConfluenceUpsertPageResponseSchema,
