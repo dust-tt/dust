@@ -1,4 +1,7 @@
-import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentContentItemType,
+  ErrorContentType,
+} from "@app/types/assistant/agent_message_content";
 
 /**
  * Model rendering of conversations.
@@ -60,14 +63,14 @@ export interface AssistantFunctionCallMessageTypeModel {
   role: "assistant";
   content?: string;
   function_calls: FunctionCallType[];
-  contents?: Array<AgentContentItemType>;
+  contents?: Array<Exclude<AgentContentItemType, ErrorContentType>>;
 }
 
 export interface AssistantContentMessageTypeModel {
   role: "assistant";
   name: string;
   content: string;
-  contents?: Array<AgentContentItemType>;
+  contents?: Array<Exclude<AgentContentItemType, ErrorContentType>>;
 }
 
 // This is the output of one function call
