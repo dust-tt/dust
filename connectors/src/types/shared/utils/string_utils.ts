@@ -1,6 +1,5 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import emojiRegex from "emoji-regex";
 
 /**
  * Substring that ensures we don't cut a string in the middle of a unicode
@@ -77,13 +76,4 @@ export function safeParseJSON(str: string): Result<object | null, Error> {
 
 export function stripNullBytes(text: string): string {
   return text.replace(/\0/g, "");
-}
-
-export function removeEmojis(text: string): string {
-  const regex = emojiRegex();
-
-  return text
-    .replace(regex, "_") // Replace emojis with underscore.
-    .replace(/_{2,}/g, "_") // Consolidate underscores.
-    .trim(); // Remove whitespace.
 }

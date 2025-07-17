@@ -28,6 +28,19 @@ const DIRECTORIES_PER_INDEX = 1500; // Directories per index file.
 
 const PARALLEL_INDEX_UPLOADS = 10; // Concurrent index file uploads.
 
+/**
+ * Sanitizes a string to be used as a GCS object name by removing characters that are not allowed by
+ * Google Cloud Storage object naming restrictions.
+ * See https://cloud.google.com/storage/docs/objects#naming.
+ */
+export function sanitizeGcsObjectName(path: string): string {
+  return path
+    .replace(/[\r\n]/g, "_") // Replace carriage return and line feed.
+    .replace(/[:"<>|]/g, "_") // Replace Windows-incompatible characters.
+    .replace(/_{2,}/g, "_") // Consolidate underscores.
+    .trim(); // Remove whitespace.
+}
+
 interface DirectoryListing {
   dirPath: string;
   gcsPath: string;
