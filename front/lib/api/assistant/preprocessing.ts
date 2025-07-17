@@ -118,7 +118,7 @@ export async function renderConversationForModel(
 
         if (content.content.type === "error") {
           // Don't render error content.
-          logger.error(
+          logger.warn(
             {
               workspaceId: conversation.owner.sId,
               conversationId: conversation.sId,
