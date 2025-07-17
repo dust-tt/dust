@@ -9,7 +9,7 @@ import {
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
@@ -658,20 +658,16 @@ export async function processTranscriptActivity(
 
     let conversation = conversationRes.value;
 
-    const messageRes = await postUserMessageWithPubSub(
-      auth,
-      {
-        conversation,
-        content: `Transcript: ${transcriptTitle}`,
-        mentions: [{ configurationId: agentConfigurationId }],
-        context: baseContext,
-        // When running an agent as trigger of a transcript we have no chance of validating tools so
-        // we skip all of them and run the tools by default. This is in tension with the admin
-        // settings and could be revisited if needed.
-        skipToolsValidation: true,
-      },
-      { resolveAfterFullGeneration: true }
-    );
+    const messageRes = await postUserMessageAndWaitForCompletion(auth, {
+      conversation,
+      content: `Transcript: ${transcriptTitle}`,
+      mentions: [{ configurationId: agentConfigurationId }],
+      context: baseContext,
+      // When running an agent as trigger of a transcript we have no chance of validating tools so
+      // we skip all of them and run the tools by default. This is in tension with the admin
+      // settings and could be revisited if needed.
+      skipToolsValidation: true,
+    });
 
     if (messageRes.isErr()) {
       localLogger.error(

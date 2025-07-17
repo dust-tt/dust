@@ -3,9 +3,11 @@ import { PublicPostEditMessagesRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import {
+  editUserMessage,
+  getConversation,
+} from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
-import { editUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
@@ -148,7 +150,7 @@ async function handler(
       }
       const { content, mentions, skipToolsValidation } = r.data;
 
-      const editedMessageRes = await editUserMessageWithPubSub(auth, {
+      const editedMessageRes = await editUserMessage(auth, {
         conversation,
         message,
         content,

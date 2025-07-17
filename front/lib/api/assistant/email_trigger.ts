@@ -8,7 +8,7 @@ import {
   getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
+import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { sendEmail } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
@@ -378,27 +378,23 @@ export async function triggerFromEmail({
     return { configurationId: agent.sId };
   });
 
-  const messageRes = await postUserMessageWithPubSub(
-    auth,
-    {
-      conversation,
-      content,
-      mentions,
-      context: {
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-        username: user.username,
-        fullName: user.fullName(),
-        email: user.email,
-        profilePictureUrl: user.imageUrl,
-        origin: "email",
-      },
-      // When running an agent from an email we have no chance of validating tools so we skip all of
-      // them and run the tools by default. This is in tension with the admin settings and could be
-      // revisited if needed.
-      skipToolsValidation: true,
+  const messageRes = await postUserMessageAndWaitForCompletion(auth, {
+    conversation,
+    content,
+    mentions,
+    context: {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      username: user.username,
+      fullName: user.fullName(),
+      email: user.email,
+      profilePictureUrl: user.imageUrl,
+      origin: "email",
     },
-    { resolveAfterFullGeneration: true }
-  );
+    // When running an agent from an email we have no chance of validating tools so we skip all of
+    // them and run the tools by default. This is in tension with the admin settings and could be
+    // revisited if needed.
+    skipToolsValidation: true,
+  });
 
   if (messageRes.isErr()) {
     return new Err({

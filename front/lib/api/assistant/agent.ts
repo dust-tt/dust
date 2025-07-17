@@ -13,7 +13,6 @@ import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
   AgentActionSpecification,
-  AgentActionSpecificEvent,
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -28,14 +27,16 @@ import {
   getAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration";
+import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
+import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
+import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
-import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -45,16 +46,15 @@ import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
+import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   AgentActionsEvent,
-  AgentActionSuccessEvent,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentContentEvent,
   AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
   AgentMessageType,
   AgentStepContentEvent,
   ConversationType,
@@ -79,7 +79,7 @@ const MAX_AUTO_RETRY = 3;
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
-  event: AgentLoopEvent,
+  event: AgentMessageEvents,
   agentMessageRow: AgentMessage
 ): Promise<void> {
   switch (event.type) {
@@ -115,6 +115,19 @@ async function processEventForDatabase(
   }
 }
 
+async function updateResourceAndPublishEvent(
+  event: AgentMessageEvents,
+  conversation: ConversationType,
+  agentMessageRow: AgentMessage
+): Promise<void> {
+  // Process database operations BEFORE publishing to Redis.
+  await processEventForDatabase(event, agentMessageRow);
+
+  await publishConversationRelatedEvent(event, {
+    conversationId: conversation.sId,
+  });
+}
+
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // but it now handles updating it based on the execution results.
 export async function runAgentWithStreaming(
@@ -124,8 +137,7 @@ export async function runAgentWithStreaming(
   userMessage: UserMessageType,
   // TODO(DURABLE-AGENTS 2025-07-10): DRY those two arguments to stick with only one.
   agentMessage: AgentMessageType,
-  agentMessageRow: AgentMessage,
-  redisChannel: string
+  agentMessageRow: AgentMessage
 ): Promise<void> {
   const [fullConfiguration] = await Promise.all([
     getAgentConfiguration(auth, configuration.sId, "full"),
@@ -142,24 +154,24 @@ export async function runAgentWithStreaming(
     throw new Error("Unreachable: could not find owner workspace for agent");
   }
 
-  await runMultiActionsAgentLoop(
-    auth,
-    fullConfiguration,
-    conversation,
-    userMessage,
-    agentMessage,
-    redisChannel,
-    agentMessageRow
-  );
-}
+  await Promise.all([
+    // Generate a new title if the conversation does not have one already.
+    await ensureConversationTitle(auth, conversation, userMessage),
 
-type AgentLoopEvent =
-  | AgentErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent;
+    await runMultiActionsAgentLoop(
+      auth,
+      fullConfiguration,
+      conversation,
+      userMessage,
+      agentMessage,
+      agentMessageRow
+    ),
+  ]);
+
+  // It's fine to start the workflow here because the workflow will sleep for one hour before
+  // computing usage.
+  await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
+}
 
 async function runMultiActionsAgentLoop(
   auth: Authenticator,
@@ -168,22 +180,9 @@ async function runMultiActionsAgentLoop(
   userMessage: UserMessageType,
   // TODO(DURABLE-AGENTS 2025-07-10): DRY those two arguments to stick with only one.
   agentMessage: AgentMessageType,
-  redisChannel: string,
   agentMessageRow: AgentMessage
 ): Promise<void> {
   const now = Date.now();
-
-  const redisHybridManager = getRedisHybridManager();
-
-  const publishEvent = async (event: AgentLoopEvent) => {
-    // Process database operations BEFORE publishing to Redis.
-    await processEventForDatabase(event, agentMessageRow);
-    await redisHybridManager.publish(
-      redisChannel,
-      JSON.stringify(event),
-      "agent_execution"
-    );
-  };
 
   const isLegacyAgent = isLegacyAgentConfiguration(configuration);
   const maxStepsPerRun = isLegacyAgent ? 1 : configuration.maxStepsPerRun;
@@ -192,7 +191,7 @@ async function runMultiActionsAgentLoop(
   let citationsRefsOffset = 0;
 
   let processedContent = "";
-  const runIds = [];
+  const runIds: string[] = [];
 
   // Track step content IDs by function call ID for later use in actions.
   const functionCallStepContentIds: Record<string, ModelId> = {};
@@ -226,158 +225,178 @@ async function runMultiActionsAgentLoop(
       isLegacyAgent,
     });
 
-    for await (const event of loopIterationStream) {
-      switch (event.type) {
-        case "agent_error":
-          const { category, publicMessage } = categorizeAgentErrorMessage(
-            event.error
-          );
+    await wakeLock(async () => {
+      for await (const event of loopIterationStream) {
+        switch (event.type) {
+          case "agent_error":
+            const { category, publicMessage } = categorizeAgentErrorMessage(
+              event.error
+            );
 
-          localLogger.error(
-            {
-              elapsedTime: Date.now() - now,
-              error: event.error,
-              publicErrorMessage: publicMessage,
-            },
-            "Error running multi-actions agent."
-          );
-
-          await publishEvent({
-            ...event,
-            error: {
-              ...event.error,
-              message: publicMessage,
-              metadata: {
-                category,
+            localLogger.error(
+              {
+                elapsedTime: Date.now() - now,
+                error: event.error,
+                publicErrorMessage: publicMessage,
               },
-            },
-          });
-          return;
-        case "agent_actions":
-          runIds.push(event.runId);
+              "Error running multi-actions agent."
+            );
 
-          localLogger.info(
-            {
-              elapsed: Date.now() - now,
-            },
-            "[ASSISTANT_TRACE] Action inputs generation"
-          );
+            return updateResourceAndPublishEvent(
+              {
+                ...event,
+                error: {
+                  ...event.error,
+                  message: publicMessage,
+                  metadata: {
+                    category,
+                  },
+                },
+              },
+              conversation,
+              agentMessageRow
+            );
 
-          // We received the actions to run, but will enforce a limit on the number of actions (16)
-          // which is very high. Over that the latency will just be too high. This is a guardrail
-          // against the model outputting something unreasonable.
-          event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
+          case "agent_actions":
+            runIds.push(event.runId);
 
-          await Promise.all(
-            event.actions.map(({ action, inputs, functionCallId }, index) => {
-              // Find the step content ID for this function call
-              const stepContentId = functionCallId
-                ? functionCallStepContentIds[functionCallId]
-                : undefined;
+            localLogger.info(
+              {
+                elapsed: Date.now() - now,
+              },
+              "[ASSISTANT_TRACE] Action inputs generation"
+            );
 
-              return runAction(auth, {
-                configuration,
-                actionConfiguration: action,
-                conversation,
-                agentMessage,
-                inputs,
-                functionCallId,
-                step: i,
-                stepActionIndex: index,
+            // We received the actions to run, but will enforce a limit on the number of actions (16)
+            // which is very high. Over that the latency will just be too high. This is a guardrail
+            // against the model outputting something unreasonable.
+            event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
+
+            await Promise.all(
+              event.actions.map(({ action, inputs, functionCallId }, index) => {
+                // Find the step content ID for this function call
+                const stepContentId = functionCallId
+                  ? functionCallStepContentIds[functionCallId]
+                  : undefined;
+
+                return runAction(auth, {
+                  configuration,
+                  actionConfiguration: action,
+                  conversation,
+                  agentMessage,
+                  inputs,
+                  functionCallId,
+                  step: i,
+                  stepActionIndex: index,
+                  stepActions: event.actions.map((a) => a.action),
+                  citationsRefsOffset,
+                  stepContentId,
+                  agentMessageRow,
+                });
+              })
+            );
+            // After we are done running actions, we update the inter-step refsOffset.
+            for (let j = 0; j < event.actions.length; j++) {
+              citationsRefsOffset += getCitationsCount({
+                agentConfiguration: configuration,
                 stepActions: event.actions.map((a) => a.action),
-                citationsRefsOffset,
-                stepContentId,
-                agentMessageRow,
-                redisChannel,
+                stepActionIndex: j,
               });
-            })
-          );
-          // After we are done running actions, we update the inter-step refsOffset.
-          for (let j = 0; j < event.actions.length; j++) {
-            citationsRefsOffset += getCitationsCount({
-              agentConfiguration: configuration,
-              stepActions: event.actions.map((a) => a.action),
-              stepActionIndex: j,
+            }
+
+            break;
+
+          case "agent_message_content":
+            processedContent += event.processedContent;
+            break;
+
+          case "agent_step_content":
+            const stepContent = await AgentStepContentResource.makeNew({
+              workspaceId: conversation.owner.id,
+              agentMessageId: agentMessage.agentMessageId,
+              step: i,
+              index: event.index,
+              type: event.content.type,
+              value: event.content,
+              version: 0,
             });
-          }
 
-          break;
+            // If this is a function call step content, track its ID.
+            if (
+              event.content.type === "function_call" &&
+              event.content.value.id
+            ) {
+              functionCallStepContentIds[event.content.value.id] =
+                stepContent.id;
+            }
 
-        case "agent_message_content":
-          processedContent += event.processedContent;
-          break;
+            agentMessage.contents.push({
+              step: i,
+              content: event.content,
+            });
+            break;
 
-        case "agent_step_content":
-          const stepContent = await AgentStepContentResource.makeNew({
-            workspaceId: conversation.owner.id,
-            agentMessageId: agentMessage.agentMessageId,
-            step: i,
-            index: event.index,
-            type: event.content.type,
-            value: event.content,
-            version: 0,
-          });
+          // Generation events
+          case "generation_tokens":
+            await updateResourceAndPublishEvent(
+              event,
+              conversation,
+              agentMessageRow
+            );
+            break;
 
-          // If this is a function call step content, track its ID.
-          if (
-            event.content.type === "function_call" &&
-            event.content.value.id
-          ) {
-            functionCallStepContentIds[event.content.value.id] = stepContent.id;
-          }
+          case "generation_cancel":
+            await updateResourceAndPublishEvent(
+              {
+                type: "agent_generation_cancelled",
+                created: event.created,
+                configurationId: configuration.sId,
+                messageId: agentMessage.sId,
+              },
+              conversation,
+              agentMessageRow
+            );
+            return;
 
-          agentMessage.contents.push({
-            step: i,
-            content: event.content,
-          });
-          break;
+          case "generation_success":
+            if (event.chainOfThought.length) {
+              if (!agentMessage.chainOfThought) {
+                agentMessage.chainOfThought = "";
+              }
+              agentMessage.chainOfThought += event.chainOfThought;
+            }
+            agentMessage.content = processedContent;
+            agentMessage.status = "succeeded";
 
-        // Generation events
-        case "generation_tokens":
-          await publishEvent(event);
-          break;
-        case "generation_cancel":
-          await publishEvent({
-            type: "agent_generation_cancelled",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-          });
-          return;
-        case "generation_success":
-          if (event.chainOfThought.length) {
+            runIds.push(event.runId);
+
+            await updateResourceAndPublishEvent(
+              {
+                type: "agent_message_success",
+                created: Date.now(),
+                configurationId: configuration.sId,
+                messageId: agentMessage.sId,
+                message: agentMessage,
+                runIds: runIds,
+              },
+              conversation,
+              agentMessageRow
+            );
+            return;
+
+          case "agent_chain_of_thought":
             if (!agentMessage.chainOfThought) {
               agentMessage.chainOfThought = "";
             }
             agentMessage.chainOfThought += event.chainOfThought;
-          }
-          agentMessage.content = processedContent;
-          agentMessage.status = "succeeded";
+            // This event is not useful outside of the multi-actions loop, so we don't yield it.
+            break;
 
-          runIds.push(event.runId);
-
-          await publishEvent({
-            type: "agent_message_success",
-            created: Date.now(),
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            message: agentMessage,
-            runIds: runIds,
-          });
-          return;
-
-        case "agent_chain_of_thought":
-          if (!agentMessage.chainOfThought) {
-            agentMessage.chainOfThought = "";
-          }
-          agentMessage.chainOfThought += event.chainOfThought;
-          // This event is not useful outside of the multi-actions loop, so we don't yield it.
-          break;
-
-        default:
-          assertNever(event);
+          default:
+            assertNever(event);
+        }
       }
-    }
+    });
   }
 }
 
@@ -1253,7 +1272,6 @@ async function runAction(
     stepContentId,
     // TODO(DURABLE-AGENTS 2025-07-10): DRY those arguments with agentMessage to stick with only one
     agentMessageRow,
-    redisChannel,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: ActionConfigurationType;
@@ -1267,21 +1285,8 @@ async function runAction(
     citationsRefsOffset: number;
     stepContentId?: ModelId;
     agentMessageRow: AgentMessage;
-    redisChannel: string;
   }
 ): Promise<void> {
-  const redisHybridManager = getRedisHybridManager();
-
-  const publishEvent = async (event: AgentLoopEvent) => {
-    // Process database operations BEFORE publishing to Redis.
-    await processEventForDatabase(event, agentMessageRow);
-    await redisHybridManager.publish(
-      redisChannel,
-      JSON.stringify(event),
-      "agent_execution"
-    );
-  };
-
   if (isMCPToolConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
@@ -1301,27 +1306,35 @@ async function runAction(
     for await (const event of eventStream) {
       switch (event.type) {
         case "tool_error":
-          await publishEvent({
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: event.error.metadata,
+          await updateResourceAndPublishEvent(
+            {
+              type: "agent_error",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              error: {
+                code: event.error.code,
+                message: event.error.message,
+                metadata: event.error.metadata,
+              },
             },
-          });
+            conversation,
+            agentMessageRow
+          );
           return;
 
         case "tool_success":
-          await publishEvent({
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          });
+          await updateResourceAndPublishEvent(
+            {
+              type: "agent_action_success",
+              created: event.created,
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              action: event.action,
+            },
+            conversation,
+            agentMessageRow
+          );
 
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
@@ -1331,7 +1344,11 @@ async function runAction(
         case "tool_params":
         case "tool_approve_execution":
         case "tool_notification":
-          await publishEvent(event);
+          await updateResourceAndPublishEvent(
+            event,
+            conversation,
+            agentMessageRow
+          );
           break;
 
         default:

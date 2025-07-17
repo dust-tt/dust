@@ -8,7 +8,6 @@ let client: RedisClientType;
 
 export type RedisUsageTagsType =
   | "action_validation"
-  | "agent_execution"
   | "agent_recent_authors"
   | "agent_usage"
   | "assistant_generation"

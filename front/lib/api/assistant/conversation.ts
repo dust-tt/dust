@@ -1,7 +1,7 @@
+import assert from "assert";
 import _, { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 
-import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import { runAgentWithStreaming } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
@@ -9,7 +9,6 @@ import {
   getLightAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
-import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
   batchRenderMessages,
   canReadMessage,
@@ -20,9 +19,11 @@ import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
-import { getAgentExecutionChannelId } from "@app/lib/api/assistant/streaming/helpers";
+import {
+  publishAgentMessageEventOnMessageRetry,
+  publishMessageEventsOnMessagePostOrEdit,
+} from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
-import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -47,19 +48,13 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid, normalizeArrays } from "@app/lib/utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
-  AgentActionSuccessEvent,
-  AgentDisabledErrorEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageErrorEvent,
-  AgentMessageNewEvent,
-  AgentMessageSuccessEvent,
   AgentMessageType,
   AgentMessageWithRankType,
+  APIErrorWithStatusCode,
   ContentFragmentContextType,
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -67,15 +62,13 @@ import type {
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
-  GenerationTokensEvent,
   LightAgentConfigurationType,
   MaxMessagesTimeframeType,
   MentionType,
+  ModelId,
   PlanType,
   Result,
   UserMessageContext,
-  UserMessageErrorEvent,
-  UserMessageNewEvent,
   UserMessageType,
   UserMessageWithRankType,
   UserType,
@@ -96,14 +89,8 @@ import {
   removeNulls,
 } from "@app/types";
 
-// Type alias for agent execution events.
-type AgentExecutionEvent =
-  | AgentErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent;
+// Soft assumption that we will not have more than 10 mentions in the same user message.
+const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
 
 function getTimeframeSecondsFromLiteral(
   timeframeLiteral: MaxMessagesTimeframeType
@@ -457,7 +444,7 @@ async function attributeUserFromWorkspaceAndEmail(
 // This method is in charge of creating a new user message in database, running the necessary agents
 // in response and updating accordingly the conversation. AgentMentions must point to valid agent
 // configurations from the same workspace or whose scope is global.
-export async function* postUserMessage(
+export async function postUserMessage(
   auth: Authenticator,
   {
     conversation,
@@ -472,18 +459,11 @@ export async function* postUserMessage(
     context: UserMessageContext;
     skipToolsValidation: boolean;
   }
-): AsyncGenerator<
-  | UserMessageErrorEvent
-  | UserMessageNewEvent
-  | AgentMessageNewEvent
-  | AgentDisabledErrorEvent
-  | AgentErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
-  void
+): Promise<
+  Result<
+    { userMessage: UserMessageType; agentMessages: AgentMessageType[] },
+    APIErrorWithStatusCode
+  >
 > {
   const user = auth.user();
   const owner = auth.workspace();
@@ -491,50 +471,42 @@ export async function* postUserMessage(
   const plan = subscription?.plan;
 
   if (!owner || owner.id !== conversation.owner.id || !subscription || !plan) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "conversation_not_found",
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "conversation_not_found",
         message: "The conversation does not exist.",
       },
-    };
-    return;
+    });
   }
-
-  const featureFlags = await getFeatureFlags(owner);
 
   if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "conversation_access_restricted",
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "conversation_access_restricted",
         message: "Conversation cannot be accessed.",
       },
-    };
-    return;
+    });
   }
 
-  // Check plan and rate limit
+  // Check plan and rate limit.
   const messageLimit = await isMessagesLimitReached({
     owner,
     plan,
     mentions,
   });
   if (messageLimit.isLimitReached && messageLimit.limitType) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: messageLimit.limitType,
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "plan_message_limit_exceeded",
         message:
           messageLimit.limitType === "plan_message_limit_exceeded"
             ? "The message limit for this plan has been exceeded."
             : "The rate limit for this workspace has been exceeded.",
       },
-    };
-    return;
+    });
   }
 
   const results = await Promise.all([
@@ -562,53 +534,47 @@ export async function* postUserMessage(
 
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
-      yield {
-        type: "agent_disabled_error",
-        created: Date.now(),
-        configurationId: agentConfig.sId,
-        error: {
-          code: "not_allowed",
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message:
             "This agent is either disabled or you don't have access to it.",
         },
-      };
-      return;
+      });
     }
 
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
-      yield {
-        type: "agent_disabled_error",
-        created: Date.now(),
-        configurationId: agentConfig.sId,
-        error: {
-          code: "provider_disabled",
+      // Stop processing if any agent uses a disabled provider.
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
-      };
-      return; // Stop processing if any agent uses a disabled provider
+      });
     }
+
+    const featureFlags = await getFeatureFlags(owner);
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
       supportedModelConfig.featureFlag &&
       !featureFlags.includes(supportedModelConfig.featureFlag)
     ) {
-      yield {
-        type: "agent_disabled_error",
-        created: Date.now(),
-        configurationId: agentConfig.sId,
-        error: {
-          code: "model_not_supported",
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message: "The model is not supported.",
         },
-      };
-      return;
+      });
     }
   }
 
-  // In one big transaction creante all Message, UserMessage, AgentMessage and Mention rows.
+  // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages, agentMessageRows } =
     await frontSequelize.transaction(async (t) => {
       // Since we are getting a transaction level lock, we can't execute any other SQL query outside of
@@ -783,73 +749,64 @@ export async function* postUserMessage(
       });
     }
   }
+
   void ServerSideTracking.trackUserMessage({
     userMessage,
     workspace: conversation.owner,
     userId: user ? `user-${user.id}` : `api-${context.username}`,
     conversationId: conversation.sId,
-    agentMessages: agentMessages,
+    agentMessages,
   });
 
-  yield {
-    type: "user_message_new",
-    created: Date.now(),
-    messageId: userMessage.sId,
-    message: userMessage,
-  };
-
-  for (let i = 0; i < agentMessages.length; i++) {
-    const agentMessage = agentMessages[i];
-
-    yield {
-      type: "agent_message_new",
-      created: Date.now(),
-      configurationId: agentMessage.configuration.sId,
-      messageId: agentMessage.sId,
-      message: agentMessage,
-    };
+  const agentMessageRowById = new Map<ModelId, AgentMessage>();
+  for (const agentMessageRow of agentMessageRows) {
+    agentMessageRowById.set(agentMessageRow.id, agentMessageRow);
   }
 
-  // It's fine to start the workflow here because the workflow will sleep for one hour before
-  // computing usage.
-  await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
+  // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
+  // conversation state synchronization in multiplex mode. This is a temporary solution -
+  // we should move this to a dedicated real-time sync mechanism.
+  await publishMessageEventsOnMessagePostOrEdit(
+    conversation,
+    userMessage,
+    agentMessages
+  );
 
-  // Generate a new title if the conversation does not have one already.
-  await ensureConversationTitle(auth, conversation, userMessage);
-
-  const eventStreamGenerators = agentMessages.map((agentMessage, i) => {
-    // We stitch the conversation to add the user message and only that agent message
-    // so that it can be used to prompt the agent.
-    return streamRunAgentEvents(
-      auth,
-      agentMessage.configuration,
-      {
+  await concurrentExecutor(
+    agentMessages,
+    async (agentMessage) => {
+      // We stitch the conversation to add the user message and only that agent message
+      // so that it can be used to prompt the agent.
+      const enrichedConversation = {
         ...conversation,
         content: [...conversation.content, [userMessage], [agentMessage]],
-      },
-      userMessage,
-      agentMessages[i],
-      agentMessageRows[i]
-    );
-  });
+      };
 
-  const eventStreamsPromises = eventStreamGenerators.map((gen) => gen.next());
-  while (eventStreamsPromises.length > 0) {
-    const winner = await Promise.race(
-      eventStreamsPromises.map(async (p, i) => {
-        return { v: await p, offset: i };
-      })
-    );
-    if (winner.v.done) {
-      eventStreamGenerators.splice(winner.offset, 1);
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      eventStreamsPromises.splice(winner.offset, 1);
-    } else {
-      eventStreamsPromises[winner.offset] =
-        eventStreamGenerators[winner.offset].next();
-      yield winner.v.value;
-    }
-  }
+      // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
+      const agentMessageRow = agentMessageRowById.get(
+        agentMessage.agentMessageId
+      );
+      assert(
+        agentMessageRow,
+        `Agent message row not found for agent message ${agentMessage.agentMessageId}`
+      );
+
+      void runAgentWithStreaming(
+        auth,
+        agentMessage.configuration,
+        enrichedConversation,
+        userMessage,
+        agentMessage,
+        agentMessageRow
+      );
+    },
+    { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
+  );
+
+  return new Ok({
+    userMessage,
+    agentMessages,
+  });
 }
 
 /**
@@ -872,10 +829,12 @@ function canAccessAgent(
   }
 }
 
+class UserMessageError extends Error {}
+
 /**
  * This method creates a new user message version, and if there are new agent mentions, run them.
  */
-export async function* editUserMessage(
+export async function editUserMessage(
   auth: Authenticator,
   {
     conversation,
@@ -890,68 +849,54 @@ export async function* editUserMessage(
     mentions: MentionType[];
     skipToolsValidation: boolean;
   }
-): AsyncGenerator<
-  | UserMessageNewEvent
-  | UserMessageErrorEvent
-  | AgentMessageNewEvent
-  | AgentDisabledErrorEvent
-  | AgentErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
-  void
+): Promise<
+  Result<
+    { userMessage: UserMessageType; agentMessages: AgentMessageType[] },
+    APIErrorWithStatusCode
+  >
 > {
   const user = auth.user();
   const owner = auth.workspace();
 
   if (!owner || owner.id !== conversation.owner.id) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "conversation_not_found",
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "conversation_not_found",
         message: "The conversation does not exist.",
       },
-    };
-    return;
+    });
   }
 
   if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "conversation_access_restricted",
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "conversation_access_restricted",
         message: "Conversation cannot be accessed.",
       },
-    };
-    return;
+    });
   }
 
   if (auth.user()?.id !== message.user?.id) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "not_allowed",
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
         message: "Only the author of the message can edit it",
       },
-    };
-    return;
+    });
   }
+
   if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "not_allowed",
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
         message:
           "Editing a message that already has agent mentions is not yet supported",
       },
-    };
-    return;
+    });
   }
 
   if (
@@ -960,20 +905,16 @@ export async function* editUserMessage(
     ) &&
     mentions.filter((m) => isAgentMention(m)).length > 0
   ) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "edition_unsupported",
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
         message:
-          "Adding agent mentions when editing is only supported for the last message of the conversation",
+          "Adding agent mentions when editing is only supported for the last message " +
+          "of the conversation",
       },
-    };
-    return;
+    });
   }
-
-  // local error class to differentiate from other errors
-  class UserMessageError extends Error {}
 
   let userMessage: UserMessageWithRankType | null = null;
   let agentMessages: AgentMessageWithRankType[] = [];
@@ -992,33 +933,28 @@ export async function* editUserMessage(
 
   for (const agentConfig of agentConfigurations) {
     if (!canAccessAgent(agentConfig)) {
-      yield {
-        type: "agent_disabled_error",
-        created: Date.now(),
-        configurationId: agentConfig.sId,
-        error: {
-          code: "not_allowed",
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message:
             "This agent is either disabled or you don't have access to it.",
         },
-      };
-      return;
+      });
     }
 
     if (!isProviderWhitelisted(owner, agentConfig.model.providerId)) {
-      yield {
-        type: "agent_disabled_error",
-        created: Date.now(),
-        configurationId: agentConfig.sId,
-        error: {
-          code: "provider_disabled",
+      // Stop processing if any agent uses a disabled provider.
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
-      };
-      return; // Stop processing if any agent uses a disabled provider
+      });
     }
   }
 
@@ -1238,30 +1174,22 @@ export async function* editUserMessage(
     }
   } catch (e) {
     if (e instanceof UserMessageError) {
-      yield {
-        type: "user_message_error",
-        created: Date.now(),
-        error: {
-          code: "edit_invalid_error",
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message: e.message,
         },
-      };
-      return;
+      });
     } else {
       throw e;
     }
   }
 
-  if (agentMessageRows.length !== agentMessages.length) {
-    throw new Error("Unreachable: agentMessageRows and agentMessages mismatch");
-  }
-
-  yield {
-    type: "user_message_new",
-    created: Date.now(),
-    messageId: userMessage.sId,
-    message: userMessage,
-  };
+  assert(
+    agentMessageRows.length === agentMessages.length,
+    "Unreachable: agentMessageRows and agentMessages mismatch"
+  );
 
   if (agentMessages.length > 0) {
     for (const agentMessage of agentMessages) {
@@ -1272,59 +1200,62 @@ export async function* editUserMessage(
     }
   }
 
-  for (let i = 0; i < agentMessages.length; i++) {
-    const agentMessage = agentMessages[i];
-
-    yield {
-      type: "agent_message_new",
-      created: Date.now(),
-      configurationId: agentMessage.configuration.sId,
-      messageId: agentMessage.sId,
-      message: agentMessage,
-    };
+  const agentMessageRowById = new Map<ModelId, AgentMessage>();
+  for (const agentMessageRow of agentMessageRows) {
+    agentMessageRowById.set(agentMessageRow.id, agentMessageRow);
   }
 
-  const eventStreamGenerators = agentMessages.map((agentMessage, i) => {
-    if (!userMessage) {
-      throw new Error("Unreachable: userMessage is null");
-    }
-    // We stitch the conversation to add the user message and only that agent message
-    // so that it can be used to prompt the agent.
-    return streamRunAgentEvents(
-      auth,
-      agentMessage.configuration,
-      {
+  await concurrentExecutor(
+    agentMessages,
+    async (agentMessage) => {
+      // We stitch the conversation to add the user message and only that agent message
+      // so that it can be used to prompt the agent.
+      const enrichedConversation = {
         ...conversation,
         content: [...conversation.content, [userMessage], [agentMessage]],
-      },
-      userMessage,
-      agentMessages[i],
-      agentMessageRows[i]
-    );
-  });
+      };
 
-  const eventStreamsPromises = eventStreamGenerators.map((gen) => gen.next());
-  while (eventStreamsPromises.length > 0) {
-    const winner = await Promise.race(
-      eventStreamsPromises.map(async (p, i) => {
-        return { v: await p, offset: i };
-      })
-    );
-    if (winner.v.done) {
-      eventStreamGenerators.splice(winner.offset, 1);
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      eventStreamsPromises.splice(winner.offset, 1);
-    } else {
-      eventStreamsPromises[winner.offset] =
-        eventStreamGenerators[winner.offset].next();
-      yield winner.v.value;
-    }
-  }
+      // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
+      const agentMessageRow = agentMessageRowById.get(
+        agentMessage.agentMessageId
+      );
+      assert(
+        agentMessageRow,
+        `Agent message row not found for agent message ${agentMessage.agentMessageId}`
+      );
+
+      void runAgentWithStreaming(
+        auth,
+        agentMessage.configuration,
+        enrichedConversation,
+        userMessage,
+        agentMessage,
+        agentMessageRow
+      );
+    },
+    { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
+  );
+
+  // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
+  // conversation state synchronization in multiplex mode. This is a temporary solution -
+  // we should move this to a dedicated real-time sync mechanism.
+  await publishMessageEventsOnMessagePostOrEdit(
+    conversation,
+    userMessage,
+    agentMessages
+  );
+
+  return new Ok({
+    userMessage,
+    agentMessages,
+  });
 }
+
+class AgentMessageError extends Error {}
 
 // This method is in charge of re-running an agent interaction (generating a new
 // AgentMessage as a result)
-export async function* retryAgentMessage(
+export async function retryAgentMessage(
   auth: Authenticator,
   {
     conversation,
@@ -1333,32 +1264,15 @@ export async function* retryAgentMessage(
     conversation: ConversationType;
     message: AgentMessageType;
   }
-): AsyncGenerator<
-  | AgentMessageNewEvent
-  | AgentErrorEvent
-  | AgentMessageErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
-  void
-> {
-  class AgentMessageError extends Error {}
-
+): Promise<Result<AgentMessageWithRankType, APIErrorWithStatusCode>> {
   if (!canReadMessage(auth, message)) {
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: message.configuration.sId,
-      messageId: message.sId,
-      error: {
-        code: "message_access_denied",
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
         message: "The message to retry is not accessible.",
-        metadata: null,
       },
-    };
-    return;
+    });
   }
 
   let agentMessageResult: {
@@ -1462,44 +1376,29 @@ export async function* retryAgentMessage(
     });
   } catch (e) {
     if (e instanceof AgentMessageError) {
-      yield {
-        type: "agent_message_error",
-        created: Date.now(),
-        configurationId: message.configuration.sId,
-        error: {
-          code: "retry_failed",
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message: e.message,
         },
-      };
-      return;
+      });
     }
+
     throw e;
   }
 
   if (!agentMessageResult) {
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: message.configuration.sId,
-      messageId: message.sId,
-      error: {
-        code: "message_not_found",
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
         message: "The message to retry was not found",
-        metadata: null,
       },
-    };
-    return;
+    });
   }
 
   const { agentMessage, agentMessageRow } = agentMessageResult;
-
-  yield {
-    type: "agent_message_new",
-    created: Date.now(),
-    configurationId: agentMessage.configuration.sId,
-    messageId: agentMessage.sId,
-    message: agentMessage,
-  };
 
   // We stitch the conversation to retry the agent message correctly: no other
   // messages than this agent's past its parent message.
@@ -1535,17 +1434,26 @@ export async function* retryAgentMessage(
     throw new Error("Unreachable: parent message must be a user message");
   }
 
-  yield* streamRunAgentEvents(
+  const enrichedConversation = {
+    ...conversation,
+    content: newContent,
+  };
+
+  void runAgentWithStreaming(
     auth,
     agentMessage.configuration,
-    {
-      ...conversation,
-      content: newContent,
-    },
+    enrichedConversation,
     userMessage,
     agentMessage,
     agentMessageRow
   );
+
+  // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
+  // conversation state synchronization in multiplex mode. This is a temporary solution -
+  // we should move this to a dedicated real-time sync mechanism.
+  await publishAgentMessageEventOnMessageRetry(conversation, agentMessage);
+
+  return new Ok(agentMessage);
 }
 
 // Injects a new content fragment in the conversation.
@@ -1661,86 +1569,6 @@ export async function postNewContentFragment(
   });
 
   return new Ok(render);
-}
-
-async function* streamRunAgentEvents(
-  auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  agentMessage: AgentMessageType,
-  agentMessageRow: AgentMessage
-): AsyncGenerator<AgentExecutionEvent, void> {
-  if (!canReadMessage(auth, agentMessage)) {
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: agentMessage.configuration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "agent_not_allowed",
-        message: "Agent cannot be used by this user",
-        metadata: null,
-      },
-    };
-    return;
-  }
-
-  const redisChannel = getAgentExecutionChannelId(agentMessage.sId);
-  const redisHybridManager = getRedisHybridManager();
-
-  // STEP 1: Subscribe to Redis channel FIRST
-  // This sets up the event consumer for real-time events only (no history replay).
-  // Must happen before agent execution starts to avoid missing events.
-  const { iterator: eventStream, unsubscribe } =
-    await redisHybridManager.subscribeAsAsyncIterator<AgentExecutionEvent>({
-      channelName: redisChannel,
-      lastEventId: null,
-      origin: "agent_execution",
-      // Don't include history for now. Might be revisited when using a temporal workflow.
-      includeHistory: false,
-    });
-
-  // STEP 2: Start agent execution (fire-and-forget)
-  // We use 'void' to:
-  // - Start agent execution immediately without blocking
-  // - Avoid awaiting (which would cause deadlock since we need to consume events)
-  // - Silence TypeScript "floating promise" warning (intentional fire-and-forget)
-  void runAgentWithStreaming(
-    auth,
-    agentConfiguration,
-    conversation,
-    userMessage,
-    agentMessage,
-    agentMessageRow,
-    redisChannel
-  );
-
-  // STEP 3: Process events as they arrive
-  // Only real-time events will flow as the agent publishes them to Redis.
-  // Database operations are now handled in runAgent before publishing.
-  // TODO(DURABLE-AGENT 2025-07-10): Remove this event proxy to only consume at the endpoints level.
-  for await (const event of eventStream) {
-    switch (event.type) {
-      case "agent_action_success":
-      case "generation_tokens":
-      case "tool_approve_execution":
-      case "tool_notification":
-      case "tool_params":
-        yield event;
-        break;
-
-      case "agent_error":
-      case "agent_generation_cancelled":
-      case "agent_message_success":
-        yield event;
-        unsubscribe();
-        return; // Terminal events - end the stream.
-
-      default:
-        assertNever(event);
-    }
-  }
 }
 
 export interface MessageLimit {
