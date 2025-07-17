@@ -241,21 +241,6 @@ async function runMultiActionsAgentLoop(
                 category
               );
 
-              await updateResourceAndPublishEvent(
-                {
-                  ...event,
-                  error: {
-                    ...event.error,
-                    message: publicMessage,
-                    metadata: {
-                      category,
-                    },
-                  },
-                },
-                conversation,
-                agentMessageRow
-              );
-
               if (!shouldRetry || autoRetryCount >= MAX_AUTO_RETRY) {
                 localLogger.error(
                   {
@@ -267,7 +252,20 @@ async function runMultiActionsAgentLoop(
                     shouldRetry ? "max retries reached" : "not retryable"
                   }).`
                 );
-                return;
+                return updateResourceAndPublishEvent(
+                  {
+                    ...event,
+                    error: {
+                      ...event.error,
+                      message: publicMessage,
+                      metadata: {
+                        category,
+                      },
+                    },
+                  },
+                  conversation,
+                  agentMessageRow
+                );
               }
 
               logger.warn(
