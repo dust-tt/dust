@@ -65,6 +65,10 @@ export function connectToBigQuery(
     credentials,
     scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
     location: credentials.location,
+    retryOptions: {
+      autoRetry: true,
+      maxRetries: 3,
+    },
   });
 }
 
@@ -144,7 +148,7 @@ export const fetchTables = async ({
     }
 
     // Get the dataset specified by the schema
-    const d = await conn.dataset(dataset);
+    const d = conn.dataset(dataset);
     const r = await d.getTables();
     const tables = r[0];
 
@@ -198,7 +202,7 @@ export const fetchTables = async ({
           }
         },
         {
-          concurrency: 10,
+          concurrency: 4,
         }
       )
     );
@@ -216,7 +220,7 @@ export const fetchTree = async ({
   credentials: BigQueryCredentialsWithLocation;
   fetchTablesDescription: boolean;
 }): Promise<Result<RemoteDBTree, Error>> => {
-  const databases = await fetchDatabases({ credentials });
+  const databases = fetchDatabases({ credentials });
 
   const schemasRes = await fetchDatasets({ credentials });
   if (schemasRes.isErr()) {
