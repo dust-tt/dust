@@ -27,7 +27,6 @@ where
         Box::new(
             tracing_subscriber::fmt::layer()
                 .json()
-                //.with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
                 .with_timer(tracing_subscriber::fmt::time::uptime()),
         )
     }
@@ -69,11 +68,7 @@ pub fn build_otel_layer<S>() -> Result<(OpenTelemetryLayer<S, Tracer>, TracingGu
 where
     S: Subscriber + for<'a> LookupSpan<'a>,
 {
-    use init_tracing_opentelemetry::{
-        init_propagator, //stdio,
-        otlp,
-        resource::DetectResource,
-    };
+    use init_tracing_opentelemetry::{init_propagator, otlp, resource::DetectResource};
     use opentelemetry::global;
     let otel_rsrc = DetectResource::default().build();
     let tracer_provider = otlp::init_tracerprovider(otel_rsrc, otlp::identity)?;

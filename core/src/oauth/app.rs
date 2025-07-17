@@ -449,7 +449,7 @@ pub async fn create_app() -> Result<Router> {
         .route("/credentials/{credential_id}", delete(credentials_delete))
         // Extensions
         .layer(OtelInResponseLayer::default())
-        //start OpenTelemetry trace on incoming request
+        // Start OpenTelemetry trace on incoming request.
         .layer(OtelAxumLayer::default())
         .layer(from_fn(validate_api_key))
         .with_state(state.clone());
