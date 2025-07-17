@@ -1,17 +1,9 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
-import { createWriteStream } from "fs";
-import { mkdtemp, readdir, rm } from "fs/promises";
-import fs from "fs-extra";
+import { rm } from "fs/promises";
 import * as reporter from "io-ts-reporters";
 import { Octokit, RequestError } from "octokit";
-import { tmpdir } from "os";
-import { basename, join, resolve } from "path";
-import type { Readable } from "stream";
-import { pipeline } from "stream/promises";
-import type { ReadEntry } from "tar";
-import { extract } from "tar";
 import type {
   RequestInfo as UndiciRequestInfo,
   RequestInit as UndiciRequestInit,
@@ -19,17 +11,10 @@ import type {
 import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import {
-  isSupportedDirectory,
-  isSupportedFile,
-} from "@connectors/connectors/github/lib/code/supported_files";
-import {
   isBadCredentials,
   isGithubIssueWasDeletedError,
   isGithubRequestErrorNotFound,
-  isGithubRequestErrorRepositoryAccessBlocked,
   isGithubRequestRedirectCountExceededError,
-  RepositoryAccessBlockedError,
-  RepositoryNotFoundError,
 } from "@connectors/connectors/github/lib/errors";
 import type {
   DiscussionCommentNode,
@@ -42,13 +27,7 @@ import {
   GetDiscussionPayloadSchema,
   GetRepoDiscussionsPayloadSchema,
 } from "@connectors/connectors/github/lib/github_graphql";
-import {
-  getCodeDirInternalId,
-  getCodeFileInternalId,
-  getDirectoryUrl,
-  getFileUrl,
-  getIssueLabels,
-} from "@connectors/connectors/github/lib/utils";
+import { getIssueLabels } from "@connectors/connectors/github/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import {
   ExternalOAuthTokenError,
@@ -672,296 +651,6 @@ export async function getOctokit(
   }
 
   return new Octokit({ auth: token.access_token });
-}
-
-// Repository processing
-
-async function* getFiles(dir: string): AsyncGenerator<string> {
-  const dirents = await readdir(dir, { withFileTypes: true });
-  for (const dirent of dirents) {
-    const res = resolve(dir, dirent.name);
-    if (dirent.isDirectory()) {
-      // blacklist
-      if (!isSupportedDirectory(dirent.name)) {
-        continue;
-      }
-      yield* getFiles(res);
-    } else {
-      yield res;
-    }
-  }
-}
-
-// This function returns file and directories object with parent, internalIds, and sourceUrl
-// information. The root of the directory is considered the null parent (and will have to be
-// stitched by the activity).
-export async function processRepository({
-  connector,
-  repoLogin,
-  repoName,
-  repoId,
-  onEntry,
-  logger,
-}: {
-  connector: ConnectorResource;
-  repoLogin: string;
-  repoName: string;
-  repoId: number;
-  onEntry: (entry: ReadEntry) => void;
-  logger: Logger;
-}): Promise<
-  Result<
-    {
-      tempDir: string;
-      files: {
-        fileName: string;
-        filePath: string[];
-        sourceUrl: string;
-        sizeBytes: number;
-        documentId: string;
-        parentInternalId: string | null;
-        parents: string[];
-        localFilePath: string;
-      }[];
-      directories: {
-        dirName: string;
-        dirPath: string[];
-        sourceUrl: string;
-        internalId: string;
-        parentInternalId: string | null;
-        parents: string[];
-      }[];
-    },
-    | RepositoryAccessBlockedError
-    | ExternalOAuthTokenError
-    | RepositoryNotFoundError
-  >
-> {
-  const octokit = await getOctokit(connector);
-
-  let data;
-  try {
-    const response = await octokit.rest.repos.get({
-      owner: repoLogin,
-      repo: repoName,
-    });
-    data = response.data;
-  } catch (err) {
-    if (isGithubRequestErrorNotFound(err)) {
-      return new Err(new RepositoryNotFoundError(err));
-    }
-    throw err;
-  }
-  const defaultBranch = data.default_branch;
-
-  logger.info({ defaultBranch, size: data.size }, "Retrieved repository info");
-
-  // `data.size` is the whole repo size in KB, we use it to filter repos > 10GB download size. There
-  // is further filtering by file type + for "extracted size" per file to 1MB.
-  if (data.size > 10 * 1024 * 1024) {
-    // For now we throw a panic log, so we are able to report the issue to the
-    // user, and continue with the rest of the sync. See runbook for future
-    // improvements
-    // https://www.notion.so/dust-tt/Panic-Log-Github-repository-too-large-to-sync-1bf28599d9418061a396d2378bdd77de?pvs=4
-
-    // Later on, we might want to build capabilities to handle this (likely a
-    // typed error to return a syncFailed to the user, when we are able to
-    // display granular failure, or increase this limit if we want some largers
-    // repositories).
-
-    logger.error(
-      {
-        repoLogin,
-        repoName,
-        size: data.size,
-        connectorId: connector.id,
-        panic: true,
-      },
-      `Github Repository is too large to sync (size: ${data.size}KB, max: 10GB)`
-    );
-  }
-
-  octokit.request.defaults({
-    request: {
-      parseSuccessResponseBody: false,
-    },
-  });
-
-  let tarballStream;
-  try {
-    tarballStream = (
-      (await octokit.request("GET /repos/{owner}/{repo}/tarball/{ref}", {
-        owner: repoLogin,
-        repo: repoName,
-        ref: defaultBranch,
-        request: {
-          parseSuccessResponseBody: false,
-        },
-      })) as { data: Readable }
-    ).data;
-  } catch (err) {
-    if (isGithubRequestErrorNotFound(err)) {
-      return new Err(new ExternalOAuthTokenError(err));
-    }
-    if (isGithubRequestErrorRepositoryAccessBlocked(err)) {
-      return new Err(new RepositoryAccessBlockedError(err));
-    }
-
-    throw err;
-  }
-
-  // Create a temp directory.
-  const tempDir = await mkdtemp(join(tmpdir(), "repo-"));
-
-  try {
-    const tarPath = resolve(tempDir, "repo.tar.gz");
-
-    logger.info({ tempDir, tarPath }, "Starting download of tarball");
-
-    // Save the tarball to the temp directory.
-    await pipeline(tarballStream, createWriteStream(tarPath));
-
-    const { size } = await fs.stat(tarPath);
-
-    logger.info({ tarSize: size, tarPath }, "Finished tarball download");
-
-    // Extract the tarball.
-    await extract({
-      file: tarPath,
-      cwd: tempDir,
-      // Filter before extraction to avoid extracting files we don't want.
-      filter: (path, stat) => {
-        if (path.endsWith("/")) {
-          return true;
-        }
-
-        const isUnderLimit = stat.size < 1024 * 1024;
-
-        if (!isUnderLimit) {
-          logger.info({ path, size }, "File is over the size limit, skipping.");
-          return false;
-        }
-
-        const isWhitelisted = isSupportedFile(path);
-
-        if (!isWhitelisted) {
-          return false;
-        }
-
-        return true;
-      },
-      onentry: onEntry,
-    });
-
-    // Delete the tarball.
-    await fs.unlink(tarPath);
-
-    const files: {
-      fileName: string;
-      filePath: string[];
-      sourceUrl: string;
-      sizeBytes: number;
-      documentId: string;
-      parentInternalId: string | null;
-      parents: string[];
-      localFilePath: string;
-    }[] = [];
-    const seenDirs: { [key: string]: boolean } = {};
-    const directories: {
-      dirName: string;
-      dirPath: string[];
-      sourceUrl: string;
-      internalId: string;
-      parentInternalId: string | null;
-      parents: string[];
-    }[] = [];
-
-    // Iterate over the files in the temp directory.
-    for await (const file of getFiles(tempDir)) {
-      const path = file
-        .substring(tempDir.length + 1)
-        .split("/")
-        .slice(1, -1);
-      const fileName = basename(file);
-
-      const parents = [];
-      // we order parents bottom to top, so we take paths in the opposite order
-      for (let i = path.length - 1; i >= 0; i--) {
-        parents.push({
-          internalId: getCodeDirInternalId(
-            repoId,
-            path.slice(0, i + 1).join("/")
-          ),
-          dirName: path[i] as string,
-          dirPath: path.slice(0, i),
-        });
-      }
-
-      const documentId = getCodeFileInternalId(
-        repoId,
-        `${path.join("/")}/${fileName}`
-      );
-
-      const parentInternalId = parents[0]?.internalId ?? null;
-
-      // Files
-      files.push({
-        fileName,
-        filePath: path,
-        sourceUrl: getFileUrl(
-          repoLogin,
-          repoName,
-          defaultBranch,
-          path,
-          fileName
-        ),
-        sizeBytes: size,
-        documentId,
-        parentInternalId,
-        parents: [documentId, ...parents.map((p) => p.internalId)],
-        localFilePath: file,
-      });
-
-      // Directories
-      for (let i = 0; i < parents.length; i++) {
-        const p = parents[i];
-        if (p && !seenDirs[p.internalId]) {
-          seenDirs[p.internalId] = true;
-
-          const dirParent = parents[i + 1];
-          const dirParentInternalId = dirParent ? dirParent.internalId : null;
-
-          directories.push({
-            dirName: p.dirName,
-            dirPath: p.dirPath,
-            sourceUrl: getDirectoryUrl(
-              repoLogin,
-              repoName,
-              defaultBranch,
-              p.dirPath,
-              p.dirName
-            ),
-            internalId: p.internalId,
-            parentInternalId: dirParentInternalId,
-            parents: parents.slice(i).map((p) => p.internalId),
-          });
-        }
-      }
-    }
-
-    return new Ok({
-      tempDir,
-      files,
-      directories,
-    });
-  } catch (e) {
-    logger.info(
-      { error: e },
-      "Caught exception while processing repository, cleaning up"
-    );
-    await cleanUpProcessRepository(tempDir);
-    throw e;
-  }
 }
 
 export async function cleanUpProcessRepository(tempDir: string) {
