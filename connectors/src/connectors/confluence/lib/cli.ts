@@ -115,7 +115,7 @@ export const confluence = async ({
       const pageId = args.pageId;
       const skipReason = args.skipReason || "Blacklisted.";
 
-      let page = await ConfluencePage.findOne({
+      const page = await ConfluencePage.findOne({
         where: {
           connectorId,
           pageId: pageId.toString(),
