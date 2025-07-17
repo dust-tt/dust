@@ -2,6 +2,10 @@ import { DustAPI } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import {
+  DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
+  DEFAULT_AGENT_ROUTER_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
 import apiConfig from "@app/lib/api/config";
@@ -13,16 +17,16 @@ import type { LightAgentConfigurationType } from "@app/types";
 import { getHeaderFromGroupIds, getHeaderFromRole } from "@app/types/groups";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "agent_router",
+  name: DEFAULT_AGENT_ROUTER_ACTION_NAME,
   version: "1.0.0",
-  description: "Tools with access to the published agents of the workspace.",
+  description: DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   icon: "ActionRobotIcon",
   authorization: null,
   documentationUrl: null,
 };
 
 const MAX_INSTRUCTIONS_LENGTH = 1000;
-export const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
+const LIST_ALL_AGENTS_TOOL_NAME = "list_all_published_agents";
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content";
 
 const SERVER_INSTRUCTIONS = `These tools provide discoverability to published agents available in the workspace.
@@ -93,7 +97,9 @@ const createServer = (auth: Authenticator): McpServer => {
 
   server.tool(
     SUGGEST_AGENTS_TOOL_NAME,
-    "Analyzes a user query and returns relevant specialized agents that might be better suited to handle specific requests. The tool uses semantic matching to find agents whose capabilities align with the query content.",
+    "Analyzes a user query and returns relevant specialized agents that might be better " +
+      "suited to handling specific requests. The tool uses semantic matching to find agents " +
+      "whose capabilities align with the query content.",
     {
       userMessage: z.string().describe("The user's message."),
       conversationId: z.string().describe("The conversation id."),
