@@ -74,15 +74,25 @@ async function addParentsToDataSourceView({
   execute: boolean;
   logger: Logger;
 }) {
+  const currentParents = dataSourceView.parentsIn || [];
+  logger.info(
+    {
+      currentParents,
+      parentsToAdd,
+      dataSourceViewId: dataSourceView.sId,
+      dataSourceViewModelId: dataSourceView.id,
+    },
+    "Preparing to add parent node IDs to data source view."
+  );
+
   if (execute) {
-    const currentParents = dataSourceView.parentsIn || [];
     await dataSourceView.setParents([
       ...new Set([...currentParents, ...parentsToAdd]),
     ]);
     logger.info(`Added ${parentsToAdd.length} parents to data source view.`);
   } else {
     logger.info(
-      `Would add ${parentsToAdd.length} parents to data source view.`
+      `Would have added ${parentsToAdd.length} parents to data source view.`
     );
   }
 }
