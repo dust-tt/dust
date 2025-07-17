@@ -397,7 +397,8 @@ export async function syncNonThreaded({
       endDate,
     });
 
-  // Only create the document if it doesn't already exist based on the documentId
+  // Retrieve the SlackMessage if it exists to skip sync if done already in the last hour + enforce
+  // skipReason
   let [existingMessage] = await SlackMessages.findAll({
     where: {
       channelId,
