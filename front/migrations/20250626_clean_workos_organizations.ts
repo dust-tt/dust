@@ -31,14 +31,20 @@ SELECT
   ws.domain,
   w."workOSOrganizationId"
 FROM
-  workspace_has_domains ws,
-  workspaces w
-  LEFT OUTER JOIN subscriptions s ON s."workspaceId" = w.id
+  workspace_has_domains AS ws
+  INNER JOIN workspaces AS w ON w.id = ws."workspaceId"
 WHERE
-  w.id = ws."workspaceId"
-  AND ws."domainAutoJoinEnabled" = FALSE
-  AND s.id IS NULL
+  ws."domainAutoJoinEnabled" = FALSE
   AND w."workOSOrganizationId" IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 
+    FROM subscriptions s 
+    WHERE s."workspaceId" = w.id 
+    AND (
+      s."endDate" IS NULL
+      OR s."endDate" > CURRENT_DATE - INTERVAL '1 month'
+    )
+  )
 `,
       { type: QueryTypes.SELECT }
     );
