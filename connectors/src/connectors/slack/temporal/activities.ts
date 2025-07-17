@@ -424,7 +424,7 @@ export async function syncNonThreaded({
       return;
     }
 
-    // If upated in last hour, skip.
+    // If updated in last hour, skip.
     if (existingMessage.updatedAt.getTime() > Date.now() - 60 * 60 * 1000) {
       logger.info(
         {
