@@ -1197,3 +1197,84 @@ export function renderAgentMCPAction(
     ),
   });
 }
+
+// Internal interface for the retrieval and rendering of an MCPAction action. Should not be used
+// outside api/assistant. We allow a ModelId interface here because we don't have `sId` on actions
+// (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
+// This function only returns the actions with the maximum version for each step.
+export async function mcpActionTypesFromAgentMessageIds(
+  auth: Authenticator,
+  { agentMessageIds }: { agentMessageIds: ModelId[] }
+): Promise<MCPActionType[]> {
+  const allActions = await AgentMCPAction.findAll({
+    where: {
+      agentMessageId: agentMessageIds,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    },
+    include: [
+      {
+        model: AgentMCPActionOutputItem,
+        as: "outputItems",
+        required: false,
+        include: [
+          {
+            model: FileModel,
+            as: "file",
+            required: false,
+          },
+        ],
+      },
+      {
+        model: AgentStepContentModel,
+        as: "stepContent",
+        required: false,
+      },
+    ],
+  });
+
+  const maxVersionActions = allActions.reduce((acc, current) => {
+    // TODO(durable-agents): remove the default value once stepContentId is not nullable.
+    const key = current.stepContent?.step ?? current.step;
+    const existing = acc.get(key);
+    if (!existing || current.version > existing.version) {
+      acc.set(key, current);
+    }
+    return acc;
+  }, new Map<number, AgentMCPAction>());
+
+  return Array.from(maxVersionActions.values()).map((action) => {
+    return new MCPActionType({
+      id: action.id,
+      params: action.params,
+      output: removeNulls(action.outputItems.map(hideFileFromActionOutput)),
+      functionCallId: action.functionCallId,
+      functionCallName: action.functionCallName,
+      agentMessageId: action.agentMessageId,
+      step: action.step,
+      mcpServerConfigurationId: action.mcpServerConfigurationId,
+      executionState: action.executionState,
+      isError: action.isError,
+      type: "tool_action",
+      generatedFiles: removeNulls(
+        action.outputItems.map((o) => {
+          if (!o.file) {
+            return null;
+          }
+
+          const file = o.file;
+          const fileSid = FileResource.modelIdToSId({
+            id: file.id,
+            workspaceId: action.workspaceId,
+          });
+
+          return {
+            fileId: fileSid,
+            contentType: file.contentType,
+            title: file.fileName,
+            snippet: file.snippet,
+          };
+        })
+      ),
+    });
+  });
+}
