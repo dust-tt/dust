@@ -1,5 +1,6 @@
 import { Spinner } from "@dust-tt/sparkle";
 import React from "react";
+import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import {
@@ -12,6 +13,8 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { useUser } from "@app/lib/swr/user";
+
+import type { AgentBuilderFormData } from "./AgentBuilderFormContext";
 
 interface EmptyStateProps {
   message: string;
@@ -49,7 +52,11 @@ function LoadingState({ message }: LoadingStateProps) {
 export function AgentBuilderPreview() {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
+  const { getValues } = useFormContext<AgentBuilderFormData>();
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
+
+  const hasContent =
+    !!getValues("instructions").trim() || getValues("actions").length > 0;
 
   const {
     draftAgent,
@@ -71,6 +78,15 @@ export function AgentBuilderPreview() {
     !draftAgent && (isMCPServerViewsLoading || isSavingDraftAgent);
 
   const renderContent = () => {
+    if (!hasContent) {
+      return (
+        <EmptyState
+          message="Ready to test your agent?"
+          description="Add some instructions or actions to your agent to start testing it here."
+        />
+      );
+    }
+
     if (draftCreationFailed) {
       return (
         <EmptyState
@@ -82,15 +98,6 @@ export function AgentBuilderPreview() {
 
     if (showLoader) {
       return <LoadingState message="Preparing your agent..." />;
-    }
-
-    if (!draftAgent) {
-      return (
-        <EmptyState
-          message="Ready to test your agent?"
-          description="Add some instructions or actions to your agent to start testing it here."
-        />
-      );
     }
 
     return (
