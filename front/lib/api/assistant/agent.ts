@@ -196,36 +196,36 @@ async function runMultiActionsAgentLoop(
   // Track step content IDs by function call ID for later use in actions.
   const functionCallStepContentIds: Record<string, ModelId> = {};
 
-  for (let i = 0; i < maxStepsPerRun + 1; i++) {
-    const localLogger = logger.child({
-      workspaceId: conversation.owner.sId,
-      conversationId: conversation.sId,
-      multiActionLoopIteration: i,
-    });
+  await wakeLock(async () => {
+    for (let i = 0; i < maxStepsPerRun + 1; i++) {
+      const localLogger = logger.child({
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        multiActionLoopIteration: i,
+      });
 
-    localLogger.info("Starting multi-action loop iteration");
+      localLogger.info("Starting multi-action loop iteration");
 
-    const isLastGenerationIteration = i === maxStepsPerRun;
+      const isLastGenerationIteration = i === maxStepsPerRun;
 
-    const actions =
-      // If we already executed the maximum number of actions, we don't run anymore.
-      // This will force the agent to run the generation.
-      isLastGenerationIteration
-        ? []
-        : // Otherwise, we let the agent decide which action to run (if any).
-          configuration.actions;
+      const actions =
+        // If we already executed the maximum number of actions, we don't run anymore.
+        // This will force the agent to run the generation.
+        isLastGenerationIteration
+          ? []
+          : // Otherwise, we let the agent decide which action to run (if any).
+            configuration.actions;
 
-    const loopIterationStream = runMultiActionsAgent(auth.toJSON(), {
-      agentConfiguration: configuration,
-      conversation,
-      userMessage,
-      agentMessage,
-      agentActions: actions,
-      isLastGenerationIteration,
-      isLegacyAgent,
-    });
+      const loopIterationStream = runMultiActionsAgent(auth.toJSON(), {
+        agentConfiguration: configuration,
+        conversation,
+        userMessage,
+        agentMessage,
+        agentActions: actions,
+        isLastGenerationIteration,
+        isLegacyAgent,
+      });
 
-    await wakeLock(async () => {
       for await (const event of loopIterationStream) {
         switch (event.type) {
           case "agent_error":
@@ -346,7 +346,7 @@ async function runMultiActionsAgentLoop(
             break;
 
           case "generation_cancel":
-            await updateResourceAndPublishEvent(
+            return updateResourceAndPublishEvent(
               {
                 type: "agent_generation_cancelled",
                 created: event.created,
@@ -356,7 +356,6 @@ async function runMultiActionsAgentLoop(
               conversation,
               agentMessageRow
             );
-            return;
 
           case "generation_success":
             if (event.chainOfThought.length) {
@@ -370,7 +369,7 @@ async function runMultiActionsAgentLoop(
 
             runIds.push(event.runId);
 
-            await updateResourceAndPublishEvent(
+            return updateResourceAndPublishEvent(
               {
                 type: "agent_message_success",
                 created: Date.now(),
@@ -382,7 +381,6 @@ async function runMultiActionsAgentLoop(
               conversation,
               agentMessageRow
             );
-            return;
 
           case "agent_chain_of_thought":
             if (!agentMessage.chainOfThought) {
@@ -396,8 +394,8 @@ async function runMultiActionsAgentLoop(
             assertNever(event);
         }
       }
-    });
-  }
+    }
+  });
 }
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
