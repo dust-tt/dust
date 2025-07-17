@@ -244,7 +244,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     },
   },
   jira: {
-    id: 21,
+    id: 22,
     availability: "manual",
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("jira_tool");
