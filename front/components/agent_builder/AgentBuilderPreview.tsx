@@ -53,45 +53,24 @@ export function AgentBuilderPreview() {
   const { user } = useUser();
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
 
-  const instructions = useWatch<AgentBuilderFormData, "instructions">({
-    name: "instructions",
-  });
-  const name = useWatch<AgentBuilderFormData, "agentSettings.name">({
-    name: "agentSettings.name",
-  });
-
   const {
     draftAgent,
     isSavingDraftAgent,
     draftCreationFailed,
-    createDraftAgent,
+    stickyMentions,
+    setStickyMentions,
+    conversation,
+    handleSubmit,
   } = usePreviewAgent();
-  const { conversation, stickyMentions, setStickyMentions, handleSubmit } =
-    useTryAgentCore({
-      owner,
-      user,
-      agent: draftAgent,
-      createDraftAgent,
-    });
-
-  const hasContent = instructions.trim();
 
   const renderContent = () => {
-    if (!hasContent || !name) {
+    if (!draftAgent) {
       return (
         <EmptyState
           message="Ready to test your agent?"
           description="Add some instructions or actions to your agent to start testing it here."
         />
       );
-    }
-
-    if (
-      isMCPServerViewsLoading ||
-      isSavingDraftAgent ||
-      (!draftAgent && !draftCreationFailed)
-    ) {
-      return <LoadingState message="Preparing your agent..." />;
     }
 
     if (!draftAgent && draftCreationFailed) {
@@ -101,6 +80,10 @@ export function AgentBuilderPreview() {
           description="There was an issue creating a preview of your agent. Try making a small change to refresh."
         />
       );
+    }
+
+    if (!draftAgent && (isMCPServerViewsLoading || isSavingDraftAgent)) {
+      return <LoadingState message="Preparing your agent..." />;
     }
 
     return (

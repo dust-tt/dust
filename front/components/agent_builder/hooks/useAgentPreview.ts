@@ -1,6 +1,6 @@
-import { isEqual } from "lodash";
+import { debounce, isEqual } from "lodash";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -10,9 +10,9 @@ import {
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
-import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
+import { useUser } from "@app/lib/swr/user";
 import type {
   AgentMention,
   ContentFragmentsType,
@@ -20,61 +20,45 @@ import type {
   LightAgentConfigurationType,
   MentionType,
   Result,
-  UserType,
-  WorkspaceType,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export function usePreviewAgent() {
   const { owner } = useAgentBuilderContext();
+  const { user } = useUser();
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
+  const sendNotification = useSendNotification();
+  const { getValues } = useFormContext<AgentBuilderFormData>();
 
-  const form = useFormContext<AgentBuilderFormData>();
-  const formData = form.watch();
+  const formData = useWatch<AgentBuilderFormData>();
+  const lastFormDataRef = useRef<AgentBuilderFormData | null>(null);
 
   const [draftAgent, setDraftAgent] =
     useState<LightAgentConfigurationType | null>(null);
   const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(false);
   const [draftCreationFailed, setDraftCreationFailed] = useState(false);
+  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
-  const sendNotification = useSendNotification();
-  const lastFormDataRef = useRef<AgentBuilderFormData>(formData);
-  const lastDebouncedNameRef = useRef<string>(
-    formData.agentSettings.name || ""
-  );
-
-  const { debouncedValue: debouncedAgentName, setValue: setAgentNameValue } =
-    useDebounce(formData.agentSettings.name || "", {
-      delay: 1000,
-    });
-
-  useEffect(() => {
-    setAgentNameValue(formData.agentSettings.name || "");
-  }, [formData.agentSettings.name, setAgentNameValue]);
-
-  const hasContent =
-    formData.instructions?.trim() || formData.actions.length > 0;
-
-  const createDraftAgentWithName = useCallback(
-    async (
-      overrideName?: string
-    ): Promise<LightAgentConfigurationType | null> => {
+  const createDraftAgent =
+    useCallback(async (): Promise<LightAgentConfigurationType | null> => {
       // Don't create draft if MCP server views are still loading
       if (isMCPServerViewsLoading) {
-        console.log("Skipping draft creation - MCP server views still loading");
         return null;
       }
 
       setIsSavingDraftAgent(true);
       setDraftCreationFailed(false);
 
+      const formData = getValues();
+      lastFormDataRef.current = structuredClone(formData);
+
       const aRes = await submitAgentBuilderForm({
         formData: {
           ...formData,
           agentSettings: {
             ...formData.agentSettings,
-            name: overrideName || formData.agentSettings.name,
+            name: formData.agentSettings.name || "Preview",
           },
         },
         owner,
@@ -95,117 +79,22 @@ export function usePreviewAgent() {
       }
 
       setDraftAgent(aRes.value);
+      setStickyMentions([{ configurationId: aRes.value.sId }]);
       setIsSavingDraftAgent(false);
       return aRes.value;
-    },
-    [owner, mcpServerViews, sendNotification, formData, isMCPServerViewsLoading]
-  );
+    }, [
+      owner,
+      mcpServerViews,
+      sendNotification,
+      isMCPServerViewsLoading,
+      getValues,
+    ]);
 
-  const createDraftAgent =
-    useCallback(async (): Promise<LightAgentConfigurationType | null> => {
-      // Always create a new draft if form data has changed
-      if (!isEqual(lastFormDataRef.current, formData)) {
-        // Form data has changed, we need to create a new draft
-      } else if (draftAgent) {
-        // Form data hasn't changed and we have a draft, return existing
-        return draftAgent;
-      }
-
-      const result = await createDraftAgentWithName();
-      if (result) {
-        lastFormDataRef.current = formData;
-      }
-      return result;
-    }, [formData, draftAgent, createDraftAgentWithName]);
-
-  useEffect(() => {
-    const createDraftAgentIfNeeded = async () => {
-      if (
-        hasContent &&
-        !draftAgent &&
-        !isSavingDraftAgent &&
-        !draftCreationFailed &&
-        !isMCPServerViewsLoading // Don't create draft while MCP server views are loading
-      ) {
-        await createDraftAgent();
-      } else if (!hasContent) {
-        setIsSavingDraftAgent(false);
-        setDraftCreationFailed(false);
-      }
-    };
-
-    void createDraftAgentIfNeeded();
-  }, [
-    hasContent,
-    draftAgent,
-    isSavingDraftAgent,
-    draftCreationFailed,
-    createDraftAgent,
-    isMCPServerViewsLoading, // Add loading state to dependencies
-  ]);
-
-  useEffect(() => {
-    if (!isEqual(lastFormDataRef.current, formData)) {
-      setDraftCreationFailed(false);
-    }
-  }, [formData]);
-
-  // Debounced draft creation for agent name changes
-  useEffect(() => {
-    const previousName = lastDebouncedNameRef.current;
-    const currentName = debouncedAgentName;
-
-    // Only trigger debounced creation if name changed and we have content and MCP server views are loaded
-    if (
-      previousName !== currentName &&
-      currentName?.trim() &&
-      hasContent &&
-      !isMCPServerViewsLoading
-    ) {
-      const createDraftWithDebouncedName = async () => {
-        const result = await createDraftAgentWithName(currentName);
-        if (result) {
-          lastDebouncedNameRef.current = currentName;
-        }
-      };
-
-      void createDraftWithDebouncedName();
-    }
-  }, [
-    debouncedAgentName,
-    hasContent,
-    createDraftAgentWithName,
-    isMCPServerViewsLoading,
-  ]);
-
-  return {
-    draftAgent,
-    isSavingDraftAgent,
-    draftCreationFailed,
-    createDraftAgent,
-  };
-}
-
-export function useTryAgentCore({
-  owner,
-  user,
-  agent,
-  createDraftAgent,
-}: {
-  owner: WorkspaceType;
-  user: UserType | null;
-  agent: LightAgentConfigurationType | null;
-  createDraftAgent?: () => Promise<LightAgentConfigurationType | null>;
-}) {
-  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>(
-    agent?.sId ? [{ configurationId: agent.sId }] : []
-  );
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
   );
-  const sendNotification = useSendNotification();
 
-  const conversationTitle = `Trying @${agent?.name || "your agent"}`;
+  const conversationTitle = `Trying @${draftAgent?.name || "your agent"}`;
 
   const handleSubmit = async (
     input: string,
@@ -220,38 +109,32 @@ export function useTryAgentCore({
       });
     }
 
-    // Create or update draft agent before submitting message if createDraftAgent is provided
-    let currentAgent = agent;
-    if (createDraftAgent) {
-      try {
-        currentAgent = await createDraftAgent();
-        if (!currentAgent) {
-          return new Err({
-            code: "internal_error",
-            name: "Draft Agent Creation Failed",
-            message: "Failed to create draft agent before submitting message",
-          });
-        }
-
-        // Update sticky mentions with the newly created draft agent
-        setStickyMentions([{ configurationId: currentAgent.sId }]);
-
-        // Update mentions in the message data to use the newly created draft agent
-        mentions = mentions.map((mention) =>
-          mention.configurationId === agent?.sId && currentAgent?.sId
-            ? { ...mention, configurationId: currentAgent.sId }
-            : mention
-        );
-      } catch (error) {
+    try {
+      const currentAgent = await getDraftAgent();
+      if (!currentAgent) {
         return new Err({
           code: "internal_error",
           name: "Draft Agent Creation Failed",
           message: "Failed to create draft agent before submitting message",
         });
       }
+
+      // Update mentions in the message data to use the newly created draft agent
+      mentions = mentions.map((mention) =>
+        mention.configurationId === draftAgent?.sId && currentAgent?.sId
+          ? { ...mention, configurationId: currentAgent.sId }
+          : mention
+      );
+    } catch (error) {
+      return new Err({
+        code: "internal_error",
+        name: "Draft Agent Creation Failed",
+        message: "Failed to create draft agent before submitting message",
+      });
     }
 
     const messageData = { input, mentions, contentFragments };
+
     if (!conversation) {
       const result = await createConversationWithMessage({
         owner,
@@ -260,15 +143,18 @@ export function useTryAgentCore({
         visibility: "test",
         title: conversationTitle,
       });
+
       if (result.isOk()) {
         setConversation(result.value);
         return new Ok(undefined);
       }
+
       sendNotification({
         title: result.error.title,
         description: result.error.message,
         type: "error",
       });
+
       return new Err({
         code: "internal_error",
         name: result.error.title,
@@ -281,9 +167,11 @@ export function useTryAgentCore({
         conversationId: conversation.sId as string,
         messageData,
       });
+
       if (result.isOk()) {
         return new Ok(undefined);
       }
+
       sendNotification({
         title: result.error.title,
         description: result.error.message,
@@ -298,11 +186,69 @@ export function useTryAgentCore({
     }
   };
 
+  const debouncedCreateDraftAgent = useCallback(
+    debounce(async () => {
+      void createDraftAgent();
+    }, 500),
+    [createDraftAgent]
+  );
+
+  const getDraftAgent =
+    useCallback(async (): Promise<LightAgentConfigurationType | null> => {
+      const formData = getValues();
+      if (lastFormDataRef.current && isEqual(lastFormDataRef.current, formData)) {
+        return draftAgent;
+      }
+
+     return createDraftAgent();
+    }, [draftAgent, createDraftAgent, getValues]);
+
   useEffect(() => {
-    setStickyMentions(agent?.sId ? [{ configurationId: agent.sId }] : []);
-  }, [agent]);
+    return () => {
+      debouncedCreateDraftAgent.cancel();
+    };
+  }, [debouncedCreateDraftAgent]);
+
+  useEffect(() => {
+    if (isMCPServerViewsLoading) {
+      return;
+    }
+
+    // Create the first version here, after that we will update the draft agent on form submission.
+    if (!draftAgent) {
+    const hasContent =
+      (formData.actions && formData.actions.length > 0) ||
+      formData.instructions?.trim();
+
+      if (!isSavingDraftAgent && hasContent) {
+        void debouncedCreateDraftAgent();
+      }
+
+      return;
+    } 
+
+    // If agent name is updated, we need to update the @mention in the input box,
+    // so we will update the draft agent.
+    // const currentFormData = getValues();
+    console.log(lastFormDataRef.current);
+    if (lastFormDataRef.current && lastFormDataRef.current?.agentSettings.name !== formData.agentSettings?.name ) {
+      void debouncedCreateDraftAgent();
+    }
+
+    setDraftCreationFailed(false);
+  }, [
+    formData,
+    draftAgent,
+    debouncedCreateDraftAgent,
+    isMCPServerViewsLoading,
+    isSavingDraftAgent,
+    getValues,
+  ]);
 
   return {
+    draftAgent,
+    isSavingDraftAgent,
+    draftCreationFailed,
     stickyMentions,
     setStickyMentions,
     conversation,
