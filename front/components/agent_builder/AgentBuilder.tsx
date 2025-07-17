@@ -49,7 +49,7 @@ export default function AgentBuilder({
     mcpServerViews
   );
 
-  const { editors, isEditorsLoading } = useEditors({
+  const { editors } = useEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
@@ -189,8 +189,7 @@ export default function AgentBuilder({
                 !isDirty ||
                 isSubmitting ||
                 isMCPServerViewsLoading ||
-                isActionsLoading ||
-                isEditorsLoading,
+                isActionsLoading,
             }}
             agentConfigurationId={agentConfiguration?.sId || null}
           />
