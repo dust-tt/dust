@@ -257,8 +257,9 @@ export const fetchTree = async ({
   const schemas = schemasRes.value;
 
   const tree = {
-    databases: await Promise.all(
-      databases.map(async (db) => {
+    databases: await concurrentExecutor(
+      databases,
+      async (db) => {
         return {
           ...db,
           schemas: await Promise.all(
@@ -297,7 +298,10 @@ export const fetchTree = async ({
               })
           ),
         };
-      })
+      },
+      {
+        concurrency: 4,
+      }
     ),
   };
 
