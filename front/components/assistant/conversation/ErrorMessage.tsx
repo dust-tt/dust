@@ -23,7 +23,8 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
 
   const errorIsRetryable =
     isAgentErrorCategory(error.metadata?.category) &&
-    error.metadata?.category === "retryable_model_error";
+    (error.metadata?.category === "retryable_model_error" ||
+      error.metadata?.category === "stream_error");
 
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () => retryHandler()
