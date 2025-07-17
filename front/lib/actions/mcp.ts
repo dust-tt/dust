@@ -665,7 +665,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         },
         "Tool validation timed out"
       );
-      yield buildErrorEvent(
+      yield updateResourceAndBuildErrorEvent(
         action,
         agentConfiguration,
         agentMessage,
@@ -685,7 +685,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         },
         "Action execution rejected by user"
       );
-      yield buildErrorEvent(
+      yield updateResourceAndBuildErrorEvent(
         action,
         agentConfiguration,
         agentMessage,
@@ -836,7 +836,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       errorMessage +=
         "An error occurred while executing the tool. You can inform the user of this issue.";
 
-      yield buildErrorEvent(
+      yield updateResourceAndBuildErrorEvent(
         action,
         agentConfiguration,
         agentMessage,
@@ -1021,7 +1021,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
 // Build a tool success event with an error message.
 // We show as success as we want the model to continue the conversation.
-const buildErrorEvent = (
+async function updateResourceAndBuildErrorEvent(
   action: AgentMCPAction,
   agentConfiguration: AgentConfigurationType,
   agentMessage: AgentMessageType,
@@ -1033,7 +1033,17 @@ const buildErrorEvent = (
     | "allowed_implicitly"
     | "denied",
   errorMessage: string
-) => {
+) {
+  const outputContent: CallToolResult["content"][number] = {
+    type: "text",
+    text: errorMessage,
+  };
+  await AgentMCPActionOutputItem.create({
+    workspaceId: action.workspaceId,
+    agentMCPActionId: action.id,
+    content: outputContent,
+  });
+
   return {
     type: "tool_success" as const,
     created: Date.now(),
@@ -1045,16 +1055,11 @@ const buildErrorEvent = (
       executionState,
       id: action.id,
       isError: false,
-      output: [
-        {
-          type: "text",
-          text: errorMessage,
-        },
-      ],
+      output: [outputContent],
       type: "tool_action",
     }),
   };
-};
+}
 
 async function handleBase64Upload(
   auth: Authenticator,
