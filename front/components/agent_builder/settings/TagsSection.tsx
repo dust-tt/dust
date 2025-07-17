@@ -14,8 +14,9 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
+
+const MAX_TAG_SUGGESTIONS = 3;
 
 async function getTagsSuggestions({
   owner,
@@ -102,22 +103,33 @@ export function TagsSection() {
   const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
 
   const filteredTagsSuggestions = useMemo(() => {
-    if (tagsSuggestions.status !== "ok") {
+    if (tagsSuggestions.status !== "ok" || !tagsSuggestions.suggestions) {
       return [];
     }
-    const currentTagIds = new Set(selectedTags.map((t) => t.sId));
-    // We make sure we don't suggest tags that already exists.
-    return allTags
-      .filter((t) => !currentTagIds.has(t.sId))
-      .filter((t) => isBuilder(owner) || t.kind !== "protected")
-      .filter(
-        (tag) =>
-          tagsSuggestions.suggestions?.findIndex(
-            (t) => tag.name.toLowerCase() === t.toLowerCase()
-          ) !== -1
+
+    const currentTagNames = new Set(
+      selectedTags.map((t) => t.name.toLowerCase())
+    );
+    const existingTagNames = new Set(allTags.map((t) => t.name.toLowerCase()));
+
+    // Create new tag objects from API suggestions that don't already exist or are selected
+    return tagsSuggestions.suggestions
+      .filter((suggestionName) => {
+        const lowerName = suggestionName.toLowerCase();
+        return (
+          !currentTagNames.has(lowerName) && !existingTagNames.has(lowerName)
+        );
+      })
+      .map(
+        (suggestionName) =>
+          ({
+            sId: `suggestion-${suggestionName}`,
+            name: suggestionName,
+            kind: "standard",
+          }) satisfies TagType
       )
-      .slice(0, 3);
-  }, [tagsSuggestions, selectedTags, allTags, owner]);
+      .slice(0, MAX_TAG_SUGGESTIONS);
+  }, [tagsSuggestions, selectedTags, allTags]);
 
   const updateTagsSuggestions = async () => {
     setTagsSuggestionsLoading(true);
