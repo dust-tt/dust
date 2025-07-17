@@ -5,7 +5,7 @@ import { resyncSignal } from "@connectors/connectors/bigquery/temporal/signals";
 import type { ModelId } from "@connectors/types";
 
 const { syncBigQueryConnection } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "30 minutes",
+  startToCloseTimeout: "60 minutes",
 });
 
 export async function bigquerySyncWorkflow({
