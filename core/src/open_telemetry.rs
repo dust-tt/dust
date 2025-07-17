@@ -126,25 +126,30 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
         .with_batch_exporter(exporter)
         .build();
 
-    // To prevent a telemetry-induced-telemetry loop, OpenTelemetry's own internal
-    // logging is properly suppressed. However, logs emitted by external components
-    // (such as reqwest, tonic, etc.) are not suppressed as they do not propagate
-    // OpenTelemetry context. Until this issue is addressed
-    // (https://github.com/open-telemetry/opentelemetry-rust/issues/2877),
-    // filtering like this is the best way to suppress such logs.
-    //
-    // The filter levels are set as follows:
-    // - Allow `info` level and above by default.
-    // - Completely restrict logs from `hyper`, `tonic`, `h2`, and `reqwest`.
-    //
-    // Note: This filtering will also drop logs from these components even when
-    // they are used outside of the OTLP Exporter.
-    let filter_otel = EnvFilter::new("info")
-        .add_directive("hyper=off".parse().unwrap())
-        .add_directive("tonic=off".parse().unwrap())
-        .add_directive("h2=off".parse().unwrap())
-        .add_directive("reqwest=off".parse().unwrap());
-    let otel_layer = layer::OpenTelemetryTracingBridge::new(&provider).with_filter(filter_otel);
+    let otel_layer_option = if std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_ok() {
+        // To prevent a telemetry-induced-telemetry loop, OpenTelemetry's own internal
+        // logging is properly suppressed. However, logs emitted by external components
+        // (such as reqwest, tonic, etc.) are not suppressed as they do not propagate
+        // OpenTelemetry context. Until this issue is addressed
+        // (https://github.com/open-telemetry/opentelemetry-rust/issues/2877),
+        // filtering like this is the best way to suppress such logs.
+        //
+        // The filter levels are set as follows:
+        // - Allow `info` level and above by default.
+        // - Completely restrict logs from `hyper`, `tonic`, `h2`, and `reqwest`.
+        //
+        // Note: This filtering will also drop logs from these components even when
+        // they are used outside of the OTLP Exporter.
+        let filter_otel = EnvFilter::new("info")
+            .add_directive("hyper=off".parse().unwrap())
+            .add_directive("tonic=off".parse().unwrap())
+            .add_directive("h2=off".parse().unwrap())
+            .add_directive("reqwest=off".parse().unwrap());
+        let otel_layer = layer::OpenTelemetryTracingBridge::new(&provider).with_filter(filter_otel);
+        Some(otel_layer)
+    } else {
+        None
+    };
 
     let subscriber = tracing_subscriber::registry()
         .with(JsonStorageLayer)
@@ -153,7 +158,7 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
                 .skip_fields(vec!["file", "line", "target"].into_iter())
                 .unwrap(),
         )
-        .with(otel_layer)
+        .with(otel_layer_option)
         .with(layer)
         .with(build_level_filter_layer(log_directives)?)
         .with(build_logger_text());
