@@ -118,7 +118,7 @@ export const confluence = async ({
       let page = await ConfluencePage.findOne({
         where: {
           connectorId,
-          pageId,
+          pageId: pageId.toString(),
         },
       });
 
