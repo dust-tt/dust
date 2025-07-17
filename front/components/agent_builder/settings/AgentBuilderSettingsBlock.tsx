@@ -151,6 +151,7 @@ function AgentNameInput() {
               variant="outline"
               key={`naming-suggestion-${index}`}
               size="xs"
+              type="button"
               onClick={() => handleSelectNameSuggestion(suggestion)}
             />
           ))}
