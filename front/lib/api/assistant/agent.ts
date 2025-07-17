@@ -34,7 +34,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
-import type { AgentMessageAsyncEvents } from "@app/lib/api/assistant/streaming/types";
+import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -79,7 +79,7 @@ const MAX_AUTO_RETRY = 3;
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
-  event: AgentMessageAsyncEvents,
+  event: AgentMessageEvents,
   agentMessageRow: AgentMessage
 ): Promise<void> {
   switch (event.type) {
@@ -116,7 +116,7 @@ async function processEventForDatabase(
 }
 
 async function updateResourceAndPublishEvent(
-  event: AgentMessageAsyncEvents,
+  event: AgentMessageEvents,
   conversation: ConversationType,
   agentMessageRow: AgentMessage
 ): Promise<void> {

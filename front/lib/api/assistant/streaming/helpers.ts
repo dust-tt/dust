@@ -1,4 +1,4 @@
-import type { AgentMessageAsyncEvents } from "@app/lib/api/assistant/streaming/types";
+import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { AgentErrorEvent, AgentMessageSuccessEvent } from "@app/types";
 
 const END_OF_STREAM_EVENT = {
@@ -16,7 +16,7 @@ export function isEndOfStreamEvent(event: unknown): event is EndOfStreamEvent {
 }
 
 export function isEndOfAgentMessageStreamEvent(
-  event: AgentMessageAsyncEvents
+  event: AgentMessageEvents
 ): event is AgentMessageSuccessEvent | AgentErrorEvent {
   return ["agent_message_success", "agent_error"].includes(event.type);
 }
@@ -37,7 +37,7 @@ export function getConversationChannelId({
  * Message events.
  */
 
-export function getEventMessageChannelId(event: AgentMessageAsyncEvents) {
+export function getEventMessageChannelId(event: AgentMessageEvents) {
   // Tool approve execution can come from a sub agent, and in that case we want to send an event
   // to the main conversation.
   if (event.type === "tool_approve_execution") {

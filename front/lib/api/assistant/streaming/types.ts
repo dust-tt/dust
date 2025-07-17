@@ -9,7 +9,7 @@ import type {
   UserMessageNewEvent,
 } from "@app/types";
 
-export type AgentMessageAsyncEvents =
+export type AgentMessageEvents =
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | AgentErrorEvent
@@ -17,6 +17,4 @@ export type AgentMessageAsyncEvents =
   | AgentMessageSuccessEvent
   | GenerationTokensEvent;
 
-export type ConversationAsyncEvents =
-  | AgentMessageNewEvent
-  | UserMessageNewEvent;
+export type ConversationEvents = AgentMessageNewEvent | UserMessageNewEvent;

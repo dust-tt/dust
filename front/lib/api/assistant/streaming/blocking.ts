@@ -17,7 +17,7 @@ import type {
 import { Ok } from "@app/types";
 
 // We wait for 60 seconds for agent messages to complete.
-const WAIT_FOR_AGENT_COMPLETION_TIMEOUT_MS = 60000;
+const WAIT_FOR_AGENT_COMPLETION_TIMEOUT_MS = 60000 * 3; // 3 minutes.
 
 /**
  * Waits for all agent messages to complete by subscribing to their Redis channels and listening
@@ -70,7 +70,6 @@ async function waitForAgentCompletion(
       }
     };
 
-    // Set up subscriptions.
     const setupSubscriptions = async () => {
       for (const agentMessage of agentMessages) {
         const messageChannel = getMessageChannelId(agentMessage.sId);
@@ -103,7 +102,6 @@ async function waitForAgentCompletion(
 
           subscriptions.push(unsubscribe);
         } catch (error) {
-          // If subscription fails, remove from expected set.
           expectedMessageIds.delete(agentMessage.sId);
         }
       }
@@ -112,7 +110,6 @@ async function waitForAgentCompletion(
       checkCompletion();
     };
 
-    // Set up timeout.
     setTimeout(() => {
       if (!isResolved) {
         cleanup();

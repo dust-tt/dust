@@ -658,19 +658,16 @@ export async function processTranscriptActivity(
 
     let conversation = conversationRes.value;
 
-    const messageRes = await postUserMessageAndWaitForCompletion(
-      auth,
-      {
-        conversation,
-        content: `Transcript: ${transcriptTitle}`,
-        mentions: [{ configurationId: agentConfigurationId }],
-        context: baseContext,
-        // When running an agent as trigger of a transcript we have no chance of validating tools so
-        // we skip all of them and run the tools by default. This is in tension with the admin
-        // settings and could be revisited if needed.
-        skipToolsValidation: true,
-      }
-    );
+    const messageRes = await postUserMessageAndWaitForCompletion(auth, {
+      conversation,
+      content: `Transcript: ${transcriptTitle}`,
+      mentions: [{ configurationId: agentConfigurationId }],
+      context: baseContext,
+      // When running an agent as trigger of a transcript we have no chance of validating tools so
+      // we skip all of them and run the tools by default. This is in tension with the admin
+      // settings and could be revisited if needed.
+      skipToolsValidation: true,
+    });
 
     if (messageRes.isErr()) {
       localLogger.error(

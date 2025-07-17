@@ -18,7 +18,7 @@ import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { UserMessageContext, WithAPIErrorResponse } from "@app/types";
 import { isEmptyString } from "@app/types";
 
 /**
@@ -164,36 +164,30 @@ async function handler(
         }
       }
 
+      const ctx: UserMessageContext = {
+        clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
+        email: context.email ?? null,
+        fullName: context.fullName ?? null,
+        origin: context.origin ?? "api",
+        profilePictureUrl: context.profilePictureUrl ?? null,
+        timezone: context.timezone,
+        username: context.username,
+      };
+
       const messageRes =
         blocking === true
           ? await postUserMessageAndWaitForCompletion(auth, {
-              conversation,
               content,
+              context: ctx,
+              conversation,
               mentions,
-              context: {
-                timezone: context.timezone,
-                username: context.username,
-                fullName: context.fullName ?? null,
-                email: context.email ?? null,
-                profilePictureUrl: context.profilePictureUrl ?? null,
-                origin: context.origin ?? "api",
-                clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
-              },
               skipToolsValidation: skipToolsValidation ?? false,
             })
           : await postUserMessage(auth, {
-              conversation,
               content,
+              context: ctx,
+              conversation,
               mentions,
-              context: {
-                timezone: context.timezone,
-                username: context.username,
-                fullName: context.fullName ?? null,
-                email: context.email ?? null,
-                profilePictureUrl: context.profilePictureUrl ?? null,
-                origin: context.origin ?? "api",
-                clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
-              },
               skipToolsValidation: skipToolsValidation ?? false,
             });
       if (messageRes.isErr()) {

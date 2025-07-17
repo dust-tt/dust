@@ -4,8 +4,8 @@ import {
   isEndOfAgentMessageStreamEvent,
 } from "@app/lib/api/assistant/streaming/helpers";
 import type {
-  AgentMessageAsyncEvents,
-  ConversationAsyncEvents,
+  AgentMessageEvents,
+  ConversationEvents,
 } from "@app/lib/api/assistant/streaming/types";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type {
@@ -18,7 +18,7 @@ import type {
 import { assertNever } from "@app/types";
 
 async function publishConversationEvent(
-  event: ConversationAsyncEvents,
+  event: ConversationEvents,
   {
     conversationId,
   }: {
@@ -36,7 +36,7 @@ async function publishConversationEvent(
   );
 }
 
-async function publishMessageEvent(event: AgentMessageAsyncEvents) {
+async function publishMessageEvent(event: AgentMessageEvents) {
   const redisHybridManager = getRedisHybridManager();
 
   const messageChannel = getEventMessageChannelId(event);
@@ -57,7 +57,7 @@ async function publishMessageEvent(event: AgentMessageAsyncEvents) {
 }
 
 export async function publishConversationRelatedEvent(
-  event: AgentMessageAsyncEvents | ConversationAsyncEvents,
+  event: AgentMessageEvents | ConversationEvents,
   {
     conversationId,
   }: {
@@ -84,11 +84,7 @@ export async function publishConversationRelatedEvent(
   }
 }
 
-/**
- * TODO(DURABLE-AGENTS 2025-07-17): Temporary hack to publish the event messages as the UI relies
- * on the events for now. This should be removed once the UI is updated to use the API directly.
- */
-export async function publishMessageEventsOnMessageEdit(
+export async function publishMessageEventsOnMessagePostOrEdit(
   conversation: ConversationType,
   userMessage: UserMessageWithRankType,
   agentMessages: AgentMessageWithRankType[]
@@ -124,10 +120,6 @@ export async function publishMessageEventsOnMessageEdit(
   ]);
 }
 
-/**
- * TODO(DURABLE-AGENTS 2025-07-17): Temporary hack to publish the event messages as the UI relies
- * on the events for now. This should be removed once the UI is updated to use the API directly.
- */
 export async function publishAgentMessageEventOnMessageRetry(
   conversation: ConversationType,
   agentMessage: AgentMessageWithRankType

@@ -21,7 +21,7 @@ import {
 } from "@app/lib/api/assistant/rate_limits";
 import {
   publishAgentMessageEventOnMessageRetry,
-  publishMessageEventsOnMessageEdit,
+  publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -758,10 +758,19 @@ export async function postUserMessage(
     agentMessages,
   });
 
-  const agentMessageRowsById = new Map<ModelId, AgentMessage>();
+  const agentMessageRowById = new Map<ModelId, AgentMessage>();
   for (const agentMessageRow of agentMessageRows) {
-    agentMessageRowsById.set(agentMessageRow.id, agentMessageRow);
+    agentMessageRowById.set(agentMessageRow.id, agentMessageRow);
   }
+
+  // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
+  // conversation state synchronization in multiplex mode. This is a temporary solution -
+  // we should move this to a dedicated real-time sync mechanism.
+  await publishMessageEventsOnMessagePostOrEdit(
+    conversation,
+    userMessage,
+    agentMessages
+  );
 
   await concurrentExecutor(
     agentMessages,
@@ -774,7 +783,7 @@ export async function postUserMessage(
       };
 
       // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
-      const agentMessageRow = agentMessageRowsById.get(
+      const agentMessageRow = agentMessageRowById.get(
         agentMessage.agentMessageId
       );
       assert(
@@ -906,8 +915,6 @@ export async function editUserMessage(
       },
     });
   }
-
-  // Local error class to differentiate from other errors.
 
   let userMessage: UserMessageWithRankType | null = null;
   let agentMessages: AgentMessageWithRankType[] = [];
@@ -1193,9 +1200,9 @@ export async function editUserMessage(
     }
   }
 
-  const agentMessageRowsById = new Map<ModelId, AgentMessage>();
+  const agentMessageRowById = new Map<ModelId, AgentMessage>();
   for (const agentMessageRow of agentMessageRows) {
-    agentMessageRowsById.set(agentMessageRow.id, agentMessageRow);
+    agentMessageRowById.set(agentMessageRow.id, agentMessageRow);
   }
 
   await concurrentExecutor(
@@ -1209,7 +1216,7 @@ export async function editUserMessage(
       };
 
       // TODO(DURABLE-AGENTS 2025-07-16): Consolidate around agentMessage.
-      const agentMessageRow = agentMessageRowsById.get(
+      const agentMessageRow = agentMessageRowById.get(
         agentMessage.agentMessageId
       );
       assert(
@@ -1229,9 +1236,10 @@ export async function editUserMessage(
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
 
-  // TODO(DURABLE-AGENTS 2025-07-17): Temporary hack to publish the event messages. Removes once
-  // the UI is updated to use the API directly.
-  await publishMessageEventsOnMessageEdit(
+  // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
+  // conversation state synchronization in multiplex mode. This is a temporary solution -
+  // we should move this to a dedicated real-time sync mechanism.
+  await publishMessageEventsOnMessagePostOrEdit(
     conversation,
     userMessage,
     agentMessages
@@ -1440,8 +1448,9 @@ export async function retryAgentMessage(
     agentMessageRow
   );
 
-  // TODO(DURABLE-AGENTS 2025-07-17): Temporary hack to publish the new agent message. Removes once
-  // the UI is updated to use the API directly.
+  // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
+  // conversation state synchronization in multiplex mode. This is a temporary solution -
+  // we should move this to a dedicated real-time sync mechanism.
   await publishAgentMessageEventOnMessageRetry(conversation, agentMessage);
 
   return new Ok(agentMessage);

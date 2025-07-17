@@ -27,6 +27,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
   ContentFragmentType,
+  UserMessageContext,
   UserMessageType,
   WithAPIErrorResponse,
 } from "@app/types";
@@ -337,40 +338,34 @@ async function handler(
       }
 
       if (message) {
+        const ctx: UserMessageContext = {
+          clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
+          email: message.context.email ?? null,
+          fullName: message.context.fullName ?? null,
+          origin: message.context.origin ?? "api",
+          profilePictureUrl: message.context.profilePictureUrl ?? null,
+          timezone: message.context.timezone,
+          username: message.context.username,
+        };
+
         // If a message was provided we do await for the message to be created before returning the
-        // conversation along with the message.
+        // conversation along with the message. `postUserMessage` returns as soon as the user message
+        // and the agent messages are created, while `postUserMessageAndWaitForCompletion` waits for
+        // the agent messages to be fully generated.
         const messageRes =
           blocking === true
             ? await postUserMessageAndWaitForCompletion(auth, {
-                conversation,
                 content: message.content,
+                context: ctx,
+                conversation,
                 mentions: message.mentions,
-                context: {
-                  timezone: message.context.timezone,
-                  username: message.context.username,
-                  fullName: message.context.fullName ?? null,
-                  email: message.context.email ?? null,
-                  profilePictureUrl: message.context.profilePictureUrl ?? null,
-                  origin: message.context.origin ?? "api",
-                  clientSideMCPServerIds:
-                    message.context.clientSideMCPServerIds ?? [],
-                },
                 skipToolsValidation: skipToolsValidation ?? false,
               })
             : await postUserMessage(auth, {
-                conversation,
                 content: message.content,
+                context: ctx,
+                conversation,
                 mentions: message.mentions,
-                context: {
-                  timezone: message.context.timezone,
-                  username: message.context.username,
-                  fullName: message.context.fullName ?? null,
-                  email: message.context.email ?? null,
-                  profilePictureUrl: message.context.profilePictureUrl ?? null,
-                  origin: message.context.origin ?? "api",
-                  clientSideMCPServerIds:
-                    message.context.clientSideMCPServerIds ?? [],
-                },
                 skipToolsValidation: skipToolsValidation ?? false,
               });
 
