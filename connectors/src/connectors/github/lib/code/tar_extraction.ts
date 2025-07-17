@@ -8,6 +8,7 @@ import { pipeline } from "stream/promises";
 import * as tar from "tar-stream";
 
 import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
+import { sanitizeGcsObjectName } from "@connectors/connectors/github/lib/code/gcs_repository";
 import {
   isSupportedDirectory,
   isSupportedFile,
@@ -19,7 +20,6 @@ import {
 } from "@connectors/connectors/github/lib/errors";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
-import { sanitizeGcsObjectName } from "@connectors/connectors/github/lib/code/gcs_repository";
 
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 const MAX_CONCURRENT_GCS_UPLOADS = 200;
