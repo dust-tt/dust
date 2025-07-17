@@ -216,184 +216,216 @@ async function runMultiActionsAgentLoop(
           : // Otherwise, we let the agent decide which action to run (if any).
             configuration.actions;
 
-      const loopIterationStream = runMultiActionsAgent(auth.toJSON(), {
-        agentConfiguration: configuration,
-        conversation,
-        userMessage,
-        agentMessage,
-        agentActions: actions,
-        isLastGenerationIteration,
-        isLegacyAgent,
-      });
+      let shouldRetry = false;
+      let autoRetryCount = 0;
 
-      for await (const event of loopIterationStream) {
-        switch (event.type) {
-          case "agent_error":
-            const { category, publicMessage } = categorizeAgentErrorMessage(
-              event.error
-            );
+      do {
+        const loopIterationStream = runMultiActionsAgent(auth.toJSON(), {
+          agentConfiguration: configuration,
+          conversation,
+          userMessage,
+          agentMessage,
+          agentActions: actions,
+          isLastGenerationIteration,
+          isLegacyAgent,
+        });
 
-            localLogger.error(
-              {
-                elapsedTime: Date.now() - now,
-                error: event.error,
-                publicErrorMessage: publicMessage,
-              },
-              "Error running multi-actions agent."
-            );
+        for await (const event of loopIterationStream) {
+          switch (event.type) {
+            case "agent_error":
+              const { category, publicMessage } = categorizeAgentErrorMessage(
+                event.error
+              );
 
-            return updateResourceAndPublishEvent(
-              {
-                ...event,
-                error: {
-                  ...event.error,
-                  message: publicMessage,
-                  metadata: {
-                    category,
+              const errorIsRetryable = [
+                "stream_error",
+                "retryable_model_error",
+              ].includes(category);
+              shouldRetry = errorIsRetryable;
+
+              await updateResourceAndPublishEvent(
+                {
+                  ...event,
+                  error: {
+                    ...event.error,
+                    message: publicMessage,
+                    metadata: {
+                      category,
+                    },
                   },
                 },
-              },
-              conversation,
-              agentMessageRow
-            );
+                conversation,
+                agentMessageRow
+              );
 
-          case "agent_actions":
-            runIds.push(event.runId);
+              if (!errorIsRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
+                localLogger.error(
+                  {
+                    elapsedTime: Date.now() - now,
+                    error: event.error,
+                    publicErrorMessage: publicMessage,
+                  },
+                  `Error running multi-actions agent (${
+                    errorIsRetryable ? "max retries reached" : "not retryable"
+                  }).`
+                );
+                return;
+              }
 
-            localLogger.info(
-              {
-                elapsed: Date.now() - now,
-              },
-              "[ASSISTANT_TRACE] Action inputs generation"
-            );
+              logger.warn(
+                {
+                  workspaceId: conversation.owner.sId,
+                  conversationId: conversation.sId,
+                  error: event.error,
+                  publicMessage,
+                  retryCount: autoRetryCount,
+                },
+                "Auto-retrying multi-actions agent."
+              );
+              // We assume here that runMultiActionsAgent returns after yielding an agent_error, so
+              // that simply breaking the switch here will loop.
+              break;
+            case "agent_actions":
+              runIds.push(event.runId);
 
-            // We received the actions to run, but will enforce a limit on the number of actions (16)
-            // which is very high. Over that the latency will just be too high. This is a guardrail
-            // against the model outputting something unreasonable.
-            event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
+              localLogger.info(
+                {
+                  elapsed: Date.now() - now,
+                },
+                "[ASSISTANT_TRACE] Action inputs generation"
+              );
 
-            await Promise.all(
-              event.actions.map(({ action, inputs, functionCallId }, index) => {
-                // Find the step content ID for this function call
-                const stepContentId = functionCallId
-                  ? functionCallStepContentIds[functionCallId]
-                  : undefined;
+              // We received the actions to run, but will enforce a limit on the number of actions (16)
+              // which is very high. Over that the latency will just be too high. This is a guardrail
+              // against the model outputting something unreasonable.
+              event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
-                return runAction(auth, {
-                  configuration,
-                  actionConfiguration: action,
-                  conversation,
-                  agentMessage,
-                  inputs,
-                  functionCallId,
-                  step: i,
-                  stepActionIndex: index,
+              await Promise.all(
+                event.actions.map(
+                  ({ action, inputs, functionCallId }, index) => {
+                    // Find the step content ID for this function call
+                    const stepContentId = functionCallId
+                      ? functionCallStepContentIds[functionCallId]
+                      : undefined;
+
+                    return runAction(auth, {
+                      configuration,
+                      actionConfiguration: action,
+                      conversation,
+                      agentMessage,
+                      inputs,
+                      functionCallId,
+                      step: i,
+                      stepActionIndex: index,
+                      stepActions: event.actions.map((a) => a.action),
+                      citationsRefsOffset,
+                      stepContentId,
+                      agentMessageRow,
+                    });
+                  }
+                )
+              );
+              // After we are done running actions, we update the inter-step refsOffset.
+              for (let j = 0; j < event.actions.length; j++) {
+                citationsRefsOffset += getCitationsCount({
+                  agentConfiguration: configuration,
                   stepActions: event.actions.map((a) => a.action),
-                  citationsRefsOffset,
-                  stepContentId,
-                  agentMessageRow,
+                  stepActionIndex: j,
                 });
-              })
-            );
-            // After we are done running actions, we update the inter-step refsOffset.
-            for (let j = 0; j < event.actions.length; j++) {
-              citationsRefsOffset += getCitationsCount({
-                agentConfiguration: configuration,
-                stepActions: event.actions.map((a) => a.action),
-                stepActionIndex: j,
+              }
+
+              break;
+
+            case "agent_message_content":
+              processedContent += event.processedContent;
+              break;
+
+            case "agent_step_content":
+              const stepContent = await AgentStepContentResource.makeNew({
+                workspaceId: conversation.owner.id,
+                agentMessageId: agentMessage.agentMessageId,
+                step: i,
+                index: event.index,
+                type: event.content.type,
+                value: event.content,
+                version: autoRetryCount,
               });
-            }
 
-            break;
+              // If this is a function call step content, track its ID.
+              if (
+                event.content.type === "function_call" &&
+                event.content.value.id
+              ) {
+                functionCallStepContentIds[event.content.value.id] =
+                  stepContent.id;
+              }
 
-          case "agent_message_content":
-            processedContent += event.processedContent;
-            break;
+              agentMessage.contents.push({
+                step: i,
+                content: event.content,
+              });
+              break;
 
-          case "agent_step_content":
-            const stepContent = await AgentStepContentResource.makeNew({
-              workspaceId: conversation.owner.id,
-              agentMessageId: agentMessage.agentMessageId,
-              step: i,
-              index: event.index,
-              type: event.content.type,
-              value: event.content,
-              version: 0,
-            });
+            // Generation events
+            case "generation_tokens":
+              await updateResourceAndPublishEvent(
+                event,
+                conversation,
+                agentMessageRow
+              );
+              break;
+            case "generation_cancel":
+              return updateResourceAndPublishEvent(
+                {
+                  type: "agent_generation_cancelled",
+                  created: event.created,
+                  configurationId: configuration.sId,
+                  messageId: agentMessage.sId,
+                },
+                conversation,
+                agentMessageRow
+              );
 
-            // If this is a function call step content, track its ID.
-            if (
-              event.content.type === "function_call" &&
-              event.content.value.id
-            ) {
-              functionCallStepContentIds[event.content.value.id] =
-                stepContent.id;
-            }
+            case "generation_success":
+              if (event.chainOfThought.length) {
+                if (!agentMessage.chainOfThought) {
+                  agentMessage.chainOfThought = "";
+                }
+                agentMessage.chainOfThought += event.chainOfThought;
+              }
+              agentMessage.content = processedContent;
+              agentMessage.status = "succeeded";
 
-            agentMessage.contents.push({
-              step: i,
-              content: event.content,
-            });
-            break;
+              runIds.push(event.runId);
 
-          // Generation events
-          case "generation_tokens":
-            await updateResourceAndPublishEvent(
-              event,
-              conversation,
-              agentMessageRow
-            );
-            break;
+              return updateResourceAndPublishEvent(
+                {
+                  type: "agent_message_success",
+                  created: Date.now(),
+                  configurationId: configuration.sId,
+                  messageId: agentMessage.sId,
+                  message: agentMessage,
+                  runIds: runIds,
+                },
+                conversation,
+                agentMessageRow
+              );
 
-          case "generation_cancel":
-            return updateResourceAndPublishEvent(
-              {
-                type: "agent_generation_cancelled",
-                created: event.created,
-                configurationId: configuration.sId,
-                messageId: agentMessage.sId,
-              },
-              conversation,
-              agentMessageRow
-            );
-
-          case "generation_success":
-            if (event.chainOfThought.length) {
+            case "agent_chain_of_thought":
               if (!agentMessage.chainOfThought) {
                 agentMessage.chainOfThought = "";
               }
               agentMessage.chainOfThought += event.chainOfThought;
-            }
-            agentMessage.content = processedContent;
-            agentMessage.status = "succeeded";
+              // This event is not useful outside of the multi-actions loop, so we don't yield it.
+              break;
 
-            runIds.push(event.runId);
-
-            return updateResourceAndPublishEvent(
-              {
-                type: "agent_message_success",
-                created: Date.now(),
-                configurationId: configuration.sId,
-                messageId: agentMessage.sId,
-                message: agentMessage,
-                runIds: runIds,
-              },
-              conversation,
-              agentMessageRow
-            );
-
-          case "agent_chain_of_thought":
-            if (!agentMessage.chainOfThought) {
-              agentMessage.chainOfThought = "";
-            }
-            agentMessage.chainOfThought += event.chainOfThought;
-            // This event is not useful outside of the multi-actions loop, so we don't yield it.
-            break;
-
-          default:
-            assertNever(event);
+            default:
+              assertNever(event);
+          }
         }
-      }
+
+        autoRetryCount++;
+      } while (shouldRetry && autoRetryCount <= MAX_AUTO_RETRY);
     }
   });
 }
