@@ -372,6 +372,7 @@ async function runMultiActionsAgentLoop(
                 agentMessageRow
               );
               break;
+
             case "generation_cancel":
               return updateResourceAndPublishEvent(
                 {
