@@ -346,7 +346,6 @@ async function runMultiActionsAgentLoop(
             break;
 
           case "generation_cancel":
-            await updateResourceAndPublishEvent(
             return updateResourceAndPublishEvent(
               {
                 type: "agent_generation_cancelled",
@@ -395,6 +394,7 @@ async function runMultiActionsAgentLoop(
             assertNever(event);
         }
       }
+    }
   });
 }
 
