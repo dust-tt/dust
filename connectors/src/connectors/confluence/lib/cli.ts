@@ -125,6 +125,14 @@ export const confluence = async ({
       if (!page) {
         return { skipped: false, reason: "Page not found in database." };
       }
+
+      if (page.skipReason) {
+        return {
+          skipped: false,
+          reason: `Page already skipped with reason: ${page.skipReason}`,
+        };
+      }
+
       await page.update({ skipReason });
       return { skipped: true, reason: skipReason };
     }
