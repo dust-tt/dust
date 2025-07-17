@@ -36,7 +36,6 @@ import {
   getSlackChannelSourceUrl,
   getWeekEnd,
   getWeekStart,
-  MAX_SYNC_NON_THREAD_MESSAGES,
   slackChannelInternalIdFromSlackChannelId,
   slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier,
   slackThreadInternalIdFromSlackThreadIdentifier,
@@ -69,6 +68,11 @@ const logger = mainLogger.child({ provider: "slack" });
 const MAX_CONCURRENCY_LEVEL = 2;
 
 const CONVERSATION_HISTORY_LIMIT = 100;
+
+// Maximum number of messages we process in a single syncNonThreaded call (1 week of unthreaded
+// messages). Some channels have integrations that post a lot of messages. Beyond this number (more
+// that 1000 messages per week), the information is very likely useless.
+const MAX_SYNC_NON_THREAD_MESSAGES = 1000;
 
 interface SyncChannelRes {
   nextCursor?: string;
@@ -375,18 +379,74 @@ export async function syncNonThreaded({
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const slackClient = await getSlackClient(connectorId, {
-    // Let the Slack client handle rate limited calls in the slow lane.
-    // TODO(SLACK-PANIC): Remove/uncomment.
-    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
-  });
-  const nextCursor: string | undefined = undefined;
+
   const messages: MessageElement[] = [];
 
   const startTsSec = Math.round(startTsMs / 1000);
   const endTsSec = Math.round(endTsMs / 1000);
 
+  const startDate = new Date(startTsMs);
+  const endDate = new Date(endTsMs);
+
+  // IMPORTANT: Document ID generation relies on weekly start/end dates, not chunk boundaries.
+  // This ensures all chunks processing the same week contribute to the same document.
+  const documentId =
+    slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier({
+      channelId,
+      startDate,
+      endDate,
+    });
+
+  // Retrieve the SlackMessage if it exists to skip sync if done already in the last hour + enforce
+  // skipReason
+  let [existingMessage] = await SlackMessages.findAll({
+    where: {
+      channelId,
+      connectorId,
+      documentId,
+    },
+    order: [["id", "ASC"]],
+    limit: 1,
+  });
+
+  if (existingMessage) {
+    // If skipReason skip.
+    if (existingMessage.skipReason) {
+      logger.info(
+        {
+          connectorId,
+          channelId,
+          channelName,
+          skipReason: existingMessage.skipReason,
+        },
+        `Skipping non-thread sync: ${existingMessage.skipReason}`
+      );
+      return;
+    }
+
+    // If updated in last hour, skip.
+    if (existingMessage.updatedAt.getTime() > Date.now() - 60 * 60 * 1000) {
+      logger.info(
+        {
+          connectorId,
+          channelId,
+          channelName,
+          updatedAt: existingMessage.updatedAt,
+        },
+        "Skipping non-thread sync: already updated in the last hour"
+      );
+      return;
+    }
+  }
+
+  const slackClient = await getSlackClient(connectorId, {
+    // Let the Slack client handle rate limited calls in the slow lane.
+    rejectRateLimitedCalls: false,
+  });
+
   let hasMore: boolean | undefined = undefined;
+  let latestTsSec = endTsSec;
+  const seenMessagesTs = new Set<string>();
   do {
     let c: ConversationsHistoryResponse | undefined = undefined;
     try {
@@ -402,8 +462,8 @@ export async function syncNonThreaded({
           channel: channelId,
           limit: CONVERSATION_HISTORY_LIMIT,
           oldest: `${startTsSec}`,
-          latest: `${endTsSec}`,
-          cursor: nextCursor,
+          latest: `${latestTsSec}`,
+          inclusive: true,
         })
       );
     } catch (e) {
@@ -430,10 +490,9 @@ export async function syncNonThreaded({
           channelId,
           channelName,
           connectorId,
-          cursor: nextCursor,
           error: c.error,
-          latest: endTsSec,
           oldest: startTsSec,
+          latest: latestTsSec,
         },
         "Failed getting messages for channel"
       );
@@ -445,6 +504,9 @@ export async function syncNonThreaded({
     await heartbeat();
 
     for (const message of c.messages) {
+      if (message.ts) {
+        latestTsSec = parseInt(message.ts);
+      }
       const isIndexable = await shouldIndexSlackMessage(
         slackConfiguration,
         message,
@@ -469,7 +531,8 @@ export async function syncNonThreaded({
 
         continue;
       }
-      if (!message.thread_ts && message.ts) {
+      if (!message.thread_ts && message.ts && !seenMessagesTs.has(message.ts)) {
+        seenMessagesTs.add(message.ts);
         messages.push(message);
       }
     }
@@ -484,7 +547,6 @@ export async function syncNonThreaded({
           channelId,
           startTsMs,
           endTsMs,
-          nextCursor,
         },
         "Giving up on syncNonThreaded: too many messages"
       );
@@ -500,9 +562,34 @@ export async function syncNonThreaded({
     isBatchSync,
     messages,
     slackClient,
-    weekEndTsMs: endTsMs,
-    weekStartTsMs: startTsMs,
+    documentId,
   });
+
+  // Reload existingMessage in case it was created since then to decide if we need to create or
+  // update it.
+  [existingMessage] = await SlackMessages.findAll({
+    where: {
+      channelId,
+      connectorId,
+      documentId,
+    },
+    order: [["id", "ASC"]],
+    limit: 1,
+  });
+
+  if (!existingMessage) {
+    await SlackMessages.create({
+      connectorId,
+      channelId,
+      messageTs: undefined,
+      documentId,
+    });
+  } else {
+    // We update updatedAt to avoid re-syncing the thread for the next hour (see earlier in the
+    // activity). updatedAt is not directly updatable with Sequelize but this will do it.
+    existingMessage.changed("updatedAt", true);
+    await existingMessage.save();
+  }
 }
 
 async function processAndUpsertNonThreadedMessages({
@@ -513,8 +600,7 @@ async function processAndUpsertNonThreadedMessages({
   isBatchSync,
   messages,
   slackClient,
-  weekEndTsMs,
-  weekStartTsMs,
+  documentId,
 }: {
   channelId: string;
   channelName: string;
@@ -523,26 +609,13 @@ async function processAndUpsertNonThreadedMessages({
   isBatchSync: boolean;
   messages: MessageElement[];
   slackClient: WebClient;
-  weekEndTsMs: number;
-  weekStartTsMs: number;
+  documentId: string;
 }) {
   if (messages.length === 0) {
     return;
   }
 
   messages.reverse();
-
-  const startDate = new Date(weekStartTsMs);
-  const endDate = new Date(weekEndTsMs);
-
-  // IMPORTANT: Document ID generation relies on weekly start/end dates, not chunk boundaries.
-  // This ensures all chunks processing the same week contribute to the same document.
-  const documentId =
-    slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier({
-      channelId,
-      startDate,
-      endDate,
-    });
 
   const content = await withSlackErrorHandling(() =>
     formatMessagesForUpsert({
@@ -600,26 +673,6 @@ async function processAndUpsertNonThreadedMessages({
       : new Date(),
     documentId,
   });
-
-  // Only create the document if it doesn't already exist based on the documentId
-  const existingMessages = await SlackMessages.findAll({
-    where: {
-      channelId,
-      connectorId,
-      documentId,
-    },
-    order: [["id", "ASC"]],
-    limit: 1,
-  });
-
-  if (existingMessages.length === 0) {
-    await SlackMessages.create({
-      connectorId,
-      channelId,
-      messageTs: undefined,
-      documentId,
-    });
-  }
 
   await upsertDataSourceDocument({
     dataSourceConfig,
