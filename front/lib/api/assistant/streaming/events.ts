@@ -88,7 +88,7 @@ export async function publishConversationRelatedEvent(
  * TODO(DURABLE-AGENTS 2025-07-17): Temporary hack to publish the event messages as the UI relies
  * on the events for now. This should be removed once the UI is updated to use the API directly.
  */
-export async function publishMessageEventsOnMessageEdited(
+export async function publishMessageEventsOnMessageEdit(
   conversation: ConversationType,
   userMessage: UserMessageWithRankType,
   agentMessages: AgentMessageWithRankType[]
@@ -122,4 +122,25 @@ export async function publishMessageEventsOnMessageEdited(
       })
     ),
   ]);
+}
+
+/**
+ * TODO(DURABLE-AGENTS 2025-07-17): Temporary hack to publish the event messages as the UI relies
+ * on the events for now. This should be removed once the UI is updated to use the API directly.
+ */
+export async function publishAgentMessageEventOnMessageRetry(
+  conversation: ConversationType,
+  agentMessage: AgentMessageWithRankType
+) {
+  const agentMessageEvent: AgentMessageNewEvent = {
+    type: "agent_message_new",
+    created: Date.now(),
+    configurationId: agentMessage.configuration.sId,
+    messageId: agentMessage.sId,
+    message: agentMessage,
+  };
+
+  return publishConversationRelatedEvent(agentMessageEvent, {
+    conversationId: conversation.sId,
+  });
 }

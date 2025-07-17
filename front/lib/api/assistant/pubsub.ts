@@ -1,11 +1,5 @@
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
-import { retryAgentMessage } from "@app/lib/api/assistant/conversation";
-import {
-  getEventMessageChannelId,
-  getMessageChannelId,
-  isEndOfAgentMessageStreamEvent,
-} from "@app/lib/api/assistant/streaming/helpers";
-import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
+import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
@@ -13,145 +7,14 @@ import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { createCallbackReader } from "@app/lib/utils";
-import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
-import type {
-  AgentMessageType,
-  ConversationType,
-  GenerationTokensEvent,
-  PubSubError,
-} from "@app/types";
-import type { Result } from "@app/types";
+import type { GenerationTokensEvent } from "@app/types";
 import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
 } from "@app/types";
 import type { AgentMessageNewEvent, UserMessageNewEvent } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
-
-function addEndOfStreamToMessageChannel({ channel }: { channel: string }) {
-  return publishEvent({
-    origin: "message_events",
-    channel,
-    event: JSON.stringify({ type: "end-of-stream" }),
-  });
-}
-
-export async function retryAgentMessageWithPubSub(
-  auth: Authenticator,
-  {
-    conversation,
-    message,
-  }: {
-    conversation: ConversationType;
-    message: AgentMessageType;
-  }
-): Promise<Result<AgentMessageType, PubSubError>> {
-  const promise: Promise<Result<AgentMessageType, PubSubError>> = new Promise(
-    (resolve) => {
-      void wakeLock(async () => {
-        let didResolve = false;
-        try {
-          for await (const event of retryAgentMessage(auth, {
-            conversation,
-            message,
-          })) {
-            switch (event.type) {
-              case "agent_message_new": {
-                const pubsubChannel = getConversationChannelId(
-                  conversation.sId
-                );
-
-                await publishEvent({
-                  origin: "retry_agent_message",
-                  channel: pubsubChannel,
-                  event: JSON.stringify(event),
-                });
-
-                didResolve = true;
-                resolve(new Ok(event.message));
-                break;
-              }
-              case "agent_message_error": {
-                didResolve = true;
-                resolve(
-                  new Err({
-                    status_code: 400,
-                    api_error: {
-                      type: "invalid_request_error",
-                      message: event.error.message,
-                    },
-                  })
-                );
-                break;
-              }
-              case "agent_action_success":
-              case "agent_error":
-              case "agent_generation_cancelled":
-              case "agent_message_success":
-              case "generation_tokens":
-              case "tool_approve_execution":
-              case "tool_notification":
-              case "tool_params": {
-                const pubsubChannel = getEventMessageChannelId(event);
-                await publishEvent({
-                  origin: "retry_agent_message",
-                  channel: pubsubChannel,
-                  event: JSON.stringify(event),
-                });
-
-                if (isEndOfAgentMessageStreamEvent(event)) {
-                  // Maybe compute tokens consumed by the runs.
-                  if (event.type === "agent_message_success") {
-                    const { runIds } = event;
-
-                    await maybeTrackTokenUsageCost(auth, {
-                      dustRunIds: runIds,
-                    });
-                  }
-
-                  await addEndOfStreamToMessageChannel({
-                    channel: pubsubChannel,
-                  });
-                }
-
-                break;
-              }
-              default:
-                assertNever(event);
-            }
-          }
-        } catch (e) {
-          logger.error(
-            {
-              error: e,
-              conversationId: conversation.sId,
-              workspaceId: conversation.owner.sId,
-              type: "retry_agent_message",
-              agentMessageId: message.sId,
-            },
-            "Error Posting message"
-          );
-        } finally {
-          if (!didResolve) {
-            resolve(
-              new Err({
-                status_code: 500,
-                api_error: {
-                  type: "internal_server_error",
-                  message: `Never got the user_message_new event for ${conversation.sId}`,
-                },
-              })
-            );
-          }
-        }
-      });
-    }
-  );
-
-  return promise;
-}
 
 export async function* getConversationEvents({
   conversationId,

@@ -21,8 +21,8 @@ import {
   makeMessageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
 import {
-  publishConversationRelatedEvent,
-  publishMessageEventsOnMessageEdited,
+  publishAgentMessageEventOnMessageRetry,
+  publishMessageEventsOnMessageEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { getAgentExecutionChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
@@ -58,8 +58,6 @@ import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
-  AgentMessageErrorEvent,
-  AgentMessageNewEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
   AgentMessageWithRankType,
@@ -79,7 +77,6 @@ import type {
   PlanType,
   Result,
   UserMessageContext,
-  UserMessageNewEvent,
   UserMessageType,
   UserMessageWithRankType,
   UserType,
@@ -1251,7 +1248,7 @@ export async function editUserMessage(
 
   // TODO(DURABLE-AGENTS 2025-07-17): Temporary hack to publish the event messages. Removes once
   // the UI is updated to use the API directly.
-  await publishMessageEventsOnMessageEdited(
+  await publishMessageEventsOnMessageEdit(
     conversation,
     userMessage,
     agentMessages
@@ -1263,9 +1260,11 @@ export async function editUserMessage(
   });
 }
 
+class AgentMessageError extends Error {}
+
 // This method is in charge of re-running an agent interaction (generating a new
 // AgentMessage as a result)
-export async function* retryAgentMessage(
+export async function retryAgentMessage(
   auth: Authenticator,
   {
     conversation,
@@ -1274,32 +1273,15 @@ export async function* retryAgentMessage(
     conversation: ConversationType;
     message: AgentMessageType;
   }
-): AsyncGenerator<
-  | AgentMessageNewEvent
-  | AgentErrorEvent
-  | AgentMessageErrorEvent
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | GenerationTokensEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent,
-  void
-> {
-  class AgentMessageError extends Error {}
-
+): Promise<Result<AgentMessageWithRankType, APIErrorWithStatusCode>> {
   if (!canReadMessage(auth, message)) {
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: message.configuration.sId,
-      messageId: message.sId,
-      error: {
-        code: "message_access_denied",
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
         message: "The message to retry is not accessible.",
-        metadata: null,
       },
-    };
-    return;
+    });
   }
 
   let agentMessageResult: {
@@ -1403,44 +1385,29 @@ export async function* retryAgentMessage(
     });
   } catch (e) {
     if (e instanceof AgentMessageError) {
-      yield {
-        type: "agent_message_error",
-        created: Date.now(),
-        configurationId: message.configuration.sId,
-        error: {
-          code: "retry_failed",
+      return new Err({
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
           message: e.message,
         },
-      };
-      return;
+      });
     }
+
     throw e;
   }
 
   if (!agentMessageResult) {
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: message.configuration.sId,
-      messageId: message.sId,
-      error: {
-        code: "message_not_found",
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
         message: "The message to retry was not found",
-        metadata: null,
       },
-    };
-    return;
+    });
   }
 
   const { agentMessage, agentMessageRow } = agentMessageResult;
-
-  yield {
-    type: "agent_message_new",
-    created: Date.now(),
-    configurationId: agentMessage.configuration.sId,
-    messageId: agentMessage.sId,
-    message: agentMessage,
-  };
 
   // We stitch the conversation to retry the agent message correctly: no other
   // messages than this agent's past its parent message.
@@ -1476,17 +1443,25 @@ export async function* retryAgentMessage(
     throw new Error("Unreachable: parent message must be a user message");
   }
 
-  yield* streamRunAgentEvents(
+  const enrichedConversation = {
+    ...conversation,
+    content: newContent,
+  };
+
+  void runAgentWithStreaming(
     auth,
     agentMessage.configuration,
-    {
-      ...conversation,
-      content: newContent,
-    },
+    enrichedConversation,
     userMessage,
     agentMessage,
     agentMessageRow
   );
+
+  // TODO(DURABLE-AGENTS 2025-07-17): Temporary hack to publish the new agent message. Removes once
+  // the UI is updated to use the API directly.
+  await publishAgentMessageEventOnMessageRetry(conversation, agentMessage);
+
+  return new Ok(agentMessage);
 }
 
 // Injects a new content fragment in the conversation.
