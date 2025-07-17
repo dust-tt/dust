@@ -43,12 +43,12 @@ impl SnowflakeClient {
             .gzip(true)
             .use_rustls_tls()
             .timeout(std::time::Duration::from_secs(60));
-        
+
         // Only enable verbose connection logging in debug mode
         if tracing::enabled!(tracing::Level::DEBUG) {
             builder = builder.connection_verbose(true);
         }
-        
+
         let client = builder.build()?;
         Ok(Self {
             http: client,
@@ -67,12 +67,12 @@ impl SnowflakeClient {
             .use_rustls_tls()
             .proxy(proxy)
             .timeout(std::time::Duration::from_secs(60));
-        
+
         // Only enable verbose connection logging in debug mode
         if tracing::enabled!(tracing::Level::DEBUG) {
             builder = builder.connection_verbose(true);
         }
-        
+
         let client = builder.build()?;
         Ok(Self {
             http: client,
@@ -85,7 +85,8 @@ impl SnowflakeClient {
     pub async fn create_session(&self) -> Result<SnowflakeSession> {
         debug!("SnowflakeClient::create_session() called");
         debug!("Attempting login for user: {}", self.username);
-        let session_token = match login(&self.http, &self.username, &self.auth, &self.config).await {
+        let session_token = match login(&self.http, &self.username, &self.auth, &self.config).await
+        {
             Ok(token) => {
                 debug!("Login successful, got session token");
                 token
@@ -95,7 +96,7 @@ impl SnowflakeClient {
                 return Err(e);
             }
         };
-        
+
         let session = SnowflakeSession {
             http: self.http.clone(),
             // Replace any `_` with `-` in the account name for nginx proxy.

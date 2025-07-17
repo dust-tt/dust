@@ -242,7 +242,7 @@ impl SnowflakeRemoteDatabase {
         debug!("  - account: {}", account);
         debug!("  - role: {}", role);
         debug!("  - warehouse: {}", warehouse);
-        
+
         let mut client = SnowflakeClient::new(
             &username,
             auth_method,
@@ -259,7 +259,7 @@ impl SnowflakeRemoteDatabase {
             debug!("Failed to create SnowflakeClient: {}", e);
             QueryDatabaseError::GenericError(anyhow!("Error creating Snowflake client: {}", e))
         })?;
-        
+
         debug!("SnowflakeClient created successfully");
 
         if let (Ok(proxy_host), Ok(proxy_port), Ok(proxy_user_name), Ok(proxy_user_password)) = (

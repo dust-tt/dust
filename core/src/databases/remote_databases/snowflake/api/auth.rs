@@ -44,7 +44,7 @@ pub async fn login(
     let login_data = login_request_data(username, auth, config)?;
     debug!("Sending login request...");
     debug!("Query params: {:?}", queries);
-    
+
     let start_time = std::time::Instant::now();
     let response = match http
         .post(url)
@@ -53,17 +53,18 @@ pub async fn login(
             "data": login_data
         }))
         .send()
-        .await {
-            Ok(resp) => {
-                debug!("Got response after {:?}", start_time.elapsed());
-                resp
-            }
-            Err(e) => {
-                debug!("Request failed after {:?}: {:?}", start_time.elapsed(), e);
-                return Err(e.into());
-            }
-        };
-    
+        .await
+    {
+        Ok(resp) => {
+            debug!("Got response after {:?}", start_time.elapsed());
+            resp
+        }
+        Err(e) => {
+            debug!("Request failed after {:?}: {:?}", start_time.elapsed(), e);
+            return Err(e.into());
+        }
+    };
+
     let status = response.status();
     debug!("Response status: {}", status);
     let body = response.text().await?;
