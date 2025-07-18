@@ -187,13 +187,7 @@ const CookieBanner = ({
   onClickRefuse: () => void;
   className?: string;
 }) => {
-  const [isVisible, setIsVisible] = useState(show);
-
-  useEffect(() => {
-    setIsVisible(show);
-  }, [show]);
-
-  if (!isVisible) {
+  if (!show) {
     return null;
   }
 
@@ -202,7 +196,7 @@ const CookieBanner = ({
       className={classNames(
         "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-4 border-t border-border bg-blue-100 p-6 shadow-2xl md:flex-row",
         "s-transition-opacity s-duration-300 s-ease-in-out",
-        isVisible ? "s-opacity-100" : "s-opacity-0",
+        show ? "s-opacity-100" : "s-opacity-0",
         className || ""
       )}
     >
@@ -223,19 +217,13 @@ const CookieBanner = ({
           variant="outline"
           size="sm"
           label="Reject All"
-          onClick={() => {
-            setIsVisible(false);
-            onClickRefuse();
-          }}
+          onClick={onClickRefuse}
         />
         <Button
           variant="highlight"
           size="sm"
           label="Accept All"
-          onClick={() => {
-            setIsVisible(false);
-            onClickAccept();
-          }}
+          onClick={onClickAccept}
         />
       </div>
     </div>
