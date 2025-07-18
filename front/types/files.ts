@@ -439,13 +439,6 @@ function getFileFormat(contentType: string): FileFormat | null {
     }
   }
 
-  if (isInteractiveFileContentType(contentType)) {
-    const format = INTERACTIVE_FILE_FORMATS[contentType];
-    if (format) {
-      return format;
-    }
-  }
-
   return null;
 }
 
@@ -459,38 +452,6 @@ export function extensionsForContentType(
   }
 
   return [];
-}
-
-export function contentTypeForExtension(
-  extension: string
-): AllSupportedFileContentType | null {
-  // Check standard file formats first
-  const standardEntries = Object.entries(FILE_FORMATS) as [
-    SupportedFileContentType,
-    FileFormat,
-  ][];
-
-  const standardMatch = standardEntries.find(([_, value]) =>
-    value.exts.includes(extension)
-  )?.[0];
-  if (standardMatch) {
-    return standardMatch;
-  }
-
-  // Check internal file formats
-  const internalEntries = Object.entries(INTERACTIVE_FILE_FORMATS) as [
-    InteractiveFileContentType,
-    FileFormat,
-  ][];
-
-  const internalMatch = internalEntries.find(([, value]) =>
-    value.exts.includes(extension)
-  )?.[0];
-  if (internalMatch) {
-    return internalMatch;
-  }
-
-  return null;
 }
 
 export function getSupportedFileExtensions(

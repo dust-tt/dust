@@ -47,10 +47,9 @@ async function handler(
   }
 
   const { useCase, useCaseMetadata } = fileResource;
-  let space: SpaceResource | null = null;
-  if (useCaseMetadata?.spaceId) {
-    space = await SpaceResource.fetchById(auth, useCaseMetadata.spaceId);
-  }
+  const space = useCaseMetadata?.spaceId
+    ? await SpaceResource.fetchById(auth, useCaseMetadata.spaceId)
+    : null;
 
   if (useCase === "folders_document" && (!space || !space.canRead(auth))) {
     return apiError(req, res, {
@@ -68,6 +67,7 @@ async function handler(
       auth,
       useCaseMetadata.conversationId
     );
+
     if (
       !conversation ||
       !ConversationResource.canAccessConversation(auth, conversation)

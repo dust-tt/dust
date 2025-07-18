@@ -36,13 +36,12 @@ export async function createClientExecutableFile(
     // Validate that the file extension matches the MIME type.
     const fileFormat = INTERACTIVE_FILE_FORMATS[mimeType];
     const fileNameParts = fileName.split(".");
-
     if (fileNameParts.length < 2) {
       const supportedExts = fileFormat.exts.join(", ");
       return new Err(
         new Error(
           `File name must include a valid extension. Supported extensions for ` +
-            `${mimeType}: ${supportedExts}`
+            `${mimeType}: ${supportedExts}.`
         )
       );
     }
@@ -53,7 +52,7 @@ export async function createClientExecutableFile(
       return new Err(
         new Error(
           `File extension ${extension} is not supported for MIME type ${mimeType}. ` +
-            `Supported extensions: ${supportedExts}`
+            `Supported extensions: ${supportedExts}.`
         )
       );
     }
