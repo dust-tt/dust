@@ -18,7 +18,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId, Result } from "@app/types";
 import { Err, md5, Ok } from "@app/types";
-import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentContentItemType,
+  AgentStepContentType,
+} from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -345,7 +348,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     step: number;
     index: number;
     type: "text_content" | "reasoning" | "function_call";
-    value: any;
+    value: AgentContentItemType;
   }): Promise<AgentStepContentResource> {
     return frontSequelize.transaction(async (transaction: Transaction) => {
       // Acquire advisory lock for this step-index combination
