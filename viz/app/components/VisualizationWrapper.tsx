@@ -188,9 +188,11 @@ interface RunnerParams {
 export function VisualizationWrapperWithErrorBoundary({
   identifier,
   allowedVisualizationOrigin,
+  isFullHeight = false,
 }: {
   identifier: string;
   allowedVisualizationOrigin: string | undefined;
+  isFullHeight?: boolean;
 }) {
   const sendCrossDocumentMessage = useMemo(
     () =>
@@ -210,7 +212,11 @@ export function VisualizationWrapperWithErrorBoundary({
         });
       }}
     >
-      <VisualizationWrapper api={api} identifier={identifier} />
+      <VisualizationWrapper
+        api={api}
+        identifier={identifier}
+        isFullHeight={isFullHeight}
+      />
     </ErrorBoundary>
   );
 }
@@ -220,9 +226,11 @@ export function VisualizationWrapperWithErrorBoundary({
 export function VisualizationWrapper({
   api,
   identifier,
+  isFullHeight = false,
 }: {
   api: ReturnType<typeof useVisualizationAPI>;
   identifier: string;
+  isFullHeight?: boolean;
 }) {
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
 
@@ -342,7 +350,11 @@ export function VisualizationWrapper({
   }
 
   return (
-    <div className="relative font-sans group/viz">
+    <div
+      className={`relative font-sans group/viz ${
+        isFullHeight ? "h-screen" : ""
+      }`}
+    >
       <div className="flex flex-row gap-2 absolute top-2 right-2 bg-white rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
         <button
           onClick={handleScreenshotDownload}
@@ -358,15 +370,17 @@ export function VisualizationWrapper({
         >
           Svg
         </button>
-        <button
-          title="Show code"
-          onClick={handleDisplayCode}
-          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border dark:border-border-night text-primary dark:text-primary-night bg-background dark:bg-background-night hover:text-primary dark:hover:text-primary-night hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-150 dark:hover:border-border-night active:bg-primary-300 dark:active:bg-primary-900"
-        >
-          Code
-        </button>
+        {!isFullHeight && (
+          <button
+            title="Show code"
+            onClick={handleDisplayCode}
+            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border dark:border-border-night text-primary dark:text-primary-night bg-background dark:bg-background-night hover:text-primary dark:hover:text-primary-night hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-150 dark:hover:border-border-night active:bg-primary-300 dark:active:bg-primary-900"
+          >
+            Code
+          </button>
+        )}
       </div>
-      <div ref={ref}>
+      <div ref={ref} className={isFullHeight ? "h-full" : ""}>
         <Runner
           code={runnerParams.code}
           scope={runnerParams.scope}

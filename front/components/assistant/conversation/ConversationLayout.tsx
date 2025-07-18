@@ -8,15 +8,13 @@ import React, { useMemo } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { CoEditionContainer } from "@app/components/assistant/conversation/co_edition/CoEditionContainer";
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
-import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
-import { ContentContainer } from "@app/components/assistant/conversation/content/ContentContainer";
+import { InteractiveContentContainer } from "@app/components/assistant/conversation/content/InteractiveContentContainer";
 import {
-  ContentProvider,
-  useContentContext,
-} from "@app/components/assistant/conversation/content/ContentContext";
+  InteractiveContentProvider,
+  useInteractiveContentContext,
+} from "@app/components/assistant/conversation/content/InteractiveContentContext";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   ConversationsNavigationProvider,
@@ -170,15 +168,14 @@ const ConversationLayoutContent = ({
               owner={owner}
               hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
             >
-              <ContentProvider>
+              <InteractiveContentProvider>
                 <ConversationInnerLayout
                   conversation={conversation}
                   owner={owner}
-                  user={user}
                 >
                   {children}
                 </ConversationInnerLayout>
-              </ContentProvider>
+              </InteractiveContentProvider>
             </CoEditionProvider>
             {shouldDisplayWelcomeTourGuide && (
               <WelcomeTourGuide
@@ -202,16 +199,14 @@ interface ConversationInnerLayoutProps {
   children: React.ReactNode;
   conversation: ConversationType | null;
   owner: LightWorkspaceType;
-  user: UserType;
 }
 
 function ConversationInnerLayout({
   children,
   conversation,
   owner,
-  user,
 }: ConversationInnerLayoutProps) {
-  const { isContentOpen, closeContent } = useContentContext();
+  const { isContentOpen } = useInteractiveContentContext();
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -240,12 +235,10 @@ function ConversationInnerLayout({
           className={isContentOpen ? "" : "hidden"}
         >
           {isContentOpen && (
-            <ContentContainer
+            <InteractiveContentContainer
               conversation={conversation}
-              owner={owner}
-              user={user}
               isOpen={isContentOpen}
-              onClose={closeContent}
+              owner={owner}
             />
           )}
         </ResizablePanel>

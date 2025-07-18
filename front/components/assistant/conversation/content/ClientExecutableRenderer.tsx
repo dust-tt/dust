@@ -1,30 +1,44 @@
-import { Button, CodeBlock, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  CodeBlock,
+  CommandLineIcon,
+  SparklesIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import React from "react";
 
+import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { useFileContent } from "@app/lib/swr/files";
-import type { LightWorkspaceType } from "@app/types";
+import type { ConversationType, LightWorkspaceType } from "@app/types";
+
+import { useInteractiveContentContext } from "./InteractiveContentContext";
+import { InteractiveContentHeader } from "./InteractiveContentHeader";
 
 interface ClientExecutableRendererProps {
+  conversation: ConversationType;
   fileId: string;
+  fileName?: string;
   owner: LightWorkspaceType;
 }
 
 export function ClientExecutableRenderer({
+  conversation,
   fileId,
+  fileName,
   owner,
 }: ClientExecutableRendererProps) {
+  const { closeContent } = useInteractiveContentContext();
   const { fileContent, isFileContentLoading, error } = useFileContent({
     fileId,
     owner,
   });
-
   const [showCode, setShowCode] = React.useState(false);
 
   if (isFileContentLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <Spinner size="sm" />
-        <span className="ml-2">Loading executable code...</span>
+        <span className="ml-2">Loading interactive content...</span>
       </div>
     );
   }
@@ -39,19 +53,19 @@ export function ClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header Controls */}
-      <div className="border-structure-200 flex items-center gap-2 border-b px-4 py-2">
+      <InteractiveContentHeader
+        title={fileName || "Client Executable"}
+        subtitle={fileId}
+        onClose={closeContent}
+      >
         <Button
           size="xs"
-          variant={showCode ? "primary" : "outline"}
+          variant="outline"
+          icon={showCode ? SparklesIcon : CommandLineIcon}
           onClick={() => setShowCode(!showCode)}
-        >
-          {showCode ? "Hide Code" : "Show Code"}
-        </Button>
-        <span className="text-element-700 text-xs">
-          Interactive React Component
-        </span>
-      </div>
+          tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
+        />
+      </InteractiveContentHeader>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
@@ -65,14 +79,20 @@ export function ClientExecutableRenderer({
             </CodeBlock>
           </div>
         ) : (
-          <div className="h-full p-4">
-            <div className="bg-structure-50 flex h-full items-center justify-center rounded border-2 border-dashed">
-              <div className="text-element-700 text-center">
-                <p className="text-sm">Interactive Component Execution</p>
-                <p className="mt-1 text-xs">Component will render here</p>
-                <p className="mt-2 text-xs">File ID: {fileId}</p>
-              </div>
-            </div>
+          <div className="h-full">
+            <VisualizationActionIframe
+              // TODO(INTERACTIVE_CONTENT 2025-07-18): Add agent configuration ID.
+              agentConfigurationId={null}
+              owner={owner}
+              visualization={{
+                code: fileContent ?? "",
+                complete: true,
+                identifier: `viz-${fileId}`,
+              }}
+              key={`viz-${fileId}`}
+              conversationId={conversation.sId}
+              isInDrawer={true}
+            />
           </div>
         )}
       </div>

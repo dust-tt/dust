@@ -5,7 +5,7 @@ import {
   CitationTitle,
 } from "@dust-tt/sparkle";
 
-import { useContentContext } from "@app/components/assistant/conversation/content/ContentContext";
+import { useInteractiveContentContext } from "@app/components/assistant/conversation/content/InteractiveContentContext";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import { isInteractiveContentType } from "@app/types";
 
@@ -47,7 +47,7 @@ function InteractiveAgentMessageGeneratedFiles({
   document: MarkdownCitation;
   index: number;
 }) {
-  const { openContent } = useContentContext();
+  const { openContent } = useInteractiveContentContext();
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();

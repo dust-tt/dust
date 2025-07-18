@@ -1,28 +1,34 @@
 import { useRouter } from "next/router";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
-interface ContentContextType {
-  isContentOpen: boolean;
-  contentId: string | null;
-  openContent: (id: string) => void;
+interface InteractiveContentContextType {
   closeContent: () => void;
+  contentId: string | null;
+  isContentOpen: boolean;
+  openContent: (id: string) => void;
 }
 
-const ContentContext = createContext<ContentContextType | undefined>(undefined);
+const InteractiveContentContext = createContext<
+  InteractiveContentContextType | undefined
+>(undefined);
 
-export function useContentContext() {
-  const context = useContext(ContentContext);
+export function useInteractiveContentContext() {
+  const context = useContext(InteractiveContentContext);
   if (!context) {
-    throw new Error("useContentContext must be used within a ContentProvider");
+    throw new Error(
+      "useInteractiveContentContext must be used within a InteractiveContentProvider"
+    );
   }
   return context;
 }
 
-interface ContentProviderProps {
+interface InteractiveContentProviderProps {
   children: React.ReactNode;
 }
 
-export function ContentProvider({ children }: ContentProviderProps) {
+export function InteractiveContentProvider({
+  children,
+}: InteractiveContentProviderProps) {
   const router = useRouter();
   const [isContentOpen, setIsContentOpen] = useState(false);
   const [contentId, setContentId] = useState<string | null>(null);
@@ -82,14 +88,16 @@ export function ContentProvider({ children }: ContentProviderProps) {
     );
   };
 
-  const value: ContentContextType = {
-    isContentOpen,
-    contentId,
-    openContent,
+  const value: InteractiveContentContextType = {
     closeContent,
+    contentId,
+    isContentOpen,
+    openContent,
   };
 
   return (
-    <ContentContext.Provider value={value}>{children}</ContentContext.Provider>
+    <InteractiveContentContext.Provider value={value}>
+      {children}
+    </InteractiveContentContext.Provider>
   );
 }
