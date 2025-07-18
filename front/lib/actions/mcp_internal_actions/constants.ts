@@ -330,6 +330,10 @@ export const INTERNAL_MCP_SERVERS: Record<
     tools_stakes: {
       // Read operations - never ask (no side effects)
       get_issue: "never_ask",
+      get_projects: "never_ask",
+      get_project: "never_ask",
+      get_transitions: "never_ask",
+      transition_issue: "low",
     },
   },
   search: {

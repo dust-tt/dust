@@ -22,8 +22,30 @@ const JiraResourceSchema = z.array(
   })
 );
 
-type JiraErrorResult = string;
+const JiraProjectSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  name: z.string(),
+});
 
+const JiraTransitionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+const JiraTransitionsSchema = z.object({
+  transitions: z.array(JiraTransitionSchema),
+});
+
+const JiraCommentSchema = z.object({
+  id: z.string(),
+  body: z.object({
+    type: z.string(),
+    version: z.number(),
+  }),
+});
+
+type JiraErrorResult = string;
 // Generic wrapper for JIRA API calls with validation
 async function jiraApiCall<T extends z.ZodTypeAny>(
   {
@@ -113,6 +135,57 @@ export async function getIssue({
   return new Ok(result.value);
 }
 
+export async function getProjects(
+  baseUrl: string,
+  accessToken: string
+): Promise<
+  Result<z.infer<typeof JiraProjectSchema>[] | null, JiraErrorResult>
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: "/rest/api/3/project",
+      accessToken,
+    },
+    z.array(JiraProjectSchema),
+    { baseUrl }
+  );
+  return result;
+}
+
+export async function getProject(
+  baseUrl: string,
+  accessToken: string,
+  projectKey: string
+): Promise<Result<z.infer<typeof JiraProjectSchema>[], JiraErrorResult>> {
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/project/${projectKey}`,
+      accessToken,
+    },
+    z.array(JiraProjectSchema),
+    { baseUrl }
+  );
+  return result;
+}
+
+export async function getTransitions(
+  baseUrl: string,
+  accessToken: string,
+  issueKey: string
+): Promise<
+  Result<z.infer<typeof JiraTransitionsSchema> | null, JiraErrorResult>
+> {
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/issue/${issueKey}/transitions`,
+      accessToken,
+    },
+    JiraTransitionsSchema,
+    { baseUrl }
+  );
+  return result;
+}
+
 // Jira resource and URL utilities
 async function getJiraResourceInfo(accessToken: string): Promise<{
   id: string;
@@ -156,4 +229,48 @@ export async function getJiraBaseUrl(
     return `https://api.atlassian.com/ex/jira/${cloudId}`;
   }
   return null;
+}
+
+export async function createComment(
+  baseUrl: string,
+  accessToken: string,
+  issueKey: string,
+  commentBody: string,
+  visibility?: {
+    type: "group" | "role";
+    value: string;
+  }
+): Promise<Result<z.infer<typeof JiraCommentSchema>, JiraErrorResult>> {
+  const requestBody: any = {
+    body: {
+      type: "doc",
+      version: 1,
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: commentBody,
+            },
+          ],
+        },
+      ],
+    },
+  };
+  if (visibility) {
+    requestBody.visibility = visibility;
+  }
+  return jiraApiCall(
+    {
+      endpoint: `/rest/api/3/issue/${issueKey}/comment`,
+      accessToken,
+    },
+    JiraCommentSchema,
+    {
+      method: "POST",
+      body: requestBody,
+      baseUrl,
+    }
+  );
 }
