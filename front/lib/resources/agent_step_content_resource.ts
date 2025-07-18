@@ -43,7 +43,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
    */
   private static async checkAgentMessageAccess(
     auth: Authenticator,
-    agentMessageIds: number[]
+    agentMessageIds: ModelId[]
   ): Promise<void> {
     const agentMessages = await AgentMessage.findAll({
       where: {
@@ -180,7 +180,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       includeMCPActions = false,
       latestVersionsOnly = false,
     }: {
-      agentMessageIds: number[];
+      agentMessageIds: ModelId[];
       transaction?: Transaction;
       includeMCPActions?: boolean;
       latestVersionsOnly?: boolean;
@@ -241,7 +241,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       includeMCPActions = false,
       latestVersionsOnly = false,
     }: {
-      agentMessageId: number;
+      agentMessageId: ModelId;
       step: number;
       transaction?: Transaction;
       includeMCPActions?: boolean;
