@@ -58,7 +58,7 @@ export function useDraftAgent() {
     debouncedValue: debouncedInstructions,
     setValue: setDebouncedInstructions,
   } = useDebounce(instructions, {
-    delay: 300,
+    delay: 500,
   });
   const {
     debouncedValue: debouncedAgentName,
@@ -66,6 +66,8 @@ export function useDraftAgent() {
   } = useDebounce(agentName, { delay: 300 });
 
   useEffect(() => {
+    // show spinner already when a user starts typing
+    setIsSavingDraftAgent(true);
     setDebouncedInstructions(instructions);
   }, [instructions, setDebouncedInstructions]);
 
@@ -146,7 +148,7 @@ export function useDraftAgent() {
       const hasContent =
         (actions && actions.length > 0) || debouncedInstructions?.trim();
 
-      if (!isSavingDraftAgent && hasContent) {
+      if (hasContent) {
         void createDraftAgent();
       }
 
