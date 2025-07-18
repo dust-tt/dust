@@ -48,7 +48,7 @@ const createServer = (): McpServer => {
           }
           if (issue.isErr()) {
             return makeMCPToolTextError(
-              `Error retrieving issue: ${issue.error.error}`
+              `Error retrieving issue: ${issue.error}`
             );
           }
           return makeMCPToolJSONSuccess({

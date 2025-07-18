@@ -22,12 +22,10 @@ const JiraResourceSchema = z.array(
   })
 );
 
-type JiraIssue = z.infer<typeof JiraIssueSchema>;
-type JiraErrorResult = { error: string };
-type GetIssueResult = JiraIssue | null;
+type JiraErrorResult = string;
 
 // Generic wrapper for JIRA API calls with validation
-async function jiraApiCall<T>(
+async function jiraApiCall<T extends z.ZodTypeAny>(
   {
     endpoint,
     accessToken,
@@ -35,13 +33,13 @@ async function jiraApiCall<T>(
     endpoint: string;
     accessToken: string;
   },
-  schema: z.ZodSchema<T>,
+  schema: T,
   options: {
     method?: "GET" | "POST" | "PUT" | "DELETE";
     body?: any;
     baseUrl: string;
   }
-): Promise<Result<T, JiraErrorResult>> {
+): Promise<Result<z.infer<T>, JiraErrorResult>> {
   try {
     const response = await fetch(`${options.baseUrl}${endpoint}`, {
       method: options.method || "GET",
@@ -55,38 +53,33 @@ async function jiraApiCall<T>(
 
     if (!response.ok) {
       const errorBody = await response.text();
-      const msg = `[JIRA MCP Server] JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
-      logger.error(msg);
-      return new Err({ error: msg });
+      const msg = `JIRA API error: ${response.status} ${response.statusText} - ${errorBody}`;
+      logger.error(`[JIRA MCP Server] ${msg}`);
+      return new Err(msg);
     }
 
     const responseText = await response.text();
     if (!responseText) {
-      return new Err({
-        error: "[JIRA MCP Server] Empty response from JIRA API",
-      });
+      return new Err("Empty response from JIRA API");
     }
 
     const rawData = JSON.parse(responseText);
     const parseResult = schema.safeParse(rawData);
 
     if (!parseResult.success) {
-      const msg = `[JIRA MCP Server] Invalid JIRA response format: ${parseResult.error.message}`;
-      logger.error(msg, { rawData });
-      return new Err({ error: msg });
+      const msg = `Invalid JIRA response format: ${parseResult.error.message}`;
+      logger.error(`[JIRA MCP Server] ${msg}`);
+      return new Err(msg);
     }
 
     return new Ok(parseResult.data);
   } catch (error: unknown) {
-    logger.error(
-      `[JIRA MCP Server] JIRA API call failed for ${endpoint}:`,
-      error
-    );
-    return new Err({ error: normalizeError(error).message });
+    logger.error(`[JIRA MCP Server] JIRA API call failed for ${endpoint}:`);
+    return new Err(normalizeError(error).message);
   }
 }
 
-export const getIssue = async ({
+export async function getIssue({
   baseUrl,
   accessToken,
   issueKey,
@@ -94,7 +87,7 @@ export const getIssue = async ({
   baseUrl: string;
   accessToken: string;
   issueKey: string;
-}): Promise<Result<GetIssueResult, JiraErrorResult>> => {
+}): Promise<Result<z.infer<typeof JiraIssueSchema> | null, JiraErrorResult>> {
   const result = await jiraApiCall(
     {
       endpoint: `/rest/api/3/issue/${issueKey}`,
@@ -105,7 +98,7 @@ export const getIssue = async ({
   );
   if (result.isErr()) {
     // Handle 404 as "not found" rather than an error
-    if (result.error.error.includes("404")) {
+    if (result.error.includes("404")) {
       return new Ok(null);
     }
     return result;
@@ -118,7 +111,7 @@ export const getIssue = async ({
     };
   }
   return new Ok(result.value);
-};
+}
 
 // Jira resource and URL utilities
 async function getJiraResourceInfo(accessToken: string): Promise<{
@@ -154,15 +147,11 @@ async function getJiraResourceInfo(accessToken: string): Promise<{
   return null;
 }
 
-async function getJiraCloudId(accessToken: string): Promise<string | null> {
-  const resourceInfo = await getJiraResourceInfo(accessToken);
-  return resourceInfo?.id || null;
-}
-
 export async function getJiraBaseUrl(
   accessToken: string
 ): Promise<string | null> {
-  const cloudId = await getJiraCloudId(accessToken);
+  const resourceInfo = await getJiraResourceInfo(accessToken);
+  const cloudId = resourceInfo?.id || null;
   if (cloudId) {
     return `https://api.atlassian.com/ex/jira/${cloudId}`;
   }

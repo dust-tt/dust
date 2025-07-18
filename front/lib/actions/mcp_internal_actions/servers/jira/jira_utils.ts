@@ -1,11 +1,10 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
+import { getJiraBaseUrl } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
-
-import { getJiraBaseUrl } from "./jira_api_helper";
 
 type WithAuthParams = {
   authInfo?: AuthInfo;
