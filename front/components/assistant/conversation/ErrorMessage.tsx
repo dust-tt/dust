@@ -61,7 +61,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
           }
           content={
             <div className="flex flex-col gap-3">
-              <div className="whitespace-normal text-sm font-normal text-warning-800">
+              <div className="whitespace-normal text-sm font-normal text-warning">
                 {debugInfo}
               </div>
               <div className="self-end">
