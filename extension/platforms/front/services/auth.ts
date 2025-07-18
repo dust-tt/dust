@@ -1,8 +1,4 @@
-import {
-  DUST_API_AUDIENCE,
-  DUST_US_URL,
-  FRONT_EXTENSION_URL,
-} from "@app/shared/lib/config";
+import { DUST_US_URL, FRONT_EXTENSION_URL } from "@app/shared/lib/config";
 import { generatePKCE } from "@app/shared/lib/utils";
 import type { StoredTokens } from "@app/shared/services/auth";
 import {

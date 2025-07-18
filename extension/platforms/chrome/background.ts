@@ -10,7 +10,7 @@ import type {
 } from "@app/platforms/chrome/messages";
 import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
 import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
-import { DUST_API_AUDIENCE, DUST_US_URL } from "@app/shared/lib/config";
+import { DUST_US_URL } from "@app/shared/lib/config";
 import { extractPage } from "@app/shared/lib/extraction";
 import { generatePKCE } from "@app/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";

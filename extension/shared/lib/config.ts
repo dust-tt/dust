@@ -1,6 +1,3 @@
-export const DUST_API_AUDIENCE = process.env.DUST_API_AUDIENCE ?? "";
-
-// WorkOS config.
 export const WORKOS_CLIENT_ID = process.env.WORKOS_CLIENT_ID ?? "";
 export const WORKOS_DOMAIN =
   process.env.WORKOS_DOMAIN ?? "https://api.workos.com";
