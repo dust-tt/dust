@@ -7,12 +7,12 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import { renderAgentMCPAction } from "@app/lib/actions/mcp";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -349,16 +349,10 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     };
 
     if ("agentMCPActions" in this && Array.isArray(this.agentMCPActions)) {
-      const mcpActions = this.agentMCPActions as AgentMCPAction[];
-
       // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
-      base.mcpActions = mcpActions.map((action: AgentMCPAction) => {
-        const resource = new AgentMCPActionResource(
-          AgentMCPAction,
-          action.get ? action.get() : action
-        );
-        return resource.toJSON();
-      });
+      base.mcpActions = this.agentMCPActions.map((action: AgentMCPAction) =>
+        renderAgentMCPAction(action)
+      );
     }
 
     return base;

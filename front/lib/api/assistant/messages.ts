@@ -39,7 +39,6 @@ import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import { renderAgentMCPAction } from "@app/lib/actions/mcp";
 
 export function getMaximalVersionAgentStepContent(
   agentStepContents: AgentStepContentModel[]
@@ -193,7 +192,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       const agentMessage = message.agentMessage;
 
       const actions = agentMCPActions
-        .filter((a) => a.agentMessageModelId === agentMessage.id)
+        .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);
 
       const agentConfiguration = agentConfigurations.find(
@@ -286,7 +285,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         parentMessageId:
           messages.find((m) => m.id === message.parentId)?.sId ?? null,
         status: agentMessage.status,
-        actions: actions.map((a) => renderAgentMCPAction(auth, a)),
+        actions,
         content,
         chainOfThought,
         rawContents: textContents.map((c) => ({

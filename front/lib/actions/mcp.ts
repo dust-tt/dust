@@ -61,7 +61,6 @@ import {
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FileModel } from "@app/lib/resources/storage/models/files";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -92,7 +91,6 @@ import {
   removeNulls,
   stripNullBytes,
 } from "@app/types";
-import { AgentMCPActionType } from "@app/types/assistant/agent_message_content";
 
 const MAX_BLOB_SIZE_BYTES = 1024 * 1024 * 10; // 10MB
 
@@ -1179,17 +1177,14 @@ async function handleBase64Upload(
  * Action rendering.
  */
 
-export function renderAgentMCPAction(
-  auth: Authenticator,
-  action: AgentMCPActionType
-): MCPActionType {
+export function renderAgentMCPAction(action: AgentMCPAction): MCPActionType {
   return new MCPActionType({
     id: action.id,
     params: action.params,
     output: removeNulls(action.outputItems.map(hideFileFromActionOutput)),
     functionCallId: action.functionCallId,
     functionCallName: action.functionCallName,
-    agentMessageId: action.agentMessageModelId,
+    agentMessageId: action.agentMessageId,
     step: action.step,
     mcpServerConfigurationId: action.mcpServerConfigurationId,
     executionState: action.executionState,
@@ -1204,7 +1199,7 @@ export function renderAgentMCPAction(
         const file = o.file;
         const fileSid = FileResource.modelIdToSId({
           id: file.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: action.workspaceId,
         });
 
         return {
