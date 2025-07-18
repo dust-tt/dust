@@ -129,6 +129,8 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         headers: customHeaders,
         maxAge: 43_200_000, // Use last 12h of cache
         actions: webCrawlerConfig.actions ?? undefined,
+        // Ok to `as` for now. API support actions but the SDK doesn't have the types
+        // PR: https://github.com/dust-tt/dust/pull/14308
       } as CrawlScrapeOptions & { actions?: Action[] },
       webhook: {
         url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
