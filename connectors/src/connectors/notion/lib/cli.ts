@@ -1,13 +1,13 @@
 import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
+import { getNotionAccessToken } from "@connectors/connectors/notion/lib/access_token";
 import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parents";
 import { pageOrDbIdFromUrl } from "@connectors/connectors/notion/lib/utils";
 import {
   clearParentsLastUpdatedAt,
   deleteDatabase,
   deletePage,
-  getNotionAccessToken,
   updateParentsFields,
 } from "@connectors/connectors/notion/temporal/activities";
 import {
@@ -84,14 +84,13 @@ async function listSkippedDatabaseIdsForConnectorId(connectorId: ModelId) {
 
 export async function searchNotionPagesForQuery({
   connectorId,
-  connectionId,
   query,
 }: {
   connectorId: ModelId;
   connectionId: string;
   query: string;
 }) {
-  const notionAccessToken = await getNotionAccessToken(connectionId);
+  const notionAccessToken = await getNotionAccessToken(connectorId);
 
   const notionClient = new Client({
     auth: notionAccessToken,
@@ -209,7 +208,7 @@ export async function checkNotionUrl({
   connectionId: string;
   url: string;
 }) {
-  const notionAccessToken = await getNotionAccessToken(connectionId);
+  const notionAccessToken = await getNotionAccessToken(connectorId);
 
   const pageOrDbId = pageOrDbIdFromUrl(url);
 
@@ -636,9 +635,7 @@ export const notion = async ({
     case "me": {
       const connector = await getConnector(args);
 
-      const notionAccessToken = await getNotionAccessToken(
-        connector.connectionId
-      );
+      const notionAccessToken = await getNotionAccessToken(connector.id);
 
       const notionClient = new Client({
         auth: notionAccessToken,

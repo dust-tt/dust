@@ -88,6 +88,7 @@ async function handler(
       "zendeskHideCustomerDetails",
       "gongRetentionPeriodDays",
       "gongTrackersEnabled",
+      "privateIntegrationCredentialId",
     ].includes(configKey)
   ) {
     return apiError(req, res, {
