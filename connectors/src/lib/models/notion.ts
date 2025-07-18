@@ -15,6 +15,7 @@ export class NotionConnectorState extends ConnectorBaseModel<NotionConnectorStat
   declare parentsLastUpdatedAt?: Date | null;
 
   declare notionWorkspaceId: string;
+  declare privateIntegrationCredentialId?: string | null;
 }
 NotionConnectorState.init(
   {
@@ -43,6 +44,10 @@ NotionConnectorState.init(
     notionWorkspaceId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    privateIntegrationCredentialId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
   },
   {

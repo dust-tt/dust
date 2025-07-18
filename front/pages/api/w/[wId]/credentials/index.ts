@@ -11,6 +11,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import {
   BigQueryCredentialsWithLocationSchema,
+  NotionCredentialsSchema,
   OAuthAPI,
   SalesforceCredentialsSchema,
   SnowflakeCredentialsSchema,
@@ -31,10 +32,16 @@ const PostSalesforceCredentialsBodySchema = t.type({
   credentials: SalesforceCredentialsSchema,
 });
 
+const PostNotionCredentialsBodySchema = t.type({
+  provider: t.literal("notion"),
+  credentials: NotionCredentialsSchema,
+});
+
 const PostCredentialsBodySchema = t.union([
   PostSnowflakeCredentialsBodySchema,
   PostBigQueryCredentialsBodySchema,
   PostSalesforceCredentialsBodySchema,
+  PostNotionCredentialsBodySchema,
 ]);
 
 export type PostCredentialsBody = t.TypeOf<typeof PostCredentialsBodySchema>;

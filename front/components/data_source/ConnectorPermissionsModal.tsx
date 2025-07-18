@@ -42,6 +42,7 @@ import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
+import { SetupNotionPrivateIntegrationModal } from "@app/components/data_source/SetupNotionPrivateIntegrationModal";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
 import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
@@ -650,7 +651,12 @@ export function ConnectorPermissionsModal({
   }, [initialTreeSelectionModel, isOpen]);
 
   const [modalToShow, setModalToShow] = useState<
-    "data_updated" | "edition" | "selection" | "deletion" | null
+    | "data_updated"
+    | "edition"
+    | "selection"
+    | "deletion"
+    | "private_integration"
+    | null
   >(null);
 
   const { activeSubscription } = useWorkspaceActiveSubscription({
@@ -821,6 +827,15 @@ export function ConnectorPermissionsModal({
                       disabled={permissionsConfigurable.blocked}
                     />
                   )}
+                  {dataSource.connectorProvider === "notion" &&
+                    featureFlags.includes("notion_private_integration") && (
+                      <Button
+                        label="Setup Private Integration"
+                        variant="outline"
+                        icon={LockIcon}
+                        onClick={() => setModalToShow("private_integration")}
+                      />
+                    )}
                   {isDeletable && (
                     <Button
                       label="Delete connection"
@@ -948,6 +963,21 @@ export function ConnectorPermissionsModal({
           case "google_drive":
           case "intercom":
           case "notion":
+            if (modalToShow === "private_integration") {
+              return (
+                <SetupNotionPrivateIntegrationModal
+                  isOpen={true}
+                  onClose={() => closeModal(false)}
+                  dataSource={dataSource}
+                  owner={owner}
+                  onSuccess={() => {
+                    closeModal(false);
+                  }}
+                  sendNotification={sendNotification}
+                />
+              );
+            }
+          // Fall through to OAuth modal
           case "slack":
           case "microsoft":
           case "zendesk":

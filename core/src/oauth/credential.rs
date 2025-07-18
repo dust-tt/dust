@@ -26,6 +26,7 @@ pub enum CredentialProvider {
     Jira,
     Monday,
     Mcp,
+    Notion,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -214,6 +215,9 @@ impl Credential {
             }
             CredentialProvider::Mcp => {
                 vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::Notion => {
+                vec!["integration_token"]
             }
         };
 
