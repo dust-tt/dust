@@ -13,11 +13,13 @@ import React, {
 
 import { formatFileSize, isImageFile } from "../../utils/fileHandling.js";
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
+import type { Plan } from "../../utils/planManager.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import type { Command } from "../commands/types.js";
 import { CommandSelector } from "./CommandSelector.js";
 import type { UploadedFile } from "./FileUpload.js";
 import { InputBox } from "./InputBox.js";
+import { PlanDisplay } from "./PlanDisplay.js";
 
 export type ConversationItem = { key: string } & (
   | {
@@ -53,6 +55,10 @@ export type ConversationItem = { key: string } & (
     }
   | {
       type: "agent_message_cancelled";
+    }
+  | {
+      type: "plan";
+      plan: Plan;
     }
   | {
       type: "separator";
@@ -247,6 +253,12 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
       return (
         <Box marginBottom={1} marginTop={1}>
           <Text color="red">[Cancelled]</Text>
+        </Box>
+      );
+    case "plan":
+      return (
+        <Box marginBottom={1}>
+          <PlanDisplay plan={item.plan} compact={true} />
         </Box>
       );
     case "separator":

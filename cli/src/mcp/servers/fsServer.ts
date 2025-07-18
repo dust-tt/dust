@@ -3,7 +3,7 @@ import { DustMcpServerTransport } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { RunCommandTool } from "../tools/command.js";
-import { CreatePlanTool } from "../tools/createPlan.js";
+import { CreatePlanTool, UpdatePlanTool } from "../tools/createPlan.js";
 import { EditFileTool } from "../tools/editFile.js";
 import { ReadFileTool } from "../tools/readFile.js";
 import { SearchContentTool } from "../tools/searchContent.js";
@@ -30,6 +30,7 @@ export const useFileSystemServer = async (
   const editFileTool = new EditFileTool();
   const runCommandTool = new RunCommandTool();
   const createPlanTool = new CreatePlanTool();
+  const updatePlanTool = new UpdatePlanTool();
 
   if (diffApprovalCallback) {
     editFileTool.setDiffApprovalCallback(diffApprovalCallback);
@@ -77,6 +78,13 @@ export const useFileSystemServer = async (
     createPlanTool.description,
     createPlanTool.inputSchema.shape,
     createPlanTool.execute.bind(createPlanTool)
+  );
+
+  server.tool(
+    updatePlanTool.name,
+    updatePlanTool.description,
+    updatePlanTool.inputSchema.shape,
+    updatePlanTool.execute.bind(updatePlanTool)
   );
 
   // Connect to Dust with enhanced error handling

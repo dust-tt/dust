@@ -20,6 +20,8 @@ import {
 } from "../../utils/fileHandling.js";
 import { useAgents } from "../../utils/hooks/use_agents.js";
 import { useMe } from "../../utils/hooks/use_me.js";
+import type { PlanUpdateEvent } from "../../utils/planManager.js";
+import { planManager } from "../../utils/planManager.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import { toolsCache } from "../../utils/toolsCache.js";
 import AgentSelector from "../components/AgentSelector.js";
@@ -377,6 +379,50 @@ const CliChat: FC<CliChatProps> = ({
     setIsProcessingQuestion(true);
     void sendNonInteractiveMessage(message, selectedAgent, me, conversationId);
   }, [message, selectedAgent, me, meError, isMeLoading, conversationId]);
+
+  // Set up plan event listeners
+  useEffect(() => {
+    const handlePlanEvent = (event: PlanUpdateEvent) => {
+      if (event.plan) {
+        // Add or update plan item in conversation
+        const plan = event.plan; // Type guard ensures plan is defined
+        setConversationItems((prev) => {
+          const withoutPlan = prev.filter((item) => item.type !== "plan");
+          return [
+            ...withoutPlan,
+            {
+              key: `plan_${Date.now()}`,
+              type: "plan",
+              plan: plan,
+            },
+          ];
+        });
+      }
+    };
+
+    planManager.addUpdateCallback(handlePlanEvent);
+
+    // Set initial plan if one exists
+    const existingPlan = planManager.getCurrentPlan();
+    if (existingPlan) {
+      // Add initial plan to conversation items
+      setConversationItems((prev) => {
+        const withoutPlan = prev.filter((item) => item.type !== "plan");
+        return [
+          ...withoutPlan,
+          {
+            key: `plan_${Date.now()}`,
+            type: "plan",
+            plan: existingPlan,
+          },
+        ];
+      });
+    }
+
+    return () => {
+      planManager.removeUpdateCallback(handlePlanEvent);
+    };
+  }, []);
 
   const canSubmit =
     me &&
