@@ -29,6 +29,7 @@ interface InteractiveContentProviderProps {
   children: React.ReactNode;
 }
 
+// FIXME: Shallow routing does not close the content.
 export function InteractiveContentProvider({
   children,
 }: InteractiveContentProviderProps) {

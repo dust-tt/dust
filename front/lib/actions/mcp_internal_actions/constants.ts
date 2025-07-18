@@ -322,13 +322,6 @@ export const INTERNAL_MCP_SERVERS: Record<
       return !featureFlags.includes("agent_memory_tools");
     },
   },
-  interactive_content: {
-    id: 22,
-    availability: "auto_hidden_builder",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("interactive_content_server");
-    },
-  },
   jira: {
     id: 22,
     availability: "manual",
@@ -338,6 +331,13 @@ export const INTERNAL_MCP_SERVERS: Record<
     tools_stakes: {
       // Read operations - never ask (no side effects)
       get_issue: "never_ask",
+    },
+  },
+  interactive_content: {
+    id: 23,
+    availability: "auto_hidden_builder",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("interactive_content_server");
     },
   },
   search: {

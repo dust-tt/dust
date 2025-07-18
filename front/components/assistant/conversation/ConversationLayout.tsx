@@ -1,4 +1,5 @@
 import {
+  cn,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -232,7 +233,7 @@ function ConversationInnerLayout({
         <ResizablePanel
           minSize={20}
           defaultSize={50}
-          className={isContentOpen ? "" : "hidden"}
+          className={cn(!isContentOpen && "hidden")}
         >
           {isContentOpen && (
             <InteractiveContentContainer

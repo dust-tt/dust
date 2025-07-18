@@ -37,6 +37,8 @@ function DefaultAgentMessageGeneratedFiles({
   );
 }
 
+// TODO(INTERACTIVE_CONTENT): This is a temporary component to handle interactive content.
+// Should be a proper tile component.
 function InteractiveAgentMessageGeneratedFiles({
   document,
   index,

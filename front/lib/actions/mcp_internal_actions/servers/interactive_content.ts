@@ -17,7 +17,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "interactive_content",
   version: "1.0.0",
   description:
-    "Create and update client-executable files (JavaScript/TypeScript) that can run in the browser. Supports React components, visualizations, and other frontend code.",
+    "Create and update interactive content files that users can execute and interact with. Currently supports client-executable code, with plans to expand to other interactive content types.",
   authorization: null,
   icon: "ActionDocumentTextIcon",
   documentationUrl: null,
@@ -26,10 +26,11 @@ const serverInfo: InternalMCPServerDefinitionType = {
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
 /**
- * This server lets the model create and update files. For now it only supports client-executable
- * files (JavaScript/TypeScript). We only return text responses, meaning that those files won't
- * be searchable/includable by the model. This is fine for now, as the function call input
- * contains the whole file content.
+ * Interactive Content Server - Allows the model to create and update interactive content files.
+ * Interactive content includes any file that users can execute, run, or interact with directly.
+ * Currently supports client-executable files, with plans to expand to other interactive formats.
+ * Files are rendered in an interactive content viewer where users can execute and interact with them.
+ * We return the file resource only on file creation, as edit updates the existing file.
  */
 const createServer = (
   auth: Authenticator,
@@ -37,7 +38,7 @@ const createServer = (
 ): McpServer => {
   const server = new McpServer(serverInfo);
 
-  // TODO(FILE_MANAGER): Temporary used to ensure this server is only available if the agent has
+  // TODO(INTERACTIVE_CONTENT): Temporary used to ensure this server is only available if the agent has
   // the visualization tool enabled.
   // FIXME:
   // const hasVisualizationTool =
@@ -49,27 +50,36 @@ const createServer = (
 
   server.tool(
     "create_file",
-    "Create a new file with the specified internal MIME type. This supports any internal file format defined in the system.",
+    "Create a new interactive content file that users can execute or interact with. Use this for " +
+      "content that provides functionality beyond static viewing.",
     {
       file_name: z
         .string()
         .describe(
-          "The name of the file to create, including extension (e.g., 'MyComponent.tsx', 'script.js')"
+          "The name of the interactive content file to create, including extension (e.g., " +
+            "DataVisualization.tsx, analysis.py, dashboard.html)"
         ),
       mime_type: z
         .enum(Object.keys(INTERNAL_FILE_FORMATS) as [InternalFileContentType])
         .describe(
-          "The internal MIME type for the file. Available types: " +
-            Object.keys(INTERNAL_FILE_FORMATS).join(", ")
+          "The MIME type for the interactive content. Currently supports " +
+            "'application/vnd.dust.client-executable' for client-side executable files."
         ),
       content: z
         .string()
         .max(MAX_FILE_SIZE_BYTES)
-        .describe("The content to write to the file"),
+        .describe(
+          "The content for the interactive file. Should be complete and ready for execution or " +
+            "interaction."
+        ),
       description: z
         .string()
         .optional()
-        .describe("Optional description of the file's purpose"),
+        .describe(
+          "Optional description of what this interactive content does (e.g., " +
+            "'Interactive data visualization', 'Executable analysis script', " +
+            "'Dynamic dashboard')"
+        ),
     },
     async ({ file_name, mime_type, content, description }) => {
       const result = await createClientExecutableFile(auth, {
@@ -111,19 +121,28 @@ const createServer = (
 
   server.tool(
     "update_file",
-    "Update the content of an existing file with an internal MIME type by its file ID.",
+    "Update the content of an existing interactive content file by its file ID. Use this to " +
+      "modify or improve existing interactive content.",
     {
       file_id: z
         .string()
-        .describe("The ID of the file to update (e.g., 'fil_abc123')"),
+        .describe(
+          "The ID of the interactive content file to update (e.g., 'fil_abc123')"
+        ),
       content: z
         .string()
         .max(MAX_FILE_SIZE_BYTES)
-        .describe("The new content to write to the file"),
+        .describe(
+          "The updated content for the interactive file. Should be complete and ready for " +
+            "execution or interaction."
+        ),
       description: z
         .string()
         .optional()
-        .describe("Optional description of the changes made"),
+        .describe(
+          "Optional description of what changes were made to the interactive content (e.g., " +
+            "'Enhanced user interaction', 'Fixed functionality', 'Added new features')"
+        ),
     },
     async ({ file_id, content, description }) => {
       const result = await updateClientExecutableFile(auth, {

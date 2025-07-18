@@ -1,5 +1,6 @@
 import {
   Button,
+  cn,
   CodeBlock,
   Markdown,
   MarkdownContentContext,
@@ -21,7 +22,6 @@ import {
 } from "react";
 
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
-import { classNames } from "@app/lib/utils";
 import type {
   CommandResultMap,
   LightWorkspaceType,
@@ -269,12 +269,7 @@ export function VisualizationActionIframe({
   const canRetry = useContext(MarkdownContentContext)?.isLastMessage ?? false;
 
   return (
-    <div
-      className={classNames(
-        "relative flex flex-col",
-        isInDrawer ? "h-full" : ""
-      )}
-    >
+    <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
       {showSpinner && (
         <div className="absolute inset-0 flex items-center justify-center bg-white">
           <Spinner size="xl" />
@@ -288,14 +283,14 @@ export function VisualizationActionIframe({
         />
       )}
       <div
-        className={classNames(
+        className={cn(
           "relative w-full overflow-hidden",
-          codeFullyGenerated && !isErrored ? "min-h-96" : "",
+          codeFullyGenerated && !isErrored && "min-h-96",
           errorMessage && "h-full",
           isInDrawer && "h-full"
         )}
       >
-        <div className={classNames("flex", isInDrawer && "h-full")}>
+        <div className={cn("flex", isInDrawer && "h-full")}>
           {!codeFullyGenerated ? (
             <div className="flex h-full w-full shrink-0">
               <Markdown
@@ -316,17 +311,14 @@ export function VisualizationActionIframe({
                           minHeight: "96px",
                         }
                   }
-                  className={classNames(
+                  className={cn(
                     "w-full",
                     isInDrawer ? "h-full" : "max-h-[600px]"
                   )}
                 >
                   <iframe
                     ref={vizIframeRef}
-                    className={classNames(
-                      "h-full w-full",
-                      !errorMessage ? "min-h-96" : ""
-                    )}
+                    className={cn("h-full w-full", !errorMessage && "min-h-96")}
                     src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}${isInDrawer ? "&fullHeight=true" : ""}`}
                     sandbox="allow-scripts"
                   />
