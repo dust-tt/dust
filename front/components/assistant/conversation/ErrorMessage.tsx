@@ -1,7 +1,7 @@
 import {
   ArrowPathIcon,
   Button,
-  Chip,
+  ContentMessage,
   DocumentPileIcon,
   EyeIcon,
   Popover,
@@ -10,11 +10,33 @@ import {
 import { useSubmitFunction } from "@app/lib/client/utils";
 import type { AgentErrorContent } from "@app/types";
 import { isAgentErrorCategory } from "@app/types";
-import { truncate } from "@app/types/shared/utils/string_utils";
 
 interface ErrorMessageProps {
   error: AgentErrorContent;
   retryHandler: () => void;
+}
+
+function getErrorTitle(error: AgentErrorContent): string | undefined {
+  if (!isAgentErrorCategory(error.metadata?.category)) {
+    return undefined;
+  }
+
+  switch (error.metadata?.category) {
+    case "retryable_model_error":
+      return "Model Error";
+    case "context_window_exceeded":
+      return "Context Window Exceeded";
+    case "provider_internal_error":
+      return "Provider Internal Error";
+    case "stream_error":
+      return "Stream Error";
+    case "unknown_error":
+      return "Unknown Error";
+    case "invalid_response_format_configuration":
+      return "Invalid Response Format Configuration";
+    default:
+      return undefined;
+  }
 }
 
 export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
@@ -30,20 +52,32 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
     async () => retryHandler()
   );
 
+  const errorTitle = getErrorTitle(error) || "Error";
+
   return (
-    <div className="flex flex-col gap-9">
-      <div className="flex flex-col gap-1 sm:flex-row">
-        <Chip
-          color={errorIsRetryable ? "golden" : "warning"}
-          label={"Error: " + truncate(error.message, 30)}
-          size="xs"
+    <ContentMessage
+      title={errorTitle}
+      variant={errorIsRetryable ? "golden" : "warning"}
+      className="flex flex-col gap-3"
+    >
+      <div className="whitespace-normal break-words">
+        {fullMessage}
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button
+          variant="outline"
+          size="sm"
+          icon={ArrowPathIcon}
+          label="Retry"
+          onClick={retry}
+          disabled={isRetrying}
         />
         <Popover
           popoverTriggerAsChild
           trigger={
             <Button
               variant="outline"
-              size="xs"
+              size="sm"
               icon={EyeIcon}
               label="See the error"
             />
@@ -68,16 +102,6 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
           }
         />
       </div>
-      <div>
-        <Button
-          variant="outline"
-          size="sm"
-          icon={ArrowPathIcon}
-          label="Retry"
-          onClick={retry}
-          disabled={isRetrying}
-        />
-      </div>
-    </div>
+    </ContentMessage>
   );
 }
