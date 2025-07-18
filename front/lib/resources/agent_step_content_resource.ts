@@ -10,7 +10,10 @@ import { Op } from "sequelize";
 import { renderAgentMCPAction } from "@app/lib/actions/mcp";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
+import {
+  AgentMCPAction,
+  AgentMCPActionOutputItem,
+} from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -139,6 +142,13 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         model: AgentMCPAction,
         as: "agentMCPActions",
         required: false,
+        include: [
+          {
+            model: AgentMCPActionOutputItem,
+            as: "outputItems",
+            required: true,
+          },
+        ],
       },
     ];
   }
