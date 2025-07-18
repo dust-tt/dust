@@ -77,11 +77,15 @@ export default function LandingLayout({
     }
 
     if (geoData && geoData.isGDPR === false) {
-      setCookieApproval("auto");
+      // For non-GDPR countries (like US), show banner and set cookies to auto
+      setShowCookieBanner(true);
+      setHasAcceptedCookies(true); // Enable cookies immediately for non-GDPR
+      // Note: We don't set the cookie value here, letting the user choose to accept/reject
     } else {
+      // For GDPR countries, just show the banner
       setShowCookieBanner(true);
     }
-  }, [geoData, isGeoDataLoading, setCookieApproval, cookieValue]);
+  }, [geoData, isGeoDataLoading, cookieValue]);
 
   return (
     <>
