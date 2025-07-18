@@ -61,7 +61,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
       className="flex flex-col gap-3"
     >
       <div className="whitespace-normal break-words">{fullMessage}</div>
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-col gap-2 sm:flex-row pt-3">
         <Button
           variant="outline"
           size="sm"
