@@ -15,9 +15,9 @@ import {
   CUSTOM_SERVER_ALLOWED,
   INTERNAL_ALLOWED_ICONS,
 } from "@app/lib/actions/mcp_icons";
-import type { SupportedFileContentType } from "@app/types";
+import type { AllSupportedFileContentType } from "@app/types";
 import { CONNECTOR_PROVIDERS } from "@app/types";
-import { FILE_FORMATS } from "@app/types";
+import { ALL_FILE_FORMATS } from "@app/types";
 
 export function isBlobResource(
   outputBlock: CallToolResult["content"][number]
@@ -41,9 +41,9 @@ const ToolGeneratedFileSchema = z.object({
   fileId: z.string(),
   title: z.string(),
   contentType: z.enum(
-    Object.keys(FILE_FORMATS) as [
-      SupportedFileContentType,
-      ...SupportedFileContentType[],
+    Object.keys(ALL_FILE_FORMATS) as [
+      AllSupportedFileContentType,
+      ...AllSupportedFileContentType[],
     ]
   ),
   snippet: z.string().nullable(),

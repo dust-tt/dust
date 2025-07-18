@@ -5,7 +5,7 @@ import { visit } from "unist-util-visit";
 import {
   getFileProcessedUrl,
   getProcessedFileDownloadUrl,
-} from "@app/lib/swr/file";
+} from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types";
 
 interface ImgProps {

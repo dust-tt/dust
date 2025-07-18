@@ -273,7 +273,11 @@ function hideFileFromActionOutput({
 function rewriteContentForModel(
   content: CallToolResult["content"][number]
 ): CallToolResult["content"][number] | null {
-  if (isToolGeneratedFile(content)) {
+  // Only render tool generated files that are supported.
+  if (
+    isToolGeneratedFile(content) &&
+    isSupportedFileContentType(content.resource.contentType)
+  ) {
     const attachment = getAttachmentFromToolOutput({
       fileId: content.resource.fileId,
       contentType: content.resource.contentType,

@@ -3,10 +3,6 @@ import {
   ArrowPathIcon,
   Button,
   Chip,
-  Citation,
-  CitationIcons,
-  CitationIndex,
-  CitationTitle,
   ClipboardCheckIcon,
   ClipboardIcon,
   ContentMessage,
@@ -25,6 +21,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { AgentMessageGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -664,9 +661,11 @@ export function AgentMessage({
               activeReferences: generatedFiles.map((file) => ({
                 index: -1,
                 document: {
+                  contentType: file.contentType,
+                  fileId: file.fileId,
                   href: `/api/w/${owner.sId}/files/${file.fileId}`,
-                  title: file.title,
                   icon: <DocumentIcon />,
+                  title: file.title,
                 },
               })),
             })}
@@ -709,15 +708,14 @@ function getCitations({
   }[];
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
+
   return activeReferences.map(({ document, index }) => {
     return (
-      <Citation key={index} href={document.href} tooltip={document.title}>
-        <CitationIcons>
-          {index !== -1 && <CitationIndex>{index}</CitationIndex>}
-          {document.icon}
-        </CitationIcons>
-        <CitationTitle>{document.title}</CitationTitle>
-      </Citation>
+      <AgentMessageGeneratedFiles
+        key={index}
+        document={document}
+        index={index}
+      />
     );
   });
 }

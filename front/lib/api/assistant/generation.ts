@@ -14,7 +14,9 @@ import {
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
+import { visualizationWithInteractiveContentSystemPrompt } from "@app/lib/api/assistant/visualization_with_interactive_content";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -155,7 +157,12 @@ export async function constructPromptMultiActions(
   }
 
   if (agentConfiguration.visualizationEnabled) {
-    guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    if (featureFlags.includes("interactive_content_server")) {
+      guidelinesSection += `\n${visualizationWithInteractiveContentSystemPrompt()}\n`;
+    } else {
+      guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
+    }
   }
 
   guidelinesSection +=

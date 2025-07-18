@@ -11,13 +11,14 @@ import type { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type {
+  AllSupportedFileContentType,
   FileUseCase,
   FileUseCaseMetadata,
   Result,
   SupportedFileContentType,
   SupportedImageContentType,
 } from "@app/types";
-import { normalizeError } from "@app/types";
+import { isInteractiveFileContentType, normalizeError } from "@app/types";
 import {
   assertNever,
   Err,
@@ -267,9 +268,14 @@ const getProcessingFunction = ({
   contentType,
   useCase,
 }: {
-  contentType: SupportedFileContentType;
+  contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
+  // Interactive file types are not processed.
+  if (isInteractiveFileContentType(contentType)) {
+    return undefined;
+  }
+
   if (isSupportedImageContentType(contentType)) {
     if (useCase === "conversation") {
       return resizeAndUploadToFileStorage;

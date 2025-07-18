@@ -29,6 +29,7 @@ import {
 } from "@app/lib/api/assistant/configuration";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
+import { getInternalServers } from "@app/lib/api/assistant/internal_servers";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
@@ -497,6 +498,9 @@ async function* runMultiActionsAgent(
     conversation,
     attachments,
   });
+  const internalServers = await getInternalServers(auth, {
+    agentConfiguration,
+  });
 
   // Get client-side MCP server configurations from user message context.
   const clientSideMCPActionConfigurations =
@@ -516,7 +520,7 @@ async function* runMultiActionsAgent(
       agentMessage,
       clientSideActionConfigurations: clientSideMCPActionConfigurations,
     },
-    jitServers
+    [...jitServers, ...internalServers]
   );
 
   if (mcpToolsListingError) {

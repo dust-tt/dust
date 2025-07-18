@@ -42,6 +42,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   extended_max_steps_per_run: {
     description: "Increase maximum steps allowed per agent run",
   },
+  interactive_content_server: {
+    description:
+      "Interactive content MCP server - gives access to the new visualization layout",
+  },
   google_ai_studio_experimental_models_feature: {
     description: "Access to experimental Google AI Studio models",
   },

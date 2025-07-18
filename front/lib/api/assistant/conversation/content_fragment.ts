@@ -1,5 +1,9 @@
 import type { DustMimeType } from "@dust-tt/client";
-import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
+import {
+  DATA_SOURCE_MIME_TYPE,
+  isSupportedFileContentType,
+} from "@dust-tt/client";
+import assert from "assert";
 
 import { isContentFragmentDataSourceNode } from "@app/lib/api/assistant/conversation/attachments";
 import config from "@app/lib/api/config";
@@ -103,6 +107,11 @@ export async function getContentFragmentBlob(
     if (!file) {
       return new Err(new Error("File not found."));
     }
+
+    assert(
+      isSupportedFileContentType(file.contentType),
+      "File must have a supported content type."
+    );
 
     if (file.useCase !== "conversation") {
       return new Err(new Error("File not meant to be used in a conversation."));

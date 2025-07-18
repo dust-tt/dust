@@ -1,8 +1,13 @@
-import type { SWRConfiguration } from "swr";
+import type { FileType } from "@dust-tt/client";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { getErrorFromResponse, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type {
   UpsertFileToDataSourceRequestBody,
   UpsertFileToDataSourceResponseBody,
@@ -108,4 +113,51 @@ export function useUpsertFileAsDatasourceEntry(
   };
 
   return doCreate;
+}
+
+export function useFileMetadata({
+  fileId,
+  owner,
+}: {
+  fileId: string | null;
+  owner: LightWorkspaceType;
+}) {
+  const fileMetadataFetcher: Fetcher<FileType> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/files/${fileId}/metadata`,
+    fileMetadataFetcher
+  );
+
+  return {
+    fileMetadata: data,
+    isFileMetadataLoading: !error && !data,
+    isFileMetadataError: error,
+    mutateFileMetadata: mutate,
+  };
+}
+
+export function useFileContent({
+  fileId,
+  owner,
+}: {
+  fileId: string;
+  owner: LightWorkspaceType;
+}) {
+  const { data, error, mutate } = useSWRWithDefaults<string, string>(
+    `/api/w/${owner.sId}/files/${fileId}?action=view`,
+    async (url: string) => {
+      // Use custom fetcher to parse as text.
+      const response = await fetch(url);
+
+      return response.text();
+    }
+  );
+
+  return {
+    error,
+    fileContent: data,
+    isFileContentLoading: !error && !data,
+    mutateFileContent: mutate,
+  };
 }

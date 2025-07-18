@@ -11,19 +11,19 @@ import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   AgentMessageType,
+  AllSupportedFileContentType,
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelConfigurationType,
   ModelId,
   Result,
-  SupportedFileContentType,
 } from "@app/types";
 
 export type ActionGeneratedFileType = {
   fileId: string;
   title: string;
-  contentType: SupportedFileContentType;
+  contentType: AllSupportedFileContentType;
   snippet: string | null;
 };
 
