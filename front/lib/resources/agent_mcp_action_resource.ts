@@ -64,7 +64,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     });
   }
 
-  toJSON(): AgentMCPActionType {
+  toJSON() {
     const stepContentSId = this.stepContentId
       ? makeSId("agent_step_content", {
           id: this.stepContentId,
@@ -73,19 +73,13 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       : undefined;
 
     return {
-      id: this.id,
       sId: this.sId,
       createdAt: this.createdAt.toISOString(),
-      functionCallId: this.functionCallId,
       functionCallName: this.functionCallName,
       params: this.params,
       executionState: this.executionState,
       isError: this.isError,
       stepContentSId,
-      step: this.step,
-      version: this.version,
-      agentMessageModelId: this.agentMessageId,
-      mcpServerConfigurationId: this.mcpServerConfigurationId,
     };
   }
 

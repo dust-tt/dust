@@ -1,4 +1,3 @@
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import type { ModelId } from "@app/types";
 import type { ModelProviderIdType } from "@app/types/assistant/assistant";
 import type { FunctionCallType } from "@app/types/assistant/generation";
@@ -48,11 +47,9 @@ export function isFunctionCallContent(
 
 // Type matching AgentMCPActionResource.toJSON() output
 export type AgentMCPActionType = {
-  id: ModelId;
   sId: string;
   createdAt: string;
   functionCallName: string | null;
-  functionCallId: string | null;
   params: Record<string, unknown>;
   executionState:
     | "pending"
@@ -62,10 +59,6 @@ export type AgentMCPActionType = {
     | "denied";
   isError: boolean;
   stepContentSId?: string;
-  step: number;
-  version: number;
-  agentMessageModelId: ModelId;
-  mcpServerConfigurationId: string;
 };
 
 export type AgentStepContentType = {
@@ -80,5 +73,5 @@ export type AgentStepContentType = {
   type: AgentContentItemType["type"];
   value: AgentContentItemType;
   // Array of MCP actions that reference this step content.
-  mcpActions?: MCPActionType[];
+  mcpActions?: AgentMCPActionType[];
 };
