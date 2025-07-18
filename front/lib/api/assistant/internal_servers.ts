@@ -19,18 +19,18 @@ export async function getInternalServers(
 ): Promise<MCPServerConfigurationType[]> {
   const internalServers: MCPServerConfigurationType[] = [];
 
-  // Add file_manager server if visualization is enabled and feature flag is set.
+  // Add interactive_content server if visualization is enabled and feature flag is set.
   if (agentConfiguration.visualizationEnabled) {
     const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
 
-    if (featureFlags.includes("file_manager_server")) {
-      const fileManagerServerView =
+    if (featureFlags.includes("interactive_content_server")) {
+      const interactiveContentServerView =
         await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          "file_manager"
+          "interactive_content"
         );
 
-      if (fileManagerServerView) {
+      if (interactiveContentServerView) {
         const serverConfig: MCPServerConfigurationType = {
           id: -1, // Temporary ID for internal servers
           additionalConfiguration: {},
@@ -38,10 +38,10 @@ export async function getInternalServers(
           dataSources: null,
           description: "Create and update executable files for visualizations",
           dustAppConfiguration: null,
-          internalMCPServerId: fileManagerServerView.mcpServerId,
+          internalMCPServerId: interactiveContentServerView.mcpServerId,
           jsonSchema: null,
-          mcpServerViewId: fileManagerServerView.sId,
-          name: "file_manager",
+          mcpServerViewId: interactiveContentServerView.sId,
+          name: "interactive_content",
           reasoningModel: null,
           sId: generateRandomModelSId(),
           tables: null,

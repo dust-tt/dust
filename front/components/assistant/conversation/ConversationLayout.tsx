@@ -227,7 +227,7 @@ function ConversationInnerLayout({
           </FileDropProvider>
         </ResizablePanel>
 
-        {/* Content Panel */}
+        {/* Interactive Content Panel */}
         {isContentOpen && <ResizableHandle />}
         <ResizablePanel
           minSize={20}

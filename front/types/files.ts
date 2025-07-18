@@ -310,7 +310,7 @@ export const clientExecutableContentType =
 
 // Internal MIME types for specialized use cases (not exposed via APIs).
 export const INTERNAL_FILE_FORMATS = {
-  // Custom for client-executable code files managed by file_manager MCP server.
+  // Custom for client-executable code files managed by interactive_content MCP server.
   // These files are internal-only and should not be exposed via APIs.
   // Limited to JavaScript/TypeScript files that can run in the browser.
   [clientExecutableContentType]: {

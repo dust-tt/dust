@@ -7,7 +7,7 @@ import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_acti
 import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
-import { default as fileManagerServer } from "@app/lib/actions/mcp_internal_actions/servers/file_manager";
+import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as calendarServer } from "@app/lib/actions/mcp_internal_actions/servers/google_calendar";
@@ -79,8 +79,8 @@ export async function getInternalMCPServer(
       return imageGenerationDallEServer(auth);
     case "file_generation":
       return generateFileServer(auth);
-    case "file_manager":
-      return fileManagerServer(auth, agentLoopContext);
+    case "interactive_content":
+      return interactiveContentServer(auth, agentLoopContext);
     case "query_tables":
       return tablesQueryServer(auth, agentLoopContext);
     case "query_tables_v2":

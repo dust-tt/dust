@@ -21,7 +21,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "data_sources_file_system",
   "extract_data",
   "file_generation",
-  "file_manager",
+  "interactive_content",
   "github",
   "gmail",
   "google_sheets",
@@ -322,11 +322,11 @@ export const INTERNAL_MCP_SERVERS: Record<
       return !featureFlags.includes("agent_memory_tools");
     },
   },
-  file_manager: {
+  interactive_content: {
     id: 22,
     availability: "auto_hidden_builder",
     isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("file_manager_server");
+      return !featureFlags.includes("interactive_content_server");
     },
   },
   jira: {

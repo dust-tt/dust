@@ -1,5 +1,7 @@
-import { useRouter } from "next/router";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import { useHashParam } from "@dust-tt/sparkle";
+import React, { createContext, useCallback, useContext, useMemo } from "react";
+
+const INTERACTIVE_CONTENT_HASH_PARAM = "icid";
 
 interface InteractiveContentContextType {
   closeContent: () => void;
@@ -19,6 +21,7 @@ export function useInteractiveContentContext() {
       "useInteractiveContentContext must be used within a InteractiveContentProvider"
     );
   }
+
   return context;
 }
 
@@ -29,71 +32,32 @@ interface InteractiveContentProviderProps {
 export function InteractiveContentProvider({
   children,
 }: InteractiveContentProviderProps) {
-  const router = useRouter();
-  const [isContentOpen, setIsContentOpen] = useState(false);
-  const [contentId, setContentId] = useState<string | null>(null);
+  const [contentId, setContentId] = useHashParam(
+    INTERACTIVE_CONTENT_HASH_PARAM
+  );
 
-  // Watch URL changes to update content state.
-  useEffect(() => {
-    const handleRouteChange = () => {
-      const urlContentId = router.query.contentId as string;
+  const isContentOpen = !!contentId;
 
-      if (urlContentId) {
-        setContentId(urlContentId);
-        setIsContentOpen(true);
-      } else {
-        setIsContentOpen(false);
-        setContentId(null);
-      }
-    };
+  const openContent = useCallback(
+    (id: string) => {
+      setContentId(id);
+    },
+    [setContentId]
+  );
 
-    // Check initial route.
-    handleRouteChange();
+  const closeContent = useCallback(() => {
+    setContentId(undefined);
+  }, [setContentId]);
 
-    // Listen for route changes.
-    router.events.on("routeChangeComplete", handleRouteChange);
-
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router]);
-
-  const openContent = (id: string) => {
-    // Update URL to include content parameters.
-    const currentQuery = { ...router.query };
-    currentQuery.contentId = id;
-
-    void router.push(
-      {
-        pathname: router.pathname,
-        query: currentQuery,
-      },
-      undefined,
-      { shallow: true }
-    );
-  };
-
-  const closeContent = () => {
-    // Remove content parameters from URL.
-    const currentQuery = { ...router.query };
-    delete currentQuery.contentId;
-
-    void router.push(
-      {
-        pathname: router.pathname,
-        query: currentQuery,
-      },
-      undefined,
-      { shallow: true }
-    );
-  };
-
-  const value: InteractiveContentContextType = {
-    closeContent,
-    contentId,
-    isContentOpen,
-    openContent,
-  };
+  const value: InteractiveContentContextType = useMemo(
+    () => ({
+      closeContent,
+      contentId: contentId || null,
+      isContentOpen,
+      openContent,
+    }),
+    [closeContent, contentId, isContentOpen, openContent]
+  );
 
   return (
     <InteractiveContentContext.Provider value={value}>

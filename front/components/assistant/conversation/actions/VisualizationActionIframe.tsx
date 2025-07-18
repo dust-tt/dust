@@ -291,11 +291,11 @@ export function VisualizationActionIframe({
         className={classNames(
           "relative w-full overflow-hidden",
           codeFullyGenerated && !isErrored ? "min-h-96" : "",
-          errorMessage ? "h-full" : "",
-          isInDrawer ? "h-full" : ""
+          errorMessage && "h-full",
+          isInDrawer && "h-full"
         )}
       >
-        <div className={classNames("flex", isInDrawer ? "h-full" : "")}>
+        <div className={classNames("flex", isInDrawer && "h-full")}>
           {!codeFullyGenerated ? (
             <div className="flex h-full w-full shrink-0">
               <Markdown

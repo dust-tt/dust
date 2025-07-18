@@ -29,10 +29,7 @@ function CitationContent({ document, index }: AgentMessageGeneratedFilesProps) {
 function DefaultAgentMessageGeneratedFiles({
   document,
   index,
-}: {
-  document: MarkdownCitation;
-  index: number;
-}) {
+}: AgentMessageGeneratedFilesProps) {
   return (
     <Citation href={document.href} tooltip={document.title}>
       <CitationContent document={document} index={index} />
@@ -43,10 +40,7 @@ function DefaultAgentMessageGeneratedFiles({
 function InteractiveAgentMessageGeneratedFiles({
   document,
   index,
-}: {
-  document: MarkdownCitation;
-  index: number;
-}) {
+}: AgentMessageGeneratedFilesProps) {
   const { openContent } = useInteractiveContentContext();
 
   const handleClick = (e: React.MouseEvent) => {

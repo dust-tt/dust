@@ -14,7 +14,7 @@ import type { InternalFileContentType } from "@app/types";
 import { INTERNAL_FILE_FORMATS } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
-  name: "file_manager",
+  name: "interactive_content",
   version: "1.0.0",
   description:
     "Create and update client-executable files (JavaScript/TypeScript) that can run in the browser. Supports React components, visualizations, and other frontend code.",
@@ -83,11 +83,7 @@ const createServer = (
         return makeMCPToolTextError(result.error.message);
       }
 
-      console.log("Creating file with content", content);
-
       const { value: fileResource } = result;
-
-      console.log("File name", fileResource.fileName, fileResource.sId);
 
       const responseText = description
         ? `File '${fileResource.sId}' created successfully. ${description}`

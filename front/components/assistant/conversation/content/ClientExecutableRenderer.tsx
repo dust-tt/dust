@@ -7,6 +7,8 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
+import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
+
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { useFileContent } from "@app/lib/swr/files";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
@@ -36,18 +38,18 @@ export function ClientExecutableRenderer({
 
   if (isFileContentLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
+      <CenteredState>
         <Spinner size="sm" />
-        <span className="ml-2">Loading interactive content...</span>
-      </div>
+        <span>Loading interactive content...</span>
+      </CenteredState>
     );
   }
 
   if (error) {
     return (
-      <div className="p-4 text-red-600">
-        <p>Error loading file: {error}</p>
-      </div>
+      <CenteredState>
+        <p className="text-warning-500">Error loading file: {error}</p>
+      </CenteredState>
     );
   }
 
@@ -71,10 +73,7 @@ export function ClientExecutableRenderer({
       <div className="flex-1 overflow-hidden">
         {showCode ? (
           <div className="h-full overflow-auto p-4">
-            <CodeBlock
-              wrapLongLines
-              className="language-tsx bg-structure-100 text-element-900 rounded border p-4 text-sm"
-            >
+            <CodeBlock wrapLongLines className="language-tsx">
               {fileContent}
             </CodeBlock>
           </div>
