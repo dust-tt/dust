@@ -5,9 +5,9 @@ use futures::stream::StreamExt;
 use lazy_static::lazy_static;
 use tokio::io::AsyncReadExt;
 
+use crate::info;
 use regex::Regex;
 use tokio_util::compat::TokioAsyncReadCompatExt;
-use tracing::info;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::{databases::table::Row, utils};

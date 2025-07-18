@@ -1,5 +1,5 @@
+use crate::info;
 use std::collections::{HashMap, HashSet};
-use tracing::info;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;

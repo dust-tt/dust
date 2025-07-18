@@ -1,3 +1,4 @@
+use crate::info;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bb8::Pool;
@@ -5,7 +6,6 @@ use bb8_postgres::PostgresConnectionManager;
 use futures::SinkExt;
 use std::io::Cursor;
 use tokio_postgres::{types::ToSql, NoTls};
-use tracing::info;
 
 use crate::{
     databases::table::{Row, Table},

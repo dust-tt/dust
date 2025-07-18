@@ -1,3 +1,4 @@
+use crate::info;
 use crate::{
     oauth::{
         connection::{
@@ -12,7 +13,6 @@ use crate::{
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde_json::json;
-use tracing::info;
 
 use super::utils::ProviderHttpRequestError;
 

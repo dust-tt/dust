@@ -1,11 +1,10 @@
 use dust::oauth::app;
 use dust::open_telemetry::init_subscribers;
+use dust::{error, info};
 use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
 };
-
-use tracing::{error, info};
 
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()

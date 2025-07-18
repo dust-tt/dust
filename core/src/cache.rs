@@ -1,8 +1,8 @@
+use crate::error;
 use anyhow::Result;
 use lazy_static::lazy_static;
 use redis::{AsyncCommands, Client as RedisClient, RedisError};
 use std::{env, sync::Arc};
-use tracing::error;
 
 // Define a static Redis client with lazy initialization
 lazy_static! {

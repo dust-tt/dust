@@ -1,9 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
+use crate::info;
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
 use serde::Serialize;
-use tracing::info;
 
 use crate::{
     databases::{

@@ -1,5 +1,5 @@
+use crate::{debug, info};
 use std::{collections::HashSet, env};
-use tracing::{debug, info};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
