@@ -137,6 +137,8 @@ impl TableUpsertsBackgroundWorker {
                 "TableUpsertsBackgroundWorker: active tables to process",
             );
         }
+
+        let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
         for (key, table_data) in active_tables {
             // They're ordered from oldest to newest, meaning we first see those that are most
             // likely to be past the debounce time. As soon as we find one that is not
@@ -159,14 +161,24 @@ impl TableUpsertsBackgroundWorker {
             match table {
                 Some(table) => {
                     let now = utils::now();
-                    let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
 
-                    let lock = lock_manager
-                        .acquire_no_guard(
+                    let lock = match lock_manager
+                        .lock(
                             table.get_background_processing_lock_name().as_bytes(),
                             Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
                         )
-                        .await?;
+                        .await
+                    {
+                        Ok(lock) => lock,
+                        Err(e) => {
+                            info!(
+                                table_id = table.table_id(),
+                                "TableUpsertsBackgroundWorker: Could not acquire upsert lock, skipping: {}",
+                                e,
+                            );
+                            continue;
+                        }
+                    };
 
                     info!(
                         table_id = table.table_id(),
