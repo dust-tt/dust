@@ -1,3 +1,5 @@
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -586,21 +588,32 @@ impl LocalTable {
                 .await?;
 
             info!(
+                table_id = self.table.table_id(),
                 lock_acquisition_duration = utils::now() - now,
                 "Upsert lock acquired in upsert_rows_to_gcs_or_queue_work"
             );
 
-            // Since truncate replaces everything, we get rid of all non-truncate and row deletion
-            // pending operations that got queued before we got called.
-            // And those that arrive later cannot happen until we release the lock.
-            GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(&self.table)
-                .await?;
+            // Is there is an error, don't propagate it until the lock is released below.
+            let result = {
+                // Run the two operations concurrently, as they are independent
+                let delete_future =
+                    GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(
+                        &self.table,
+                    );
+                let upsert_future = self.upsert_rows_gcs(store, databases_store, rows, truncate);
 
-            self.upsert_rows_gcs(store, databases_store, rows, truncate)
-                .await?;
+                let results = try_join_all(vec![
+                    Box::pin(delete_future) as Pin<Box<dyn Future<Output = Result<()>> + Send>>,
+                    Box::pin(upsert_future),
+                ])
+                .await;
+
+                results.map(|_| ())
+            };
 
             lock_manager.unlock(&lock).await;
-            Ok(())
+
+            result
         } else {
             // We can only handle non-truncate upserts if the table is already migrated.
             // Otherwise, we have no base data to make the incremental updates against.
@@ -843,10 +856,16 @@ impl LocalTable {
 
         // Deletions are conveyed by special rows
         if SAVE_TABLES_TO_GCS {
-            // For now, we don't propagate failures since it's just a shadow operation
-            let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
-            if let Err(e) = self.schedule_background_upsert_or_delete(rows).await {
-                tracing::error!("delete_row: failed to schedule background work: {:?}", e);
+            // We can only handle non-truncate deletes if the table is already migrated.
+            // Otherwise, we have no base data to make the incremental changes against.
+            if self.table.migrated_to_csv() {
+                // For now, we don't propagate failures since it's just a shadow operation
+                let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
+                if let Err(e) = self.schedule_background_upsert_or_delete(rows).await {
+                    tracing::error!("delete_row: failed to schedule background work: {:?}", e);
+                }
+            } else {
+                info!("delete_row: table not migrated to CSV, skipping GCS delete non-truncate");
             }
             Ok(())
         } else {

@@ -93,10 +93,12 @@ impl TableUpsertsBackgroundWorker {
             "TableUpsertsBackgroundWorker: Processing upserts"
         );
 
-        let local_table = LocalTable::from_table(table.clone())?;
-        local_table
-            .upsert_rows_gcs(&self.store, &self.gcs_db_store, rows, false)
-            .await?;
+        if !rows.is_empty() {
+            let local_table = LocalTable::from_table(table.clone())?;
+            local_table
+                .upsert_rows_gcs(&self.store, &self.gcs_db_store, rows, false)
+                .await?;
+        }
 
         let _: () = self
             .redis_conn
@@ -135,6 +137,8 @@ impl TableUpsertsBackgroundWorker {
                 "TableUpsertsBackgroundWorker: active tables to process",
             );
         }
+
+        let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
         for (key, table_data) in active_tables {
             // They're ordered from oldest to newest, meaning we first see those that are most
             // likely to be past the debounce time. As soon as we find one that is not
@@ -157,21 +161,39 @@ impl TableUpsertsBackgroundWorker {
             match table {
                 Some(table) => {
                     let now = utils::now();
-                    let lock_manager = LockManager::new(vec![REDIS_URI.clone()]);
 
-                    let lock = lock_manager
-                        .acquire_no_guard(
+                    let lock = match lock_manager
+                        .lock(
                             table.get_background_processing_lock_name().as_bytes(),
                             Duration::from_secs(REDIS_LOCK_TTL_SECONDS),
                         )
-                        .await?;
+                        .await
+                    {
+                        Ok(lock) => lock,
+                        Err(e) => {
+                            info!(
+                                table_id = table.table_id(),
+                                "TableUpsertsBackgroundWorker: Could not acquire upsert lock, skipping: {}",
+                                e,
+                            );
+                            continue;
+                        }
+                    };
 
                     info!(
-                        lock_acquisition_duration = utils::now() - now,
+                        table_id = table.table_id(),
+                        duration = utils::now() - now,
                         "TableUpsertsBackgroundWorker: Upsert lock acquired"
                     );
 
-                    self.process_table(&table, key.clone(), table_data).await?;
+                    // If it fails, log an error but continue processing other tables.
+                    // Also, we need to make sure the lock is always released.
+                    if let Err(e) = self.process_table(&table, key.clone(), table_data).await {
+                        error!(
+                            table_id = table.table_id(),
+                            "TableUpsertsBackgroundWorker: Failed to process table: {}", e
+                        );
+                    }
 
                     lock_manager.unlock(&lock).await;
                 }
