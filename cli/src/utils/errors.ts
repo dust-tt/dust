@@ -1,4 +1,4 @@
-import { CommandError } from "./command.js";
+import type { CommandError } from "./command.js";
 
 export function errorToString(error: unknown): string {
   if (error instanceof Error) {

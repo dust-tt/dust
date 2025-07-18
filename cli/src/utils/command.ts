@@ -1,5 +1,7 @@
-import { Err, Ok, Result } from "@dust-tt/client";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { execa } from "execa";
+
 import { isCommandError, normalizeError } from "./errors.js";
 
 interface CommandResult {
