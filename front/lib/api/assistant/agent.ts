@@ -43,7 +43,6 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { wakeLock } from "@app/lib/wake_lock";
@@ -52,16 +51,9 @@ import { statsDClient } from "@app/logger/statsDClient";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   AgentActionsEvent,
-  AgentChainOfThoughtEvent,
   AgentConfigurationType,
-  AgentContentEvent,
-  AgentErrorEvent,
   AgentMessageType,
-  AgentStepContentEvent,
   ConversationType,
-  GenerationCancelEvent,
-  GenerationSuccessEvent,
-  GenerationTokensEvent,
   LightAgentConfigurationType,
   ModelId,
   UserMessageType,
@@ -227,7 +219,6 @@ async function runMultiActionsAgentLoop(
       isLastGenerationIteration,
       isLegacyAgent,
       agentMessageRow,
-      processedContent,
       runIds,
       step: i,
       functionCallStepContentIds,
@@ -328,7 +319,6 @@ async function runMultiActionsAgent(
     isLastGenerationIteration,
     isLegacyAgent,
     agentMessageRow,
-    processedContent,
     runIds,
     step,
     functionCallStepContentIds,
@@ -341,7 +331,6 @@ async function runMultiActionsAgent(
     isLastGenerationIteration: boolean;
     isLegacyAgent: boolean;
     agentMessageRow: AgentMessage;
-    processedContent: string;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
@@ -756,11 +745,7 @@ async function runMultiActionsAgent(
     }
   };
 
-  let rawContent = "";
   let nativeChainOfThought = "";
-  let localProcessedContent = processedContent;
-  const localRunIds = [...runIds];
-  const newContents: { step: number; content: AgentContentItemType }[] = [];
 
   // Create a new object to avoid mutation
   const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
@@ -828,7 +813,6 @@ async function runMultiActionsAgent(
       }
 
       if (event.type === "tokens" && isGeneration) {
-        rawContent += event.content.tokens.text;
         for await (const tokenEvent of contentParser.emitTokens(
           event.content.tokens.text
         )) {
@@ -1067,9 +1051,6 @@ async function runMultiActionsAgent(
         );
       }
 
-      const chainOfThought =
-        (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
-
       // Update agent message status to succeeded
       await agentMessageRow.update({
         status: "succeeded",
@@ -1259,7 +1240,7 @@ async function runMultiActionsAgent(
       processedContent: contentParser.getContent() ?? "",
       runIds,
       functionCallStepContentIds: updatedFunctionCallStepContentIds,
-      newContents: output.contents.map((content, index) => ({
+      newContents: output.contents.map((content) => ({
         step,
         content,
       })),
