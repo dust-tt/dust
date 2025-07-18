@@ -7,7 +7,11 @@ import type {
   UpsertFileToDataSourceRequestBody,
   UpsertFileToDataSourceResponseBody,
 } from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
-import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
+import type {
+  DataSourceViewType,
+  FileType,
+  LightWorkspaceType,
+} from "@app/types";
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,

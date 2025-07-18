@@ -305,20 +305,23 @@ export const FILE_FORMATS = {
 // Define a type that is the list of all keys from FILE_FORMATS.
 export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
+export const clientExecutableContentType =
+  "application/vnd.dust.client-executable";
+
 // Internal MIME types for specialized use cases (not exposed via APIs).
 export const INTERNAL_FILE_FORMATS = {
   // Custom for client-executable code files managed by file_manager MCP server.
   // These files are internal-only and should not be exposed via APIs.
   // Limited to JavaScript/TypeScript files that can run in the browser.
-  "application/vnd.dust.client-executable": {
+  [clientExecutableContentType]: {
     cat: "code",
     exts: [".js", ".jsx", ".ts", ".tsx"],
-    isSafeToDisplay: false,
+    isSafeToDisplay: true,
   },
 } as const satisfies Record<string, FileFormat>;
 
 export function isInteractiveContentType(contentType: string): boolean {
-  return contentType === "application/vnd.dust.client-executable";
+  return contentType === clientExecutableContentType;
 }
 
 // Define a type for internal MIME types.
