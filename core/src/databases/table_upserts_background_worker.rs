@@ -188,7 +188,7 @@ impl TableUpsertsBackgroundWorker {
 
                     // If it fails, log an error but continue processing other tables.
                     // Also, we need to make sure the lock is always released.
-                    if let Err(e) = self.process_table(&table, key.clone(), table_data).await {
+                    if let Err(e) = self.process_table(&table, key, table_data).await {
                         error!(
                             table_id = table.table_id(),
                             "TableUpsertsBackgroundWorker: Failed to process table: {}", e
@@ -199,9 +199,17 @@ impl TableUpsertsBackgroundWorker {
                 }
                 None => {
                     error!(
-                        "TableUpsertsBackgroundWorker: Table not found for project_id: {}, data_source_id: {}, table_id: {}",
-                        table_data.project_id, table_data.data_source_id, table_data.table_id
+                        project_id = table_data.project_id,
+                        data_source_id = table_data.data_source_id,
+                        table_id = table_data.table_id,
+                        "TableUpsertsBackgroundWorker: Table not found"
                     );
+
+                    // Must have been some old leftover entry, so delete it from Redis so we don't keep trying
+                    let _: () = self
+                        .redis_conn
+                        .hdel(REDIS_TABLE_UPSERT_HASH_NAME, key)
+                        .await?;
                 }
             }
         }

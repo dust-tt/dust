@@ -5,7 +5,6 @@ import "./globals.css";
 
 const geist = localFont({
   src: [
-    // Geist Font Family.
     {
       path: "./static/fonts/Geist-Thin.woff2",
       weight: "100",
@@ -96,8 +95,12 @@ const geist = localFont({
       weight: "900",
       style: "italic",
     },
+  ],
+  variable: "--font-geist",
+});
 
-    // Geist Mono Font Family.
+const geistMono = localFont({
+  src: [
     {
       path: "./static/fonts/GeistMono-Thin.woff2",
       weight: "100",
@@ -139,6 +142,7 @@ const geist = localFont({
       style: "normal",
     },
   ],
+  variable: "--font-geist-mono",
 });
 
 export const metadata: Metadata = {
@@ -151,7 +155,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={geist.className}>
+    <html
+      lang="en"
+      className={`${geist.variable} ${geistMono.variable} ${geist.className} ${geistMono.className}`}
+    >
       <body>{children}</body>
     </html>
   );

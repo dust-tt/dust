@@ -28,6 +28,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "hubspot",
   "image_generation",
   "include_data",
+  "jira",
   "missing_action_catcher",
   "monday",
   "notion",
@@ -328,6 +329,17 @@ export const INTERNAL_MCP_SERVERS: Record<
       return !featureFlags.includes("file_manager_server");
     },
   },
+  jira: {
+    id: 22,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("jira_tool");
+    },
+    tools_stakes: {
+      // Read operations - never ask (no side effects)
+      get_issue: "never_ask",
+    },
+  },
   search: {
     id: 1006,
     availability: "auto",
@@ -337,7 +349,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "auto",
     timeoutMs: 5 * 60 * 1000, // 5 minutes
   },
-
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",

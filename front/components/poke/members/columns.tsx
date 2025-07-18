@@ -14,7 +14,6 @@ export type MemberDisplayType = {
   createdAt: number;
   email: string;
   name: string;
-  provider: string | null;
   role: RoleType;
   sId: string;
   origin?: MembershipOriginType;
@@ -70,10 +69,6 @@ export function makeColumnsForMembers({
     {
       accessorKey: "email",
       header: "email",
-    },
-    {
-      accessorKey: "provider",
-      header: "Provider",
     },
     {
       accessorKey: "lastLoginAt",

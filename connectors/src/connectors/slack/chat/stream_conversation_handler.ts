@@ -6,7 +6,7 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/client";
+import { assertNever, Err, Ok, TOOL_RUNNING_LABEL } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import * as t from "io-ts";
 import slackifyMarkdown from "slackify-markdown";
@@ -128,8 +128,6 @@ async function streamAgentAnswerToSlack(
   const actions: AgentActionPublicType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
-      case "conversation_include_file_params":
-      case "process_params":
       case "tool_params":
       case "tool_notification":
         await postSlackMessageUpdate(
@@ -140,7 +138,7 @@ async function streamAgentAnswerToSlack(
               assistantName,
               agentConfigurations,
               text: answer,
-              thinkingAction: ACTION_RUNNING_LABELS[event.action.type],
+              thinkingAction: TOOL_RUNNING_LABEL,
             },
             ...conversationData,
           },
