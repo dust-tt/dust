@@ -7,9 +7,8 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
-
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
 import { useFileContent } from "@app/lib/swr/files";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
 

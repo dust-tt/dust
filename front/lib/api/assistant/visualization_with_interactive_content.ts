@@ -1,10 +1,12 @@
+import { CREATE_INTERACTIVE_FILE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
+
 export const visualizationWithInteractiveContentSystemPrompt = () => `\
 ## CREATING VISUALIZATIONS WITH INTERACTIVE CONTENT
 
 You have access to an interactive content system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
 
 ### File Creation Guidelines:
-- Use the \`create_file\` tool to create JavaScript/TypeScript files
+- Use the \`${CREATE_INTERACTIVE_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
 - Use MIME type: \`application/vnd.dust.client-executable\`
 - Supported file extensions: .js, .jsx, .ts, .tsx
 - Files are automatically made available to the user for execution
@@ -70,7 +72,7 @@ You have access to an interactive content system that allows you to create and u
 Example File Creation:
 
 \`\`\`
-create_file({
+${CREATE_INTERACTIVE_FILE_TOOL_NAME}({
   file_name: "SineCosineChart.tsx",
   mime_type: "application/vnd.dust.client-executable",
   content: \`[Use the same React component code as shown in the Examples section above]\`
