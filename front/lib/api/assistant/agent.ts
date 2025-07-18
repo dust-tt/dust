@@ -235,9 +235,8 @@ async function runMultiActionsAgentLoop(
         for await (const event of loopIterationStream) {
           switch (event.type) {
             case "agent_error":
-              const { category, publicMessage } = categorizeAgentErrorMessage(
-                event.error
-              );
+              const { category, errorTitle, publicMessage } =
+                categorizeAgentErrorMessage(event.error);
 
               shouldRetry = ["stream_error", "retryable_model_error"].includes(
                 category
@@ -262,6 +261,7 @@ async function runMultiActionsAgentLoop(
                       message: publicMessage,
                       metadata: {
                         category,
+                        errorTitle,
                       },
                     },
                   },
