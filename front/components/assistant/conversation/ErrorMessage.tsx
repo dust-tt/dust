@@ -16,29 +16,6 @@ interface ErrorMessageProps {
   retryHandler: () => void;
 }
 
-function getErrorTitle(error: AgentErrorContent): string | undefined {
-  if (!isAgentErrorCategory(error.metadata?.category)) {
-    return undefined;
-  }
-
-  switch (error.metadata?.category) {
-    case "retryable_model_error":
-      return "Model Error";
-    case "context_window_exceeded":
-      return "Context Window Exceeded";
-    case "provider_internal_error":
-      return "Provider Internal Error";
-    case "stream_error":
-      return "Stream Error";
-    case "unknown_error":
-      return "Unknown Error";
-    case "invalid_response_format_configuration":
-      return "Invalid Response Format Configuration";
-    default:
-      return undefined;
-  }
-}
-
 export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
   const fullMessage =
     error.message + (error.code ? ` (code: ${error.code})` : "");
@@ -52,11 +29,9 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
     async () => retryHandler()
   );
 
-  const errorTitle = getErrorTitle(error) || "Error";
-
   return (
     <ContentMessage
-      title={errorTitle}
+      title={`${error.metadata?.errorTitle || "Agent error"}`}
       variant={errorIsRetryable ? "golden" : "warning"}
       className="flex flex-col gap-3"
     >

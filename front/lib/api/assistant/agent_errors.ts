@@ -22,6 +22,7 @@ export const categorizeAgentErrorMessage = (error: {
   code: string;
 }): {
   category: AgentErrorCategory;
+  errorTitle: string;
   publicMessage: string;
 } => {
   if (error.code == "multi_actions_error") {
@@ -32,6 +33,7 @@ export const categorizeAgentErrorMessage = (error: {
       ) {
         return {
           category: "retryable_model_error",
+          errorTitle: "Anthropic service disruption",
           publicMessage:
             "Anthropic is currently experiencing issues and cannot process requests for " +
             "this model. You can temporarily switch your agent to use a different model " +
@@ -43,12 +45,14 @@ export const categorizeAgentErrorMessage = (error: {
       ) {
         return {
           category: "context_window_exceeded",
+          errorTitle: "Context limit exceeded",
           publicMessage:
             "Context window (the amount of data the agent can process) exceeded. This can happen if your first message was very long or if the agent retrieved a lot of data while helping you. Try breaking your request into smaller parts or updating your agent configuration to output less data.",
         };
       } else if (error.message.includes("Internal server error")) {
         return {
           category: "provider_internal_error",
+          errorTitle: "Anthropic server error",
           publicMessage:
             "Anthropic (provider of Claude) encountered an internal server error. Please try again.",
         };
@@ -57,6 +61,7 @@ export const categorizeAgentErrorMessage = (error: {
       if (error.message.includes("maximum context length")) {
         return {
           category: "context_window_exceeded",
+          errorTitle: "Context limit exceeded",
           publicMessage:
             "Context window (the amount of data the agent can process) exceeded. This can happen if your first message was very long or if the agent retrieved a lot of data while helping you. Try breaking your request into smaller parts or updating your agent configuration to output less data.",
         };
@@ -64,11 +69,13 @@ export const categorizeAgentErrorMessage = (error: {
         const contextPart = error.message.split("In context=")[1];
         return {
           category: "invalid_response_format_configuration",
+          errorTitle: "Invalid response format",
           publicMessage: `Your agent is configured to return a response in a format that is not supported by the model: ${contextPart}. Please update your agent configuration in Instructions > Advanced Settings > Structured Response Format.`,
         };
       } else if (error.message.includes("server_error")) {
         return {
           category: "provider_internal_error",
+          errorTitle: "OpenAI server error",
           publicMessage:
             "OpenAI (provider of GPT) encountered an internal server error. Please try again.",
         };
@@ -79,6 +86,7 @@ export const categorizeAgentErrorMessage = (error: {
     ) {
       return {
         category: "stream_error",
+        errorTitle: "Streaming error",
         publicMessage:
           "There was an error streaming the answer to your query. Please try again.",
       };
@@ -87,6 +95,7 @@ export const categorizeAgentErrorMessage = (error: {
   // The original message is used as a fallback.
   return {
     category: "unknown_error",
+    errorTitle: "Agent error",
     publicMessage: `Error running agent: [${error.code}] ${error.message}`,
   };
 };
