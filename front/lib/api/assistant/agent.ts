@@ -220,6 +220,7 @@ async function runMultiActionsAgentLoop(
       let autoRetryCount = 0;
 
       do {
+        shouldRetry = false;
         const loopIterationStream = runMultiActionsAgent(auth.toJSON(), {
           agentConfiguration: configuration,
           conversation,
@@ -390,6 +391,17 @@ async function runMultiActionsAgentLoop(
               agentMessage.status = "succeeded";
 
               runIds.push(event.runId);
+
+              // Log to track retries that lead to completing successfully.
+              if (autoRetryCount > 0) {
+                localLogger.error(
+                  {
+                    elapsedTime: Date.now() - now,
+                    autoRetryCount,
+                  },
+                  "Multi-actions agent successfully completed after auto-retry."
+                );
+              }
 
               return updateResourceAndPublishEvent(
                 {
