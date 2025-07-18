@@ -15,7 +15,6 @@ import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import type { AgentMCPActionType } from "@app/types/assistant/agent_message_content";
 
 type AgentMCPActionWithConversation = AgentMCPAction & {
   agent_message: AgentMessage & {
