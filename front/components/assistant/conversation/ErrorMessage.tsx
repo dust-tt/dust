@@ -4,6 +4,7 @@ import {
   ContentMessage,
   DocumentPileIcon,
   EyeIcon,
+  InformationCircleIcon,
   Popover,
 } from "@dust-tt/sparkle";
 
@@ -38,6 +39,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
       title={`${error.metadata?.errorTitle || "Agent error"}`}
       variant={errorIsRetryable ? "golden" : "warning"}
       className="flex flex-col gap-3"
+      icon={InformationCircleIcon}
     >
       <div className="whitespace-normal break-words">{error.message}</div>
       <div className="flex flex-col gap-2 pt-3 sm:flex-row">
