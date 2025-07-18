@@ -1,4 +1,5 @@
 import {
+  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -9,13 +10,25 @@ import {
   Label,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { AuthMethod } from "@app/lib/actions/mcp_remote_actions/remote_mcp_custom_headers";
+import {
+  addNewHeader,
+  getDisplayHeaderKey,
+  isValidHeaderKey,
+  MCP_VALIDATION,
+  removeHeader,
+  updateHeaderKey,
+  updateHeaderValue,
+  validateCustomHeaders,
+  validateCustomHeadersForSubmission,
+} from "@app/lib/actions/mcp_remote_actions/remote_mcp_custom_headers";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
 import {
@@ -63,6 +76,11 @@ export function CreateMCPServerDialog({
   const [sharedSecret, setSharedSecret] = useState<string | undefined>(
     undefined
   );
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("none");
+  const [customHeaders, setCustomHeaders] = useState<Record<string, string>>(
+    {}
+  );
+  const [isCustomAuthEnabled, setIsCustomAuthEnabled] = useState(false);
   const [useCase, setUseCase] = useState<MCPOAuthUseCase | null>(null);
   const [authCredentials, setAuthCredentials] =
     useState<OAuthCredentials | null>(null);
@@ -71,7 +89,7 @@ export function CreateMCPServerDialog({
   const [authorization, setAuthorization] = useState<AuthorizationInfo | null>(
     null
   );
-  const [requiresBearerToken, setRequiresBearerToken] = useState(false);
+  const [customHeadersErrors, setCustomHeadersErrors] = useState<string[]>([]);
 
   const { discoverOAuthMetadata } = useDiscoverOAuthMetadata(owner);
   const { createWithURL } = useCreateRemoteMCPServer(owner);
@@ -82,9 +100,52 @@ export function CreateMCPServerDialog({
       setRemoteServerUrl(defaultServerConfig.url);
     }
     if (defaultServerConfig && isOpen) {
-      setRequiresBearerToken(defaultServerConfig.authMethod === "bearer");
+      if (defaultServerConfig.authMethod === "bearer") {
+        setAuthMethod("bearer");
+        setIsCustomAuthEnabled(true);
+      } else {
+        setAuthMethod("none");
+        setIsCustomAuthEnabled(false);
+      }
     }
   }, [defaultServerConfig, isOpen]);
+
+  useEffect(() => {
+    // Validate custom headers whenever they change
+    if (isCustomAuthEnabled && authMethod === "custom-headers") {
+      const errors = validateCustomHeaders(customHeaders);
+      setCustomHeadersErrors(errors);
+    } else {
+      setCustomHeadersErrors([]);
+    }
+  }, [customHeaders, authMethod, isCustomAuthEnabled]);
+
+  const isFormValid = useMemo(() => {
+    const hasUrl =
+      remoteServerUrl.trim() || defaultServerConfig?.url || internalMCPServer;
+    const hasValidAuth =
+      (!isCustomAuthEnabled && defaultServerConfig?.authMethod !== "bearer") ||
+      (authMethod === "bearer" && sharedSecret?.trim()) ||
+      (authMethod === "custom-headers" &&
+        Object.keys(customHeaders).length > 0 &&
+        customHeadersErrors.length === 0);
+
+    return (
+      hasUrl && hasValidAuth && isOAuthFormValid && (!authorization || useCase)
+    );
+  }, [
+    remoteServerUrl,
+    defaultServerConfig,
+    internalMCPServer,
+    isCustomAuthEnabled,
+    authMethod,
+    sharedSecret,
+    customHeaders,
+    customHeadersErrors,
+    isOAuthFormValid,
+    authorization,
+    useCase,
+  ]);
 
   useEffect(() => {
     if (internalMCPServer && isOpen) {
@@ -103,57 +164,112 @@ export function CreateMCPServerDialog({
     setSharedSecret(undefined);
     setUseCase(null);
     setAuthCredentials(null);
-    setRequiresBearerToken(false);
+    setAuthMethod("none");
+    setCustomHeaders({});
+    setCustomHeadersErrors([]);
     setIsOAuthFormValid(true);
     setAuthorization(null);
+    setIsCustomAuthEnabled(false);
   }, [setExternalIsLoading]);
 
+  const handleCustomAuthToggle = useCallback((enabled: boolean) => {
+    setIsCustomAuthEnabled(enabled);
+    if (!enabled) {
+      // When disabling custom auth, reset to none and clear auth data
+      setAuthMethod("none");
+      setSharedSecret(undefined);
+      setCustomHeaders({});
+      setCustomHeadersErrors([]);
+    } else {
+      // When enabling custom auth, default to bearer token
+      setAuthMethod("bearer");
+    }
+  }, []);
+
+  const handleAuthMethodChange = useCallback((newAuthMethod: AuthMethod) => {
+    setAuthMethod(newAuthMethod);
+    // Clear the other auth method's data
+    if (newAuthMethod === "bearer") {
+      setCustomHeaders({});
+      setCustomHeadersErrors([]);
+    } else if (newAuthMethod === "custom-headers") {
+      setSharedSecret(undefined);
+    }
+  }, []);
+
   const handleSave = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
     let oauthConnection: MCPConnectionType | undefined;
     setIsLoading(true);
+    setError(null);
+
+    if (
+      !internalMCPServer &&
+      !defaultServerConfig?.url &&
+      !remoteServerUrl?.trim()
+    ) {
+      setError(MCP_VALIDATION.ERROR_MESSAGES.URL_REQUIRED);
+      setIsLoading(false);
+      return;
+    }
 
     if (remoteServerUrl) {
       const urlValidation = validateUrl(remoteServerUrl);
-
       if (!urlValidation.valid) {
-        e.preventDefault();
+        setError(MCP_VALIDATION.ERROR_MESSAGES.INVALID_URL);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    if (authMethod === "custom-headers") {
+      const errors = validateCustomHeadersForSubmission(customHeaders);
+      if (errors.length > 0) {
         setError(
-          "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c))."
+          `${MCP_VALIDATION.ERROR_MESSAGES.CUSTOM_HEADERS_VALIDATION_FAILED}: ${errors.join(", ")}`
         );
         setIsLoading(false);
         return;
       }
+    }
 
-      if (!sharedSecret) {
-        if (!remoteMCPServerOAuthDiscoveryDone) {
-          const discoverOAuthMetadataRes =
-            await discoverOAuthMetadata(remoteServerUrl);
-          setRemoteMCPServerOAuthDiscoveryDone(true);
+    if (authMethod === "bearer" && !sharedSecret?.trim()) {
+      setError(MCP_VALIDATION.ERROR_MESSAGES.BEARER_TOKEN_REQUIRED);
+      setIsLoading(false);
+      return;
+    }
 
-          if (discoverOAuthMetadataRes.isOk()) {
-            if (discoverOAuthMetadataRes.value.oauthRequired) {
-              setAuthorization({
-                provider: "mcp",
-                supported_use_cases: ["platform_actions", "personal_actions"],
-              });
+    if (remoteServerUrl && !isCustomAuthEnabled) {
+      if (!remoteMCPServerOAuthDiscoveryDone) {
+        const discoverOAuthMetadataRes =
+          await discoverOAuthMetadata(remoteServerUrl);
+        setRemoteMCPServerOAuthDiscoveryDone(true);
 
-              setAuthCredentials(
-                discoverOAuthMetadataRes.value.connectionMetadata
-              );
-              // Returning here as now the user must select the use case.
-              setIsLoading(false);
-              return;
-            }
-          } else if (discoverOAuthMetadataRes.isErr()) {
-            sendNotification({
-              type: "error",
-              title: "Failed to discover OAuth metadata for MCP server",
-              description: `${discoverOAuthMetadataRes.error.message} (${remoteServerUrl})`,
+        if (discoverOAuthMetadataRes.isOk()) {
+          if (discoverOAuthMetadataRes.value.oauthRequired) {
+            setAuthorization({
+              provider: "mcp",
+              supported_use_cases: ["platform_actions", "personal_actions"],
             });
-            setRemoteMCPServerOAuthDiscoveryDone(false);
+
+            setAuthCredentials(
+              discoverOAuthMetadataRes.value.connectionMetadata
+            );
+            // Returning here as now the user must select the use case.
             setIsLoading(false);
             return;
           }
+        } else if (discoverOAuthMetadataRes.isErr()) {
+          sendNotification({
+            type: "error",
+            title: "Failed to discover OAuth metadata for MCP server",
+            description: `${discoverOAuthMetadataRes.error.message} (${remoteServerUrl})`,
+          });
+          setRemoteMCPServerOAuthDiscoveryDone(false);
+          setIsLoading(false);
+          return;
         }
       }
     }
@@ -224,7 +340,12 @@ export function CreateMCPServerDialog({
       const createRes = await createWithURL({
         url: remoteServerUrl,
         includeGlobal: true,
-        sharedSecret: requiresBearerToken ? sharedSecret : undefined,
+        sharedSecret: authMethod === "bearer" ? sharedSecret : undefined,
+        customHeaders:
+          authMethod === "custom-headers" &&
+          Object.keys(customHeaders).length > 0
+            ? customHeaders
+            : undefined,
         oauthConnection,
       });
 
@@ -309,8 +430,25 @@ export function CreateMCPServerDialog({
                         id="url"
                         placeholder="https://example.com/api/mcp"
                         value={remoteServerUrl}
-                        onChange={(e) => setRemoteServerUrl(e.target.value)}
-                        isError={!!error}
+                        onChange={(e) => {
+                          setRemoteServerUrl(e.target.value);
+                          // Clear error when user starts typing a new URL
+                          if (
+                            error &&
+                            (error ===
+                              MCP_VALIDATION.ERROR_MESSAGES.URL_REQUIRED ||
+                              error ===
+                                MCP_VALIDATION.ERROR_MESSAGES.INVALID_URL)
+                          ) {
+                            setError(null);
+                          }
+                        }}
+                        isError={
+                          !!error &&
+                          (error ===
+                            MCP_VALIDATION.ERROR_MESSAGES.URL_REQUIRED ||
+                            error === MCP_VALIDATION.ERROR_MESSAGES.INVALID_URL)
+                        }
                         message={error}
                         autoFocus
                       />
@@ -319,49 +457,200 @@ export function CreateMCPServerDialog({
                 </div>
               )}
               {defaultServerConfig?.authMethod !== "oauth" && (
-                <div className="space-y-2">
-                  <Label htmlFor="requiresBearerToken">
-                    {defaultServerConfig?.authMethod === "bearer"
-                      ? `${defaultServerConfig.name} API Key`
-                      : "Authentication"}
-                  </Label>
-                  <div className="flex items-center space-x-2">
+                <>
+                  <div className="space-y-2">
+                    {defaultServerConfig?.authMethod === "bearer" ? (
+                      <Label htmlFor="requiresBearerToken">
+                        {defaultServerConfig.name} API Key
+                      </Label>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <Label>Enable Custom Authentication</Label>
+                        {!defaultServerConfig && (
+                          <SliderToggle
+                            size="xs"
+                            selected={isCustomAuthEnabled}
+                            onClick={() =>
+                              handleCustomAuthToggle(!isCustomAuthEnabled)
+                            }
+                          />
+                        )}
+                      </div>
+                    )}
                     {!defaultServerConfig && (
-                      <div>
-                        <SliderToggle
-                          disabled={false}
-                          selected={requiresBearerToken}
-                          onClick={() =>
-                            setRequiresBearerToken(!requiresBearerToken)
+                      <div className="space-y-3">
+                        {!isCustomAuthEnabled && (
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            Dust will attempt to discover if OAuth
+                            authentication is required. If not, the server will
+                            be accessed without authentication. Enable custom
+                            authentication if your server requires API keys or
+                            tokens.
+                          </div>
+                        )}
+                        {isCustomAuthEnabled && (
+                          <div className="space-y-3">
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                              Choose authentication method:
+                            </div>
+                            <div className="flex space-x-6">
+                              <label className="flex cursor-pointer items-center space-x-2">
+                                <input
+                                  type="radio"
+                                  name="authMethod"
+                                  value="bearer"
+                                  checked={authMethod === "bearer"}
+                                  onChange={() =>
+                                    handleAuthMethodChange("bearer")
+                                  }
+                                  className="text-primary"
+                                />
+                                <Label className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">
+                                  Bearer Token
+                                </Label>
+                              </label>
+                              <label className="flex cursor-pointer items-center space-x-2">
+                                <input
+                                  type="radio"
+                                  name="authMethod"
+                                  value="custom-headers"
+                                  checked={authMethod === "custom-headers"}
+                                  onChange={() =>
+                                    handleAuthMethodChange("custom-headers")
+                                  }
+                                  className="text-primary"
+                                />
+                                <Label className="cursor-pointer text-sm font-medium text-gray-900 dark:text-gray-100">
+                                  Custom Headers
+                                </Label>
+                              </label>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {isCustomAuthEnabled && authMethod === "bearer" && (
+                      <div className="flex-grow">
+                        <Input
+                          id="sharedSecret"
+                          placeholder={
+                            defaultServerConfig
+                              ? `Paste your ${defaultServerConfig.name} API key here`
+                              : "Paste the Bearer Token here"
+                          }
+                          value={sharedSecret || ""}
+                          onChange={(e) => setSharedSecret(e.target.value)}
+                          isError={
+                            !!error &&
+                            error.includes(
+                              MCP_VALIDATION.ERROR_MESSAGES
+                                .BEARER_TOKEN_REQUIRED
+                            )
                           }
                         />
                       </div>
                     )}
 
-                    <div className="flex-grow">
-                      <Input
-                        id="sharedSecret"
-                        placeholder={
-                          defaultServerConfig?.authMethod === "bearer"
-                            ? `Paste your ${defaultServerConfig.name} API key here`
-                            : requiresBearerToken
-                              ? "Paste the Bearer Token here"
-                              : ""
-                        }
-                        disabled={!requiresBearerToken}
-                        value={sharedSecret}
-                        onChange={(e) => setSharedSecret(e.target.value)}
-                        isError={
-                          defaultServerConfig?.authMethod === "bearer" &&
-                          !sharedSecret
-                        }
-                      />
-                    </div>
+                    {isCustomAuthEnabled && authMethod === "custom-headers" && (
+                      <div className="space-y-3">
+                        {customHeadersErrors.length > 0 && (
+                          <div className="space-y-1 text-sm text-red-600">
+                            {customHeadersErrors.map((error, index) => (
+                              <div key={index}>• {error}</div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="space-y-2">
+                          {Object.entries(customHeaders).map(
+                            ([key, value], index) => {
+                              const totalHeaders =
+                                Object.keys(customHeaders).length;
+                              const isOnlyHeader = totalHeaders === 1;
+                              const isEmpty = !key.trim() && !value.trim();
+
+                              return (
+                                <div
+                                  key={`header-${index}`}
+                                  className="flex space-x-2"
+                                >
+                                  <Input
+                                    placeholder="Header name"
+                                    value={getDisplayHeaderKey(key)}
+                                    onChange={(e) => {
+                                      const newKey = e.target.value;
+                                      setCustomHeaders(
+                                        updateHeaderKey(
+                                          customHeaders,
+                                          key,
+                                          newKey
+                                        )
+                                      );
+                                    }}
+                                    isError={
+                                      !isValidHeaderKey(
+                                        getDisplayHeaderKey(key)
+                                      )
+                                    }
+                                  />
+                                  <Input
+                                    placeholder="Header value"
+                                    value={value}
+                                    onChange={(e) => {
+                                      setCustomHeaders(
+                                        updateHeaderValue(
+                                          customHeaders,
+                                          key,
+                                          e.target.value
+                                        )
+                                      );
+                                    }}
+                                    isError={!value.trim() && key.trim() !== ""}
+                                  />
+                                  {isOnlyHeader && isEmpty ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      label="Remove"
+                                      disabled
+                                      className="opacity-50"
+                                    />
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      label="Remove"
+                                      onClick={() => {
+                                        setCustomHeaders(
+                                          removeHeader(customHeaders, key)
+                                        );
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              );
+                            }
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            label="Add Header"
+                            onClick={() => {
+                              setCustomHeaders(addNewHeader(customHeaders));
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
+                </>
               )}
             </>
           )}
+
+          {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
+
           {authorization && (
             <MCPServerOAuthConnexion
               authorization={authorization}
@@ -385,16 +674,8 @@ export function CreateMCPServerDialog({
             isLoading,
             label: authorization ? "Setup connection" : "Save",
             variant: "highlight",
-            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-              e.preventDefault();
-              e.stopPropagation();
-              void handleSave(e);
-            },
-            disabled:
-              !isOAuthFormValid ||
-              (authorization && !useCase) ||
-              (defaultServerConfig?.authMethod === "bearer" && !sharedSecret) ||
-              isLoading,
+            onClick: handleSave,
+            disabled: !isFormValid || isLoading,
           }}
         />
       </DialogContent>

@@ -253,9 +253,14 @@ export const connectToMCPServer = async (
           const url = new URL(remoteMCPServer.url);
 
           let token: OAuthTokens | undefined;
+          let customHeaders: Record<string, string> | undefined;
 
-          // If the server has a shared secret, we use it to authenticate.
-          if (remoteMCPServer.sharedSecret) {
+          if (
+            remoteMCPServer.customHeaders &&
+            Object.keys(remoteMCPServer.customHeaders).length > 0
+          ) {
+            customHeaders = remoteMCPServer.customHeaders;
+          } else if (remoteMCPServer.sharedSecret) {
             token = {
               access_token: remoteMCPServer.sharedSecret,
               token_type: "bearer",
@@ -305,9 +310,9 @@ export const connectToMCPServer = async (
           try {
             const req = {
               requestInit: {
-                headers: undefined,
-                dispatcher: createMCPDispatcher(auth),
+                headers: customHeaders,
               },
+              dispatcher: createMCPDispatcher(auth),
               authProvider: new MCPOAuthProvider(auth, token),
             };
 
@@ -337,9 +342,9 @@ export const connectToMCPServer = async (
       const url = new URL(params.remoteMCPServerUrl);
       const req = {
         requestInit: {
-          dispatcher: createMCPDispatcher(auth),
           headers: { ...(params.headers ?? {}) },
         },
+        dispatcher: createMCPDispatcher(auth),
         authProvider: new MCPOAuthProvider(auth, undefined),
       };
       try {
