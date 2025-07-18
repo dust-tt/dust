@@ -53,8 +53,8 @@ export default async function handler(
         },
         "Failed to fetch geolocation data from IPinfo"
       );
-      return res.status(502).json({ 
-        error: `Failed to fetch geolocation data: ${response.statusText}` 
+      return res.status(502).json({
+        error: `Failed to fetch geolocation data: ${response.statusText}`,
       });
     }
 
@@ -67,8 +67,8 @@ export default async function handler(
     });
   } catch (error) {
     logger.error({ error }, "Error in geolocation API");
-    return res.status(500).json({ 
-      error: "Internal server error while fetching geolocation" 
+    return res.status(500).json({
+      error: "Internal server error while fetching geolocation",
     });
   }
 }
