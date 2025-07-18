@@ -186,6 +186,37 @@ export async function updateCrawlerCrawlFrequency(
   return new Ok(undefined);
 }
 
+export async function updateCrawlerActions(
+  connectorId: string,
+  actions: string
+) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    return new Err(new Error(`Connector ${connectorId} not found`));
+  }
+
+  const webcrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
+
+  if (!webcrawlerConfig) {
+    return new Err(new Error(`CrawlerConfig not found for ${connector.id}`));
+  }
+
+  if (actions === "") {
+    await webcrawlerConfig.updateActions(null);
+  } else {
+    try {
+      const parsedActions = JSON.parse(actions);
+      logger.info({ parsedActions }, "update crawler actions");
+      await webcrawlerConfig.updateActions(parsedActions);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
+  }
+
+  return new Ok(undefined);
+}
+
 // Firecrawl related workflows
 
 export async function launchFirecrawlCrawlStartedWorkflow(

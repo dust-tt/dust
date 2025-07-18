@@ -1,5 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import type { Action } from "@mendable/firecrawl-js";
 import type {
   Attributes,
   CreationAttributes,
@@ -250,6 +251,10 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
 
   async updateCrawlId(crawlId: string | null) {
     return this.update({ crawlId });
+  }
+
+  async updateActions(actions: Action[] | null) {
+    return this.update({ actions });
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {

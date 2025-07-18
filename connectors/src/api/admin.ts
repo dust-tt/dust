@@ -58,6 +58,10 @@ const whitelistedCommands = [
     command: "update-frequency",
   },
   {
+    majorCommand: "webcrawler",
+    command: "set-actions",
+  },
+  {
     majorCommand: "confluence",
     command: "check-page-exists",
   },
