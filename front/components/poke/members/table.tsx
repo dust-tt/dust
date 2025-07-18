@@ -19,7 +19,6 @@ function prepareMembersForDisplay(
       lastLoginAt: m.lastLoginAt,
       email: m.email,
       name: m.fullName,
-      provider: m.provider,
       role: m.workspaces[0].role,
       sId: m.sId,
       origin: m.origin,
