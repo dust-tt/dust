@@ -473,22 +473,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         transaction
       );
 
-      const existingContent = await AgentStepContentModel.findOne({
-        where: {
-          agentMessageId,
-          step,
-          index,
-          version: currentMaxVersion,
-        },
-        transaction,
-      });
-
-      if (existingContent) {
-        throw new Error(
-          `Agent step content version ${currentMaxVersion} for step ${step}, index ${index} already exists`
-        );
-      }
-
       return AgentStepContentResource.makeNew(
         {
           agentMessageId,
