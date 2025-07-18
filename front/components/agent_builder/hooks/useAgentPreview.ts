@@ -10,6 +10,7 @@ import {
   submitMessage,
 } from "@app/components/assistant/conversation/lib";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
 import { useUser } from "@app/lib/swr/user";
@@ -52,6 +53,25 @@ export function useDraftAgent() {
   const agentName = useWatch<AgentBuilderFormData, "agentSettings.name">({
     name: "agentSettings.name",
   });
+
+  const {
+    debouncedValue: debouncedInstructions,
+    setValue: setDebouncedInstructions,
+  } = useDebounce(instructions, {
+    delay: 300,
+  });
+  const {
+    debouncedValue: debouncedAgentName,
+    setValue: setDebouncedAgentName,
+  } = useDebounce(agentName, { delay: 300 });
+
+  useEffect(() => {
+    setDebouncedInstructions(instructions);
+  }, [instructions, setDebouncedInstructions]);
+
+  useEffect(() => {
+    setDebouncedAgentName(agentName);
+  }, [agentName, setDebouncedAgentName])
 
   const createDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -103,13 +123,6 @@ export function useDraftAgent() {
       getValues,
     ]);
 
-  const debouncedCreateDraftAgent = useMemo(
-    () =>
-      debounce(() => {
-        void createDraftAgent();
-      }, 500),
-    [createDraftAgent]
-  );
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
       const formData = getValues();
@@ -124,12 +137,6 @@ export function useDraftAgent() {
     }, [draftAgent, createDraftAgent, getValues]);
 
   useEffect(() => {
-    return () => {
-      debouncedCreateDraftAgent.cancel();
-    };
-  }, [debouncedCreateDraftAgent]);
-
-  useEffect(() => {
     if (isMCPServerViewsLoading) {
       return;
     }
@@ -137,10 +144,10 @@ export function useDraftAgent() {
     // Create the first version here, after that we will update the draft agent on form submission or name changes.
     if (!draftAgent) {
       const hasContent =
-        (actions && actions.length > 0) || instructions?.trim();
+        (actions && actions.length > 0) || debouncedInstructions?.trim();
 
       if (!isSavingDraftAgent && hasContent) {
-        void debouncedCreateDraftAgent();
+        void createDraftAgent();
       }
 
       return;
@@ -150,18 +157,18 @@ export function useDraftAgent() {
     // so we will update the draft agent.
     if (
       lastFormDataRef.current &&
-      lastFormDataRef.current?.agentSettings.name !== agentName
+      lastFormDataRef.current?.agentSettings.name !== debouncedAgentName
     ) {
-      void debouncedCreateDraftAgent();
+      void createDraftAgent();
     }
 
     setDraftCreationFailed(false);
   }, [
     actions,
-    instructions,
-    agentName,
+    debouncedInstructions,
+    debouncedAgentName,
     draftAgent,
-    debouncedCreateDraftAgent,
+    createDraftAgent,
     isMCPServerViewsLoading,
     isSavingDraftAgent,
     getValues,
