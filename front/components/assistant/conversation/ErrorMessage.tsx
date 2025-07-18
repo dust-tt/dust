@@ -60,9 +60,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
       variant={errorIsRetryable ? "golden" : "warning"}
       className="flex flex-col gap-3"
     >
-      <div className="whitespace-normal break-words">
-        {fullMessage}
-      </div>
+      <div className="whitespace-normal break-words">{fullMessage}</div>
       <div className="flex flex-col gap-2 sm:flex-row">
         <Button
           variant="outline"
