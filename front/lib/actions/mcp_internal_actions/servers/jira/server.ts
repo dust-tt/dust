@@ -35,29 +35,28 @@ const createServer = (): McpServer => {
     async ({ issueKey }, { authInfo }) => {
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          try {
-            const issue = await getIssue(baseUrl, accessToken, issueKey);
-            if (!issue) {
-              return makeMCPToolJSONSuccess({
-                message: "No issue found with the specified key",
-                result: { found: false, issueKey },
-              });
-            }
-            if ("error" in issue) {
-              return makeMCPToolTextError(
-                `Error retrieving issue: ${issue.error}`
-              );
-            }
+          const issue = await getIssue({
+            baseUrl,
+            accessToken,
+            issueKey,
+          });
+          if (issue.isOk() && issue.value === null) {
             return makeMCPToolJSONSuccess({
-              message: "Issue retrieved successfully",
-              result: { issue },
+              message: "No issue found with the specified key",
+              result: { found: false, issueKey },
             });
-          } catch (error) {
-            return makeMCPToolTextError(`Error retrieving issue: ${error}`);
           }
+          if (issue.isErr()) {
+            return makeMCPToolTextError(
+              `Error retrieving issue: ${issue.error.error}`
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Issue retrieved successfully",
+            result: { issue: issue.value },
+          });
         },
         authInfo,
-        params: { issueKey },
       });
     }
   );
