@@ -411,10 +411,16 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }
 
   private static async getNextVersionForStepContent(
-    agentMessageId: ModelId,
-    step: number,
-    index: number,
-    transaction?: Transaction
+    {
+      agentMessageId,
+      step,
+      index,
+    }: {
+      agentMessageId: ModelId;
+      step: number;
+      index: number;
+    },
+    transaction: Transaction
   ): Promise<number> {
     const existingContent = await AgentStepContentModel.findAll({
       where: {
@@ -461,9 +467,11 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       });
 
       const currentMaxVersion = await this.getNextVersionForStepContent(
-        agentMessageId,
-        step,
-        index,
+        {
+          agentMessageId,
+          step,
+          index,
+        },
         t
       );
 
