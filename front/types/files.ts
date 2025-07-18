@@ -308,8 +308,8 @@ export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 export const clientExecutableContentType =
   "application/vnd.dust.client-executable";
 
-// Internal MIME types for specialized use cases (not exposed via APIs).
-export const INTERNAL_FILE_FORMATS = {
+// Interactive MIME types for specialized use cases (not exposed via APIs).
+export const INTERACTIVE_FILE_FORMATS = {
   // Custom for client-executable code files managed by interactive_content MCP server.
   // These files are internal-only and should not be exposed via APIs.
   // Limited to JavaScript/TypeScript files that can run in the browser.
@@ -324,15 +324,18 @@ export function isInteractiveContentType(contentType: string): boolean {
   return contentType === clientExecutableContentType;
 }
 
-// Define a type for internal MIME types.
-export type InternalFileContentType = keyof typeof INTERNAL_FILE_FORMATS;
+// Define a type for interactive file content types.
+export type InteractiveFileContentType = keyof typeof INTERACTIVE_FILE_FORMATS;
 
-export const ALL_FILE_FORMATS = { ...FILE_FORMATS, ...INTERNAL_FILE_FORMATS };
+export const ALL_FILE_FORMATS = {
+  ...FILE_FORMATS,
+  ...INTERACTIVE_FILE_FORMATS,
+};
 
-// Union type for all supported content types (public + internal).
+// Union type for all supported content types (public + interactive).
 export type AllSupportedFileContentType =
   | SupportedFileContentType
-  | InternalFileContentType;
+  | InteractiveFileContentType;
 
 export type SupportedImageContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
@@ -370,10 +373,10 @@ export function isSupportedFileContentType(
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
 }
 
-export function isInternalFileContentType(
+export function isInteractiveFileContentType(
   contentType: string
-): contentType is InternalFileContentType {
-  return !!INTERNAL_FILE_FORMATS[contentType as InternalFileContentType];
+): contentType is InteractiveFileContentType {
+  return !!INTERACTIVE_FILE_FORMATS[contentType as InteractiveFileContentType];
 }
 
 export function isAllSupportedFileContentType(
@@ -381,7 +384,7 @@ export function isAllSupportedFileContentType(
 ): contentType is AllSupportedFileContentType {
   return (
     isSupportedFileContentType(contentType) ||
-    isInternalFileContentType(contentType)
+    isInteractiveFileContentType(contentType)
   );
 }
 
@@ -436,8 +439,8 @@ function getFileFormat(contentType: string): FileFormat | null {
     }
   }
 
-  if (isInternalFileContentType(contentType)) {
-    const format = INTERNAL_FILE_FORMATS[contentType];
+  if (isInteractiveFileContentType(contentType)) {
+    const format = INTERACTIVE_FILE_FORMATS[contentType];
     if (format) {
       return format;
     }
@@ -475,12 +478,12 @@ export function contentTypeForExtension(
   }
 
   // Check internal file formats
-  const internalEntries = Object.entries(INTERNAL_FILE_FORMATS) as [
-    InternalFileContentType,
+  const internalEntries = Object.entries(INTERACTIVE_FILE_FORMATS) as [
+    InteractiveFileContentType,
     FileFormat,
   ][];
 
-  const internalMatch = internalEntries.find(([_, value]) =>
+  const internalMatch = internalEntries.find(([, value]) =>
     value.exts.includes(extension)
   )?.[0];
   if (internalMatch) {

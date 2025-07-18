@@ -10,8 +10,8 @@ import {
 } from "@app/lib/api/files/client_executable";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { InternalFileContentType } from "@app/types";
-import { INTERNAL_FILE_FORMATS } from "@app/types";
+import type { InteractiveFileContentType } from "@app/types";
+import { INTERACTIVE_FILE_FORMATS } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "interactive_content",
@@ -60,7 +60,9 @@ const createServer = (
             "DataVisualization.tsx, analysis.py, dashboard.html)"
         ),
       mime_type: z
-        .enum(Object.keys(INTERNAL_FILE_FORMATS) as [InternalFileContentType])
+        .enum(
+          Object.keys(INTERACTIVE_FILE_FORMATS) as [InteractiveFileContentType]
+        )
         .describe(
           "The MIME type for the interactive content. Currently supports " +
             "'application/vnd.dust.client-executable' for client-side executable files."
@@ -82,9 +84,16 @@ const createServer = (
         ),
     },
     async ({ file_name, mime_type, content, description }) => {
+      const { conversation } = agentLoopContext?.runContext ?? {};
+      if (!conversation) {
+        return makeMCPToolTextError(
+          "Conversation ID is required to create a client executable file."
+        );
+      }
+
       const result = await createClientExecutableFile(auth, {
         content,
-        conversationId: agentLoopContext?.runContext?.conversation.sId,
+        conversationId: conversation.sId,
         fileName: file_name,
         mimeType: mime_type,
       });

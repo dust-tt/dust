@@ -1,39 +1,30 @@
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import type { InternalFileContentType, Result } from "@app/types";
+import type { InteractiveFileContentType, Result } from "@app/types";
 import {
-  INTERNAL_FILE_FORMATS,
-  isInternalFileContentType,
+  clientExecutableContentType,
+  INTERACTIVE_FILE_FORMATS,
   normalizeError,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-export interface CreateClientExecutableFileParams {
-  content: string;
-  conversationId?: string;
-  fileName: string;
-  mimeType: InternalFileContentType;
-}
-
-export interface UpdateClientExecutableFileParams {
-  content: string;
-  fileId: string;
-}
-
 export async function createClientExecutableFile(
   auth: Authenticator,
-  params: CreateClientExecutableFileParams
+  params: {
+    content: string;
+    conversationId: string;
+    fileName: string;
+    mimeType: InteractiveFileContentType;
+  }
 ): Promise<Result<FileResource, Error>> {
   const { content, conversationId, fileName, mimeType } = params;
 
   try {
     const workspace = auth.getNonNullableWorkspace();
 
-    // FIXME: Enforce that the mime type is client side executable.
-
     // Validate that the MIME type is supported.
-    if (!isInternalFileContentType(mimeType)) {
-      const supportedTypes = Object.keys(INTERNAL_FILE_FORMATS).join(", ");
+    if (mimeType !== clientExecutableContentType) {
+      const supportedTypes = Object.keys(INTERACTIVE_FILE_FORMATS).join(", ");
 
       return new Err(
         new Error(
@@ -43,7 +34,7 @@ export async function createClientExecutableFile(
     }
 
     // Validate that the file extension matches the MIME type.
-    const fileFormat = INTERNAL_FILE_FORMATS[mimeType];
+    const fileFormat = INTERACTIVE_FILE_FORMATS[mimeType];
     const fileNameParts = fileName.split(".");
 
     if (fileNameParts.length < 2) {
@@ -57,7 +48,7 @@ export async function createClientExecutableFile(
     }
 
     const extension = `.${fileNameParts[fileNameParts.length - 1].toLowerCase()}`;
-    if (!fileFormat.exts.includes(extension)) {
+    if (!(fileFormat.exts as string[]).includes(extension)) {
       const supportedExts = fileFormat.exts.join(", ");
       return new Err(
         new Error(
@@ -73,6 +64,7 @@ export async function createClientExecutableFile(
       fileName,
       contentType: mimeType,
       fileSize: 0, // Will be updated in uploadContent.
+      // Attach the conversation id so we can use it to control access to the file.
       useCase: "conversation",
       useCaseMetadata: {
         conversationId,
@@ -94,7 +86,10 @@ export async function createClientExecutableFile(
 
 export async function updateClientExecutableFile(
   auth: Authenticator,
-  params: UpdateClientExecutableFileParams
+  params: {
+    content: string;
+    fileId: string;
+  }
 ): Promise<Result<FileResource, Error>> {
   const { fileId, content } = params;
 
@@ -106,7 +101,7 @@ export async function updateClientExecutableFile(
     }
 
     // Check if it's a file with an internal MIME type.
-    if (!isInternalFileContentType(fileResource.contentType)) {
+    if (fileResource.contentType !== clientExecutableContentType) {
       return new Err(
         new Error(
           `File '${fileId}' is not a client executable file ` +
@@ -127,17 +122,3 @@ export async function updateClientExecutableFile(
     );
   }
 }
-
-// export function getSupportedClientExecutableMimeTypes(): Array<{
-//   mimeType: InternalFileContentType;
-//   description: string;
-//   extensions: string[];
-//   safeToDisplay: boolean;
-// }> {
-//   return Object.entries(INTERNAL_FILE_FORMATS).map(([mimeType, format]) => ({
-//     mimeType: mimeType as InternalFileContentType,
-//     description: `File category: ${format.cat}`,
-//     extensions: format.exts,
-//     safeToDisplay: format.isSafeToDisplay,
-//   }));
-// }
