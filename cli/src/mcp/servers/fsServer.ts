@@ -29,8 +29,6 @@ export const useFileSystemServer = async (
   const searchContentTool = new SearchContentTool();
   const editFileTool = new EditFileTool();
   const runCommandTool = new RunCommandTool();
-  const createPlanTool = new CreatePlanTool();
-  const updatePlanTool = new UpdatePlanTool();
 
   if (diffApprovalCallback) {
     editFileTool.setDiffApprovalCallback(diffApprovalCallback);
@@ -71,20 +69,6 @@ export const useFileSystemServer = async (
     runCommandTool.description,
     runCommandTool.inputSchema.shape,
     runCommandTool.execute.bind(runCommandTool)
-  );
-
-  server.tool(
-    createPlanTool.name,
-    createPlanTool.description,
-    createPlanTool.inputSchema.shape,
-    createPlanTool.execute.bind(createPlanTool)
-  );
-
-  server.tool(
-    updatePlanTool.name,
-    updatePlanTool.description,
-    updatePlanTool.inputSchema.shape,
-    updatePlanTool.execute.bind(updatePlanTool)
   );
 
   // Connect to Dust with enhanced error handling
