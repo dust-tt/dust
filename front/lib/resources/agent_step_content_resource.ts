@@ -365,7 +365,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     index,
     type,
     value,
-    transaction,
   }: {
     agentMessageId: ModelId;
     workspaceId: ModelId;
@@ -373,9 +372,8 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     index: number;
     type: "text_content" | "reasoning" | "function_call";
     value: any;
-    transaction: Transaction;
   }): Promise<AgentStepContentResource> {
-    return frontSequelize.transaction(async (t: Transaction) => {
+    return frontSequelize.transaction(async (transaction: Transaction) => {
       // Acquire advisory lock for this step-index combination
       const hash = md5(
         `agent_step_content_version_${agentMessageId}_${step}_${index}`
@@ -394,7 +392,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           step,
           index,
         },
-        t
+        transaction
       );
 
       const existingContent = await AgentStepContentModel.findOne({
@@ -404,7 +402,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           index,
           version: currentMaxVersion,
         },
-        transaction: t,
+        transaction,
       });
 
       if (existingContent) {
@@ -423,7 +421,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           type,
           value,
         },
-        t
+        transaction
       );
     });
   }
