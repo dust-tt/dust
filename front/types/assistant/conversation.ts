@@ -129,10 +129,6 @@ export type AgentMessageStatus =
   | "failed"
   | "cancelled";
 
-export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
-  tool_action: "Using a tool",
-};
-
 export interface CitationType {
   description?: string;
   href?: string;
