@@ -607,6 +607,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"
   | "index_private_slack_channel"
+  | "jira_tool"
   | "labs_mcp_actions_dashboard"
   | "labs_trackers"
   | "labs_transcripts"
