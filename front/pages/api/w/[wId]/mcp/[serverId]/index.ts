@@ -185,14 +185,21 @@ async function handler(
             });
           }
 
-          const { name, icon, description, sharedSecret, oAuthUseCase } =
-            req.body;
+          const {
+            name,
+            icon,
+            description,
+            sharedSecret,
+            customHeaders,
+            oAuthUseCase,
+          } = req.body;
 
           if (
             !name &&
             !icon &&
             !description &&
             !sharedSecret &&
+            !customHeaders &&
             !oAuthUseCase
           ) {
             return apiError(req, res, {
@@ -204,12 +211,13 @@ async function handler(
             });
           }
 
-          if (name || icon || description || sharedSecret) {
+          if (name || icon || description || sharedSecret || customHeaders) {
             const r = await server.updateMetadata(auth, {
               name,
               icon,
               description,
               sharedSecret,
+              customHeaders,
               lastSyncAt: new Date(),
             });
             if (r.isErr()) {
