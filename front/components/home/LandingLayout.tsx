@@ -43,7 +43,8 @@ export default function LandingLayout({
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(
     ["true", "auto"].includes(cookieValue)
   );
-  const shouldCheckGeo = !cookieValue;
+
+  const shouldCheckGeo = cookieValue === undefined;
 
   const { geoData, isGeoDataLoading } = useGeolocation({
     disabled: !shouldCheckGeo,
@@ -67,7 +68,7 @@ export default function LandingLayout({
   );
 
   useEffect(() => {
-    if (cookieValue) {
+    if (cookieValue !== undefined) {
       setShowCookieBanner(false);
       return;
     }
