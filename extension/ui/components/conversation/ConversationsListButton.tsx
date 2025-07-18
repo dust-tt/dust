@@ -43,14 +43,6 @@ const Content = () => {
     const lastMonth = moment().subtract(1, "months").startOf("day");
     const lastYear = moment().subtract(1, "years").startOf("day");
 
-    type GroupLabel =
-      | "Today"
-      | "Yesterday"
-      | "Last Week"
-      | "Last Month"
-      | "Last 12 Months"
-      | "Older";
-
     const groups: Record<GroupLabel, ConversationWithoutContentPublicType[]> = {
       Today: [],
       Yesterday: [],
