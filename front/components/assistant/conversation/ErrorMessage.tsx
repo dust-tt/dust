@@ -72,7 +72,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
                   label={"Copy"}
                   onClick={() =>
                     void navigator.clipboard.writeText(
-                      error.message + debugInfo ? ` (${debugInfo})` : ""
+                      error.message + (debugInfo ? ` (${debugInfo})` : "")
                     )
                   }
                 />
