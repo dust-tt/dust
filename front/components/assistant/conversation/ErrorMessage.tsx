@@ -56,7 +56,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
               variant="outline"
               size="xs"
               icon={EyeIcon}
-              label="See the error"
+              label="Details"
             />
           }
           content={
