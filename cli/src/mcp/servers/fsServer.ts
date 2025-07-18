@@ -2,11 +2,12 @@ import type { DustAPI } from "@dust-tt/client";
 import { DustMcpServerTransport } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import { RunCommandTool } from "../tools/command.js";
+import { CreatePlanTool } from "../tools/createPlan.js";
+import { EditFileTool } from "../tools/editFile.js";
 import { ReadFileTool } from "../tools/readFile.js";
 import { SearchContentTool } from "../tools/searchContent.js";
 import { SearchFilesTool } from "../tools/searchFiles.js";
-import { EditFileTool } from "../tools/editFile.js";
-import { RunCommandTool } from "../tools/command.js";
 
 // Add local development tools to the MCP server
 export const useFileSystemServer = async (
@@ -28,6 +29,7 @@ export const useFileSystemServer = async (
   const searchContentTool = new SearchContentTool();
   const editFileTool = new EditFileTool();
   const runCommandTool = new RunCommandTool();
+  const createPlanTool = new CreatePlanTool();
 
   if (diffApprovalCallback) {
     editFileTool.setDiffApprovalCallback(diffApprovalCallback);
@@ -68,6 +70,13 @@ export const useFileSystemServer = async (
     runCommandTool.description,
     runCommandTool.inputSchema.shape,
     runCommandTool.execute.bind(runCommandTool)
+  );
+
+  server.tool(
+    createPlanTool.name,
+    createPlanTool.description,
+    createPlanTool.inputSchema.shape,
+    createPlanTool.execute.bind(createPlanTool)
   );
 
   // Connect to Dust with enhanced error handling

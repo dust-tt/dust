@@ -1,8 +1,8 @@
+import chalk from "chalk";
+import { structuredPatch } from "diff";
 import { Box, Text, useInput } from "ink";
 import type { FC } from "react";
 import React, { useState } from "react";
-import chalk from "chalk";
-import { structuredPatch } from "diff";
 
 // Modern pastel color palette inspired by contemporary CLI tools
 const COLORS = {
