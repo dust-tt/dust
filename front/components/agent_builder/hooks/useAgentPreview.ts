@@ -30,7 +30,6 @@ export function useDraftAgent() {
   const sendNotification = useSendNotification();
   const { getValues } = useFormContext<AgentBuilderFormData>();
 
-  const formData = useWatch<AgentBuilderFormData>();
   const lastFormDataRef = useRef<AgentBuilderFormData | null>(null);
 
   const [draftAgent, setDraftAgent] =
@@ -38,6 +37,21 @@ export function useDraftAgent() {
   const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(false);
   const [draftCreationFailed, setDraftCreationFailed] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
+
+  // We don't need to watch actions and instructions once we create the first version of draft agent,
+  // since we will create a new version only when a user sends a chat.
+  const actions = useWatch<AgentBuilderFormData, "actions">({
+    name: "actions",
+    disabled: !!draftAgent,
+  });
+  const instructions = useWatch<AgentBuilderFormData, "instructions">({
+    name: "instructions",
+    disabled: !!draftAgent,
+  });
+  // We need to keep watching this since we will auto update the draft when name changes.
+  const agentName = useWatch<AgentBuilderFormData, "agentSettings.name">({
+    name: "agentSettings.name",
+  });
 
   const createDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -123,8 +137,7 @@ export function useDraftAgent() {
     // Create the first version here, after that we will update the draft agent on form submission or name changes.
     if (!draftAgent) {
       const hasContent =
-        (formData.actions && formData.actions.length > 0) ||
-        formData.instructions?.trim();
+        (actions && actions.length > 0) || instructions?.trim();
 
       if (!isSavingDraftAgent && hasContent) {
         void debouncedCreateDraftAgent();
@@ -137,15 +150,16 @@ export function useDraftAgent() {
     // so we will update the draft agent.
     if (
       lastFormDataRef.current &&
-      lastFormDataRef.current?.agentSettings.name !==
-        formData.agentSettings?.name
+      lastFormDataRef.current?.agentSettings.name !== agentName
     ) {
       void debouncedCreateDraftAgent();
     }
 
     setDraftCreationFailed(false);
   }, [
-    formData,
+    actions,
+    instructions,
+    agentName,
     draftAgent,
     debouncedCreateDraftAgent,
     isMCPServerViewsLoading,
