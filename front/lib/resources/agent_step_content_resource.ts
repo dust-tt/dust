@@ -410,32 +410,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return base;
   }
 
-  private static async getNextVersionForStepContent(
-    {
-      agentMessageId,
-      step,
-      index,
-    }: {
-      agentMessageId: ModelId;
-      step: number;
-      index: number;
-    },
-    transaction: Transaction
-  ): Promise<number> {
-    const existingContent = await AgentStepContentModel.findAll({
-      where: {
-        agentMessageId,
-        step,
-        index,
-      },
-      order: [["version", "DESC"]],
-      limit: 1,
-      transaction,
-    });
-
-    return existingContent.length > 0 ? existingContent[0].version + 1 : 0;
-  }
-
   static async createNewVersion({
     agentMessageId,
     workspaceId,
@@ -464,14 +438,19 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         replacements: { key: parseInt(hash, 16) % 9999999999 },
       });
 
-      const currentMaxVersion = await this.getNextVersionForStepContent(
-        {
+      const existingContent = await AgentStepContentModel.findAll({
+        where: {
           agentMessageId,
           step,
           index,
         },
-        transaction
-      );
+        order: [["version", "DESC"]],
+        limit: 1,
+        transaction,
+      });
+
+      const currentMaxVersion =
+        existingContent.length > 0 ? existingContent[0].version + 1 : 0;
 
       return AgentStepContentResource.makeNew(
         {
