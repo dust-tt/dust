@@ -20,7 +20,7 @@ import {
   useDataSourceViewTable,
   useUpdateDataSourceViewTable,
 } from "@app/lib/swr/data_source_view_tables";
-import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/file";
+import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/files";
 import type {
   DataSourceViewType,
   LightContentNode,
