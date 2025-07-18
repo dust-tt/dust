@@ -26,7 +26,6 @@ use tokio::{
     sync::mpsc::unbounded_channel,
 };
 use tokio_stream::Stream;
-use tracing::{error, info};
 
 use dust::{
     api_keys::validate_api_key,
@@ -44,6 +43,7 @@ use dust::{
     databases_store::{self},
     dataset,
     deno::js_executor::JSExecutor,
+    error, info,
     open_telemetry::init_subscribers,
     project,
     providers::provider::{provider, ProviderID},
@@ -595,7 +595,6 @@ async fn datasets_list(
     State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    tracing::info!("Listing datasets for project: {}", project_id);
 
     match state.store.list_datasets(&project).await {
         Err(e) => error_response(

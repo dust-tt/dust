@@ -1,8 +1,8 @@
+use crate::{error, info};
 use lazy_static::lazy_static;
 use redis::{AsyncCommands, Client as RedisClient};
 use rslock::LockManager;
 use std::{collections::HashMap, env, sync::Arc, time::Duration};
-use tracing::{error, info};
 
 use crate::{
     databases::table::{LocalTable, Table},

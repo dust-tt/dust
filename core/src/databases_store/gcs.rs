@@ -1,10 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
+use crate::info;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use cloud_storage::Object;
 use csv::Writer;
-use tracing::info;
 
 use crate::{
     databases::{

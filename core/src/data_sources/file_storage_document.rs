@@ -1,7 +1,7 @@
+use crate::info;
 use anyhow::{anyhow, Result};
 use cloud_storage::{ErrorList, GoogleErrorResponse, Object};
 use serde::{Deserialize, Serialize};
-use tracing::info;
 
 use crate::utils;
 
