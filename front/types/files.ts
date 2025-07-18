@@ -29,7 +29,7 @@ export type FileUseCaseMetadata = {
 };
 
 export interface FileType {
-  contentType: SupportedFileContentType;
+  contentType: AllSupportedFileContentType;
   downloadUrl?: string;
   fileName: string;
   fileSize: number;
@@ -78,7 +78,7 @@ export function isBigFileSize(size: number) {
 
 // Function to ensure file size is within max limit for given content type.
 export function ensureFileSize(
-  contentType: SupportedFileContentType,
+  contentType: AllSupportedFileContentType,
   fileSize: number
 ): boolean {
   const format = getFileFormat(contentType);
@@ -305,6 +305,32 @@ export const FILE_FORMATS = {
 // Define a type that is the list of all keys from FILE_FORMATS.
 export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
+// Internal MIME types for specialized use cases (not exposed via APIs).
+export const INTERNAL_FILE_FORMATS = {
+  // Custom for client-executable code files managed by file_manager MCP server.
+  // These files are internal-only and should not be exposed via APIs.
+  // Limited to JavaScript/TypeScript files that can run in the browser.
+  "application/vnd.dust.client-executable": {
+    cat: "code",
+    exts: [".js", ".jsx", ".ts", ".tsx"],
+    isSafeToDisplay: false,
+  },
+} as const satisfies Record<string, FileFormat>;
+
+export function isInteractiveContentType(contentType: string): boolean {
+  return contentType === "application/vnd.dust.client-executable";
+}
+
+// Define a type for internal MIME types.
+export type InternalFileContentType = keyof typeof INTERNAL_FILE_FORMATS;
+
+export const ALL_FILE_FORMATS = { ...FILE_FORMATS, ...INTERNAL_FILE_FORMATS };
+
+// Union type for all supported content types (public + internal).
+export type AllSupportedFileContentType =
+  | SupportedFileContentType
+  | InternalFileContentType;
+
 export type SupportedImageContentType = {
   [K in keyof typeof FILE_FORMATS]: (typeof FILE_FORMATS)[K] extends {
     cat: "image";
@@ -339,6 +365,21 @@ export function isSupportedFileContentType(
   contentType: string
 ): contentType is SupportedFileContentType {
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
+}
+
+export function isInternalFileContentType(
+  contentType: string
+): contentType is InternalFileContentType {
+  return !!INTERNAL_FILE_FORMATS[contentType as InternalFileContentType];
+}
+
+export function isAllSupportedFileContentType(
+  contentType: string
+): contentType is AllSupportedFileContentType {
+  return (
+    isSupportedFileContentType(contentType) ||
+    isInternalFileContentType(contentType)
+  );
 }
 
 // UseCases supported on the public API
@@ -387,7 +428,13 @@ export function getFileFormatCategory(
 function getFileFormat(contentType: string): FileFormat | null {
   if (isSupportedFileContentType(contentType)) {
     const format = FILE_FORMATS[contentType];
+    if (format) {
+      return format;
+    }
+  }
 
+  if (isInternalFileContentType(contentType)) {
+    const format = INTERNAL_FILE_FORMATS[contentType];
     if (format) {
       return format;
     }
@@ -397,7 +444,7 @@ function getFileFormat(contentType: string): FileFormat | null {
 }
 
 export function extensionsForContentType(
-  contentType: SupportedFileContentType
+  contentType: AllSupportedFileContentType
 ): string[] {
   const format = getFileFormat(contentType);
 
@@ -410,17 +457,34 @@ export function extensionsForContentType(
 
 export function contentTypeForExtension(
   extension: string
-): SupportedFileContentType | null {
-  // Type assertion to handle the entries
-  const entries = Object.entries(FILE_FORMATS) as [
+): AllSupportedFileContentType | null {
+  // Check standard file formats first
+  const standardEntries = Object.entries(FILE_FORMATS) as [
     SupportedFileContentType,
     FileFormat,
   ][];
 
-  return (
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    entries.find(([_, value]) => value.exts.includes(extension))?.[0] || null
-  );
+  const standardMatch = standardEntries.find(([_, value]) =>
+    value.exts.includes(extension)
+  )?.[0];
+  if (standardMatch) {
+    return standardMatch;
+  }
+
+  // Check internal file formats
+  const internalEntries = Object.entries(INTERNAL_FILE_FORMATS) as [
+    InternalFileContentType,
+    FileFormat,
+  ][];
+
+  const internalMatch = internalEntries.find(([_, value]) =>
+    value.exts.includes(extension)
+  )?.[0];
+  if (internalMatch) {
+    return internalMatch;
+  }
+
+  return null;
 }
 
 export function getSupportedFileExtensions(

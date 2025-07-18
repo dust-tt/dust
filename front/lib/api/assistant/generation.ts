@@ -14,7 +14,9 @@ import {
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
+import { visualizationWithFileManagerSystemPrompt } from "@app/lib/api/assistant/visualization_with_file_manager";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -155,7 +157,15 @@ export async function constructPromptMultiActions(
   }
 
   if (agentConfiguration.visualizationEnabled) {
-    guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
+    console.log("Visualization enabled");
+    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+    console.log("Feature flags", featureFlags);
+    if (featureFlags.includes("file_manager_server")) {
+      console.log("File manager server enabled");
+      guidelinesSection += `\n${visualizationWithFileManagerSystemPrompt()}\n`;
+    } else {
+      guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
+    }
   }
 
   guidelinesSection +=

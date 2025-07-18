@@ -12,6 +12,11 @@ import { CoEditionContainer } from "@app/components/assistant/conversation/co_ed
 import { CoEditionProvider } from "@app/components/assistant/conversation/co_edition/CoEditionProvider";
 import { useCoEditionContext } from "@app/components/assistant/conversation/co_edition/context";
 import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
+import { ContentContainer } from "@app/components/assistant/conversation/content/ContentContainer";
+import {
+  ContentProvider,
+  useContentContext,
+} from "@app/components/assistant/conversation/content/ContentContext";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   ConversationsNavigationProvider,
@@ -165,13 +170,15 @@ const ConversationLayoutContent = ({
               owner={owner}
               hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
             >
-              <ConversationInnerLayout
-                conversation={conversation}
-                owner={owner}
-                user={user}
-              >
-                {children}
-              </ConversationInnerLayout>
+              <ContentProvider>
+                <ConversationInnerLayout
+                  conversation={conversation}
+                  owner={owner}
+                  user={user}
+                >
+                  {children}
+                </ConversationInnerLayout>
+              </ContentProvider>
             </CoEditionProvider>
             {shouldDisplayWelcomeTourGuide && (
               <WelcomeTourGuide
@@ -204,7 +211,7 @@ function ConversationInnerLayout({
   owner,
   user,
 }: ConversationInnerLayoutProps) {
-  const { isCoEditionOpen } = useCoEditionContext();
+  const { isContentOpen, closeContent } = useContentContext();
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -224,17 +231,21 @@ function ConversationInnerLayout({
             </GenerationContextProvider>
           </FileDropProvider>
         </ResizablePanel>
-        {isCoEditionOpen && <ResizableHandle />}
+
+        {/* Content Panel */}
+        {isContentOpen && <ResizableHandle />}
         <ResizablePanel
           minSize={20}
           defaultSize={50}
-          className={isCoEditionOpen ? "" : "hidden"}
+          className={isContentOpen ? "" : "hidden"}
         >
-          {isCoEditionOpen && (
-            <CoEditionContainer
+          {isContentOpen && (
+            <ContentContainer
               conversation={conversation}
               owner={owner}
               user={user}
+              isOpen={isContentOpen}
+              onClose={closeContent}
             />
           )}
         </ResizablePanel>

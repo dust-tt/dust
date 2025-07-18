@@ -24,7 +24,13 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { Err, FILE_FORMATS, normalizeError, Ok, removeNulls } from "@app/types";
+import {
+  ALL_FILE_FORMATS,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
@@ -322,6 +328,24 @@ export class FileResource extends BaseResource<FileModel> {
       .createReadStream();
   }
 
+  // Direct upload logic.
+
+  async uploadContent(auth: Authenticator, content: string): Promise<void> {
+    // Update the file size.
+    await this.update({
+      fileSize: Buffer.byteLength(content, "utf8"),
+    });
+
+    await this.getBucketForVersion("original").uploadRawContentToBucket({
+      content,
+      contentType: this.contentType,
+      filePath: this.getCloudStoragePath(auth, "original"),
+    });
+
+    // Mark the file as ready.
+    await this.markAsReady();
+  }
+
   setUseCaseMetadata(metadata: FileUseCaseMetadata) {
     return this.update({ useCaseMetadata: metadata });
   }
@@ -398,6 +422,6 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   isSafeToDisplay(): boolean {
-    return FILE_FORMATS[this.contentType].isSafeToDisplay;
+    return ALL_FILE_FORMATS[this.contentType].isSafeToDisplay;
   }
 }

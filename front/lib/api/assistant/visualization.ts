@@ -1,8 +1,5 @@
-export const visualizationSystemPrompt = () => `\
-## CREATING VISUALIZATIONS
-It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
-
-Guidelines using the :::visualization directive:
+// Common guidelines shared between visualization approaches
+export const commonVisualizationGuidelines = () => `\
 - The generated component should always be exported as default
 - There is no internet access in the visualization environment
 - Supported React features:
@@ -14,52 +11,57 @@ Guidelines using the :::visualization directive:
   - React.createElement is not supported
 - Props:
   - The generated component should not have any required props / parameters
-- Responsiveness:
-  - Use ResponsiveContainer for charts to adapt to parent dimensions
-  - Leave adequate padding around charts for labels and legends
-  - Content should adapt gracefully to different widths
-  - For multi-chart layouts, use flex or grid to maintain spacing
-  - The component should be able to adapt to different screen sizes
-  - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
-- Styling:
-  - Tailwind's arbitrary values like \`h-[600px]\` STRICTLY FORBIDDEN, and will cause immediate failure. ANY class with square brackets [ ] is prohibited.
-  - FORBIDDEN EXAMPLES: \`h-[600px]\`, \`w-[800px]\`, \`text-[14px]\`, \`bg-[#ff0000]\`, \`border-[2px]\`, \`p-[20px]\`, \`m-[10px]\`
-  - ALLOWED ALTERNATIVES: Use predefined classes: \`h-96\`, \`w-full\`, \`text-sm\`, \`bg-red-500\`, \`border-2\`, \`p-5\`, \`m-2\`
-  - For specific values: Use the \`style\` prop instead: \`style={{ height: '600px', width: '800px' }}\`
-  - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
-  - Use a default white background (represented by the Tailwind class bg-white) unless explicitly requested otherwise by the user.
-  - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
-- Using any file from the \`list_conversation_files\` action when available:
-  - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
-  - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
-  - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
-  - Always use \`papaparse\` to parse CSV files.
-- User data download from the visualization:
-  - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
-  - \`triggerUserFileDownload\` has to be imported from \`"@dust/react-hooks"\`.
-  - Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
-- Available third-party libraries:
-  - Base React is available to be imported. In order to use hooks, they have to be imported at the top of the script, e.g. \`import { useState } from "react"\`
-  - The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`.
-    - Important Recharts usage notes:
-      - Tooltip formatters: The formatter prop must be a function returning an array [formattedValue, formattedName]:
-        - CORRECT: \`formatter={(value, name) => [value, name]}\` or \`formatter={(value, name) => ['$' + value, 'Sales: ' + name]}\`
-        - INCORRECT: \`formatter={[value, 'Label']}\` (not a function)
-      - Label formatters: Use labelFormatter prop with a function returning a string:
-        - Example: \`labelFormatter={(label) => \`Date: \${label}\`}\`
-      - Always wrap charts in ResponsiveContainer for proper sizing
-      - Use proper margins to prevent label cutoff: \`margin={{ top: 20, right: 30, left: 20, bottom: 20 }}\`
-  - The papaparse library is available to be imported, e.g. \`import Papa from "papaparse"\` & \`const parsed = Papa.parse(fileContent, {header:true, skipEmptyLines: "greedy"});\`. The \`skipEmptyLines:"greedy"\` configuration should always be used.
-  - No other third-party libraries are installed or available to be imported. They cannot be used, imported, or installed.
-- Miscellaneous:
-  - Images from the web cannot be rendered or used in the visualization (no internet access).
-  - When parsing dates, the date format should be accounted for based on the format seen in the \`<attachment/>\` tag.
-  - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
-- When to use the :::visualization directive:
-  - The visualization directive is particularly adapted to use-cases involving data visualizations such as graphs, charts, and plots.
-  - The visualization directive should not be used for anything that can be achieved with regular markdown.
 
-Example using the \`useFile\` hook:
+### Responsiveness Guidelines:
+- Use ResponsiveContainer for charts to adapt to parent dimensions
+- Leave adequate padding around charts for labels and legends
+- Content should adapt gracefully to different widths
+- For multi-chart layouts, use flex or grid to maintain spacing
+- The component should be able to adapt to different screen sizes
+- The content should never overflow the viewport and should never have horizontal or vertical scrollbars
+
+### Styling Guidelines:
+- Tailwind's arbitrary values like \`h-[600px]\` STRICTLY FORBIDDEN, and will cause immediate failure. ANY class with square brackets [ ] is prohibited.
+- FORBIDDEN EXAMPLES: \`h-[600px]\`, \`w-[800px]\`, \`text-[14px]\`, \`bg-[#ff0000]\`, \`border-[2px]\`, \`p-[20px]\`, \`m-[10px]\`
+- ALLOWED ALTERNATIVES: Use predefined classes: \`h-96\`, \`w-full\`, \`text-sm\`, \`bg-red-500\`, \`border-2\`, \`p-5\`, \`m-2\`
+- For specific values: Use the \`style\` prop instead: \`style={{ height: '600px', width: '800px' }}\`
+- Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
+- Use a default white background (represented by the Tailwind class bg-white) unless explicitly requested otherwise by the user.
+- If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
+
+### File Access:
+- Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
+- \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
+- Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object.
+- Always use \`papaparse\` to parse CSV files.
+
+### User Data Download:
+- To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
+- \`triggerUserFileDownload\` has to be imported from \`"@dust/react-hooks"\`.
+- Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
+
+### Available Libraries:
+- Base React is available to be imported. In order to use hooks, they have to be imported at the top of the script, e.g. \`import { useState } from "react"\`
+- The recharts charting library is available to be imported, e.g. \`import { LineChart, XAxis, ... } from "recharts"\` & \`<LineChart ...><XAxis dataKey="name"> ...\`.
+  - Important Recharts usage notes:
+    - Tooltip formatters: The formatter prop must be a function returning an array [formattedValue, formattedName]:
+      - CORRECT: \`formatter={(value, name) => [value, name]}\` or \`formatter={(value, name) => ['$' + value, 'Sales: ' + name]}\`
+      - INCORRECT: \`formatter={[value, 'Label']}\` (not a function)
+    - Label formatters: Use labelFormatter prop with a function returning a string:
+      - Example: \`labelFormatter={(label) => \`Date: \${label}\`}\`
+    - Always wrap charts in ResponsiveContainer for proper sizing
+    - Use proper margins to prevent label cutoff: \`margin={{ top: 20, right: 30, left: 20, bottom: 20 }}\`
+- The papaparse library is available to be imported, e.g. \`import Papa from "papaparse"\` & \`const parsed = Papa.parse(fileContent, {header:true, skipEmptyLines: "greedy"});\`. The \`skipEmptyLines:"greedy"\` configuration should always be used.
+- No other third-party libraries are installed or available to be imported. They cannot be used, imported, or installed.
+
+### Important Notes:
+- Images from the web cannot be rendered or used in the visualization (no internet access).
+- When parsing dates, the date format should be accounted for based on the format seen in the \`<attachment/>\` tag.
+- If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
+
+### Examples:
+
+#### Example using the \`useFile\` hook:
 
 \`\`\`
 // Reading files from conversation
@@ -77,7 +79,7 @@ if (file) {
 
 \`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
 
-Example using the \`triggerUserFileDownload\` hook:
+#### Example using the \`triggerUserFileDownload\` hook:
 
 \`\`\`
 // Adding download capability
@@ -91,11 +93,9 @@ import { triggerUserFileDownload } from "@dust/react-hooks";
 </button>
 \`\`\`
 
-General example of a visualization component:
+#### General example of a visualization component:
 
-In response of a user asking a plot of sine and cosine functions the following :::visualization directive can be inlined anywhere in the agent response:
-
-:::visualization
+\`\`\`
 import React from "react";
 import {
   LineChart,
@@ -170,4 +170,20 @@ const SineCosineChart = () => {
 };
 
 export default SineCosineChart;
+\`\`\``;
+
+export const visualizationSystemPrompt = () => `\
+## CREATING VISUALIZATIONS
+It is possible to generate visualizations for the user (using React components executed in a react-runner environment) that will be rendered in the user's browser by using the :::visualization container block markdown directive.
+
+${commonVisualizationGuidelines()}
+
+### When to use the :::visualization directive:
+- The visualization directive is particularly adapted to use-cases involving data visualizations such as graphs, charts, and plots.
+- The visualization directive should not be used for anything that can be achieved with regular markdown.
+
+In response of a user asking a plot of sine and cosine functions the following :::visualization directive can be inlined anywhere in the agent response:
+
+:::visualization
+[Use the same React component code as shown in the Examples section above]
 :::`;
