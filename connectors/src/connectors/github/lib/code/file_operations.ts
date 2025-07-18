@@ -8,6 +8,7 @@ import {
 } from "@connectors/connectors/github/lib/utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
+  renderPrefixSection,
   sectionLength,
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
@@ -20,16 +21,23 @@ import { INTERNAL_MIME_TYPES } from "@connectors/types";
 // Only allow documents up to 5mb to be processed.
 const MAX_DOCUMENT_TXT_LEN = 5 * 1000 * 1000; // 5MB
 
-export function formatCodeContentForUpsert(
+export async function formatCodeContentForUpsert(
+  dataSourceConfig: DataSourceConfig,
   sourceUrl: string,
   content: Buffer
-): CoreAPIDataSourceDocumentSection {
-  // For now we simply add the file name as prefix to all chunks.
-  return {
+): Promise<CoreAPIDataSourceDocumentSection> {
+  const c = await renderPrefixSection({
+    dataSourceConfig,
     prefix: `SOURCE FILE: ${sourceUrl}\n\n`,
+  });
+
+  c.sections.push({
+    prefix: null,
     content: content.toString(),
     sections: [],
-  };
+  });
+
+  return c;
 }
 
 /**
@@ -139,7 +147,11 @@ export async function upsertCodeFile({
       updatedDirectoryIds.add(parentInternalId);
     }
 
-    const renderedCode = formatCodeContentForUpsert(sourceUrl, content);
+    const renderedCode = await formatCodeContentForUpsert(
+      dataSourceConfig,
+      sourceUrl,
+      content
+    );
 
     if (sectionLength(renderedCode) > MAX_DOCUMENT_TXT_LEN) {
       logger.info("Code file is too large to upsert.");
