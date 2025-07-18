@@ -5,6 +5,8 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
+
 use dust::{
     databases::{
         table::{LocalTable, Table},
@@ -16,8 +18,9 @@ use dust::{
         client::HEARTBEAT_INTERVAL_MS,
         sqlite_database::{SqliteDatabase, SqliteDatabaseError},
     },
-    utils::{self, error_response, APIResponse, CoreRequestMakeSpan},
+    utils::{self, error_response, APIResponse},
 };
+use dust::{error, info};
 use hyper::StatusCode;
 use lazy_static::lazy_static;
 use reqwest::Method;
@@ -36,8 +39,6 @@ use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
 };
-use tower_http::trace::{self, TraceLayer};
-use tracing::{error, info, Level};
 
 lazy_static! {
     static ref WORKER_URL: String = match std::env::var("IS_LOCAL_DEV") {
@@ -361,11 +362,9 @@ fn main() {
             .route("/databases", delete(expire_all))
             .route("/databases/{database_id}", post(databases_query))
             .route("/databases/{database_id}", delete(databases_delete))
-            .layer(
-                TraceLayer::new_for_http()
-                    .make_span_with(CoreRequestMakeSpan::new())
-                    .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
-            )
+            .layer(OtelInResponseLayer::default())
+            // Start OpenTelemetry trace on incoming request.
+            .layer(OtelAxumLayer::default())
             .with_state(state.clone());
 
         let health_check_router = Router::new()
