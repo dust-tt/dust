@@ -1,8 +1,8 @@
 import {
-  WORKOS_CLAIM_NAMESPACE,
   DEFAULT_DUST_API_DOMAIN,
   DUST_EU_URL,
   DUST_US_URL,
+  WORKOS_CLAIM_NAMESPACE,
 } from "@app/shared/lib/config";
 import type { StorageService } from "@app/shared/services/storage";
 import type {
