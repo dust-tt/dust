@@ -10,7 +10,7 @@ import {
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
 import { A } from "@app/components/home/ContentComponents";
@@ -19,6 +19,7 @@ import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 // import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
+import { useGeolocation } from "@app/lib/swr/geo";
 import { classNames } from "@app/lib/utils";
 
 export interface LandingLayoutProps {
@@ -36,17 +37,55 @@ export default function LandingLayout({
 }) {
   const { postLoginReturnToUrl = "/api/login", gtmTrackingId } = pageProps;
 
-  const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
-    "dust-cookies-accepted",
-  ]);
+  const [cookies, setCookie] = useCookies(["dust-cookies-accepted"]);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
-  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
+  const cookieValue = cookies["dust-cookies-accepted"];
+  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(
+    ["true", "auto"].includes(cookieValue)
+  );
+  const shouldCheckGeo = !cookieValue;
+
+  const { geoData, isGeoDataLoading } = useGeolocation({
+    disabled: !shouldCheckGeo,
+  });
+
+  const setCookieApproval = useCallback(
+    (type: "true" | "auto" | "false") => {
+      // true is when the user accepts all cookies.
+      // auto is when not in GDPR region
+      if (type === "true" || type === "auto") {
+        setHasAcceptedCookies(true);
+      }
+      setShowCookieBanner(false);
+      setCookie("dust-cookies-accepted", type, {
+        path: "/",
+        maxAge: 183 * 24 * 60 * 60, // 6 months
+        sameSite: "lax",
+      });
+    },
+    [setCookie]
+  );
 
   useEffect(() => {
-    const hasAccepted = Boolean(acceptedCookie["dust-cookies-accepted"]);
-    setHasAcceptedCookies(hasAccepted);
-    setShowCookieBanner(!hasAccepted);
-  }, [acceptedCookie]);
+    if (cookieValue) {
+      setShowCookieBanner(false);
+      return;
+    }
+
+    if (isGeoDataLoading) {
+      return;
+    }
+
+    if (geoData && geoData.isGDPR === false) {
+      // For non-GDPR countries (like US), show banner and set cookies to auto
+      setShowCookieBanner(true);
+      setHasAcceptedCookies(true); // Enable cookies immediately for non-GDPR
+      // Note: We don't set the cookie value here, letting the user choose to accept/reject
+    } else {
+      // For GDPR countries, just show the banner
+      setShowCookieBanner(true);
+    }
+  }, [geoData, isGeoDataLoading, cookieValue]);
 
   return (
     <>
@@ -112,17 +151,10 @@ export default function LandingLayout({
           className="fixed bottom-0 left-0 z-50 w-full"
           show={showCookieBanner}
           onClickAccept={() => {
-            setAcceptedCookie("dust-cookies-accepted", "true", {
-              path: "/",
-              maxAge: 183 * 24 * 60 * 60, // 6 months in seconds
-              sameSite: "lax",
-            });
-            setHasAcceptedCookies(true);
-            setShowCookieBanner(false);
+            setCookieApproval("true");
           }}
           onClickRefuse={() => {
-            removeAcceptedCookie("dust-cookies-accepted", { path: "/" });
-            setShowCookieBanner(false);
+            setCookieApproval("false");
           }}
         />
         {hasAcceptedCookies && (
@@ -189,7 +221,7 @@ const CookieBanner = ({
         <Button
           variant="outline"
           size="sm"
-          label="Reject"
+          label="Reject All"
           onClick={() => {
             setIsVisible(false);
             onClickRefuse();
