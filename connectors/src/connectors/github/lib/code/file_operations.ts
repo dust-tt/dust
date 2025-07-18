@@ -18,8 +18,8 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
-// Only allow documents up to 5mb to be processed.
-const MAX_DOCUMENT_TXT_LEN = 5 * 1000 * 1000; // 5MB
+// Only allow documents up to 2mb to be processed.
+const MAX_DOCUMENT_TXT_LEN = 2 * 1000 * 1000; // 5MB
 
 export async function formatCodeContentForUpsert(
   dataSourceConfig: DataSourceConfig,
