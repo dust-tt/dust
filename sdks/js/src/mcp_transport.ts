@@ -31,7 +31,8 @@ export class DustMcpServerTransport implements Transport {
     private readonly dustAPI: DustAPI,
     private readonly onServerIdReceived: (serverId: string) => void,
     private readonly serverName: string = "Dust Extension",
-    private readonly verbose: boolean = false
+    private readonly verbose: boolean = false,
+    private readonly eventSourceHeartbeat = 45000
   ) {}
 
   /**
@@ -138,6 +139,7 @@ export class DustMcpServerTransport implements Transport {
 
     this.eventSource = new EventSourcePolyfill(url, {
       headers,
+      heartbeatTimeout: this.eventSourceHeartbeat,
     });
 
     this.eventSource.onmessage = (event) => {
