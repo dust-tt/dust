@@ -410,26 +410,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return base;
   }
 
-  private static async getStepContentVersionLock(
-    agentMessageId: ModelId,
-    step: number,
-    index: number,
-    transaction: Transaction
-  ): Promise<void> {
-    const hash = md5(
-      `agent_step_content_version_${agentMessageId}_${step}_${index}`
-    );
-    const lockKey = parseInt(hash, 16) % 9999999999;
-
-    // We need to set a lock directly.
-    // eslint-disable-next-line dust/no-raw-sql
-    await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
-      transaction,
-      replacements: { key: lockKey },
-    });
-  }
-
-  static async getNextVersionForStepContent(
+  private static async getNextVersionForStepContent(
     agentMessageId: ModelId,
     step: number,
     index: number,
@@ -464,13 +445,21 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     index: number;
     type: "text_content" | "reasoning" | "function_call";
     value: any;
-    transaction?: Transaction;
+    transaction: Transaction;
   }): Promise<AgentStepContentResource> {
-    const executeWithLock = async (t: Transaction) => {
+    return frontSequelize.transaction(async (t: Transaction) => {
       // Acquire advisory lock for this step-index combination
-      await this.getStepContentVersionLock(agentMessageId, step, index, t);
+      const hash = md5(
+        `agent_step_content_version_${agentMessageId}_${step}_${index}`
+      );
 
-      // Get the current max version
+      // We need to set a lock directly.
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
+        transaction,
+        replacements: { key: parseInt(hash, 16) % 9999999999 },
+      });
+
       const currentMaxVersion = await this.getNextVersionForStepContent(
         agentMessageId,
         step,
@@ -478,7 +467,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         t
       );
 
-      // Check if someone else already created this version (race condition detection)
       const existingContent = await AgentStepContentModel.findOne({
         where: {
           agentMessageId,
@@ -495,8 +483,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         );
       }
 
-      // Create new version atomically
-      const agentStepContent = await AgentStepContentModel.create(
+      return AgentStepContentResource.makeNew(
         {
           agentMessageId,
           workspaceId,
@@ -506,108 +493,8 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           type,
           value,
         },
-        { transaction: t }
+        t
       );
-
-      return new AgentStepContentResource(
-        AgentStepContentModel,
-        agentStepContent.get()
-      );
-    };
-
-    if (transaction) {
-      return executeWithLock(transaction);
-    } else {
-      return frontSequelize.transaction(executeWithLock);
-    }
-  }
-
-  static async createNewVersionsBulk({
-    agentMessageId,
-    workspaceId,
-    stepContents,
-    transaction,
-  }: {
-    agentMessageId: ModelId;
-    workspaceId: ModelId;
-    stepContents: Array<{
-      step: number;
-      index: number;
-      type: "text_content" | "reasoning" | "function_call";
-      value: any;
-    }>;
-    transaction?: Transaction;
-  }): Promise<AgentStepContentResource[]> {
-    const executeWithLock = async (t: Transaction) => {
-      // Sort by step-index to ensure consistent lock ordering (deadlock prevention)
-      const sortedContents = stepContents.sort((a, b) => {
-        if (a.step !== b.step) {
-          return a.step - b.step;
-        }
-        return a.index - b.index;
-      });
-
-      const contentWithVersions = [];
-
-      // Process each step-index combination atomically
-      for (const content of sortedContents) {
-        // Acquire advisory lock for this step-index combination
-        await this.getStepContentVersionLock(
-          agentMessageId,
-          content.step,
-          content.index,
-          t
-        );
-
-        // Get the current max version
-        const currentMaxVersion = await this.getNextVersionForStepContent(
-          agentMessageId,
-          content.step,
-          content.index,
-          t
-        );
-
-        // Check if someone else already created this version (race condition detection)
-        const existingContent = await AgentStepContentModel.findOne({
-          where: {
-            agentMessageId,
-            step: content.step,
-            index: content.index,
-            version: currentMaxVersion,
-          },
-          transaction: t,
-        });
-
-        if (existingContent) {
-          throw new Error(
-            `Agent step content version ${currentMaxVersion} for step ${content.step}, index ${content.index} already exists`
-          );
-        }
-
-        contentWithVersions.push({
-          ...content,
-          agentMessageId,
-          workspaceId,
-          version: currentMaxVersion,
-        });
-      }
-
-      // Create all versions atomically
-      const createdContents = await AgentStepContentModel.bulkCreate(
-        contentWithVersions,
-        { transaction: t }
-      );
-
-      return createdContents.map(
-        (content) =>
-          new AgentStepContentResource(AgentStepContentModel, content.get())
-      );
-    };
-
-    if (transaction) {
-      return executeWithLock(transaction);
-    } else {
-      return frontSequelize.transaction(executeWithLock);
-    }
+    });
   }
 }
