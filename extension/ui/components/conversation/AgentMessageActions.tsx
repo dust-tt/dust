@@ -1,10 +1,9 @@
 import type { AgentStateClassification } from "@app/ui/components/conversation/AgentMessage";
 import type {
-  AgentActionPublicType,
   AgentMessagePublicType,
   LightWorkspaceType,
 } from "@dust-tt/client";
-import { assertNever } from "@dust-tt/client";
+import { assertNever, TOOL_RUNNING_LABEL } from "@dust-tt/client";
 import { Chip } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 interface AgentMessageActionsProps {
@@ -12,20 +11,6 @@ interface AgentMessageActionsProps {
   lastAgentStateClassification: AgentStateClassification;
   owner: LightWorkspaceType;
 }
-
-const ACTION_RUNNING_LABELS: Record<AgentActionPublicType["type"], string> = {
-  dust_app_run_action: "Running App",
-  process_action: "Extracting data",
-  retrieval_action: "Searching data",
-  tables_query_action: "Querying tables",
-  websearch_action: "Searching the web",
-  browse_action: "Browsing page",
-  conversation_list_files_action: "Listing files",
-  conversation_include_file_action: "Including file ",
-  reasoning_action: "Reasoning",
-  search_labels_action: "Searching labels",
-  tool_action: "Calling an external tool",
-};
 
 export function AgentMessageActions({
   agentMessage,
@@ -40,7 +25,7 @@ export function AgentMessageActions({
         break;
       case "acting":
         if (agentMessage.actions.length > 0) {
-          setChipLabel(renderActionName(agentMessage.actions));
+          setChipLabel(TOOL_RUNNING_LABEL);
         }
         break;
       case "done":
@@ -96,21 +81,4 @@ function ActionDetails({
       </div>
     )
   );
-}
-
-function renderActionName(actions: AgentActionPublicType[]): string {
-  const uniqueActionTypes = actions.reduce(
-    (acc, action) => {
-      if (!acc.includes(action.type)) {
-        acc.push(action.type);
-      }
-
-      return acc;
-    },
-    [] as AgentActionPublicType["type"][]
-  );
-
-  return uniqueActionTypes
-    .map((actionType) => ACTION_RUNNING_LABELS[actionType])
-    .join(", ");
 }
