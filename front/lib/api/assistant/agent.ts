@@ -364,9 +364,7 @@ async function runMultiActionsAgent(
         conversationId: conversation.sId,
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        errorCode: error.code,
-        errorMessage: error.message,
-        errorMetadata: error.metadata,
+        error,
       },
       `Agent error: ${error.message}`
     );
