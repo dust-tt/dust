@@ -43,6 +43,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { wakeLock } from "@app/lib/wake_lock";
@@ -886,6 +887,31 @@ async function runMultiActionsAgent(
                 functionCallId: fc.id,
                 arguments: args,
               });
+
+              // Create AgentStepContent for this function call
+              if (fc.id) {
+                const functionCallContent: FunctionCallContentType = {
+                  type: "function_call",
+                  value: {
+                    id: fc.id,
+                    name: fc.name,
+                    arguments: fc.arguments,
+                  },
+                };
+
+                const stepContent = await AgentStepContentResource.makeNew({
+                  workspaceId: conversation.owner.id,
+                  agentMessageId: agentMessage.agentMessageId,
+                  step,
+                  index: output.actions.length - 1, // Index of this action
+                  version: 0,
+                  type: "function_call",
+                  value: functionCallContent,
+                });
+
+                // Track the step content ID for this function call
+                updatedFunctionCallStepContentIds[fc.id] = stepContent.id;
+              }
             } catch (error) {
               await publishAgentError({
                 code: "function_call_error",
