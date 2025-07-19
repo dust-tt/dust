@@ -30,7 +30,7 @@ lazy_static! {
 }
 
 pub const REDIS_TABLE_UPSERT_HASH_NAME: &str = "TABLE_UPSERT";
-pub const REDIS_LOCK_TTL_SECONDS: u64 = 15;
+pub const REDIS_LOCK_TTL_SECONDS: u64 = 60;
 
 const UPSERT_DEBOUNCE_TIME_MS: u64 = 10_000;
 
@@ -131,7 +131,12 @@ impl TableUpsertsBackgroundWorker {
         })
         .await?;
 
-        if !active_tables.is_empty() {
+        if active_tables.is_empty() {
+            return Ok(());
+        }
+
+        // This can get noisy, so only log if there are more than 10 pending tables
+        if active_tables.len() >= 10 {
             info!(
                 table_count = active_tables.len(),
                 "TableUpsertsBackgroundWorker: active tables to process",
@@ -160,7 +165,7 @@ impl TableUpsertsBackgroundWorker {
 
             match table {
                 Some(table) => {
-                    let now = utils::now();
+                    let mut now = utils::now();
 
                     let lock = match lock_manager
                         .lock(
@@ -185,6 +190,7 @@ impl TableUpsertsBackgroundWorker {
                         duration = utils::now() - now,
                         "TableUpsertsBackgroundWorker: Upsert lock acquired"
                     );
+                    now = utils::now();
 
                     // If it fails, log an error but continue processing other tables.
                     // Also, we need to make sure the lock is always released.
@@ -196,6 +202,11 @@ impl TableUpsertsBackgroundWorker {
                     }
 
                     lock_manager.unlock(&lock).await;
+                    info!(
+                        table_id = table.table_id(),
+                        duration = utils::now() - now,
+                        "TableUpsertsBackgroundWorker: Upsert lock released"
+                    );
                 }
                 None => {
                     error!(

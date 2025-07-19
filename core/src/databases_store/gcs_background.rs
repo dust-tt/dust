@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use async_std::stream::StreamExt;
 use cloud_storage::{ListRequest, Object};
+use futures::future::try_join_all;
 use std::collections::HashMap;
 use tracing::error;
 use uuid::Uuid;
@@ -106,8 +107,13 @@ impl GoogleCloudStorageBackgroundProcessingStore {
     pub async fn get_deduped_rows_from_all_files(files: &Vec<String>) -> Result<Vec<Row>> {
         let mut all_rows = Vec::new();
 
-        for file in files {
-            let rows = Self::get_rows_from_csv(file.clone()).await?;
+        // We read all the files concurrently to speed up the process
+        let row_futures = files
+            .iter()
+            .map(|file| Self::get_rows_from_csv(file.clone()));
+
+        let rows_vec = try_join_all(row_futures).await?;
+        for rows in rows_vec {
             all_rows.extend(rows);
         }
 
@@ -140,12 +146,23 @@ impl GoogleCloudStorageBackgroundProcessingStore {
     }
 
     pub async fn delete_files(files: &Vec<String>) -> Result<()> {
+        // We delete the files concurrently to speed up the process
         let bucket = Self::get_bucket()?;
-        for file in files {
-            if let Err(e) = Object::delete(&bucket, file).await {
-                error!("Failed to delete file {}: {}", file, e);
+        let delete_futures = files.iter().map(|file| {
+            let bucket = bucket.clone();
+            async move {
+                match Object::delete(&bucket, &file).await {
+                    Ok(_) => Ok::<(), ()>(()),
+                    Err(e) => {
+                        error!("Failed to delete file {}: {}", file, e);
+                        Ok::<(), ()>(())
+                    }
+                }
             }
-        }
+        });
+
+        // We ignore any deletion errors, other than logging them above
+        let _results: Vec<Result<(), ()>> = futures::future::join_all(delete_futures).await;
         Ok(())
     }
 

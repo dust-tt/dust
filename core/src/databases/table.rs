@@ -423,7 +423,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            rows_count = rows.len(),
+            row_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows] validation"
         );
 
@@ -476,7 +476,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            rows_count = rows.len(),
+            row_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows] table schema"
         );
 
@@ -532,7 +532,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            rows_count = rows.len(),
+            row_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows] rows upsert"
         );
 
@@ -621,7 +621,9 @@ impl LocalTable {
                 // For non-truncate, use the background worker
                 self.schedule_background_upsert_or_delete(rows).await
             } else {
-                info!("upsert_rows_to_gcs_or_queue_work: table not migrated to CSV, skipping GCS upsert for non-truncate");
+                info!(
+                    table_id = self.table.table_id(),
+                    "upsert_rows_to_gcs_or_queue_work: table not migrated to CSV, skipping GCS upsert for non-truncate");
                 Ok(())
             }
         }
@@ -654,7 +656,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            rows_count = rows.len(),
+            row_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows_gcs] table schema"
         );
 
@@ -721,7 +723,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            rows_count = rows.len(),
+            row_count = rows.len(),
             "DSSTRUCTSTAT [upsert_rows_gcs] rows upsert"
         );
 
@@ -788,7 +790,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            rows_count = rows_arc.len(),
+            row_count = rows_arc.len(),
             "DSSTRUCTSTAT [schedule_background_upsert_or_delete]"
         );
 
