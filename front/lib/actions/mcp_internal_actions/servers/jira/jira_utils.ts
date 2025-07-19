@@ -1,54 +1,34 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import type {
+  SearchFilter,
+  SearchFilterField,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
+import { FIELD_MAPPINGS } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 
-import { getJiraBaseUrl } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
-import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
-
-type WithAuthParams = {
-  authInfo?: AuthInfo;
-  action: (baseUrl: string, accessToken: string) => Promise<CallToolResult>;
+// Helper function to escape JQL values that contain spaces or special characters
+export const escapeJQLValue = (value: string): string => {
+  // If the value contains spaces, special characters, or reserved words, wrap it in quotes
+  if (
+    /[\s"'\\]/.test(value) ||
+    /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed|was|in|not|to|from|by|before|after|on|during)$/i.test(
+      value
+    )
+  ) {
+    // Escape any existing quotes in the value
+    return `"${value.replace(/"/g, '\\"')}"`;
+  }
+  return value;
 };
 
-export const withAuth = async ({
-  authInfo,
-  action,
-}: WithAuthParams): Promise<CallToolResult> => {
-  const accessToken = authInfo?.token;
+export function createJQLFromSearchFilters(filters: SearchFilter[]): string {
+  const jqlConditions = filters.map((filter) => {
+    const fieldMapping = FIELD_MAPPINGS[filter.field as SearchFilterField];
+    const jqlField = fieldMapping.jqlField;
+    // Use fuzzy search if requested and supported for the field
+    const useFuzzy = filter.fuzzy && "supportsFuzzy" in fieldMapping;
+    const operator = useFuzzy ? "~" : "=";
+    return `${jqlField} ${operator} ${escapeJQLValue(filter.value)}`;
+  });
 
-  if (!accessToken) {
-    return makeMCPToolTextError("No access token found");
-  }
-
-  try {
-    // Get the base URL from accessible resources
-    const baseUrl = await getJiraBaseUrl(accessToken);
-    if (!baseUrl) {
-      return makeMCPToolTextError("No base url found");
-    }
-
-    return await action(baseUrl, accessToken);
-  } catch (error: unknown) {
-    return logAndReturnError({
-      error,
-      message: "Operation failed",
-    });
-  }
-};
-
-function logAndReturnError({
-  error,
-  message,
-}: {
-  error: unknown;
-  message: string;
-}): CallToolResult {
-  logger.error(
-    {
-      error,
-    },
-    `[JIRA MCP Server] ${message}`
-  );
-  return makeMCPToolTextError(normalizeError(error).message);
+  const jql = jqlConditions.length > 0 ? jqlConditions.join(" AND ") : "*";
+  return jql;
 }
