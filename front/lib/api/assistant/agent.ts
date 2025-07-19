@@ -304,6 +304,7 @@ async function runMultiActionsAgentLoop(
     conversation,
     agentMessageRow
   );
+  });
 }
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
@@ -348,6 +349,9 @@ async function runMultiActionsAgent(
   const auth = await Authenticator.fromJSON(authType);
 
   const model = getSupportedModelConfig(agentConfiguration.model);
+  
+  let autoRetryCount = 0;
+  let isRetryableModelError = false;
 
   if (!model) {
     await updateResourceAndPublishEvent(
@@ -610,11 +614,17 @@ async function runMultiActionsAgent(
     runConfig,
     [
       {
-        conversationId: conversation.sId,
-        workspaceId: conversation.owner.sId,
-        userMessageId: userMessage.sId,
-      }
-    );
+        conversation: modelConversationRes.value.modelConversation,
+        specifications,
+        prompt,
+      },
+    ],
+    {
+      conversationId: conversation.sId,
+      workspaceId: conversation.owner.sId,
+      userMessageId: userMessage.sId,
+    }
+  );
 
     if (res.isErr()) {
       logger.error(
@@ -678,7 +688,6 @@ async function runMultiActionsAgent(
         "Auto-retrying multi-actions agent."
       );
     }
-  );
 
   if (res.isErr()) {
     await updateResourceAndPublishEvent(
