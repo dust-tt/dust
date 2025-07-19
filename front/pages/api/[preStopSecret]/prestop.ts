@@ -1,8 +1,11 @@
+import { StatsD } from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { wakeLockIsFree } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import { withLogging } from "@app/logger/withlogging";
+
+export const statsDClient = new StatsD();
 
 async function handler(
   req: NextApiRequest,
@@ -21,6 +24,8 @@ async function handler(
     res.status(404).end();
     return;
   }
+
+  statsDClient.set("prestop.request", 100);
 
   logger.info("Received prestop request, waiting 10s");
   await new Promise((resolve) => setTimeout(resolve, 10000));
