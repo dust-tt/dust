@@ -7,10 +7,13 @@ import { z } from "zod";
 import { createJQLFromSearchFilters } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
 import type {
   JiraConnectionInfoSchema,
+  JiraCreateCommentRequestSchema,
   JiraCreateIssueRequestSchema,
   JiraCreateMetaSchema,
   JiraErrorResult,
+  JiraSearchRequestSchema,
   JiraSearchResult,
+  JiraTransitionRequestSchema,
   SearchFilter,
   SearchFilterField,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
@@ -244,7 +247,7 @@ export async function createComment(
     value: string;
   }
 ): Promise<Result<z.infer<typeof JiraCommentSchema> | null, JiraErrorResult>> {
-  const requestBody: any = {
+  const requestBody: z.infer<typeof JiraCreateCommentRequestSchema> = {
     body: {
       type: "doc",
       version: 1,
@@ -264,7 +267,7 @@ export async function createComment(
   if (visibility) {
     requestBody.visibility = visibility;
   }
-  
+
   const result = await jiraApiCall(
     {
       endpoint: `/rest/api/3/issue/${issueKey}/comment`,
@@ -317,7 +320,7 @@ export async function searchIssues(
 
   const jql = createJQLFromSearchFilters(filters);
 
-  const requestBody: any = {
+  const requestBody: z.infer<typeof JiraSearchRequestSchema> = {
     jql,
     maxResults,
     fields: ["summary"],
@@ -457,8 +460,10 @@ export async function transitionIssue(
   issueKey: string,
   transitionId: string,
   comment?: string
-): Promise<Result<z.infer<typeof JiraTransitionIssueSchema> | null, JiraErrorResult>> {
-  const requestBody: any = {
+): Promise<
+  Result<z.infer<typeof JiraTransitionIssueSchema> | null, JiraErrorResult>
+> {
+  const requestBody: z.infer<typeof JiraTransitionRequestSchema> = {
     transition: { id: transitionId },
   };
 

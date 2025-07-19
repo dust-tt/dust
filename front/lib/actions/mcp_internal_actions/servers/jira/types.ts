@@ -113,6 +113,12 @@ export const JiraCommentSchema = z.object({
   body: z.object({
     type: z.string(),
     version: z.number(),
+    content: z.array(
+      z.object({
+        type: z.string(),
+        content: z.array(z.object({ type: z.string(), text: z.string() })),
+      })
+    ),
   }),
 });
 
@@ -165,6 +171,54 @@ export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
   reporter: true,
   labels: true,
   parent: true,
+});
+
+export const JiraSearchRequestSchema = z.object({
+  jql: z.string(),
+  maxResults: z.number(),
+  fields: z.array(z.string()),
+  nextPageToken: z.string().optional(),
+});
+
+export const JiraCreateCommentRequestSchema = z.object({
+  body: z.object({
+    type: z.literal("doc"),
+    version: z.number(),
+    content: z.array(
+      z.object({
+        type: z.string(),
+        content: z.array(
+          z.object({
+            type: z.string(),
+            text: z.string(),
+          })
+        ),
+      })
+    ),
+  }),
+  visibility: z
+    .object({
+      type: z.enum(["group", "role"]),
+      value: z.string(),
+    })
+    .optional(),
+});
+
+export const JiraTransitionRequestSchema = z.object({
+  transition: z.object({
+    id: z.string(),
+  }),
+  update: z
+    .object({
+      comment: z.array(
+        z.object({
+          add: z.object({
+            body: z.string(),
+          }),
+        })
+      ),
+    })
+    .optional(),
 });
 
 export const JiraIssueTypeSchema = z.unknown();
