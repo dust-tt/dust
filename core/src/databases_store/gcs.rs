@@ -199,11 +199,11 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
 
         info!(
             truncate,
-            rows_count = new_rows.len(),
+            row_count = new_rows.len(),
             duration = merge_rows_duration + write_rows_to_csv_duration,
             merge_rows_duration,
             write_rows_to_csv_duration,
-            table_id = table.unique_id(),
+            table_id = table.table_id(),
             "DSSTRUCTSTAT [upsert_rows CSV] operation completed"
         );
 
