@@ -717,13 +717,104 @@ async function runMultiActionsAgent(
   // Create a new object to avoid mutation
   const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
 
-  return wakeLock(async () => {
-    for await (const event of eventStream) {
-      if (event.type === "function_call") {
-        isGeneration = false;
-      }
+  for await (const event of eventStream) {
+    if (event.type === "function_call") {
+      isGeneration = false;
+    }
 
-      if (event.type === "error") {
+    if (event.type === "error") {
+      for await (const tokenEvent of contentParser.flushTokens()) {
+        await updateResourceAndPublishEvent(
+          tokenEvent,
+          conversation,
+          agentMessageRow
+        );
+      }
+      await publishAgentError({
+        code: "multi_actions_error",
+        message: `Error running agent: ${event.content.message}`,
+        metadata: null,
+      });
+      return null;
+    }
+
+    const currentTimestamp = Date.now();
+    if (
+      currentTimestamp - lastCheckCancellation >=
+      CANCELLATION_CHECK_INTERVAL
+    ) {
+      void _checkCancellation(); // Trigger the async function without awaiting
+      lastCheckCancellation = currentTimestamp;
+    }
+
+    if (shouldYieldCancel) {
+      for await (const tokenEvent of contentParser.flushTokens()) {
+        await updateResourceAndPublishEvent(
+          tokenEvent,
+          conversation,
+          agentMessageRow
+        );
+      }
+      await updateResourceAndPublishEvent(
+        {
+          type: "agent_generation_cancelled",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+        },
+        conversation,
+        agentMessageRow
+      );
+      return null;
+    }
+
+    if (event.type === "tokens" && isGeneration) {
+      for await (const tokenEvent of contentParser.emitTokens(
+        event.content.tokens.text
+      )) {
+        await updateResourceAndPublishEvent(
+          tokenEvent,
+          conversation,
+          agentMessageRow
+        );
+      }
+    }
+
+    if (event.type === "reasoning_tokens") {
+      await updateResourceAndPublishEvent(
+        {
+          type: "generation_tokens",
+          classification: "chain_of_thought",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          text: event.content.tokens.text,
+        },
+        conversation,
+        agentMessageRow
+      );
+      nativeChainOfThought += event.content.tokens.text;
+    }
+
+    if (event.type === "reasoning_item") {
+      await updateResourceAndPublishEvent(
+        {
+          type: "generation_tokens",
+          classification: "chain_of_thought",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          text: "\n\n",
+        },
+        conversation,
+        agentMessageRow
+      );
+      nativeChainOfThought += "\n\n";
+    }
+
+    if (event.type === "block_execution") {
+      const e = event.content.execution[0][0];
+      if (e.error) {
         for await (const tokenEvent of contentParser.flushTokens()) {
           await updateResourceAndPublishEvent(
             tokenEvent,
@@ -733,22 +824,14 @@ async function runMultiActionsAgent(
         }
         await publishAgentError({
           code: "multi_actions_error",
-          message: `Error running agent: ${event.content.message}`,
+          message: `Error running agent: ${e.error}`,
           metadata: null,
         });
         return null;
       }
 
-      const currentTimestamp = Date.now();
-      if (
-        currentTimestamp - lastCheckCancellation >=
-        CANCELLATION_CHECK_INTERVAL
-      ) {
-        void _checkCancellation(); // Trigger the async function without awaiting
-        lastCheckCancellation = currentTimestamp;
-      }
-
-      if (shouldYieldCancel) {
+      if (event.content.block_name === "MODEL" && e.value) {
+        // Flush early as we know the generation is terminated here.
         for await (const tokenEvent of contentParser.flushTokens()) {
           await updateResourceAndPublishEvent(
             tokenEvent,
@@ -756,254 +839,199 @@ async function runMultiActionsAgent(
             agentMessageRow
           );
         }
-        await updateResourceAndPublishEvent(
-          {
-            type: "agent_generation_cancelled",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-          },
-          conversation,
-          agentMessageRow
-        );
-        return null;
-      }
 
-      if (event.type === "tokens" && isGeneration) {
-        for await (const tokenEvent of contentParser.emitTokens(
-          event.content.tokens.text
-        )) {
-          await updateResourceAndPublishEvent(
-            tokenEvent,
-            conversation,
-            agentMessageRow
+        const block = e.value;
+        if (!isDustAppChatBlockType(block)) {
+          logger.error(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              error: block,
+            },
+            "Received unparsable MODEL block."
           );
-        }
-      }
-
-      if (event.type === "reasoning_tokens") {
-        await updateResourceAndPublishEvent(
-          {
-            type: "generation_tokens",
-            classification: "chain_of_thought",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            text: event.content.tokens.text,
-          },
-          conversation,
-          agentMessageRow
-        );
-        nativeChainOfThought += event.content.tokens.text;
-      }
-
-      if (event.type === "reasoning_item") {
-        await updateResourceAndPublishEvent(
-          {
-            type: "generation_tokens",
-            classification: "chain_of_thought",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            text: "\n\n",
-          },
-          conversation,
-          agentMessageRow
-        );
-        nativeChainOfThought += "\n\n";
-      }
-
-      if (event.type === "block_execution") {
-        const e = event.content.execution[0][0];
-        if (e.error) {
-          for await (const tokenEvent of contentParser.flushTokens()) {
-            await updateResourceAndPublishEvent(
-              tokenEvent,
-              conversation,
-              agentMessageRow
-            );
-          }
           await publishAgentError({
             code: "multi_actions_error",
-            message: `Error running agent: ${e.error}`,
+            message: "Received unparsable MODEL block.",
             metadata: null,
           });
           return null;
         }
 
-        if (event.content.block_name === "MODEL" && e.value) {
-          // Flush early as we know the generation is terminated here.
-          for await (const tokenEvent of contentParser.flushTokens()) {
-            await updateResourceAndPublishEvent(
-              tokenEvent,
-              conversation,
-              agentMessageRow
-            );
-          }
-
-          const block = e.value;
-          if (!isDustAppChatBlockType(block)) {
-            logger.error(
-              {
-                workspaceId: conversation.owner.sId,
-                conversationId: conversation.sId,
-                error: block,
-              },
-              "Received unparsable MODEL block."
-            );
-            await publishAgentError({
-              code: "multi_actions_error",
-              message: "Received unparsable MODEL block.",
-              metadata: null,
-            });
-            return null;
-          }
-
-          // Extract token usage from block execution metadata
-          const meta = e.meta as {
-            token_usage?: {
-              prompt_tokens: number;
-              completion_tokens: number;
-              reasoning_tokens?: number;
-            };
-          } | null;
-          const reasoningTokens = meta?.token_usage?.reasoning_tokens || 0;
-
-          const contents = (block.message.contents ?? []).map((content) => {
-            if (content.type === "reasoning") {
-              return {
-                ...content,
-                value: {
-                  ...content.value,
-                  tokens: 0, // Will be updated for the last reasoning item
-                  provider: model.providerId,
-                },
-              } satisfies ReasoningContentType;
-            }
-            return content;
-          });
-
-          // We unfortunately don't currently have a proper breakdown of reasoning tokens per item,
-          // so we set the reasoning token count on the last reasoning item.
-          for (let i = contents.length - 1; i >= 0; i--) {
-            const content = contents[i];
-            if (content.type === "reasoning") {
-              content.value.tokens = reasoningTokens;
-              contents[i] = content;
-              break;
-            }
-          }
-
-          output = {
-            actions: [],
-            generation: null,
-            contents,
+        // Extract token usage from block execution metadata
+        const meta = e.meta as {
+          token_usage?: {
+            prompt_tokens: number;
+            completion_tokens: number;
+            reasoning_tokens?: number;
           };
+        } | null;
+        const reasoningTokens = meta?.token_usage?.reasoning_tokens || 0;
 
-          if (block.message.function_calls?.length) {
-            for (const fc of block.message.function_calls) {
-              try {
-                const args = JSON.parse(fc.arguments);
-                output.actions.push({
-                  name: fc.name,
-                  functionCallId: fc.id,
-                  arguments: args,
-                });
-              } catch (error) {
-                logger.error(
-                  {
-                    workspaceId: conversation.owner.sId,
-                    conversationId: conversation.sId,
-                    error,
-                  },
-                  "Error parsing function call arguments."
-                );
-                await publishAgentError({
-                  code: "function_call_error",
-                  message: `Error parsing function call arguments: ${error}`,
-                  metadata: null,
-                });
-                return null;
-              }
-            }
-          } else {
-            output.generation = block.message.content ?? null;
+        const contents = (block.message.contents ?? []).map((content) => {
+          if (content.type === "reasoning") {
+            return {
+              ...content,
+              value: {
+                ...content.value,
+                tokens: 0, // Will be updated for the last reasoning item
+                provider: model.providerId,
+              },
+            } satisfies ReasoningContentType;
           }
+          return content;
+        });
+
+        // We unfortunately don't currently have a proper breakdown of reasoning tokens per item,
+        // so we set the reasoning token count on the last reasoning item.
+        for (let i = contents.length - 1; i >= 0; i--) {
+          const content = contents[i];
+          if (content.type === "reasoning") {
+            content.value.tokens = reasoningTokens;
+            contents[i] = content;
+            break;
+          }
+        }
+
+        output = {
+          actions: [],
+          generation: null,
+          contents,
+        };
+
+        if (block.message.function_calls?.length) {
+          for (const fc of block.message.function_calls) {
+            try {
+              const args = JSON.parse(fc.arguments);
+              output.actions.push({
+                name: fc.name,
+                functionCallId: fc.id,
+                arguments: args,
+              });
+            } catch (error) {
+              logger.error(
+                {
+                  workspaceId: conversation.owner.sId,
+                  conversationId: conversation.sId,
+                  error,
+                },
+                "Error parsing function call arguments."
+              );
+              await publishAgentError({
+                code: "function_call_error",
+                message: `Error parsing function call arguments: ${error}`,
+                metadata: null,
+              });
+              return null;
+            }
+          }
+        } else {
+          output.generation = block.message.content ?? null;
         }
       }
     }
+  }
 
-    for await (const tokenEvent of contentParser.flushTokens()) {
-      await updateResourceAndPublishEvent(
-        tokenEvent,
-        conversation,
-        agentMessageRow
+  for await (const tokenEvent of contentParser.flushTokens()) {
+    await updateResourceAndPublishEvent(
+      tokenEvent,
+      conversation,
+      agentMessageRow
+    );
+  }
+
+  if (!output) {
+    await publishAgentError({
+      code: "multi_actions_error",
+      message: "Agent execution didn't complete.",
+      metadata: null,
+    });
+    return null;
+  }
+
+  // Store the contents for returning to the caller
+  // These will be added to agentMessage.contents in the calling function
+
+  if (!output.actions.length) {
+    const processedContent = contentParser.getContent() ?? "";
+    if (!processedContent.length) {
+      logger.warn(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          modelId: model.modelId,
+        },
+        "No content generated by the agent."
       );
     }
 
-    if (!output) {
-      await publishAgentError({
-        code: "multi_actions_error",
-        message: "Agent execution didn't complete.",
-        metadata: null,
-      });
-      return null;
-    }
+    // Update agent message status to succeeded
+    await agentMessageRow.update({
+      status: "succeeded",
+    });
 
-    // Store the contents for returning to the caller
-    // These will be added to agentMessage.contents in the calling function
+    return null;
+  }
 
-    if (!output.actions.length) {
-      const processedContent = contentParser.getContent() ?? "";
-      if (!processedContent.length) {
-        logger.warn(
+  // We have actions.
+
+  if (isLastGenerationIteration) {
+    await publishAgentError({
+      code: "tool_use_limit_reached",
+      message:
+        "The agent attempted to use too many tools. This model error can be safely retried.",
+      metadata: null,
+    });
+    return null;
+  }
+
+  const actions: AgentActionsEvent["actions"] = [];
+
+  for (const a of output.actions) {
+    // Sometimes models will return a name with a triple underscore instead of a double underscore, we dynamically handle it.
+    const actionNamesFromLLM: string[] = removeNulls([
+      a.name,
+      a.name?.replace("___", TOOL_NAME_SEPARATOR) ?? null,
+    ]);
+
+    let action = availableActions.find((ac) =>
+      actionNamesFromLLM.includes(ac.name)
+    );
+    let args = a.arguments;
+
+    if (!action) {
+      if (!a.name) {
+        logger.error(
           {
             workspaceId: conversation.owner.sId,
             conversationId: conversation.sId,
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
-            modelId: model.modelId,
+            actionName: a.name,
+            availableActions: availableActions.map((a) => a.name),
           },
-          "No content generated by the agent."
+          "Model attempted to run an action that is not part of the agent configuration (no name)."
         );
-      }
+        await publishAgentError({
+          code: "action_not_found",
+          message:
+            `The agent attempted to run an invalid action (no name). ` +
+            `This model error can be safely retried.`,
+          metadata: null,
+        });
 
-      // Update agent message status to succeeded
-      await agentMessageRow.update({
-        status: "succeeded",
-      });
+        return null;
+      } else {
+        const mcpServerView =
+          await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+            auth,
+            "missing_action_catcher"
+          );
 
-      return null;
-    }
-
-    // We have actions.
-
-    if (isLastGenerationIteration) {
-      await publishAgentError({
-        code: "tool_use_limit_reached",
-        message:
-          "The agent attempted to use too many tools. This model error can be safely retried.",
-        metadata: null,
-      });
-      return null;
-    }
-
-    const actions: AgentActionsEvent["actions"] = [];
-
-    for (const a of output.actions) {
-      // Sometimes models will return a name with a triple underscore instead of a double underscore, we dynamically handle it.
-      const actionNamesFromLLM: string[] = removeNulls([
-        a.name,
-        a.name?.replace("___", TOOL_NAME_SEPARATOR) ?? null,
-      ]);
-
-      let action = availableActions.find((ac) =>
-        actionNamesFromLLM.includes(ac.name)
-      );
-      let args = a.arguments;
-
-      if (!action) {
-        if (!a.name) {
+        // Could happen if the internal server has not already been added
+        if (!mcpServerView) {
           logger.error(
             {
               workspaceId: conversation.owner.sId,
@@ -1013,127 +1041,96 @@ async function runMultiActionsAgent(
               actionName: a.name,
               availableActions: availableActions.map((a) => a.name),
             },
-            "Model attempted to run an action that is not part of the agent configuration (no name)."
+            "Model attempted to run an action that is not part of the agent configuration (no server)."
           );
+
           await publishAgentError({
             code: "action_not_found",
             message:
-              `The agent attempted to run an invalid action (no name). ` +
-              `This model error can be safely retried.`,
+              `The agent attempted to run an invalid action (${a.name}). ` +
+              `This model error can be safely retried (no server).`,
             metadata: null,
           });
-
           return null;
-        } else {
-          const mcpServerView =
-            await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-              auth,
-              "missing_action_catcher"
-            );
-
-          // Could happen if the internal server has not already been added
-          if (!mcpServerView) {
-            logger.error(
-              {
-                workspaceId: conversation.owner.sId,
-                conversationId: conversation.sId,
-                configurationId: agentConfiguration.sId,
-                messageId: agentMessage.sId,
-                actionName: a.name,
-                availableActions: availableActions.map((a) => a.name),
-              },
-              "Model attempted to run an action that is not part of the agent configuration (no server)."
-            );
-
-            await publishAgentError({
-              code: "action_not_found",
-              message:
-                `The agent attempted to run an invalid action (${a.name}). ` +
-                `This model error can be safely retried (no server).`,
-              metadata: null,
-            });
-            return null;
-          }
-
-          logger.warn(
-            {
-              workspaceId: conversation.owner.sId,
-              conversationId: conversation.sId,
-              configurationId: agentConfiguration.sId,
-              messageId: agentMessage.sId,
-              actionName: a.name,
-              availableActions: availableActions.map((a) => a.name),
-            },
-            "Model attempted to run an action that is not part of the agent configuration but we'll try to catch it."
-          );
-
-          const catchAllAction: MCPToolConfigurationType = {
-            id: -1,
-            sId: generateRandomModelSId(),
-            type: "mcp_configuration" as const,
-            name: a.name,
-            originalName: a.name,
-            description: null,
-            dataSources: null,
-            tables: null,
-            childAgentId: null,
-            reasoningModel: null,
-            timeFrame: null,
-            jsonSchema: null,
-            additionalConfiguration: {},
-            mcpServerViewId: mcpServerView.sId,
-            dustAppConfiguration: null,
-            internalMCPServerId: mcpServerView.internalMCPServerId,
-            inputSchema: {},
-            availability: "auto_hidden_builder",
-            permission: "never_ask",
-            toolServerId: mcpServerView.sId,
-            mcpServerName:
-              "missing_action_catcher" as InternalMCPServerNameType,
-          };
-
-          action = catchAllAction;
-          args = {};
         }
+
+        logger.warn(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            actionName: a.name,
+            availableActions: availableActions.map((a) => a.name),
+          },
+          "Model attempted to run an action that is not part of the agent configuration but we'll try to catch it."
+        );
+
+        const catchAllAction: MCPToolConfigurationType = {
+          id: -1,
+          sId: generateRandomModelSId(),
+          type: "mcp_configuration" as const,
+          name: a.name,
+          originalName: a.name,
+          description: null,
+          dataSources: null,
+          tables: null,
+          childAgentId: null,
+          reasoningModel: null,
+          timeFrame: null,
+          jsonSchema: null,
+          additionalConfiguration: {},
+          mcpServerViewId: mcpServerView.sId,
+          dustAppConfiguration: null,
+          internalMCPServerId: mcpServerView.internalMCPServerId,
+          inputSchema: {},
+          availability: "auto_hidden_builder",
+          permission: "never_ask",
+          toolServerId: mcpServerView.sId,
+          mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
+        };
+
+        action = catchAllAction;
+        args = {};
       }
-
-      actions.push({
-        action: action!,
-        inputs: args ?? {},
-        functionCallId: a.functionCallId ?? null,
-      });
     }
 
-    for await (const tokenEvent of contentParser.flushTokens()) {
-      await updateResourceAndPublishEvent(
-        tokenEvent,
-        conversation,
-        agentMessageRow
-      );
-    }
+    actions.push({
+      action: action!,
+      inputs: args ?? {},
+      functionCallId: a.functionCallId ?? null,
+    });
+  }
 
-    const chainOfThought =
-      (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
+  for await (const tokenEvent of contentParser.flushTokens()) {
+    await updateResourceAndPublishEvent(
+      tokenEvent,
+      conversation,
+      agentMessageRow
+    );
+  }
 
-    // Chain of thought is stored in the result and will be added to agentMessage
-    // in the calling function
+  const chainOfThought =
+    (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
-    // Raw content is included in the result to be processed by the caller
+  // Chain of thought is stored in the result and will be added to agentMessage
+  // in the calling function
 
-    // Return the result with all necessary data
-    return {
-      actions,
-      runId: await dustRunId,
-      processedContent: contentParser.getContent() ?? "",
-      runIds,
-      functionCallStepContentIds: updatedFunctionCallStepContentIds,
-      newContents: output.contents.map((content) => ({
-        step,
-        content,
-      })),
-      chainOfThought,
-    };
-  });
+  // Raw content is included in the result to be processed by the caller
+
+  // Return the result with all necessary data
+  return {
+    actions,
+    runId: await dustRunId,
+    processedContent: contentParser.getContent() ?? "",
+    runIds,
+    functionCallStepContentIds: updatedFunctionCallStepContentIds,
+    newContents: output.contents.map((content) => ({
+      step,
+      content,
+    })),
+    chainOfThought,
+  };
 }
 
 async function runAction(
