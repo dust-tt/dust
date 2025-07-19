@@ -7,7 +7,6 @@ import { normalizeError } from "@app/types";
 
 const SEARCH_MAX_RESULTS = 20;
 
-// Jira entity schemas - shared field definitions
 const JiraIssueFieldsSchema = z
   .object({
     project: z.object({
@@ -209,9 +208,7 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
 
     if (!parseResult.success) {
       const msg = `Invalid JIRA response format: ${parseResult.error.message}`;
-      logger.error(
-        `[JIRA MCP Server] ${msg}, rawData: ${JSON.stringify(rawData)}`
-      );
+      logger.error(`[JIRA MCP Server] ${msg}}`);
       return new Err(msg);
     }
 
