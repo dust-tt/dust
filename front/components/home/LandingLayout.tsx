@@ -17,7 +17,6 @@ import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
-// import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
 import UTMHandler from "@app/components/UTMHandler";
@@ -44,7 +43,9 @@ export default function LandingLayout({
     utmParams,
   } = pageProps;
 
-  const [cookies, setCookie] = useCookies(["dust-cookies-accepted"]);
+  const [cookies, setCookie] = useCookies(["dust-cookies-accepted"], {
+    doNotParse: true,
+  });
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
   const cookieValue = cookies["dust-cookies-accepted"];
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(
