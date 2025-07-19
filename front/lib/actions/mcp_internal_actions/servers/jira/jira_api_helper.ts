@@ -208,7 +208,7 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
 
     if (!parseResult.success) {
       const msg = `Invalid JIRA response format: ${parseResult.error.message}`;
-      logger.error(`[JIRA MCP Server] ${msg}}`);
+      logger.error(`[JIRA MCP Server] ${msg}`);
       return new Err(msg);
     }
 
