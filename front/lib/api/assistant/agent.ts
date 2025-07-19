@@ -358,6 +358,19 @@ async function runMultiActionsAgent(
     message: string;
     metadata: any;
   }): Promise<void> {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorMetadata: error.metadata,
+      },
+      `Agent error: ${error.message}`
+    );
+
     await updateResourceAndPublishEvent(
       {
         type: "agent_error",
@@ -478,14 +491,6 @@ async function runMultiActionsAgent(
       await getRunnerForActionConfiguration(a).buildSpecification(auth);
 
     if (specRes.isErr()) {
-      logger.error(
-        {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          error: specRes.error,
-        },
-        "Failed to build the specification for action."
-      );
       await publishAgentError({
         code: "build_spec_error",
         message: `Failed to build the specification for action ${a.sId},`,
@@ -521,14 +526,6 @@ async function runMultiActionsAgent(
   });
 
   if (modelConversationRes.isErr()) {
-    logger.error(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        error: modelConversationRes.error,
-      },
-      "Error rendering conversation for model."
-    );
     await publishAgentError({
       code: "conversation_render_error",
       message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
@@ -605,15 +602,6 @@ async function runMultiActionsAgent(
   );
 
   if (res.isErr()) {
-    logger.error(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        error: res.error,
-      },
-      "Error running multi-actions agent."
-    );
-
     const { category } = categorizeAgentErrorMessage({
       code: "multi_actions_error",
       message: res.error.message,
@@ -626,15 +614,6 @@ async function runMultiActionsAgent(
         code: "multi_actions_error",
         message: res.error.message,
       });
-
-      logger.error(
-        {
-          elapsedTime: Date.now(),
-          error: res.error,
-          publicErrorMessage: publicMessage,
-        },
-        "Error running multi-actions agent."
-      );
 
       await publishAgentError({
         code: "multi_actions_error",
@@ -842,14 +821,6 @@ async function runMultiActionsAgent(
 
         const block = e.value;
         if (!isDustAppChatBlockType(block)) {
-          logger.error(
-            {
-              workspaceId: conversation.owner.sId,
-              conversationId: conversation.sId,
-              error: block,
-            },
-            "Received unparsable MODEL block."
-          );
           await publishAgentError({
             code: "multi_actions_error",
             message: "Received unparsable MODEL block.",
@@ -909,14 +880,6 @@ async function runMultiActionsAgent(
                 arguments: args,
               });
             } catch (error) {
-              logger.error(
-                {
-                  workspaceId: conversation.owner.sId,
-                  conversationId: conversation.sId,
-                  error,
-                },
-                "Error parsing function call arguments."
-              );
               await publishAgentError({
                 code: "function_call_error",
                 message: `Error parsing function call arguments: ${error}`,
@@ -1003,17 +966,6 @@ async function runMultiActionsAgent(
 
     if (!action) {
       if (!a.name) {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            actionName: a.name,
-            availableActions: availableActions.map((a) => a.name),
-          },
-          "Model attempted to run an action that is not part of the agent configuration (no name)."
-        );
         await publishAgentError({
           code: "action_not_found",
           message:
@@ -1032,18 +984,6 @@ async function runMultiActionsAgent(
 
         // Could happen if the internal server has not already been added
         if (!mcpServerView) {
-          logger.error(
-            {
-              workspaceId: conversation.owner.sId,
-              conversationId: conversation.sId,
-              configurationId: agentConfiguration.sId,
-              messageId: agentMessage.sId,
-              actionName: a.name,
-              availableActions: availableActions.map((a) => a.name),
-            },
-            "Model attempted to run an action that is not part of the agent configuration (no server)."
-          );
-
           await publishAgentError({
             code: "action_not_found",
             message:
