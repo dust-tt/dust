@@ -105,11 +105,7 @@ const JiraSearchResultSchema = z.object({
     z.object({
       id: z.string(),
       key: z.string(),
-      fields: z
-        .object({
-          summary: z.string(),
-        })
-        .passthrough(),
+      fields: JiraIssueFieldsSchema.deepPartial().optional(),
     })
   ),
   isLast: z.boolean().optional(),
@@ -209,7 +205,6 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
     }
 
     const rawData = JSON.parse(responseText);
-    logger.info(`[JIRA MCP Server] Raw response for ${endpoint}: ${JSON.stringify(rawData)}`);
     const parseResult = schema.safeParse(rawData);
 
     if (!parseResult.success) {
@@ -418,9 +413,9 @@ export async function searchIssues(
   const requestBody: any = {
     jql,
     maxResults,
-    fields: ["summary"]
+    fields: ["summary"],
   };
-  
+
   if (nextPageToken) {
     requestBody.nextPageToken = nextPageToken;
   }
@@ -431,10 +426,10 @@ export async function searchIssues(
       accessToken,
     },
     JiraSearchResultSchema,
-    { 
+    {
       baseUrl,
       method: "POST",
-      body: requestBody
+      body: requestBody,
     }
   );
 
@@ -609,7 +604,9 @@ export async function updateIssue(
   accessToken: string,
   issueKey: string,
   updateData: Partial<z.infer<typeof JiraCreateIssueRequestSchema>>
-): Promise<Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>> {
+): Promise<
+  Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>
+> {
   const result = await jiraApiCall(
     {
       endpoint: `/rest/api/3/issue/${issueKey}`,

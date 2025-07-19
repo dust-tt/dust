@@ -7,13 +7,14 @@ import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
 
 export const SEARCH_FILTER_FIELDS = [
-  "issueType",
-  "parentIssueKey",
-  "status",
   "assignee",
-  "reporter",
-  "project",
   "dueDate",
+  "issueType",
+  "priority",
+  "parentIssueKey",
+  "project",
+  "reporter",
+  "status",
 ] as const;
 
 export type SearchFilterField = (typeof SEARCH_FILTER_FIELDS)[number];

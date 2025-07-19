@@ -236,13 +236,14 @@ const createServer = (): McpServer => {
     },
     async ({ filters, nextPageToken }, { authInfo }) => {
       const fieldMapping = {
-        issueType: "issueType",
-        parentIssueKey: "parent",
-        status: "status",
         assignee: "assignee",
-        reporter: "reporter",
-        project: "project",
         dueDate: "dueDate",
+        issueType: "issueType",
+        priority: "priority",
+        parentIssueKey: "parent",
+        project: "project",
+        reporter: "reporter",
+        status: "status",
       } as const;
 
       // Check for unimplemented filters
@@ -266,7 +267,12 @@ const createServer = (): McpServer => {
 
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchIssues(baseUrl, accessToken, jql, nextPageToken);
+          const result = await searchIssues(
+            baseUrl,
+            accessToken,
+            jql,
+            nextPageToken
+          );
           if (result.isErr()) {
             return makeMCPToolTextError(
               `Error searching issues: ${result.error}`
@@ -334,9 +340,7 @@ const createServer = (): McpServer => {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
       issueTypeId: z
         .string()
-        .describe(
-          "The issue type ID to get fields for (required)"
-        ),
+        .describe("The issue type ID to get fields for (required)"),
     },
     async ({ projectKey, issueTypeId }, { authInfo }) => {
       return withAuth({
