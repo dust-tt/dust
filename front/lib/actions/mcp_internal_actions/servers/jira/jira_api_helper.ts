@@ -1,157 +1,35 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+import { createJQLFromSearchFilters } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
+import type {
+  JiraConnectionInfoSchema,
+  JiraCreateIssueRequestSchema,
+  JiraCreateMetaSchema,
+  JiraErrorResult,
+  JiraSearchResult,
+  SearchFilter,
+  SearchFilterField,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
+import {
+  JiraCommentSchema,
+  JiraIssueSchema,
+  JiraIssueTypeSchema,
+  JiraProjectSchema,
+  JiraResourceSchema,
+  JiraSearchResultSchema,
+  JiraTransitionIssueSchema,
+  JiraTransitionsSchema,
+  JiraUserInfoSchema,
+  SEARCH_FILTER_FIELDS,
+  SEARCH_MAX_RESULTS,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
-
-const SEARCH_MAX_RESULTS = 20;
-
-const JiraIssueFieldsSchema = z
-  .object({
-    project: z.object({
-      key: z.string(),
-    }),
-    summary: z.string(),
-    description: z
-      .object({
-        type: z.string(),
-        version: z.number(),
-        content: z.array(
-          z.object({
-            type: z.string(),
-            content: z.array(
-              z.object({
-                type: z.string(),
-                text: z.string().optional(),
-              })
-            ),
-          })
-        ),
-      })
-      .nullable(),
-    issuetype: z.object({
-      name: z.string(),
-    }),
-    priority: z.object({
-      name: z.string(),
-    }),
-    assignee: z
-      .object({
-        accountId: z.string(),
-      })
-      .nullable(),
-    reporter: z
-      .object({
-        accountId: z.string(),
-      })
-      .nullable(),
-    labels: z.array(z.string()).nullable(),
-    parent: z
-      .object({
-        key: z.string(),
-      })
-      .nullable(),
-  })
-  .passthrough();
-
-const JiraIssueSchema = z
-  .object({
-    id: z.string(),
-    key: z.string(),
-    browseUrl: z.string().optional(),
-    fields: JiraIssueFieldsSchema.deepPartial().optional(),
-  })
-  .passthrough();
-
-const JiraResourceSchema = z.array(
-  z.object({
-    id: z.string(),
-    url: z.string(),
-    name: z.string(),
-  })
-);
-
-const JiraProjectSchema = z.object({
-  id: z.string(),
-  key: z.string(),
-  name: z.string(),
-});
-
-const JiraTransitionSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-});
-
-const JiraTransitionsSchema = z.object({
-  transitions: z.array(JiraTransitionSchema),
-});
-
-const JiraCommentSchema = z.object({
-  id: z.string(),
-  body: z.object({
-    type: z.string(),
-    version: z.number(),
-  }),
-});
-
-const JiraCreateMetaSchema = z.object({
-  fields: z.record(z.string(), z.unknown()),
-});
-
-const JiraSearchResultSchema = z.object({
-  issues: z.array(
-    z.object({
-      id: z.string(),
-      key: z.string(),
-      fields: JiraIssueFieldsSchema.deepPartial().optional(),
-    })
-  ),
-  isLast: z.boolean().optional(),
-  nextPageToken: z.string().optional(),
-});
-
-const JiraUserInfoSchema = z
-  .object({
-    accountId: z.string(),
-    emailAddress: z.string(),
-    displayName: z.string(),
-    accountType: z.string(),
-    locale: z.string().optional(),
-  })
-  .passthrough();
-
-const JiraConnectionInfoSchema = z.object({
-  user: z.object({
-    account_id: z.string(),
-    name: z.string(),
-    nickname: z.string(),
-  }),
-  instance: z.object({
-    cloud_id: z.string(),
-    site_url: z.string(),
-    site_name: z.string(),
-    api_base_url: z.string(),
-  }),
-});
-
-const JiraTransitionIssueSchema = z.void();
-
-export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
-  description: true,
-  priority: true,
-  assignee: true,
-  reporter: true,
-  labels: true,
-  parent: true,
-});
-
-const JiraIssueTypeSchema = z.unknown();
-type JiraIssueType = z.infer<typeof JiraIssueTypeSchema>;
-
-type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
-
-type JiraErrorResult = string;
 
 // Generic wrapper for JIRA API calls with validation
 async function jiraApiCall<T extends z.ZodTypeAny>(
@@ -365,7 +243,7 @@ export async function createComment(
     type: "group" | "role";
     value: string;
   }
-): Promise<Result<z.infer<typeof JiraCommentSchema>, JiraErrorResult>> {
+): Promise<Result<z.infer<typeof JiraCommentSchema> | null, JiraErrorResult>> {
   const requestBody: any = {
     body: {
       type: "doc",
@@ -386,7 +264,8 @@ export async function createComment(
   if (visibility) {
     requestBody.visibility = visibility;
   }
-  return jiraApiCall(
+  
+  const result = await jiraApiCall(
     {
       endpoint: `/rest/api/3/issue/${issueKey}/comment`,
       accessToken,
@@ -398,15 +277,46 @@ export async function createComment(
       baseUrl,
     }
   );
+
+  if (result.isErr()) {
+    // Handle 404 as "not found" rather than an error
+    if (result.error.includes("404")) {
+      return new Ok(null);
+    }
+    return result;
+  }
+
+  return result;
 }
 
 export async function searchIssues(
   baseUrl: string,
   accessToken: string,
-  jql: string = "*",
+  filters: SearchFilter[],
   nextPageToken?: string,
   maxResults: number = SEARCH_MAX_RESULTS
-): Promise<Result<JiraSearchResult, JiraErrorResult>> {
+): Promise<
+  Result<
+    JiraSearchResult & {
+      searchCriteria: { filters: SearchFilter[]; jql: string };
+    },
+    JiraErrorResult
+  >
+> {
+  // Check for unimplemented filters
+  const unimplementedFilter = filters.find(
+    (filter) =>
+      !SEARCH_FILTER_FIELDS.includes(filter.field as SearchFilterField)
+  );
+
+  if (unimplementedFilter) {
+    return new Err(
+      `searching with this filter is not implemented: ${unimplementedFilter.field}`
+    );
+  }
+
+  const jql = createJQLFromSearchFilters(filters);
+
   const requestBody: any = {
     jql,
     maxResults,
@@ -442,14 +352,20 @@ export async function searchIssues(
     }));
   }
 
-  return result;
+  return new Ok({
+    searchCriteria: {
+      filters,
+      jql,
+    },
+    ...result.value,
+  });
 }
 
 export async function getIssueTypes(
   baseUrl: string,
   accessToken: string,
   projectKey: string
-): Promise<Result<JiraIssueType[], JiraErrorResult>> {
+): Promise<Result<z.infer<typeof JiraIssueTypeSchema>[], JiraErrorResult>> {
   const IssueTypesResponseSchema = z.object({
     issueTypes: z.array(JiraIssueTypeSchema),
     maxResults: z.number().optional(),
@@ -541,7 +457,7 @@ export async function transitionIssue(
   issueKey: string,
   transitionId: string,
   comment?: string
-): Promise<Result<z.infer<typeof JiraTransitionIssueSchema>, JiraErrorResult>> {
+): Promise<Result<z.infer<typeof JiraTransitionIssueSchema> | null, JiraErrorResult>> {
   const requestBody: any = {
     transition: { id: transitionId },
   };
@@ -552,7 +468,7 @@ export async function transitionIssue(
     };
   }
 
-  return jiraApiCall(
+  const result = await jiraApiCall(
     {
       endpoint: `/rest/api/3/issue/${issueKey}/transitions`,
       accessToken,
@@ -564,6 +480,16 @@ export async function transitionIssue(
       baseUrl,
     }
   );
+
+  if (result.isErr()) {
+    // Handle 404 as "not found" rather than an error
+    if (result.error.includes("404")) {
+      return new Ok(null);
+    }
+    return result;
+  }
+
+  return result;
 }
 
 export async function createIssue(
@@ -636,4 +562,51 @@ export async function updateIssue(
   }
 
   return new Ok(responseData);
+}
+
+type WithAuthParams = {
+  authInfo?: AuthInfo;
+  action: (baseUrl: string, accessToken: string) => Promise<CallToolResult>;
+};
+
+export const withAuth = async ({
+  authInfo,
+  action,
+}: WithAuthParams): Promise<CallToolResult> => {
+  const accessToken = authInfo?.token;
+
+  if (!accessToken) {
+    return makeMCPToolTextError("No access token found");
+  }
+
+  try {
+    // Get the base URL from accessible resources
+    const baseUrl = await getJiraBaseUrl(accessToken);
+    if (!baseUrl) {
+      return makeMCPToolTextError("No base url found");
+    }
+
+    return await action(baseUrl, accessToken);
+  } catch (error: unknown) {
+    return logAndReturnError({
+      error,
+      message: "Operation failed",
+    });
+  }
+};
+
+function logAndReturnError({
+  error,
+  message,
+}: {
+  error: unknown;
+  message: string;
+}): CallToolResult {
+  logger.error(
+    {
+      error,
+    },
+    `[JIRA MCP Server] ${message}`
+  );
+  return makeMCPToolTextError(normalizeError(error).message);
 }

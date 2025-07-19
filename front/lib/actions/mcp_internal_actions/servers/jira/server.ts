@@ -13,21 +13,18 @@ import {
   getTransitions,
   searchIssues,
   transitionIssue,
-} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
-import type { SearchFilterField } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
-import {
-  escapeJQLValue,
-  SEARCH_FILTER_FIELDS,
+  updateIssue,
   withAuth,
-} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
+import {
+  JiraCreateIssueRequestSchema,
+  SEARCH_FILTER_FIELDS,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-
-import { JiraCreateIssueRequestSchema } from "./jira_api_helper";
-import { updateIssue } from "./jira_api_helper";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "jira",
@@ -197,11 +194,18 @@ const createServer = (): McpServer => {
               `Error adding comment: ${result.error}`
             );
           }
+          if (result.value === null) {
+            return makeMCPToolJSONSuccess({
+              message: "Issue not found or no permission to add comment",
+              result: { found: false, issueKey },
+            });
+          }
           return makeMCPToolJSONSuccess({
             message: "Comment added successfully",
             result: {
               issueKey,
               comment,
+              commentId: result.value.id,
             },
           });
         },
@@ -225,6 +229,12 @@ const createServer = (): McpServer => {
                 )}`
               ),
             value: z.string().describe("The value to search for"),
+            fuzzy: z
+              .boolean()
+              .optional()
+              .describe(
+                "Use fuzzy search (~) instead of exact match (=). Currently only supported for summary field."
+              ),
           })
         )
         .min(1)
@@ -235,42 +245,12 @@ const createServer = (): McpServer => {
         .describe("Token for next page of results (for pagination)"),
     },
     async ({ filters, nextPageToken }, { authInfo }) => {
-      const fieldMapping = {
-        assignee: "assignee",
-        dueDate: "dueDate",
-        issueType: "issueType",
-        priority: "priority",
-        parentIssueKey: "parent",
-        project: "project",
-        reporter: "reporter",
-        status: "status",
-      } as const;
-
-      // Check for unimplemented filters
-      const unimplementedFilter = filters.find(
-        (filter) =>
-          !SEARCH_FILTER_FIELDS.includes(filter.field as SearchFilterField)
-      );
-
-      if (unimplementedFilter) {
-        return makeMCPToolTextError(
-          `searching with this filter is not implemented: ${unimplementedFilter.field}`
-        );
-      }
-
-      const jqlConditions = filters.map((filter) => {
-        const jqlField = fieldMapping[filter.field as SearchFilterField];
-        return `${jqlField} = ${escapeJQLValue(filter.value)}`;
-      });
-
-      const jql = jqlConditions.join(" AND ");
-
       return withAuth({
         action: async (baseUrl, accessToken) => {
           const result = await searchIssues(
             baseUrl,
             accessToken,
-            jql,
+            filters,
             nextPageToken
           );
           if (result.isErr()) {
@@ -284,13 +264,7 @@ const createServer = (): McpServer => {
               : "Issues retrieved successfully";
           return makeMCPToolJSONSuccess({
             message,
-            result: {
-              ...result.value,
-              searchCriteria: {
-                filters,
-                jql,
-              },
-            },
+            result: result.value,
           });
         },
         authInfo,
@@ -416,6 +390,12 @@ const createServer = (): McpServer => {
             return makeMCPToolTextError(
               `Error transitioning issue: ${result.error}`
             );
+          }
+          if (result.value === null) {
+            return makeMCPToolJSONSuccess({
+              message: "Issue not found or no permission to transition it",
+              result: { found: false, issueKey },
+            });
           }
           return makeMCPToolJSONSuccess({
             message: "Issue transitioned successfully",

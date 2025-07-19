@@ -1,70 +1,8 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
-import { getJiraBaseUrl } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
-import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types";
-
-export const SEARCH_FILTER_FIELDS = [
-  "assignee",
-  "dueDate",
-  "issueType",
-  "priority",
-  "parentIssueKey",
-  "project",
-  "reporter",
-  "status",
-] as const;
-
-export type SearchFilterField = (typeof SEARCH_FILTER_FIELDS)[number];
-
-type WithAuthParams = {
-  authInfo?: AuthInfo;
-  action: (baseUrl: string, accessToken: string) => Promise<CallToolResult>;
-};
-
-export const withAuth = async ({
-  authInfo,
-  action,
-}: WithAuthParams): Promise<CallToolResult> => {
-  const accessToken = authInfo?.token;
-
-  if (!accessToken) {
-    return makeMCPToolTextError("No access token found");
-  }
-
-  try {
-    // Get the base URL from accessible resources
-    const baseUrl = await getJiraBaseUrl(accessToken);
-    if (!baseUrl) {
-      return makeMCPToolTextError("No base url found");
-    }
-
-    return await action(baseUrl, accessToken);
-  } catch (error: unknown) {
-    return logAndReturnError({
-      error,
-      message: "Operation failed",
-    });
-  }
-};
-
-function logAndReturnError({
-  error,
-  message,
-}: {
-  error: unknown;
-  message: string;
-}): CallToolResult {
-  logger.error(
-    {
-      error,
-    },
-    `[JIRA MCP Server] ${message}`
-  );
-  return makeMCPToolTextError(normalizeError(error).message);
-}
+import type {
+  SearchFilter,
+  SearchFilterField,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
+import { FIELD_MAPPINGS } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 
 // Helper function to escape JQL values that contain spaces or special characters
 export const escapeJQLValue = (value: string): string => {
@@ -80,3 +18,17 @@ export const escapeJQLValue = (value: string): string => {
   }
   return value;
 };
+
+export function createJQLFromSearchFilters(filters: SearchFilter[]): string {
+  const jqlConditions = filters.map((filter) => {
+    const fieldMapping = FIELD_MAPPINGS[filter.field as SearchFilterField];
+    const jqlField = fieldMapping.jqlField;
+    // Use fuzzy search if requested and supported for the field
+    const useFuzzy = filter.fuzzy && "supportsFuzzy" in fieldMapping;
+    const operator = useFuzzy ? "~" : "=";
+    return `${jqlField} ${operator} ${escapeJQLValue(filter.value)}`;
+  });
+
+  const jql = jqlConditions.length > 0 ? jqlConditions.join(" AND ") : "*";
+  return jql;
+}

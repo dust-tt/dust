@@ -1,0 +1,183 @@
+import { z } from "zod";
+
+// Search filter constants and types
+export const SEARCH_MAX_RESULTS = 20;
+
+export const FIELD_MAPPINGS = {
+  assignee: { jqlField: "assignee" },
+  dueDate: { jqlField: "dueDate" },
+  issueType: { jqlField: "issueType" },
+  priority: { jqlField: "priority" },
+  parentIssueKey: { jqlField: "parent" },
+  project: { jqlField: "project" },
+  reporter: { jqlField: "reporter" },
+  status: { jqlField: "status" },
+  summary: { jqlField: "summary", supportsFuzzy: true },
+} as const;
+
+export const SEARCH_FILTER_FIELDS = Object.keys(
+  FIELD_MAPPINGS
+) as (keyof typeof FIELD_MAPPINGS)[];
+
+export type SearchFilterField = (typeof SEARCH_FILTER_FIELDS)[number];
+
+export interface SearchFilter {
+  field: string;
+  value: string;
+  fuzzy?: boolean;
+}
+
+// Jira entity schemas - shared field definitions
+export const JiraIssueFieldsSchema = z
+  .object({
+    project: z.object({
+      key: z.string(),
+    }),
+    summary: z.string(),
+    description: z
+      .object({
+        type: z.string(),
+        version: z.number(),
+        content: z.array(
+          z.object({
+            type: z.string(),
+            content: z.array(
+              z.object({
+                type: z.string(),
+                text: z.string().optional(),
+              })
+            ),
+          })
+        ),
+      })
+      .nullable(),
+    issuetype: z.object({
+      name: z.string(),
+    }),
+    priority: z.object({
+      name: z.string(),
+    }),
+    assignee: z
+      .object({
+        accountId: z.string(),
+      })
+      .nullable(),
+    reporter: z
+      .object({
+        accountId: z.string(),
+      })
+      .nullable(),
+    labels: z.array(z.string()).nullable(),
+    parent: z
+      .object({
+        key: z.string(),
+      })
+      .nullable(),
+  })
+  .passthrough();
+
+export const JiraIssueSchema = z
+  .object({
+    id: z.string(),
+    key: z.string(),
+    browseUrl: z.string().optional(),
+    fields: JiraIssueFieldsSchema.deepPartial().optional(),
+  })
+  .passthrough();
+
+export const JiraResourceSchema = z.array(
+  z.object({
+    id: z.string(),
+    url: z.string(),
+    name: z.string(),
+  })
+);
+
+export const JiraProjectSchema = z.object({
+  id: z.string(),
+  key: z.string(),
+  name: z.string(),
+});
+
+export const JiraTransitionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+
+export const JiraTransitionsSchema = z.object({
+  transitions: z.array(JiraTransitionSchema),
+});
+
+export const JiraCommentSchema = z.object({
+  id: z.string(),
+  body: z.object({
+    type: z.string(),
+    version: z.number(),
+  }),
+});
+
+export const JiraCreateMetaSchema = z.object({
+  fields: z.record(z.string(), z.unknown()),
+});
+
+export const JiraSearchResultSchema = z.object({
+  issues: z.array(
+    z.object({
+      id: z.string(),
+      key: z.string(),
+      fields: JiraIssueFieldsSchema.deepPartial().optional(),
+    })
+  ),
+  isLast: z.boolean().optional(),
+  nextPageToken: z.string().optional(),
+});
+
+export const JiraUserInfoSchema = z
+  .object({
+    accountId: z.string(),
+    emailAddress: z.string(),
+    displayName: z.string(),
+    accountType: z.string(),
+    locale: z.string().optional(),
+  })
+  .passthrough();
+
+export const JiraConnectionInfoSchema = z.object({
+  user: z.object({
+    account_id: z.string(),
+    name: z.string(),
+    nickname: z.string(),
+  }),
+  instance: z.object({
+    cloud_id: z.string(),
+    site_url: z.string(),
+    site_name: z.string(),
+    api_base_url: z.string(),
+  }),
+});
+
+export const JiraTransitionIssueSchema = z.void();
+
+export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
+  description: true,
+  priority: true,
+  assignee: true,
+  reporter: true,
+  labels: true,
+  parent: true,
+});
+
+export const JiraIssueTypeSchema = z.unknown();
+
+// Inferred types
+export type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
+export type JiraErrorResult = string;
+export type JiraIssue = z.infer<typeof JiraIssueSchema>;
+export type JiraProject = z.infer<typeof JiraProjectSchema>;
+export type JiraTransition = z.infer<typeof JiraTransitionSchema>;
+export type JiraComment = z.infer<typeof JiraCommentSchema>;
+export type JiraUserInfo = z.infer<typeof JiraUserInfoSchema>;
+export type JiraConnectionInfo = z.infer<typeof JiraConnectionInfoSchema>;
+export type JiraCreateIssueRequest = z.infer<
+  typeof JiraCreateIssueRequestSchema
+>;
