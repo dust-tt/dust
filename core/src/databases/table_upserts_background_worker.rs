@@ -165,7 +165,7 @@ impl TableUpsertsBackgroundWorker {
 
             match table {
                 Some(table) => {
-                    let now = utils::now();
+                    let mut now = utils::now();
 
                     let lock = match lock_manager
                         .lock(
@@ -190,6 +190,7 @@ impl TableUpsertsBackgroundWorker {
                         duration = utils::now() - now,
                         "TableUpsertsBackgroundWorker: Upsert lock acquired"
                     );
+                    now = utils::now();
 
                     // If it fails, log an error but continue processing other tables.
                     // Also, we need to make sure the lock is always released.
@@ -200,7 +201,13 @@ impl TableUpsertsBackgroundWorker {
                         );
                     }
 
+                    let lock_held_duration = utils::now() - now;
                     lock_manager.unlock(&lock).await;
+                    info!(
+                        table_id = table.table_id(),
+                        duration = lock_held_duration,
+                        "TableUpsertsBackgroundWorker: Upsert lock released"
+                    );
                 }
                 None => {
                     error!(
