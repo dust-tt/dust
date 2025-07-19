@@ -313,7 +313,7 @@ const createServer = (): McpServer => {
               accessToken,
               projectKey
             );
-            if ("error" in result) {
+            if (result.isErr()) {
               return makeMCPToolTextError(
                 `Error retrieving issue types: ${result.error}`
               );
@@ -352,7 +352,7 @@ const createServer = (): McpServer => {
               projectKey,
               issueTypeId
             );
-            if ("error" in result) {
+            if (result.isErr()) {
               return makeMCPToolTextError(
                 `Error retrieving issue fields: ${result.error}`
               );

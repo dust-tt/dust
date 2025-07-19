@@ -466,11 +466,11 @@ export async function getIssueTypes(
     { baseUrl }
   );
 
-  if ("error" in result) {
+  if (result.isErr()) {
     return result;
   }
 
-  return new Ok(result.value.issueTypes);
+  return new Ok(result.value?.issueTypes || []);
 }
 
 export async function getIssueFields(
