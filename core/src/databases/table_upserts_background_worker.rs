@@ -201,11 +201,10 @@ impl TableUpsertsBackgroundWorker {
                         );
                     }
 
-                    let lock_held_duration = utils::now() - now;
                     lock_manager.unlock(&lock).await;
                     info!(
                         table_id = table.table_id(),
-                        duration = lock_held_duration,
+                        duration = utils::now() - now,
                         "TableUpsertsBackgroundWorker: Upsert lock released"
                     );
                 }
