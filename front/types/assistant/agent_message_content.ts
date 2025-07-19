@@ -1,3 +1,4 @@
+import { MCPActionType } from "@app/lib/actions/mcp";
 import type { ModelId } from "@app/types";
 import type { ModelProviderIdType } from "@app/types/assistant/assistant";
 import type { FunctionCallType } from "@app/types/assistant/generation";
@@ -73,5 +74,5 @@ export type AgentStepContentType = {
   type: AgentContentItemType["type"];
   value: AgentContentItemType;
   // Array of MCP actions that reference this step content.
-  mcpActions?: AgentMCPActionType[];
+  mcpActions?: MCPActionType[];
 };

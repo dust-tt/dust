@@ -1,7 +1,6 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -17,12 +16,12 @@ import {
   Message,
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
-  AgentActionType,
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
@@ -164,8 +163,15 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       return agents as LightAgentConfigurationType[];
     })(),
-    (async () =>
-      mcpActionTypesFromAgentMessageIds(auth, { agentMessageIds }))(),
+    (async () => {
+      const agentStepContents =
+        await AgentStepContentResource.fetchByAgentMessages(auth, {
+          agentMessageIds,
+          includeMCPActions: true,
+          latestVersionsOnly: true,
+        });
+      return agentStepContents.map((sc) => sc.toJSON().mcpActions ?? []).flat();
+    })(),
   ]);
 
   if (!agentConfigurations) {
@@ -185,8 +191,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       }
       const agentMessage = message.agentMessage;
 
-      const actions: AgentActionType[] = [agentMCPActions]
-        .flat()
+      const actions = agentMCPActions
         .filter((a) => a.agentMessageId === agentMessage.id)
         .sort((a, b) => a.step - b.step);
 

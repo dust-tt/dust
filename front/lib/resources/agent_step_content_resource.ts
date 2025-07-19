@@ -5,16 +5,21 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
+import { renderAgentMCPAction } from "@app/lib/actions/mcp";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
+import {
+  AgentMCPAction,
+  AgentMCPActionOutputItem,
+} from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
+import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
@@ -41,31 +46,48 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
    */
   private static async checkAgentMessageAccess(
     auth: Authenticator,
-    agentMessageId: number
+    agentMessageIds: ModelId[]
   ): Promise<void> {
-    const agentMessage = await AgentMessage.findOne({
+    const agentMessages = await AgentMessage.findAll({
       where: {
-        id: agentMessageId,
+        id: { [Op.in]: agentMessageIds },
       },
     });
 
-    if (!agentMessage) {
-      throw new Error(
-        `Unexpected: Agent message not found for agentMessageId: ${agentMessageId}`
+    if (agentMessages.length !== agentMessageIds.length) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentMessageIds,
+          found: agentMessages.map((a) => a.id),
+        },
+        "Agent message not found"
       );
+      throw new Error(`Unexpected: Agent messages not all found`);
     }
 
+    const uniqueAgentIds = [
+      ...new Set(agentMessages.map((a) => a.agentConfigurationId)),
+    ];
     // Fetch agent configuration to check permissions
     const agentConfigurations = await getAgentConfigurations({
       auth,
-      agentsGetView: { agentIds: [agentMessage.agentConfigurationId] },
+      agentsGetView: {
+        agentIds: uniqueAgentIds,
+      },
       variant: "light",
     });
 
-    if (agentConfigurations.length === 0) {
-      throw new Error(
-        `Unexpected: User does not have access to agent: ${agentMessage.agentConfigurationId}`
+    if (agentConfigurations.length !== uniqueAgentIds.length) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentIds: uniqueAgentIds,
+          found: agentConfigurations.map((a) => a.sId),
+        },
+        "User does not have access to agents"
       );
+      throw new Error(`Unexpected: User does not have access to all agents`);
     }
   }
 
@@ -120,6 +142,13 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         model: AgentMCPAction,
         as: "agentMCPActions",
         required: false,
+        include: [
+          {
+            model: AgentMCPActionOutputItem,
+            as: "outputItems",
+            required: true,
+          },
+        ],
       },
     ];
   }
@@ -153,32 +182,35 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     );
   }
 
-  static async fetchByAgentMessage({
-    auth,
-    agentMessageId,
-    transaction,
-    includeMCPActions = false,
-    latestVersionsOnly = false,
-  }: {
-    auth: Authenticator;
-    agentMessageId: number;
-    transaction?: Transaction;
-    includeMCPActions?: boolean;
-    latestVersionsOnly?: boolean;
-  }): Promise<AgentStepContentResource[]> {
+  static async fetchByAgentMessages(
+    auth: Authenticator,
+    {
+      agentMessageIds,
+      transaction,
+      includeMCPActions = false,
+      latestVersionsOnly = false,
+    }: {
+      agentMessageIds: ModelId[];
+      transaction?: Transaction;
+      includeMCPActions?: boolean;
+      latestVersionsOnly?: boolean;
+    }
+  ): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
     // Check authorization - will throw if unauthorized
-    await this.checkAgentMessageAccess(auth, agentMessageId);
+    await this.checkAgentMessageAccess(auth, agentMessageIds);
 
     const include = this.buildMCPActionsInclude({
       includeMCPActions,
     });
 
-    const agentStepContents = await AgentStepContentModel.findAll({
+    let contents = await AgentStepContentModel.findAll({
       where: {
         workspaceId: owner.id,
-        agentMessageId,
+        agentMessageId: {
+          [Op.in]: agentMessageIds,
+        },
       },
       include,
       order: [
@@ -188,8 +220,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       ],
       transaction,
     });
-
-    let contents = agentStepContents;
 
     if (latestVersionsOnly) {
       contents = this.filterLatestVersions(contents, ["step", "index"]);
@@ -212,25 +242,26 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return this.createResources(contents);
   }
 
-  static async fetchByAgentMessageAndStep({
-    auth,
-    agentMessageId,
-    step,
-    transaction,
-    includeMCPActions = false,
-    latestVersionsOnly = false,
-  }: {
-    auth: Authenticator;
-    agentMessageId: number;
-    step: number;
-    transaction?: Transaction;
-    includeMCPActions?: boolean;
-    latestVersionsOnly?: boolean;
-  }): Promise<AgentStepContentResource[]> {
+  static async fetchByAgentMessageAndStep(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      step,
+      transaction,
+      includeMCPActions = false,
+      latestVersionsOnly = false,
+    }: {
+      agentMessageId: ModelId;
+      step: number;
+      transaction?: Transaction;
+      includeMCPActions?: boolean;
+      latestVersionsOnly?: boolean;
+    }
+  ): Promise<AgentStepContentResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
     // Check authorization - will throw if unauthorized
-    await this.checkAgentMessageAccess(auth, agentMessageId);
+    await this.checkAgentMessageAccess(auth, [agentMessageId]);
 
     const include = this.buildMCPActionsInclude({
       includeMCPActions,
@@ -285,10 +316,9 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       );
     }
 
-    await AgentStepContentResource.checkAgentMessageAccess(
-      auth,
-      this.agentMessageId
-    );
+    await AgentStepContentResource.checkAgentMessageAccess(auth, [
+      this.agentMessageId,
+    ]);
 
     const deletedCount = await AgentStepContentModel.destroy({
       where: {
@@ -329,16 +359,10 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     };
 
     if ("agentMCPActions" in this && Array.isArray(this.agentMCPActions)) {
-      const mcpActions = this.agentMCPActions as AgentMCPAction[];
-
       // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
-      base.mcpActions = mcpActions.map((action: AgentMCPAction) => {
-        const resource = new AgentMCPActionResource(
-          AgentMCPAction,
-          action.get ? action.get() : action
-        );
-        return resource.toJSON();
-      });
+      base.mcpActions = this.agentMCPActions.map((action: AgentMCPAction) =>
+        renderAgentMCPAction(action)
+      );
     }
 
     return base;

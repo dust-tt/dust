@@ -293,6 +293,7 @@ AgentMCPAction.belongsTo(AgentStepContentModel, {
 
 AgentStepContentModel.hasMany(AgentMCPAction, {
   foreignKey: { name: "stepContentId", allowNull: true },
+  as: "agentMCPActions",
 });
 
 export class AgentMCPActionOutputItem extends WorkspaceAwareModel<AgentMCPActionOutputItem> {
