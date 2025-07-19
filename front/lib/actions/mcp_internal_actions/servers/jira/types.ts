@@ -221,7 +221,12 @@ export const JiraTransitionRequestSchema = z.object({
     .optional(),
 });
 
-export const JiraIssueTypeSchema = z.unknown();
+export const JiraIssueTypeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  subtask: z.boolean().optional(),
+});
 
 // Inferred types
 export type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;

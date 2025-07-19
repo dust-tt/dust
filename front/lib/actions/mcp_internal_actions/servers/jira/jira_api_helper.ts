@@ -72,12 +72,12 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
 
     // Handle empty responses for successful status codes (like 204 No Content)
     if (!responseText && response.status >= 200 && response.status < 300) {
-      const parseResult = schema.safeParse(undefined);
-      if (parseResult.success) {
-        return new Ok(parseResult.data);
+      // Only try to parse undefined for void schemas
+      if (schema === z.void()) {
+        return new Ok(undefined);
       }
-      // If void parsing fails but it's a successful status, return success anyway
-      return new Ok(undefined as any);
+      // For other schemas, return an error if we get empty response unexpectedly
+      return new Err("Unexpected empty response from JIRA API");
     }
 
     if (!responseText) {
