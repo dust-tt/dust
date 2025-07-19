@@ -333,7 +333,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_projects: "never_ask",
       get_project: "never_ask",
       get_transitions: "never_ask",
-      search_issues: "never_ask",
+      get_issues: "never_ask",
       get_issue_types: "never_ask",
       get_issue_fields: "never_ask",
       get_connection_info: "never_ask",
@@ -341,6 +341,8 @@ export const INTERNAL_MCP_SERVERS: Record<
       // Update operations - low stakes
       create_comment: "low",
       transition_issue: "low",
+      create_issue: "low",
+      update_issue: "low",
     },
   },
   search: {

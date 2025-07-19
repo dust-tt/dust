@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   createComment,
+  createIssue,
   getConnectionInfo,
   getIssue,
   getIssueFields,
@@ -24,6 +25,9 @@ import {
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+
+import { JiraCreateIssueRequestSchema } from "./jira_api_helper";
+import { updateIssue } from "./jira_api_helper";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "jira",
@@ -207,7 +211,7 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "search_issues",
+    "get_issues",
     "Search issues one or more filters.",
     {
       filters: z
@@ -225,8 +229,12 @@ const createServer = (): McpServer => {
         )
         .min(1)
         .describe("Array of search filters to apply (all must match)"),
+      nextPageToken: z
+        .string()
+        .optional()
+        .describe("Token for next page of results (for pagination)"),
     },
-    async ({ filters }, { authInfo }) => {
+    async ({ filters, nextPageToken }, { authInfo }) => {
       const fieldMapping = {
         issueType: "issueType",
         parentIssueKey: "parent",
@@ -258,7 +266,7 @@ const createServer = (): McpServer => {
 
       return withAuth({
         action: async (baseUrl, accessToken) => {
-          const result = await searchIssues(baseUrl, accessToken, jql);
+          const result = await searchIssues(baseUrl, accessToken, jql, nextPageToken);
           if (result.isErr()) {
             return makeMCPToolTextError(
               `Error searching issues: ${result.error}`
@@ -321,14 +329,13 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_issue_fields",
-    "Retrieves available fields for creating issues in a JIRA project, optionally filtered by issue type.",
+    "Retrieves available fields for creating issues in a JIRA project for a specific issue type.",
     {
       projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
       issueTypeId: z
         .string()
-        .optional()
         .describe(
-          "Optional issue type ID to filter fields for a specific issue type"
+          "The issue type ID to get fields for (required)"
         ),
     },
     async ({ projectKey, issueTypeId }, { authInfo }) => {
@@ -411,6 +418,75 @@ const createServer = (): McpServer => {
             result: {
               issueKey,
               transitionId,
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "create_issue",
+    "Creates a new JIRA issue with the specified details.",
+    {
+      issueData: JiraCreateIssueRequestSchema.describe(
+        "The description of the issue"
+      ),
+    },
+    async ({ issueData }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await createIssue(baseUrl, accessToken, issueData);
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error creating issue: ${result.error}`
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Issue created successfully",
+            result: result.value,
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "update_issue",
+    "Updates an existing JIRA issue with new field values.",
+    {
+      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
+      updateData: JiraCreateIssueRequestSchema.partial().describe(
+        "The partial data to update the issue with"
+      ),
+    },
+    async ({ issueKey, updateData }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await updateIssue(
+            baseUrl,
+            accessToken,
+            issueKey,
+            updateData
+          );
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error updating issue: ${result.error}`
+            );
+          }
+          if (result.value === null) {
+            return makeMCPToolJSONSuccess({
+              message: "Issue not found or no permission to update it",
+              result: { found: false, issueKey },
+            });
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Issue updated successfully",
+            result: {
+              ...result.value,
+              updatedFields: Object.keys(updateData),
             },
           });
         },

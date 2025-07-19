@@ -7,12 +7,61 @@ import { normalizeError } from "@app/types";
 
 const SEARCH_MAX_RESULTS = 20;
 
-// Jira entity schemas
+// Jira entity schemas - shared field definitions
+const JiraIssueFieldsSchema = z
+  .object({
+    project: z.object({
+      key: z.string(),
+    }),
+    summary: z.string(),
+    description: z
+      .object({
+        type: z.string(),
+        version: z.number(),
+        content: z.array(
+          z.object({
+            type: z.string(),
+            content: z.array(
+              z.object({
+                type: z.string(),
+                text: z.string().optional(),
+              })
+            ),
+          })
+        ),
+      })
+      .nullable(),
+    issuetype: z.object({
+      name: z.string(),
+    }),
+    priority: z.object({
+      name: z.string(),
+    }),
+    assignee: z
+      .object({
+        accountId: z.string(),
+      })
+      .nullable(),
+    reporter: z
+      .object({
+        accountId: z.string(),
+      })
+      .nullable(),
+    labels: z.array(z.string()).nullable(),
+    parent: z
+      .object({
+        key: z.string(),
+      })
+      .nullable(),
+  })
+  .passthrough();
+
 const JiraIssueSchema = z
   .object({
     id: z.string(),
     key: z.string(),
     browseUrl: z.string().optional(),
+    fields: JiraIssueFieldsSchema.deepPartial().optional(),
   })
   .passthrough();
 
@@ -63,7 +112,8 @@ const JiraSearchResultSchema = z.object({
         .passthrough(),
     })
   ),
-  isLast: z.boolean(),
+  isLast: z.boolean().optional(),
+  nextPageToken: z.string().optional(),
 });
 
 const JiraUserInfoSchema = z
@@ -91,6 +141,15 @@ const JiraConnectionInfoSchema = z.object({
 });
 
 const JiraTransitionIssueSchema = z.void();
+
+export const JiraCreateIssueRequestSchema = JiraIssueFieldsSchema.partial({
+  description: true,
+  priority: true,
+  assignee: true,
+  reporter: true,
+  labels: true,
+  parent: true,
+});
 
 const JiraIssueTypeSchema = z.unknown();
 type JiraIssueType = z.infer<typeof JiraIssueTypeSchema>;
@@ -141,6 +200,8 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
       if (parseResult.success) {
         return new Ok(parseResult.data);
       }
+      // If void parsing fails but it's a successful status, return success anyway
+      return new Ok(undefined as any);
     }
 
     if (!responseText) {
@@ -148,11 +209,14 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
     }
 
     const rawData = JSON.parse(responseText);
+    logger.info(`[JIRA MCP Server] Raw response for ${endpoint}: ${JSON.stringify(rawData)}`);
     const parseResult = schema.safeParse(rawData);
 
     if (!parseResult.success) {
       const msg = `Invalid JIRA response format: ${parseResult.error.message}`;
-      logger.error(`[JIRA MCP Server] ${msg}`);
+      logger.error(
+        `[JIRA MCP Server] ${msg}, rawData: ${JSON.stringify(rawData)}`
+      );
       return new Err(msg);
     }
 
@@ -348,16 +412,30 @@ export async function searchIssues(
   baseUrl: string,
   accessToken: string,
   jql: string = "*",
-  startAt: number = 0,
+  nextPageToken?: string,
   maxResults: number = SEARCH_MAX_RESULTS
 ): Promise<Result<JiraSearchResult, JiraErrorResult>> {
+  const requestBody: any = {
+    jql,
+    maxResults,
+    fields: ["summary"]
+  };
+  
+  if (nextPageToken) {
+    requestBody.nextPageToken = nextPageToken;
+  }
+
   const result = await jiraApiCall(
     {
-      endpoint: `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&startAt=${startAt}&maxResults=${maxResults}&fields=summary`,
+      endpoint: `/rest/api/3/search/jql`,
       accessToken,
     },
     JiraSearchResultSchema,
-    { baseUrl }
+    { 
+      baseUrl,
+      method: "POST",
+      body: requestBody
+    }
   );
 
   if (result.isErr()) {
@@ -407,7 +485,7 @@ export async function getIssueFields(
   baseUrl: string,
   accessToken: string,
   projectKey: string,
-  issueTypeId?: string
+  issueTypeId: string
 ): Promise<Result<z.infer<typeof JiraCreateMetaSchema>, JiraErrorResult>> {
   const LenientSchema = z.any();
   const endpoint = `/rest/api/3/issue/createmeta/${projectKey}/issuetypes/${issueTypeId}`;
@@ -494,4 +572,74 @@ export async function transitionIssue(
       baseUrl,
     }
   );
+}
+
+export async function createIssue(
+  baseUrl: string,
+  accessToken: string,
+  issueData: z.infer<typeof JiraCreateIssueRequestSchema>
+): Promise<Result<z.infer<typeof JiraIssueSchema>, JiraErrorResult>> {
+  const result = await jiraApiCall(
+    {
+      endpoint: "/rest/api/3/issue",
+      accessToken,
+    },
+    JiraIssueSchema,
+    {
+      method: "POST",
+      body: { fields: issueData },
+      baseUrl,
+    }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const resourceInfo = await getJiraResourceInfo(accessToken);
+  if (resourceInfo && result.value) {
+    result.value.browseUrl = `${resourceInfo.url}/browse/${result.value.key}`;
+  }
+
+  return result;
+}
+
+export async function updateIssue(
+  baseUrl: string,
+  accessToken: string,
+  issueKey: string,
+  updateData: Partial<z.infer<typeof JiraCreateIssueRequestSchema>>
+): Promise<Result<{ issueKey: string; browseUrl?: string } | null, JiraErrorResult>> {
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/issue/${issueKey}`,
+      accessToken,
+    },
+    z.void(),
+    {
+      method: "PUT",
+      body: { fields: updateData },
+      baseUrl,
+    }
+  );
+
+  if (result.isErr()) {
+    // Handle 404 as "not found" rather than an error
+    if (result.error.includes("404")) {
+      return new Ok(null);
+    }
+    return result;
+  }
+
+  const responseData = { issueKey };
+
+  const resourceInfo = await getJiraResourceInfo(accessToken);
+  if (resourceInfo) {
+    return new Ok({
+      ...responseData,
+      browseUrl: `${resourceInfo.url}/browse/${issueKey}`,
+    });
+  }
+
+  return new Ok(responseData);
 }
