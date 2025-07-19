@@ -46,7 +46,7 @@ impl GoogleCloudStorageCSVContent {
         let csv_to_rows_duration = utils::now() - now;
 
         info!(
-            rows_count = rows.len(),
+            row_count = rows.len(),
             download_duration = download_duration,
             delimiter_duration = delimiter_duration,
             csv_to_rows_duration = csv_to_rows_duration,
