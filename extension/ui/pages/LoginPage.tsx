@@ -102,7 +102,7 @@ export const LoginPage = () => {
               icon={LoginIcon}
               variant="primary"
               label="Sign in"
-              onClick={() => handleLogin(!!authError)}
+              onClick={() => handleLogin()}
               disabled={isLoading}
               size="md"
             />
@@ -181,7 +181,7 @@ export const LoginPage = () => {
             icon={LoginIcon}
             variant="primary"
             label="Sign in"
-            onClick={() => handleLogin(!!authError)}
+            onClick={() => handleLogin()}
             disabled={isLoading}
           />
           <div className="text-center">Or</div>
@@ -215,7 +215,7 @@ export const LoginPage = () => {
                 icon={LoginIcon}
                 variant="primary"
                 label="Sign in"
-                onClick={() => handleLogin(!!authError)}
+                onClick={() => handleLogin()}
                 disabled={isLoading}
               />
             </>
