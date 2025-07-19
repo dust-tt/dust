@@ -25,20 +25,35 @@ makeScript(
       workOSOrganizationId: string;
     }>(
       `
-SELECT
+SELECT DISTINCT
   w."sId",
   w.name,
   ws.domain,
   w."workOSOrganizationId"
 FROM
-  workspace_has_domains ws,
   workspaces w
-  LEFT OUTER JOIN subscriptions s ON s."workspaceId" = w.id
+  JOIN workspace_has_domains ws ON w."id" = ws."workspaceId"
+  LEFT JOIN subscriptions s ON w."id" = s."workspaceId"
 WHERE
-  w.id = ws."workspaceId"
-  AND ws."domainAutoJoinEnabled" = FALSE
-  AND s.id IS NULL
+  ws."domainAutoJoinEnabled" = FALSE
   AND w."workOSOrganizationId" IS NOT NULL
+  AND NOT EXISTS ( -- Ensure there are no active subscriptions
+    SELECT
+      1
+    FROM
+      "subscriptions" "s2"
+    WHERE
+      "s2"."workspaceId" = "w"."id"
+      AND "s2"."endDate" IS NULL
+  )
+  AND (
+    "s"."id" IS NULL -- Include workspaces with no subscriptions
+    OR "s"."endDate" < NOW() - INTERVAL '1 month' -- Or subscriptions that ended more than a month ago
+    OR (
+      "s"."endDate" IS NOT NULL
+      AND "s"."endDate" < NOW() - INTERVAL '1 month' -- Redundant check for clarity
+    )
+  );
 `,
       { type: QueryTypes.SELECT }
     );
