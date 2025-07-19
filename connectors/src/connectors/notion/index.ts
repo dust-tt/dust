@@ -523,12 +523,68 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     );
   }
 
-  async setConfigurationKey(): Promise<Result<void, Error>> {
-    throw new Error("Method not implemented.");
+  async setConfigurationKey({
+    configKey,
+    configValue,
+  }: {
+    configKey: string;
+    configValue: string;
+  }): Promise<Result<void, Error>> {
+    if (configKey !== "privateIntegrationCredentialId") {
+      return new Err(new Error(`Unknown configuration key: ${configKey}`));
+    }
+
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(new Error(`Connector ${this.connectorId} not found`));
+    }
+
+    const notionConnectorState = await NotionConnectorState.findOne({
+      where: { connectorId: connector.id },
+    });
+
+    if (!notionConnectorState) {
+      return new Err(
+        new Error(
+          `NotionConnectorState not found for connector ${connector.id}`
+        )
+      );
+    }
+
+    await notionConnectorState.update({
+      privateIntegrationCredentialId: configValue,
+    });
+
+    return new Ok(undefined);
   }
 
-  async getConfigurationKey(): Promise<Result<string | null, Error>> {
-    throw new Error("Method not implemented.");
+  async getConfigurationKey({
+    configKey,
+  }: {
+    configKey: string;
+  }): Promise<Result<string | null, Error>> {
+    if (configKey !== "privateIntegrationCredentialId") {
+      return new Err(new Error(`Unknown configuration key: ${configKey}`));
+    }
+
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(new Error(`Connector ${this.connectorId} not found`));
+    }
+
+    const notionConnectorState = await NotionConnectorState.findOne({
+      where: { connectorId: connector.id },
+    });
+
+    if (!notionConnectorState) {
+      return new Err(
+        new Error(
+          `NotionConnectorState not found for connector ${connector.id}`
+        )
+      );
+    }
+
+    return new Ok(notionConnectorState.privateIntegrationCredentialId || null);
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {
