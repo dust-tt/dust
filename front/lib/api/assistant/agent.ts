@@ -322,6 +322,7 @@ async function runMultiActionsAgent(
     runIds,
     step,
     functionCallStepContentIds,
+    autoRetryCount = 0,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
@@ -334,6 +335,7 @@ async function runMultiActionsAgent(
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
+    autoRetryCount?: number;
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -348,9 +350,6 @@ async function runMultiActionsAgent(
   const auth = await Authenticator.fromJSON(authType);
 
   const model = getSupportedModelConfig(agentConfiguration.model);
-
-  const autoRetryCount = 0;
-  let isRetryableModelError = false;
 
   // Helper function to publish agent error events
   async function publishAgentError(error: {
@@ -605,40 +604,50 @@ async function runMultiActionsAgent(
       message: res.error.message,
     });
 
-    isRetryableModelError = category === "retryable_model_error";
+    const isRetryableModelError = category === "retryable_model_error";
 
-    if (!(isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY)) {
-      const { publicMessage } = categorizeAgentErrorMessage({
-        code: "multi_actions_error",
-        message: res.error.message,
-      });
-
-      await publishAgentError({
-        code: "multi_actions_error",
-        message: publicMessage,
-        metadata: {
-          category,
+    if (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY) {
+      logger.warn(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error: res.error.message,
+          retryCount: autoRetryCount + 1,
+          maxRetries: MAX_AUTO_RETRY,
         },
-      });
+        "Auto-retrying multi-actions agent due to retryable model error."
+      );
 
-      return null;
+      // Recursively retry with incremented count
+      return runMultiActionsAgent(authType, {
+        agentConfiguration,
+        conversation,
+        userMessage,
+        agentMessage,
+        agentActions,
+        isLastGenerationIteration,
+        isLegacyAgent,
+        agentMessageRow,
+        runIds,
+        step,
+        functionCallStepContentIds,
+        autoRetryCount: autoRetryCount + 1,
+      });
     }
 
-    logger.warn(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        error: res.error.message,
-      },
-      "Auto-retrying multi-actions agent."
-    );
-  }
+    // Not retryable or max retries exceeded
+    const { publicMessage } = categorizeAgentErrorMessage({
+      code: "multi_actions_error",
+      message: res.error.message,
+    });
 
-  if (res.isErr()) {
     await publishAgentError({
       code: "multi_actions_error",
-      message: `Error running agent: [${res.error.type}] ${res.error.message}`,
-      metadata: null,
+      message: publicMessage,
+      metadata: {
+        category,
+        retriesAttempted: autoRetryCount,
+      },
     });
 
     return null;
