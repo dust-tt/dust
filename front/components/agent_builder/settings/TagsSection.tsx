@@ -1,5 +1,5 @@
 import { Button, SparklesIcon } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -94,37 +94,15 @@ export function TagsSection() {
 
   const selectedTags = field.value;
 
-  const [tagsSuggestions, setTagsSuggestions] =
-    useState<BuilderSuggestionsType>({
-      status: "unavailable",
-      reason: "irrelevant",
-    });
+  const [filteredTagsSuggestions, setFilteredTagsSuggestions] = useState<
+    TagType[]
+  >([]);
   const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
-
-  const filteredTagsSuggestions = useMemo(() => {
-    if (tagsSuggestions.status !== "ok") {
-      return [];
-    }
-    const currentTagIds = new Set(selectedTags.map((t) => t.sId));
-    // We make sure we don't suggest tags that already exists.
-    return allTags
-      .filter((t) => !currentTagIds.has(t.sId))
-      .filter((t) => isBuilder(owner) || t.kind !== "protected")
-      .filter(
-        (tag) =>
-          tagsSuggestions.suggestions?.findIndex(
-            (t) => tag.name.toLowerCase() === t.toLowerCase()
-          ) !== -1
-      )
-      .slice(0, 3);
-  }, [tagsSuggestions, selectedTags, allTags, owner]);
 
   const updateTagsSuggestions = async () => {
     setTagsSuggestionsLoading(true);
 
     try {
-      // We don't need to subscribe to the values change,
-      // so we should use getValues instead of useWatch.
       const instructions = getValues("instructions");
       const description = getValues("agentSettings.description");
 
@@ -136,7 +114,34 @@ export function TagsSection() {
       });
 
       if (tagsSuggestionsResult.isOk()) {
-        setTagsSuggestions(tagsSuggestionsResult.value);
+        const tagsSuggestions = tagsSuggestionsResult.value;
+
+        let filtered: TagType[] = [];
+        if (tagsSuggestions.status === "ok") {
+          const currentTagIds = new Set(selectedTags.map((t) => t.sId));
+          // We make sure we don't suggest tags that already exists.
+          filtered = allTags
+            .filter((t) => !currentTagIds.has(t.sId))
+            .filter((t) => isBuilder(owner) || t.kind !== "protected")
+            .filter(
+              (tag) =>
+                tagsSuggestions.suggestions?.findIndex(
+                  (t) => tag.name.toLowerCase() === t.toLowerCase()
+                ) !== -1
+            )
+            .slice(0, 3);
+        }
+
+        setFilteredTagsSuggestions(filtered);
+
+        if (tagsSuggestions.status === "ok" && filtered.length === 0) {
+          sendNotification({
+            title: "No tag suggestions available",
+            type: "info",
+            description:
+              "We couldn't find any relevant tags to suggest for this agent.",
+          });
+        }
       }
     } catch (err) {
       sendNotification({
@@ -153,14 +158,13 @@ export function TagsSection() {
   return (
     <div className="flex flex-grow flex-col gap-4">
       <h3>Tags</h3>
-      {tagsSuggestions.status === "ok" &&
-        filteredTagsSuggestions.length > 0 && (
-          <TagsSuggestions
-            tags={selectedTags}
-            onTagsChange={field.onChange}
-            tagsSuggestions={filteredTagsSuggestions}
-          />
-        )}
+      {filteredTagsSuggestions.length > 0 && (
+        <TagsSuggestions
+          tags={selectedTags}
+          onTagsChange={field.onChange}
+          tagsSuggestions={filteredTagsSuggestions}
+        />
+      )}
       <TagsSelector
         owner={owner}
         tags={selectedTags}
