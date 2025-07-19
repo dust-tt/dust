@@ -352,24 +352,33 @@ async function runMultiActionsAgent(
   const autoRetryCount = 0;
   let isRetryableModelError = false;
 
-  if (!model) {
+  // Helper function to publish agent error events
+  async function publishAgentError(error: {
+    code: string;
+    message: string;
+    metadata: any;
+  }): Promise<void> {
     await updateResourceAndPublishEvent(
       {
         type: "agent_error",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        error: {
-          code: "model_does_not_support_multi_actions",
-          message:
-            `The model you selected (${agentConfiguration.model.modelId}) ` +
-            `does not support multi-actions.`,
-          metadata: null,
-        },
+        error,
       },
       conversation,
       agentMessageRow
     );
+  }
+
+  if (!model) {
+    await publishAgentError({
+      code: "model_does_not_support_multi_actions",
+      message:
+        `The model you selected (${agentConfiguration.model.modelId}) ` +
+        `does not support multi-actions.`,
+      metadata: null,
+    });
     return null;
   }
   const availableActions: ActionConfigurationType[] = [];
@@ -477,21 +486,11 @@ async function runMultiActionsAgent(
         },
         "Failed to build the specification for action."
       );
-      await updateResourceAndPublishEvent(
-        {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "build_spec_error",
-            message: `Failed to build the specification for action ${a.sId},`,
-            metadata: null,
-          },
-        },
-        conversation,
-        agentMessageRow
-      );
+      await publishAgentError({
+        code: "build_spec_error",
+        message: `Failed to build the specification for action ${a.sId},`,
+        metadata: null,
+      });
 
       return null;
     }
@@ -530,21 +529,11 @@ async function runMultiActionsAgent(
       },
       "Error rendering conversation for model."
     );
-    await updateResourceAndPublishEvent(
-      {
-        type: "agent_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "conversation_render_error",
-          message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
-          metadata: null,
-        },
-      },
-      conversation,
-      agentMessageRow
-    );
+    await publishAgentError({
+      code: "conversation_render_error",
+      message: `Error rendering conversation for model: ${modelConversationRes.error.message}`,
+      metadata: null,
+    });
 
     return null;
   }
@@ -555,23 +544,13 @@ async function runMultiActionsAgent(
   const seen = new Set<string>();
   for (const spec of specifications) {
     if (seen.has(spec.name)) {
-      await updateResourceAndPublishEvent(
-        {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "duplicate_specification_name",
-            message:
-              `Duplicate action name in agent configuration: ${spec.name}. ` +
-              "Your agents actions must have unique names.",
-            metadata: null,
-          },
-        },
-        conversation,
-        agentMessageRow
-      );
+      await publishAgentError({
+        code: "duplicate_specification_name",
+        message:
+          `Duplicate action name in agent configuration: ${spec.name}. ` +
+          "Your agents actions must have unique names.",
+        metadata: null,
+      });
 
       return null;
     }
@@ -657,23 +636,13 @@ async function runMultiActionsAgent(
         "Error running multi-actions agent."
       );
 
-      await updateResourceAndPublishEvent(
-        {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "multi_actions_error",
-            message: publicMessage,
-            metadata: {
-              category,
-            },
-          },
+      await publishAgentError({
+        code: "multi_actions_error",
+        message: publicMessage,
+        metadata: {
+          category,
         },
-        conversation,
-        agentMessageRow
-      );
+      });
 
       return null;
     }
@@ -689,21 +658,11 @@ async function runMultiActionsAgent(
   }
 
   if (res.isErr()) {
-    await updateResourceAndPublishEvent(
-      {
-        type: "agent_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "multi_actions_error",
-          message: `Error running agent: [${res.error.type}] ${res.error.message}`,
-          metadata: null,
-        },
-      },
-      conversation,
-      agentMessageRow
-    );
+    await publishAgentError({
+      code: "multi_actions_error",
+      message: `Error running agent: [${res.error.type}] ${res.error.message}`,
+      metadata: null,
+    });
 
     return null;
   }
@@ -772,21 +731,11 @@ async function runMultiActionsAgent(
             agentMessageRow
           );
         }
-        await updateResourceAndPublishEvent(
-          {
-            type: "agent_error",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: "multi_actions_error",
-              message: `Error running agent: ${event.content.message}`,
-              metadata: null,
-            },
-          },
-          conversation,
-          agentMessageRow
-        );
+        await publishAgentError({
+          code: "multi_actions_error",
+          message: `Error running agent: ${event.content.message}`,
+          metadata: null,
+        });
         return null;
       }
 
@@ -874,21 +823,11 @@ async function runMultiActionsAgent(
               agentMessageRow
             );
           }
-          await updateResourceAndPublishEvent(
-            {
-              type: "agent_error",
-              created: Date.now(),
-              configurationId: agentConfiguration.sId,
-              messageId: agentMessage.sId,
-              error: {
-                code: "multi_actions_error",
-                message: `Error running agent: ${e.error}`,
-                metadata: null,
-              },
-            },
-            conversation,
-            agentMessageRow
-          );
+          await publishAgentError({
+            code: "multi_actions_error",
+            message: `Error running agent: ${e.error}`,
+            metadata: null,
+          });
           return null;
         }
 
@@ -912,21 +851,11 @@ async function runMultiActionsAgent(
               },
               "Received unparsable MODEL block."
             );
-            await updateResourceAndPublishEvent(
-              {
-                type: "agent_error",
-                created: Date.now(),
-                configurationId: agentConfiguration.sId,
-                messageId: agentMessage.sId,
-                error: {
-                  code: "multi_actions_error",
-                  message: "Received unparsable MODEL block.",
-                  metadata: null,
-                },
-              },
-              conversation,
-              agentMessageRow
-            );
+            await publishAgentError({
+              code: "multi_actions_error",
+              message: "Received unparsable MODEL block.",
+              metadata: null,
+            });
             return null;
           }
 
@@ -989,21 +918,11 @@ async function runMultiActionsAgent(
                   },
                   "Error parsing function call arguments."
                 );
-                await updateResourceAndPublishEvent(
-                  {
-                    type: "agent_error",
-                    created: Date.now(),
-                    configurationId: agentConfiguration.sId,
-                    messageId: agentMessage.sId,
-                    error: {
-                      code: "function_call_error",
-                      message: `Error parsing function call arguments: ${error}`,
-                      metadata: null,
-                    },
-                  },
-                  conversation,
-                  agentMessageRow
-                );
+                await publishAgentError({
+                  code: "function_call_error",
+                  message: `Error parsing function call arguments: ${error}`,
+                  metadata: null,
+                });
                 return null;
               }
             }
@@ -1023,21 +942,11 @@ async function runMultiActionsAgent(
     }
 
     if (!output) {
-      await updateResourceAndPublishEvent(
-        {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "multi_actions_error",
-            message: "Agent execution didn't complete.",
-            metadata: null,
-          },
-        },
-        conversation,
-        agentMessageRow
-      );
+      await publishAgentError({
+        code: "multi_actions_error",
+        message: "Agent execution didn't complete.",
+        metadata: null,
+      });
       return null;
     }
 
@@ -1070,22 +979,12 @@ async function runMultiActionsAgent(
     // We have actions.
 
     if (isLastGenerationIteration) {
-      await updateResourceAndPublishEvent(
-        {
-          type: "agent_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "tool_use_limit_reached",
-            message:
-              "The agent attempted to use too many tools. This model error can be safely retried.",
-            metadata: null,
-          },
-        },
-        conversation,
-        agentMessageRow
-      );
+      await publishAgentError({
+        code: "tool_use_limit_reached",
+        message:
+          "The agent attempted to use too many tools. This model error can be safely retried.",
+        metadata: null,
+      });
       return null;
     }
 
@@ -1116,23 +1015,13 @@ async function runMultiActionsAgent(
             },
             "Model attempted to run an action that is not part of the agent configuration (no name)."
           );
-          await updateResourceAndPublishEvent(
-            {
-              type: "agent_error",
-              created: Date.now(),
-              configurationId: agentConfiguration.sId,
-              messageId: agentMessage.sId,
-              error: {
-                code: "action_not_found",
-                message:
-                  `The agent attempted to run an invalid action (no name). ` +
-                  `This model error can be safely retried.`,
-                metadata: null,
-              },
-            },
-            conversation,
-            agentMessageRow
-          );
+          await publishAgentError({
+            code: "action_not_found",
+            message:
+              `The agent attempted to run an invalid action (no name). ` +
+              `This model error can be safely retried.`,
+            metadata: null,
+          });
 
           return null;
         } else {
@@ -1156,23 +1045,13 @@ async function runMultiActionsAgent(
               "Model attempted to run an action that is not part of the agent configuration (no server)."
             );
 
-            await updateResourceAndPublishEvent(
-              {
-                type: "agent_error",
-                created: Date.now(),
-                configurationId: agentConfiguration.sId,
-                messageId: agentMessage.sId,
-                error: {
-                  code: "action_not_found",
-                  message:
-                    `The agent attempted to run an invalid action (${a.name}). ` +
-                    `This model error can be safely retried (no server).`,
-                  metadata: null,
-                },
-              },
-              conversation,
-              agentMessageRow
-            );
+            await publishAgentError({
+              code: "action_not_found",
+              message:
+                `The agent attempted to run an invalid action (${a.name}). ` +
+                `This model error can be safely retried (no server).`,
+              metadata: null,
+            });
             return null;
           }
 
