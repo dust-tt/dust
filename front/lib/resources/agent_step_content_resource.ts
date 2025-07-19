@@ -13,11 +13,15 @@ import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_cont
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
-import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
+import { Err, md5, Ok } from "@app/types";
+import type {
+  AgentContentItemType,
+  AgentStepContentType,
+} from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -342,5 +346,62 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     }
 
     return base;
+  }
+
+  static async createNewVersion({
+    agentMessageId,
+    workspaceId,
+    step,
+    index,
+    type,
+    value,
+  }: {
+    agentMessageId: ModelId;
+    workspaceId: ModelId;
+    step: number;
+    index: number;
+    type: "text_content" | "reasoning" | "function_call";
+    value: AgentContentItemType;
+  }): Promise<AgentStepContentResource> {
+    return frontSequelize.transaction(async (transaction: Transaction) => {
+      // Acquire advisory lock for this step-index combination
+      const hash = md5(
+        `agent_step_content_version_${agentMessageId}_${step}_${index}`
+      );
+
+      // We need to set a lock directly.
+      // eslint-disable-next-line dust/no-raw-sql
+      await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
+        transaction,
+        replacements: { key: parseInt(hash, 16) % 9999999999 },
+      });
+
+      const existingContent = await AgentStepContentModel.findAll({
+        where: {
+          agentMessageId,
+          step,
+          index,
+        },
+        order: [["version", "DESC"]],
+        limit: 1,
+        transaction,
+      });
+
+      const currentMaxVersion =
+        existingContent.length > 0 ? existingContent[0].version + 1 : 0;
+
+      return AgentStepContentResource.makeNew(
+        {
+          agentMessageId,
+          workspaceId,
+          step,
+          index,
+          version: currentMaxVersion,
+          type,
+          value,
+        },
+        transaction
+      );
+    });
   }
 }
