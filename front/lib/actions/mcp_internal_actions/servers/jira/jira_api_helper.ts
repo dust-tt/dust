@@ -5,6 +5,8 @@ import { z } from "zod";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
 
+const SEARCH_MAX_RESULTS = 20;
+
 // Jira entity schemas
 const JiraIssueSchema = z
   .object({
@@ -45,7 +47,58 @@ const JiraCommentSchema = z.object({
   }),
 });
 
+const JiraCreateMetaSchema = z.object({
+  fields: z.record(z.string(), z.unknown()),
+});
+
+const JiraSearchResultSchema = z.object({
+  issues: z.array(
+    z.object({
+      id: z.string(),
+      key: z.string(),
+      fields: z
+        .object({
+          summary: z.string(),
+        })
+        .passthrough(),
+    })
+  ),
+  isLast: z.boolean(),
+});
+
+const JiraUserInfoSchema = z
+  .object({
+    accountId: z.string(),
+    emailAddress: z.string(),
+    displayName: z.string(),
+    accountType: z.string(),
+    locale: z.string().optional(),
+  })
+  .passthrough();
+
+const JiraConnectionInfoSchema = z.object({
+  user: z.object({
+    account_id: z.string(),
+    name: z.string(),
+    nickname: z.string(),
+  }),
+  instance: z.object({
+    cloud_id: z.string(),
+    site_url: z.string(),
+    site_name: z.string(),
+    api_base_url: z.string(),
+  }),
+});
+
+const JiraTransitionIssueSchema = z.void();
+
+const JiraIssueTypeSchema = z.unknown();
+type JiraIssueType = z.infer<typeof JiraIssueTypeSchema>;
+
+type JiraSearchResult = z.infer<typeof JiraSearchResultSchema>;
+
 type JiraErrorResult = string;
+
 // Generic wrapper for JIRA API calls with validation
 async function jiraApiCall<T extends z.ZodTypeAny>(
   {
@@ -81,6 +134,15 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
     }
 
     const responseText = await response.text();
+
+    // Handle empty responses for successful status codes (like 204 No Content)
+    if (!responseText && response.status >= 200 && response.status < 300) {
+      const parseResult = schema.safeParse(undefined);
+      if (parseResult.success) {
+        return new Ok(parseResult.data);
+      }
+    }
+
     if (!responseText) {
       return new Err("Empty response from JIRA API");
     }
@@ -156,15 +218,22 @@ export async function getProject(
   baseUrl: string,
   accessToken: string,
   projectKey: string
-): Promise<Result<z.infer<typeof JiraProjectSchema>[], JiraErrorResult>> {
+): Promise<Result<z.infer<typeof JiraProjectSchema> | null, JiraErrorResult>> {
   const result = await jiraApiCall(
     {
       endpoint: `/rest/api/3/project/${projectKey}`,
       accessToken,
     },
-    z.array(JiraProjectSchema),
+    JiraProjectSchema,
     { baseUrl }
   );
+  if (result.isErr()) {
+    // Handle 404 as "not found" rather than an error
+    if (result.error.includes("404")) {
+      return new Ok(null);
+    }
+    return result;
+  }
   return result;
 }
 
@@ -267,6 +336,158 @@ export async function createComment(
       accessToken,
     },
     JiraCommentSchema,
+    {
+      method: "POST",
+      body: requestBody,
+      baseUrl,
+    }
+  );
+}
+
+export async function searchIssues(
+  baseUrl: string,
+  accessToken: string,
+  jql: string = "*",
+  startAt: number = 0,
+  maxResults: number = SEARCH_MAX_RESULTS
+): Promise<Result<JiraSearchResult, JiraErrorResult>> {
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&startAt=${startAt}&maxResults=${maxResults}&fields=summary`,
+      accessToken,
+    },
+    JiraSearchResultSchema,
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const resourceInfo = await getJiraResourceInfo(accessToken);
+  if (resourceInfo && result.value.issues) {
+    result.value.issues = result.value.issues.map((issue) => ({
+      ...issue,
+      browseUrl: `${resourceInfo.url}/browse/${issue.key}`,
+    }));
+  }
+
+  return result;
+}
+
+export async function getIssueTypes(
+  baseUrl: string,
+  accessToken: string,
+  projectKey: string
+): Promise<Result<JiraIssueType[], JiraErrorResult>> {
+  const IssueTypesResponseSchema = z.object({
+    issueTypes: z.array(JiraIssueTypeSchema),
+    maxResults: z.number().optional(),
+    startAt: z.number().optional(),
+    total: z.number().optional(),
+  });
+
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/issue/createmeta/${projectKey}/issuetypes`,
+      accessToken,
+    },
+    IssueTypesResponseSchema,
+    { baseUrl }
+  );
+
+  if ("error" in result) {
+    return result;
+  }
+
+  return new Ok(result.value.issueTypes);
+}
+
+export async function getIssueFields(
+  baseUrl: string,
+  accessToken: string,
+  projectKey: string,
+  issueTypeId?: string
+): Promise<Result<z.infer<typeof JiraCreateMetaSchema>, JiraErrorResult>> {
+  const LenientSchema = z.any();
+  const endpoint = `/rest/api/3/issue/createmeta/${projectKey}/issuetypes/${issueTypeId}`;
+  return jiraApiCall(
+    {
+      endpoint,
+      accessToken,
+    },
+    LenientSchema,
+    { baseUrl }
+  );
+}
+
+async function getUserInfo(
+  baseUrl: string,
+  accessToken: string
+): Promise<Result<z.infer<typeof JiraUserInfoSchema>, JiraErrorResult>> {
+  return jiraApiCall(
+    {
+      endpoint: "/rest/api/3/myself",
+      accessToken,
+    },
+    JiraUserInfoSchema,
+    { baseUrl }
+  );
+}
+
+export async function getConnectionInfo(
+  accessToken: string
+): Promise<Result<z.infer<typeof JiraConnectionInfoSchema>, JiraErrorResult>> {
+  const resourceInfo = await getJiraResourceInfo(accessToken);
+  if (!resourceInfo) {
+    return new Err("Failed to retrieve JIRA resource information");
+  }
+
+  const baseUrl = `https://api.atlassian.com/ex/jira/${resourceInfo.id}`;
+  const userResult = await getUserInfo(baseUrl, accessToken);
+  if (userResult.isErr()) {
+    return userResult;
+  }
+
+  const connectionInfo = {
+    user: {
+      account_id: userResult.value.accountId,
+      name: userResult.value.displayName,
+      nickname: userResult.value.displayName,
+    },
+    instance: {
+      cloud_id: resourceInfo.id,
+      site_url: resourceInfo.url,
+      site_name: resourceInfo.name,
+      api_base_url: baseUrl,
+    },
+  };
+  return new Ok(connectionInfo);
+}
+
+export async function transitionIssue(
+  baseUrl: string,
+  accessToken: string,
+  issueKey: string,
+  transitionId: string,
+  comment?: string
+): Promise<Result<z.infer<typeof JiraTransitionIssueSchema>, JiraErrorResult>> {
+  const requestBody: any = {
+    transition: { id: transitionId },
+  };
+
+  if (comment) {
+    requestBody.update = {
+      comment: [{ add: { body: comment } }],
+    };
+  }
+
+  return jiraApiCall(
+    {
+      endpoint: `/rest/api/3/issue/${issueKey}/transitions`,
+      accessToken,
+    },
+    JiraTransitionIssueSchema,
     {
       method: "POST",
       body: requestBody,

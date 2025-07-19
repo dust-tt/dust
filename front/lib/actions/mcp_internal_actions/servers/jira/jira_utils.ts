@@ -6,6 +6,18 @@ import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/util
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
 
+export const SEARCH_FILTER_FIELDS = [
+  "issueType",
+  "parentIssueKey",
+  "status",
+  "assignee",
+  "reporter",
+  "project",
+  "dueDate",
+] as const;
+
+export type SearchFilterField = (typeof SEARCH_FILTER_FIELDS)[number];
+
 type WithAuthParams = {
   authInfo?: AuthInfo;
   action: (baseUrl: string, accessToken: string) => Promise<CallToolResult>;
@@ -52,3 +64,18 @@ function logAndReturnError({
   );
   return makeMCPToolTextError(normalizeError(error).message);
 }
+
+// Helper function to escape JQL values that contain spaces or special characters
+export const escapeJQLValue = (value: string): string => {
+  // If the value contains spaces, special characters, or reserved words, wrap it in quotes
+  if (
+    /[\s"'\\]/.test(value) ||
+    /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed|was|in|not|to|from|by|before|after|on|during)$/i.test(
+      value
+    )
+  ) {
+    // Escape any existing quotes in the value
+    return `"${value.replace(/"/g, '\\"')}"`;
+  }
+  return value;
+};

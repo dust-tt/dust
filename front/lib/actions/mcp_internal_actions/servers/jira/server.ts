@@ -3,12 +3,22 @@ import { z } from "zod";
 
 import {
   createComment,
+  getConnectionInfo,
   getIssue,
+  getIssueFields,
+  getIssueTypes,
   getProject,
   getProjects,
   getTransitions,
+  searchIssues,
+  transitionIssue,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
-import { withAuth } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
+import type { SearchFilterField } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
+import {
+  escapeJQLValue,
+  SEARCH_FILTER_FIELDS,
+  withAuth,
+} from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_utils";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
@@ -17,7 +27,7 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "jira",
-  version: "2.0.0",
+  version: "1.0.0",
   description:
     "Comprehensive JIRA integration providing full issue management capabilities including create, read, update, comment, and workflow transition operations using the JIRA REST API.",
   authorization: {
@@ -188,6 +198,219 @@ const createServer = (): McpServer => {
             result: {
               issueKey,
               comment,
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "search_issues",
+    "Search issues one or more filters.",
+    {
+      filters: z
+        .array(
+          z.object({
+            field: z
+              .string()
+              .describe(
+                `The field to filter by. Must be one of: ${SEARCH_FILTER_FIELDS.join(
+                  ", "
+                )}`
+              ),
+            value: z.string().describe("The value to search for"),
+          })
+        )
+        .min(1)
+        .describe("Array of search filters to apply (all must match)"),
+    },
+    async ({ filters }, { authInfo }) => {
+      const fieldMapping = {
+        issueType: "issueType",
+        parentIssueKey: "parent",
+        status: "status",
+        assignee: "assignee",
+        reporter: "reporter",
+        project: "project",
+        dueDate: "dueDate",
+      } as const;
+
+      // Check for unimplemented filters
+      const unimplementedFilter = filters.find(
+        (filter) =>
+          !SEARCH_FILTER_FIELDS.includes(filter.field as SearchFilterField)
+      );
+
+      if (unimplementedFilter) {
+        return makeMCPToolTextError(
+          `searching with this filter is not implemented: ${unimplementedFilter.field}`
+        );
+      }
+
+      const jqlConditions = filters.map((filter) => {
+        const jqlField = fieldMapping[filter.field as SearchFilterField];
+        return `${jqlField} = ${escapeJQLValue(filter.value)}`;
+      });
+
+      const jql = jqlConditions.join(" AND ");
+
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await searchIssues(baseUrl, accessToken, jql);
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error searching issues: ${result.error}`
+            );
+          }
+          const message =
+            result.value.issues.length === 0
+              ? "No issues found matching the search criteria"
+              : "Issues retrieved successfully";
+          return makeMCPToolJSONSuccess({
+            message,
+            result: {
+              ...result.value,
+              searchCriteria: {
+                filters,
+                jql,
+              },
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_issue_types",
+    "Retrieves available issue types for a JIRA project.",
+    {
+      projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
+    },
+    async ({ projectKey }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          try {
+            const result = await getIssueTypes(
+              baseUrl,
+              accessToken,
+              projectKey
+            );
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error retrieving issue types: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issue types retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Error retrieving issue types: ${error}`
+            );
+          }
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_issue_fields",
+    "Retrieves available fields for creating issues in a JIRA project, optionally filtered by issue type.",
+    {
+      projectKey: z.string().describe("The JIRA project key (e.g., 'PROJ')"),
+      issueTypeId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional issue type ID to filter fields for a specific issue type"
+        ),
+    },
+    async ({ projectKey, issueTypeId }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          try {
+            const result = await getIssueFields(
+              baseUrl,
+              accessToken,
+              projectKey,
+              issueTypeId
+            );
+            if ("error" in result) {
+              return makeMCPToolTextError(
+                `Error retrieving issue fields: ${result.error}`
+              );
+            }
+            return makeMCPToolJSONSuccess({
+              message: "Issue fields retrieved successfully",
+              result,
+            });
+          } catch (error) {
+            return makeMCPToolTextError(
+              `Error retrieving issue fields: ${error}`
+            );
+          }
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_connection_info",
+    "Gets comprehensive connection information including user details, cloud ID, and site URL for the currently authenticated JIRA instance.",
+    {},
+    async (_, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      if (!accessToken) {
+        return makeMCPToolTextError("No access token found");
+      }
+
+      const connectionInfo = await getConnectionInfo(accessToken);
+      if (connectionInfo.isErr()) {
+        return makeMCPToolTextError(
+          `Failed to retrieve connection information: ${connectionInfo.error}`
+        );
+      }
+
+      return makeMCPToolJSONSuccess({
+        message: "Connection information retrieved successfully",
+        result: connectionInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "transition_issue",
+    "Transitions a JIRA issue to a different status/workflow state.",
+    {
+      issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
+      transitionId: z.string().describe("The ID of the transition to perform"),
+    },
+    async ({ issueKey, transitionId }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await transitionIssue(
+            baseUrl,
+            accessToken,
+            issueKey,
+            transitionId
+          );
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error transitioning issue: ${result.error}`
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Issue transitioned successfully",
+            result: {
+              issueKey,
+              transitionId,
             },
           });
         },
