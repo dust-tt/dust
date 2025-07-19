@@ -526,6 +526,7 @@ export function AgentMessage({
             agentMessage.error || {
               message: "Unexpected Error",
               code: "unexpected_error",
+              metadata: {},
             }
           }
           retryHandler={async () => retryHandler(agentMessage)}
@@ -631,11 +632,15 @@ function ErrorMessage({
   error,
   retryHandler,
 }: {
-  error: { code: string; message: string };
+  error: NonNullable<AgentMessagePublicType["error"]>;
   retryHandler: () => void;
 }) {
   const fullMessage =
     "ERROR: " + error.message + (error.code ? ` (code: ${error.code})` : "");
+
+  const errorIsRetryable =
+    error.metadata?.category === "retryable_model_error" ||
+    error.metadata?.category === "stream_error";
 
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () => retryHandler()
@@ -645,7 +650,7 @@ function ErrorMessage({
     <div className="flex flex-col gap-9">
       <div className="flex flex-col gap-1 sm:flex-row">
         <Chip
-          color="warning"
+          color={errorIsRetryable ? "golden" : "warning"}
           label={"ERROR: " + shortText(error.message)}
           size="xs"
         />
