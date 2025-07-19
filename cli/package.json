@@ -30,6 +30,7 @@
     "@dust-tt/client": "^1.0.57",
     "@modelcontextprotocol/sdk": "^1.8.0",
     "clipboardy": "^4.0.0",
+    "execa": "^9.6.0",
     "express": "^5.1.0",
     "ink": "^5.2.0",
     "ink-select-input": "^6.0.0",
