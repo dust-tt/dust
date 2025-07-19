@@ -598,20 +598,24 @@ async function runMultiActionsAgent(
     }
   );
 
-  if (res.isErr()) {
-    const { category } = categorizeAgentErrorMessage({
-      code: "multi_actions_error",
-      message: res.error.message,
-    });
+  const handlePossiblyRetryableError = async (error: {
+    code: "multi_actions_error";
+    message: string;
+  }) => {
+    const { category, publicMessage, errorTitle } =
+      categorizeAgentErrorMessage(error);
 
-    const isRetryableModelError = category === "retryable_model_error";
+    const isRetryableModelError = [
+      "retryable_model_error",
+      "stream_error",
+    ].includes(category);
 
     if (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY) {
       logger.warn(
         {
           workspaceId: conversation.owner.sId,
           conversationId: conversation.sId,
-          error: res.error.message,
+          error: error.message,
           retryCount: autoRetryCount + 1,
           maxRetries: MAX_AUTO_RETRY,
         },
@@ -635,22 +639,24 @@ async function runMultiActionsAgent(
       });
     }
 
-    // Not retryable or max retries exceeded
-    const { publicMessage } = categorizeAgentErrorMessage({
-      code: "multi_actions_error",
-      message: res.error.message,
-    });
-
     await publishAgentError({
       code: "multi_actions_error",
       message: publicMessage,
       metadata: {
         category,
+        errorTitle,
         retriesAttempted: autoRetryCount,
       },
     });
 
     return null;
+  };
+
+  if (res.isErr()) {
+    return handlePossiblyRetryableError({
+      code: "multi_actions_error",
+      message: res.error.message,
+    });
   }
 
   const { eventStream, dustRunId } = res.value;
@@ -716,12 +722,10 @@ async function runMultiActionsAgent(
           agentMessageRow
         );
       }
-      await publishAgentError({
+      return handlePossiblyRetryableError({
         code: "multi_actions_error",
-        message: `Error running agent: ${event.content.message}`,
-        metadata: null,
+        message: event.content.message,
       });
-      return null;
     }
 
     const currentTimestamp = Date.now();
@@ -808,12 +812,10 @@ async function runMultiActionsAgent(
             agentMessageRow
           );
         }
-        await publishAgentError({
+        return handlePossiblyRetryableError({
           code: "multi_actions_error",
-          message: `Error running agent: ${e.error}`,
-          metadata: null,
+          message: e.error,
         });
-        return null;
       }
 
       if (event.content.block_name === "MODEL" && e.value) {
@@ -828,12 +830,10 @@ async function runMultiActionsAgent(
 
         const block = e.value;
         if (!isDustAppChatBlockType(block)) {
-          await publishAgentError({
+          return handlePossiblyRetryableError({
             code: "multi_actions_error",
             message: "Received unparsable MODEL block.",
-            metadata: null,
           });
-          return null;
         }
 
         // Extract token usage from block execution metadata
@@ -911,12 +911,10 @@ async function runMultiActionsAgent(
   }
 
   if (!output) {
-    await publishAgentError({
+    return handlePossiblyRetryableError({
       code: "multi_actions_error",
       message: "Agent execution didn't complete.",
-      metadata: null,
     });
-    return null;
   }
 
   // Store the contents for returning to the caller
