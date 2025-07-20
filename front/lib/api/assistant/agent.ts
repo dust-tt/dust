@@ -185,7 +185,6 @@ async function runMultiActionsAgentLoop(
   // Citations references offset kept up to date across steps.
   let citationsRefsOffset = 0;
 
-  let processedContent = "";
   const runIds: string[] = [];
 
   // Track step content IDs by function call ID for later use in actions.
@@ -231,7 +230,6 @@ async function runMultiActionsAgentLoop(
       }
 
       // Update state with results from runMultiActionsAgent
-      processedContent = result.processedContent;
       runIds.push(result.runId);
       functionCallStepContentIds = result.functionCallStepContentIds;
       agentMessage.contents.push(...result.newContents);
@@ -327,7 +325,6 @@ async function runMultiActionsAgent(
 ): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
-  processedContent: string;
   functionCallStepContentIds: Record<string, ModelId>;
   newContents: { step: number; content: AgentContentItemType }[];
   chainOfThought?: string;
@@ -963,7 +960,7 @@ async function runMultiActionsAgent(
       }
       agentMessage.chainOfThought += chainOfThought;
     }
-    agentMessage.content = processedContent;
+    agentMessage.content += processedContent;
     agentMessage.status = "succeeded";
 
     return null;
@@ -1084,12 +1081,12 @@ async function runMultiActionsAgent(
   const chainOfThought =
     (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
+  agentMessage.content += contentParser.getContent() ?? "";
   // Chain of thought is stored in the result and will be added to agentMessage
   // in the calling function
   return {
     actions,
     runId: await dustRunId,
-    processedContent: contentParser.getContent() ?? "",
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
     newContents: output.contents.map((content) => ({
       step,
