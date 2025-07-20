@@ -2,7 +2,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
-import { EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 import {
   MODEL_IDS,
   MODEL_PROVIDER_IDS,
@@ -175,7 +174,6 @@ export const agentBuilderFormSchema = z.object({
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
   actions: z.array(actionSchema),
-  maxStepsPerRun: z.number().min(1).max(EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT),
 });
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;

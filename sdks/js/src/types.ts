@@ -604,7 +604,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "exploded_tables_query"
-  | "extended_max_steps_per_run"
   | "google_ai_studio_experimental_models_feature"
   | "google_sheets_tool"
   | "index_private_slack_channel"

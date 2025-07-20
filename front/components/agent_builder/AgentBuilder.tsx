@@ -21,13 +21,8 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/editors";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
-import {
-  EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
@@ -54,20 +49,12 @@ export default function AgentBuilder({
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
-  const defaultMaxSteps = hasFeature("extended_max_steps_per_run")
-    ? EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT
-    : MAX_STEPS_USE_PER_RUN_LIMIT;
-
   const defaultValues = useMemo((): AgentBuilderFormData => {
     if (agentConfiguration) {
       return transformAgentConfigurationToFormData(agentConfiguration);
     }
-    return getDefaultAgentFormData(user, defaultMaxSteps);
-  }, [agentConfiguration, user, defaultMaxSteps]);
+    return getDefaultAgentFormData(user);
+  }, [agentConfiguration, user]);
 
   // Create values object that includes async data (actions and editors)
   const formValues = useMemo((): AgentBuilderFormData | undefined => {

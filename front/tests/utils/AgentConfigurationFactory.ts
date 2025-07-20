@@ -40,7 +40,6 @@ export class AgentConfigurationFactory {
         name,
         description,
         instructions: "Test Instructions",
-        maxStepsPerRun: 5,
         visualizationEnabled: false,
         pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
         status: "active",

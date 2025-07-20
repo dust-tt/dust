@@ -1,6 +1,5 @@
 import type { ConnectorProvider } from "@dust-tt/client";
 
-import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import { removeLeadingAt } from "@app/components/assistant_builder/SettingsScreen";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
@@ -162,11 +161,6 @@ export async function submitAssistantBuilderForm({
 
   const actionParams: ActionsType = builderState.actions.flatMap(map);
 
-  const isLegacyAgent = isLegacyAssistantBuilderConfiguration(builderState);
-  const maxStepsPerRun = isLegacyAgent
-    ? undefined
-    : builderState.maxStepsPerRun ?? undefined;
-
   const body: PostOrPatchAgentConfigurationRequestBody = {
     assistant: {
       name: removeLeadingAt(handle),
@@ -183,7 +177,6 @@ export async function submitAssistantBuilderForm({
         reasoningEffort: builderState.generationSettings.reasoningEffort,
         responseFormat: builderState.generationSettings.responseFormat,
       },
-      maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,
       templateId: builderState.templateId,
       tags: builderState.tags,

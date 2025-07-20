@@ -134,7 +134,6 @@ export default function EditAssistant({
           },
           actions: [], // Actions will be populated later from the client
           visualizationEnabled: agentConfiguration.visualizationEnabled,
-          maxStepsPerRun: agentConfiguration.maxStepsPerRun,
           templateId: agentConfiguration.templateId,
           tags: agentConfiguration.tags,
           editors: agentEditors,

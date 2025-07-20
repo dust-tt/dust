@@ -19,7 +19,7 @@ import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -63,7 +63,6 @@ import {
   assertNever,
   compareAgentsForSort,
   Err,
-  EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
   isAdmin,
   isBuilder,
   isGlobalAgentId,
@@ -733,7 +732,6 @@ export async function createAgentConfiguration(
     name,
     description,
     instructions,
-    maxStepsPerRun,
     visualizationEnabled,
     pictureUrl,
     status,
@@ -748,7 +746,6 @@ export async function createAgentConfiguration(
     name: string;
     description: string;
     instructions: string | null;
-    maxStepsPerRun: number;
     visualizationEnabled: boolean;
     pictureUrl: string;
     status: AgentStatus;
@@ -770,21 +767,6 @@ export async function createAgentConfiguration(
   const user = auth.user();
   if (!user) {
     throw new Error("Unexpected `auth` without `user`.");
-  }
-
-  const featureFlags = await getFeatureFlags(owner);
-  const maxAllowedStepsPerRun = featureFlags.includes(
-    "extended_max_steps_per_run"
-  )
-    ? EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT
-    : MAX_STEPS_USE_PER_RUN_LIMIT;
-
-  if (maxStepsPerRun < 0 || maxStepsPerRun > maxAllowedStepsPerRun) {
-    return new Err(
-      new Error(
-        `maxStepsPerRun must be between 0 and ${maxAllowedStepsPerRun}.`
-      )
-    );
   }
 
   const isValidPictureUrl =
@@ -864,7 +846,7 @@ export async function createAgentConfiguration(
           modelId: model.modelId,
           temperature: model.temperature,
           reasoningEffort: model.reasoningEffort,
-          maxStepsPerRun,
+          maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
           visualizationEnabled,
           pictureUrl,
           workspaceId: owner.id,
