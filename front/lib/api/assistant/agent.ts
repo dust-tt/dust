@@ -219,29 +219,26 @@ async function runMultiActionsAgentLoop(
 
       localLogger.info("Starting multi-action loop iteration");
 
-      const isLastGenerationIteration = i === maxStepsPerRun;
-
-      const actions =
-        // If we already executed the maximum number of actions, we don't run anymore.
-        // This will force the agent to run the generation.
-        isLastGenerationIteration
-          ? []
-          : // Otherwise, we let the agent decide which action to run (if any).
-            configuration.actions;
-
-      const result = await runMultiActionsAgent(auth.toJSON(), {
-        agentConfiguration: configuration,
-        conversation,
-        userMessage,
-        agentMessage,
-        agentActions: actions,
-        isLastGenerationIteration,
-        isLegacyAgent,
-        agentMessageRow,
-        runIds,
-        step: i,
-        functionCallStepContentIds,
-      });
+      const result = await runMultiActionsAgent(
+        {
+          authType: auth.toJSON(),
+          conversationId: conversation.sId,
+          userMessageId: userMessage.sId,
+          agentMessageId: agentMessage.sId,
+          isLegacyAgent,
+          runIds,
+          step: i,
+          functionCallStepContentIds,
+          autoRetryCount: 0,
+        },
+        {
+          agentConfiguration: configuration,
+          conversation,
+          userMessage,
+          agentMessage,
+          agentMessageRow,
+        }
+      );
 
       if (!result) {
         // Generation completed or error occurred
@@ -311,51 +308,72 @@ async function runMultiActionsAgentLoop(
   });
 }
 
+type RunModelInMemoryData = {
+  agentMessage: AgentMessageType;
+  agentMessageRow: AgentMessage;
+  conversation: ConversationType;
+  userMessage: UserMessageType;
+  agentConfiguration: AgentConfigurationType;
+};
+
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
 //
 // TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage, this must
 // be refactored in a follow up PR.
 async function runMultiActionsAgent(
-  authType: AuthenticatorType,
   {
-    agentConfiguration,
-    conversation,
-    userMessage,
-    agentMessage,
-    agentActions,
-    isLastGenerationIteration,
+    authType,
+    conversationId,
+    userMessageId,
+    agentMessageId,
     isLegacyAgent,
-    agentMessageRow,
     runIds,
     step,
     functionCallStepContentIds,
     autoRetryCount = 0,
   }: {
-    agentConfiguration: AgentConfigurationType;
-    conversation: ConversationType;
-    userMessage: UserMessageType;
-    agentMessage: AgentMessageType;
-    agentActions: AgentActionConfigurationType[];
-    isLastGenerationIteration: boolean;
+    authType: AuthenticatorType;
+    conversationId: string;
+    userMessageId: string;
+    agentMessageId: string;
     isLegacyAgent: boolean;
-    agentMessageRow: AgentMessage;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
     autoRetryCount?: number;
-  }
+  },
+  {
+    agentConfiguration,
+    agentMessage,
+    agentMessageRow,
+    conversation,
+    userMessage,
+  }: RunModelInMemoryData
 ): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
 } | null> {
+  const maxStepsPerRun = isLegacyAgent ? 1 : agentConfiguration.maxStepsPerRun;
+  const isLastGenerationIteration = step === maxStepsPerRun;
+
+  const agentActions =
+    // If we already executed the maximum number of actions, we don't run anymore.
+    // This will force the agent to run the generation.
+    isLastGenerationIteration
+      ? []
+      : // Otherwise, we let the agent decide which action to run (if any).
+        agentConfiguration.actions;
+
   const localLogger = logger.child({
     workspaceId: conversation.owner.sId,
     conversationId: conversation.sId,
     configurationId: agentConfiguration.sId,
     messageId: agentMessage.sId,
   });
+
+
 
   // Recreate the Authenticator instance from the serialized type
   const auth = await Authenticator.fromJSON(authType);
@@ -649,20 +667,26 @@ async function runMultiActionsAgent(
       );
 
       // Recursively retry with incremented count
-      return runMultiActionsAgent(authType, {
-        agentConfiguration,
-        conversation,
-        userMessage,
-        agentMessage,
-        agentActions,
-        isLastGenerationIteration,
-        isLegacyAgent,
-        agentMessageRow,
-        runIds,
-        step,
-        functionCallStepContentIds,
-        autoRetryCount: autoRetryCount + 1,
-      });
+      return runMultiActionsAgent(
+        {
+          authType,
+          conversationId: conversation.sId,
+          userMessageId: userMessage.sId,
+          agentMessageId: agentMessage.sId,
+          isLegacyAgent,
+          runIds,
+          step,
+          functionCallStepContentIds,
+          autoRetryCount: autoRetryCount + 1,
+        },
+        {
+          agentConfiguration,
+          conversation,
+          userMessage,
+          agentMessage,
+          agentMessageRow,
+        }
+      );
     }
 
     await publishAgentError({
