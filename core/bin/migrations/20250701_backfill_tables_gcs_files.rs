@@ -1,7 +1,12 @@
-use chrono::Timelike;
+use anyhow::{anyhow, Result};
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use clap::Parser;
 use dust::{
-    databases::{table::Table, table_schema::TableSchema},
+    databases::{
+        csv::GoogleCloudStorageCSVContent,
+        table::{Row, Table},
+        table_schema::TableSchema,
+    },
     databases_store::{
         gcs::GoogleCloudStorageDatabasesStore, postgres::PostgresDatabasesStore,
         store::DatabasesStore,
@@ -10,6 +15,7 @@ use dust::{
     stores::{postgres::PostgresStore, store::Store},
 };
 use futures::future::try_join_all;
+use serde_json::Value;
 use std::collections::HashMap;
 
 #[derive(Parser, Debug)]
@@ -338,25 +344,7 @@ async fn verify_all_tables(
     Ok(())
 }
 
-fn normalize_field(s: &str) -> String {
-    if let Ok(datetime) = chrono::NaiveDateTime::parse_from_str(s.trim(), "%Y-%m-%d %H:%M:%S") {
-        // If the time is exactly zero, return only the date part
-        if datetime.time().num_seconds_from_midnight() == 0 {
-            return datetime.date().format("%Y-%m-%d").to_string();
-        }
-    }
-    return s.to_string();
-}
-
 async fn verify_table(table: &Table, db_store: &PostgresDatabasesStore) -> Result<(), String> {
-    let field_names = match table.schema_cached() {
-        Some(schema) => schema
-            .columns()
-            .iter()
-            .map(|c| c.name.clone())
-            .collect::<Vec<_>>(),
-        None => Vec::new(),
-    };
     let (pg_rows, _) = db_store
         .list_table_rows(table, None)
         .await
@@ -365,30 +353,47 @@ async fn verify_table(table: &Table, db_store: &PostgresDatabasesStore) -> Resul
         .await
         .map_err(|e| format!("Error listing GCS rows: {}", e))?;
 
-    if pg_rows.len() != gcs_rows.len() {
-        return Err(format!(
-            "Row count: Postgres has {}, GCS has {}",
-            pg_rows.len(),
-            gcs_rows.len()
-        ));
-    }
-
     let pg_map: HashMap<_, _> = pg_rows.iter().map(|r| (r.row_id(), r)).collect();
     let gcs_map: HashMap<_, _> = gcs_rows.iter().map(|r| (r.row_id(), r)).collect();
 
     for (row_id, pg_row) in &pg_map {
         match gcs_map.get(row_id) {
             Some(gcs_row) => {
-                let pg_fields = pg_row.to_csv_record(&field_names).unwrap();
-                let gcs_fields = gcs_row.to_csv_record(&field_names).unwrap();
-                for (i, field_name) in field_names.iter().enumerate() {
-                    let pg_value = pg_fields.get(i).unwrap();
-                    let gcs_value = gcs_fields.get(i).unwrap();
-                    if normalize_field(pg_value) != normalize_field(gcs_value) {
-                        return Err(format!(
-                            "Row_id {} field '{}' mismatch: Postgres: '{}', GCS: '{}'",
-                            row_id, field_name, pg_value, gcs_value
-                        ));
+                // Sanitize headers using GoogleCloudStorageCSVContent and build a map from original to sanitized
+                let headers: Vec<String> = pg_row.value.keys().cloned().collect();
+                let header_refs: Vec<&str> = headers.iter().map(|s| s.as_str()).collect();
+                let sanitized_headers = GoogleCloudStorageCSVContent::sanitize_headers(header_refs)
+                    .map_err(|e| e.to_string())?;
+                let header_map: HashMap<String, String> = headers
+                    .iter()
+                    .zip(sanitized_headers.iter())
+                    .map(|(orig, sanitized)| (orig.clone(), sanitized.to_string()))
+                    .collect();
+
+                for (field_name, pg_val) in pg_row.value.iter() {
+                    match gcs_row.value.get(header_map.get(field_name).unwrap()) {
+                        Some(gcs_val) => {
+                            let pg_str = get_value_as_string(pg_val);
+                            let gcs_str = get_value_as_string(gcs_val);
+                            let pg_val = parse_value(&pg_str).map_err(|e| e.to_string())?;
+                            let gcs_val = parse_value(&gcs_str).map_err(|e| e.to_string())?;
+                            if pg_val != gcs_val {
+                                return Err(format!(
+                                    "Row_id {} field '{}' mismatch: Postgres: '{}', GCS: '{}'",
+                                    row_id, field_name, pg_val, gcs_val
+                                ));
+                            }
+                        }
+                        None => {
+                            // Only dump the Postgres row if the value is not null
+                            if !pg_val.is_null() {
+                                dump_row(&gcs_row);
+                                return Err(format!(
+                                    "Row_id {} missing field '{}' in GCS row",
+                                    row_id, field_name
+                                ));
+                            }
+                        }
                     }
                 }
             }
@@ -411,6 +416,100 @@ async fn verify_table(table: &Table, db_store: &PostgresDatabasesStore) -> Resul
     }
 
     Ok(())
+}
+
+fn get_value_as_string(value: &Value) -> String {
+    match value {
+        Value::Bool(b) => b.to_string(),
+        Value::Number(n) => n.to_string(),
+        Value::String(s) => s.clone(),
+        Value::Object(obj) => match TableSchema::try_parse_date_object(obj) {
+            Some(date) => date,
+            None => panic!("Unsupported object type"),
+        },
+        Value::Null => "".to_string(),
+        _ => panic!("Unsupported value type"),
+    }
+}
+
+fn parse_value(s: &str) -> Result<Value> {
+    fn try_parse_float(s: &str) -> Result<serde_json::Number> {
+        if let Ok(float) = s.parse::<f64>() {
+            match serde_json::Number::from_f64(float) {
+                Some(num) => Ok(num),
+                None => Err(anyhow!("Invalid JSON float value")),
+            }
+        } else {
+            Err(anyhow!("Invalid float value"))
+        }
+    }
+
+    let trimmed = s.trim();
+    let value = if trimmed.is_empty() {
+        Value::Null
+    } else if let Ok(int) = trimmed.parse::<i64>() {
+        Value::Number(int.into())
+    } else if let Ok(float) = try_parse_float(trimmed) {
+        // Numbers
+        Value::Number(float)
+    } else if let Ok(bool_val) = match trimmed.to_lowercase().as_str() {
+        // Booleans
+        "t" | "true" => Ok(true),
+        "f" | "false" => Ok(false),
+        _ => Err(anyhow!("Invalid boolean value")),
+    } {
+        Value::Bool(bool_val)
+    } else {
+        // Various datetime formats
+        let mut dt: Option<DateTime<Utc>> = [
+            // RFC3339
+            DateTime::parse_from_rfc3339(trimmed).map(|dt| dt.into()),
+            // RFC2822
+            DateTime::parse_from_rfc2822(trimmed).map(|dt| dt.into()),
+            // SQL
+            DateTime::parse_from_str(trimmed, "%Y-%m-%d %H:%M:%S").map(|dt| dt.into()),
+            // HTTP date
+            DateTime::parse_from_str(trimmed, "%a, %d %b %Y %H:%M:%S GMT").map(|dt| dt.into()),
+            // Google Spreadsheet format
+            NaiveDate::parse_from_str(trimmed, "%d-%b-%Y").map(|d| {
+                let dt = d.and_hms_opt(0, 0, 0).unwrap();
+                dt.and_local_timezone(Utc).unwrap()
+            }),
+            // Date with full month, zero-padded number, full year
+            NaiveDate::parse_from_str(trimmed, "%B %d %Y").map(|d| {
+                let dt = d.and_hms_opt(0, 0, 0).unwrap();
+                dt.and_local_timezone(Utc).unwrap()
+            }),
+        ]
+        .iter()
+        .find_map(|result| result.ok());
+
+        // We fallback on dateparser for all other formats
+        if dt.is_none() {
+            dt = match std::panic::catch_unwind(|| {
+                dateparser::parse_with(trimmed, &Utc, NaiveTime::from_hms_opt(0, 0, 0).unwrap())
+            }) {
+                Ok(result) => result.ok(),
+                Err(e) => {
+                    tracing::warn!("Panic while parsing date '{}': {:?}", trimmed, e);
+                    None
+                }
+            };
+        }
+
+        if let Some(datetime) = dt {
+            let mut dt_obj = serde_json::Map::new();
+            dt_obj.insert("type".to_string(), Value::String("datetime".to_string()));
+            dt_obj.insert(
+                "epoch".to_string(),
+                Value::Number(serde_json::Number::from(datetime.timestamp_millis())),
+            );
+            Value::Object(dt_obj)
+        } else {
+            Value::String(trimmed.to_string())
+        }
+    };
+    Ok(value)
 }
 
 fn create_table(
@@ -442,4 +541,14 @@ fn create_table(
         None,
         None,
     )
+}
+
+fn dump_row(row: &Row) {
+    for (i, (field_name, field_value)) in row.value.iter().enumerate() {
+        if i > 0 {
+            print!(",");
+        }
+        print!("{}={}", field_name, field_value);
+    }
+    println!();
 }
