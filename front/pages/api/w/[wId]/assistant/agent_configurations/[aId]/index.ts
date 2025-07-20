@@ -84,11 +84,6 @@ async function handler(
         });
       }
 
-
-      const isLegacyConfiguration =
-        bodyValidation.right.assistant.actions.length === 1 &&
-        !bodyValidation.right.assistant.actions[0].description;
-
       const agentConfiguration = await AgentConfiguration.findOne({
         where: {
           sId: req.query.aId as string,
