@@ -232,13 +232,6 @@ async function runMultiActionsAgentLoop(
       // Update state with results from runMultiActionsAgent
       runIds.push(result.runId);
       functionCallStepContentIds = result.functionCallStepContentIds;
-      agentMessage.contents.push(...result.newContents);
-      if (result.chainOfThought) {
-        if (!agentMessage.chainOfThought) {
-          agentMessage.chainOfThought = "";
-        }
-        agentMessage.chainOfThought += result.chainOfThought;
-      }
 
       // We have actions to run
       localLogger.info(
@@ -326,8 +319,6 @@ async function runMultiActionsAgent(
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
-  newContents: { step: number; content: AgentContentItemType }[];
-  chainOfThought?: string;
 } | null> {
   // Recreate the Authenticator instance from the serialized type
   const auth = await Authenticator.fromJSON(authType);
@@ -1088,14 +1079,15 @@ async function runMultiActionsAgent(
     }
     agentMessage.chainOfThought += chainOfThought;
   }
+  const newContents = output.contents.map((content) => ({
+    step,
+    content,
+  }));
+  agentMessage.contents.push(...newContents);
   return {
     actions,
     runId: await dustRunId,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
-    newContents: output.contents.map((content) => ({
-      step,
-      content,
-    })),
   };
 }
 
