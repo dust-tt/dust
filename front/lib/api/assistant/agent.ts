@@ -600,12 +600,15 @@ async function runMultiActionsAgent(
     }
   );
 
-  const handlePossiblyRetryableError = async (error: {
-    code: "multi_actions_error";
-    message: string;
-  }) => {
-    const { category, publicMessage, errorTitle } =
-      categorizeAgentErrorMessage(error);
+  // Errors occurring during the multi-actions-agent dust app may be retryable.
+  // Their implicit code should be "multi_actions_error".
+  const handlePossiblyRetryableError = async (message: string) => {
+    const { category, publicMessage, errorTitle } = categorizeAgentErrorMessage(
+      {
+        code: "multi_actions_error",
+        message,
+      }
+    );
 
     const isRetryableModelError = [
       "retryable_model_error",
@@ -617,7 +620,7 @@ async function runMultiActionsAgent(
         {
           workspaceId: conversation.owner.sId,
           conversationId: conversation.sId,
-          error: error.message,
+          error: message,
           retryCount: autoRetryCount + 1,
           maxRetries: MAX_AUTO_RETRY,
         },
@@ -655,10 +658,7 @@ async function runMultiActionsAgent(
   };
 
   if (res.isErr()) {
-    return handlePossiblyRetryableError({
-      code: "multi_actions_error",
-      message: res.error.message,
-    });
+    return handlePossiblyRetryableError(res.error.message);
   }
 
   const { eventStream, dustRunId } = res.value;
@@ -724,10 +724,7 @@ async function runMultiActionsAgent(
           agentMessageRow
         );
       }
-      return handlePossiblyRetryableError({
-        code: "multi_actions_error",
-        message: event.content.message,
-      });
+      return handlePossiblyRetryableError(event.content.message);
     }
 
     const currentTimestamp = Date.now();
@@ -814,10 +811,7 @@ async function runMultiActionsAgent(
             agentMessageRow
           );
         }
-        return handlePossiblyRetryableError({
-          code: "multi_actions_error",
-          message: e.error,
-        });
+        return handlePossiblyRetryableError(e.error);
       }
 
       if (event.content.block_name === "MODEL" && e.value) {
@@ -832,10 +826,9 @@ async function runMultiActionsAgent(
 
         const block = e.value;
         if (!isDustAppChatBlockType(block)) {
-          return handlePossiblyRetryableError({
-            code: "multi_actions_error",
-            message: "Received unparsable MODEL block.",
-          });
+          return handlePossiblyRetryableError(
+            "Received unparsable MODEL block."
+          );
         }
 
         // Extract token usage from block execution metadata
@@ -913,10 +906,7 @@ async function runMultiActionsAgent(
   }
 
   if (!output) {
-    return handlePossiblyRetryableError({
-      code: "multi_actions_error",
-      message: "Agent execution didn't complete.",
-    });
+    return handlePossiblyRetryableError("Agent execution didn't complete.");
   }
 
   // Create AgentStepContent for each content item (reasoning, text, function calls)
