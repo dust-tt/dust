@@ -233,29 +233,6 @@ async function runMultiActionsAgentLoop(
       processedContent = result.processedContent;
       runIds.push(...result.runIds);
       functionCallStepContentIds = result.functionCallStepContentIds;
-
-      // Create AgentStepContent for each content item (reasoning, text, function calls)
-      for (const [index, contentItem] of result.newContents.entries()) {
-        const stepContent = await AgentStepContentResource.makeNew({
-          workspaceId: conversation.owner.id,
-          agentMessageId: agentMessage.agentMessageId,
-          step: contentItem.step,
-          index,
-          version: 0,
-          type: contentItem.content.type,
-          value: contentItem.content,
-        });
-
-        // If this is a function call content, track the step content ID
-        if (
-          contentItem.content.type === "function_call" &&
-          contentItem.content.value.id
-        ) {
-          functionCallStepContentIds[contentItem.content.value.id] =
-            stepContent.id;
-        }
-      }
-
       agentMessage.contents.push(...result.newContents);
       if (result.chainOfThought) {
         if (!agentMessage.chainOfThought) {
@@ -730,6 +707,9 @@ async function runMultiActionsAgent(
 
   let nativeChainOfThought = "";
 
+  // Create a new object to avoid mutation
+  const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
+
   for await (const event of eventStream) {
     if (event.type === "function_call") {
       isGeneration = false;
@@ -938,6 +918,25 @@ async function runMultiActionsAgent(
     });
   }
 
+  // Create AgentStepContent for each content item (reasoning, text, function calls)
+  // This replaces the original agent_step_content event emission
+  for (const [index, content] of output.contents.entries()) {
+    const stepContent = await AgentStepContentResource.makeNew({
+      workspaceId: conversation.owner.id,
+      agentMessageId: agentMessage.agentMessageId,
+      step,
+      index,
+      version: 0,
+      type: content.type,
+      value: content,
+    });
+
+    // If this is a function call content, track the step content ID
+    if (content.type === "function_call" && content.value.id) {
+      updatedFunctionCallStepContentIds[content.value.id] = stepContent.id;
+    }
+  }
+
   // Store the contents for returning to the caller
   // These will be added to agentMessage.contents in the calling function
 
@@ -1090,7 +1089,7 @@ async function runMultiActionsAgent(
     runId: await dustRunId,
     processedContent: contentParser.getContent() ?? "",
     runIds,
-    functionCallStepContentIds,
+    functionCallStepContentIds: updatedFunctionCallStepContentIds,
     newContents: output.contents.map((content) => ({
       step,
       content,
