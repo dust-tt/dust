@@ -516,7 +516,7 @@ async function* runMultiActionsAgent(
       agentMessage,
       clientSideActionConfigurations: clientSideMCPActionConfigurations,
     },
-    [...jitServers]
+    jitServers
   );
 
   if (mcpToolsListingError) {

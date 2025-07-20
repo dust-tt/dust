@@ -17,8 +17,8 @@ export function InteractiveContentHeader({
   return (
     <div
       className={cn(
-        "bg-structure-0/60 border-border/70 dark:border-border-night/70 flex items-center backdrop-blur-sm",
-        "justify-between rounded-t-lg border-b px-4 py-2"
+        "bg-structure-0/60 flex border-border/70 backdrop-blur-sm dark:border-border-night/70",
+        "items-center justify-between rounded-t-lg border-b px-4 py-2"
       )}
     >
       <div className="flex items-center gap-2">

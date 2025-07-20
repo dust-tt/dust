@@ -86,7 +86,7 @@ export function InteractiveContentContainer({
       <div
         className={cn(
           "bg-structure-0/80 flex h-full w-full flex-col backdrop-blur-sm",
-          "border-border dark:border-border-night rounded-lg border shadow-lg"
+          "rounded-lg border border-border shadow-lg dark:border-border-night"
         )}
       >
         <div className="flex-1 overflow-hidden rounded-lg">
