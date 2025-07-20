@@ -61,6 +61,15 @@ export function isMCPConfigurationWithDataSource(
   );
 }
 
+export function isMCPConfigurationForInternalInteractiveContent(
+  arg: AgentActionConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "interactive_content")
+  );
+}
+
 export function isMCPConfigurationForInternalWebsearch(
   arg: AgentActionConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {

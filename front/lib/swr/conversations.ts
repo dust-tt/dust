@@ -227,7 +227,7 @@ export function useVisualizationRetry({
 }: {
   workspaceId: string;
   conversationId: string;
-  agentConfigurationId: string;
+  agentConfigurationId: string | null;
 }) {
   const handleVisualizationRetry = useCallback(
     async (errorMessage: string) => {
@@ -266,6 +266,12 @@ export function useVisualizationRetry({
     },
     [workspaceId, conversationId, agentConfigurationId]
   );
+
+  if (!agentConfigurationId) {
+    return () => {
+      return false;
+    };
+  }
 
   return handleVisualizationRetry;
 }

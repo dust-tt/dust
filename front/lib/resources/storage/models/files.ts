@@ -5,16 +5,16 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
+  AllSupportedFileContentType,
   FileStatus,
   FileUseCase,
   FileUseCaseMetadata,
-  SupportedFileContentType,
 } from "@app/types";
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare createdAt: CreationOptional<Date>;
 
-  declare contentType: SupportedFileContentType;
+  declare contentType: AllSupportedFileContentType;
   declare fileName: string;
   declare fileSize: number;
   declare status: FileStatus;

@@ -7,6 +7,7 @@ import {
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
+  isMCPConfigurationForInternalInteractiveContent,
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
@@ -14,7 +15,9 @@ import {
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
+import { visualizationWithInteractiveContentSystemPrompt } from "@app/lib/api/assistant/visualization_with_interactive_content";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -154,7 +157,18 @@ export async function constructPromptMultiActions(
     guidelinesSection += `\n${citationMetaPrompt()}\n`;
   }
 
-  if (agentConfiguration.visualizationEnabled) {
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const hasInteractiveContentServer =
+    featureFlags.includes("interactive_content_server") &&
+    agentConfiguration.actions.some((action) =>
+      isMCPConfigurationForInternalInteractiveContent(action)
+    );
+
+  // If interactive content server is enabled, use the interactive content system prompt over the
+  // visualization system prompt.
+  if (hasInteractiveContentServer) {
+    guidelinesSection += `\n${visualizationWithInteractiveContentSystemPrompt()}\n`;
+  } else if (agentConfiguration.visualizationEnabled) {
     guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
   }
 

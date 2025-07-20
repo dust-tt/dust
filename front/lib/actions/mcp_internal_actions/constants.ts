@@ -21,6 +21,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "data_sources_file_system",
   "extract_data",
   "file_generation",
+  "interactive_content",
   "github",
   "gmail",
   "google_sheets",
@@ -330,6 +331,13 @@ export const INTERNAL_MCP_SERVERS: Record<
     tools_stakes: {
       // Read operations - never ask (no side effects)
       get_issue: "never_ask",
+    },
+  },
+  interactive_content: {
+    id: 23,
+    availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("interactive_content_server");
     },
   },
   search: {

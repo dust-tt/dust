@@ -7,21 +7,27 @@ export function getCitationIcon(type: string, isDark?: boolean) {
   switch (type) {
     case "document":
       return DocumentTextIcon;
+
     case "image":
       return ImageIcon;
+
     default:
       if (type in CONNECTOR_CONFIGURATIONS) {
         return CONNECTOR_CONFIGURATIONS[
           type as ConnectorProvider
         ].getLogoComponent(isDark);
       }
+
       return DocumentTextIcon;
   }
 }
 
+// TODO(INTERACTIVE_CONTENT): Use proper and distinct types for interactive content.
 export interface MarkdownCitation {
   description?: string;
+  contentType?: string;
+  fileId?: string;
   href?: string;
-  title: string;
   icon: React.JSX.Element;
+  title: string;
 }
