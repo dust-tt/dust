@@ -956,16 +956,40 @@ async function runMultiActionsAgent(
       );
     }
 
-    // Update agent message status to succeeded
-    await agentMessageRow.update({
-      status: "succeeded",
-    });
     // Track retries that lead to completing successfully.
     if (autoRetryCount > 0) {
       statsDClient.increment("successful_auto_retry.count", 1, [
         `retryCount:${autoRetryCount}`,
       ]);
     }
+
+    updateResourceAndPublishEvent(
+      {
+        type: "agent_message_success",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        message: agentMessage,
+        runIds: runIds,
+      },
+      conversation,
+      agentMessageRow
+    );
+
+    // TODO(DURABLE-AGENTS 2025-07-20): Avoid mutating agentMessage here
+    const chainOfThought =
+      (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
+
+    if (chainOfThought.length) {
+      if (!agentMessage.chainOfThought) {
+        agentMessage.chainOfThought = "";
+      }
+      agentMessage.chainOfThought += chainOfThought;
+    }
+    agentMessage.content = processedContent;
+    agentMessage.status = "succeeded";
+
+    runIds.push(runId);
 
     return null;
   }
