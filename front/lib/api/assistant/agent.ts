@@ -48,6 +48,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   AgentActionsEvent,
@@ -959,6 +960,12 @@ async function runMultiActionsAgent(
     await agentMessageRow.update({
       status: "succeeded",
     });
+    // Track retries that lead to completing successfully.
+    if (autoRetryCount > 0) {
+      statsDClient.increment("successful_auto_retry.count", 1, [
+        `retryCount:${autoRetryCount}`,
+      ]);
+    }
 
     return null;
   }
