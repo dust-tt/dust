@@ -284,8 +284,8 @@ async function runMultiActionsAgentLoop(
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
 //
-// TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage,we should
-// find a way to avoid this.
+// TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage, this must
+// be refactored in a follow up PR.
 async function runMultiActionsAgent(
   authType: AuthenticatorType,
   {
