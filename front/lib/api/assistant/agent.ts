@@ -287,29 +287,14 @@ async function runMultiActionsAgentLoop(
         });
       }
     }
-
-    // Update final agent message state
-    agentMessage.content = processedContent;
-    agentMessage.status = "succeeded";
-
-    // Publish success event
-    await updateResourceAndPublishEvent(
-      {
-        type: "agent_message_success",
-        created: Date.now(),
-        configurationId: configuration.sId,
-        messageId: agentMessage.sId,
-        message: agentMessage,
-        runIds,
-      },
-      conversation,
-      agentMessageRow
-    );
   });
 }
 
-// This method is used by the multi-actions execution loop to pick the next action to execute and
-// generate its inputs.
+// This method is used by the multi-actions execution loop to pick the next
+// action to execute and generate its inputs.
+//
+// TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage,we should
+// find a way to avoid this.
 async function runMultiActionsAgent(
   authType: AuthenticatorType,
   {
