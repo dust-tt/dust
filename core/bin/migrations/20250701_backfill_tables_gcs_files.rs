@@ -13,6 +13,7 @@ use dust::{
     },
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
+    utils,
 };
 use futures::future::try_join_all;
 use serde_json::Value;
@@ -110,7 +111,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             "Processing up to {} tables, starting at id {}. ",
             batch_size, next_cursor
         );
-        let next_id_cursor = process_tables_batch(
+        let next_id_cursor = match process_tables_batch(
             &store,
             &db_store,
             &gcs_store,
@@ -118,7 +119,17 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             batch_size as i64,
             project_filter.clone(),
         )
-        .await?;
+        .await
+        {
+            Ok(cursor) => cursor,
+            Err(e) => {
+                eprintln!(
+                    "****** Error processing batch: {}. Continuing to next batch.",
+                    e
+                );
+                Some(next_cursor + batch_size as i64)
+            }
+        };
 
         next_cursor = match next_id_cursor {
             Some(cursor) => cursor,
@@ -200,13 +211,10 @@ async fn process_tables_batch(
         return Ok(None);
     }
 
-    let futures = tables.into_iter().map(|(id, table)| {
-        let db_store = db_store.clone();
-        async move {
-            match process_one_table(&store, &db_store, &gcs_store, table).await {
-                Ok(_) => Ok(id),
-                Err(e) => Err(e),
-            }
+    let futures = tables.into_iter().map(|(id, table)| async move {
+        match process_one_table(&store, &db_store, &gcs_store, table, id).await {
+            Ok(_) => Ok(id),
+            Err(e) => Err(e),
         }
     });
 
@@ -220,12 +228,15 @@ async fn process_one_table(
     db_store: &PostgresDatabasesStore,
     gcs_store: &GoogleCloudStorageDatabasesStore,
     table: Table,
+    table_id: i64,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // let unique_table_id = get_table_unique_id(&project, &data_source_id, &table_id);
-
-    println!("**** Process table: {}", table.unique_id());
+    println!("Processing table id {}: {}", table_id, table.unique_id());
+    let mut now = utils::now();
 
     let (rows, _count) = db_store.list_table_rows(&table, None).await?;
+
+    let list_table_rows_duration = utils::now() - now;
+    now = utils::now();
 
     let mut table_schema: Option<TableSchema> = None;
 
@@ -237,12 +248,16 @@ async fn process_one_table(
         table_schema = Some(cached_schema.clone());
     }
 
+    let schema_duration = utils::now() - now;
+    now = utils::now();
+
     // If we got neither rows nor schema, we don't create any CSV (but we still set the migrated flag)
     if let Some(ref schema) = table_schema {
         gcs_store
             .batch_upsert_table_rows(&table, schema, &rows, true)
             .await?;
     }
+    let upsert_duration = utils::now() - now;
 
     // Set the migrated flag. We pass in the current timestamp, to make sure the bit is only
     // set if the time has not changed. If it changed, we still would have saved the data, but
@@ -256,6 +271,15 @@ async fn process_one_table(
             Some(table.timestamp() as i64),
         )
         .await?;
+
+    println!(
+        "Table {} migrated to GCS with {} rows. Timings: list_table_rows={} ms, schema={} ms, upsert={} ms",
+        table.unique_id(),
+        rows.len(),
+        list_table_rows_duration,
+        schema_duration,
+        upsert_duration
+    );
     Ok(())
 }
 
@@ -274,6 +298,7 @@ async fn verify_all_tables(
         WHERE migrated_to_csv = TRUE AND t.id > $1
     ";
     let mut next_cursor = start_cursor;
+    let mut total_tables_processed = 0;
     loop {
         let query = if let Some(_) = &project_filter {
             format!(
@@ -338,8 +363,12 @@ async fn verify_all_tables(
                 }
             }
         }
+        total_tables_processed += rows.len();
         next_cursor = last_id;
-        println!("Processed up to id: {}. ", next_cursor);
+        println!(
+            "Processed up to id: {}. Total processed: {}",
+            next_cursor, total_tables_processed
+        );
     }
     Ok(())
 }
