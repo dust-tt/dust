@@ -1082,8 +1082,12 @@ async function runMultiActionsAgent(
     (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
   agentMessage.content += contentParser.getContent() ?? "";
-  // Chain of thought is stored in the result and will be added to agentMessage
-  // in the calling function
+  if (chainOfThought.length) {
+    if (!agentMessage.chainOfThought) {
+      agentMessage.chainOfThought = "";
+    }
+    agentMessage.chainOfThought += chainOfThought;
+  }
   return {
     actions,
     runId: await dustRunId,
@@ -1092,7 +1096,6 @@ async function runMultiActionsAgent(
       step,
       content,
     })),
-    chainOfThought,
   };
 }
 
