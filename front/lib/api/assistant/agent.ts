@@ -233,6 +233,29 @@ async function runMultiActionsAgentLoop(
       processedContent = result.processedContent;
       runIds.push(...result.runIds);
       functionCallStepContentIds = result.functionCallStepContentIds;
+
+      // Create AgentStepContent for each content item (reasoning, text, function calls)
+      for (const [index, contentItem] of result.newContents.entries()) {
+        const stepContent = await AgentStepContentResource.makeNew({
+          workspaceId: conversation.owner.id,
+          agentMessageId: agentMessage.agentMessageId,
+          step: contentItem.step,
+          index,
+          version: 0,
+          type: contentItem.content.type,
+          value: contentItem.content,
+        });
+
+        // If this is a function call content, track the step content ID
+        if (
+          contentItem.content.type === "function_call" &&
+          contentItem.content.value.id
+        ) {
+          functionCallStepContentIds[contentItem.content.value.id] =
+            stepContent.id;
+        }
+      }
+
       agentMessage.contents.push(...result.newContents);
       if (result.chainOfThought) {
         if (!agentMessage.chainOfThought) {
@@ -253,34 +276,6 @@ async function runMultiActionsAgentLoop(
       // which is very high. Over that the latency will just be too high. This is a guardrail
       // against the model outputting something unreasonable.
       const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
-
-      // Create AgentStepContent for each action with a function call ID
-      for (let index = 0; index < actionsToRun.length; index++) {
-        const { functionCallId } = actionsToRun[index];
-        if (functionCallId) {
-          const functionCallContent: FunctionCallContentType = {
-            type: "function_call",
-            value: {
-              id: functionCallId,
-              name: actionsToRun[index].action.name,
-              arguments: JSON.stringify(actionsToRun[index].inputs),
-            },
-          };
-
-          const stepContent = await AgentStepContentResource.makeNew({
-            workspaceId: conversation.owner.id,
-            agentMessageId: agentMessage.agentMessageId,
-            step: i,
-            index,
-            version: 0,
-            type: "function_call",
-            value: functionCallContent,
-          });
-
-          // Track the step content ID for this function call
-          functionCallStepContentIds[functionCallId] = stepContent.id;
-        }
-      }
 
       await Promise.all(
         actionsToRun.map(({ action, inputs, functionCallId }, index) => {
