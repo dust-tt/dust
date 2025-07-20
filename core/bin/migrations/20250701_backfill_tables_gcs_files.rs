@@ -1,3 +1,4 @@
+use chrono::Timelike;
 use clap::Parser;
 use dust::{
     databases::{table::Table, table_schema::TableSchema},
@@ -68,7 +69,14 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.verify {
         println!("Verifying migrated tables...");
-        verify_all_tables(&store, &db_store, start_cursor, project_filter.clone()).await?;
+        verify_all_tables(
+            &store,
+            &db_store,
+            start_cursor,
+            project_filter.clone(),
+            batch_size,
+        )
+        .await?;
         return Ok(());
     }
 
@@ -201,7 +209,6 @@ async fn process_tables_batch(
     // Return the id of the last processed table
     Ok(results.into_iter().last())
 }
-
 async fn process_one_table(
     store: &PostgresStore,
     db_store: &PostgresDatabasesStore,
@@ -213,13 +220,6 @@ async fn process_one_table(
     println!("**** Process table: {}", table.unique_id());
 
     let (rows, _count) = db_store.list_table_rows(&table, None).await?;
-
-    if let Some(first_row) = rows.get(0) {
-        println!("First row values:");
-        for (column_name, value) in &first_row.value {
-            println!("  {}: {:?}", column_name, value);
-        }
-    }
 
     let mut table_schema: Option<TableSchema> = None;
 
@@ -258,55 +258,97 @@ async fn verify_all_tables(
     db_store: &PostgresDatabasesStore,
     start_cursor: i64,
     project_filter: Option<Vec<i64>>,
+    batch_size: usize,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let c = store.raw_pool().get().await?;
     let base_query = "
         SELECT t.id, t.table_id, t.schema, t.timestamp, ds.project, ds.data_source_id
         FROM tables t
         INNER JOIN data_sources ds ON ds.id = t.data_source
-        WHERE migrated_to_csv = TRUE AND t.id >= $1
+        WHERE migrated_to_csv = TRUE AND t.id > $1
     ";
-    let query = if let Some(_) = project_filter {
-        format!("{} AND ds.project = ANY($2)", base_query)
-    } else {
-        base_query.to_string()
-    };
-    let rows = if let Some(projects) = project_filter {
-        c.query(&query, &[&start_cursor, &projects]).await?
-    } else {
-        c.query(&query, &[&start_cursor]).await?
-    };
-    for row in rows {
-        let table_id: String = row.get("table_id");
-        let schema: Option<String> = row.get("schema");
-        let project: i64 = row.get("project");
-        let data_source_id: String = row.get("data_source_id");
-        let id: i64 = row.get("id");
-        let table_schema = schema.as_ref().and_then(|s| serde_json::from_str(s).ok());
-        let table = create_table(
-            project,
-            data_source_id.clone(),
-            table_id.clone(),
-            0,
-            table_schema,
-        );
-        if let Err(e) =
-            verify_table(&table, db_store, id, &table_id, project, &data_source_id).await
-        {
-            eprintln!("Failed to verify table {} (id {}): {}", table_id, id, e);
+    let mut next_cursor = start_cursor;
+    loop {
+        let query = if let Some(_) = &project_filter {
+            format!(
+                "{} AND ds.project = ANY($3) ORDER BY t.id ASC LIMIT $2",
+                base_query
+            )
+        } else {
+            format!("{} ORDER BY t.id ASC LIMIT $2", base_query)
+        };
+        let rows = if let Some(projects) = &project_filter {
+            c.query(&query, &[&next_cursor, &(batch_size as i64), projects])
+                .await?
+        } else {
+            c.query(&query, &[&next_cursor, &(batch_size as i64)])
+                .await?
+        };
+        if rows.is_empty() {
+            break;
         }
+        let mut futures = vec![];
+        let mut last_id = next_cursor;
+        for row in &rows {
+            let table_id: String = row.get("table_id");
+            let schema: Option<String> = row.get("schema");
+            let project: i64 = row.get("project");
+            let data_source_id: String = row.get("data_source_id");
+            let id: i64 = row.get("id");
+            let table_schema = schema.as_ref().and_then(|s| serde_json::from_str(s).ok());
+            let table = create_table(
+                project,
+                data_source_id.clone(),
+                table_id.clone(),
+                0,
+                table_schema,
+            );
+            // Move all values into the async block to avoid borrow checker issues
+            let db_store = db_store.clone();
+            futures.push(async move { verify_table(&table, &db_store).await });
+            if id > last_id {
+                last_id = id;
+            }
+        }
+        let results = futures::future::join_all(futures).await;
+        for (i, result) in results.into_iter().enumerate() {
+            let row = &rows[i];
+            let table_id: String = row.get("table_id");
+            let id: i64 = row.get("id");
+            let project: i64 = row.get("project");
+            let data_source_id: String = row.get("data_source_id");
+            match result {
+                Ok(_) => {
+                    // println!(
+                    //     "{}: {},{},{}: PASSED",
+                    //     id, project, data_source_id, table_id
+                    // );
+                }
+                Err(e) => {
+                    println!(
+                        "{}: {},{},{}: ERROR: {}",
+                        id, project, data_source_id, table_id, e
+                    );
+                }
+            }
+        }
+        next_cursor = last_id;
+        println!("Processed up to id: {}. ", next_cursor);
     }
     Ok(())
 }
 
-async fn verify_table(
-    table: &Table,
-    db_store: &PostgresDatabasesStore,
-    id: i64,
-    table_id: &str,
-    project: i64,
-    data_source_id: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn normalize_field(s: &str) -> String {
+    if let Ok(datetime) = chrono::NaiveDateTime::parse_from_str(s.trim(), "%Y-%m-%d %H:%M:%S") {
+        // If the time is exactly zero, return only the date part
+        if datetime.time().num_seconds_from_midnight() == 0 {
+            return datetime.date().format("%Y-%m-%d").to_string();
+        }
+    }
+    return s.to_string();
+}
+
+async fn verify_table(table: &Table, db_store: &PostgresDatabasesStore) -> Result<(), String> {
     let field_names = match table.schema_cached() {
         Some(schema) => schema
             .columns()
@@ -315,60 +357,59 @@ async fn verify_table(
             .collect::<Vec<_>>(),
         None => Vec::new(),
     };
+    let (pg_rows, _) = db_store
+        .list_table_rows(table, None)
+        .await
+        .map_err(|e| format!("Error listing Postgres rows: {}", e))?;
+    let gcs_rows = GoogleCloudStorageDatabasesStore::get_rows_from_csv(table)
+        .await
+        .map_err(|e| format!("Error listing GCS rows: {}", e))?;
 
-    let (pg_rows, _) = db_store.list_table_rows(table, None).await?;
-    let gcs_rows = GoogleCloudStorageDatabasesStore::get_rows_from_csv(table).await?;
     if pg_rows.len() != gcs_rows.len() {
-        eprintln!(
-            "Row count mismatch for table {} (id {}) in project {} and data source {}: Postgres has {}, GCS has {}",
-            table_id, id, project, data_source_id, pg_rows.len(), gcs_rows.len()
-        );
-    } else {
-        let pg_map: HashMap<_, _> = pg_rows.iter().map(|r| (r.row_id(), r)).collect();
-        let gcs_map: HashMap<_, _> = gcs_rows.iter().map(|r| (r.row_id(), r)).collect();
-        let mut mismatch = false;
-        for (row_id, pg_row) in &pg_map {
-            match gcs_map.get(row_id) {
-                Some(gcs_row) => {
-                    let pg_fields = pg_row.to_csv_record(&field_names).unwrap();
-                    let gcs_fields = gcs_row.to_csv_record(&field_names).unwrap();
-                    for (i, field_name) in field_names.iter().enumerate() {
-                        let pg_value = pg_fields.get(i).unwrap();
-                        let gcs_value = gcs_fields.get(i).unwrap();
-                        if pg_value != gcs_value {
-                            eprintln!(
-                                "Row_id {} field '{}' mismatch for table {} (id {}) in project {} and data source {}\n  Postgres: {:?}\n  GCS:      {:?}",
-                                row_id, field_name, table_id, id, project, data_source_id, pg_value, gcs_value
-                            );
-                            mismatch = true;
-                        }
+        return Err(format!(
+            "Row count: Postgres has {}, GCS has {}",
+            pg_rows.len(),
+            gcs_rows.len()
+        ));
+    }
+
+    let pg_map: HashMap<_, _> = pg_rows.iter().map(|r| (r.row_id(), r)).collect();
+    let gcs_map: HashMap<_, _> = gcs_rows.iter().map(|r| (r.row_id(), r)).collect();
+
+    for (row_id, pg_row) in &pg_map {
+        match gcs_map.get(row_id) {
+            Some(gcs_row) => {
+                let pg_fields = pg_row.to_csv_record(&field_names).unwrap();
+                let gcs_fields = gcs_row.to_csv_record(&field_names).unwrap();
+                for (i, field_name) in field_names.iter().enumerate() {
+                    let pg_value = pg_fields.get(i).unwrap();
+                    let gcs_value = gcs_fields.get(i).unwrap();
+                    if normalize_field(pg_value) != normalize_field(gcs_value) {
+                        return Err(format!(
+                            "Row_id {} field '{}' mismatch: Postgres: '{}', GCS: '{}'",
+                            row_id, field_name, pg_value, gcs_value
+                        ));
                     }
                 }
-                None => {
-                    eprintln!(
-                        "Row_id {} present in Postgres but missing in GCS for table {} (id {}) in project {} and data source {}",
-                        row_id, table_id, id, project, data_source_id
-                    );
-                    mismatch = true;
-                }
             }
-        }
-        for row_id in gcs_map.keys() {
-            if !pg_map.contains_key(row_id) {
-                eprintln!(
-                    "Row_id {} present in GCS but missing in Postgres for table {} (id {}) in project {} and data source {}",
-                    row_id, table_id, id, project, data_source_id
-                );
-                mismatch = true;
+            None => {
+                return Err(format!(
+                    "Row_id {} present in Postgres but missing in GCS",
+                    row_id
+                ));
             }
-        }
-        if !mismatch {
-            println!(
-                "{}: {},{},{}: PASSED",
-                id, project, data_source_id, table_id
-            );
         }
     }
+
+    for row_id in gcs_map.keys() {
+        if !pg_map.contains_key(row_id) {
+            return Err(format!(
+                "Row_id {} present in GCS but missing in Postgres",
+                row_id
+            ));
+        }
+    }
+
     Ok(())
 }
 
