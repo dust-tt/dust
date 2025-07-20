@@ -359,6 +359,14 @@ async function runMultiActionsAgent(
     message: string;
     metadata: Record<string, string | number | boolean> | null;
   }): Promise<void> {
+    // Check if this is a multi_actions_error that hit max retries
+    let logMessage = `Agent error: ${error.message}`;
+    if (error.code === "multi_actions_error" && error.metadata?.retriesAttempted === MAX_AUTO_RETRY) {
+      logMessage = `Agent error: ${error.message} (max retries reached)`;
+    } else if (error.code === "multi_actions_error" && error.metadata?.category && error.metadata.category !== "retryable_model_error") {
+      logMessage = `Agent error: ${error.message} (not retryable)`;
+    }
+
     logger.error(
       {
         workspaceId: conversation.owner.sId,
@@ -367,7 +375,7 @@ async function runMultiActionsAgent(
         messageId: agentMessage.sId,
         error,
       },
-      `Agent error: ${error.message}`
+      logMessage
     );
 
     await updateResourceAndPublishEvent(
@@ -381,6 +389,17 @@ async function runMultiActionsAgent(
       conversation,
       agentMessageRow
     );
+  }
+  
+  // Helper function to flush all pending tokens from the content parser
+  async function flushParserTokens(): Promise<void> {
+    for await (const tokenEvent of contentParser.flushTokens()) {
+      await updateResourceAndPublishEvent(
+        tokenEvent,
+        conversation,
+        agentMessageRow
+      );
+    }
   }
 
   if (!model) {
@@ -717,13 +736,7 @@ async function runMultiActionsAgent(
     }
 
     if (event.type === "error") {
-      for await (const tokenEvent of contentParser.flushTokens()) {
-        await updateResourceAndPublishEvent(
-          tokenEvent,
-          conversation,
-          agentMessageRow
-        );
-      }
+      await flushParserTokens();
       return handlePossiblyRetryableError(event.content.message);
     }
 
@@ -737,13 +750,7 @@ async function runMultiActionsAgent(
     }
 
     if (shouldYieldCancel) {
-      for await (const tokenEvent of contentParser.flushTokens()) {
-        await updateResourceAndPublishEvent(
-          tokenEvent,
-          conversation,
-          agentMessageRow
-        );
-      }
+      await flushParserTokens();
       await updateResourceAndPublishEvent(
         {
           type: "agent_generation_cancelled",
@@ -804,25 +811,13 @@ async function runMultiActionsAgent(
     if (event.type === "block_execution") {
       const e = event.content.execution[0][0];
       if (e.error) {
-        for await (const tokenEvent of contentParser.flushTokens()) {
-          await updateResourceAndPublishEvent(
-            tokenEvent,
-            conversation,
-            agentMessageRow
-          );
-        }
+        await flushParserTokens();
         return handlePossiblyRetryableError(e.error);
       }
 
       if (event.content.block_name === "MODEL" && e.value) {
         // Flush early as we know the generation is terminated here.
-        for await (const tokenEvent of contentParser.flushTokens()) {
-          await updateResourceAndPublishEvent(
-            tokenEvent,
-            conversation,
-            agentMessageRow
-          );
-        }
+        await flushParserTokens();
 
         const block = e.value;
         if (!isDustAppChatBlockType(block)) {
