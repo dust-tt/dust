@@ -1073,12 +1073,14 @@ async function runMultiActionsAgent(
     (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
   agentMessage.content += contentParser.getContent() ?? "";
+
   if (chainOfThought.length) {
     if (!agentMessage.chainOfThought) {
       agentMessage.chainOfThought = "";
     }
     agentMessage.chainOfThought += chainOfThought;
   }
+
   const newContents = output.contents.map((content) => ({
     step,
     content,
