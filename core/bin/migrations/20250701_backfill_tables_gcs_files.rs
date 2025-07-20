@@ -450,8 +450,16 @@ fn parse_value(s: &str) -> Result<Value> {
     } else if let Ok(int) = trimmed.parse::<i64>() {
         Value::Number(int.into())
     } else if let Ok(float) = try_parse_float(trimmed) {
-        // Numbers
-        Value::Number(float)
+        // Numbers: if float is an integer (e.g. 600.0), store as int
+        if let Some(f) = float.as_f64() {
+            if f.fract() == 0.0 {
+                Value::Number(serde_json::Number::from(f as i64))
+            } else {
+                Value::Number(float)
+            }
+        } else {
+            Value::Number(float)
+        }
     } else if let Ok(bool_val) = match trimmed.to_lowercase().as_str() {
         // Booleans
         "t" | "true" => Ok(true),
