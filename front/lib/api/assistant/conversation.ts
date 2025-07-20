@@ -5,6 +5,7 @@ import type { Transaction } from "sequelize";
 import { runAgentWithStreaming } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
+  getAgentConfiguration,
   getAgentConfigurations,
   getLightAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
@@ -52,6 +53,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
+  AgentConfigurationType,
   AgentMessageType,
   AgentMessageWithRankType,
   APIErrorWithStatusCode,
@@ -441,6 +443,24 @@ async function attributeUserFromWorkspaceAndEmail(
   return membership ? matchingUser.toJSON() : null;
 }
 
+async function getFullAgentConfiguration(
+  auth: Authenticator,
+  configuration: LightAgentConfigurationType
+): Promise<AgentConfigurationType> {
+  const fullConfiguration = await getAgentConfiguration(
+    auth,
+    configuration.sId,
+    "full"
+  );
+
+  assert(
+    fullConfiguration,
+    "Unreachable: could not find detailed configuration for agent"
+  );
+
+  return fullConfiguration;
+}
+
 // This method is in charge of creating a new user message in database, running the necessary agents
 // in response and updating accordingly the conversation. AgentMentions must point to valid agent
 // configurations from the same workspace or whose scope is global.
@@ -793,7 +813,7 @@ export async function postUserMessage(
 
       void runAgentWithStreaming(
         auth,
-        agentMessage.configuration,
+        await getFullAgentConfiguration(auth, agentMessage.configuration),
         enrichedConversation,
         userMessage,
         agentMessage,
@@ -1226,7 +1246,7 @@ export async function editUserMessage(
 
       void runAgentWithStreaming(
         auth,
-        agentMessage.configuration,
+        await getFullAgentConfiguration(auth, agentMessage.configuration),
         enrichedConversation,
         userMessage,
         agentMessage,
@@ -1441,7 +1461,7 @@ export async function retryAgentMessage(
 
   void runAgentWithStreaming(
     auth,
-    agentMessage.configuration,
+    await getFullAgentConfiguration(auth, agentMessage.configuration),
     enrichedConversation,
     userMessage,
     agentMessage,

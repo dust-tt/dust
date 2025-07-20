@@ -146,35 +146,20 @@ async function updateResourceAndPublishEvent(
 // but it now handles updating it based on the execution results.
 export async function runAgentWithStreaming(
   auth: Authenticator,
-  configuration: LightAgentConfigurationType,
+  configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
   // TODO(DURABLE-AGENTS 2025-07-10): DRY those two arguments to stick with only one.
   agentMessage: AgentMessageType,
   agentMessageRow: AgentMessage
 ): Promise<void> {
-  const [fullConfiguration] = await Promise.all([
-    getAgentConfiguration(auth, configuration.sId, "full"),
-  ]);
-
-  if (!fullConfiguration) {
-    throw new Error(
-      `Unreachable: could not find detailed configuration for agent ${configuration.sId}`
-    );
-  }
-
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unreachable: could not find owner workspace for agent");
-  }
-
   await Promise.all([
     // Generate a new title if the conversation does not have one already.
     await ensureConversationTitle(auth, conversation, userMessage),
 
     await runMultiActionsAgentLoop(
       auth,
-      fullConfiguration,
+      configuration,
       conversation,
       userMessage,
       agentMessage,
@@ -184,8 +169,18 @@ export async function runAgentWithStreaming(
 
   // It's fine to start the workflow here because the workflow will sleep for one hour before
   // computing usage.
-  await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
+  await launchUpdateUsageWorkflow({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+  });
 }
+
+type RunAgentInMemoryData = {
+  agentMessage: AgentMessageType;
+  agentMessageRow: AgentMessage;
+  conversation: ConversationType;
+  userMessage: UserMessageType;
+  agentConfiguration: AgentConfigurationType;
+};
 
 async function runMultiActionsAgentLoop(
   auth: Authenticator,
@@ -308,14 +303,6 @@ async function runMultiActionsAgentLoop(
   });
 }
 
-type RunModelInMemoryData = {
-  agentMessage: AgentMessageType;
-  agentMessageRow: AgentMessage;
-  conversation: ConversationType;
-  userMessage: UserMessageType;
-  agentConfiguration: AgentConfigurationType;
-};
-
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
 //
@@ -349,7 +336,7 @@ async function runMultiActionsAgent(
     agentMessageRow,
     conversation,
     userMessage,
-  }: RunModelInMemoryData
+  }: RunAgentInMemoryData
 ): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
