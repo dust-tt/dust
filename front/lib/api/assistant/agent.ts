@@ -927,6 +927,19 @@ async function runMultiActionsAgent(
       ]);
     }
 
+    // TODO(DURABLE-AGENTS 2025-07-20): Avoid mutating agentMessage here
+    const chainOfThought =
+      (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
+
+    if (chainOfThought.length) {
+      if (!agentMessage.chainOfThought) {
+        agentMessage.chainOfThought = "";
+      }
+      agentMessage.chainOfThought += chainOfThought;
+    }
+    agentMessage.content = (agentMessage.content ?? "") + processedContent;
+    agentMessage.status = "succeeded";
+
     await updateResourceAndPublishEvent(
       {
         type: "agent_message_success",
@@ -939,19 +952,6 @@ async function runMultiActionsAgent(
       conversation,
       agentMessageRow
     );
-
-    // TODO(DURABLE-AGENTS 2025-07-20): Avoid mutating agentMessage here
-    const chainOfThought =
-      (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
-
-    if (chainOfThought.length) {
-      if (!agentMessage.chainOfThought) {
-        agentMessage.chainOfThought = "";
-      }
-      agentMessage.chainOfThought += chainOfThought;
-    }
-    agentMessage.content += processedContent;
-    agentMessage.status = "succeeded";
 
     return null;
   }
@@ -1071,7 +1071,8 @@ async function runMultiActionsAgent(
   const chainOfThought =
     (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
-  agentMessage.content += contentParser.getContent() ?? "";
+  agentMessage.content =
+    (agentMessage.content ?? "") + (contentParser.getContent() ?? "");
 
   if (chainOfThought.length) {
     if (!agentMessage.chainOfThought) {
