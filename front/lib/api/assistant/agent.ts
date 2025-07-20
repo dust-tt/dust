@@ -254,6 +254,34 @@ async function runMultiActionsAgentLoop(
       // against the model outputting something unreasonable.
       const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
+      // Create AgentStepContent for each action with a function call ID
+      for (let index = 0; index < actionsToRun.length; index++) {
+        const { functionCallId } = actionsToRun[index];
+        if (functionCallId) {
+          const functionCallContent: FunctionCallContentType = {
+            type: "function_call",
+            value: {
+              id: functionCallId,
+              name: actionsToRun[index].action.name,
+              arguments: JSON.stringify(actionsToRun[index].inputs),
+            },
+          };
+
+          const stepContent = await AgentStepContentResource.makeNew({
+            workspaceId: conversation.owner.id,
+            agentMessageId: agentMessage.agentMessageId,
+            step: i,
+            index,
+            version: 0,
+            type: "function_call",
+            value: functionCallContent,
+          });
+
+          // Track the step content ID for this function call
+          functionCallStepContentIds[functionCallId] = stepContent.id;
+        }
+      }
+
       await Promise.all(
         actionsToRun.map(({ action, inputs, functionCallId }, index) => {
           // Find the step content ID for this function call
@@ -707,9 +735,6 @@ async function runMultiActionsAgent(
 
   let nativeChainOfThought = "";
 
-  // Create a new object to avoid mutation
-  const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
-
   for await (const event of eventStream) {
     if (event.type === "function_call") {
       isGeneration = false;
@@ -887,31 +912,6 @@ async function runMultiActionsAgent(
                 functionCallId: fc.id,
                 arguments: args,
               });
-
-              // Create AgentStepContent for this function call
-              if (fc.id) {
-                const functionCallContent: FunctionCallContentType = {
-                  type: "function_call",
-                  value: {
-                    id: fc.id,
-                    name: fc.name,
-                    arguments: fc.arguments,
-                  },
-                };
-
-                const stepContent = await AgentStepContentResource.makeNew({
-                  workspaceId: conversation.owner.id,
-                  agentMessageId: agentMessage.agentMessageId,
-                  step,
-                  index: output.actions.length - 1, // Index of this action
-                  version: 0,
-                  type: "function_call",
-                  value: functionCallContent,
-                });
-
-                // Track the step content ID for this function call
-                updatedFunctionCallStepContentIds[fc.id] = stepContent.id;
-              }
             } catch (error) {
               await publishAgentError({
                 code: "function_call_error",
@@ -1095,7 +1095,7 @@ async function runMultiActionsAgent(
     runId: await dustRunId,
     processedContent: contentParser.getContent() ?? "",
     runIds,
-    functionCallStepContentIds: updatedFunctionCallStepContentIds,
+    functionCallStepContentIds,
     newContents: output.contents.map((content) => ({
       step,
       content,
