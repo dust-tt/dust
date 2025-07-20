@@ -246,7 +246,6 @@ export async function createOrUpgradeAgentConfiguration({
 }): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
 
-
   // Tools mode:
   // Enforce that every action has a name and a description and that every name is unique.
   if (actions.length > 1) {

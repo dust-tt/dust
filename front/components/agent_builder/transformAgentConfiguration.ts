@@ -189,9 +189,7 @@ function createTypedAction(
   }
 }
 
-export function getDefaultAgentFormData(
-  user: UserType
-): AgentBuilderFormData {
+export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
   return {
     agentSettings: {
       name: "",
