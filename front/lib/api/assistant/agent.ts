@@ -232,7 +232,7 @@ async function runMultiActionsAgentLoop(
 
       // Update state with results from runMultiActionsAgent
       processedContent = result.processedContent;
-      runIds.push(...result.runIds);
+      runIds.push(result.runId);
       functionCallStepContentIds = result.functionCallStepContentIds;
       agentMessage.contents.push(...result.newContents);
       if (result.chainOfThought) {
@@ -343,7 +343,6 @@ async function runMultiActionsAgent(
   actions: AgentActionsEvent["actions"];
   runId: string;
   processedContent: string;
-  runIds: string[];
   functionCallStepContentIds: Record<string, ModelId>;
   newContents: { step: number; content: AgentContentItemType }[];
   chainOfThought?: string;
@@ -963,7 +962,7 @@ async function runMultiActionsAgent(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         message: agentMessage,
-        runIds,
+        runIds: [...runIds, await dustRunId],
       },
       conversation,
       agentMessageRow
@@ -981,8 +980,6 @@ async function runMultiActionsAgent(
     }
     agentMessage.content = processedContent;
     agentMessage.status = "succeeded";
-
-    runIds.push(runId);
 
     return null;
   }
@@ -1104,15 +1101,10 @@ async function runMultiActionsAgent(
 
   // Chain of thought is stored in the result and will be added to agentMessage
   // in the calling function
-
-  // Raw content is included in the result to be processed by the caller
-
-  // Return the result with all necessary data
   return {
     actions,
     runId: await dustRunId,
     processedContent: contentParser.getContent() ?? "",
-    runIds,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
     newContents: output.contents.map((content) => ({
       step,
