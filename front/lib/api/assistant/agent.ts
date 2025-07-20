@@ -927,7 +927,7 @@ async function runMultiActionsAgent(
       agentMessageId: agentMessage.agentMessageId,
       step,
       index,
-      version: 0,
+      version: autoRetryCount,
       type: content.type,
       value: content,
     });
