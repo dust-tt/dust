@@ -184,8 +184,6 @@ export async function constructPromptMultiActions(
     'Also always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
     "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
 
-  console.log("guidelinesSection", guidelinesSection);
-
   // INSTRUCTIONS section
   let instructions = "# INSTRUCTIONS\n\n";
 
