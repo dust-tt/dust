@@ -62,8 +62,8 @@ const createServer = (
       file_name: z
         .string()
         .describe(
-          "The name of the interactive content file to create, including extension (e.g., " +
-            "DataVisualization.tsx, analysis.py, dashboard.html)"
+          "The name of the interactive content file to create, including extension (e.g. " +
+            "DataVisualization.tsx)"
         ),
       mime_type: z
         .enum(

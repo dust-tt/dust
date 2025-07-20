@@ -22,7 +22,7 @@ export function getCitationIcon(type: string, isDark?: boolean) {
   }
 }
 
-// TODO()
+// TODO(INTERACTIVE_CONTENT): Use proper and distinct types for interactive content.
 export interface MarkdownCitation {
   description?: string;
   contentType?: string;

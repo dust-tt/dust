@@ -1,4 +1,4 @@
-import { Button, classNames, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 interface InteractiveContentHeaderProps {
@@ -16,8 +16,9 @@ export function InteractiveContentHeader({
 }: InteractiveContentHeaderProps) {
   return (
     <div
-      className={classNames(
-        "border-structure-200 bg-structure-50 flex items-center justify-between border-b px-4 py-2"
+      className={cn(
+        "bg-structure-0/60 border-border/70 dark:border-border-night/70 flex items-center backdrop-blur-sm",
+        "justify-between rounded-t-lg border-b px-4 py-2"
       )}
     >
       <div className="flex items-center gap-2">
