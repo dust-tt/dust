@@ -153,44 +153,8 @@ export async function runAgentWithStreaming(
   agentMessage: AgentMessageType,
   agentMessageRow: AgentMessage
 ): Promise<void> {
-  await Promise.all([
-    // Generate a new title if the conversation does not have one already.
-    await ensureConversationTitle(auth, conversation, userMessage),
+  const titlePromise = ensureConversationTitle(auth, conversation, userMessage);
 
-    await runMultiActionsAgentLoop(
-      auth,
-      configuration,
-      conversation,
-      userMessage,
-      agentMessage,
-      agentMessageRow
-    ),
-  ]);
-
-  // It's fine to start the workflow here because the workflow will sleep for one hour before
-  // computing usage.
-  await launchUpdateUsageWorkflow({
-    workspaceId: auth.getNonNullableWorkspace().sId,
-  });
-}
-
-type RunAgentInMemoryData = {
-  agentMessage: AgentMessageType;
-  agentMessageRow: AgentMessage;
-  conversation: ConversationType;
-  userMessage: UserMessageType;
-  agentConfiguration: AgentConfigurationType;
-};
-
-async function runMultiActionsAgentLoop(
-  auth: Authenticator,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  // TODO(DURABLE-AGENTS 2025-07-10): DRY those two arguments to stick with only one.
-  agentMessage: AgentMessageType,
-  agentMessageRow: AgentMessage
-): Promise<void> {
   const now = Date.now();
 
   const isLegacyAgent = isLegacyAgentConfiguration(configuration);
@@ -301,7 +265,23 @@ async function runMultiActionsAgentLoop(
       }
     }
   });
+
+  await titlePromise;
+
+  // It's fine to start the workflow here because the workflow will sleep for one hour before
+  // computing usage.
+  await launchUpdateUsageWorkflow({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+  });
 }
+
+type RunAgentInMemoryData = {
+  agentMessage: AgentMessageType;
+  agentMessageRow: AgentMessage;
+  conversation: ConversationType;
+  userMessage: UserMessageType;
+  agentConfiguration: AgentConfigurationType;
+};
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
