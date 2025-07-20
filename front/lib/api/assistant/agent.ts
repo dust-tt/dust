@@ -357,7 +357,7 @@ async function runMultiActionsAgent(
   async function publishAgentError(error: {
     code: string;
     message: string;
-    metadata: any;
+    metadata: Record<string, string | number | boolean> | null;
   }): Promise<void> {
     logger.error(
       {
