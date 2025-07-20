@@ -812,7 +812,7 @@ export async function postUserMessage(
       );
 
       void runAgentWithStreaming(
-        auth,
+        auth.toJSON(),
         await getFullAgentConfiguration(auth, agentMessage.configuration),
         enrichedConversation,
         userMessage,
@@ -1245,7 +1245,7 @@ export async function editUserMessage(
       );
 
       void runAgentWithStreaming(
-        auth,
+        auth.toJSON(),
         await getFullAgentConfiguration(auth, agentMessage.configuration),
         enrichedConversation,
         userMessage,
@@ -1460,7 +1460,7 @@ export async function retryAgentMessage(
   };
 
   void runAgentWithStreaming(
-    auth,
+    auth.toJSON(),
     await getFullAgentConfiguration(auth, agentMessage.configuration),
     enrichedConversation,
     userMessage,

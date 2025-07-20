@@ -65,6 +65,7 @@ import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
+import assert from "assert";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -145,7 +146,7 @@ async function updateResourceAndPublishEvent(
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // but it now handles updating it based on the execution results.
 export async function runAgentWithStreaming(
-  auth: Authenticator,
+  authType: AuthenticatorType,
   configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
@@ -153,7 +154,11 @@ export async function runAgentWithStreaming(
   agentMessage: AgentMessageType,
   agentMessageRow: AgentMessage
 ): Promise<void> {
-  const titlePromise = ensureConversationTitle(auth, conversation, userMessage);
+  const titlePromise = ensureConversationTitle(
+    authType,
+    conversation,
+    userMessage
+  );
 
   const now = Date.now();
 
@@ -180,7 +185,7 @@ export async function runAgentWithStreaming(
 
       const result = await runMultiActionsAgent(
         {
-          authType: auth.toJSON(),
+          authType,
           conversationId: conversation.sId,
           userMessageId: userMessage.sId,
           agentMessageId: agentMessage.sId,
@@ -239,7 +244,7 @@ export async function runAgentWithStreaming(
             );
           }
 
-          return runAction(auth, {
+          return runAction(authType, {
             configuration,
             actionConfiguration: action,
             conversation,
@@ -270,8 +275,10 @@ export async function runAgentWithStreaming(
 
   // It's fine to start the workflow here because the workflow will sleep for one hour before
   // computing usage.
+
+  assert(authType.workspaceId, "Workspace ID is required");
   await launchUpdateUsageWorkflow({
-    workspaceId: auth.getNonNullableWorkspace().sId,
+    workspaceId: authType.workspaceId,
   });
 }
 
@@ -333,16 +340,6 @@ async function runMultiActionsAgent(
       : // Otherwise, we let the agent decide which action to run (if any).
         agentConfiguration.actions;
 
-  const localLogger = logger.child({
-    workspaceId: conversation.owner.sId,
-    conversationId: conversation.sId,
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-  });
-
-
-
-  // Recreate the Authenticator instance from the serialized type
   const auth = await Authenticator.fromJSON(authType);
 
   const model = getSupportedModelConfig(agentConfiguration.model);
@@ -1092,7 +1089,7 @@ async function runMultiActionsAgent(
 }
 
 async function runAction(
-  auth: Authenticator,
+  authType: AuthenticatorType,
   {
     configuration,
     actionConfiguration,
@@ -1122,6 +1119,8 @@ async function runAction(
     agentMessageRow: AgentMessage;
   }
 ): Promise<void> {
+  const auth = await Authenticator.fromJSON(authType);
+
   if (isMCPToolConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration

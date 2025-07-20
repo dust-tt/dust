@@ -2,7 +2,7 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import { getConversationChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { getDustProdAction } from "@app/lib/registry";
 import { cloneBaseConfig } from "@app/lib/registry";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -13,7 +13,7 @@ import { Err, getLargeNonAnthropicWhitelistedModel, Ok } from "@app/types";
 const MIN_GENERATION_TOKENS = 1024;
 
 export async function ensureConversationTitle(
-  auth: Authenticator,
+  authType: AuthenticatorType,
   conversation: ConversationType,
   userMessage: UserMessageType
 ): Promise<void> {
@@ -21,6 +21,7 @@ export async function ensureConversationTitle(
   if (conversation.title) {
     return;
   }
+  const auth = await Authenticator.fromJSON(authType);
 
   // TODO(DURABLE-AGENTS 2025-07-15): Add back the agent message before generating the title.
   const titleRes = await generateConversationTitle(auth, {
