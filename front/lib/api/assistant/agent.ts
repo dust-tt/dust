@@ -62,7 +62,6 @@ import type {
 } from "@app/types";
 import { assertNever, removeNulls } from "@app/types";
 import type {
-  AgentContentItemType,
   FunctionCallContentType,
   ReasoningContentType,
   TextContentType,
@@ -928,7 +927,7 @@ async function runMultiActionsAgent(
       ]);
     }
 
-    updateResourceAndPublishEvent(
+    await updateResourceAndPublishEvent(
       {
         type: "agent_message_success",
         created: Date.now(),
