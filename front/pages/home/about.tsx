@@ -305,6 +305,13 @@ const PEOPLE: Record<
     github: "https://github.com/TrismoEd",
     linkedIn: "https://www.linkedin.com/in/edouard-villette",
   },
+  vince: {
+    name: "Vince Sarkisian",
+    title: "Solutions Engineer",
+    image: "https://avatars.githubusercontent.com/u/1455646?v=4",
+    github: "https://github.com/vincesarkisian",
+    linkedIn: "https://www.linkedin.com/in/vincesarkisian/",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
