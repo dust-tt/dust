@@ -300,7 +300,7 @@ async function runMultiActionsAgentLoop(
         configurationId: configuration.sId,
         messageId: agentMessage.sId,
         message: agentMessage,
-        runIds: runIds,
+        runIds,
       },
       conversation,
       agentMessageRow
@@ -361,9 +361,16 @@ async function runMultiActionsAgent(
   }): Promise<void> {
     // Check if this is a multi_actions_error that hit max retries
     let logMessage = `Agent error: ${error.message}`;
-    if (error.code === "multi_actions_error" && error.metadata?.retriesAttempted === MAX_AUTO_RETRY) {
+    if (
+      error.code === "multi_actions_error" &&
+      error.metadata?.retriesAttempted === MAX_AUTO_RETRY
+    ) {
       logMessage = `Agent error: ${error.message} (max retries reached)`;
-    } else if (error.code === "multi_actions_error" && error.metadata?.category && error.metadata.category !== "retryable_model_error") {
+    } else if (
+      error.code === "multi_actions_error" &&
+      error.metadata?.category &&
+      error.metadata.category !== "retryable_model_error"
+    ) {
       logMessage = `Agent error: ${error.message} (not retryable)`;
     }
 
@@ -390,7 +397,7 @@ async function runMultiActionsAgent(
       agentMessageRow
     );
   }
-  
+
   // Helper function to flush all pending tokens from the content parser
   async function flushParserTokens(): Promise<void> {
     for await (const tokenEvent of contentParser.flushTokens()) {
@@ -927,6 +934,7 @@ async function runMultiActionsAgent(
   // These will be added to agentMessage.contents in the calling function
 
   if (!output.actions.length) {
+    // Successful generation.
     const processedContent = contentParser.getContent() ?? "";
     if (!processedContent.length) {
       logger.warn(
@@ -955,7 +963,7 @@ async function runMultiActionsAgent(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         message: agentMessage,
-        runIds: runIds,
+        runIds,
       },
       conversation,
       agentMessageRow
