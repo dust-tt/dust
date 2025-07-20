@@ -7,6 +7,7 @@ import {
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
+  isMCPConfigurationForInternalInteractiveContent,
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
@@ -156,13 +157,19 @@ export async function constructPromptMultiActions(
     guidelinesSection += `\n${citationMetaPrompt()}\n`;
   }
 
-  if (agentConfiguration.visualizationEnabled) {
-    const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-    if (featureFlags.includes("interactive_content_server")) {
-      guidelinesSection += `\n${visualizationWithInteractiveContentSystemPrompt()}\n`;
-    } else {
-      guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
-    }
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const hasInteractiveContentServer =
+    featureFlags.includes("interactive_content_server") &&
+    agentConfiguration.actions.some((action) =>
+      isMCPConfigurationForInternalInteractiveContent(action)
+    );
+
+  // If interactive content server is enabled, use the interactive content system prompt over the
+  // visualization system prompt.
+  if (hasInteractiveContentServer) {
+    guidelinesSection += `\n${visualizationWithInteractiveContentSystemPrompt()}\n`;
+  } else if (agentConfiguration.visualizationEnabled) {
+    guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
   }
 
   guidelinesSection +=
@@ -176,6 +183,8 @@ export async function constructPromptMultiActions(
     'When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding `<attachment id="{FILE_ID}" type... title...>` tag in the conversation history.' +
     'Also always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
     "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
+
+  console.log("guidelinesSection", guidelinesSection);
 
   // INSTRUCTIONS section
   let instructions = "# INSTRUCTIONS\n\n";

@@ -335,7 +335,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   },
   interactive_content: {
     id: 23,
-    availability: "auto_hidden_builder",
+    availability: "auto",
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("interactive_content_server");
     },

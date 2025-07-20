@@ -1,5 +1,4 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { ServerOptions } from "@modelcontextprotocol/sdk/server/index.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
@@ -19,7 +18,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "interactive_content",
   version: "1.0.0",
   description:
-    "Create and update interactive content files that users can execute and interact with. Currently supports client-executable code, with plans to expand to other interactive content types.",
+    "Create and update interactive content files that users can execute and interact with. Currently supports client-executable code.",
   authorization: null,
   icon: "ActionDocumentTextIcon",
   documentationUrl: null,
@@ -41,18 +40,7 @@ const createServer = (
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer => {
-  let serverOptions: ServerOptions | undefined = undefined;
-
-  // Only make the tools available if the agent has the visualization tool enabled.
-  const hasVisualizationTool =
-    agentLoopContext?.runContext?.agentConfiguration.visualizationEnabled;
-  if (!hasVisualizationTool) {
-    serverOptions = {
-      capabilities: {}, // No capabilities enabled.
-    };
-  }
-
-  const server = new McpServer(serverInfo, serverOptions);
+  const server = new McpServer(serverInfo);
 
   server.tool(
     CREATE_INTERACTIVE_FILE_TOOL_NAME,
