@@ -315,7 +315,7 @@ const CliChat: FC<CliChatProps> = ({
         });
       }
     };
-    cacheEditTool();
+    void cacheEditTool();
   }, [selectedAgent]);
 
   // Handle agent search when component mounts
