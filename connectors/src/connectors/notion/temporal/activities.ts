@@ -7,6 +7,7 @@ import type { Logger } from "pino";
 import { Op } from "sequelize";
 
 import { nodeIdFromNotionId } from "@connectors/connectors/notion";
+import { getNotionAccessToken } from "@connectors/connectors/notion/lib/access_token";
 import {
   getNotionDatabaseFromConnectorsDb,
   getNotionPageFromConnectorsDb,
@@ -67,7 +68,6 @@ import {
   NotionDatabase,
   NotionPage,
 } from "@connectors/lib/models/notion";
-import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { redisClient } from "@connectors/lib/redis";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -130,7 +130,7 @@ export async function fetchDatabaseChildPages({
     };
   }
 
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   const localLoggerArgs = {
     ...loggerArgs,
@@ -295,7 +295,7 @@ export async function getPagesAndDatabasesToSync({
     workspaceId: connector.workspaceId,
   });
 
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   const skippedDatabases = await NotionDatabase.findAll({
     where: {
@@ -456,7 +456,7 @@ export async function upsertDatabaseInConnectorsDb({
     throw new Error("Could not find connector");
   }
 
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   const localLogger = logger.child({ ...loggerArgs, databaseId });
 
@@ -559,17 +559,6 @@ export async function saveStartSync(connectorId: ModelId) {
   if (res.isErr()) {
     throw res.error;
   }
-}
-
-export async function getNotionAccessToken(
-  connectionId: string
-): Promise<string> {
-  const token = await getOAuthConnectionAccessTokenWithThrow({
-    logger,
-    provider: "notion",
-    connectionId,
-  });
-  return token.access_token;
 }
 
 export async function isFullSyncPendingOrOngoing({
@@ -792,7 +781,7 @@ export async function garbageCollectBatch({
   if (!notionConnectorState) {
     throw new Error("Could not find notionConnectorState");
   }
-  const notionAccessToken = await getNotionAccessToken(connector.connectionId);
+  const notionAccessToken = await getNotionAccessToken(connector.id);
 
   const NOTION_UNHEALTHY_ERROR_CODES = [
     "internal_server_error",
@@ -964,7 +953,7 @@ export async function deletePageOrDatabaseIfArchived({
     throw new Error("Could not find connector");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   const localLogger = logger.child({
     ...loggerArgs,
@@ -1362,7 +1351,7 @@ export async function cachePage({
   if (!connector) {
     throw new Error("Could not find connector");
   }
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   let localLogger = logger.child({
     ...loggerArgs,
@@ -1514,7 +1503,7 @@ export async function cacheBlockChildren({
     workspaceId: connector.workspaceId,
   });
 
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   localLogger.info(
     "notionBlockChildrenResultPageActivity: Retrieving result page from Notion API."
@@ -1856,7 +1845,7 @@ export async function renderAndUpsertPageFromCache({
     throw new Error("Could not find connector");
   }
   const dsConfig = dataSourceConfigFromConnector(connector);
-  const accessToken = await getNotionAccessToken(connector.connectionId);
+  const accessToken = await getNotionAccessToken(connector.id);
 
   const localLogger = logger.child({
     ...loggerArgs,
@@ -2871,8 +2860,7 @@ export async function getParentPageOrDb({
     throw new Error("Could not find connector");
   }
 
-  const connectionId = connector.connectionId;
-  const notionAccessToken = await getNotionAccessToken(connectionId);
+  const notionAccessToken = await getNotionAccessToken(connector.id);
 
   if (!notionAccessToken) {
     throw new Error("Unreachable: connection id without access token");
@@ -2881,7 +2869,7 @@ export async function getParentPageOrDb({
   const page = await retrievePage({
     accessToken: notionAccessToken,
     pageId: pageOrDbId,
-    loggerArgs: { connectorId, connectionId },
+    loggerArgs: { connectorId },
   });
   if (page) {
     switch (page.parent.type) {
@@ -2910,7 +2898,6 @@ export async function getParentPageOrDb({
 
   const db = await getParsedDatabase(notionAccessToken, pageOrDbId, {
     connectorId,
-    connectionId,
   });
 
   if (db) {

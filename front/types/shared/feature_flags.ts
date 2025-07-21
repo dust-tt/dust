@@ -3,6 +3,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Advanced features for Notion workspace management shown to admins",
   },
+  notion_private_integration: {
+    description: "Setup Notion private integration tokens",
+  },
   advanced_search: {
     description:
       "Activates the advanced search option: browse selected data like a file system",
