@@ -202,15 +202,15 @@ function formatDocumentContent({
 
 function getFirecrawlScrapeOptions(
   webCrawlerConfig: WebCrawlerConfigurationResource
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- For a weird reason if the generic is not provided, lint fails in CI
-): ScrapeParams<any, Action[]> {
+) {
   return {
     onlyMainContent: true,
     formats: ["markdown"],
     headers: webCrawlerConfig.getCustomHeaders(),
     maxAge: 43_200_000, // Use last 12h of cache
     actions: webCrawlerConfig.actions ?? undefined,
-  };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } satisfies ScrapeParams<any, Action[]>;
 }
 
 function getFirecrawlWebhookConfig(connector: ConnectorResource) {
