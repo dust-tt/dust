@@ -8,7 +8,7 @@ import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant
 import type { UserType } from "@app/types";
 import type { LightAgentConfigurationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/assistant";
+import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
@@ -204,11 +204,12 @@ export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
     instructions: "",
     generationSettings: {
       modelSettings: {
-        modelId: GPT_4O_MODEL_CONFIG.modelId,
-        providerId: GPT_4O_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+        providerId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.providerId,
       },
       temperature: 0.7,
-      reasoningEffort: GPT_4O_MODEL_CONFIG.defaultReasoningEffort || "none",
+      reasoningEffort:
+        CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
       responseFormat: undefined,
     },
     actions: [],
