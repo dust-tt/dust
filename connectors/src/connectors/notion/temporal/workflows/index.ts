@@ -21,6 +21,7 @@ import type { ModelId } from "@connectors/types";
 
 // re-export all the workflows to make temporal happy
 export * from "./admins";
+export * from "./check_resources_accessibility";
 export * from "./children";
 export * from "./garbage_collection";
 export * from "./upsert_database_queue";
