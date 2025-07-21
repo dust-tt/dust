@@ -234,7 +234,7 @@ export type ActionBaseParams = Omit<
   "id" | "type" | "executionState" | "output" | "isError"
 >;
 
-function hideFileFromActionOutput({
+export function hideFileFromActionOutput({
   fileId,
   content,
   workspaceId,
@@ -1171,44 +1171,4 @@ async function handleBase64Upload(
       file: null,
     };
   }
-}
-
-/**
- * Action rendering.
- */
-
-export function renderAgentMCPAction(action: AgentMCPAction): MCPActionType {
-  return new MCPActionType({
-    id: action.id,
-    params: action.params,
-    output: removeNulls(action.outputItems.map(hideFileFromActionOutput)),
-    functionCallId: action.functionCallId,
-    functionCallName: action.functionCallName,
-    agentMessageId: action.agentMessageId,
-    step: action.step,
-    mcpServerConfigurationId: action.mcpServerConfigurationId,
-    executionState: action.executionState,
-    isError: action.isError,
-    type: "tool_action",
-    generatedFiles: removeNulls(
-      action.outputItems.map((o) => {
-        if (!o.file) {
-          return null;
-        }
-
-        const file = o.file;
-        const fileSid = FileResource.modelIdToSId({
-          id: file.id,
-          workspaceId: action.workspaceId,
-        });
-
-        return {
-          fileId: fileSid,
-          contentType: file.contentType,
-          title: file.fileName,
-          snippet: file.snippet,
-        };
-      })
-    ),
-  });
 }

@@ -8,7 +8,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { renderAgentMCPAction } from "@app/lib/actions/mcp";
+import { hideFileFromActionOutput, MCPActionType } from "@app/lib/actions/mcp";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -18,10 +18,12 @@ import {
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
+import { removeNulls } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
 
@@ -356,8 +358,43 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     if ("agentMCPActions" in this && Array.isArray(this.agentMCPActions)) {
       // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
-      base.mcpActions = this.agentMCPActions.map((action: AgentMCPAction) =>
-        renderAgentMCPAction(action)
+      base.mcpActions = this.agentMCPActions.map(
+        (action: AgentMCPAction) =>
+          new MCPActionType({
+            id: action.id,
+            params: action.params,
+            output: removeNulls(
+              action.outputItems.map(hideFileFromActionOutput)
+            ),
+            functionCallId: action.functionCallId,
+            functionCallName: action.functionCallName,
+            agentMessageId: action.agentMessageId,
+            step: action.step,
+            mcpServerConfigurationId: action.mcpServerConfigurationId,
+            executionState: action.executionState,
+            isError: action.isError,
+            type: "tool_action",
+            generatedFiles: removeNulls(
+              action.outputItems.map((o) => {
+                if (!o.file) {
+                  return null;
+                }
+
+                const file = o.file;
+                const fileSid = FileResource.modelIdToSId({
+                  id: file.id,
+                  workspaceId: action.workspaceId,
+                });
+
+                return {
+                  fileId: fileSid,
+                  contentType: file.contentType,
+                  title: file.fileName,
+                  snippet: file.snippet,
+                };
+              })
+            ),
+          })
       );
     }
 
