@@ -52,8 +52,6 @@ import {
   normalizeError,
   stripNullBytes,
   validateUrl,
-  WEBCRAWLER_MAX_DEPTH,
-  WEBCRAWLER_MAX_PAGES,
 } from "@connectors/types";
 
 export async function markAsCrawled(connectorId: ModelId) {
@@ -239,11 +237,10 @@ async function startCrawlJob(
     logger,
   }: FirecrawlJobHelpersParams
 ) {
-  const maxRequestsPerCrawl =
-    webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES;
+  const maxRequestsPerCrawl = webCrawlerConfig.getMaxPagesToCrawl();
 
   const crawlerResponse = await firecrawlApp.asyncCrawlUrl(url, {
-    maxDiscoveryDepth: webCrawlerConfig.depth ?? WEBCRAWLER_MAX_DEPTH,
+    maxDiscoveryDepth: webCrawlerConfig.getDepth(),
     limit: maxRequestsPerCrawl,
     crawlEntireDomain: webCrawlerConfig.crawlMode === "website",
     maxConcurrency: 2,
@@ -309,7 +306,7 @@ async function startBatchScrapeJob(
   const filteredUrl =
     mapUrlResult.links
       ?.filter((link) => shouldCrawlLink(link, webCrawlerConfig))
-      ?.slice(0, webCrawlerConfig.maxPageToCrawl ?? WEBCRAWLER_MAX_PAGES) ?? [];
+      ?.slice(0, webCrawlerConfig.getMaxPagesToCrawl()) ?? [];
   const batchScrapeResponse = await firecrawlApp.asyncBatchScrapeUrls(
     filteredUrl,
     getFirecrawlScrapeOptions(webCrawlerConfig),
