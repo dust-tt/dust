@@ -23,6 +23,9 @@ type AgentMCPActionWithConversation = AgentMCPAction & {
   };
 };
 
+// Resource for AgentMCPAction.
+// Only used for analytics purposes, the rendering is handled AgentStepContentResource.
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMCPActionResource
