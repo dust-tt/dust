@@ -151,7 +151,7 @@ export async function runAgentWithStreaming(
   const titlePromise = ensureConversationTitle(authType, runAgentArgs);
 
   // Citations references offset kept up to date across steps.
-  const citationsRefsOffset = 0;
+  let citationsRefsOffset = 0;
 
   const runIds: string[] = [];
 
@@ -183,7 +183,7 @@ export async function runAgentWithStreaming(
       // against the model outputting something unreasonable.
       const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
-      await Promise.all(
+      const citationsIncrements = await Promise.all(
         actionsToRun.map(({ action, inputs, functionCallId }, index) => {
           // Find the step content ID for this function call
           const stepContentId = functionCallId
@@ -213,6 +213,11 @@ export async function runAgentWithStreaming(
             stepContentId,
           });
         })
+      );
+
+      citationsRefsOffset += citationsIncrements.reduce(
+        (acc, curr) => acc + curr.citationsIncrement,
+        0
       );
     }
   });
