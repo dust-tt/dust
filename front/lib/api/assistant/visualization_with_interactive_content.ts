@@ -3,6 +3,7 @@ import {
   EDIT_INTERACTIVE_FILE_TOOL_NAME,
   RETRIEVE_INTERACTIVE_FILE_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
+import { clientExecutableContentType } from "@app/types";
 
 export const visualizationWithInteractiveContentSystemPrompt = () => `\
 ## CREATING VISUALIZATIONS WITH INTERACTIVE CONTENT
@@ -11,7 +12,7 @@ You have access to an interactive content system that allows you to create and u
 
 ### File Management Guidelines:
 - Use the \`${CREATE_INTERACTIVE_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
-- Use MIME type: \`application/vnd.dust.client-executable\`
+- Use MIME type: \`${clientExecutableContentType}\`
 - Supported file extensions: .js, .jsx, .ts, .tsx
 - Files are automatically made available to the user for execution
 
@@ -116,7 +117,7 @@ Example File Creation:
 \`\`\`
 ${CREATE_INTERACTIVE_FILE_TOOL_NAME}({
   file_name: "SineCosineChart.tsx",
-  mime_type: "application/vnd.dust.client-executable",
+  mime_type: "${clientExecutableContentType}",
   content: \`[React component code shown below]\`
 })
 \`\`\`
