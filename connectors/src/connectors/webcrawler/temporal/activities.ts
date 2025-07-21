@@ -202,7 +202,8 @@ function formatDocumentContent({
 
 function getFirecrawlScrapeOptions(
   webCrawlerConfig: WebCrawlerConfigurationResource
-): ScrapeParams {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- For a weird reason if the generic is not provided, lint fails in CI
+): ScrapeParams<any, Action[]> {
   return {
     onlyMainContent: true,
     formats: ["markdown"],
