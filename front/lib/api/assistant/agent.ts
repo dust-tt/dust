@@ -56,10 +56,17 @@ import type {
   ConversationType,
   LightAgentConfigurationType,
   ModelId,
+  RunAgentArgs,
+  RunAgentFullArgs as RunAgentFullArgs,
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, removeNulls } from "@app/types";
+import {
+  assertNever,
+  EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
+  getRunAgentData,
+  removeNulls,
+} from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
@@ -147,23 +154,9 @@ async function updateResourceAndPublishEvent(
 // but it now handles updating it based on the execution results.
 export async function runAgentWithStreaming(
   authType: AuthenticatorType,
-  configuration: AgentConfigurationType,
-  conversation: ConversationType,
-  userMessage: UserMessageType,
-  // TODO(DURABLE-AGENTS 2025-07-10): DRY those two arguments to stick with only one.
-  agentMessage: AgentMessageType,
-  agentMessageRow: AgentMessage
+  runAgentArgs: RunAgentArgs
 ): Promise<void> {
-  const titlePromise = ensureConversationTitle(
-    authType,
-    conversation,
-    userMessage
-  );
-
-  const now = Date.now();
-
-  const isLegacyAgent = isLegacyAgentConfiguration(configuration);
-  const maxStepsPerRun = isLegacyAgent ? 1 : configuration.maxStepsPerRun;
+  const titlePromise = ensureConversationTitle(authType, runAgentArgs);
 
   // Citations references offset kept up to date across steps.
   let citationsRefsOffset = 0;
@@ -174,35 +167,15 @@ export async function runAgentWithStreaming(
   let functionCallStepContentIds: Record<string, ModelId> = {};
 
   await wakeLock(async () => {
-    for (let i = 0; i < maxStepsPerRun + 1; i++) {
-      const localLogger = logger.child({
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        multiActionLoopIteration: i,
+    for (let i = 0; i < EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
+      const result = await runMultiActionsAgent({
+        authType,
+        runAgentArgs,
+        runIds,
+        step: i,
+        functionCallStepContentIds,
+        autoRetryCount: 0,
       });
-
-      localLogger.info("Starting multi-action loop iteration");
-
-      const result = await runMultiActionsAgent(
-        {
-          authType,
-          conversationId: conversation.sId,
-          userMessageId: userMessage.sId,
-          agentMessageId: agentMessage.sId,
-          isLegacyAgent,
-          runIds,
-          step: i,
-          functionCallStepContentIds,
-          autoRetryCount: 0,
-        },
-        {
-          agentConfiguration: configuration,
-          conversation,
-          userMessage,
-          agentMessage,
-          agentMessageRow,
-        }
-      );
 
       if (!result) {
         // Generation completed or error occurred
@@ -212,14 +185,6 @@ export async function runAgentWithStreaming(
       // Update state with results from runMultiActionsAgent
       runIds.push(result.runId);
       functionCallStepContentIds = result.functionCallStepContentIds;
-
-      // We have actions to run
-      localLogger.info(
-        {
-          elapsed: Date.now() - now,
-        },
-        "[ASSISTANT_TRACE] Action inputs generation"
-      );
 
       // We received the actions to run, but will enforce a limit on the number of actions (16)
       // which is very high. Over that the latency will just be too high. This is a guardrail
@@ -245,10 +210,8 @@ export async function runAgentWithStreaming(
           }
 
           return runAction(authType, {
-            configuration,
+            runAgentArgs,
             actionConfiguration: action,
-            conversation,
-            agentMessage,
             inputs,
             functionCallId,
             step: i,
@@ -256,18 +219,9 @@ export async function runAgentWithStreaming(
             stepActions: actionsToRun.map((a) => a.action),
             citationsRefsOffset,
             stepContentId,
-            agentMessageRow,
           });
         })
       );
-      // After we are done running actions, we update the inter-step refsOffset.
-      for (let j = 0; j < actionsToRun.length; j++) {
-        citationsRefsOffset += getCitationsCount({
-          agentConfiguration: configuration,
-          stepActions: actionsToRun.map((a) => a.action),
-          stepActionIndex: j,
-        });
-      }
     }
   });
 
@@ -282,55 +236,55 @@ export async function runAgentWithStreaming(
   });
 }
 
-type RunAgentInMemoryData = {
-  agentMessage: AgentMessageType;
-  agentMessageRow: AgentMessage;
-  conversation: ConversationType;
-  userMessage: UserMessageType;
-  agentConfiguration: AgentConfigurationType;
-};
-
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
 //
 // TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage, this must
 // be refactored in a follow up PR.
-async function runMultiActionsAgent(
-  {
-    authType,
-    conversationId,
-    userMessageId,
-    agentMessageId,
-    isLegacyAgent,
-    runIds,
-    step,
-    functionCallStepContentIds,
-    autoRetryCount = 0,
-  }: {
-    authType: AuthenticatorType;
-    conversationId: string;
-    userMessageId: string;
-    agentMessageId: string;
-    isLegacyAgent: boolean;
-    runIds: string[];
-    step: number;
-    functionCallStepContentIds: Record<string, ModelId>;
-    autoRetryCount?: number;
-  },
-  {
-    agentConfiguration,
-    agentMessage,
-    agentMessageRow,
-    conversation,
-    userMessage,
-  }: RunAgentInMemoryData
-): Promise<{
+async function runMultiActionsAgent({
+  authType,
+  runAgentArgs,
+  runIds,
+  step,
+  functionCallStepContentIds,
+  autoRetryCount = 0,
+}: {
+  authType: AuthenticatorType;
+  runAgentArgs: RunAgentArgs;
+  runIds: string[];
+  step: number;
+  functionCallStepContentIds: Record<string, ModelId>;
+  autoRetryCount?: number;
+}): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
 } | null> {
-  const maxStepsPerRun = isLegacyAgent ? 1 : agentConfiguration.maxStepsPerRun;
-  const isLastGenerationIteration = step === maxStepsPerRun;
+  const {
+    agentConfiguration,
+    conversation,
+    userMessage,
+    agentMessage,
+    agentMessageRow,
+  } = getRunAgentData(runAgentArgs);
+
+  const now = Date.now();
+
+  const localLogger = logger.child({
+    workspaceId: conversation.owner.sId,
+    conversationId: conversation.sId,
+    multiActionLoopIteration: step,
+  });
+
+  localLogger.info("Starting multi-action loop iteration");
+
+  const isLegacyAgent = isLegacyAgentConfiguration(agentConfiguration);
+  if (isLegacyAgent && step !== 0) {
+    // legacy agents stop after one step
+    return null;
+  }
+
+  const isLastGenerationIteration = step === agentConfiguration.maxStepsPerRun;
 
   const agentActions =
     // If we already executed the maximum number of actions, we don't run anymore.
@@ -631,26 +585,14 @@ async function runMultiActionsAgent(
       );
 
       // Recursively retry with incremented count
-      return runMultiActionsAgent(
-        {
-          authType,
-          conversationId: conversation.sId,
-          userMessageId: userMessage.sId,
-          agentMessageId: agentMessage.sId,
-          isLegacyAgent,
-          runIds,
-          step,
-          functionCallStepContentIds,
-          autoRetryCount: autoRetryCount + 1,
-        },
-        {
-          agentConfiguration,
-          conversation,
-          userMessage,
-          agentMessage,
-          agentMessageRow,
-        }
-      );
+      return runMultiActionsAgent({
+        authType,
+        runAgentArgs,
+        runIds,
+        step,
+        functionCallStepContentIds,
+        autoRetryCount: autoRetryCount + 1,
+      });
     }
 
     await publishAgentError({
@@ -964,6 +906,12 @@ async function runMultiActionsAgent(
   }
 
   // We have actions.
+  localLogger.info(
+    {
+      elapsed: Date.now() - now,
+    },
+    "[ASSISTANT_TRACE] Action inputs generation"
+  );
 
   if (isLastGenerationIteration) {
     await publishAgentError({
@@ -1091,10 +1039,8 @@ async function runMultiActionsAgent(
 async function runAction(
   authType: AuthenticatorType,
   {
-    configuration,
+    runAgentArgs,
     actionConfiguration,
-    conversation,
-    agentMessage,
     inputs,
     functionCallId,
     step,
@@ -1102,13 +1048,9 @@ async function runAction(
     stepActions,
     citationsRefsOffset,
     stepContentId,
-    // TODO(DURABLE-AGENTS 2025-07-10): DRY those arguments with agentMessage to stick with only one
-    agentMessageRow,
   }: {
-    configuration: AgentConfigurationType;
+    runAgentArgs: RunAgentArgs;
     actionConfiguration: ActionConfigurationType;
-    conversation: ConversationType;
-    agentMessage: AgentMessageType;
     inputs: Record<string, string | boolean | number>;
     functionCallId: string | null;
     step: number;
@@ -1116,16 +1058,18 @@ async function runAction(
     stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
     stepContentId?: ModelId;
-    agentMessageRow: AgentMessage;
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
+
+  const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
+    getRunAgentData(runAgentArgs);
 
   if (isMCPToolConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(auth, {
-      agentConfiguration: configuration,
+      agentConfiguration: agentConfiguration,
       conversation,
       agentMessage,
       rawInputs: inputs,
@@ -1144,7 +1088,7 @@ async function runAction(
             {
               type: "agent_error",
               created: event.created,
-              configurationId: configuration.sId,
+              configurationId: agentConfiguration.sId,
               messageId: agentMessage.sId,
               error: {
                 code: event.error.code,
@@ -1163,7 +1107,7 @@ async function runAction(
             {
               type: "agent_action_success",
               created: event.created,
-              configurationId: configuration.sId,
+              configurationId: agentConfiguration.sId,
               messageId: agentMessage.sId,
               action: event.action,
             },
@@ -1192,6 +1136,13 @@ async function runAction(
           assertNever(event);
       }
     }
+
+    // TODO(DURABLE-AGENTS 2025-07-21): Avoid this in-function mutation
+    citationsRefsOffset += getCitationsCount({
+      agentConfiguration: agentConfiguration,
+      stepActions: stepActions,
+      stepActionIndex: stepActionIndex,
+    });
   } else {
     assertNever(actionConfiguration);
   }

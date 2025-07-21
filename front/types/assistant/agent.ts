@@ -12,7 +12,13 @@ import type { UserType } from "@app/types/user";
 
 import type { ModelId } from "../shared/model_id";
 import type { ModelIdType, ModelProviderIdType } from "./assistant";
-import type { AgentActionType, AgentMessageType } from "./conversation";
+import type {
+  AgentActionType,
+  AgentMessageType,
+  ConversationType,
+  UserMessageType,
+} from "./conversation";
+import { AgentMessage } from "@app/lib/models/assistant/conversation";
 
 /**
  * Agent configuration
@@ -309,3 +315,38 @@ export type AgentStepContentEvent = {
   index: number;
   content: TextContentType | FunctionCallContentType | ReasoningContentType;
 };
+
+/**
+ * Run agent arguments
+ */
+
+export type RunAgentIdArgs = {
+  agentMessageId: string;
+  conversationId: string;
+  userMessageId: string;
+};
+
+export type RunAgentFullArgs = {
+  agentMessage: AgentMessageType;
+  agentMessageRow: AgentMessage;
+  conversation: ConversationType;
+  userMessage: UserMessageType;
+  agentConfiguration: AgentConfigurationType;
+};
+
+export type RunAgentArgs =
+  | {
+      sync: true;
+      inMemoryData: RunAgentFullArgs;
+    }
+  | {
+      sync: false;
+      idArgs: RunAgentIdArgs;
+    };
+
+export function getRunAgentData(runAgentArgs: RunAgentArgs): RunAgentFullArgs {
+  if (runAgentArgs.sync) {
+    return runAgentArgs.inMemoryData;
+  }
+  throw new Error("Not implemented");
+}
