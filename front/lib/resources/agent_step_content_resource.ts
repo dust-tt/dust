@@ -429,18 +429,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     value: AgentContentItemType;
   }): Promise<AgentStepContentResource> {
     return frontSequelize.transaction(async (transaction: Transaction) => {
-      // Acquire advisory lock for this step-index combination
-      const hash = md5(
-        `agent_step_content_version_${agentMessageId}_${step}_${index}`
-      );
-
-      // We need to set a lock directly.
-      // eslint-disable-next-line dust/no-raw-sql
-      await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
-        transaction,
-        replacements: { key: parseInt(hash, 16) % 9999999999 },
-      });
-
       const existingContent = await AgentStepContentModel.findAll({
         where: {
           agentMessageId,
