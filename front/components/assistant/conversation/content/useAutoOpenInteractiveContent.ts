@@ -27,6 +27,21 @@ export function useAutoOpenInteractiveContent({
 }: UseAutoOpenInteractiveContentProps) {
   const { openContent } = useInteractiveContentContext();
 
+  // Track the last opened fileId to prevent double-opening glitch.
+  //
+  // Problem: Progress notifications and generated files represent the same content but have
+  // different hash formats:
+  // - Progress notifications: "fileId@updatedAt" (includes timestamp for real-time refresh)
+  // - Generated files: "fileId" (no updatedAt)
+  //
+  // Without tracking, the hook would open the drawer twice:
+  // 1. Progress phase: opens with "fileId@timestamp"
+  // 2. Completion phase: progress clears, opens again with "fileId"
+  //
+  // Solution: Track opened fileIds to prevent progress→generated blinks while still
+  // allowing generated→progress refreshes (when file is updated with new timestamp).
+  const lastOpenedFileIdRef = React.useRef<string | null>(null);
+
   // Get interactive files from progress notifications.
   const interactiveFilesFromProgress = React.useMemo(
     () =>
@@ -54,10 +69,11 @@ export function useAutoOpenInteractiveContent({
   );
 
   React.useEffect(() => {
-    // Handle progress notifications - always open drawer (real-time updates).
+    // Handle progress notifications - always open drawer (supports generated->progress refresh).
     if (interactiveFilesFromProgress.length > 0) {
       const [firstFile] = interactiveFilesFromProgress;
       if (firstFile?.fileId) {
+        lastOpenedFileIdRef.current = firstFile.fileId;
         // Always use updatedAt for real-time updates to trigger refresh.
         openContent(firstFile.fileId, firstFile.updatedAt);
       }
@@ -65,7 +81,10 @@ export function useAutoOpenInteractiveContent({
     // Handle completed files - only open drawer on last message.
     else if (completedInteractiveFiles.length > 0 && isLastMessage) {
       const [firstFile] = completedInteractiveFiles;
-      if (firstFile?.fileId) {
+      const isNotAlreadyOpenedOnFile =
+        lastOpenedFileIdRef.current !== firstFile.fileId;
+      if (firstFile?.fileId && isNotAlreadyOpenedOnFile) {
+        lastOpenedFileIdRef.current = firstFile.fileId;
         // Skip updatedAt for completed files since they're final state.
         openContent(firstFile.fileId);
       }
@@ -76,6 +95,11 @@ export function useAutoOpenInteractiveContent({
     isLastMessage,
     openContent,
   ]);
+
+  // Reset tracking when message changes.
+  React.useEffect(() => {
+    lastOpenedFileIdRef.current = null;
+  }, [agentMessageToRender.sId]);
 
   return {
     interactiveFiles: completedInteractiveFiles,

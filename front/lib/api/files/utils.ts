@@ -6,7 +6,10 @@ import { pipeline } from "stream/promises";
 
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import type {
+  FileResource,
+  FileVersion,
+} from "@app/lib/resources/file_resource";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -106,16 +109,14 @@ class MemoryWritable extends Writable {
 
 export async function getFileContent(
   auth: Authenticator,
-  file: FileResource
+  file: FileResource,
+  version: FileVersion = "processed"
 ): Promise<string | null> {
   // Create a stream to hold the content of the file
   const writableStream = new MemoryWritable();
 
   // Read from the processed file
-  await pipeline(
-    file.getReadStream({ auth, version: "processed" }),
-    writableStream
-  );
+  await pipeline(file.getReadStream({ auth, version }), writableStream);
 
   const content = writableStream.getContent();
 

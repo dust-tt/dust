@@ -1,3 +1,4 @@
+import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { InteractiveFileContentType, Result } from "@app/types";
@@ -83,15 +84,70 @@ export async function createClientExecutableFile(
   }
 }
 
-export async function updateClientExecutableFile(
+export async function editClientExecutableFile(
   auth: Authenticator,
   params: {
-    content: string;
     fileId: string;
+    oldString: string;
+    newString: string;
+    expectedReplacements?: number;
   }
-): Promise<Result<FileResource, Error>> {
-  const { fileId, content } = params;
+): Promise<
+  Result<{ fileResource: FileResource; replacementCount: number }, Error>
+> {
+  const { fileId, oldString, newString, expectedReplacements = 1 } = params;
 
+  try {
+    // Fetch the existing file.
+    const fileContentResult = await getClientExecutableFileContent(
+      auth,
+      fileId
+    );
+    if (fileContentResult.isErr()) {
+      return fileContentResult;
+    }
+    const { fileResource, content: currentContent } = fileContentResult.value;
+
+    // Count occurrences of oldString.
+    const regex = new RegExp(
+      oldString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+      "g"
+    );
+    const matches = currentContent.match(regex);
+    const occurrences = matches ? matches.length : 0;
+
+    if (occurrences === 0) {
+      return new Err(new Error(`String not found in file: "${oldString}"`));
+    }
+
+    if (occurrences !== expectedReplacements) {
+      return new Err(
+        new Error(
+          `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`
+        )
+      );
+    }
+
+    // Perform the replacement.
+    const updatedContent = currentContent.replace(regex, newString);
+
+    // Upload the updated content.
+    await fileResource.uploadContent(auth, updatedContent);
+
+    return new Ok({ fileResource, replacementCount: occurrences });
+  } catch (error) {
+    return new Err(
+      new Error(
+        `Failed to update client executable file '${fileId}': ${normalizeError(error)}`
+      )
+    );
+  }
+}
+
+export async function getClientExecutableFileContent(
+  auth: Authenticator,
+  fileId: string
+): Promise<Result<{ fileResource: FileResource; content: string }, Error>> {
   try {
     // Fetch the existing file.
     const fileResource = await FileResource.fetchById(auth, fileId);
@@ -99,24 +155,27 @@ export async function updateClientExecutableFile(
       return new Err(new Error(`File not found: ${fileId}`));
     }
 
-    // Check if it's a file with an internal MIME type.
+    // Check if it's an interactive file.
     if (fileResource.contentType !== clientExecutableContentType) {
       return new Err(
         new Error(
-          `File '${fileId}' is not a client executable file ` +
+          `File '${fileId}' is not an interactive content file ` +
             `(content type: ${fileResource.contentType})`
         )
       );
     }
 
-    // Upload new content directly.
-    await fileResource.uploadContent(auth, content);
+    // Get the file content.
+    const content = await getFileContent(auth, fileResource, "original");
+    if (!content) {
+      return new Err(new Error(`Failed to read content from file '${fileId}'`));
+    }
 
-    return new Ok(fileResource);
+    return new Ok({ fileResource, content });
   } catch (error) {
     return new Err(
       new Error(
-        `Failed to update client executable file '${fileId}': ${normalizeError(error)}`
+        `Failed to retrieve file content for '${fileId}': ${normalizeError(error)}`
       )
     );
   }
