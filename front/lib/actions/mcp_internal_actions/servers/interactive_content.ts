@@ -162,7 +162,7 @@ const createServer = (
       "Performs single substitution by default, or multiple substitutions when " +
       "`expected_replacements` is defined. This function demands comprehensive contextual " +
       "information surrounding the target modification to ensure accurate targeting. " +
-      `Always utilize the ${RETRIEVE_INTERACTIVE_FILE_TOOL_NAME} tool to review the file's ` +
+      `Use the ${RETRIEVE_INTERACTIVE_FILE_TOOL_NAME} tool to review the file's ` +
       "existing content prior to executing any text substitution. Requirements: " +
       "1. `old_string` MUST contain the precise literal content for substitution " +
       "(preserving all spacing, formatting, line breaks). " +
@@ -265,7 +265,7 @@ const createServer = (
     RETRIEVE_INTERACTIVE_FILE_TOOL_NAME,
     "Retrieve the current content of an existing interactive file by its file ID. " +
       "Use this to read back the content of interactive files you have previously created or " +
-      `updated. Always use this tool before calling interactive_content${EDIT_INTERACTIVE_FILE_TOOL_NAME} to ` +
+      `updated. Use this tool before calling ${EDIT_INTERACTIVE_FILE_TOOL_NAME} to ` +
       "understand the current file state and identify the exact text to replace.",
     {
       file_id: z

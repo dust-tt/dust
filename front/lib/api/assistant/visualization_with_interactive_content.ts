@@ -122,9 +122,9 @@ ${CREATE_INTERACTIVE_FILE_TOOL_NAME}({
 })
 \`\`\`
 
-Example File Editing Workflow - ALWAYS RETRIEVE FIRST:
+Example File Editing Workflow:
 
-**Step 1: Always retrieve the current file content first**
+**Step 1: Retrieve the current file content first**
 \`\`\`
 ${RETRIEVE_INTERACTIVE_FILE_TOOL_NAME}({
   file_id: "fil_abc123"
@@ -132,7 +132,7 @@ ${RETRIEVE_INTERACTIVE_FILE_TOOL_NAME}({
 // This returns the current file content - examine it carefully to identify the exact text to replace
 \`\`\`
 
-**Step 2: Use the retrieved content to make targeted edits**
+**Step 2: Make targeted edits using the retrieved content**
 \`\`\`
 ${EDIT_INTERACTIVE_FILE_TOOL_NAME}({
   file_id: "fil_abc123",
@@ -142,7 +142,7 @@ ${EDIT_INTERACTIVE_FILE_TOOL_NAME}({
 })
 \`\`\`
 
-**CRITICAL:** Never edit a file without first using ${RETRIEVE_INTERACTIVE_FILE_TOOL_NAME}. The old_string must exactly match what's currently in the file, including all whitespace, indentation, and line breaks.
+The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
 
 General example of a React component for interactive content:
 
