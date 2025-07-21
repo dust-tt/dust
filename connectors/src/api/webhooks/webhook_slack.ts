@@ -112,7 +112,12 @@ const _webhookSlackAPIHandler = async (
           await withTrace({
             "slack.team_id": teamId,
             "slack.app": "slack",
-          })(handleChatBot)(req, res, logger);
+          })(handleChatBot)(req, res, {
+            // We don't want to create a channel in the DB if it's not there. It will be created
+            // when the slack message is being indexed.
+            createChannelInDbIfMissing: false,
+            logger,
+          });
           break;
         }
         /**
@@ -169,7 +174,12 @@ const _webhookSlackAPIHandler = async (
             await withTrace({
               "slack.team_id": teamId,
               "slack.app": "slack",
-            })(handleChatBot)(req, res, logger);
+            })(handleChatBot)(req, res, {
+              // We don't want to create a channel in the DB if it's not there. It will be created
+              // when the slack message is being indexed.
+              createChannelInDbIfMissing: false,
+              logger,
+            });
             break;
           } else if (event.channel_type === "channel") {
             if (!event.channel) {

@@ -31,6 +31,7 @@ import {
   getBotUserIdMemoized,
   getUserName,
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
+import { ensureSlackChannelExistsInDb } from "@connectors/connectors/slack/lib/channels";
 import {
   isSlackWebAPIPlatformError,
   SlackExternalUserError,
@@ -108,7 +109,8 @@ export async function getSlackConnector(params: BotAnswerParams) {
 
 export async function botAnswerMessage(
   message: string,
-  params: BotAnswerParams
+  params: BotAnswerParams,
+  { createChannelInDbIfMissing }: { createChannelInDbIfMissing?: boolean } = {}
 ): Promise<Result<undefined, Error>> {
   const { slackChannel, slackMessageTs, slackTeamId } = params;
   const connectorRes = await getSlackConnector(params);
@@ -123,7 +125,8 @@ export async function botAnswerMessage(
       undefined,
       params,
       connector,
-      slackConfig
+      slackConfig,
+      { createChannelInDbIfMissing }
     );
 
     await processErrorResult(res, params, connector);
@@ -463,7 +466,8 @@ async function answerMessage(
     slackThreadTs,
   }: BotAnswerParams,
   connector: ConnectorResource,
-  slackConfig: SlackConfigurationResource
+  slackConfig: SlackConfigurationResource,
+  { createChannelInDbIfMissing }: { createChannelInDbIfMissing?: boolean } = {}
 ): Promise<Result<AgentMessageSuccessEvent | undefined, Error>> {
   let lastSlackChatBotMessage: SlackChatBotMessage | null = null;
   if (slackThreadTs) {
@@ -560,6 +564,13 @@ async function answerMessage(
   const slackUserIdOrBotId = slackUserId || slackBotId;
   if (!slackUserIdOrBotId) {
     throw new Error("Failed to get slack user id or bot id");
+  }
+
+  if (createChannelInDbIfMissing) {
+    await ensureSlackChannelExistsInDb(slackClient, {
+      channelId: slackChannel,
+      connectorId: connector.id,
+    });
   }
 
   const slackChatBotMessage = await SlackChatBotMessage.create({

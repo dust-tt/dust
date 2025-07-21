@@ -92,7 +92,7 @@ const _webhookSlackBotAPIHandler = async (
           await withTrace({
             "slack.team_id": teamId,
             "slack.app": "slack_bot",
-          })(handleChatBot)(req, res, logger);
+          })(handleChatBot)(req, res, { logger });
           break;
         }
         /**
@@ -149,7 +149,7 @@ const _webhookSlackBotAPIHandler = async (
             await withTrace({
               "slack.team_id": teamId,
               "slack.app": "slack_bot",
-            })(handleChatBot)(req, res, logger);
+            })(handleChatBot)(req, res, { logger });
           }
           break;
         }

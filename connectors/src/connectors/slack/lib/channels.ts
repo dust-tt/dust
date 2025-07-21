@@ -412,3 +412,42 @@ export async function getChannelById(
 
   return res.channel;
 }
+
+export async function ensureSlackChannelExistsInDb(
+  slackClient: WebClient,
+  {
+    channelId,
+    connectorId,
+  }: {
+    channelId: string;
+    connectorId: ModelId;
+  }
+) {
+  const channelInDb = await SlackChannel.findOne({
+    where: {
+      connectorId,
+      slackChannelId: channelId,
+    },
+  });
+
+  if (channelInDb) {
+    return channelInDb;
+  }
+
+  const channel = await getChannelById(slackClient, connectorId, channelId);
+  if (!channel) {
+    throw new Error(`No channel found for id ${channelId}`);
+  }
+
+  if (!channel.name) {
+    throw new Error(`No name found for channel ${channelId}`);
+  }
+
+  await SlackChannel.create({
+    connectorId,
+    slackChannelId: channelId,
+    slackChannelName: channel.name,
+    permission: "read_write",
+    private: channel.is_private || false,
+  });
+}

@@ -110,7 +110,10 @@ export const withTrace =
 export async function handleChatBot(
   req: Request,
   res: Response,
-  logger: Logger
+  {
+    createChannelInDbIfMissing = true,
+    logger,
+  }: { createChannelInDbIfMissing?: boolean; logger: Logger }
 ) {
   const { event } = req.body;
 
@@ -170,7 +173,9 @@ export async function handleChatBot(
     slackMessageTs,
     slackThreadTs,
   };
-  const botRes = await botAnswerMessage(slackMessage, params);
+  const botRes = await botAnswerMessage(slackMessage, params, {
+    createChannelInDbIfMissing,
+  });
   if (botRes.isErr()) {
     logger.error(
       {
