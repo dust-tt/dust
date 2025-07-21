@@ -302,6 +302,22 @@ const CliChat: FC<CliChatProps> = ({
     attachFile: showAttachDialog,
   });
 
+  // Cache Edit tool when agent is selected, since approval is asked anyways
+  // TODO: add check for the fact that we are using fs server when implemented
+  useEffect(() => {
+    const cacheEditTool = async () => {
+      if (selectedAgent) {
+        // Pre-cache the Edit tool to avoid approval prompts
+        await toolsCache.setCachedApproval({
+          agentName: selectedAgent.name,
+          mcpServerName: "fs-cli",
+          toolName: "edit_file",
+        });
+      }
+    };
+    void cacheEditTool();
+  }, [selectedAgent]);
+
   // Handle agent search when component mounts
   useEffect(() => {
     if (!agentSearch || !allAgents || allAgents.length === 0 || selectedAgent) {
