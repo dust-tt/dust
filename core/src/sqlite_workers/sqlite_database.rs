@@ -1,3 +1,4 @@
+use crate::info;
 use crate::{
     databases::{
         database::QueryResult,
@@ -18,7 +19,6 @@ use tempfile::NamedTempFile;
 use thiserror::Error;
 use tokio::{task, time::timeout};
 use tokio_stream::StreamExt;
-use tracing::info;
 
 pub struct SqliteDatabase {
     conn: Option<Arc<Mutex<Connection>>>,

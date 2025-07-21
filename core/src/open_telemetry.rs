@@ -9,6 +9,80 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{filter::EnvFilter, layer::SubscriberExt, registry::LookupSpan, Layer};
 
+/// Macro versions for structured logging with timestamps
+///
+/// These macros solve the timestamp batching issue when using Datadog Agent's OTLP ingestion.
+///
+/// **Problem**: When using Datadog Agent (instead of a full OpenTelemetry Collector),
+/// the OpenTelemetry Rust appender doesn't set individual log timestamps, causing all
+/// logs in a batch to appear with the same timestamp (when the batch was flushed) rather
+/// than their actual creation times.
+///
+/// **Solution**: These macros automatically add a `timestamp` attribute with the real
+/// creation time in UNIX milliseconds format to every log entry.
+///
+/// **Why UNIX milliseconds**:
+/// - Datadog's automatic date remapping recognizes UNIX milliseconds in the `timestamp` field
+/// - This ensures proper chronological ordering in Datadog logs
+/// - Compatible with Datadog's ingestion pipeline without requiring additional configuration
+///
+/// **Usage**: Drop-in replacements for tracing macros:
+/// ```rust
+/// // Before: tracing::info!(field = value, "message");
+/// // After:  info!(field = value, "message");
+/// ```
+#[macro_export]
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        tracing::debug!(
+            timestamp = %std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+                .as_millis(),
+            $($arg)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! info {
+    ($($arg:tt)*) => {
+        tracing::info!(
+            timestamp = %std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+                .as_millis(),
+            $($arg)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! warn {
+    ($($arg:tt)*) => {
+        tracing::warn!(
+            timestamp = %std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+                .as_millis(),
+            $($arg)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! error {
+    ($($arg:tt)*) => {
+        tracing::error!(
+            timestamp = %std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+                .as_millis(),
+            $($arg)*
+        )
+    };
+}
+
 fn build_logger_text<S>() -> Box<dyn Layer<S> + Send + Sync + 'static>
 where
     S: Subscriber + for<'a> LookupSpan<'a>,

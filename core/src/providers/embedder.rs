@@ -3,12 +3,12 @@ use std::fmt;
 use crate::cached_request::CachedRequest;
 use crate::providers::provider::{provider, with_retryable_back_off, ProviderID};
 use crate::run::Credentials;
+use crate::{error, info};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::{error, info};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct EmbedderVector {

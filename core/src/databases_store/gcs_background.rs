@@ -1,9 +1,9 @@
+use crate::error;
 use anyhow::{anyhow, Result};
 use async_std::stream::StreamExt;
 use cloud_storage::{ListRequest, Object};
 use futures::future::try_join_all;
 use std::collections::HashMap;
-use tracing::error;
 use uuid::Uuid;
 
 use crate::{

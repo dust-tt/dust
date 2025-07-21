@@ -3,6 +3,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::info;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
@@ -10,7 +11,6 @@ use redis::AsyncCommands;
 use rslock::LockManager;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::info;
 
 use crate::databases::table_upserts_background_worker::{
     TableUpsertActivityData, REDIS_CLIENT, REDIS_LOCK_TTL_SECONDS, REDIS_TABLE_UPSERT_HASH_NAME,
@@ -286,7 +286,7 @@ impl Table {
                 // For now, we don't propagate failures since it's just a shadow operation
                 let gcs_store = GoogleCloudStorageDatabasesStore::new();
                 if let Err(e) = gcs_store.delete_table_data(&self).await {
-                    tracing::error!("Failed to delete table data from GCS: {:?}", e);
+                    crate::error!("Failed to delete table data from GCS: {:?}", e);
                 }
             }
         }
@@ -443,7 +443,7 @@ impl LocalTable {
                 )
                 .await
             {
-                tracing::error!("Failed to upsert rows to GCS or queue work: {:?}", e);
+                crate::error!("Failed to upsert rows to GCS or queue work: {:?}", e);
             }
         }
 
@@ -864,7 +864,7 @@ impl LocalTable {
                 // For now, we don't propagate failures since it's just a shadow operation
                 let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
                 if let Err(e) = self.schedule_background_upsert_or_delete(rows).await {
-                    tracing::error!("delete_row: failed to schedule background work: {:?}", e);
+                    crate::error!("delete_row: failed to schedule background work: {:?}", e);
                 }
             } else {
                 info!("delete_row: table not migrated to CSV, skipping GCS delete non-truncate");
@@ -1096,7 +1096,7 @@ impl Row {
                     }) {
                         Ok(result) => result.ok(),
                         Err(e) => {
-                            tracing::warn!("Panic while parsing date '{}': {:?}", trimmed, e);
+                            crate::warn!("Panic while parsing date '{}': {:?}", trimmed, e);
                             None
                         }
                     };

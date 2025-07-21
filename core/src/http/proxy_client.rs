@@ -1,6 +1,6 @@
+use crate::{error, info};
 use lazy_static::lazy_static;
 use std::env;
-use tracing::{error, info};
 
 lazy_static! {
     static ref UNTRUSTED_EGRESS_PROXY: Option<String> = {
