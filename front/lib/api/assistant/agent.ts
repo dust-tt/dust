@@ -86,7 +86,6 @@ async function processEventForDatabase(
         errorMessage: event.error.message,
         errorMetadata: event.error.metadata,
       });
-      // Create error step content to track which step the error occurred at
       await AgentStepContentResource.makeNew({
         workspaceId: agentMessageRow.workspaceId,
         agentMessageId: agentMessageRow.id,

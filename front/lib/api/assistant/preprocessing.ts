@@ -124,7 +124,7 @@ export async function renderConversationForModel(
               conversationId: conversation.sId,
               agentMessageId: m.sId,
             },
-            "Unexpected state in renderConversationForModelMultiActions, agent message step with error content"
+            "agent message step with error content in renderConversationForModelMultiActions"
           );
           continue;
         }
