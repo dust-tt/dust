@@ -927,7 +927,7 @@ async function runMultiActionsAgent(
     });
 
     // If this is a function call content, track the step content ID
-    if (content.type === "function_call" && content.value.id) {
+    if (content.type === "function_call") {
       updatedFunctionCallStepContentIds[content.value.id] = stepContent.id;
     }
   }
