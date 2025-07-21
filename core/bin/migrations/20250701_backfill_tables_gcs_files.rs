@@ -18,6 +18,7 @@ use dust::{
 use futures::future::try_join_all;
 use serde_json::Value;
 use std::collections::HashMap;
+use tokio::time::{timeout, Duration};
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -233,7 +234,23 @@ async fn process_one_table(
     println!("Processing table id {}: {}", table_id, table.unique_id());
     let mut now = utils::now();
 
-    let (rows, _count) = db_store.list_table_rows(&table, None).await?;
+    // For now, we bail out if it takes too long to list the rows. This way, we can go through
+    // all the smaller tables first, and then come back to the larger ones.
+    let (rows, _count) = match timeout(
+        Duration::from_secs(10),
+        db_store.list_table_rows(&table, None),
+    )
+    .await
+    {
+        Ok(result) => result?,
+        Err(_) => {
+            println!(
+                "******** Timeout while listing table rows for {}",
+                table.unique_id()
+            );
+            return Ok(());
+        }
+    };
 
     let list_table_rows_duration = utils::now() - now;
     now = utils::now();
