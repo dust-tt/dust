@@ -77,7 +77,8 @@ export const useFileSystemServer = async (
       onServerIdReceived(serverId);
     },
     "fs-cli",
-    false
+    false,
+    0
   );
 
   try {
