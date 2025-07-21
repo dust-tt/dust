@@ -71,6 +71,10 @@ export function ReasoningEffortSubmenu() {
     modelConfig.maximumReasoningEffort
   );
 
+  if (availableEfforts.length <= 1) {
+    return <></>;
+  }
+
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger label="Reasoning effort" />
