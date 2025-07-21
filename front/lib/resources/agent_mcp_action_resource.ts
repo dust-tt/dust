@@ -9,9 +9,9 @@ import {
   ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -65,7 +65,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
 
   toJSON() {
     const stepContentSId = this.stepContentId
-      ? makeSId("agent_step_content", {
+      ? AgentStepContentResource.modelIdToSId({
           id: this.stepContentId,
           workspaceId: this.workspaceId,
         })
