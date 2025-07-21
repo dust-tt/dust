@@ -185,6 +185,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
 
   declare params: Record<string, unknown>;
 
+  // TODO(durable-agents): make this non nullable.
   declare functionCallId: string | null;
   declare functionCallName: string | null;
 
