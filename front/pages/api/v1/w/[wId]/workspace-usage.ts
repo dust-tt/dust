@@ -15,7 +15,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import {
   getAssistantsUsageData,
   getBuildersUsageData,
-  getFeedbacksUsageData,
+  getFeedbackUsageData,
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
@@ -272,7 +272,7 @@ async function fetchUsageData({
       };
     case "feedbacks":
       return {
-        feedbacks: await getFeedbacksUsageData(start, end, workspace),
+        feedbacks: await getFeedbackUsageData(start, end, workspace),
       };
     case "all":
       const [users, assistant_messages, builders, assistants, feedbacks] =
@@ -281,7 +281,7 @@ async function fetchUsageData({
           getMessageUsageData(start, end, workspace),
           getBuildersUsageData(start, end, workspace),
           getAssistantsUsageData(start, end, workspace),
-          getFeedbacksUsageData(start, end, workspace),
+          getFeedbackUsageData(start, end, workspace),
         ]);
       return {
         users,
