@@ -1,4 +1,7 @@
-import type { GetWorkspaceUsageRequestType, UsageTableType } from "@dust-tt/client";
+import type {
+  GetWorkspaceUsageRequestType,
+  UsageTableType,
+} from "@dust-tt/client";
 import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
 import { parse as parseCSV } from "csv-parse/sync";
 import { endOfMonth } from "date-fns/endOfMonth";
