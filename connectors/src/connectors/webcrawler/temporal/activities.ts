@@ -18,6 +18,7 @@ import {
   getFolderForUrl,
   getParentsForPage,
   isTopFolder,
+  shouldCrawlLink,
   stableIdForUrl,
 } from "@connectors/connectors/webcrawler/lib/utils";
 import { apiConfig } from "@connectors/lib/api/config";
@@ -305,7 +306,10 @@ async function startBatchScrapeJob(
     return;
   }
 
-  const filteredUrl = mapUrlResult.links ?? [];
+  const filteredUrl =
+    mapUrlResult.links
+      ?.filter((link) => shouldCrawlLink(link, webCrawlerConfig))
+      ?.slice(0, webCrawlerConfig.maxPageToCrawl ?? WEBCRAWLER_MAX_PAGES) ?? [];
   const batchScrapeResponse = await firecrawlApp.asyncBatchScrapeUrls(
     filteredUrl,
     getFirecrawlScrapeOptions(webCrawlerConfig),
