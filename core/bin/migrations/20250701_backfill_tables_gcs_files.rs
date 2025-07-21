@@ -18,7 +18,11 @@ use dust::{
 use futures::future::try_join_all;
 use serde_json::Value;
 use std::collections::HashMap;
+use tikv_jemallocator::Jemalloc;
 use tokio::time::{timeout, Duration};
+
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
 
 #[derive(Parser, Debug)]
 struct Args {
