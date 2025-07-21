@@ -43,9 +43,20 @@ makeScript(
       demandOption: true,
       describe: "Path to a CSV file with columns: notion_id,type",
     },
+    name: {
+      alias: "n",
+      type: "string",
+      demandOption: true,
+      describe: "The name suffix for the workflow",
+    },
   },
   async (argv, logger) => {
-    const { execute, connectorId: connectorIdString, file: filePath } = argv;
+    const {
+      execute,
+      connectorId: connectorIdString,
+      file: filePath,
+      name,
+    } = argv;
     const connectorId = parseInt(connectorIdString, 10) as ModelId;
 
     // Read and parse CSV file
@@ -143,7 +154,7 @@ makeScript(
     }
 
     const temporalClient = await getTemporalClient();
-    const workflowId = `notion-check-resources-accessibility-${connectorId}-${Date.now()}`;
+    const workflowId = `notion-check-resources-accessibility-${connectorId}-${name}`;
 
     logger.info(
       {
@@ -165,6 +176,12 @@ makeScript(
         ],
         taskQueue: QUEUE_NAME,
         workflowId,
+        searchAttributes: {
+          connectorId: [connectorId],
+        },
+        memo: {
+          connectorId,
+        },
       }
     );
 

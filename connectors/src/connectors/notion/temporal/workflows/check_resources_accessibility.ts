@@ -22,7 +22,7 @@ export async function checkResourcesAccessibilityWorkflow({
   connectorId,
   resources,
   batchSize = 100,
-  concurrency = 4,
+  concurrency = 1,
 }: CheckResourcesAccessibilityInput): Promise<void> {
   const currentBatch = resources.slice(0, batchSize);
   const remainingResources = resources.slice(batchSize);
