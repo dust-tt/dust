@@ -310,8 +310,8 @@ const CliChat: FC<CliChatProps> = ({
         // Pre-cache the Edit tool to avoid approval prompts
         await toolsCache.setCachedApproval({
           agentName: selectedAgent.name,
-          mcpServerName: "file-server",
-          toolName: "Edit",
+          mcpServerName: "fs-cli",
+          toolName: "edit_file",
         });
       }
     };
