@@ -1,4 +1,3 @@
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
   tryListMCPTools,
@@ -1026,68 +1025,66 @@ async function runMultiActionsAgent(
         });
 
         return null;
-      } else {
-        const mcpServerView =
-          await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-            auth,
-            "missing_action_catcher"
-          );
-
-        // Could happen if the internal server has not already been added
-        if (!mcpServerView) {
-          await publishAgentError({
-            code: "action_not_found",
-            message:
-              `The agent attempted to run an invalid action (${a.name}). ` +
-              `This model error can be safely retried (no server).`,
-            metadata: null,
-          });
-          return null;
-        }
-
-        logger.warn(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            actionName: a.name,
-            availableActions: availableActions.map((a) => a.name),
-          },
-          "Model attempted to run an action that is not part of the agent configuration but we'll try to catch it."
+      }
+      const mcpServerView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "missing_action_catcher"
         );
 
-        const catchAllAction: MCPToolConfigurationType = {
-          id: -1,
-          sId: generateRandomModelSId(),
-          type: "mcp_configuration" as const,
-          name: a.name,
-          originalName: a.name,
-          description: null,
-          dataSources: null,
-          tables: null,
-          childAgentId: null,
-          reasoningModel: null,
-          timeFrame: null,
-          jsonSchema: null,
-          additionalConfiguration: {},
-          mcpServerViewId: mcpServerView.sId,
-          dustAppConfiguration: null,
-          internalMCPServerId: mcpServerView.internalMCPServerId,
-          inputSchema: {},
-          availability: "auto_hidden_builder",
-          permission: "never_ask",
-          toolServerId: mcpServerView.sId,
-          mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
-        };
-
-        action = catchAllAction;
-        args = {};
+      // Could happen if the internal server has not already been added
+      if (!mcpServerView) {
+        await publishAgentError({
+          code: "action_not_found",
+          message:
+            `The agent attempted to run an invalid action (${a.name}). ` +
+            `This model error can be safely retried (no server).`,
+          metadata: null,
+        });
+        return null;
       }
+
+      logger.warn(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          actionName: a.name,
+          availableActions: availableActions.map((a) => a.name),
+        },
+        "Model attempted to run an action that is not part of the agent configuration but we'll try to catch it."
+      );
+
+      // Catch-all action.
+      action = {
+        id: -1,
+        sId: generateRandomModelSId(),
+        type: "mcp_configuration" as const,
+        name: a.name,
+        originalName: a.name,
+        description: null,
+        dataSources: null,
+        tables: null,
+        childAgentId: null,
+        reasoningModel: null,
+        timeFrame: null,
+        jsonSchema: null,
+        additionalConfiguration: {},
+        mcpServerViewId: mcpServerView.sId,
+        dustAppConfiguration: null,
+        internalMCPServerId: mcpServerView.internalMCPServerId,
+        inputSchema: {},
+        availability: "auto_hidden_builder",
+        permission: "never_ask",
+        toolServerId: mcpServerView.sId,
+        mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
+      };
+      args = {};
     }
 
     actions.push({
-      action: action!,
+      action,
       inputs: args ?? {},
       functionCallId: a.functionCallId ?? null,
     });
