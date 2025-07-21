@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
+import { normalizeError } from "@app/types";
 
 const csvSchema = z.array(
   z.object({
@@ -111,6 +112,7 @@ makeScript(
           }
         } catch (err) {
           domainRecord.missingOrg = true;
+          domainRecord.error = normalizeError(err).message;
         }
 
         return domainRecord;
