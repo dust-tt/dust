@@ -77,7 +77,7 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
     <DropdownMenuSub>
       <DropdownMenuSubTrigger label="Model selection" />
       <DropdownMenuSubContent className="w-80">
-        <DropdownMenuLabel label="Best performing models by makers" />
+        <DropdownMenuLabel label="Best performing models by providers" />
         <DropdownMenuRadioGroup value={currentModelKey}>
           {bestGeneralModels.map((modelConfig) => (
             <ModelRadioItem
