@@ -8,7 +8,8 @@ import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers"
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   createClientExecutableFile,
-  updateClientExecutableFile,
+  editClientExecutableFile,
+  getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -28,7 +29,8 @@ const serverInfo: InternalMCPServerDefinitionType = {
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
 export const CREATE_INTERACTIVE_FILE_TOOL_NAME = "create_interactive_file";
-const UPDATE_INTERACTIVE_FILE_TOOL_NAME = "update_interactive_file";
+export const EDIT_INTERACTIVE_FILE_TOOL_NAME = "edit_interactive_file";
+export const RETRIEVE_INTERACTIVE_FILE_TOOL_NAME = "retrieve_interactive_file";
 
 /**
  * Interactive Content Server - Allows the model to create and update interactive content files.
@@ -123,7 +125,7 @@ const createServer = (
                   fileId: fileResource.sId,
                   mimeType: fileResource.contentType,
                   title: fileResource.fileName,
-                  updatedAt: fileResource.updatedAt.getTime().toString(),
+                  updatedAt: fileResource.updatedAtMs.toString(),
                 },
               },
             },
@@ -155,51 +157,74 @@ const createServer = (
   );
 
   server.tool(
-    UPDATE_INTERACTIVE_FILE_TOOL_NAME,
-    "Update the content of an existing interactive content file by its file ID. Use this to " +
-      "modify or improve existing interactive content.",
+    EDIT_INTERACTIVE_FILE_TOOL_NAME,
+    "Modifies content within an interactive file by substituting specified text segments. " +
+      "Performs single substitution by default, or multiple substitutions when " +
+      "`expected_replacements` is defined. This function demands comprehensive contextual " +
+      "information surrounding the target modification to ensure accurate targeting. " +
+      `Always utilize the ${RETRIEVE_INTERACTIVE_FILE_TOOL_NAME} tool to review the file's ` +
+      "existing content prior to executing any text substitution. Requirements: " +
+      "1. `old_string` MUST contain the precise literal content for substitution " +
+      "(preserving all spacing, formatting, line breaks). " +
+      "2. `new_string` MUST contain the exact replacement content maintaining proper syntax. " +
+      "3. Include minimum 3 lines of surrounding context BEFORE and AFTER the target " +
+      "content for unique identification. " +
+      "**Critical:** Multiple matches or inexact matches will cause failure.",
     {
       file_id: z
         .string()
         .describe(
           "The ID of the interactive content file to update (e.g., 'fil_abc123')"
         ),
-      content: z
+      old_string: z
         .string()
-        .max(MAX_FILE_SIZE_BYTES)
         .describe(
-          "The updated content for the interactive file. Should be complete and ready for " +
-            "execution or interaction."
+          "The exact text to find and replace. Must match the file content exactly, " +
+            "including all spacing, formatting, and line breaks. Include surrounding context " +
+            "to ensure unique identification of the target text."
         ),
-      description: z
+      new_string: z
         .string()
+        .describe(
+          "The exact text to replace old_string with. Should maintain proper syntax " +
+            "and follow best practices for the file type."
+        ),
+      expected_replacements: z
+        .number()
+        .int()
+        .positive()
         .optional()
         .describe(
-          "Optional description of what changes were made to the interactive content (e.g., " +
-            "'Enhanced user interaction', 'Fixed functionality', 'Added new features')"
+          "Optional number of expected replacements. Defaults to 1. Use when you want " +
+            "to replace multiple identical instances of the same text."
         ),
     },
     withToolLogging(
       auth,
-      UPDATE_INTERACTIVE_FILE_TOOL_NAME,
+      EDIT_INTERACTIVE_FILE_TOOL_NAME,
       async (
-        { file_id, content, description },
+        { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
       ) => {
-        const result = await updateClientExecutableFile(auth, {
+        const result = await editClientExecutableFile(auth, {
           fileId: file_id,
-          content,
+          oldString: old_string,
+          newString: new_string,
+          expectedReplacements: expected_replacements,
         });
 
         if (result.isErr()) {
           return makeMCPToolTextError(result.error.message);
         }
 
-        const { value: fileResource } = result;
+        const { fileResource, replacementCount } = result.value;
 
-        const responseText = description
-          ? `File '${fileResource.sId}' updated successfully. ${description}`
-          : `File '${fileResource.sId}' updated successfully.`;
+        const pluralS = replacementCount === 1 ? "" : "s";
+        const responseText =
+          `File '${fileResource.sId}' updated successfully. Made ` +
+          `${replacementCount} replacement${pluralS}`;
+
+        console.log(">>> _meta", _meta);
 
         if (_meta?.progressToken) {
           const notification: MCPProgressNotificationType = {
@@ -215,7 +240,7 @@ const createServer = (
                   fileId: fileResource.sId,
                   mimeType: fileResource.contentType,
                   title: fileResource.fileName,
-                  updatedAt: fileResource.updatedAt.getTime().toString(),
+                  updatedAt: fileResource.updatedAtMs.toString(),
                 },
               },
             },
@@ -231,6 +256,46 @@ const createServer = (
             {
               type: "text",
               text: responseText,
+            },
+          ],
+        };
+      }
+    )
+  );
+
+  server.tool(
+    RETRIEVE_INTERACTIVE_FILE_TOOL_NAME,
+    "Retrieve the current content of an existing interactive file by its file ID. " +
+      "Use this to read back the content of interactive files you have previously created or " +
+      `updated. Always use this tool before calling interactive_content${EDIT_INTERACTIVE_FILE_TOOL_NAME} to ` +
+      "understand the current file state and identify the exact text to replace.",
+    {
+      file_id: z
+        .string()
+        .describe(
+          "The ID of the interactive content file to retrieve (e.g., 'fil_abc123')"
+        ),
+    },
+    withToolLogging(
+      auth,
+      RETRIEVE_INTERACTIVE_FILE_TOOL_NAME,
+      async ({ file_id }) => {
+        const result = await getClientExecutableFileContent(auth, file_id);
+
+        if (result.isErr()) {
+          return makeMCPToolTextError(result.error.message);
+        }
+
+        const { fileResource, content } = result.value;
+
+        return {
+          isError: false,
+          content: [
+            {
+              type: "text",
+              text:
+                `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
+                `successfully. Content:\n\n${content}`,
             },
           ],
         };

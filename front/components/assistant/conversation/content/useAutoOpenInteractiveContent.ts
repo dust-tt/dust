@@ -27,6 +27,9 @@ export function useAutoOpenInteractiveContent({
 }: UseAutoOpenInteractiveContentProps) {
   const { openContent } = useInteractiveContentContext();
 
+  // Track which fileId was last opened to prevent progress->generated blinks.
+  const lastOpenedFileIdRef = React.useRef<string | null>(null);
+
   // Get interactive files from progress notifications.
   const interactiveFilesFromProgress = React.useMemo(
     () =>
@@ -54,10 +57,11 @@ export function useAutoOpenInteractiveContent({
   );
 
   React.useEffect(() => {
-    // Handle progress notifications - always open drawer (real-time updates).
+    // Handle progress notifications - always open drawer (supports generated->progress refresh).
     if (interactiveFilesFromProgress.length > 0) {
       const [firstFile] = interactiveFilesFromProgress;
       if (firstFile?.fileId) {
+        lastOpenedFileIdRef.current = firstFile.fileId;
         // Always use updatedAt for real-time updates to trigger refresh.
         openContent(firstFile.fileId, firstFile.updatedAt);
       }
@@ -65,7 +69,10 @@ export function useAutoOpenInteractiveContent({
     // Handle completed files - only open drawer on last message.
     else if (completedInteractiveFiles.length > 0 && isLastMessage) {
       const [firstFile] = completedInteractiveFiles;
-      if (firstFile?.fileId) {
+      const isNotAlreadyOpenedOnFile =
+        lastOpenedFileIdRef.current !== firstFile.fileId;
+      if (firstFile?.fileId && isNotAlreadyOpenedOnFile) {
+        lastOpenedFileIdRef.current = firstFile.fileId;
         // Skip updatedAt for completed files since they're final state.
         openContent(firstFile.fileId);
       }
@@ -76,6 +83,11 @@ export function useAutoOpenInteractiveContent({
     isLastMessage,
     openContent,
   ]);
+
+  // Reset tracking when message changes.
+  React.useEffect(() => {
+    lastOpenedFileIdRef.current = null;
+  }, [agentMessageToRender.sId]);
 
   return {
     interactiveFiles: completedInteractiveFiles,

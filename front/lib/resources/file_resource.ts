@@ -216,6 +216,10 @@ export class FileResource extends BaseResource<FileModel> {
     return this.status === "failed";
   }
 
+  get updatedAtMs(): number {
+    return this.updatedAt.getTime();
+  }
+
   // Cloud storage logic.
 
   getPrivateUrl(auth: Authenticator): string {
