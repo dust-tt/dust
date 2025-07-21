@@ -62,22 +62,6 @@ export function isErrorContent(
   return content.type === "error";
 }
 
-// Type matching AgentMCPActionResource.toJSON() output
-export type AgentMCPActionType = {
-  sId: string;
-  createdAt: string;
-  functionCallName: string | null;
-  params: Record<string, unknown>;
-  executionState:
-    | "pending"
-    | "timeout"
-    | "allowed_explicitly"
-    | "allowed_implicitly"
-    | "denied";
-  isError: boolean;
-  stepContentSId?: string;
-};
-
 export type AgentStepContentType = {
   id: ModelId;
   sId: string;
