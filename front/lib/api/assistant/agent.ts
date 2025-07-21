@@ -1,6 +1,5 @@
 import assert from "assert";
 
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
   tryListMCPTools,
