@@ -275,7 +275,11 @@ async function runMultiActionsAgentLoop(
 
           if (!stepContentId) {
             localLogger.error(
-              { functionCallId, actionId: action.id },
+              {
+                functionCallId,
+                actionConfigurationId: action.sId,
+                agentConfigurationId: configuration.sId,
+              },
               "No step content for function call"
             );
           }
