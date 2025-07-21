@@ -19,6 +19,7 @@ import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_cont
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -144,7 +145,14 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           {
             model: AgentMCPActionOutputItem,
             as: "outputItems",
-            required: true,
+            required: false,
+            include: [
+              {
+                model: FileModel,
+                as: "file",
+                required: false,
+              },
+            ],
           },
         ],
       },
