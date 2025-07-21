@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { EditFileTool } from "../tools/editFile.js";
 import { ReadFileTool } from "../tools/readFile.js";
+import { RunCommandTool } from "../tools/runCommand.js";
 import { SearchContentTool } from "../tools/searchContent.js";
 import { SearchFilesTool } from "../tools/searchFiles.js";
 
@@ -26,6 +27,7 @@ export const useFileSystemServer = async (
   const searchFilesTool = new SearchFilesTool();
   const searchContentTool = new SearchContentTool();
   const editFileTool = new EditFileTool();
+  const runCommandTool = new RunCommandTool();
 
   if (diffApprovalCallback) {
     editFileTool.setDiffApprovalCallback(diffApprovalCallback);
@@ -59,6 +61,13 @@ export const useFileSystemServer = async (
     editFileTool.description,
     editFileTool.inputSchema.shape,
     editFileTool.execute.bind(editFileTool)
+  );
+
+  server.tool(
+    runCommandTool.name,
+    runCommandTool.description,
+    runCommandTool.inputSchema.shape,
+    runCommandTool.execute.bind(runCommandTool)
   );
 
   // Connect to Dust with enhanced error handling
