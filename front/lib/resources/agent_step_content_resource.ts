@@ -49,14 +49,16 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     auth: Authenticator,
     agentMessageIds: ModelId[]
   ): Promise<void> {
+    const uniqueAgentMessageIds = [...new Set(agentMessageIds)];
+
     const agentMessages = await AgentMessage.findAll({
       where: {
-        id: { [Op.in]: agentMessageIds },
+        id: { [Op.in]: uniqueAgentMessageIds },
       },
     });
 
     assert(
-      agentMessages.length !== agentMessageIds.length,
+      agentMessages.length !== uniqueAgentMessageIds.length,
       "Unexpected: Agent messages not all found"
     );
 
