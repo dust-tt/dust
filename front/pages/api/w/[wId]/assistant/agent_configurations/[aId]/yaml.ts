@@ -70,17 +70,39 @@ async function handler(
       });
     }
 
-    const yamlConfig = AgentYAMLConverter.fromBuilderFormData(formData, {
+    const yamlConfigResult = AgentYAMLConverter.fromBuilderFormData(formData, {
       agentSId,
       createdBy: user.sId,
       lastModified: new Date(),
       version: agentConfiguration.version.toString(),
     });
 
-    const yamlString = AgentYAMLConverter.toYAMLString(yamlConfig);
+    if (yamlConfigResult.isErr()) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Failed to convert form data to YAML config: ${yamlConfigResult.error.message}`,
+        },
+      });
+    }
+
+    const yamlStringResult = AgentYAMLConverter.toYAMLString(
+      yamlConfigResult.value
+    );
+
+    if (yamlStringResult.isErr()) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to convert YAML config to string: ${yamlStringResult.error.message}`,
+        },
+      });
+    }
 
     return res.status(200).json({
-      yamlContent: yamlString,
+      yamlContent: yamlStringResult.value,
     });
   } catch (error) {
     return apiError(req, res, {
