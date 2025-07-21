@@ -2,6 +2,10 @@ import * as yaml from "js-yaml";
 import { z } from "zod";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+
 import type {
   AgentYAMLAction,
   AgentYAMLConfig,
@@ -9,11 +13,7 @@ import type {
   AgentYAMLEditor,
   AgentYAMLSlackIntegration,
   AgentYAMLTag,
-} from "@app/lib/agent_yaml_converter/types";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-
+} from "./schemas";
 import { agentYAMLConfigSchema } from "./schemas";
 
 const yamlConverterMetadataSchema = z.object({
