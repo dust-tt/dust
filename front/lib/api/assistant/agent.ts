@@ -929,7 +929,7 @@ async function runMultiActionsAgent(
     }
   }
 
-  // Track retries that lead to completing successfully.
+  // Track retries that lead to completing successfully (with either function calls or generation).
   if (autoRetryCount > 0) {
     statsDClient.increment("successful_auto_retry.count", 1, [
       `retryCount:${autoRetryCount}`,
