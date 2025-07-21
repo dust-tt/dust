@@ -257,6 +257,10 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     return this.update({ actions });
   }
 
+  async setSitemap(sitemapOnly: boolean) {
+    return this.update({ sitemapOnly });
+  }
+
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
     await WebCrawlerPage.destroy({
       where: {

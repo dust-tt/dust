@@ -17,6 +17,7 @@ export class WebCrawlerConfigurationModel extends ConnectorBaseModel<WebCrawlerC
   declare lastCrawledAt: Date | null;
   declare crawlId: string | null;
   declare actions: Action[] | null;
+  declare sitemapOnly: boolean;
 }
 
 WebCrawlerConfigurationModel.init(
@@ -66,6 +67,11 @@ WebCrawlerConfigurationModel.init(
       type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: null,
+    },
+    sitemapOnly: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

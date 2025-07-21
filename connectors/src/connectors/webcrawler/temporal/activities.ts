@@ -2,11 +2,14 @@ import type {
   Action,
   CrawlScrapeOptions,
   FirecrawlDocument,
+  ScrapeParams,
 } from "@mendable/firecrawl-js";
+import type FirecrawlApp from "@mendable/firecrawl-js";
 import { FirecrawlError } from "@mendable/firecrawl-js";
 import { Context } from "@temporalio/activity";
 import { randomUUID } from "crypto";
 import path from "path";
+import type { Logger } from "pino";
 import { Op } from "sequelize";
 
 import {
@@ -91,8 +94,6 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
 
-  const firecrawlApp = getFirecrawl();
-
   const childLogger = logger.child({
     connectorId: connector.id,
   });
@@ -106,65 +107,28 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const startedAt = new Date();
   await syncStarted(connectorId, startedAt);
 
-  const customHeaders = webCrawlerConfig.getCustomHeaders();
-
-  const maxRequestsPerCrawl =
-    webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES;
-
   let rootUrl = webCrawlerConfig.url.trim();
   if (!rootUrl.startsWith("http://") && !rootUrl.startsWith("https://")) {
     rootUrl = `http://${rootUrl}`;
   }
 
+  const firecrawlApp = getFirecrawl();
+
   try {
-    const crawlerResponse = await firecrawlApp.asyncCrawlUrl(rootUrl, {
-      maxDiscoveryDepth: webCrawlerConfig.depth ?? WEBCRAWLER_MAX_DEPTH,
-      limit: maxRequestsPerCrawl,
-      crawlEntireDomain: webCrawlerConfig.crawlMode === "website",
-      maxConcurrency: 2,
-      delay: 3,
-      scrapeOptions: {
-        onlyMainContent: true,
-        formats: ["markdown"],
-        headers: customHeaders,
-        maxAge: 43_200_000, // Use last 12h of cache
-        actions: webCrawlerConfig.actions ?? undefined,
-        // Ok to `as` for now. API support actions but the SDK doesn't have the types
-        // PR: https://github.com/dust-tt/dust/pull/14308
-      } as CrawlScrapeOptions & { actions?: Action[] },
-      webhook: {
-        url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
-        metadata: {
-          connectorId: String(connectorId),
-        },
-      },
-    });
-
-    if (!crawlerResponse.success) {
-      childLogger.error(
-        {
-          url: rootUrl,
-          connectorId,
-          webCrawlerConfigId: webCrawlerConfig.id,
-        },
-        `Firecrawl crawl failed: ${crawlerResponse.error}`
-      );
-      await syncFailed(connectorId, "webcrawling_error");
+    if (webCrawlerConfig.sitemapOnly) {
+      await startBatchScrapeJob(rootUrl, {
+        webCrawlerConfig,
+        connector,
+        firecrawlApp,
+        logger: childLogger,
+      });
     } else {
-      childLogger.info(
-        { crawlerId: crawlerResponse.id, url: rootUrl },
-        "Firecrawl crawler started"
-      );
-
-      if (crawlerResponse.id) {
-        await webCrawlerConfig.updateCrawlId(crawlerResponse.id);
-      } else {
-        // Shouldn't happen, but based on the types, let's make sure
-        childLogger.warn(
-          { webCrawlerConfigId: webCrawlerConfig.id, url: rootUrl },
-          "No ID found when creating a Firecrawl crawler"
-        );
-      }
+      await startCrawlJob(rootUrl, {
+        webCrawlerConfig,
+        connector,
+        firecrawlApp,
+        logger: childLogger,
+      });
     }
   } catch (error) {
     // Handle thrown errors from Firecrawl API
@@ -235,6 +199,146 @@ function formatDocumentContent({
     content: `TITLE: ${sanitizedTitle.substring(0, TITLE_MAX_LENGTH)}\n${sanitizedContent}`,
     sections: [],
   };
+}
+
+function getFirecrawlScrapeOptions(
+  webCrawlerConfig: WebCrawlerConfigurationResource
+): ScrapeParams {
+  return {
+    onlyMainContent: true,
+    formats: ["markdown"],
+    headers: webCrawlerConfig.getCustomHeaders(),
+    maxAge: 43_200_000, // Use last 12h of cache
+    actions: webCrawlerConfig.actions ?? undefined,
+  };
+}
+
+function getFirecrawlWebhookConfig(connector: ConnectorResource) {
+  return {
+    url: `${apiConfig.getConnectorsPublicURL()}/webhooks/${apiConfig.getDustConnectorsWebhooksSecret()}/firecrawl`,
+    metadata: {
+      connectorId: String(connector.id),
+    },
+  };
+}
+
+type FirecrawlJobHelpersParams = {
+  webCrawlerConfig: WebCrawlerConfigurationResource;
+  connector: ConnectorResource;
+  firecrawlApp: FirecrawlApp;
+  logger: Logger;
+};
+
+async function startCrawlJob(
+  url: string,
+  {
+    webCrawlerConfig,
+    connector,
+    firecrawlApp,
+    logger,
+  }: FirecrawlJobHelpersParams
+) {
+  const maxRequestsPerCrawl =
+    webCrawlerConfig.maxPageToCrawl || WEBCRAWLER_MAX_PAGES;
+
+  const crawlerResponse = await firecrawlApp.asyncCrawlUrl(url, {
+    maxDiscoveryDepth: webCrawlerConfig.depth ?? WEBCRAWLER_MAX_DEPTH,
+    limit: maxRequestsPerCrawl,
+    crawlEntireDomain: webCrawlerConfig.crawlMode === "website",
+    maxConcurrency: 2,
+    delay: 3,
+    // Ok to `as` for now. API support actions but the SDK doesn't have the types
+    // PR: https://github.com/dust-tt/dust/pull/14308
+    scrapeOptions: getFirecrawlScrapeOptions(
+      webCrawlerConfig
+    ) as CrawlScrapeOptions & { actions?: Action[] },
+    webhook: getFirecrawlWebhookConfig(connector),
+  });
+  if (!crawlerResponse.success) {
+    logger.error(
+      {
+        url,
+        connectorId: connector.id,
+        webCrawlerConfigId: webCrawlerConfig.id,
+      },
+      `Firecrawl crawl failed: ${crawlerResponse.error}`
+    );
+    await syncFailed(connector.id, "webcrawling_error");
+  } else {
+    logger.info(
+      { crawlerId: crawlerResponse.id, url },
+      "Firecrawl crawler started"
+    );
+
+    if (crawlerResponse.id) {
+      await webCrawlerConfig.updateCrawlId(crawlerResponse.id);
+    } else {
+      // Shouldn't happen, but based on the types, let's make sure
+      logger.warn(
+        { webCrawlerConfigId: webCrawlerConfig.id, url },
+        "No ID found when creating a Firecrawl crawler"
+      );
+    }
+  }
+}
+
+async function startBatchScrapeJob(
+  url: string,
+  {
+    webCrawlerConfig,
+    firecrawlApp,
+    connector,
+    logger,
+  }: FirecrawlJobHelpersParams
+) {
+  const mapUrlResult = await firecrawlApp.mapUrl(url, {
+    ignoreSitemap: false,
+    sitemapOnly: true,
+  });
+
+  if (!mapUrlResult.success) {
+    logger.error(
+      { url, connector: connector.id, webCrawlerConfigId: webCrawlerConfig.id },
+      `Error mapping rootUrl: ${mapUrlResult.error}`
+    );
+    return;
+  }
+
+  const filteredUrl = mapUrlResult.links ?? [];
+  const batchScrapeResponse = await firecrawlApp.asyncBatchScrapeUrls(
+    filteredUrl,
+    getFirecrawlScrapeOptions(webCrawlerConfig),
+    undefined, // idempotency key
+    getFirecrawlWebhookConfig(connector),
+    true // ignoreInvalidURLs
+  );
+
+  if (!batchScrapeResponse.success) {
+    logger.error(
+      {
+        url,
+        connectorId: connector.id,
+        webCrawlerConfigId: webCrawlerConfig.id,
+      },
+      `Firecrawl batch scrape failed: ${batchScrapeResponse.error}`
+    );
+    await syncFailed(connector.id, "webcrawling_error");
+  } else {
+    logger.info(
+      { jobId: batchScrapeResponse.id, url },
+      "Firecrawl crawler started"
+    );
+
+    if (batchScrapeResponse.id) {
+      await webCrawlerConfig.updateCrawlId(batchScrapeResponse.id);
+    } else {
+      // Shouldn't happen, but based on the types, let's make sure
+      logger.warn(
+        { webCrawlerConfigId: webCrawlerConfig.id, url },
+        "No ID found when creating a Firecrawl crawler"
+      );
+    }
+  }
 }
 
 export async function webCrawlerGarbageCollector(
