@@ -10,7 +10,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   Hoverable,
   InformationCircleIcon,
@@ -71,12 +70,7 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import {
-  asDisplayName,
-  assertNever,
-  EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
+import { asDisplayName, assertNever } from "@app/types";
 
 function ActionModeSection({
   children,
@@ -363,17 +357,6 @@ export default function ActionsScreen({
               />
 
               <div className="flex-grow" />
-              <AdvancedSettings
-                maxStepsPerRun={builderState.maxStepsPerRun}
-                setMaxStepsPerRun={(maxStepsPerRun) => {
-                  setEdited(true);
-                  setBuilderState((state) => ({
-                    ...state,
-                    maxStepsPerRun,
-                  }));
-                }}
-                hasFeature={hasFeature}
-              />
             </div>
           )}
         </div>
@@ -922,53 +905,6 @@ function ActionEditor({
         )}
       </ActionModeSection>
     </div>
-  );
-}
-
-interface AdvancedSettingsProps {
-  maxStepsPerRun: number | null;
-  setMaxStepsPerRun: (maxStepsPerRun: number | null) => void;
-  hasFeature: (feature: WhitelistableFeature | null | undefined) => boolean;
-}
-
-function AdvancedSettings({
-  maxStepsPerRun,
-  setMaxStepsPerRun,
-  hasFeature,
-}: AdvancedSettingsProps) {
-  const maxLimit = hasFeature("extended_max_steps_per_run")
-    ? EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT
-    : MAX_STEPS_USE_PER_RUN_LIMIT;
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          label="Advanced settings"
-          variant="outline"
-          size="sm"
-          isSelect
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-60 p-2" align="end">
-        <DropdownMenuLabel label={`Max steps per run (up to ${maxLimit})`} />
-        <Input
-          value={maxStepsPerRun?.toString() ?? ""}
-          placeholder=""
-          name="maxStepsPerRun"
-          onChange={(e) => {
-            if (!e.target.value || e.target.value === "") {
-              setMaxStepsPerRun(null);
-              return;
-            }
-            const value = parseInt(e.target.value);
-            if (!isNaN(value) && value >= 0 && value <= maxLimit) {
-              setMaxStepsPerRun(value);
-            }
-          }}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
 

@@ -39,9 +39,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   exploded_tables_query: {
     description: "Enhanced table querying with exploded views",
   },
-  extended_max_steps_per_run: {
-    description: "Increase maximum steps allowed per agent run",
-  },
   interactive_content_server: {
     description:
       "Interactive content MCP server - gives access to the new visualization layout",
