@@ -121,7 +121,12 @@ makeScript(
     );
 
     if (output) {
-      writeFileSync(output, stringify(records));
+      writeFileSync(
+        output,
+        stringify(records, {
+          header: true,
+        })
+      );
       logger.info(`File saved`);
     }
   }
