@@ -1,4 +1,4 @@
-import { MCPActionType } from "@app/lib/actions/mcp";
+import type { MCPActionType } from "@app/lib/actions/mcp";
 import type { ModelId } from "@app/types";
 import type { ModelProviderIdType } from "@app/types/assistant/assistant";
 import type { FunctionCallType } from "@app/types/assistant/generation";

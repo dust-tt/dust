@@ -1,4 +1,3 @@
-import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
   tryListMCPTools,
@@ -351,6 +350,13 @@ async function runMultiActionsAgent(
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
 } | null> {
+  const localLogger = logger.child({
+    workspaceId: conversation.owner.sId,
+    conversationId: conversation.sId,
+    configurationId: agentConfiguration.sId,
+    messageId: agentMessage.sId,
+  });
+
   // Recreate the Authenticator instance from the serialized type
   const auth = await Authenticator.fromJSON(authType);
 
@@ -377,12 +383,8 @@ async function runMultiActionsAgent(
       logMessage = `Agent error: ${error.message} (not retryable)`;
     }
 
-    logger.error(
+    localLogger.error(
       {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
         error,
       },
       logMessage
@@ -460,21 +462,11 @@ async function runMultiActionsAgent(
   );
 
   if (mcpToolsListingError) {
-    logger.error(
+    localLogger.error(
       {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
         error: mcpToolsListingError,
       },
       "Error listing MCP tools."
-    );
-  } else {
-    logger.info(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-      },
-      "MCP tools listed successfully."
     );
   }
 
@@ -508,7 +500,7 @@ async function runMultiActionsAgent(
     agentConfiguration,
     fallbackPrompt,
     model,
-    hasAvailableActions: !!availableActions.length,
+    hasAvailableActions: availableActions.length > 0,
     errorContext: mcpToolsListingError,
     agentsList,
     conversationId: conversation.sId,
@@ -633,7 +625,7 @@ async function runMultiActionsAgent(
 
   // Errors occurring during the multi-actions-agent dust app may be retryable.
   // Their implicit code should be "multi_actions_error".
-  const handlePossiblyRetryableError = async (message: string) => {
+  async function handlePossiblyRetryableError(message: string) {
     const { category, publicMessage, errorTitle } = categorizeAgentErrorMessage(
       {
         code: "multi_actions_error",
@@ -647,10 +639,8 @@ async function runMultiActionsAgent(
     ].includes(category);
 
     if (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY) {
-      logger.warn(
+      localLogger.warn(
         {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
           error: message,
           retryCount: autoRetryCount + 1,
           maxRetries: MAX_AUTO_RETRY,
@@ -686,7 +676,7 @@ async function runMultiActionsAgent(
     });
 
     return null;
-  };
+  }
 
   if (res.isErr()) {
     return handlePossiblyRetryableError(res.error.message);
@@ -716,7 +706,7 @@ async function runMultiActionsAgent(
     getDelimitersConfiguration({ agentConfiguration })
   );
 
-  const _checkCancellation = async () => {
+  async function checkCancellation() {
     try {
       const cancelled = await redis.get(
         `assistant:generation:cancelled:${agentMessage.sId}`
@@ -732,10 +722,10 @@ async function runMultiActionsAgent(
         );
       }
     } catch (error) {
-      logger.error({ error }, "Error checking cancellation");
+      localLogger.error({ error }, "Error checking cancellation");
       return false;
     }
-  };
+  }
 
   let nativeChainOfThought = "";
 
@@ -757,7 +747,7 @@ async function runMultiActionsAgent(
       currentTimestamp - lastCheckCancellation >=
       CANCELLATION_CHECK_INTERVAL
     ) {
-      void _checkCancellation(); // Trigger the async function without awaiting
+      void checkCancellation(); // Trigger the async function without awaiting
       lastCheckCancellation = currentTimestamp;
     }
 
@@ -908,14 +898,7 @@ async function runMultiActionsAgent(
     }
   }
 
-  for await (const tokenEvent of contentParser.flushTokens()) {
-    await updateResourceAndPublishEvent(
-      tokenEvent,
-      conversation,
-      agentMessageRow,
-      step
-    );
-  }
+  await flushParserTokens();
 
   if (!output) {
     return handlePossiblyRetryableError("Agent execution didn't complete.");
@@ -935,7 +918,7 @@ async function runMultiActionsAgent(
     });
 
     // If this is a function call content, track the step content ID
-    if (content.type === "function_call" && content.value.id) {
+    if (content.type === "function_call") {
       updatedFunctionCallStepContentIds[content.value.id] = stepContent.id;
     }
   }
@@ -954,12 +937,8 @@ async function runMultiActionsAgent(
     // Successful generation.
     const processedContent = contentParser.getContent() ?? "";
     if (!processedContent.length) {
-      logger.warn(
+      localLogger.warn(
         {
-          workspaceId: conversation.owner.sId,
-          conversationId: conversation.sId,
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
           modelId: model.modelId,
         },
         "No content generated by the agent."
@@ -1033,81 +1012,68 @@ async function runMultiActionsAgent(
         });
 
         return null;
-      } else {
-        const mcpServerView =
-          await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-            auth,
-            "missing_action_catcher"
-          );
-
-        // Could happen if the internal server has not already been added
-        if (!mcpServerView) {
-          await publishAgentError({
-            code: "action_not_found",
-            message:
-              `The agent attempted to run an invalid action (${a.name}). ` +
-              `This model error can be safely retried (no server).`,
-            metadata: null,
-          });
-          return null;
-        }
-
-        logger.warn(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            actionName: a.name,
-            availableActions: availableActions.map((a) => a.name),
-          },
-          "Model attempted to run an action that is not part of the agent configuration but we'll try to catch it."
+      }
+      const mcpServerView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          "missing_action_catcher"
         );
 
-        const catchAllAction: MCPToolConfigurationType = {
-          id: -1,
-          sId: generateRandomModelSId(),
-          type: "mcp_configuration" as const,
-          name: a.name,
-          originalName: a.name,
-          description: null,
-          dataSources: null,
-          tables: null,
-          childAgentId: null,
-          reasoningModel: null,
-          timeFrame: null,
-          jsonSchema: null,
-          additionalConfiguration: {},
-          mcpServerViewId: mcpServerView.sId,
-          dustAppConfiguration: null,
-          internalMCPServerId: mcpServerView.internalMCPServerId,
-          inputSchema: {},
-          availability: "auto_hidden_builder",
-          permission: "never_ask",
-          toolServerId: mcpServerView.sId,
-          mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
-        };
-
-        action = catchAllAction;
-        args = {};
+      // Could happen if the internal server has not already been added
+      if (!mcpServerView) {
+        await publishAgentError({
+          code: "action_not_found",
+          message:
+            `The agent attempted to run an invalid action (${a.name}). ` +
+            `This model error can be safely retried (no server).`,
+          metadata: null,
+        });
+        return null;
       }
+
+      localLogger.warn(
+        {
+          actionName: a.name,
+          availableActions: availableActions.map((a) => a.name),
+        },
+        "Model attempted to run an action that is not part of the agent configuration but we'll try to catch it."
+      );
+
+      // Catch-all action.
+      action = {
+        id: -1,
+        sId: generateRandomModelSId(),
+        type: "mcp_configuration" as const,
+        name: a.name,
+        originalName: a.name,
+        description: null,
+        dataSources: null,
+        tables: null,
+        childAgentId: null,
+        reasoningModel: null,
+        timeFrame: null,
+        jsonSchema: null,
+        additionalConfiguration: {},
+        mcpServerViewId: mcpServerView.sId,
+        dustAppConfiguration: null,
+        internalMCPServerId: mcpServerView.internalMCPServerId,
+        inputSchema: {},
+        availability: "auto_hidden_builder",
+        permission: "never_ask",
+        toolServerId: mcpServerView.sId,
+        mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
+      };
+      args = {};
     }
 
     actions.push({
-      action: action!,
+      action,
       inputs: args ?? {},
       functionCallId: a.functionCallId ?? null,
     });
   }
 
-  for await (const tokenEvent of contentParser.flushTokens()) {
-    await updateResourceAndPublishEvent(
-      tokenEvent,
-      conversation,
-      agentMessageRow,
-      step
-    );
-  }
+  await flushParserTokens();
 
   const chainOfThought =
     (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
@@ -1241,10 +1207,10 @@ async function runAction(
   }
 }
 
-export const filterSuggestedNames = async (
+export async function filterSuggestedNames(
   owner: WorkspaceType,
   suggestions: string[] | undefined | null
-) => {
+) {
   if (!suggestions || suggestions.length === 0) {
     return [];
   }
@@ -1259,7 +1225,5 @@ export const filterSuggestedNames = async (
     })
   ).map((ac) => ac.name.toLowerCase());
 
-  return suggestions?.filter(
-    (s: string) => !existingNames.includes(s.toLowerCase())
-  );
-};
+  return suggestions?.filter((s) => !existingNames.includes(s.toLowerCase()));
+}
