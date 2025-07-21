@@ -1,7 +1,4 @@
-import type {
-  GetWorkspaceUsageRequestType,
-  UsageTableType,
-} from "@dust-tt/client";
+import type { GetWorkspaceUsageRequestType, UsageTableType } from "@dust-tt/client";
 import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
 import { parse as parseCSV } from "csv-parse/sync";
 import { endOfMonth } from "date-fns/endOfMonth";
@@ -270,12 +267,12 @@ async function fetchUsageData({
       return {
         assistants: await getAssistantsUsageData(start, end, workspace),
       };
-    case "feedbacks":
+    case "feedback":
       return {
-        feedbacks: await getFeedbackUsageData(start, end, workspace),
+        feedback: await getFeedbackUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants, feedbacks] =
+      const [users, assistant_messages, builders, assistants, feedback] =
         await Promise.all([
           getUserUsageData(start, end, workspace),
           getMessageUsageData(start, end, workspace),
@@ -288,7 +285,7 @@ async function fetchUsageData({
         assistant_messages,
         builders,
         assistants,
-        feedbacks,
+        feedback,
       };
     default:
       return {};
