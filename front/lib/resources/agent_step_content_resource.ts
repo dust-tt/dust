@@ -60,7 +60,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     });
 
     assert(
-      agentMessages.length !== uniqueAgentMessageIds.length,
+      agentMessages.length === uniqueAgentMessageIds.length,
       "Unexpected: missing agent messages"
     );
 
