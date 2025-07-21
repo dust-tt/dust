@@ -65,10 +65,6 @@ export interface ModelCategories {
   >;
 }
 
-export function isRecentModel(model: ModelConfigurationType): boolean {
-  return !model.isLegacy;
-}
-
 export function getModelsCategorization(
   models: ModelConfigurationType[]
 ): ModelCategories {
@@ -91,7 +87,7 @@ export function getModelsCategorization(
     }
 
     const group = providerGroups.get(model.providerId)!;
-    if (isRecentModel(model)) {
+    if (model.isLatest) {
       group.recent.push(model);
     } else {
       group.older.push(model);
