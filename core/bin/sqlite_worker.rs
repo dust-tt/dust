@@ -34,11 +34,15 @@ use std::{
     },
     time::{Duration, Instant},
 };
+use tikv_jemallocator::Jemalloc;
 use tokio::sync::Mutex;
 use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
 };
+
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
 
 lazy_static! {
     static ref WORKER_URL: String = match std::env::var("IS_LOCAL_DEV") {
