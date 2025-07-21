@@ -27,8 +27,8 @@
   "author": "Dust",
   "license": "MIT",
   "dependencies": {
-    "@dust-tt/client": "^1.1.1",
-    "@modelcontextprotocol/sdk": "^1.8.0",
+    "@dust-tt/client": "^1.1.0",
+    "@modelcontextprotocol/sdk": "^1.9.0",
     "clipboardy": "^4.0.0",
     "execa": "^9.6.0",
     "express": "^5.1.0",
