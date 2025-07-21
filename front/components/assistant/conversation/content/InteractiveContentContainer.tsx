@@ -91,7 +91,7 @@ export function InteractiveContentContainer({
           "rounded-lg border border-border shadow-lg dark:border-border-night"
         )}
       >
-        <div className="flex-1 overflow-hidden rounded-lg bg-gray-50">
+        <div className="flex-1 overflow-hidden rounded-lg bg-gray-50 dark:bg-gray-900">
           {renderContent()}
         </div>
       </div>
