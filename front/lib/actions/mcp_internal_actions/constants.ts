@@ -21,12 +21,14 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "data_sources_file_system",
   "extract_data",
   "file_generation",
+  "interactive_content",
   "github",
   "gmail",
   "google_sheets",
   "hubspot",
   "image_generation",
   "include_data",
+  "jira",
   "missing_action_catcher",
   "monday",
   "notion",
@@ -320,6 +322,24 @@ export const INTERNAL_MCP_SERVERS: Record<
       return !featureFlags.includes("agent_memory_tools");
     },
   },
+  jira: {
+    id: 22,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("jira_tool");
+    },
+    tools_stakes: {
+      // Read operations - never ask (no side effects)
+      get_issue: "never_ask",
+    },
+  },
+  interactive_content: {
+    id: 23,
+    availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("interactive_content_server");
+    },
+  },
   search: {
     id: 1006,
     availability: "auto",
@@ -329,7 +349,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "auto",
     timeoutMs: 5 * 60 * 1000, // 5 minutes
   },
-
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",

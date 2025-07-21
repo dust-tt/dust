@@ -1,5 +1,6 @@
 import {
   Button,
+  cn,
   CodeBlock,
   Markdown,
   MarkdownContentContext,
@@ -21,7 +22,6 @@ import {
 } from "react";
 
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
-import { classNames } from "@app/lib/utils";
 import type {
   CommandResultMap,
   LightWorkspaceType,
@@ -216,11 +216,13 @@ export function VisualizationActionIframe({
   visualization,
   conversationId,
   agentConfigurationId,
+  isInDrawer = false,
 }: {
   owner: LightWorkspaceType;
   visualization: Visualization;
   conversationId: string;
-  agentConfigurationId: string;
+  agentConfigurationId: string | null;
+  isInDrawer?: boolean;
 }) {
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -267,7 +269,7 @@ export function VisualizationActionIframe({
   const canRetry = useContext(MarkdownContentContext)?.isLastMessage ?? false;
 
   return (
-    <div className="relative flex flex-col">
+    <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
       {showSpinner && (
         <div className="absolute inset-0 flex items-center justify-center bg-white">
           <Spinner size="xl" />
@@ -281,13 +283,14 @@ export function VisualizationActionIframe({
         />
       )}
       <div
-        className={classNames(
+        className={cn(
           "relative w-full overflow-hidden",
-          codeFullyGenerated && !isErrored ? "min-h-96" : "",
-          errorMessage ? "h-full" : ""
+          codeFullyGenerated && !isErrored && "min-h-96",
+          errorMessage && "h-full",
+          isInDrawer && "h-full"
         )}
       >
-        <div className="flex">
+        <div className={cn("flex", isInDrawer && "h-full")}>
           {!codeFullyGenerated ? (
             <div className="flex h-full w-full shrink-0">
               <Markdown
@@ -300,19 +303,23 @@ export function VisualizationActionIframe({
             <div className="relative flex h-full w-full shrink-0 items-center justify-center">
               {codeFullyGenerated && !isErrored && (
                 <div
-                  style={{
-                    height: `${contentHeight}px`,
-                    minHeight: "96",
-                  }}
-                  className={classNames("max-h-[600px] w-full")}
+                  style={
+                    isInDrawer
+                      ? { minHeight: "200px" }
+                      : {
+                          height: `${contentHeight}px`,
+                          minHeight: "96px",
+                        }
+                  }
+                  className={cn(
+                    "w-full",
+                    isInDrawer ? "h-full" : "max-h-[600px]"
+                  )}
                 >
                   <iframe
                     ref={vizIframeRef}
-                    className={classNames(
-                      "h-full w-full",
-                      !errorMessage ? "min-h-96" : ""
-                    )}
-                    src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}`}
+                    className={cn("h-full w-full", !errorMessage && "min-h-96")}
+                    src={`${process.env.NEXT_PUBLIC_VIZ_URL}/content?identifier=${visualization.identifier}${isInDrawer ? "&fullHeight=true" : ""}`}
                     sandbox="allow-scripts"
                   />
                 </div>

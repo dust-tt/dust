@@ -10,7 +10,7 @@ import type {
 } from "@app/platforms/chrome/messages";
 import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
 import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
-import { DUST_API_AUDIENCE, DUST_US_URL } from "@app/shared/lib/config";
+import { DUST_US_URL } from "@app/shared/lib/config";
 import { extractPage } from "@app/shared/lib/extraction";
 import { generatePKCE } from "@app/shared/lib/utils";
 import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";
@@ -470,10 +470,10 @@ chrome.runtime.onMessageExternal.addListener((request) => {
 });
 
 /**
- * Authenticate the user using Auth0 or WorkOS.
+ * Authenticate the user using WorkOS.
  */
 const authenticate = async (
-  { isForceLogin, connection }: AuthBackgroundMessage,
+  { connection }: AuthBackgroundMessage,
   sendResponse: (
     auth: OAuthAuthorizeResponse | AuthBackgroundResponseError
   ) => void
@@ -487,14 +487,9 @@ const authenticate = async (
     redirect_uri: redirectUrl,
     code_challenge_method: "S256",
     code_challenge: codeChallenge,
+    organization_id: connection ?? "",
+    provider: "authkit",
   };
-
-  // AUTH0 SPECIFICS
-  options.audience = DUST_API_AUDIENCE;
-  options.prompt = isForceLogin ? "login" : "";
-  // WORKOS SPECIFICS
-  options.organization_id = connection ?? "";
-  options.provider = "authkit";
 
   const queryString = new URLSearchParams(options).toString();
 
@@ -523,9 +518,6 @@ const authenticate = async (
       const url = new URL(redirectUrl);
       const queryParams = new URLSearchParams(url.search);
       const authorizationCode = queryParams.get("code");
-      const state = queryParams.get("state");
-      const providerFromState = state ? JSON.parse(state).provider : undefined;
-      const provider = providerFromState === "auth0" ? "auth0" : "workos";
 
       const error = queryParams.get("error");
 
@@ -541,8 +533,7 @@ const authenticate = async (
       if (authorizationCode) {
         const data = await exchangeCodeForTokens(
           authorizationCode,
-          codeVerifier,
-          provider
+          codeVerifier
         );
         sendResponse(data);
       } else {
@@ -588,10 +579,8 @@ const refreshToken = async (
         return;
       }
 
-      const provider = user.authProvider;
-
       const response = await fetch(
-        `${user.dustDomain}/api/v1/auth/authenticate?forcedProvider=${provider}`,
+        `${user.dustDomain}/api/v1/auth/authenticate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -617,7 +606,6 @@ const refreshToken = async (
           refreshToken: data.refresh_token || refreshToken,
           expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
           authentication_method: data.authentication_method,
-          provider,
         });
       });
     } catch (error) {
@@ -641,8 +629,7 @@ const refreshToken = async (
  */
 const exchangeCodeForTokens = async (
   code: string,
-  codeVerifier: string,
-  provider: "workos" | "auth0"
+  codeVerifier: string
 ): Promise<OAuthAuthorizeResponse | AuthBackgroundResponseError> => {
   try {
     const tokenParams: Record<string, string> = {
@@ -652,14 +639,11 @@ const exchangeCodeForTokens = async (
       redirect_uri: chrome.identity.getRedirectURL(),
     };
 
-    const response = await fetch(
-      `${DUST_US_URL}/api/v1/auth/authenticate?forcedProvider=${provider}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(tokenParams),
-      }
-    );
+    const response = await fetch(`${DUST_US_URL}/api/v1/auth/authenticate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams(tokenParams),
+    });
 
     if (!response.ok) {
       const data = await response.json();
@@ -675,7 +659,6 @@ const exchangeCodeForTokens = async (
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresIn: data.expires_in ?? DEFAULT_TOKEN_EXPIRY_IN_SECONDS,
-      provider,
       ...(data.id_token && { idToken: data.id_token }),
       authentication_method: data.authentication_method,
     };
@@ -715,8 +698,6 @@ const logout = async (
   if (!user) {
     return true;
   }
-
-  queryParams.forcedProvider = user.authProvider;
 
   const logoutUrl = `${user.dustDomain}/api/v1/auth/logout?${new URLSearchParams(
     queryParams

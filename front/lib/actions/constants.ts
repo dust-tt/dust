@@ -17,8 +17,9 @@ export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search_&_browse";
 export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION =
   "Agent can search (Google) and retrieve information from specific websites.";
 
-// TODO(durable-agents): remove this (only used in the non-MCP variant, inlined in the MCP tool definition).
-export const DEFAULT_SEARCH_LABELS_ACTION_NAME = "search_labels";
+export const DEFAULT_AGENT_ROUTER_ACTION_NAME = "agent_router";
+export const DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION =
+  "Tools with access to the published agents of the workspace.";
 
 export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME = "list_files";
 
@@ -29,9 +30,6 @@ export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
 
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
-
-export const DEFAULT_CONVERSATION_EXTRACT_ACTION_NAME =
-  "extract_conversation_files";
 
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";

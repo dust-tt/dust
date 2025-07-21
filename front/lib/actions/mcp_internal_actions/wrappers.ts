@@ -37,18 +37,18 @@ export function withToolLogging<T>(
     logger.info(loggerArgs, "Tool execution start");
 
     const tags = [
-      `action:${toolName}`,
+      `tool:${toolName}`,
       `workspace:${owner.sId}`,
       `workspace_plan_code:${auth.plan()?.code || null}`,
     ];
 
-    statsDClient.increment("use_actions.count", 1, tags);
+    statsDClient.increment("use_tools.count", 1, tags);
     const startTime = performance.now();
 
     const result = await toolCallback(params);
 
     if (result.isError) {
-      statsDClient.increment("use_actions_error.count", 1, [
+      statsDClient.increment("use_tools_error.count", 1, [
         "error_type:run_error",
         ...tags,
       ]);
@@ -75,11 +75,7 @@ export function withToolLogging<T>(
     }
 
     const elapsed = performance.now() - startTime;
-    statsDClient.distribution(
-      "run_action.duration.distribution",
-      elapsed,
-      tags
-    );
+    statsDClient.distribution("run_tool.duration.distribution", elapsed, tags);
 
     return result;
   };

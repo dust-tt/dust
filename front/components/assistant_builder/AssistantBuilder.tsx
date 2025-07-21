@@ -98,9 +98,6 @@ function getDefaultBuilderState(
         ...getDefaultAssistantState().generationSettings,
       },
       actions: duplicatedActions,
-      maxStepsPerRun:
-        initialBuilderState.maxStepsPerRun ??
-        getDefaultAssistantState().maxStepsPerRun,
     };
   }
 

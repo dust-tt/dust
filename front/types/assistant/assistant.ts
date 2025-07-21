@@ -219,6 +219,8 @@ export const DEEPSEEK_CHAT_MODEL_ID = "deepseek-chat" as const;
 export const DEEPSEEK_REASONER_MODEL_ID = "deepseek-reasoner" as const;
 export const FIREWORKS_DEEPSEEK_R1_MODEL_ID =
   "accounts/fireworks/models/deepseek-r1" as const;
+export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
+  "accounts/fireworks/models/kimi-k2-instruct" as const;
 
 export const GROK_3_MODEL_ID = "grok-3-latest" as const;
 export const GROK_3_MINI_MODEL_ID = "grok-3-mini-latest" as const;
@@ -270,6 +272,7 @@ export const MODEL_IDS = [
   DEEPSEEK_CHAT_MODEL_ID,
   DEEPSEEK_REASONER_MODEL_ID,
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
+  FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
   GROK_3_MODEL_ID,
   GROK_3_MINI_MODEL_ID,
   GROK_3_FAST_MODEL_ID,
@@ -575,7 +578,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 4096,
   supportsVision: true,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
@@ -595,7 +598,7 @@ export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurat
     isLegacy: false,
     generationTokensCount: 8192,
     supportsVision: true,
-    minimumReasoningEffort: "none",
+    minimumReasoningEffort: "light",
     maximumReasoningEffort: "light",
     defaultReasoningEffort: "light",
     tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
@@ -614,7 +617,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 8192,
   supportsVision: true,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
@@ -632,7 +635,7 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 64_000,
   supportsVision: true,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
@@ -652,7 +655,7 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 32_000,
   supportsVision: true,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
@@ -673,7 +676,7 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 64_000,
   supportsVision: true,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
@@ -692,7 +695,7 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
@@ -711,7 +714,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
@@ -729,7 +732,7 @@ export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: true,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
 };
@@ -747,7 +750,7 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: true,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "none",
+  minimumReasoningEffort: "light",
   maximumReasoningEffort: "light",
   defaultReasoningEffort: "light",
 };
@@ -1169,6 +1172,24 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
 };
 
+export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelId: FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
+  displayName: "Kimi K2 Instruct (Fireworks)",
+  contextSize: 131_072,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "Kimi's K2 Instruct model (131k context, served via Fireworks).",
+  shortDescription: "Kimi's K2 Instruct model.",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: false,
+  minimumReasoningEffort: "light",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
+};
+
 export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "xai",
   modelId: GROK_3_MODEL_ID,
@@ -1293,6 +1314,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   DEEPSEEK_CHAT_MODEL_CONFIG,
   DEEPSEEK_REASONER_MODEL_CONFIG,
   FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG,
   GROK_3_MODEL_CONFIG,
   GROK_3_MINI_MODEL_CONFIG,
   GROK_3_FAST_MODEL_CONFIG,

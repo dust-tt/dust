@@ -1,50 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
-import { makeEnterpriseConnectionName } from "@app/lib/api/enterprise_connection";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 
-type Provider = {
-  name: "workos" | "auth0";
-  authorizeUri: string;
-  authenticateUri: string;
-  logoutUri: string;
-  clientId: string;
-  scopes: string;
+const workosConfig = {
+  name: "workos",
+  authorizeUri: "api.workos.com/user_management/authorize",
+  authenticateUri: "api.workos.com/user_management/authenticate",
+  logoutUri: "api.workos.com/user_management/sessions/logout",
+  clientId: config.getWorkOSClientId(),
+  scopes: "openid profile email offline_access",
 };
-
-const providers: Record<string, Provider> = {
-  workos: {
-    name: "workos",
-    authorizeUri: "api.workos.com/user_management/authorize",
-    authenticateUri: "api.workos.com/user_management/authenticate",
-    logoutUri: "api.workos.com/user_management/sessions/logout",
-    clientId: config.getWorkOSClientId(),
-    scopes: "openid profile email",
-  },
-  auth0: {
-    name: "auth0",
-    authorizeUri: config.getAuth0TenantUrl() + "/authorize",
-    authenticateUri: config.getAuth0TenantUrl() + "/oauth/token",
-    logoutUri: config.getAuth0TenantUrl() + "/v2/logout",
-    clientId: config.getAuth0ExtensionApplicationId(),
-    scopes:
-      "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file",
-  },
-};
-
-async function getProvider(
-  query: Partial<{
-    [key: string]: string | string[];
-  }>
-): Promise<Provider> {
-  const forcedProvider =
-    typeof query.forcedProvider === "string" ? query.forcedProvider : undefined;
-  const provider = forcedProvider || "workos";
-  return providers[provider];
-}
 
 /**
  * @ignoreswagger
@@ -86,42 +54,32 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
     ? await WorkspaceResource.fetchById(workspaceId)
     : null;
 
-  const provider = await getProvider(query);
-
   const options: Record<string, string | undefined> = {
-    client_id: provider.clientId,
-    scope: provider.scopes,
+    client_id: workosConfig.clientId,
+    scope: workosConfig.scopes,
   };
 
-  if (provider.name === "workos") {
-    options.provider = "authkit";
+  options.provider = "authkit";
 
-    if (workspace) {
-      const organizationId = workspace.workOSOrganizationId;
-      if (!organizationId) {
-        logger.error(
-          `Workspace with sId ${workspaceId} does not have a WorkOS organization ID.`
-        );
-        res.status(400).json({
-          error: "Workspace does not have a WorkOS organization ID",
-        });
-        return;
-      }
-
-      const connections = await getWorkOS().sso.listConnections({
-        organizationId,
+  if (workspace) {
+    const organizationId = workspace.workOSOrganizationId;
+    if (!organizationId) {
+      logger.error(
+        `Workspace with sId ${workspaceId} does not have a WorkOS organization ID.`
+      );
+      res.status(400).json({
+        error: "Workspace does not have a WorkOS organization ID",
       });
+      return;
+    }
 
-      options.organizationId = organizationId;
-      options.connectionId =
-        connections.data.length > 0 ? connections.data[0]?.id : undefined;
-    }
-  } else {
-    if (workspace) {
-      options.connection = makeEnterpriseConnectionName(workspace.sId);
-    }
-    options.prompt = `${query.prompt}`;
-    options.audience = `${query.audience}`;
+    const connections = await getWorkOS().sso.listConnections({
+      organizationId,
+    });
+
+    options.organizationId = organizationId;
+    options.connectionId =
+      connections.data.length > 0 ? connections.data[0]?.id : undefined;
   }
 
   const params = new URLSearchParams({
@@ -131,18 +89,17 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
     code_challenge_method: `${query.code_challenge_method}`,
     code_challenge: `${query.code_challenge}`,
     state: JSON.stringify({
-      provider: provider.name,
+      provider: workosConfig.name,
     }),
   });
 
-  const authorizeUrl = `https://${provider.authorizeUri}?${params}`;
+  const authorizeUrl = `https://${workosConfig.authorizeUri}?${params}`;
   res.redirect(authorizeUrl);
 }
 
 async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
   try {
-    const provider = await getProvider(req.query);
-    const response = await fetch(`https://${provider.authenticateUri}`, {
+    const response = await fetch(`https://${workosConfig.authenticateUri}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -151,27 +108,23 @@ async function handleAuthenticate(req: NextApiRequest, res: NextApiResponse) {
       credentials: "include",
       body: new URLSearchParams({
         ...req.body,
-        client_id: provider.clientId,
+        client_id: workosConfig.clientId,
       }).toString(),
     });
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (error) {
-    logger.error(
-      { error, query: req.query, provider: getProvider(req.query) },
-      "Error in authenticate proxy"
-    );
+    logger.error({ error }, "Error in authenticate proxy");
     res.status(500).json({ error: "Internal server error" });
   }
 }
 
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const { query } = req;
-  const provider = await getProvider(query);
   const params = new URLSearchParams({
     ...query,
-    client_id: provider.clientId,
+    client_id: workosConfig.clientId,
   }).toString();
-  const logoutUrl = `https://${provider.logoutUri}?${params}`;
+  const logoutUrl = `https://${workosConfig.logoutUri}?${params}`;
   res.redirect(logoutUrl);
 }

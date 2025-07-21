@@ -15,7 +15,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description: "Tools for managing Google Sheets spreadsheets and data.",
   authorization: {
-    provider: "google_drive",
+    provider: "gmail",
     supported_use_cases: ["personal_actions"] as const,
     scope:
       "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly" as const,

@@ -1,3 +1,4 @@
+use crate::info;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bb8::Pool;
@@ -5,7 +6,6 @@ use bb8_postgres::PostgresConnectionManager;
 use futures::SinkExt;
 use std::io::Cursor;
 use tokio_postgres::{types::ToSql, NoTls};
-use tracing::info;
 
 use crate::{
     databases::table::{Row, Table},
@@ -226,10 +226,10 @@ impl DatabasesStore for PostgresDatabasesStore {
             let stmt = c
                 .prepare(
                     "INSERT INTO tables_rows
-                    (table_id, row_id, created, content)
-                    SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[])
-                    ON CONFLICT (table_id, row_id) DO UPDATE
-                    SET content = EXCLUDED.content",
+                        (table_id, row_id, created, content)
+                        SELECT * FROM UNNEST($1::text[], $2::text[], $3::bigint[], $4::text[])
+                        ON CONFLICT (table_id, row_id) DO UPDATE
+                        SET content = EXCLUDED.content",
                 )
                 .await?;
 

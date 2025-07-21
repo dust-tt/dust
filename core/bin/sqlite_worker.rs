@@ -5,15 +5,22 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
+
 use dust::{
-    databases::table::{LocalTable, Table},
+    databases::{
+        table::{LocalTable, Table},
+        table_upserts_background_worker::TableUpsertsBackgroundWorker,
+    },
     databases_store::{self},
+    open_telemetry::init_subscribers,
     sqlite_workers::{
         client::HEARTBEAT_INTERVAL_MS,
         sqlite_database::{SqliteDatabase, SqliteDatabaseError},
     },
-    utils::{self, error_response, APIResponse, CoreRequestMakeSpan},
+    utils::{self, error_response, APIResponse},
 };
+use dust::{error, info};
 use hyper::StatusCode;
 use lazy_static::lazy_static;
 use reqwest::Method;
@@ -32,10 +39,6 @@ use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
 };
-use tower_http::trace::{self, TraceLayer};
-use tracing::{error, info, Level};
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::prelude::*;
 
 lazy_static! {
     static ref WORKER_URL: String = match std::env::var("IS_LOCAL_DEV") {
@@ -340,15 +343,13 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
-        tracing_subscriber::registry()
-            .with(JsonStorageLayer)
-            .with(
-                BunyanFormattingLayer::new("sqlite_worker".into(), std::io::stdout)
-                    .skip_fields(vec!["file", "line", "target"].into_iter())
-                    .unwrap(),
-            )
-            .with(tracing_subscriber::EnvFilter::new("info"))
-            .init();
+        let _guard = init_subscribers()?;
+
+        // Start the background worker for table upserts. Note that this is not related
+        // to sqlite, but we put it here for convenience.
+        tokio::task::spawn(async move {
+            TableUpsertsBackgroundWorker::start_loop().await;
+        });
 
         let s =
             databases_store::postgres::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
@@ -361,11 +362,9 @@ fn main() {
             .route("/databases", delete(expire_all))
             .route("/databases/{database_id}", post(databases_query))
             .route("/databases/{database_id}", delete(databases_delete))
-            .layer(
-                TraceLayer::new_for_http()
-                    .make_span_with(CoreRequestMakeSpan::new())
-                    .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
-            )
+            .layer(OtelInResponseLayer::default())
+            // Start OpenTelemetry trace on incoming request.
+            .layer(OtelAxumLayer::default())
             .with_state(state.clone());
 
         let health_check_router = Router::new()

@@ -31,6 +31,7 @@ import type {
   ConfluenceCommandType,
   ConfluenceMeResponseType,
   ConfluenceResolveSpaceFromUrlResponseType,
+  ConfluenceSkipPageResponseType,
   ConfluenceUpsertPageResponseType,
 } from "@connectors/types";
 
@@ -44,6 +45,7 @@ export const confluence = async ({
   | ConfluenceMeResponseType
   | ConfluenceResolveSpaceFromUrlResponseType
   | ConfluenceUpsertPageResponseType
+  | ConfluenceSkipPageResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "confluence", command, args });
 
@@ -104,6 +106,35 @@ export const confluence = async ({
           ? `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${workflowId}`
           : undefined,
       };
+    }
+
+    case "skip-page": {
+      if (!args.pageId) {
+        throw new Error("Missing --pageId argument");
+      }
+      const pageId = args.pageId;
+      const skipReason = args.skipReason || "Blacklisted.";
+
+      const page = await ConfluencePage.findOne({
+        where: {
+          connectorId,
+          pageId: pageId.toString(),
+        },
+      });
+
+      if (!page) {
+        return { skipped: false, reason: "Page not found in database." };
+      }
+
+      if (page.skipReason) {
+        return {
+          skipped: false,
+          reason: `Page already skipped with reason: ${page.skipReason}`,
+        };
+      }
+
+      await page.update({ skipReason });
+      return { skipped: true, reason: skipReason };
     }
 
     case "upsert-pages": {

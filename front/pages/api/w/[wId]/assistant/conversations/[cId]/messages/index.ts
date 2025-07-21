@@ -3,10 +3,12 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import {
+  getConversation,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
-import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
@@ -142,26 +144,22 @@ async function handler(
 
       const conversation = conversationRes.value;
 
-      const messageRes = await postUserMessageWithPubSub(
-        auth,
-        {
-          conversation,
-          content,
-          mentions,
-          context: {
-            timezone: context.timezone,
-            username: user.username,
-            fullName: user.fullName(),
-            email: user.email,
-            profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
-            origin: "web",
-            clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
-          },
-          // For now we never skip tools when interacting with agents from the web client.
-          skipToolsValidation: false,
+      const messageRes = await postUserMessage(auth, {
+        conversation,
+        content,
+        mentions,
+        context: {
+          timezone: context.timezone,
+          username: user.username,
+          fullName: user.fullName(),
+          email: user.email,
+          profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
+          origin: "web",
+          clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
         },
-        { resolveAfterFullGeneration: false }
-      );
+        // For now we never skip tools when interacting with agents from the web client.
+        skipToolsValidation: false,
+      });
 
       if (messageRes.isErr()) {
         return apiError(req, res, messageRes.error);

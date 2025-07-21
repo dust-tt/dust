@@ -14,7 +14,6 @@ use elasticsearch_dsl::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{error, info};
 use url::Url;
 
 use crate::data_sources::data_source::{DataSourceESDocumentWithStats, Document};
@@ -30,6 +29,7 @@ use crate::{
     stores::store::Store,
     utils,
 };
+use crate::{error, info};
 
 const MAX_PAGE_SIZE: u64 = 1000;
 // Number of hits that is tracked exactly, above this value we only get a lower bound on the hit count.

@@ -196,33 +196,9 @@ async function handler(
         });
       }
 
-      const maxStepsPerRun = bodyValidation.right.assistant.maxStepsPerRun;
-
-      const isLegacyConfiguration =
-        bodyValidation.right.assistant.actions.length === 1 &&
-        !bodyValidation.right.assistant.actions[0].description;
-
-      if (isLegacyConfiguration && maxStepsPerRun !== undefined) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "app_auth_error",
-            message: "maxStepsPerRun is only supported in multi-actions mode.",
-          },
-        });
-      }
-      if (!isLegacyConfiguration && maxStepsPerRun === undefined) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "app_auth_error",
-            message: "maxStepsPerRun is required in multi-actions mode.",
-          },
-        });
-      }
       const agentConfigurationRes = await createOrUpgradeAgentConfiguration({
         auth,
-        assistant: { ...bodyValidation.right.assistant, maxStepsPerRun },
+        assistant: bodyValidation.right.assistant,
       });
 
       if (agentConfigurationRes.isErr()) {
@@ -270,8 +246,6 @@ export async function createOrUpgradeAgentConfiguration({
 }): Promise<Result<AgentConfigurationType, Error>> {
   const { actions } = assistant;
 
-  const maxStepsPerRun = assistant.maxStepsPerRun ?? actions.length;
-
   // Tools mode:
   // Enforce that every action has a name and a description and that every name is unique.
   if (actions.length > 1) {
@@ -316,7 +290,6 @@ export async function createOrUpgradeAgentConfiguration({
     name: assistant.name,
     description: assistant.description,
     instructions: assistant.instructions ?? null,
-    maxStepsPerRun,
     visualizationEnabled: assistant.visualizationEnabled,
     pictureUrl: assistant.pictureUrl,
     status: assistant.status,

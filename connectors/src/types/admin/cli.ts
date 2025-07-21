@@ -39,6 +39,7 @@ export const ConfluenceCommandSchema = t.type({
   command: t.union([
     t.literal("me"),
     t.literal("upsert-page"),
+    t.literal("skip-page"),
     t.literal("upsert-pages"),
     t.literal("update-parents"),
     t.literal("ignore-near-rate-limit"),
@@ -56,6 +57,7 @@ export const ConfluenceCommandSchema = t.type({
     keyInFile: t.union([t.string, t.undefined]),
     url: t.union([t.string, t.undefined]),
     forceUpsert: t.union([t.literal("true"), t.undefined]),
+    skipReason: t.union([t.string, t.undefined]),
   }),
 });
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
@@ -73,6 +75,14 @@ export const ConfluenceUpsertPageResponseSchema = t.type({
 });
 export type ConfluenceUpsertPageResponseType = t.TypeOf<
   typeof ConfluenceUpsertPageResponseSchema
+>;
+
+export const ConfluenceSkipPageResponseSchema = t.type({
+  skipped: t.boolean,
+  reason: t.union([t.string, t.undefined]),
+});
+export type ConfluenceSkipPageResponseType = t.TypeOf<
+  typeof ConfluenceSkipPageResponseSchema
 >;
 
 export const ConfluenceCheckSpaceAccessResponseSchema = t.type({
@@ -767,6 +777,7 @@ export const AdminResponseSchema = t.union([
   CheckFileGenericResponseSchema,
   ConfluenceCheckPageExistsResponseSchema,
   ConfluenceCheckSpaceAccessResponseSchema,
+  ConfluenceSkipPageResponseSchema,
   ConfluenceMeResponseSchema,
   ConfluenceResolveSpaceFromUrlResponseSchema,
   ConfluenceUpsertPageResponseSchema,

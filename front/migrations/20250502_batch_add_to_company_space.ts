@@ -45,7 +45,15 @@ async function getParentsToAdd({
       throw searchResult.error;
     }
 
-    nodes = searchResult.value.nodes;
+    // The Elasticsearch analyzer splits punctuation (like '#inc-') into tokens,
+    // causing the search to match documents containing the prefix anywhere in the title,
+    // not just at the beginning. This post-search filter ensures we only get
+    // documents whose titles actually start with the specified prefix.
+    const filteredNodes = searchResult.value.nodes.filter((node: any) =>
+      node.title.toLowerCase().startsWith(namePrefix.toLowerCase())
+    );
+
+    nodes = filteredNodes;
 
     if (execute) {
       logger.info(`Found ${nodes.length} parents to add.`);
@@ -74,15 +82,25 @@ async function addParentsToDataSourceView({
   execute: boolean;
   logger: Logger;
 }) {
+  const currentParents = dataSourceView.parentsIn || [];
+  logger.info(
+    {
+      currentParents,
+      parentsToAdd,
+      dataSourceViewId: dataSourceView.sId,
+      dataSourceViewModelId: dataSourceView.id,
+    },
+    "Preparing to add parent node IDs to data source view."
+  );
+
   if (execute) {
-    const currentParents = dataSourceView.parentsIn || [];
     await dataSourceView.setParents([
       ...new Set([...currentParents, ...parentsToAdd]),
     ]);
     logger.info(`Added ${parentsToAdd.length} parents to data source view.`);
   } else {
     logger.info(
-      `Would add ${parentsToAdd.length} parents to data source view.`
+      `Would have added ${parentsToAdd.length} parents to data source view.`
     );
   }
 }

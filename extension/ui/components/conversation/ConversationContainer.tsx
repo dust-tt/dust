@@ -259,6 +259,7 @@ export function ConversationContainer({
                 setIncludeContent(includeTab);
               }}
               conversation={conversation ?? undefined}
+              attachmentPickerSide="top"
             />
           </div>
 

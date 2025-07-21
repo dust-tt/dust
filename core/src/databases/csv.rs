@@ -5,9 +5,9 @@ use futures::stream::StreamExt;
 use lazy_static::lazy_static;
 use tokio::io::AsyncReadExt;
 
+use crate::info;
 use regex::Regex;
 use tokio_util::compat::TokioAsyncReadCompatExt;
-use tracing::info;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::{databases::table::Row, utils};
@@ -46,7 +46,7 @@ impl GoogleCloudStorageCSVContent {
         let csv_to_rows_duration = utils::now() - now;
 
         info!(
-            rows_count = rows.len(),
+            row_count = rows.len(),
             download_duration = download_duration,
             delimiter_duration = delimiter_duration,
             csv_to_rows_duration = csv_to_rows_duration,

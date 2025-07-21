@@ -88,6 +88,24 @@ export async function syncOneFile({
     name: file.name,
   });
 
+  // If the file is too big to be downloaded, we skip it.
+  if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
+    localLogger.info("File size exceeded, skipping file.");
+
+    return false;
+  }
+
+  const mimeTypesToSync = await getMimeTypesToSync({
+    pdfEnabled: providerConfig.pdfEnabled || false,
+    csvEnabled: providerConfig.csvEnabled || false,
+  });
+
+  const mimeType = file.file.mimeType;
+  if (!mimeType || !mimeTypesToSync.includes(mimeType)) {
+    localLogger.info("Type not supported, skipping file.");
+    return false;
+  }
+
   const fileResource = await MicrosoftNodeResource.fetchByInternalId(
     connectorId,
     documentId
@@ -112,6 +130,7 @@ export async function syncOneFile({
   }
 
   localLogger.info("Syncing file");
+
   const client = await getClient(connector.connectionId);
   const { itemAPIPath } = typeAndPathFromInternalId(documentId);
 
@@ -143,24 +162,6 @@ export async function syncOneFile({
 
   if (!fields) {
     localLogger.warn("Unexpected missing fields for file");
-  }
-
-  // If the file is too big to be downloaded, we skip it.
-  if (file.size && file.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
-    localLogger.info("File size exceeded, skipping file.");
-
-    return false;
-  }
-
-  const mimeTypesToSync = await getMimeTypesToSync({
-    pdfEnabled: providerConfig.pdfEnabled || false,
-    csvEnabled: providerConfig.csvEnabled || false,
-  });
-
-  const mimeType = file.file.mimeType;
-  if (!mimeType || !mimeTypesToSync.includes(mimeType)) {
-    localLogger.info("Type not supported, skipping file.");
-    return false;
   }
 
   const maxDocumentLen = providerConfig.largeFilesEnabled

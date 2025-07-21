@@ -30,6 +30,13 @@ export type DataSourceViewContentNode = ContentNodeWithParent & {
   dataSourceView: DataSourceViewType;
 };
 
+export const isEqualNode = (
+  lhs: DataSourceViewContentNode,
+  rhs: DataSourceViewContentNode
+) =>
+  lhs.internalId === rhs.internalId &&
+  lhs.dataSourceView.dataSource.sId === rhs.dataSourceView.dataSource.sId;
+
 export type DataSourceViewSelectionConfiguration = {
   dataSourceView: DataSourceViewType;
   selectedResources: DataSourceViewContentNode[];

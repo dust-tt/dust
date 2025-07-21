@@ -27,8 +27,6 @@ function isCodedError(error: unknown): error is CodedError {
 export function reportSlackUsage({
   connectorId,
   method,
-  channelId,
-  limit,
   useCase,
 }: {
   connectorId: ModelId;
@@ -37,10 +35,6 @@ export function reportSlackUsage({
   limit?: number;
   useCase?: "batch_sync" | "incremental_sync" | "bot";
 }) {
-  logger.info(
-    { connectorId, method, channelId, limit, useCase },
-    "Slack API call"
-  );
   const tags = [`connector:${connectorId}`, `method:${method}`];
   if (useCase) {
     tags.push(`use_case:${useCase}`);

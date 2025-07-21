@@ -118,19 +118,6 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  static async fetchByAuth0Sub(
-    sub: string,
-    transaction?: Transaction
-  ): Promise<UserResource | null> {
-    const user = await UserModel.findOne({
-      where: {
-        auth0Sub: sub,
-      },
-      transaction,
-    });
-    return user ? new UserResource(UserModel, user.get()) : null;
-  }
-
   static async fetchByWorkOSUserId(
     workOSUserId: string,
     transaction?: Transaction
@@ -153,20 +140,6 @@ export class UserResource extends BaseResource<UserModel> {
 
     // Most recently updated user if any.
     return sortedUsers[0] ?? null;
-  }
-
-  static async fetchByProvider(
-    provider: UserProviderType,
-    providerId: string
-  ): Promise<UserResource | null> {
-    const user = await UserModel.findOne({
-      where: {
-        provider,
-        providerId,
-      },
-    });
-
-    return user ? new UserResource(UserModel, user.get()) : null;
   }
 
   static async getWorkspaceFirstAdmin(

@@ -19,11 +19,27 @@ const DUST_INTERNAL_INDEX_FILE = "DUST_INTERNAL_INDEX_v1";
 const DUST_INTERNAL_INDEX_FILE_PREFIX = "._dust_internal_index";
 
 const DEFAULT_MAX_RESULTS = 1000;
-const STREAM_THRESHOLD_BYTES = 1024 * 1024; // 1MB - files smaller than this will be buffered.
+const STREAM_THRESHOLD_BYTES = 2 * 1024 * 1024; // 2MB - files smaller than this will be buffered.
 const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB
 
-const ITEMS_PER_INDEX = 5000; // Files/directories per index file.
+// Files are faster to upsert than directories, so we can afford to have more files per index file.
+const FILES_PER_INDEX = 4000; // Files per index file.
+const DIRECTORIES_PER_INDEX = 1500; // Directories per index file.
+
 const PARALLEL_INDEX_UPLOADS = 10; // Concurrent index file uploads.
+
+/**
+ * Sanitizes a string to be used as a GCS object name by removing characters that are not allowed by
+ * Google Cloud Storage object naming restrictions.
+ * See https://cloud.google.com/storage/docs/objects#naming.
+ */
+export function sanitizeGcsObjectName(path: string): string {
+  return path
+    .replace(/[\r\n]/g, "_") // Replace carriage return and line feed.
+    .replace(/[:"<>|]/g, "_") // Replace Windows-incompatible characters.
+    .replace(/_{2,}/g, "_") // Consolidate underscores.
+    .trim(); // Remove whitespace.
+}
 
 interface DirectoryListing {
   dirPath: string;
@@ -293,33 +309,50 @@ export class GCSRepositoryManager {
       pageToken = result.nextPageToken;
     } while (pageToken);
 
+    // Split files and directories into separate chunks.
+    const fileChunks = chunk(files, FILES_PER_INDEX);
+    const directoryChunks = chunk(directories, DIRECTORIES_PER_INDEX);
+
     childLogger.info(
       {
         gcsBasePath,
         totalFiles: files.length,
         totalDirectories: directories.length,
+        totalFileChunks: fileChunks.length,
+        totalDirectoryChunks: directoryChunks.length,
+        totalIndexFiles: fileChunks.length + directoryChunks.length,
       },
-      "Creating multiple index files for repository"
+      "Creating separate index files for files and directories"
     );
-
-    // Split files and directories into multiple index files.
-    const fileChunks = chunk(files, ITEMS_PER_INDEX);
-    const directoryChunks = chunk(directories, ITEMS_PER_INDEX);
-    const totalChunks = Math.max(fileChunks.length, directoryChunks.length);
     const indexPaths: string[] = [];
 
-    // Create index data for all chunks.
-    const indexChunks = Array.from({ length: totalChunks }, (_, index) => ({
-      index,
-      path: `${indexBasePath}_${index}.json`,
-      data: {
-        files: fileChunks[index] || [], // Empty array if no files for this chunk.
-        directories: directoryChunks[index] || [], // Empty array if no directories for this chunk.
-        indexNumber: index,
-        totalIndexes: totalChunks,
-        createdAt: new Date().toISOString(),
-      },
-    }));
+    // Create separate chunks for files and directories.
+    const indexChunks = [
+      // File chunks.
+      ...fileChunks.map((fileChunk, index) => ({
+        index,
+        path: `${indexBasePath}_files_${index}.json`,
+        data: {
+          files: fileChunk,
+          directories: [], // No directories in file chunks.
+          indexNumber: index,
+          totalFileIndexes: fileChunks.length,
+          createdAt: new Date().toISOString(),
+        },
+      })),
+      // Directory chunks.
+      ...directoryChunks.map((directoryChunk, index) => ({
+        index: fileChunks.length + index, // Continue numbering after file chunks.
+        path: `${indexBasePath}_directories_${index}.json`,
+        data: {
+          files: [], // No files in directory chunks.
+          directories: directoryChunk,
+          indexNumber: index,
+          totalDirectoryIndexes: directoryChunks.length,
+          createdAt: new Date().toISOString(),
+        },
+      })),
+    ];
 
     // Upload index files.
     await concurrentExecutor(
@@ -345,10 +378,10 @@ export class GCSRepositoryManager {
       {
         gcsBasePath,
         totalIndexes: indexPaths.length,
-        itemsPerIndex: ITEMS_PER_INDEX,
-        totalIndexFiles: indexPaths.length,
+        totalFileChunks: fileChunks.length,
+        totalDirectoryChunks: directoryChunks.length,
       },
-      "Created multiple index files for repository"
+      "Created separate index files for files and directories"
     );
 
     return indexPaths;

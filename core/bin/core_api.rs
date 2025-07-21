@@ -10,6 +10,7 @@ use axum::{
     routing::{delete, get, patch, post},
     Router,
 };
+use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
 use futures::future::try_join_all;
 use hyper::http::StatusCode;
 use parking_lot::Mutex;
@@ -25,10 +26,6 @@ use tokio::{
     sync::mpsc::unbounded_channel,
 };
 use tokio_stream::Stream;
-use tower_http::trace::{self, TraceLayer};
-use tracing::{error, info, Level};
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::prelude::*;
 
 use dust::{
     api_keys::validate_api_key,
@@ -43,13 +40,11 @@ use dust::{
         database::{execute_query, get_tables_schema, QueryDatabaseError},
         table::{LocalTable, Row, Table},
     },
-    databases_store::{
-        self,
-        gcs::GoogleCloudStorageDatabasesStore,
-        store::{DatabasesStoreStrategy, CURRENT_STRATEGY},
-    },
+    databases_store::{self},
     dataset,
     deno::js_executor::JSExecutor,
+    error, info,
+    open_telemetry::init_subscribers,
     project,
     providers::provider::{provider, ProviderID},
     run,
@@ -63,7 +58,7 @@ use dust::{
         postgres,
         store::{self, FolderUpsertParams, TableUpsertParams},
     },
-    utils::{self, error_response, APIError, APIResponse, CoreRequestMakeSpan},
+    utils::{self, error_response, APIError, APIResponse},
 };
 
 #[global_allocator]
@@ -594,11 +589,13 @@ async fn datasets_register(
     }
 }
 
+#[tracing::instrument(level = "info", skip_all)]
 async fn datasets_list(
     Path(project_id): Path<i64>,
     State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+
     match state.store.list_datasets(&project).await {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -4109,15 +4106,7 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
-        tracing_subscriber::registry()
-            .with(JsonStorageLayer)
-            .with(
-                BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
-                    .skip_fields(vec!["file", "line", "target"].into_iter())
-                    .unwrap(),
-            )
-            .with(tracing_subscriber::EnvFilter::new("info"))
-            .init();
+        let _guard = init_subscribers()?;
 
         let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {
             Ok(db_uri) => {
@@ -4127,16 +4116,11 @@ fn main() {
             Err(_) => Err(anyhow!("CORE_DATABASE_URI is required (postgres)"))?,
         };
 
-        // We setup the right databases store based on the strategy.
-        let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> = match CURRENT_STRATEGY {
-            DatabasesStoreStrategy::PostgresOnly | DatabasesStoreStrategy::PostgresAndWriteToGCS => {
-                let store = databases_store::postgres::get_postgres_store().await?;
-                Box::new(store)
-            }
-            DatabasesStoreStrategy::GCSOnly | DatabasesStoreStrategy::GCSAndWriteToPostgres => {
-                let store = GoogleCloudStorageDatabasesStore::new();
-                Box::new(store)
-            }
+        // Always use Postgres for databases_store
+        // TODO: once we fully switch to GCS, we'll change this to: GoogleCloudStorageDatabasesStore::new()
+        let databases_store: Box<dyn databases_store::store::DatabasesStore + Sync + Send> = {
+            let store = databases_store::postgres::get_postgres_store().await?;
+            Box::new(store)
         };
 
         let url = std::env::var("ELASTICSEARCH_URL").expect("ELASTICSEARCH_URL must be set");
@@ -4359,14 +4343,11 @@ fn main() {
         // Misc
         .route("/tokenize", post(tokenize))
         .route("/tokenize/batch", post(tokenize_batch))
-
+        .layer(OtelInResponseLayer::default())
+        // Start OpenTelemetry trace on incoming request.
+        .layer(OtelAxumLayer::default())
         // Extensions
         .layer(DefaultBodyLimit::disable())
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(CoreRequestMakeSpan::new())
-                .on_response(trace::DefaultOnResponse::new().level(Level::INFO)),
-        )
         .layer(from_fn(validate_api_key))
         .with_state(state.clone());
 

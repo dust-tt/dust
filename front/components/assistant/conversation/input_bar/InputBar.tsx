@@ -25,7 +25,7 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
-import { compareAgentsForSort } from "@app/types";
+import { compareAgentsForSort, isEqualNode } from "@app/types";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -237,11 +237,8 @@ export function AssistantInputBar({
   };
 
   const handleNodesAttachmentSelect = (node: DataSourceViewContentNode) => {
-    const isNodeAlreadyAttached = attachedNodes.some(
-      (attachedNode) =>
-        attachedNode.internalId === node.internalId &&
-        attachedNode.dataSourceView.dataSource.sId ===
-          node.dataSourceView.dataSource.sId
+    const isNodeAlreadyAttached = attachedNodes.some((attachedNode) =>
+      isEqualNode(attachedNode, node)
     );
     if (!isNodeAlreadyAttached) {
       setAttachedNodes((prev) => [...prev, node]);
@@ -249,9 +246,7 @@ export function AssistantInputBar({
   };
 
   const handleNodesAttachmentRemove = (node: DataSourceViewContentNode) => {
-    setAttachedNodes((prev) =>
-      prev.filter((n) => n.internalId !== node.internalId)
-    );
+    setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
   };
 
   const [isStopping, setIsStopping] = useState<boolean>(false);

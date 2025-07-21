@@ -1,5 +1,6 @@
 use std::{io::prelude::*, time::Duration};
 
+use crate::info;
 use crate::{
     providers::{llm::LLMTokenUsage, provider::ProviderID},
     utils,
@@ -14,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::timeout;
-use tracing::info;
 
 use super::{
     chat_messages::{
@@ -301,10 +301,12 @@ fn assistant_chat_message_from_responses_api_output(
                 encrypted_content,
                 summary,
             } => {
-                let reasoning = summary
-                    .as_ref()
-                    .and_then(|s| s.first())
-                    .map(|s| s.text.clone());
+                let reasoning = summary.as_ref().map(|s| {
+                    s.iter()
+                        .map(|s| s.text.clone())
+                        .collect::<Vec<String>>()
+                        .join("\n\n")
+                });
 
                 let metadata = json!({
                     "id": id,
@@ -480,6 +482,9 @@ pub async fn openai_responses_api_completion(
         usage: response.usage.map(|usage| LLMTokenUsage {
             prompt_tokens: usage.input_tokens,
             completion_tokens: usage.output_tokens,
+            reasoning_tokens: usage
+                .output_tokens_details
+                .and_then(|details| details.reasoning_tokens),
         }),
         provider_request_id: request_id,
         logprobs: None,
@@ -761,6 +766,16 @@ async fn streamed_responses_api_completion(
                                 }
                             }
                         }
+                        "response.reasoning_summary_text.done" => {
+                            if let Some(sender) = &event_sender {
+                                let _ = sender.send(json!({
+                                    "type": "reasoning_tokens",
+                                    "content": {
+                                        "text": "\n\n"
+                                    }
+                                }));
+                            }
+                        }
                         "response.completed" => {
                             handle_response_completed(&mut state, event_data, &event_sender)?;
                             break 'stream;
@@ -774,7 +789,6 @@ async fn streamed_responses_api_completion(
                         | "response.reasoning_summary.done"
                         | "response.reasoning_summary_part.added"
                         | "response.reasoning_summary_part.done"
-                        | "response.reasoning_summary_text.done"
                         | "response.content_part.added"
                         | "response.output_text.done"
                         | "response.content_part.done"

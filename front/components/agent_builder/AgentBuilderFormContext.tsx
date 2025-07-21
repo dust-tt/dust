@@ -2,7 +2,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 
 import type { DataSourceViewContentNode, DataSourceViewType } from "@app/types";
-import { EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 import {
   MODEL_IDS,
   MODEL_PROVIDER_IDS,
@@ -81,6 +80,14 @@ const extractDataActionConfigurationSchema = z.object({
   timeFrame: timeFrameSchema,
   jsonSchema: z.custom<JSONSchema>().nullable(),
 });
+const queryTablesActionConfigurationSchema = z.object({
+  type: z.literal("QUERY_TABLES"),
+  dataSourceConfigurations: z.record(
+    z.string(),
+    dataSourceViewSelectionConfigurationSchema
+  ),
+  timeFrame: timeFrameSchema,
+});
 
 const baseActionSchema = z.object({
   id: z.string(),
@@ -117,11 +124,17 @@ const extractDataActionSchema = baseActionSchema.extend({
   configuration: extractDataActionConfigurationSchema,
 });
 
+const queryTablesActionSchema = baseActionSchema.extend({
+  type: z.literal("QUERY_TABLES"),
+  configuration: queryTablesActionConfigurationSchema,
+});
+
 const actionSchema = z.discriminatedUnion("type", [
   searchActionSchema,
   dataVisualizationActionSchema,
   includeDataActionSchema,
   extractDataActionSchema,
+  queryTablesActionSchema,
 ]);
 
 const userSchema = z.object({
@@ -161,7 +174,6 @@ export const agentBuilderFormSchema = z.object({
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
   actions: z.array(actionSchema),
-  maxStepsPerRun: z.number().min(1).max(EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT),
 });
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;

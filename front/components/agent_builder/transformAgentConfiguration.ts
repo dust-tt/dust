@@ -8,7 +8,6 @@ import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant
 import type { UserType } from "@app/types";
 import type { LightAgentConfigurationType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 import { GPT_4O_MODEL_CONFIG } from "@app/types/assistant/assistant";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -43,8 +42,6 @@ export function transformAgentConfigurationToFormData(
       responseFormat: agentConfiguration.model.responseFormat,
     },
     actions: [], // Actions are always loaded client-side via SWR
-    maxStepsPerRun:
-      agentConfiguration.maxStepsPerRun || MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }
 
@@ -177,13 +174,22 @@ function createTypedAction(
             baseAction.configuration.dataSourceConfigurations,
         },
       };
+
+    case "QUERY_TABLES":
+      return {
+        ...baseAction,
+        type: "QUERY_TABLES",
+        configuration: {
+          type: "QUERY_TABLES",
+          dataSourceConfigurations:
+            baseAction.configuration.dataSourceConfigurations,
+          timeFrame: config.timeFrame,
+        },
+      };
   }
 }
 
-export function getDefaultAgentFormData(
-  user: UserType,
-  defaultMaxSteps: number
-): AgentBuilderFormData {
+export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
   return {
     agentSettings: {
       name: "",
@@ -206,6 +212,5 @@ export function getDefaultAgentFormData(
       responseFormat: undefined,
     },
     actions: [],
-    maxStepsPerRun: defaultMaxSteps,
   };
 }

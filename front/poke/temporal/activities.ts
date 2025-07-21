@@ -2,7 +2,6 @@ import assert from "assert";
 import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
-import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
@@ -426,7 +425,6 @@ export async function deleteMembersActivity({
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
-  const auth0Client = getAuth0ManagemementClient();
 
   const childLogger = hardDeleteLogger.child({
     workspaceId: workspace.id,
@@ -469,44 +467,6 @@ export async function deleteMembersActivity({
         // Delete the user's files.
         await FileResource.deleteAllForUser(auth, user.toJSON());
         await membership.delete(auth, {});
-
-        // Delete the user from Auth0 if they have an Auth0 ID
-        if (deleteFromAuth0 && user.auth0Sub) {
-          assert(
-            !workspaceRelocated,
-            "Trying to delete an Auth0 sub for a workspace that was relocated/is being relocated."
-          );
-
-          try {
-            childLogger.info(
-              {
-                auth0Sub: user.auth0Sub,
-                userId: user.sId,
-              },
-              "Deleting user from Auth0"
-            );
-            await auth0Client.users.delete({
-              id: user.auth0Sub,
-            });
-            childLogger.info(
-              {
-                auth0Sub: user.auth0Sub,
-                userId: user.sId,
-              },
-              "Successfully deleted user from Auth0"
-            );
-          } catch (error) {
-            childLogger.error(
-              {
-                auth0Sub: user.auth0Sub,
-                error,
-                userId: user.sId,
-              },
-              "Failed to delete user from Auth0"
-            );
-            // Continue with user deletion in our database even if Auth0 deletion fails
-          }
-        }
 
         // Delete the user from WorkOS.
         if (deleteFromAuth0 && user.workOSUserId) {

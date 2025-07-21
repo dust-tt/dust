@@ -35,6 +35,16 @@ export function isBadCredentials(error: unknown): error is RequestError {
   );
 }
 
+export function isGithubIssueWasDeletedError(
+  error: unknown
+): error is RequestError {
+  return (
+    error instanceof RequestError &&
+    error.status === 410 &&
+    error.message.includes("This issue was deleted")
+  );
+}
+
 export function isGraphQLNotFound(error: unknown): error is Error {
   return (
     error instanceof Error &&

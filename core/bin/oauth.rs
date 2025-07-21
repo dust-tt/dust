@@ -1,12 +1,10 @@
 use dust::oauth::app;
+use dust::open_telemetry::init_subscribers;
+use dust::{error, info};
 use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
 };
-
-use tracing::{error, info};
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
-use tracing_subscriber::prelude::*;
 
 fn main() {
     let rt = tokio::runtime::Builder::new_multi_thread()
@@ -15,15 +13,7 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
-        tracing_subscriber::registry()
-            .with(JsonStorageLayer)
-            .with(
-                BunyanFormattingLayer::new("oauth".into(), std::io::stdout)
-                    .skip_fields(vec!["file", "line", "target"].into_iter())
-                    .unwrap(),
-            )
-            .with(tracing_subscriber::EnvFilter::new("info"))
-            .init();
+        let _guard = init_subscribers()?;
 
         let app = app::create_app().await?;
 

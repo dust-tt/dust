@@ -3,6 +3,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Advanced features for Notion workspace management shown to admins",
   },
+  notion_private_integration: {
+    description: "Setup Notion private integration tokens",
+  },
   advanced_search: {
     description:
       "Activates the advanced search option: browse selected data like a file system",
@@ -39,8 +42,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   exploded_tables_query: {
     description: "Enhanced table querying with exploded views",
   },
-  extended_max_steps_per_run: {
-    description: "Increase maximum steps allowed per agent run",
+  interactive_content_server: {
+    description:
+      "Interactive content MCP server - gives access to the new visualization layout",
   },
   google_ai_studio_experimental_models_feature: {
     description: "Access to experimental Google AI Studio models",
@@ -50,6 +54,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   index_private_slack_channel: {
     description: "Allow indexing of private Slack channels",
+  },
+  jira_tool: {
+    description: "Jira MCP tool",
   },
   labs_mcp_actions_dashboard: {
     description: "MCP actions dashboard in Labs section",

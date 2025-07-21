@@ -76,6 +76,8 @@ export const AGENT_BUILDER_MCP_SERVERS = [
   "extract_data",
   "search",
   "include_data",
+  "extract_data",
+  "query_tables",
 ] as const;
 export type AgentBuilderMCPServerName =
   (typeof AGENT_BUILDER_MCP_SERVERS)[number];
@@ -84,7 +86,8 @@ export type AgentBuilderMCPServerName =
 export type SupportedAgentBuilderActionType =
   | "EXTRACT_DATA"
   | "SEARCH"
-  | "INCLUDE_DATA";
+  | "INCLUDE_DATA"
+  | "QUERY_TABLES";
 
 // Mapping of specific MCP server names to form action types
 export const MCP_SERVER_TO_ACTION_TYPE_MAP: Record<
@@ -94,6 +97,7 @@ export const MCP_SERVER_TO_ACTION_TYPE_MAP: Record<
   extract_data: "EXTRACT_DATA",
   search: "SEARCH",
   include_data: "INCLUDE_DATA",
+  query_tables: "QUERY_TABLES",
 } as const;
 
 // Legacy alias for backward compatibility
@@ -146,6 +150,33 @@ export const BUILDER_FLOWS = [
   "personal_assistants",
 ] as const;
 export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
+
+export const DESCRIPTION_MAX_LENGTH = 800;
+
+export const capabilityFormSchema = z.object({
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(DESCRIPTION_MAX_LENGTH, "Description too long"),
+  timeFrame: z
+    .object({
+      duration: z.number(),
+      unit: z.enum(["hour", "day", "week", "month", "year"]),
+    })
+    .nullable()
+    .default(null),
+  jsonSchema: z.any().nullable().default(null),
+});
+
+export type CapabilityFormData = z.infer<typeof capabilityFormSchema>;
+
+export const CONFIGURATION_SHEET_PAGE_IDS = {
+  DATA_SOURCE_SELECTION: "data-source-selection",
+  CONFIGURATION: "configuration",
+} as const;
+
+export type ConfigurationSheetPageId =
+  (typeof CONFIGURATION_SHEET_PAGE_IDS)[keyof typeof CONFIGURATION_SHEET_PAGE_IDS];
 
 // Zod validation schema for data source configuration - defines the contract/shape
 export const dataSourceConfigurationSchema = z.object({

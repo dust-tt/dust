@@ -9,24 +9,20 @@ import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuild
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import {
   getDefaultAgentFormData,
   transformAgentConfigurationToFormData,
 } from "@app/components/agent_builder/transformAgentConfiguration";
-import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/editors";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types";
-import {
-  EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-} from "@app/types";
 
 interface AgentBuilderProps {
   agentConfiguration?: LightAgentConfigurationType;
@@ -35,7 +31,8 @@ interface AgentBuilderProps {
 export default function AgentBuilder({
   agentConfiguration,
 }: AgentBuilderProps) {
-  const { owner, user, supportedDataSourceViews } = useAgentBuilderContext();
+  const { owner, user } = useAgentBuilderContext();
+  const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
   const router = useRouter();
@@ -47,25 +44,17 @@ export default function AgentBuilder({
     mcpServerViews
   );
 
-  const { editors, isEditorsLoading } = useEditors({
+  const { editors } = useEditors({
     owner,
     agentConfigurationId: agentConfiguration?.sId ?? null,
   });
-
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
-  const defaultMaxSteps = hasFeature("extended_max_steps_per_run")
-    ? EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT
-    : MAX_STEPS_USE_PER_RUN_LIMIT;
 
   const defaultValues = useMemo((): AgentBuilderFormData => {
     if (agentConfiguration) {
       return transformAgentConfigurationToFormData(agentConfiguration);
     }
-    return getDefaultAgentFormData(user, defaultMaxSteps);
-  }, [agentConfiguration, user, defaultMaxSteps]);
+    return getDefaultAgentFormData(user);
+  }, [agentConfiguration, user]);
 
   // Create values object that includes async data (actions and editors)
   const formValues = useMemo((): AgentBuilderFormData | undefined => {
@@ -187,8 +176,7 @@ export default function AgentBuilder({
                 !isDirty ||
                 isSubmitting ||
                 isMCPServerViewsLoading ||
-                isActionsLoading ||
-                isEditorsLoading,
+                isActionsLoading,
             }}
             agentConfigurationId={agentConfiguration?.sId || null}
           />

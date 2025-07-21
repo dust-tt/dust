@@ -4,16 +4,17 @@ use crate::oauth::{
         confluence::ConfluenceConnectionProvider, github::GithubConnectionProvider,
         gmail::GmailConnectionProvider, gong::GongConnectionProvider,
         google_drive::GoogleDriveConnectionProvider, hubspot::HubspotConnectionProvider,
-        intercom::IntercomConnectionProvider, mcp::MCPConnectionProvider,
-        microsoft::MicrosoftConnectionProvider, mock::MockConnectionProvider,
-        monday::MondayConnectionProvider, notion::NotionConnectionProvider,
-        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
-        zendesk::ZendeskConnectionProvider,
+        intercom::IntercomConnectionProvider, jira::JiraConnectionProvider,
+        mcp::MCPConnectionProvider, microsoft::MicrosoftConnectionProvider,
+        mock::MockConnectionProvider, monday::MondayConnectionProvider,
+        notion::NotionConnectionProvider, salesforce::SalesforceConnectionProvider,
+        slack::SlackConnectionProvider, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
 use crate::utils;
 use crate::utils::ParseError;
+use crate::{error, info};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
@@ -22,7 +23,6 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::time::Duration;
 use std::{env, fmt};
-use tracing::{error, info};
 
 use super::{credential::Credential, providers::utils::ProviderHttpRequestError};
 
@@ -95,6 +95,7 @@ pub enum ConnectionProvider {
     GoogleDrive,
     Gmail,
     Intercom,
+    Jira,
     Microsoft,
     Monday,
     Notion,
@@ -232,6 +233,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::GoogleDrive => Box::new(GoogleDriveConnectionProvider::new()),
         ConnectionProvider::Gmail => Box::new(GmailConnectionProvider::new()),
         ConnectionProvider::Intercom => Box::new(IntercomConnectionProvider::new()),
+        ConnectionProvider::Jira => Box::new(JiraConnectionProvider::new()),
         ConnectionProvider::Microsoft => Box::new(MicrosoftConnectionProvider::new()),
         ConnectionProvider::Monday => Box::new(MondayConnectionProvider::new()),
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),

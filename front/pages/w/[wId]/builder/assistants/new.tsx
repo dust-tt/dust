@@ -171,7 +171,6 @@ export default function CreateAssistant({
                     agentConfiguration.model.reasoningEffort || "none",
                   responseFormat: agentConfiguration.model.responseFormat,
                 },
-                maxStepsPerRun: agentConfiguration.maxStepsPerRun ?? null,
                 visualizationEnabled: agentConfiguration.visualizationEnabled,
                 templateId: templateId,
                 tags: agentConfiguration.tags.filter(

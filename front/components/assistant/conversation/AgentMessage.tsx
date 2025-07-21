@@ -3,10 +3,6 @@ import {
   ArrowPathIcon,
   Button,
   Chip,
-  Citation,
-  CitationIcons,
-  CitationIndex,
-  CitationTitle,
   ClipboardCheckIcon,
   ClipboardIcon,
   ContentMessage,
@@ -15,6 +11,7 @@ import {
   InteractiveImageGrid,
   Markdown,
   Separator,
+  Tooltip,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
@@ -24,6 +21,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
+import { AgentMessageGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -550,6 +548,7 @@ export function AgentMessage({
             agentMessage.error || {
               message: "Unexpected Error",
               code: "unexpected_error",
+              metadata: {},
             }
           }
           retryHandler={async () => retryHandler(agentMessage)}
@@ -590,16 +589,24 @@ export function AgentMessage({
             owner={owner}
           />
 
-          {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Agent thoughts" variant="primary">
-              <Markdown
-                content={agentMessage.chainOfThought}
-                isStreaming={false}
-                forcedTextSize="text-sm"
-                textColor="text-muted-foreground"
-                isLastMessage={false}
-              />
-            </ContentMessage>
+          {agentMessage.chainOfThought?.trim().length ? (
+            <Tooltip
+              label="Agent thoughts"
+              trigger={
+                <div>
+                  <ContentMessage variant="primary">
+                    <Markdown
+                      content={agentMessage.chainOfThought}
+                      isStreaming={false}
+                      forcedTextSize="text-sm"
+                      textColor="text-muted-foreground"
+                      isLastMessage={false}
+                    />
+                  </ContentMessage>
+                </div>
+              }
+              tooltipTriggerAsChild
+            />
           ) : null}
         </div>
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
@@ -654,9 +661,11 @@ export function AgentMessage({
               activeReferences: generatedFiles.map((file) => ({
                 index: -1,
                 document: {
+                  contentType: file.contentType,
+                  fileId: file.fileId,
                   href: `/api/w/${owner.sId}/files/${file.fileId}`,
-                  title: file.title,
                   icon: <DocumentIcon />,
+                  title: file.title,
                 },
               })),
             })}
@@ -699,15 +708,14 @@ function getCitations({
   }[];
 }) {
   activeReferences.sort((a, b) => a.index - b.index);
+
   return activeReferences.map(({ document, index }) => {
     return (
-      <Citation key={index} href={document.href} tooltip={document.title}>
-        <CitationIcons>
-          {index !== -1 && <CitationIndex>{index}</CitationIndex>}
-          {document.icon}
-        </CitationIcons>
-        <CitationTitle>{document.title}</CitationTitle>
-      </Citation>
+      <AgentMessageGeneratedFiles
+        key={index}
+        document={document}
+        index={index}
+      />
     );
   });
 }

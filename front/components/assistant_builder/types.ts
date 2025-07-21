@@ -30,10 +30,7 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import {
-  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
-  DEFAULT_MAX_STEPS_USE_PER_RUN,
-} from "@app/types";
+import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const ACTION_MODES = [
@@ -160,7 +157,6 @@ export type AssistantBuilderState = {
     responseFormat?: string;
   };
   actions: AssistantBuilderMCPOrVizState[];
-  maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
@@ -180,7 +176,6 @@ export type AssistantBuilderInitialState = {
     responseFormat?: string;
   } | null;
   actions: AssistantBuilderActionAndDataVisualizationConfiguration[];
-  maxStepsPerRun: number | null;
   visualizationEnabled: boolean;
   templateId: string | null;
   tags: TagType[];
@@ -202,9 +197,7 @@ export type ActionSpecificationWithType = ActionSpecification & {
 // Creates a fresh instance of AssistantBuilderState to prevent unintended mutations of shared state.
 export function getDefaultAssistantState() {
   return {
-    // Data Visualization is not an action but we show it like an action.
-    // We enable it by default so we should push it to actions list.
-    actions: [getDataVisualizationActionConfiguration()],
+    actions: [],
     handle: null,
     scope: "hidden",
     description: null,
@@ -219,8 +212,7 @@ export function getDefaultAssistantState() {
       reasoningEffort:
         CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
     },
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
-    visualizationEnabled: true,
+    visualizationEnabled: false,
     templateId: null,
     tags: [],
     editors: [],

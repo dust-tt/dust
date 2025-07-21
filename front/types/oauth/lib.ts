@@ -27,6 +27,7 @@ export const OAUTH_PROVIDERS = [
   "google_drive",
   "gmail",
   "intercom",
+  "jira",
   "monday",
   "notion",
   "slack",
@@ -41,9 +42,10 @@ export const OAUTH_PROVIDERS = [
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   github: "GitHub",
-  google_drive: "Google",
   gmail: "Gmail",
+  google_drive: "Google",
   intercom: "Intercom",
+  jira: "Jira",
   monday: "Monday",
   notion: "Notion",
   slack: "Slack",
@@ -154,6 +156,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "github":
     case "google_drive":
     case "intercom":
+    case "jira":
     case "mcp":
       return null;
     default:
@@ -225,6 +228,7 @@ export const CREDENTIALS_PROVIDERS = [
   "snowflake",
   "bigquery",
   "salesforce",
+  "notion",
   // LABS
   "modjo",
 ] as const;
@@ -342,13 +346,19 @@ export type SalesforceCredentials = t.TypeOf<
   typeof SalesforceCredentialsSchema
 >;
 
+export const NotionCredentialsSchema = t.type({
+  integration_token: t.string,
+});
+export type NotionCredentials = t.TypeOf<typeof NotionCredentialsSchema>;
+
 export type ConnectionCredentials =
   | SnowflakeCredentials
   | BigQueryCredentialsWithLocation
   | SalesforceCredentials
   | ModjoCredentials
   | HubspotCredentials
-  | LinearCredentials;
+  | LinearCredentials
+  | NotionCredentials;
 
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
@@ -399,6 +409,12 @@ export function isSalesforceCredentials(
   credentials: ConnectionCredentials
 ): credentials is SalesforceCredentials {
   return "client_id" in credentials && "client_secret" in credentials;
+}
+
+export function isNotionCredentials(
+  credentials: ConnectionCredentials
+): credentials is NotionCredentials {
+  return "integration_token" in credentials;
 }
 
 export type OauthAPIPostCredentialsResponse = {

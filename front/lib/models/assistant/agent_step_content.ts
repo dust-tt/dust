@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -18,6 +19,7 @@ export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentM
   declare value: AgentContentItemType;
 
   declare agentMessage?: NonAttribute<AgentMessage>;
+  declare agentMCPActions?: NonAttribute<AgentMCPAction[]>;
 }
 
 AgentStepContentModel.init(
@@ -57,7 +59,7 @@ AgentStepContentModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        isIn: [["text_content", "reasoning", "function_call"]],
+        isIn: [["text_content", "reasoning", "function_call", "error"]],
       },
     },
     value: {

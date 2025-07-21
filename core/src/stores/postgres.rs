@@ -11,10 +11,10 @@ use std::hash::Hasher;
 use std::str::FromStr;
 use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
-use tracing::info;
 
 use crate::data_sources::data_source::DocumentStatus;
 use crate::data_sources::node::{Node, NodeESDocument, NodeType, ProviderVisibility};
+use crate::info;
 use crate::search_filter::Filterable;
 use crate::{
     blocks::block::BlockType,

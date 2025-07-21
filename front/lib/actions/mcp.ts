@@ -61,7 +61,6 @@ import {
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FileModel } from "@app/lib/resources/storage/models/files";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -235,7 +234,7 @@ export type ActionBaseParams = Omit<
   "id" | "type" | "executionState" | "output" | "isError"
 >;
 
-function hideFileFromActionOutput({
+export function hideFileFromActionOutput({
   fileId,
   content,
   workspaceId,
@@ -273,7 +272,11 @@ function hideFileFromActionOutput({
 function rewriteContentForModel(
   content: CallToolResult["content"][number]
 ): CallToolResult["content"][number] | null {
-  if (isToolGeneratedFile(content)) {
+  // Only render tool generated files that are supported.
+  if (
+    isToolGeneratedFile(content) &&
+    isSupportedFileContentType(content.resource.contentType)
+  ) {
     const attachment = getAttachmentFromToolOutput({
       fileId: content.resource.fileId,
       contentType: content.resource.contentType,
@@ -665,7 +668,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         },
         "Tool validation timed out"
       );
-      yield buildErrorEvent(
+      yield updateResourceAndBuildErrorEvent(
         action,
         agentConfiguration,
         agentMessage,
@@ -685,7 +688,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         },
         "Action execution rejected by user"
       );
-      yield buildErrorEvent(
+      yield updateResourceAndBuildErrorEvent(
         action,
         agentConfiguration,
         agentMessage,
@@ -836,7 +839,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       errorMessage +=
         "An error occurred while executing the tool. You can inform the user of this issue.";
 
-      yield buildErrorEvent(
+      yield updateResourceAndBuildErrorEvent(
         action,
         agentConfiguration,
         agentMessage,
@@ -851,107 +854,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     const fileUseCaseMetadata: FileUseCaseMetadata = {
       conversationId: conversation.sId,
     };
-
-    async function handleBase64Upload(
-      base64Data: string,
-      mimeType: string,
-      fileName: string,
-      block: CallToolResult["content"][number]
-    ): Promise<{
-      content: CallToolResult["content"][number];
-      file: FileResource | null;
-    }> {
-      const resourceType = isSupportedFileContentType(mimeType)
-        ? "file"
-        : isSupportedImageContentType(mimeType)
-          ? "image"
-          : null;
-
-      if (!resourceType) {
-        return {
-          content: {
-            type: "text",
-            text: `The mime type of the generated resource (${mimeType}) is not supported.`,
-          },
-          file: null,
-        };
-      }
-
-      if (base64Data.length > MAX_BLOB_SIZE_BYTES) {
-        return {
-          content: {
-            type: "text",
-            text: `The generated ${resourceType} was too large to be stored.`,
-          },
-          file: null,
-        };
-      }
-
-      try {
-        const uploadResult =
-          resourceType === "image"
-            ? await uploadBase64ImageToFileStorage(auth, {
-                base64: base64Data,
-                // Cast is valid because of the previous check.
-                contentType: mimeType as SupportedImageContentType,
-                fileName,
-                useCase: fileUseCase,
-                useCaseMetadata: fileUseCaseMetadata,
-              })
-            : await uploadBase64DataToFileStorage(auth, {
-                base64: base64Data,
-                // Cast is valid because of the previous check.
-                contentType: mimeType as SupportedFileContentType,
-                fileName,
-                useCase: fileUseCase,
-                useCaseMetadata: fileUseCaseMetadata,
-              });
-
-        if (uploadResult.isErr()) {
-          localLogger.error(
-            { error: uploadResult.error },
-            `Error upserting ${resourceType} from base64`
-          );
-          return {
-            content: {
-              type: "text",
-              text: `Failed to upsert the generated ${resourceType} as a file.`,
-            },
-            file: null,
-          };
-        }
-
-        return {
-          content: {
-            ...block,
-            // Remove the data from the block to avoid storing it in the database.
-            ...(block.type === "image" ? { data: "" } : {}),
-            ...(isBlobResource(block)
-              ? { resource: { ...block.resource, blob: "" } }
-              : {}),
-          },
-          file: uploadResult.value,
-        };
-      } catch (error) {
-        logger.error(
-          {
-            action: "mcp_tool",
-            tool: `generate_${resourceType}`,
-            workspaceId: owner.sId,
-            error,
-          },
-          `Failed to save the generated ${resourceType}.`
-        );
-
-        return {
-          content: {
-            type: "text",
-            text: `Failed to save the generated ${resourceType}.`,
-          },
-          file: null,
-        };
-      }
-    }
 
     const cleanContent: {
       content: CallToolResult["content"][number];
@@ -974,12 +876,14 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               ? block.name
               : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType as SupportedImageContentType)[0]}`;
 
-            return handleBase64Upload(
-              block.data,
-              block.mimeType,
+            return handleBase64Upload(auth, {
+              base64Data: block.data,
+              mimeType: block.mimeType,
               fileName,
-              block
-            );
+              block,
+              fileUseCase,
+              fileUseCaseMetadata,
+            });
           }
           case "audio": {
             return {
@@ -1014,14 +918,16 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
               if (isBlobResource(block)) {
                 const fileName = isResourceWithName(block)
                   ? block.name
-                  : `generated-file-${Date.now()}.${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
+                  : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
 
-                return handleBase64Upload(
-                  block.resource.blob,
-                  block.resource.mimeType,
+                return handleBase64Upload(auth, {
+                  base64Data: block.resource.blob,
+                  mimeType: block.resource.mimeType,
                   fileName,
-                  block
-                );
+                  block,
+                  fileUseCase,
+                  fileUseCaseMetadata,
+                });
               }
 
               const fileName = isResourceWithName(block.resource)
@@ -1118,7 +1024,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
 // Build a tool success event with an error message.
 // We show as success as we want the model to continue the conversation.
-const buildErrorEvent = (
+async function updateResourceAndBuildErrorEvent(
   action: AgentMCPAction,
   agentConfiguration: AgentConfigurationType,
   agentMessage: AgentMessageType,
@@ -1130,7 +1036,17 @@ const buildErrorEvent = (
     | "allowed_implicitly"
     | "denied",
   errorMessage: string
-) => {
+) {
+  const outputContent: CallToolResult["content"][number] = {
+    type: "text",
+    text: errorMessage,
+  };
+  await AgentMCPActionOutputItem.create({
+    workspaceId: action.workspaceId,
+    agentMCPActionId: action.id,
+    content: outputContent,
+  });
+
   return {
     type: "tool_success" as const,
     created: Date.now(),
@@ -1142,83 +1058,121 @@ const buildErrorEvent = (
       executionState,
       id: action.id,
       isError: false,
-      output: [
-        {
-          type: "text",
-          text: errorMessage,
-        },
-      ],
+      output: [outputContent],
       type: "tool_action",
     }),
   };
-};
+}
 
-/**
- * Action rendering.
- */
-
-// Internal interface for the retrieval and rendering of an MCPAction action. Should not be used
-// outside api/assistant. We allow a ModelId interface here because we don't have `sId` on actions
-// (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
-// This function only returns the actions with the maximum version for each step.
-export async function mcpActionTypesFromAgentMessageIds(
+async function handleBase64Upload(
   auth: Authenticator,
-  { agentMessageIds }: { agentMessageIds: ModelId[] }
-): Promise<MCPActionType[]> {
-  const actions = await AgentMCPAction.findAll({
-    where: {
-      agentMessageId: agentMessageIds,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-    include: [
-      {
-        model: AgentMCPActionOutputItem,
-        as: "outputItems",
-        required: false,
-        include: [
-          {
-            model: FileModel,
-            as: "file",
-            required: false,
-          },
-        ],
+  {
+    base64Data,
+    fileName,
+    block,
+    mimeType,
+    fileUseCase,
+    fileUseCaseMetadata,
+  }: {
+    base64Data: string;
+    mimeType: string;
+    fileName: string;
+    block: CallToolResult["content"][number];
+    fileUseCase: FileUseCase;
+    fileUseCaseMetadata: FileUseCaseMetadata;
+  }
+): Promise<{
+  content: CallToolResult["content"][number];
+  file: FileResource | null;
+}> {
+  const resourceType = isSupportedFileContentType(mimeType)
+    ? "file"
+    : isSupportedImageContentType(mimeType)
+      ? "image"
+      : null;
+
+  if (!resourceType) {
+    return {
+      content: {
+        type: "text",
+        text: `The mime type of the generated resource (${mimeType}) is not supported.`,
       },
-    ],
-  });
+      file: null,
+    };
+  }
 
-  return actions.map((action) => {
-    return new MCPActionType({
-      id: action.id,
-      params: action.params,
-      output: removeNulls(action.outputItems.map(hideFileFromActionOutput)),
-      functionCallId: action.functionCallId,
-      functionCallName: action.functionCallName,
-      agentMessageId: action.agentMessageId,
-      step: action.step,
-      mcpServerConfigurationId: action.mcpServerConfigurationId,
-      executionState: action.executionState,
-      isError: action.isError,
-      type: "tool_action",
-      generatedFiles: removeNulls(
-        action.outputItems.map((o) => {
-          if (!o.file) {
-            return null;
-          }
+  if (base64Data.length > MAX_BLOB_SIZE_BYTES) {
+    return {
+      content: {
+        type: "text",
+        text: `The generated ${resourceType} was too large to be stored.`,
+      },
+      file: null,
+    };
+  }
 
-          const file = o.file;
-          const fileSid = FileResource.modelIdToSId({
-            id: file.id,
-            workspaceId: action.workspaceId,
+  try {
+    const uploadResult =
+      resourceType === "image"
+        ? await uploadBase64ImageToFileStorage(auth, {
+            base64: base64Data,
+            // Cast is valid because of the previous check.
+            contentType: mimeType as SupportedImageContentType,
+            fileName,
+            useCase: fileUseCase,
+            useCaseMetadata: fileUseCaseMetadata,
+          })
+        : await uploadBase64DataToFileStorage(auth, {
+            base64: base64Data,
+            // Cast is valid because of the previous check.
+            contentType: mimeType as SupportedFileContentType,
+            fileName,
+            useCase: fileUseCase,
+            useCaseMetadata: fileUseCaseMetadata,
           });
 
-          return {
-            fileId: fileSid,
-            contentType: file.contentType,
-            title: file.fileName,
-            snippet: file.snippet,
-          };
-        })
-      ),
-    });
-  });
+    if (uploadResult.isErr()) {
+      logger.error(
+        { error: uploadResult.error },
+        `Error upserting ${resourceType} from base64`
+      );
+      return {
+        content: {
+          type: "text",
+          text: `Failed to upsert the generated ${resourceType} as a file.`,
+        },
+        file: null,
+      };
+    }
+
+    return {
+      content: {
+        ...block,
+        // Remove the data from the block to avoid storing it in the database.
+        ...(block.type === "image" ? { data: "" } : {}),
+        ...(isBlobResource(block)
+          ? { resource: { ...block.resource, blob: "" } }
+          : {}),
+      },
+      file: uploadResult.value,
+    };
+  } catch (error) {
+    logger.error(
+      {
+        action: "mcp_tool",
+        tool: `generate_${resourceType}`,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        error,
+      },
+      `Failed to save the generated ${resourceType}.`
+    );
+
+    return {
+      content: {
+        type: "text",
+        text: `Failed to save the generated ${resourceType}.`,
+      },
+      file: null,
+    };
+  }
 }

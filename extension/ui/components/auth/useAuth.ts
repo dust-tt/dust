@@ -148,43 +148,39 @@ export const useAuthHook = () => {
     setUser(updatedUser);
   };
 
-  const handleLogin = useCallback(
-    async (isForceLogin?: boolean) => {
-      setIsLoading(true);
-      const response = await platform.auth.login({
-        isForceLogin,
-        forcedConnection,
-      });
-      if (response.isErr()) {
-        setAuthError(response.error);
+  const handleLogin = useCallback(async () => {
+    setIsLoading(true);
+    const response = await platform.auth.login({
+      forcedConnection,
+    });
+    if (response.isErr()) {
+      setAuthError(response.error);
+      setIsLoading(false);
+      void platform.clearStoredData();
+      return;
+    }
+
+    const { tokens, user } = response.value;
+
+    if (user.selectedWorkspace) {
+      const selectedWorkspace = user.workspaces.find(
+        (w) => w.sId === user.selectedWorkspace
+      );
+      if (
+        selectedWorkspace &&
+        !isValidEnterpriseConnection(user, selectedWorkspace)
+      ) {
+        await redirectToSSOLogin(selectedWorkspace);
         setIsLoading(false);
-        void platform.clearStoredData();
         return;
       }
+    }
 
-      const { tokens, user } = response.value;
-
-      if (user.selectedWorkspace) {
-        const selectedWorkspace = user.workspaces.find(
-          (w) => w.sId === user.selectedWorkspace
-        );
-        if (
-          selectedWorkspace &&
-          !isValidEnterpriseConnection(user, selectedWorkspace)
-        ) {
-          await redirectToSSOLogin(selectedWorkspace);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      setTokens(tokens);
-      setAuthError(null);
-      setUser(user);
-      setIsLoading(false);
-    },
-    [forcedConnection]
-  );
+    setTokens(tokens);
+    setAuthError(null);
+    setUser(user);
+    setIsLoading(false);
+  }, [forcedConnection]);
 
   return {
     token: tokens?.accessToken ?? null,

@@ -8,6 +8,7 @@ import open from "open";
 import type { FC } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import { useFileSystemServer } from "../../mcp/servers/fsServer.js";
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
@@ -24,6 +25,8 @@ import { toolsCache } from "../../utils/toolsCache.js";
 import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
+import { DiffApprovalSelector } from "../components/DiffApprovalSelector.js";
+import FileAccessSelector from "../components/FileAccessSelector.js";
 import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
@@ -83,11 +86,22 @@ const CliChat: FC<CliChatProps> = ({
   const [approvalResolver, setApprovalResolver] = useState<
     ((approved: boolean) => void) | null
   >(null);
+  const [pendingDiffApproval, setPendingDiffApproval] = useState<{
+    originalContent: string;
+    updatedContent: string;
+    filePath: string;
+  } | null>(null);
+  const [diffApprovalResolver, setDiffApprovalResolver] = useState<
+    ((approved: boolean) => void) | null
+  >(null);
   const [pendingFiles, setPendingFiles] = useState<FileInfo[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [showFileSelector, setShowFileSelector] = useState(false);
-
+  const [chosenFileSystemUsage, setChosenFileSystemUsage] = useState(false);
+  const [fileSystemServerId, setFileSystemServerId] = useState<string | null>(
+    null
+  );
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
   const chainOfThoughtRef = useRef<string>("");
@@ -178,6 +192,33 @@ const CliChat: FC<CliChatProps> = ({
     [approvalResolver, pendingApproval]
   );
 
+  const handleDiffApproval = useCallback(
+    async (approved: boolean) => {
+      if (diffApprovalResolver && pendingDiffApproval) {
+        diffApprovalResolver(approved);
+        setPendingDiffApproval(null);
+        setDiffApprovalResolver(null);
+      }
+    },
+    [diffApprovalResolver, pendingDiffApproval]
+  );
+
+  const requestDiffApproval = useCallback(
+    async (
+      originalContent: string,
+      updatedContent: string,
+      filePath: string
+    ): Promise<boolean> => {
+      return new Promise<boolean>((resolve) => {
+        setPendingDiffApproval({ originalContent, updatedContent, filePath });
+        setDiffApprovalResolver(() => (approved: boolean) => {
+          resolve(approved);
+        });
+      });
+    },
+    []
+  );
+
   const clearFiles = useCallback(() => {
     setUploadedFiles([]);
     setPendingFiles([]);
@@ -223,36 +264,35 @@ const CliChat: FC<CliChatProps> = ({
   const handleFileSelected = useCallback(
     async (filePathOrPaths: string | string[]) => {
       setShowFileSelector(false);
-      try {
-        // Normalize to array for unified handling
-        const paths = Array.isArray(filePathOrPaths)
-          ? filePathOrPaths
-          : [filePathOrPaths];
+      // Normalize to array for unified handling
+      const paths = Array.isArray(filePathOrPaths)
+        ? filePathOrPaths
+        : [filePathOrPaths];
 
-        const fileInfos = [];
-        for (const p of paths) {
-          fileInfos.push(await validateAndGetFileInfo(p));
+      const fileInfos = [];
+      for (const p of paths) {
+        const fileInfoRes = await validateAndGetFileInfo(p);
+        if (fileInfoRes.isErr()) {
+          setError(`File error: ${normalizeError(fileInfoRes.error).message}`);
+          return;
         }
 
-        let convId = currentConversationId;
-        if (!convId) {
-          convId = await createConversationForFiles(
-            `File Upload: ${fileInfos.map((f) => f.name).join(", ")}`.slice(
-              0,
-              50
-            )
-          );
-          if (!convId) {
-            // error already handled in createConversationForFiles
-            return;
-          }
-        }
-
-        setPendingFiles(fileInfos);
-        setIsUploadingFiles(true);
-      } catch (error) {
-        setError(`File error: ${normalizeError(error).message}`);
+        fileInfos.push(fileInfoRes.value);
       }
+
+      let convId = currentConversationId;
+      if (!convId) {
+        convId = await createConversationForFiles(
+          `File Upload: ${fileInfos.map((f) => f.name).join(", ")}`.slice(0, 50)
+        );
+        if (!convId) {
+          // error already handled in createConversationForFiles
+          return;
+        }
+      }
+
+      setPendingFiles(fileInfos);
+      setIsUploadingFiles(true);
     },
     [currentConversationId, createConversationForFiles]
   );
@@ -266,6 +306,22 @@ const CliChat: FC<CliChatProps> = ({
     clearFiles,
     attachFile: showAttachDialog,
   });
+
+  // Cache Edit tool when agent is selected, since approval is asked anyways
+  // TODO: add check for the fact that we are using fs server when implemented
+  useEffect(() => {
+    const cacheEditTool = async () => {
+      if (selectedAgent) {
+        // Pre-cache the Edit tool to avoid approval prompts
+        await toolsCache.setCachedApproval({
+          agentName: selectedAgent.name,
+          mcpServerName: "fs-cli",
+          toolName: "edit_file",
+        });
+      }
+    };
+    void cacheEditTool();
+  }, [selectedAgent]);
 
   // Handle agent search when component mounts
   useEffect(() => {
@@ -457,6 +513,9 @@ const CliChat: FC<CliChatProps> = ({
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
               context: {
+                clientSideMCPServerIds: fileSystemServerId
+                  ? [fileSystemServerId]
+                  : null,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 username: me.username,
                 fullName: me.fullName,
@@ -675,6 +734,7 @@ const CliChat: FC<CliChatProps> = ({
       meError,
       isMeLoading,
       uploadedFiles,
+      fileSystemServerId,
     ]
   );
 
@@ -705,7 +765,7 @@ const CliChat: FC<CliChatProps> = ({
   // Handle keyboard events.
   useInput((input, key) => {
     // Skip input handling when there's a pending approval
-    if (pendingApproval) {
+    if (pendingApproval || pendingDiffApproval) {
       return;
     }
 
@@ -1145,6 +1205,30 @@ const CliChat: FC<CliChatProps> = ({
     );
   }
 
+  if ((selectedAgent || !isSelectingNewAgent) && !chosenFileSystemUsage) {
+    return (
+      <FileAccessSelector
+        selectMultiple={false}
+        onConfirm={async (selectedModelFileAccess) => {
+          if (selectedModelFileAccess[0].id === "y") {
+            const dustClient = await getDustClient();
+            if (!dustClient) {
+              throw new Error("No Dust API set.");
+            }
+            await useFileSystemServer(
+              dustClient,
+              (serverId) => {
+                setFileSystemServerId(serverId);
+              },
+              requestDiffApproval
+            );
+          }
+          setChosenFileSystemUsage(true);
+        }}
+      />
+    );
+  }
+
   const mentionPrefix = selectedAgent ? `@${selectedAgent.name} ` : "";
 
   // Show approval prompt if pending
@@ -1160,6 +1244,21 @@ const CliChat: FC<CliChatProps> = ({
         onApproval={async (approved, cachedApproval) => {
           await clearTerminal();
           await handleApproval(approved, cachedApproval);
+        }}
+      />
+    );
+  }
+
+  // Show diff approval prompt if pending
+  if (pendingDiffApproval) {
+    return (
+      <DiffApprovalSelector
+        originalContent={pendingDiffApproval.originalContent}
+        updatedContent={pendingDiffApproval.updatedContent}
+        filePath={pendingDiffApproval.filePath}
+        onApproval={async (approved) => {
+          await clearTerminal();
+          await handleDiffApproval(approved);
         }}
       />
     );

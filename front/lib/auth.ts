@@ -1,3 +1,4 @@
+import assert from "assert";
 import tracer from "dd-trace";
 import memoizer from "lru-memoizer";
 import type {
@@ -6,12 +7,9 @@ import type {
   NextApiResponse,
 } from "next";
 
-import type { Auth0JwtPayload } from "@app/lib/api/auth0";
-import { getAuth0Session, getUserFromAuth0Token } from "@app/lib/api/auth0";
 import config from "@app/lib/api/config";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
-import { SSOEnforcedError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -47,7 +45,6 @@ import {
   isAdmin,
   isBuilder,
   isDevelopment,
-  isSupportedEnterpriseConnectionStrategy,
   isUser,
   Ok,
   WHITELISTABLE_FEATURES,
@@ -62,6 +59,15 @@ export type PublicAPIAuthMethod = "api_key" | "access_token";
 export const getAuthType = (token: string): PublicAPIAuthMethod => {
   return token.startsWith(SECRET_KEY_PREFIX) ? "api_key" : "access_token";
 };
+
+export interface AuthenticatorType {
+  workspaceId: string | null;
+  userId: string | null;
+  role: RoleType;
+  groupIds: string[];
+  subscriptionId: string | null;
+  key?: KeyAuthType;
+}
 
 /**
  * This is a class that will be used to check if a user can perform an action on a resource.
@@ -147,21 +153,7 @@ export class Authenticator {
   static async userFromSession(
     session: SessionWithUser | null
   ): Promise<UserResource | null> {
-    if (session?.type === "auth0" && session.user.workOSUserId) {
-      const user = await UserResource.fetchByWorkOSUserId(
-        session.user.workOSUserId
-      );
-      if (user) {
-        return user;
-      }
-    }
-    if (session?.type === "auth0" && session.user.auth0Sub) {
-      const user = await UserResource.fetchByAuth0Sub(session.user.auth0Sub);
-      if (user) {
-        return user;
-      }
-    }
-    if (session?.type === "workos" && session.user.workOSUserId) {
+    if (session) {
       return UserResource.fetchByWorkOSUserId(session.user.workOSUserId);
     }
 
@@ -302,82 +294,6 @@ export class Authenticator {
       groups,
       subscription,
     });
-  }
-
-  /**
-   * Get an Authenticator from an auth0 token a given workspace.
-   * This is to be used from the extension, calling our public API.
-   * @param key The Auth0 token
-   * @param wId string the target workspaceId
-   * @returns an Authenticator for wId and the key's own workspaceId
-   */
-  static async fromAuth0Token({
-    token,
-    wId,
-  }: {
-    token: Auth0JwtPayload;
-    wId: string;
-  }): Promise<
-    Result<
-      Authenticator,
-      {
-        code: "user_not_found" | "workspace_not_found" | "sso_enforced";
-      }
-    >
-  > {
-    const user = await getUserFromAuth0Token(token);
-
-    if (!user) {
-      return new Err({ code: "user_not_found" });
-    }
-
-    const workspace = await WorkspaceResource.fetchById(wId);
-    if (!workspace) {
-      return new Err({ code: "workspace_not_found" });
-    }
-
-    const strategy =
-      token[`${config.getAuth0NamespaceClaim()}connection.strategy`];
-    if (
-      workspace.ssoEnforced &&
-      strategy &&
-      !isSupportedEnterpriseConnectionStrategy(strategy)
-    ) {
-      return new Err(
-        new SSOEnforcedError(
-          "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in.",
-          workspace.sId
-        )
-      );
-    }
-
-    let role = "none" as RoleType;
-    let groups: GroupResource[] = [];
-    let subscription: SubscriptionResource | null = null;
-
-    [role, groups, subscription] = await Promise.all([
-      MembershipResource.getActiveRoleForUserInWorkspace({
-        user: user,
-        workspace: renderLightWorkspaceType({ workspace }),
-      }),
-      GroupResource.listUserGroupsInWorkspace({
-        user,
-        workspace: renderLightWorkspaceType({ workspace }),
-      }),
-      SubscriptionResource.fetchActiveByWorkspace(
-        renderLightWorkspaceType({ workspace })
-      ),
-    ]);
-
-    return new Ok(
-      new Authenticator({
-        workspace,
-        groups,
-        user,
-        role,
-        subscription,
-      })
-    );
   }
 
   static async fromWorkOSToken({
@@ -942,6 +858,75 @@ export class Authenticator {
   key(): KeyAuthType | null {
     return this._key ?? null;
   }
+
+  toJSON(): AuthenticatorType {
+    return {
+      workspaceId: this._workspace?.sId ?? null,
+      userId: this._user?.sId ?? null,
+      role: this._role,
+      groupIds: this._groups.map((g) => g.sId),
+      subscriptionId: this._subscription?.sId ?? null,
+      key: this._key,
+    };
+  }
+
+  static async fromJSON(authType: AuthenticatorType): Promise<Authenticator> {
+    const [workspace, user] = await Promise.all([
+      authType.workspaceId
+        ? WorkspaceModel.findOne({
+            where: { sId: authType.workspaceId },
+          })
+        : null,
+      authType.userId ? UserResource.fetchById(authType.userId) : null,
+    ]);
+
+    const lightWorkspace = workspace
+      ? renderLightWorkspaceType({ workspace })
+      : null;
+
+    const subscription =
+      authType.subscriptionId && lightWorkspace
+        ? await SubscriptionResource.fetchActiveByWorkspace(lightWorkspace)
+        : null;
+
+    assert(
+      !authType.subscriptionId ||
+        !subscription ||
+        subscription.sId === authType.subscriptionId,
+      `Subscription mismatch: expected ${authType.subscriptionId} but got ${subscription?.sId}`
+    );
+
+    let groups: GroupResource[] = [];
+    if (authType.groupIds.length > 0 && workspace) {
+      // Create a temporary authenticator for fetching groups
+      const tempAuth = new Authenticator({
+        workspace,
+        user,
+        role: authType.role,
+        groups: [],
+        subscription,
+        key: authType.key,
+      });
+
+      const groupsResult = await GroupResource.fetchByIds(
+        tempAuth,
+        authType.groupIds
+      );
+
+      if (groupsResult.isOk()) {
+        groups = groupsResult.value;
+      }
+    }
+
+    return new Authenticator({
+      workspace,
+      user,
+      role: authType.role,
+      groups,
+      subscription,
+      key: authType.key,
+    });
+  }
 }
 
 /**
@@ -955,20 +940,7 @@ export async function getSession(
   res: NextApiResponse | GetServerSidePropsContext["res"]
 ): Promise<SessionWithUser | null> {
   const workOsSession = await getWorkOSSession(req, res);
-  const auth0Session = await getAuth0Session(req, res);
-
-  // If any of the sessions is SSO, we return the SSO session. Priority goes to WorkOS.
-  if (workOsSession?.isSSO) {
-    return workOsSession;
-  }
-
-  // If the Auth0 session is SSO, we return it.
-  if (auth0Session?.isSSO) {
-    return auth0Session;
-  }
-
-  // If none of the sessions is SSO, we return the first one that exists. Priority goes to WorkOS.
-  return workOsSession || auth0Session || null;
+  return workOsSession || null;
 }
 
 /**

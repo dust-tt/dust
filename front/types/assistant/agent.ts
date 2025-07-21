@@ -1,7 +1,6 @@
 import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
-  AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import type {
   ReasoningContentType,
@@ -183,14 +182,30 @@ export function isTemplateAgentConfiguration(
 }
 
 export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
-export const MAX_STEPS_USE_PER_RUN_LIMIT = 24;
-export const EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT = 128;
+export const MAX_STEPS_USE_PER_RUN_LIMIT = 128;
 
 /**
  * Agent events
  */
 
-// Event sent when an agent error occured before we have a agent message in the database.
+export const AgentErrorCategories = [
+  "retryable_model_error",
+  "context_window_exceeded",
+  "provider_internal_error",
+  "stream_error",
+  "unknown_error",
+  "invalid_response_format_configuration",
+] as const;
+
+export type AgentErrorCategory = (typeof AgentErrorCategories)[number];
+
+export function isAgentErrorCategory(
+  category: unknown
+): category is AgentErrorCategory {
+  return AgentErrorCategories.includes(category as AgentErrorCategory);
+}
+
+// Event sent when an agent error occurred before we have an agent message in the database.
 export type AgentMessageErrorEvent = {
   type: "agent_message_error";
   created: number;
@@ -201,18 +216,21 @@ export type AgentMessageErrorEvent = {
   };
 };
 
-// Generic event sent when an error occured (whether it's during the action or the message
+// Generic type for the content of an agent error.
+export type AgentErrorContent = {
+  code: string;
+  message: string;
+  metadata: Record<string, string | number | boolean> | null;
+};
+
+// Generic event sent when an error occurred (whether it's during the action or the message
 // generation).
 export type AgentErrorEvent = {
   type: "agent_error";
   created: number;
   configurationId: string;
   messageId: string;
-  error: {
-    code: string;
-    message: string;
-    metadata: Record<string, string | number | boolean> | null;
-  };
+  error: AgentErrorContent;
 };
 
 export type AgentDisabledErrorEvent = {

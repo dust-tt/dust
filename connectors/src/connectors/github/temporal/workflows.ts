@@ -52,15 +52,19 @@ const { githubUpsertIssueActivity, githubUpsertDiscussionActivity } =
     startToCloseTimeout: "60 minute",
   });
 
-const { githubEnsureCodeSyncEnabledActivity, githubCreateGcsIndexActivity } =
-  proxyActivities<typeof activitiesSyncCode>({
-    startToCloseTimeout: "10 minute",
-  });
+const { githubEnsureCodeSyncEnabledActivity } = proxyActivities<
+  typeof activitiesSyncCode
+>({
+  startToCloseTimeout: "10 minute",
+});
 
-const { githubCleanupCodeSyncActivity, githubProcessIndexFileActivity } =
-  proxyActivities<typeof activitiesSyncCode>({
-    startToCloseTimeout: "20 minute",
-  });
+const {
+  githubCleanupCodeSyncActivity,
+  githubCreateGcsIndexActivity,
+  githubProcessIndexFileActivity,
+} = proxyActivities<typeof activitiesSyncCode>({
+  startToCloseTimeout: "30 minute",
+});
 
 const { githubExtractToGcsActivity } = proxyActivities<
   typeof activitiesSyncCode
@@ -518,8 +522,11 @@ export async function githubCodeSyncStatelessWorkflow({
 
   // Create multiple index files containing all file paths to optimize memory usage.
   const indexResult = await githubCreateGcsIndexActivity({
+    connectorId,
     gcsBasePath: extractResult.gcsBasePath,
     repoId,
+    repoLogin,
+    repoName,
   });
 
   const allUpdatedDirectoryIds = new Set<string>();

@@ -25,7 +25,7 @@ import {
   useDataSourceViewDocument,
   useUpdateDataSourceViewDocument,
 } from "@app/lib/swr/data_source_view_documents";
-import { useFileProcessedContent } from "@app/lib/swr/file";
+import { useFileProcessedContent } from "@app/lib/swr/files";
 import type {
   CoreAPIDocument,
   CoreAPILightDocument,

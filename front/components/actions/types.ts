@@ -1,7 +1,8 @@
+import { TOOL_RUNNING_LABEL } from "@dust-tt/client";
+
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentActionType, LightWorkspaceType } from "@app/types";
-import { ACTION_RUNNING_LABELS } from "@app/types";
 
 export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType,
@@ -26,7 +27,7 @@ type ActionSpecifications = {
 const actionsSpecification: ActionSpecifications = {
   tool_action: {
     detailsComponent: MCPActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.tool_action,
+    runningLabel: TOOL_RUNNING_LABEL,
   },
 };
 

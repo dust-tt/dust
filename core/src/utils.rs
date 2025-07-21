@@ -1,3 +1,4 @@
+use crate::error;
 use anyhow::Result;
 use async_std::path::PathBuf;
 use axum::{Extension, Json};
@@ -7,7 +8,6 @@ use serde_json::Value;
 use sqids::Sqids;
 use std::{io::Write, sync::Arc};
 use tower_http::trace::MakeSpan;
-use tracing::error;
 use uuid::Uuid;
 
 #[derive(Debug)]

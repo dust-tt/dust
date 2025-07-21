@@ -234,7 +234,6 @@ export async function submitAgentBuilderForm({
 
         return [];
       }),
-      maxStepsPerRun: formData.maxStepsPerRun,
       visualizationEnabled: formData.actions.some(
         (action) => action.type === "DATA_VISUALIZATION"
       ),

@@ -1,3 +1,10 @@
+import type { AgentErrorCategory } from "@app/types";
+
+const CONTEXT_WINDOW_EXCEEDED_TITLE = "Context window exceeded";
+const CONTEXT_WINDOW_EXCEEDED_MESSAGE =
+  "Your message or retrieved data is too large. " +
+  "Break your request into smaller parts or reduce agent output.";
+
 /**
  * Get a user-friendly error message from an API error.
  * This function handles various error cases from different model providers (Anthropic, OpenAI)
@@ -19,10 +26,8 @@ export const categorizeAgentErrorMessage = (error: {
   message: string;
   code: string;
 }): {
-  category?:
-    | "retryable_model_error"
-    | "context_window_exceeded"
-    | "provider_internal_error";
+  category: AgentErrorCategory;
+  errorTitle: string;
   publicMessage: string;
 } => {
   if (error.code == "multi_actions_error") {
@@ -33,10 +38,10 @@ export const categorizeAgentErrorMessage = (error: {
       ) {
         return {
           category: "retryable_model_error",
+          errorTitle: "Anthropic service disruption",
           publicMessage:
             "Anthropic is currently experiencing issues and cannot process requests for " +
-            "this model. You can temporarily switch your agent to use a different model " +
-            "(like GPT-4.1) in the agent settings to continue working.",
+            "this model. You can temporarily switch to a different model such as GPT-4.1.",
         };
       } else if (
         error.message.includes("at least one message is required") ||
@@ -44,33 +49,39 @@ export const categorizeAgentErrorMessage = (error: {
       ) {
         return {
           category: "context_window_exceeded",
-          publicMessage:
-            "Context window (the amount of data the agent can process) exceeded. This can happen if your first message was very long or if the agent retrieved a lot of data while helping you. Try breaking your request into smaller parts or updating your agent configuration to output less data.",
+          errorTitle: CONTEXT_WINDOW_EXCEEDED_TITLE,
+          publicMessage: CONTEXT_WINDOW_EXCEEDED_MESSAGE,
         };
       } else if (error.message.includes("Internal server error")) {
         return {
           category: "provider_internal_error",
+          errorTitle: "Anthropic server error",
           publicMessage:
-            "Anthropic (provider of Claude) encountered an internal server error. Please try again.",
+            "Anthropic (Claude's provider) encountered an error. Please try again.",
         };
       }
     } else if (error.message.includes("OpenAIError")) {
       if (error.message.includes("maximum context length")) {
         return {
           category: "context_window_exceeded",
-          publicMessage:
-            "Context window (the amount of data the agent can process) exceeded. This can happen if your first message was very long or if the agent retrieved a lot of data while helping you. Try breaking your request into smaller parts or updating your agent configuration to output less data.",
+          errorTitle: CONTEXT_WINDOW_EXCEEDED_TITLE,
+          publicMessage: CONTEXT_WINDOW_EXCEEDED_MESSAGE,
         };
       } else if (error.message.includes("Invalid schema for response_format")) {
         const contextPart = error.message.split("In context=")[1];
         return {
-          publicMessage: `Your agent is configured to return a response in a format that is not supported by the model: ${contextPart}. Please update your agent configuration in Instructions > Advanced Settings > Structured Response Format.`,
+          category: "invalid_response_format_configuration",
+          errorTitle: "Invalid response format",
+          publicMessage:
+            "Your agent is configured to return a response in a format that is not supported by " +
+            `the model: ${contextPart}. Please update your agent configuration in Instructions > ` +
+            "Advanced Settings > Structured Response Format.",
         };
       } else if (error.message.includes("server_error")) {
         return {
           category: "provider_internal_error",
-          publicMessage:
-            "OpenAI (provider of GPT) encountered an internal server error. Please try again.",
+          errorTitle: "OpenAI server error",
+          publicMessage: "OpenAI encountered an error. Please try again.",
         };
       }
     } else if (
@@ -78,13 +89,17 @@ export const categorizeAgentErrorMessage = (error: {
       error.message.includes("Error parsing error")
     ) {
       return {
+        category: "stream_error",
+        errorTitle: "Streaming error",
         publicMessage:
-          "There was an error streaming the answer to your query. Please try again.",
+          "Connection interrupted while receiving your answer. Please try again.",
       };
     }
   }
   // The original message is used as a fallback.
   return {
+    category: "unknown_error",
+    errorTitle: "Agent error",
     publicMessage: `Error running agent: [${error.code}] ${error.message}`,
   };
 };

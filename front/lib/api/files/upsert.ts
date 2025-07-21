@@ -24,14 +24,15 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type {
+  AllSupportedFileContentType,
   CoreAPIDataSourceDocumentSection,
   FileUseCase,
   Result,
-  SupportedFileContentType,
 } from "@app/types";
 import {
   assertNever,
   Err,
+  isInteractiveFileContentType,
   isSupportedImageContentType,
   Ok,
   slugify,
@@ -408,10 +409,15 @@ const getProcessingFunction = ({
   contentType,
   useCase,
 }: {
-  contentType: SupportedFileContentType;
+  contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
 }): ProcessingFunction | undefined => {
   if (isSupportedImageContentType(contentType)) {
+    return undefined;
+  }
+
+  // Interactive files should not be processed.
+  if (isInteractiveFileContentType(contentType)) {
     return undefined;
   }
 
@@ -479,7 +485,7 @@ const getProcessingFunction = ({
 };
 
 export const isFileTypeUpsertableForUseCase = (arg: {
-  contentType: SupportedFileContentType;
+  contentType: AllSupportedFileContentType;
   useCase: FileUseCase;
 }): boolean => {
   const processingFunction = getProcessingFunction(arg);
