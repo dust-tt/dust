@@ -500,7 +500,7 @@ async function runMultiActionsAgent(
     agentConfiguration,
     fallbackPrompt,
     model,
-    hasAvailableActions: !!availableActions.length,
+    hasAvailableActions: availableActions.length > 0,
     errorContext: mcpToolsListingError,
     agentsList,
     conversationId: conversation.sId,
