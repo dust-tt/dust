@@ -15,7 +15,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import {
   getAssistantsUsageData,
   getBuildersUsageData,
-  getFeedbacksUsageData,
+  getFeedbackUsageData,
   getMessageUsageData,
   getUserUsageData,
 } from "@app/lib/workspace_usage";
@@ -270,25 +270,25 @@ async function fetchUsageData({
       return {
         assistants: await getAssistantsUsageData(start, end, workspace),
       };
-    case "feedbacks":
+    case "feedback":
       return {
-        feedbacks: await getFeedbacksUsageData(start, end, workspace),
+        feedback: await getFeedbackUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants, feedbacks] =
+      const [users, assistant_messages, builders, assistants, feedback] =
         await Promise.all([
           getUserUsageData(start, end, workspace),
           getMessageUsageData(start, end, workspace),
           getBuildersUsageData(start, end, workspace),
           getAssistantsUsageData(start, end, workspace),
-          getFeedbacksUsageData(start, end, workspace),
+          getFeedbackUsageData(start, end, workspace),
         ]);
       return {
         users,
         assistant_messages,
         builders,
         assistants,
-        feedbacks,
+        feedback,
       };
     default:
       return {};
