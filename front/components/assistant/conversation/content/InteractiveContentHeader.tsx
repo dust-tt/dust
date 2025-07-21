@@ -22,7 +22,7 @@ export function InteractiveContentHeader({
       )}
     >
       <div className="flex items-center gap-2">
-        <span className="text-element-900 text-sm font-medium">{title}</span>
+        <span className="text-sm font-medium text-primary">{title}</span>
         {subtitle && (
           <span className="text-element-700 text-xs">{subtitle}</span>
         )}

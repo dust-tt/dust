@@ -118,14 +118,23 @@ export function useUpsertFileAsDatasourceEntry(
 export function useFileMetadata({
   fileId,
   owner,
+  cacheKey,
 }: {
   fileId: string | null;
   owner: LightWorkspaceType;
+  cacheKey?: string | null;
 }) {
   const fileMetadataFetcher: Fetcher<FileType> = fetcher;
 
+  // Include cacheKey in the SWR key if provided to force cache invalidation.
+  const swrKey = fileId
+    ? cacheKey
+      ? `/api/w/${owner.sId}/files/${fileId}/metadata?v=${cacheKey}`
+      : `/api/w/${owner.sId}/files/${fileId}/metadata`
+    : null;
+
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/files/${fileId}/metadata`,
+    swrKey,
     fileMetadataFetcher
   );
 

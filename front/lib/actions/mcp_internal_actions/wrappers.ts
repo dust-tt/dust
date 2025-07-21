@@ -1,6 +1,9 @@
+import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type {
   CallToolResult,
   EmbeddedResource,
+  ServerNotification,
+  ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
 
 import { isExecuteTablesQueryErrorResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -21,9 +24,15 @@ function isKnownErrorResource(
 export function withToolLogging<T>(
   auth: Authenticator,
   toolName: string,
-  toolCallback: (params: T) => Promise<CallToolResult>
+  toolCallback: (
+    params: T,
+    extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+  ) => Promise<CallToolResult>
 ) {
-  return async (params: T) => {
+  return async (
+    params: T,
+    extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+  ) => {
     const owner = auth.getNonNullableWorkspace();
 
     const loggerArgs = {
@@ -45,7 +54,7 @@ export function withToolLogging<T>(
     statsDClient.increment("use_tools.count", 1, tags);
     const startTime = performance.now();
 
-    const result = await toolCallback(params);
+    const result = await toolCallback(params, extra);
 
     if (result.isError) {
       statsDClient.increment("use_tools_error.count", 1, [

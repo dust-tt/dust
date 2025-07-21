@@ -1,3 +1,4 @@
+import type { MCPProgressNotificationType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -80,7 +81,10 @@ const createServer = (
     withToolLogging(
       auth,
       CREATE_INTERACTIVE_FILE_TOOL_NAME,
-      async ({ file_name, mime_type, content, description }) => {
+      async (
+        { file_name, mime_type, content, description },
+        { sendNotification, _meta }
+      ) => {
         const { conversation } = agentLoopContext?.runContext ?? {};
         if (!conversation) {
           return makeMCPToolTextError(
@@ -104,6 +108,30 @@ const createServer = (
         const responseText = description
           ? `File '${fileResource.sId}' created successfully. ${description}`
           : `File '${fileResource.sId}' created successfully.`;
+
+        if (_meta?.progressToken) {
+          const notification: MCPProgressNotificationType = {
+            method: "notifications/progress",
+            params: {
+              progress: 1,
+              total: 1,
+              progressToken: _meta?.progressToken,
+              data: {
+                label: "Creating interactive content...",
+                output: {
+                  type: "interactive_file",
+                  fileId: fileResource.sId,
+                  mimeType: fileResource.contentType,
+                  title: fileResource.fileName,
+                  updatedAt: fileResource.updatedAt.getTime().toString(),
+                },
+              },
+            },
+          };
+
+          // Send a notification to the MCP Client, to display the interactive file.
+          await sendNotification(notification);
+        }
 
         return {
           isError: false,
@@ -154,7 +182,10 @@ const createServer = (
     withToolLogging(
       auth,
       UPDATE_INTERACTIVE_FILE_TOOL_NAME,
-      async ({ file_id, content, description }) => {
+      async (
+        { file_id, content, description },
+        { sendNotification, _meta }
+      ) => {
         const result = await updateClientExecutableFile(auth, {
           fileId: file_id,
           content,
@@ -169,6 +200,30 @@ const createServer = (
         const responseText = description
           ? `File '${fileResource.sId}' updated successfully. ${description}`
           : `File '${fileResource.sId}' updated successfully.`;
+
+        if (_meta?.progressToken) {
+          const notification: MCPProgressNotificationType = {
+            method: "notifications/progress",
+            params: {
+              progress: 1,
+              total: 1,
+              progressToken: _meta?.progressToken,
+              data: {
+                label: "Updating interactive content...",
+                output: {
+                  type: "interactive_file",
+                  fileId: fileResource.sId,
+                  mimeType: fileResource.contentType,
+                  title: fileResource.fileName,
+                  updatedAt: fileResource.updatedAt.getTime().toString(),
+                },
+              },
+            },
+          };
+
+          // Send a notification to the MCP Client, to refresh the interactive file.
+          await sendNotification(notification);
+        }
 
         return {
           isError: false,

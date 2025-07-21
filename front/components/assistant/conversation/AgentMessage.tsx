@@ -23,6 +23,7 @@ import { AgentMessageActions } from "@app/components/assistant/conversation/acti
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { AgentMessageGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
+import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/content/useAutoOpenInteractiveContent";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -317,6 +318,13 @@ export function AgentMessage({
     message.sId,
     conversationId,
   ]);
+
+  // Auto-open interactive content drawer when interactive files are available.
+  useAutoOpenInteractiveContent({
+    messageStreamState,
+    agentMessageToRender,
+    isLastMessage,
+  });
 
   const PopoverContent = React.useCallback(
     () => (
