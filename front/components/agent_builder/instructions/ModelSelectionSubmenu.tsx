@@ -11,12 +11,13 @@ import { useController } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
-  categorizeModels,
   getModelKey,
+  getModelsCategorization,
 } from "@app/components/agent_builder/instructions/utils";
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ModelConfigurationType } from "@app/types";
+import { getProviderDisplayName } from "@app/types";
 
 interface ModelSelectionSubmenuProps {
   models: ModelConfigurationType[];
@@ -58,8 +59,8 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   >({
     name: "generationSettings.reasoningEffort",
   });
-  const { bestPerformingModelConfigs, otherModelConfigs } =
-    categorizeModels(models);
+
+  const { bestGeneralModels, providerGroups } = getModelsCategorization(models);
 
   const currentModelKey = modelField.value.modelId;
 
@@ -76,33 +77,62 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
     <DropdownMenuSub>
       <DropdownMenuSubTrigger label="Model selection" />
       <DropdownMenuSubContent className="w-80">
-        <DropdownMenuLabel label="Best performing models" />
+        <DropdownMenuLabel label="Best performing models by makers" />
         <DropdownMenuRadioGroup value={currentModelKey}>
-          {bestPerformingModelConfigs.map((modelConfig) => {
-            return (
-              <ModelRadioItem
-                key={getModelKey(modelConfig)}
-                modelConfig={modelConfig}
-                isDark={isDark}
-                onModelSelection={handleModelSelection}
-              />
-            );
-          })}
+          {bestGeneralModels.map((modelConfig) => (
+            <ModelRadioItem
+              key={getModelKey(modelConfig)}
+              modelConfig={modelConfig}
+              isDark={isDark}
+              onModelSelection={handleModelSelection}
+            />
+          ))}
         </DropdownMenuRadioGroup>
 
         <DropdownMenuLabel label="Other models" />
-        <DropdownMenuRadioGroup value={currentModelKey}>
-          {otherModelConfigs.map((modelConfig) => {
-            return (
-              <ModelRadioItem
-                key={getModelKey(modelConfig)}
-                modelConfig={modelConfig}
-                isDark={isDark}
-                onModelSelection={handleModelSelection}
-              />
-            );
-          })}
-        </DropdownMenuRadioGroup>
+        {Array.from(providerGroups.entries()).map(([providerId, models]) => {
+          const providerDisplayName = getProviderDisplayName(providerId);
+          const hasRecentModels = models.recent.length > 0;
+          const hasOlderModels = models.older.length > 0;
+
+          return (
+            <DropdownMenuSub key={providerId}>
+              <DropdownMenuSubTrigger label={`From ${providerDisplayName}`} />
+              <DropdownMenuSubContent className="w-80">
+                {hasRecentModels && (
+                  <>
+                    <DropdownMenuLabel label="Recent models" />
+                    <DropdownMenuRadioGroup value={currentModelKey}>
+                      {models.recent.map((modelConfig) => (
+                        <ModelRadioItem
+                          key={getModelKey(modelConfig)}
+                          modelConfig={modelConfig}
+                          isDark={isDark}
+                          onModelSelection={handleModelSelection}
+                        />
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </>
+                )}
+                {hasOlderModels && (
+                  <>
+                    <DropdownMenuLabel label="Older models" />
+                    <DropdownMenuRadioGroup value={currentModelKey}>
+                      {models.older.map((modelConfig) => (
+                        <ModelRadioItem
+                          key={getModelKey(modelConfig)}
+                          modelConfig={modelConfig}
+                          isDark={isDark}
+                          onModelSelection={handleModelSelection}
+                        />
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </>
+                )}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          );
+        })}
       </DropdownMenuSubContent>
     </DropdownMenuSub>
   );

@@ -3,7 +3,11 @@ import {
   AGENT_CREATIVITY_LEVEL_DISPLAY_NAMES,
   AGENT_CREATIVITY_LEVEL_TEMPERATURES,
 } from "@app/components/agent_builder/types";
-import type { ModelConfigurationType, ModelIdType } from "@app/types";
+import type {
+  ModelConfigurationType,
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types";
 import {
   CLAUDE_3_5_SONNET_20241022_MODEL_ID,
   GPT_4O_MODEL_ID,
@@ -47,4 +51,55 @@ export function categorizeModels(models: ModelConfigurationType[]): {
 
 export function getModelKey(modelConfig: ModelConfigurationType): string {
   return modelConfig.modelId;
+}
+
+// Enhanced categorization for new UI structure
+export interface ModelCategories {
+  bestGeneralModels: ModelConfigurationType[];
+  providerGroups: Map<
+    ModelProviderIdType,
+    {
+      recent: ModelConfigurationType[];
+      older: ModelConfigurationType[];
+    }
+  >;
+}
+
+export function isRecentModel(model: ModelConfigurationType): boolean {
+  return !model.isLegacy;
+}
+
+export function getModelsCategorization(
+  models: ModelConfigurationType[]
+): ModelCategories {
+  // Use existing categorization to separate best performing models
+  const { bestPerformingModelConfigs, otherModelConfigs } =
+    categorizeModels(models);
+
+  // Group remaining models by provider and separate recent vs older
+  const providerGroups = new Map<
+    ModelProviderIdType,
+    {
+      recent: ModelConfigurationType[];
+      older: ModelConfigurationType[];
+    }
+  >();
+
+  for (const model of otherModelConfigs) {
+    if (!providerGroups.has(model.providerId)) {
+      providerGroups.set(model.providerId, { recent: [], older: [] });
+    }
+
+    const group = providerGroups.get(model.providerId)!;
+    if (isRecentModel(model)) {
+      group.recent.push(model);
+    } else {
+      group.older.push(model);
+    }
+  }
+
+  return {
+    bestGeneralModels: bestPerformingModelConfigs,
+    providerGroups,
+  };
 }
