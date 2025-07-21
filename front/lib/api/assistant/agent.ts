@@ -908,14 +908,7 @@ async function runMultiActionsAgent(
     }
   }
 
-  for await (const tokenEvent of contentParser.flushTokens()) {
-    await updateResourceAndPublishEvent(
-      tokenEvent,
-      conversation,
-      agentMessageRow,
-      step
-    );
-  }
+  await flushParserTokens();
 
   if (!output) {
     return handlePossiblyRetryableError("Agent execution didn't complete.");
@@ -1100,14 +1093,7 @@ async function runMultiActionsAgent(
     });
   }
 
-  for await (const tokenEvent of contentParser.flushTokens()) {
-    await updateResourceAndPublishEvent(
-      tokenEvent,
-      conversation,
-      agentMessageRow,
-      step
-    );
-  }
+  await flushParserTokens();
 
   const chainOfThought =
     (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
