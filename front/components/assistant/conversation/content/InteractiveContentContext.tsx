@@ -74,7 +74,7 @@ export function InteractiveContentProvider({
 
   const openContent = React.useCallback(
     (id: string, updatedAt?: string) => {
-      // Create hash with fileId@timestamp format if updatedAt is provided. It's used to refresh
+      // Create hash with fileId@fileUpdatedAt format if updatedAt is provided. It's used to refresh
       // the content when the file is updated.
       const hash = updatedAt ? `${id}@${updatedAt}` : id;
       setContentHash(hash);
