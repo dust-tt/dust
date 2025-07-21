@@ -1579,3 +1579,21 @@ export async function updateAgentRequestedGroupIds(
 
   return new Ok(updated[0] > 0);
 }
+
+export async function getFullAgentConfiguration(
+  auth: Authenticator,
+  configuration: LightAgentConfigurationType
+): Promise<AgentConfigurationType> {
+  const fullConfiguration = await getAgentConfiguration(
+    auth,
+    configuration.sId,
+    "full"
+  );
+
+  assert(
+    fullConfiguration,
+    "Unreachable: could not find detailed configuration for agent"
+  );
+
+  return fullConfiguration;
+}

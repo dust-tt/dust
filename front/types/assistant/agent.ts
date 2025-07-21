@@ -2,17 +2,25 @@ import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
+import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/assistant";
+import type {
+  AgentActionType,
+  AgentMessageType,
+  ConversationType,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
-
-import type { ModelId } from "../shared/model_id";
-import type { ModelIdType, ModelProviderIdType } from "./assistant";
-import type { AgentActionType, AgentMessageType } from "./conversation";
 
 /**
  * Agent configuration
@@ -309,3 +317,38 @@ export type AgentStepContentEvent = {
   index: number;
   content: TextContentType | FunctionCallContentType | ReasoningContentType;
 };
+
+/**
+ * Run agent arguments
+ */
+
+export type RunAgentIdArgs = {
+  agentMessageId: string;
+  conversationId: string;
+  userMessageId: string;
+};
+
+export type RunAgentFullArgs = {
+  agentMessage: AgentMessageType;
+  agentMessageRow: AgentMessage;
+  conversation: ConversationType;
+  userMessage: UserMessageType;
+  agentConfiguration: AgentConfigurationType;
+};
+
+export type RunAgentArgs =
+  | {
+      sync: true;
+      inMemoryData: RunAgentFullArgs;
+    }
+  | {
+      sync: false;
+      idArgs: RunAgentIdArgs;
+    };
+
+export function getRunAgentData(runAgentArgs: RunAgentArgs): RunAgentFullArgs {
+  if (runAgentArgs.sync) {
+    return runAgentArgs.inMemoryData;
+  }
+  throw new Error("Not implemented");
+}

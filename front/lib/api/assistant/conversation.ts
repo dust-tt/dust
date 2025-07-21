@@ -6,6 +6,7 @@ import { runAgentWithStreaming } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   getAgentConfigurations,
+  getFullAgentConfiguration,
   getLightAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -791,14 +792,18 @@ export async function postUserMessage(
         `Agent message row not found for agent message ${agentMessage.agentMessageId}`
       );
 
-      void runAgentWithStreaming(
-        auth,
-        agentMessage.configuration,
-        enrichedConversation,
+      const inMemoryData = {
+        agentConfiguration: await getFullAgentConfiguration(
+          auth,
+          agentMessage.configuration
+        ),
+        conversation: enrichedConversation,
         userMessage,
         agentMessage,
-        agentMessageRow
-      );
+        agentMessageRow,
+      };
+
+      void runAgentWithStreaming(auth.toJSON(), { sync: true, inMemoryData });
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -1224,14 +1229,18 @@ export async function editUserMessage(
         `Agent message row not found for agent message ${agentMessage.agentMessageId}`
       );
 
-      void runAgentWithStreaming(
-        auth,
-        agentMessage.configuration,
-        enrichedConversation,
+      const inMemoryData = {
+        agentConfiguration: await getFullAgentConfiguration(
+          auth,
+          agentMessage.configuration
+        ),
+        conversation: enrichedConversation,
         userMessage,
         agentMessage,
-        agentMessageRow
-      );
+        agentMessageRow,
+      };
+
+      void runAgentWithStreaming(auth.toJSON(), { sync: true, inMemoryData });
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -1438,15 +1447,18 @@ export async function retryAgentMessage(
     ...conversation,
     content: newContent,
   };
-
-  void runAgentWithStreaming(
-    auth,
-    agentMessage.configuration,
-    enrichedConversation,
+  const inMemoryData = {
+    agentConfiguration: await getFullAgentConfiguration(
+      auth,
+      agentMessage.configuration
+    ),
+    conversation: enrichedConversation,
     userMessage,
     agentMessage,
-    agentMessageRow
-  );
+    agentMessageRow,
+  };
+
+  void runAgentWithStreaming(auth.toJSON(), { sync: true, inMemoryData });
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
