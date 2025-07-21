@@ -22,11 +22,11 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<YamlAPIResponse>>,
   auth: Authenticator
 ): Promise<void> {
-  auth.getNonNullableWorkspace();
+  const owner = auth.getNonNullableWorkspace();
 
   const { wId, aId } = req.query;
 
-  if (typeof wId !== "string" || typeof aId !== "string") {
+  if (typeof wId !== "string" || wId !== owner.sId || typeof aId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

@@ -9,10 +9,6 @@ import {
   isIncludeDataAction,
   isSearchAction,
 } from "@app/components/agent_builder/types";
-import type {
-  SaveYAMLAPIRequest,
-  SaveYAMLAPIResponse,
-} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/yaml";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   AgentConfigurationType,
@@ -24,6 +20,8 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+const USE_AGENT_TO_YAML = false;
 
 function convertDataSourceConfigurations(
   dataSourceConfigurations: DataSourceViewSelectionConfigurations,
@@ -283,14 +281,9 @@ export async function submitAgentBuilderForm({
     const agentConfiguration = result.agentConfiguration;
 
     // Export agent configuration to YAML
-    if (!isDraft) {
+    if (!isDraft && USE_AGENT_TO_YAML) {
       try {
-        const yamlRequest: SaveYAMLAPIRequest = {
-          formData,
-          agentSId: agentConfiguration.sId,
-          workspaceId: owner.sId,
-          isDraft,
-        };
+        const yamlRequest = { formData, isDraft };
 
         const yamlResponse = await fetch(
           `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/yaml`,
@@ -303,7 +296,7 @@ export async function submitAgentBuilderForm({
           }
         );
 
-        const yamlResult: SaveYAMLAPIResponse = await yamlResponse.json();
+        const yamlResult = await yamlResponse.json();
 
         if (yamlResult.success) {
           console.log(
