@@ -69,7 +69,7 @@ export function InteractiveAgentMessageGeneratedFiles({
   }
 
   return (
-    <CitationGrid>
+    <CitationGrid variant="list">
       {files.map((file) => {
         const handleClick = (e: React.MouseEvent) => {
           e.preventDefault();
@@ -81,6 +81,7 @@ export function InteractiveAgentMessageGeneratedFiles({
             key={file.fileId}
             tooltip={file.title}
             onClick={handleClick}
+            className="bg-gray-50"
           >
             <CitationTitle>{file.title}</CitationTitle>
             <CitationDescription>
