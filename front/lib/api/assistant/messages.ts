@@ -1,6 +1,7 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
+import { hideFileFromActionOutput, MCPActionType } from "@app/lib/actions/mcp";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -9,6 +10,10 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
+import {
+  AgentMCPAction,
+  AgentMCPActionOutputItem,
+} from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -19,8 +24,11 @@ import {
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
   ContentFragmentType,
@@ -39,14 +47,6 @@ import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import {
-  AgentMCPAction,
-  AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
-import { FileModel } from "@app/lib/resources/storage/models/files";
-import { MCPActionType, hideFileFromActionOutput } from "@app/lib/actions/mcp";
-import { FileResource } from "@app/lib/resources/file_resource";
-import logger from "@app/logger/logger";
 
 export function getMaximalVersionAgentStepContent(
   agentStepContents: AgentStepContentModel[]
