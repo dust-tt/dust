@@ -27,7 +27,19 @@ export function useAutoOpenInteractiveContent({
 }: UseAutoOpenInteractiveContentProps) {
   const { openContent } = useInteractiveContentContext();
 
-  // Track which fileId was last opened to prevent progress->generated blinks.
+  // Track the last opened fileId to prevent double-opening glitch.
+  //
+  // Problem: Progress notifications and generated files represent the same content but have
+  // different hash formats:
+  // - Progress notifications: "fileId@updatedAt" (includes timestamp for real-time refresh)
+  // - Generated files: "fileId" (no updatedAt)
+  //
+  // Without tracking, the hook would open the drawer twice:
+  // 1. Progress phase: opens with "fileId@timestamp"
+  // 2. Completion phase: progress clears, opens again with "fileId"
+  //
+  // Solution: Track opened fileIds to prevent progress→generated blinks while still
+  // allowing generated→progress refreshes (when file is updated with new timestamp).
   const lastOpenedFileIdRef = React.useRef<string | null>(null);
 
   // Get interactive files from progress notifications.
