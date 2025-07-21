@@ -429,7 +429,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     value: AgentContentItemType;
   }): Promise<AgentStepContentResource> {
     return frontSequelize.transaction(async (transaction: Transaction) => {
-      const existingContent = await AgentStepContentModel.findAll({
+      const existingContent = await this.model.findAll({
         where: {
           agentMessageId,
           step,
@@ -443,7 +443,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       const currentMaxVersion =
         existingContent.length > 0 ? existingContent[0].version + 1 : 0;
 
-      return AgentStepContentResource.makeNew(
+      return this.makeNew(
         {
           agentMessageId,
           workspaceId,
