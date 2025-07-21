@@ -1,3 +1,4 @@
+import assert from "assert";
 import _ from "lodash";
 import type {
   Attributes,
@@ -54,17 +55,10 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       },
     });
 
-    if (agentMessages.length !== agentMessageIds.length) {
-      logger.error(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          agentMessageIds,
-          found: agentMessages.map((a) => a.id),
-        },
-        "Agent message not found"
-      );
-      throw new Error(`Unexpected: Agent messages not all found`);
-    }
+    assert(
+      agentMessages.length !== agentMessageIds.length,
+      "Unexpected: Agent messages not all found"
+    );
 
     const uniqueAgentIds = [
       ...new Set(agentMessages.map((a) => a.agentConfigurationId)),
