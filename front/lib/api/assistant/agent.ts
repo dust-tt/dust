@@ -685,7 +685,7 @@ async function runMultiActionsAgent(
   const { eventStream, dustRunId } = res.value;
   let output: {
     actions: Array<{
-      functionCallId: string;
+      functionCallId: string | null;
       name: string | null;
       arguments: Record<string, string | boolean | number> | null;
     }>;
