@@ -1,7 +1,7 @@
+import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns";
-import { writeFileSync, readFileSync } from "fs";
-import { parse } from "csv-parse/sync";
+import { readFileSync, writeFileSync } from "fs";
 import { z } from "zod";
 
 import { getWorkOS } from "@app/lib/api/workos/client";
