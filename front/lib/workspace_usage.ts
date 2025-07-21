@@ -606,7 +606,7 @@ export async function getAssistantsUsageData(
   return generateCsvFromQueryResult(mentions);
 }
 
-export async function getFeedbacksUsageData(
+export async function getFeedbackUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType
