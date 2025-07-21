@@ -224,8 +224,6 @@ const createServer = (
           `File '${fileResource.sId}' updated successfully. Made ` +
           `${replacementCount} replacement${pluralS}`;
 
-        console.log(">>> _meta", _meta);
-
         if (_meta?.progressToken) {
           const notification: MCPProgressNotificationType = {
             method: "notifications/progress",
