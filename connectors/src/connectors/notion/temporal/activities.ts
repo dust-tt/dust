@@ -3155,3 +3155,67 @@ export async function markDatabasesAsUpserted({
 
   return { isNewDatabase: !db.lastUpsertedRunTs, isMissing: false };
 }
+
+export async function checkResourceAccessibility({
+  connectorId,
+  resourceId,
+  resourceType,
+}: {
+  connectorId: ModelId;
+  resourceId: string;
+  resourceType: "page" | "database";
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const loggerArgs = { connectorId, resourceId };
+
+  try {
+    const notionAccessToken = await getNotionAccessToken(connectorId);
+
+    if (resourceType === "page") {
+      // Check as a page
+      const page = await retrievePage({
+        accessToken: notionAccessToken,
+        pageId: resourceId,
+        loggerArgs,
+      });
+
+      logger.info(
+        {
+          connectorId,
+          resourceId,
+          resourceType: "page",
+          isAccessible: !!page,
+        },
+        "[NOTION_RESOURCE_CHECK] Checked resource"
+      );
+    } else {
+      // Check as a database
+      const db = await getParsedDatabase(
+        notionAccessToken,
+        resourceId,
+        loggerArgs
+      );
+
+      logger.info(
+        {
+          connectorId,
+          resourceId,
+          resourceType: "database",
+          isAccessible: !!db,
+        },
+        "[NOTION_RESOURCE_CHECK] Checked resource"
+      );
+    }
+  } catch (error) {
+    // Let the error propagate so Temporal can handle retries based on error type
+    logger.error(
+      { ...loggerArgs, error },
+      "Error checking resource accessibility"
+    );
+    throw error;
+  }
+}
