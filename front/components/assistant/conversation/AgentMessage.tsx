@@ -21,8 +21,12 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
 import { ActionValidationContext } from "@app/components/assistant/conversation/ActionValidationProvider";
-import { AgentMessageGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import {
+  DefaultAgentMessageGeneratedFiles,
+  InteractiveAgentMessageGeneratedFiles,
+} from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
 import { AssistantHandle } from "@app/components/assistant/conversation/AssistantHandle";
+import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/content/useAutoOpenInteractiveContent";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -63,6 +67,7 @@ import type {
 import {
   assertNever,
   GLOBAL_AGENTS_SID,
+  isInteractiveFileContentType,
   isOAuthProvider,
   isSupportedImageContentType,
   isValidScope,
@@ -317,6 +322,13 @@ export function AgentMessage({
     message.sId,
     conversationId,
   ]);
+
+  // Auto-open interactive content drawer when interactive files are available.
+  const { interactiveFiles } = useAutoOpenInteractiveContent({
+    messageStreamState,
+    agentMessageToRender,
+    isLastMessage,
+  });
 
   const PopoverContent = React.useCallback(
     () => (
@@ -575,7 +587,9 @@ export function AgentMessage({
     );
 
     const generatedFiles = agentMessage.generatedFiles.filter(
-      (file) => !isSupportedImageContentType(file.contentType)
+      (file) =>
+        !isSupportedImageContentType(file.contentType) &&
+        !isInteractiveFileContentType(file.contentType)
     );
 
     return (
@@ -609,6 +623,7 @@ export function AgentMessage({
             />
           ) : null}
         </div>
+        <InteractiveAgentMessageGeneratedFiles files={interactiveFiles} />
         {(inProgressImages.length > 0 || completedImages.length > 0) && (
           <InteractiveImageGrid
             images={[
@@ -661,8 +676,6 @@ export function AgentMessage({
               activeReferences: generatedFiles.map((file) => ({
                 index: -1,
                 document: {
-                  contentType: file.contentType,
-                  fileId: file.fileId,
                   href: `/api/w/${owner.sId}/files/${file.fileId}`,
                   icon: <DocumentIcon />,
                   title: file.title,
@@ -711,7 +724,7 @@ function getCitations({
 
   return activeReferences.map(({ document, index }) => {
     return (
-      <AgentMessageGeneratedFiles
+      <DefaultAgentMessageGeneratedFiles
         key={index}
         document={document}
         index={index}

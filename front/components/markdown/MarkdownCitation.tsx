@@ -25,8 +25,6 @@ export function getCitationIcon(type: string, isDark?: boolean) {
 // TODO(INTERACTIVE_CONTENT): Use proper and distinct types for interactive content.
 export interface MarkdownCitation {
   description?: string;
-  contentType?: string;
-  fileId?: string;
   href?: string;
   icon: React.JSX.Element;
   title: string;

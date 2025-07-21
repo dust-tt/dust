@@ -13,6 +13,7 @@ import type {
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
   declare contentType: AllSupportedFileContentType;
   declare fileName: string;
@@ -29,6 +30,11 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
 FileModel.init(
   {
     createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,

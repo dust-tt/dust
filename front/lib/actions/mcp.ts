@@ -1006,10 +1006,10 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         ...actionBaseParams,
         generatedFiles: removeNulls(cleanContent.map((c) => c.file)).map(
           (f) => ({
-            fileId: f.sId,
             contentType: f.contentType,
-            title: f.fileName,
+            fileId: f.sId,
             snippet: f.snippet,
+            title: f.fileName,
           })
         ),
         executionState: status,

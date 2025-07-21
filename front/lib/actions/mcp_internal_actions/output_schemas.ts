@@ -660,12 +660,40 @@ export const isFilesystemPathType = (
  * Notification output types.
  */
 
+// Image.
+
 const NotificationImageContentSchema = z.object({
   type: z.literal("image"),
   mimeType: z.string(),
 });
 
 type ImageProgressOutput = z.infer<typeof NotificationImageContentSchema>;
+
+export function isImageProgressOutput(
+  output: ProgressNotificationOutput
+): output is ImageProgressOutput {
+  return output !== undefined && output.type === "image";
+}
+
+// Interactive file.
+
+const NotificationInteractiveFileContentSchema = z.object({
+  type: z.literal("interactive_file"),
+  fileId: z.string(),
+  mimeType: z.string(),
+  title: z.string(),
+  updatedAt: z.string(),
+});
+
+type InteractiveFileContentProgressOutput = z.infer<
+  typeof NotificationInteractiveFileContentSchema
+>;
+
+export function isInteractiveFileContentOutput(
+  output: ProgressNotificationOutput
+): output is InteractiveFileContentProgressOutput {
+  return output !== undefined && output.type === "interactive_file";
+}
 
 const InternalAllowedIconSchema = z.enum(
   INTERNAL_ALLOWED_ICONS as [
@@ -711,12 +739,6 @@ export function isToolApproveBubbleUpNotificationType(
   ).success;
 }
 
-export function isImageProgressOutput(
-  output: ProgressNotificationOutput
-): output is ImageProgressOutput {
-  return output !== undefined && output.type === "image";
-}
-
 const NotificationTextContentSchema = z.object({
   type: z.literal("text"),
   text: z.string(),
@@ -744,9 +766,10 @@ export function isRunAgentProgressOutput(
 export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
+    NotificationInteractiveFileContentSchema,
+    NotificationRunAgentContentSchema,
     NotificationTextContentSchema,
     NotificationToolApproveBubbleUpContentSchema,
-    NotificationRunAgentContentSchema,
   ])
   .optional();
 

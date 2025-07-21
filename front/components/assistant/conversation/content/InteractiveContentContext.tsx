@@ -7,8 +7,9 @@ const INTERACTIVE_CONTENT_HASH_PARAM = "icid";
 interface InteractiveContentContextType {
   closeContent: () => void;
   contentId: string | null;
+  contentHash: string | null;
   isContentOpen: boolean;
-  openContent: (id: string) => void;
+  openContent: (id: string, updatedAt?: string) => void;
 }
 
 const InteractiveContentContext = React.createContext<
@@ -34,9 +35,17 @@ export function InteractiveContentProvider({
   children,
 }: InteractiveContentProviderProps) {
   const router = useRouter();
-  const [contentId, setContentId] = useHashParam(
+  const [contentHash, setContentHash] = useHashParam(
     INTERACTIVE_CONTENT_HASH_PARAM
   );
+
+  // Parse contentId from hash (format: fileId or fileId@timestamp).
+  const contentId = React.useMemo(() => {
+    if (!contentHash) {
+      return null;
+    }
+    return contentHash.split("@")[0];
+  }, [contentHash]);
 
   /**
    * Fix for shallow routing not closing interactive content drawer.
@@ -52,36 +61,40 @@ export function InteractiveContentProvider({
   React.useEffect(() => {
     const handleRouteChange = () => {
       // If there's no hash after route change, clear the content.
-      if (!window.location.hash && contentId) {
-        setContentId(undefined);
+      if (!window.location.hash && contentHash) {
+        setContentHash(undefined);
       }
     };
 
     router.events.on("routeChangeComplete", handleRouteChange);
     return () => router.events.off("routeChangeComplete", handleRouteChange);
-  }, [router.events, contentId, setContentId]);
+  }, [router.events, contentHash, setContentHash]);
 
   const isContentOpen = !!contentId;
 
   const openContent = React.useCallback(
-    (id: string) => {
-      setContentId(id);
+    (id: string, updatedAt?: string) => {
+      // Create hash with fileId@fileUpdatedAt format if updatedAt is provided. It's used to refresh
+      // the content when the file is updated.
+      const hash = updatedAt ? `${id}@${updatedAt}` : id;
+      setContentHash(hash);
     },
-    [setContentId]
+    [setContentHash]
   );
 
   const closeContent = React.useCallback(() => {
-    setContentId(undefined);
-  }, [setContentId]);
+    setContentHash(undefined);
+  }, [setContentHash]);
 
   const value: InteractiveContentContextType = React.useMemo(
     () => ({
       closeContent,
       contentId: contentId || null,
+      contentHash: contentHash || null,
       isContentOpen,
       openContent,
     }),
-    [closeContent, contentId, isContentOpen, openContent]
+    [closeContent, contentId, contentHash, isContentOpen, openContent]
   );
 
   return (

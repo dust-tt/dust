@@ -19,11 +19,13 @@ export function InteractiveContentContainer({
   isOpen,
   owner,
 }: InteractiveContentContainerProps) {
-  const { contentId } = useInteractiveContentContext();
+  const { contentId, contentHash } = useInteractiveContentContext();
   const { fileMetadata, isFileMetadataLoading, isFileMetadataError } =
     useFileMetadata({
       fileId: contentId,
       owner,
+      // We use the contentHash to invalidate the cache when the content is updated.
+      cacheKey: contentHash,
     });
 
   if (!isOpen || !contentId) {
@@ -82,14 +84,14 @@ export function InteractiveContentContainer({
   };
 
   return (
-    <div className="h-full w-full p-4">
+    <div className="h-full w-full p-3">
       <div
         className={cn(
           "bg-structure-0/80 flex h-full w-full flex-col backdrop-blur-sm",
           "rounded-lg border border-border shadow-lg dark:border-border-night"
         )}
       >
-        <div className="flex-1 overflow-hidden rounded-lg">
+        <div className="flex-1 overflow-hidden rounded-lg bg-gray-50 dark:bg-gray-900">
           {renderContent()}
         </div>
       </div>

@@ -1,5 +1,7 @@
 import {
   Citation,
+  CitationDescription,
+  CitationGrid,
   CitationIcons,
   CitationIndex,
   CitationTitle,
@@ -7,14 +9,18 @@ import {
 
 import { useInteractiveContentContext } from "@app/components/assistant/conversation/content/InteractiveContentContext";
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
-import { isInteractiveContentType } from "@app/types";
+import type { LightAgentMessageType } from "@app/types";
+import { clientExecutableContentType } from "@app/types";
 
-interface AgentMessageGeneratedFilesProps {
+interface DefaultAgentMessageGeneratedFilesProps {
   document: MarkdownCitation;
   index: number;
 }
 
-function CitationContent({ document, index }: AgentMessageGeneratedFilesProps) {
+function CitationContent({
+  document,
+  index,
+}: DefaultAgentMessageGeneratedFilesProps) {
   return (
     <>
       <CitationIcons>
@@ -26,10 +32,10 @@ function CitationContent({ document, index }: AgentMessageGeneratedFilesProps) {
   );
 }
 
-function DefaultAgentMessageGeneratedFiles({
+export function DefaultAgentMessageGeneratedFiles({
   document,
   index,
-}: AgentMessageGeneratedFilesProps) {
+}: DefaultAgentMessageGeneratedFilesProps) {
   return (
     <Citation href={document.href} tooltip={document.title}>
       <CitationContent document={document} index={index} />
@@ -37,45 +43,53 @@ function DefaultAgentMessageGeneratedFiles({
   );
 }
 
-// TODO(INTERACTIVE_CONTENT): This is a temporary component to handle interactive content.
-// Should be a proper tile component.
-function InteractiveAgentMessageGeneratedFiles({
-  document,
-  index,
-}: AgentMessageGeneratedFilesProps) {
-  const { openContent } = useInteractiveContentContext();
+// Interactive files.
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.preventDefault();
+function getDescriptionForContentType(
+  file: LightAgentMessageType["generatedFiles"][number]
+) {
+  if (file.contentType === clientExecutableContentType) {
+    return "Visualization";
+  }
 
-    if (document.fileId) {
-      openContent(document.fileId);
-    }
-  };
-
-  return (
-    <Citation tooltip={document.title} onClick={handleClick}>
-      <CitationContent document={document} index={index} />
-    </Citation>
-  );
+  return "Interactive Content";
 }
 
-export function AgentMessageGeneratedFiles({
-  document,
-  index,
-}: AgentMessageGeneratedFilesProps) {
-  const isInteractive = isInteractiveContentType(document.contentType || "");
+interface InteractiveAgentMessageGeneratedFilesProps {
+  files: LightAgentMessageType["generatedFiles"];
+}
 
-  if (isInteractive) {
-    return (
-      <InteractiveAgentMessageGeneratedFiles
-        document={document}
-        index={index}
-      />
-    );
+export function InteractiveAgentMessageGeneratedFiles({
+  files,
+}: InteractiveAgentMessageGeneratedFilesProps) {
+  const { openContent } = useInteractiveContentContext();
+
+  if (files.length === 0) {
+    return null;
   }
 
   return (
-    <DefaultAgentMessageGeneratedFiles document={document} index={index} />
+    <CitationGrid variant="list">
+      {files.map((file) => {
+        const handleClick = (e: React.MouseEvent) => {
+          e.preventDefault();
+          openContent(file.fileId);
+        };
+
+        return (
+          <Citation
+            key={file.fileId}
+            tooltip={file.title}
+            onClick={handleClick}
+            className="bg-gray-50 dark:bg-gray-800"
+          >
+            <CitationTitle>{file.title}</CitationTitle>
+            <CitationDescription>
+              {getDescriptionForContentType(file)}
+            </CitationDescription>
+          </Citation>
+        );
+      })}
+    </CitationGrid>
   );
 }
