@@ -200,17 +200,20 @@ function formatDocumentContent({
   };
 }
 
-function getFirecrawlScrapeOptions(
+function getFirecrawlScrapeOptions<
+  // Need that extra extend so that tsc is happy.
+  ActionSchema extends Action[] | undefined = undefined,
+>(
   webCrawlerConfig: WebCrawlerConfigurationResource
-) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): ScrapeParams<any, ActionSchema> {
   return {
     onlyMainContent: true,
     formats: ["markdown"],
     headers: webCrawlerConfig.getCustomHeaders(),
     maxAge: 43_200_000, // Use last 12h of cache
-    actions: webCrawlerConfig.actions ?? undefined,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } satisfies ScrapeParams<any, Action[]>;
+    actions: (webCrawlerConfig.actions as ActionSchema) ?? undefined,
+  };
 }
 
 function getFirecrawlWebhookConfig(connector: ConnectorResource) {
