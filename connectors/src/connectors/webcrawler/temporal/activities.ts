@@ -291,6 +291,7 @@ async function startBatchScrapeJob(
     logger,
   }: FirecrawlJobHelpersParams
 ) {
+  // Gets us all urls from the sitemaps
   const mapUrlResult = await firecrawlApp.mapUrl(url, {
     ignoreSitemap: false,
     sitemapOnly: true,
