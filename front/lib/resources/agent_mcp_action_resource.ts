@@ -11,7 +11,6 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -23,6 +22,9 @@ type AgentMCPActionWithConversation = AgentMCPAction & {
     };
   };
 };
+
+// Resource for AgentMCPAction.
+// Only used for analytics purposes, the rendering is handled AgentStepContentResource.
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -44,42 +46,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     return new Err(
       new Error("Direct deletion of MCP actions is not supported")
     );
-  }
-
-  static modelIdToSId({
-    id,
-    workspaceId,
-  }: {
-    id: number;
-    workspaceId: number;
-  }): string {
-    return MCPActionType.modelIdToSId({ id, workspaceId });
-  }
-
-  get sId(): string {
-    return AgentMCPActionResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
-    });
-  }
-
-  toJSON() {
-    const stepContentSId = this.stepContentId
-      ? makeSId("agent_step_content", {
-          id: this.stepContentId,
-          workspaceId: this.workspaceId,
-        })
-      : undefined;
-
-    return {
-      sId: this.sId,
-      createdAt: this.createdAt.toISOString(),
-      functionCallName: this.functionCallName,
-      params: this.params,
-      executionState: this.executionState,
-      isError: this.isError,
-      stepContentSId,
-    };
   }
 
   static async getMCPActionsForAgent(

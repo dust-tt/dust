@@ -6,7 +6,6 @@ import {
   MCPExternalActionIconSchema,
   MCPInternalActionIconSchema,
 } from "./mcp_icon_types";
-import { NotificationInteractiveFileContentSchema } from "./output_schemas";
 import { CallToolResultSchema } from "./raw_mcp_types";
 
 type StringLiteral<T> = T extends string
@@ -2218,7 +2217,7 @@ const SupportedUsageTablesSchema = FlexibleEnumSchema<
   | "assistant_messages"
   | "builders"
   | "assistants"
-  | "feedbacks"
+  | "feedback"
   | "all"
 >();
 
