@@ -81,7 +81,7 @@ export function InteractiveAgentMessageGeneratedFiles({
             key={file.fileId}
             tooltip={file.title}
             onClick={handleClick}
-            className="bg-gray-50"
+            className="bg-gray-50 dark:bg-gray-800"
           >
             <CitationTitle>{file.title}</CitationTitle>
             <CitationDescription>
