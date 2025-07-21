@@ -19,14 +19,14 @@ import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_cont
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FileModel } from "@app/lib/resources/storage/models/files";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
-import { Err, md5, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 import type {
   AgentContentItemType,
   AgentStepContentType,
