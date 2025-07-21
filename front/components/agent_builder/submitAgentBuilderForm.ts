@@ -9,6 +9,10 @@ import {
   isIncludeDataAction,
   isSearchAction,
 } from "@app/components/agent_builder/types";
+import type {
+  SaveYAMLAPIRequest,
+  SaveYAMLAPIResponse,
+} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/yaml";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   AgentConfigurationType,
@@ -277,6 +281,46 @@ export async function submitAgentBuilderForm({
     } = await response.json();
 
     const agentConfiguration = result.agentConfiguration;
+
+    // Export agent configuration to YAML
+    if (!isDraft) {
+      try {
+        const yamlRequest: SaveYAMLAPIRequest = {
+          formData,
+          agentSId: agentConfiguration.sId,
+          workspaceId: owner.sId,
+          isDraft,
+        };
+
+        const yamlResponse = await fetch(
+          `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/yaml`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(yamlRequest),
+          }
+        );
+
+        const yamlResult: SaveYAMLAPIResponse = await yamlResponse.json();
+
+        if (yamlResult.success) {
+          console.log(
+            "Agent YAML configuration exported successfully to:",
+            yamlResult.filePath
+          );
+        } else {
+          console.error(
+            "Failed to export agent configuration to YAML:",
+            yamlResult.error
+          );
+        }
+      } catch (error) {
+        // Don't fail the entire submission if YAML export fails
+        console.error("Failed to export agent configuration to YAML:", error);
+      }
+    }
 
     const { slackChannels, slackProvider } = formData.agentSettings;
     // PATCH the linked Slack channels if either:
