@@ -3158,17 +3158,20 @@ export async function markDatabasesAsUpserted({
 
 export async function checkResourceAccessibility({
   connectorId,
-  connectionId,
   resourceId,
   resourceType,
 }: {
   connectorId: ModelId;
-  connectionId: string;
   resourceId: string;
   resourceType: "page" | "database";
 }): Promise<void> {
-  const loggerArgs = { connectorId, connectionId, resourceId };
-  
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const loggerArgs = { connectorId, resourceId };
+
   try {
     const notionAccessToken = await getNotionAccessToken(connectorId);
 
@@ -3183,7 +3186,6 @@ export async function checkResourceAccessibility({
       logger.info(
         {
           connectorId,
-          connectionId,
           resourceId,
           resourceType: "page",
           isAccessible: !!page,
@@ -3192,12 +3194,15 @@ export async function checkResourceAccessibility({
       );
     } else {
       // Check as a database
-      const db = await getParsedDatabase(notionAccessToken, resourceId, loggerArgs);
+      const db = await getParsedDatabase(
+        notionAccessToken,
+        resourceId,
+        loggerArgs
+      );
 
       logger.info(
         {
           connectorId,
-          connectionId,
           resourceId,
           resourceType: "database",
           isAccessible: !!db,
@@ -3207,7 +3212,10 @@ export async function checkResourceAccessibility({
     }
   } catch (error) {
     // Let the error propagate so Temporal can handle retries based on error type
-    logger.error({ ...loggerArgs, error }, "Error checking resource accessibility");
+    logger.error(
+      { ...loggerArgs, error },
+      "Error checking resource accessibility"
+    );
     throw error;
   }
 }

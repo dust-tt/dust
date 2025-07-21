@@ -10,7 +10,6 @@ const { checkResourceAccessibility } = proxyActivities<typeof activities>({
 
 export type CheckResourcesAccessibilityInput = {
   connectorId: ModelId;
-  connectionId: string;
   resources: Array<{
     resourceId: string;
     resourceType: "page" | "database";
@@ -21,7 +20,6 @@ export type CheckResourcesAccessibilityInput = {
 
 export async function checkResourcesAccessibilityWorkflow({
   connectorId,
-  connectionId,
   resources,
   batchSize = 100,
   concurrency = 4,
@@ -36,7 +34,6 @@ export async function checkResourcesAccessibilityWorkflow({
     queue.add(async () => {
       await checkResourceAccessibility({
         connectorId,
-        connectionId,
         resourceId: resource.resourceId,
         resourceType: resource.resourceType,
       });
@@ -51,7 +48,6 @@ export async function checkResourcesAccessibilityWorkflow({
   if (remainingResources.length > 0) {
     await continueAsNew<typeof checkResourcesAccessibilityWorkflow>({
       connectorId,
-      connectionId,
       resources: remainingResources,
       batchSize,
       concurrency,

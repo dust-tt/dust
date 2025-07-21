@@ -16,11 +16,12 @@
  *
  * The script will launch a Temporal workflow that checks each resource
  * and logs whether it's accessible using the connector's token.
- * 
+ *
  * The script returns immediately after starting the workflow and provides
  * a link to the Temporal UI to monitor progress.
  */
 import { readFile } from "fs/promises";
+import { makeScript } from "scripts/helpers";
 
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import { checkResourcesAccessibilityWorkflow } from "@connectors/connectors/notion/temporal/workflows/check_resources_accessibility";
@@ -28,20 +29,17 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
-import { makeScript } from "./helpers";
-
-
 makeScript(
   {
     connectorId: {
       alias: "c",
-      type: "string" as const,
+      type: "string",
       demandOption: true,
       describe: "The Notion connector ID",
     },
     file: {
       alias: "f",
-      type: "string" as const,
+      type: "string",
       demandOption: true,
       describe: "Path to a CSV file with columns: notion_id,type",
     },
@@ -144,8 +142,6 @@ makeScript(
       throw new Error(`Connector ${connectorId} not found`);
     }
 
-    const connectionId = connector.connectionId;
-
     const temporalClient = await getTemporalClient();
     const workflowId = `notion-check-resources-accessibility-${connectorId}-${Date.now()}`;
 
@@ -153,7 +149,6 @@ makeScript(
       {
         workflowId,
         connectorId,
-        connectionId,
         resourceCount: resources.length,
       },
       "Starting Temporal workflow"
@@ -165,7 +160,6 @@ makeScript(
         args: [
           {
             connectorId,
-            connectionId,
             resources,
           },
         ],
@@ -175,7 +169,7 @@ makeScript(
     );
 
     const temporalNamespace = process.env.TEMPORAL_NAMESPACE;
-    
+
     if (temporalNamespace) {
       const workflowUrl = `https://cloud.temporal.io/namespaces/${temporalNamespace}/workflows/${handle.workflowId}`;
       logger.info(
