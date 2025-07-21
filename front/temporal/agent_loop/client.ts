@@ -1,23 +1,24 @@
 import { getTemporalClient } from "@app/lib/temporal";
-import type { Result } from "@app/types";
+import type { Result, RunAgentArgs } from "@app/types";
 import { Ok } from "@app/types";
 
 import { QUEUE_NAME } from "./config";
 import { agentLoopWorkflow } from "./workflows";
+import { AuthenticatorType } from "@app/lib/auth";
 
 export async function launchAgentLoopWorkflow({
-  agentMessageId,
-  conversationId,
+  authType,
+  runAgentArgs,
 }: {
-  agentMessageId: number;
-  conversationId: string;
+  authType: AuthenticatorType;
+  runAgentArgs: RunAgentArgs;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = `agent-loop-workflow-${conversationId}__${agentMessageId}`;
+  const workflowId = `TODO`;
 
   await client.workflow.start(agentLoopWorkflow, {
-    args: [{ agentMessageId, conversationId }],
+    args: [{ authType: authType, runAgentArgs: runAgentArgs }],
     taskQueue: QUEUE_NAME,
     workflowId,
   });
