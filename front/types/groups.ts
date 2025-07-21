@@ -1,4 +1,5 @@
 import * as t from "io-ts";
+
 import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 import { isRoleType } from "./user";

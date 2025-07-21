@@ -5,8 +5,8 @@ import type { Transaction } from "sequelize";
 import { runAgentWithStreaming } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
-  getFullAgentConfiguration,
   getAgentConfigurations,
+  getFullAgentConfiguration,
   getLightAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";

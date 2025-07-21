@@ -1,3 +1,6 @@
+import assert from "assert";
+
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
   tryListMCPTools,
@@ -54,8 +57,8 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
   getRunAgentData,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
   removeNulls,
 } from "@app/types";
 import type {
@@ -63,7 +66,6 @@ import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import assert from "assert";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -183,7 +185,7 @@ export async function runAgentWithStreaming(
       const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
       const citationsIncrements = await Promise.all(
-        actionsToRun.map(({ action, inputs, functionCallId }, index) => {
+        actionsToRun.map(({ inputs, functionCallId }, index) => {
           // Find the step content ID for this function call
           const stepContentId = functionCallId
             ? functionCallStepContentIds[functionCallId]

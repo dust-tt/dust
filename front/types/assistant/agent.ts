@@ -2,15 +2,12 @@ import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
+import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import type {
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
-import type { TagType } from "@app/types/tag";
-import type { UserType } from "@app/types/user";
-
-import type { ModelId } from "@app/types/shared/model_id";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -21,7 +18,9 @@ import type {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { TagType } from "@app/types/tag";
+import type { UserType } from "@app/types/user";
 
 /**
  * Agent configuration
