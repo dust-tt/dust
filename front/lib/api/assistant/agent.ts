@@ -706,7 +706,7 @@ async function runMultiActionsAgent(
     getDelimitersConfiguration({ agentConfiguration })
   );
 
-  async function _checkCancellation() {
+  async function checkCancellation() {
     try {
       const cancelled = await redis.get(
         `assistant:generation:cancelled:${agentMessage.sId}`
@@ -747,7 +747,7 @@ async function runMultiActionsAgent(
       currentTimestamp - lastCheckCancellation >=
       CANCELLATION_CHECK_INTERVAL
     ) {
-      void _checkCancellation(); // Trigger the async function without awaiting
+      void checkCancellation(); // Trigger the async function without awaiting
       lastCheckCancellation = currentTimestamp;
     }
 
