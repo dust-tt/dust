@@ -10,7 +10,6 @@ import {
 } from "@app/lib/actions/server";
 import type {
   ActionConfigurationType,
-  AgentActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -22,10 +21,7 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
-import {
-  getAgentConfiguration,
-  getAgentConfigurations,
-} from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
@@ -51,14 +47,10 @@ import { statsDClient } from "@app/logger/statsDClient";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   AgentActionsEvent,
-  AgentConfigurationType,
-  AgentMessageType,
   ConversationType,
-  LightAgentConfigurationType,
   ModelId,
   RunAgentArgs,
-  RunAgentFullArgs as RunAgentFullArgs,
-  UserMessageType,
+  RunAgentFullArgs,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -159,7 +151,7 @@ export async function runAgentWithStreaming(
   const titlePromise = ensureConversationTitle(authType, runAgentArgs);
 
   // Citations references offset kept up to date across steps.
-  let citationsRefsOffset = 0;
+  const citationsRefsOffset = 0;
 
   const runIds: string[] = [];
 
@@ -1059,7 +1051,7 @@ async function runAction(
     citationsRefsOffset: number;
     stepContentId?: ModelId;
   }
-): Promise<void> {
+): Promise<{ citationsIncrement: number }> {
   const auth = await Authenticator.fromJSON(authType);
 
   const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
@@ -1100,7 +1092,7 @@ async function runAction(
             agentMessageRow,
             step
           );
-          return;
+          return { citationsIncrement: 0 };
 
         case "tool_success":
           await updateResourceAndPublishEvent(
@@ -1138,11 +1130,13 @@ async function runAction(
     }
 
     // TODO(DURABLE-AGENTS 2025-07-21): Avoid this in-function mutation
-    citationsRefsOffset += getCitationsCount({
-      agentConfiguration: agentConfiguration,
-      stepActions: stepActions,
-      stepActionIndex: stepActionIndex,
-    });
+    return {
+      citationsIncrement: getCitationsCount({
+        agentConfiguration: agentConfiguration,
+        stepActions: stepActions,
+        stepActionIndex: stepActionIndex,
+      }),
+    };
   } else {
     assertNever(actionConfiguration);
   }
