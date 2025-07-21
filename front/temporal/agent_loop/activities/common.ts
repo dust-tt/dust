@@ -1,8 +1,8 @@
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
-import { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
-import { ConversationType } from "@app/types";
+import type { ConversationType } from "@app/types";
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(

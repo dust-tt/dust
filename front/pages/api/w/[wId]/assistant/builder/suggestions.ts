@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { runAction } from "@app/lib/actions/server";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -24,7 +25,6 @@ import {
   getSmallWhitelistedModel,
   InternalPostBuilderSuggestionsRequestBodySchema,
 } from "@app/types";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 
 // Minimum number of suggestions output by the suggestion app.
 const SUGGESTIONS_MIN_COUNT = 8;

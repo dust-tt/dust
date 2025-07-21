@@ -1,18 +1,20 @@
+import { removeNulls } from "@dust-tt/client";
+
 import {
-  tryListMCPTools,
   TOOL_NAME_SEPARATOR,
+  tryListMCPTools,
 } from "@app/lib/actions/mcp_actions";
-import { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import {
-  runActionStreamed,
   isDustAppChatBlockType,
+  runActionStreamed,
 } from "@app/lib/actions/server";
-import {
+import type {
   ActionConfigurationType,
-  isActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
+import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
@@ -25,9 +27,11 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
+import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import { getSupportedModelConfig } from "@app/lib/assistant";
-import { AuthenticatorType, Authenticator } from "@app/lib/auth";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -35,19 +39,13 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
-import {
-  RunAgentArgs,
-  ModelId,
-  AgentActionsEvent,
-  getRunAgentData,
-} from "@app/types";
-import {
-  TextContentType,
+import type { AgentActionsEvent, ModelId, RunAgentArgs } from "@app/types";
+import { getRunAgentData } from "@app/types";
+import type {
   FunctionCallContentType,
   ReasoningContentType,
+  TextContentType,
 } from "@app/types/assistant/agent_message_content";
-import { removeNulls } from "@dust-tt/client";
-import config from "@app/lib/api/config";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;

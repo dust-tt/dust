@@ -1,12 +1,14 @@
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
-import { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
-import { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
-import { assertNever, getRunAgentData, RunAgentArgs } from "@app/types";
-import { ModelId } from "@app/types/shared/model_id";
+import type { RunAgentArgs } from "@app/types";
+import { assertNever, getRunAgentData } from "@app/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export async function runToolActivity(
   authType: AuthenticatorType,
