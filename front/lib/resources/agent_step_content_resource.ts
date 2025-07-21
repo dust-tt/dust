@@ -83,7 +83,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         },
         "User does not have access to agents"
       );
-      throw new Error(`Unexpected: User does not have access to all agents`);
+      throw new Error("Unexpected: User does not have access to all agents");
     }
   }
 
