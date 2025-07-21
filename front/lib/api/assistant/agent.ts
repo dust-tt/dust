@@ -55,7 +55,7 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
   getRunAgentData,
   removeNulls,
 } from "@app/types";
@@ -159,7 +159,7 @@ export async function runAgentWithStreaming(
   let functionCallStepContentIds: Record<string, ModelId> = {};
 
   await wakeLock(async () => {
-    for (let i = 0; i < EXTENDED_MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
+    for (let i = 0; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
       const result = await runMultiActionsAgent({
         authType,
         runAgentArgs,
