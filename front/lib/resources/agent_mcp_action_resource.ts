@@ -9,7 +9,6 @@ import {
   ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import logger from "@app/logger/logger";
@@ -44,42 +43,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
     return new Err(
       new Error("Direct deletion of MCP actions is not supported")
     );
-  }
-
-  static modelIdToSId({
-    id,
-    workspaceId,
-  }: {
-    id: number;
-    workspaceId: number;
-  }): string {
-    return MCPActionType.modelIdToSId({ id, workspaceId });
-  }
-
-  get sId(): string {
-    return AgentMCPActionResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
-    });
-  }
-
-  toJSON() {
-    const stepContentSId = this.stepContentId
-      ? AgentStepContentResource.modelIdToSId({
-          id: this.stepContentId,
-          workspaceId: this.workspaceId,
-        })
-      : undefined;
-
-    return {
-      sId: this.sId,
-      createdAt: this.createdAt.toISOString(),
-      functionCallName: this.functionCallName,
-      params: this.params,
-      executionState: this.executionState,
-      isError: this.isError,
-      stepContentSId,
-    };
   }
 
   static async getMCPActionsForAgent(
