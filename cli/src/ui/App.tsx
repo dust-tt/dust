@@ -54,6 +54,9 @@ interface AppProps {
       type: "boolean";
       shortFlag: "d";
     };
+    stdio: {
+      type: "boolean";
+    };
   }>;
 }
 
@@ -77,8 +80,11 @@ const App: FC<AppProps> = ({ cli }) => {
       return <Status />;
     case "logout":
       return <Logout />;
-    case "agents-mcp":
-      return <AgentsMCP port={flags.port} sId={flags.sId} />;
+    case "agents-mcp": {
+      // Determine transport type: --stdio flag or default to HTTP
+      const transport = flags.stdio ? 'stdio' : 'http';
+      return <AgentsMCP port={flags.port} sId={flags.sId} transport={transport} />;
+    }
     case "chat":
       // Check if this is a non-interactive chat operation
       if (flags.message || flags.messageId) {

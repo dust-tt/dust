@@ -50,12 +50,21 @@ const AgentSelector: FC<AgentSelectorProps> = ({
     }
 
     const requestedAgents: AgentConfiguration[] = [];
-    for (const sId of requestedSIds) {
-      const agent = allAgents.find((agent) => agent.sId === sId);
+    for (const sIdOrName of requestedSIds) {
+      // First try to find by sId (exact match)
+      let agent = allAgents.find((agent) => agent.sId === sIdOrName);
+      
+      // If not found by sId, try to find by name (case-insensitive)
+      if (!agent) {
+        agent = allAgents.find((agent) => 
+          agent.name.toLowerCase() === sIdOrName.toLowerCase()
+        );
+      }
+      
       if (agent) {
         requestedAgents.push(agent);
       } else {
-        onError(`Agent with sId ${sId} not found`);
+        onError(`Agent with sId or name "${sIdOrName}" not found`);
         return;
       }
     }

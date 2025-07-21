@@ -32,8 +32,7 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>agents-mcp</Text> Select agents and start a stdio MCP
-          server
+          <Text bold>agents-mcp</Text> Select agents and start an MCP server
         </Text>
       </Box>
       <Box marginLeft={2}>
@@ -67,7 +66,7 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>--sId</Text> Specify agent sId(s) to use directly (can be
+          <Text bold>--sId</Text> Specify agent sId(s) or name(s) to use directly (can be
           repeated)
         </Text>
       </Box>
@@ -98,6 +97,11 @@ const Help: FC = () => {
         <Text>
           <Text bold>-d, --details</Text> Show detailed message information
           (requires --agent and --message)
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>--stdio</Text> Use STDIO transport (default: HTTP)
         </Text>
       </Box>
     </Box>

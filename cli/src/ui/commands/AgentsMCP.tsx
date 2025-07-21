@@ -6,7 +6,7 @@ import type { FC } from "react";
 import React, { useEffect, useState } from "react";
 
 import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on_mount.js";
-import { startMcpServer } from "../../utils/mcpServer.js";
+import { startMcpServer, startMcpServerStdio } from "../../utils/mcpServer.js";
 import AgentSelector from "../components/AgentSelector.js";
 
 type AgentConfiguration =
@@ -15,9 +15,14 @@ type AgentConfiguration =
 interface AgentsMCPProps {
   port?: number;
   sId?: string[];
+  transport?: "stdio" | "http";
 }
 
-const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
+const AgentsMCP: FC<AgentsMCPProps> = ({
+  port,
+  sId: requestedSIds,
+  transport = "http",
+}) => {
   const [error, setError] = useState<string | null>(null);
   const [confirmedSelection, setConfirmedSelection] = useState<
     AgentConfiguration[] | null
@@ -29,27 +34,46 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
   // This useEffect handles starting the server after confirmedSelection is set
   useEffect(() => {
     if (confirmedSelection && !isServerStarted) {
-      void startMcpServer(
-        confirmedSelection,
-        (url) => {
+      if (transport === "stdio") {
+        void startMcpServerStdio(confirmedSelection).then(() => {
           setIsServerStarted(true);
-          setServerUrl(url);
-        },
-        port
-      );
+          setServerUrl("stdio://");
+        });
+      } else {
+        void startMcpServer(
+          confirmedSelection,
+          (url) => {
+            setIsServerStarted(true);
+            setServerUrl(url);
+          },
+          port
+        );
+      }
     }
-  }, [confirmedSelection, isServerStarted, port]);
+  }, [confirmedSelection, isServerStarted, port, transport]);
 
-  // Handle 'c' key press to copy URL
-  useInput((input) => {
-    if (isServerStarted && serverUrl && input === "c") {
-      const port = new URL(serverUrl).port;
-      const url = `http://localhost:${port}/sse`;
-      clipboardy.writeSync(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    }
-  });
+  // Handle 'c' key press to copy URL (only for HTTP mode)
+  useInput(
+    (input) => {
+      if (
+        isServerStarted &&
+        serverUrl &&
+        input === "c" &&
+        serverUrl !== "stdio://"
+      ) {
+        try {
+          const port = new URL(serverUrl).port;
+          const url = `http://localhost:${port}/sse`;
+          clipboardy.writeSync(url);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        } catch (error) {
+          // Invalid URL format, ignore
+        }
+      }
+    },
+    { isActive: serverUrl !== "stdio://" }
+  );
 
   const isCleared = useClearTerminalOnMount();
   if (!isCleared) {
@@ -71,7 +95,16 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
   }
 
   if (isServerStarted) {
-    const port = serverUrl ? new URL(serverUrl).port : "";
+    const isStdio = serverUrl === "stdio://";
+    let port = "";
+
+    if (serverUrl && !isStdio) {
+      try {
+        port = new URL(serverUrl).port;
+      } catch (error) {
+        // Invalid URL format, leave port empty
+      }
+    }
 
     return (
       <Box
@@ -81,16 +114,29 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
         borderColor="gray"
         marginTop={1}
       >
-        <Text>
-          Listening at: http://localhost:{port}/sse{" "}
-          {copied && <Text color="green"> (Copied!)</Text>}
-        </Text>
+        {isStdio ? (
+          <Text>
+            MCP server running with STDIO transport{" "}
+            <Text color="green">(Ready for AI clients)</Text>
+          </Text>
+        ) : (
+          <Text>
+            Listening at: http://localhost:{port}/sse{" "}
+            {copied && <Text color="green"> (Copied!)</Text>}
+          </Text>
+        )}
 
         <Box marginTop={1} flexDirection="row">
-          <Text color="gray">Use MCP client to interact (Ctrl+C to stop).</Text>
-          <Box marginLeft={1}>
-            <Text color="gray">(Press &apos;c&apos; to copy URL)</Text>
-          </Box>
+          <Text color="gray">
+            {isStdio
+              ? "Connected via stdin/stdout (Ctrl+C to stop)."
+              : "Use MCP client to interact (Ctrl+C to stop)."}
+          </Text>
+          {!isStdio && (
+            <Box marginLeft={1}>
+              <Text color="gray">(Press &apos;c&apos; to copy URL)</Text>
+            </Box>
+          )}
         </Box>
 
         <Box marginTop={1} flexDirection="column">

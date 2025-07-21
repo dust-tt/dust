@@ -1,6 +1,7 @@
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { Request, Response } from "express";
 import express from "express";
 import http from "http";
@@ -24,7 +25,193 @@ function slugify(text: string): string {
     .replace(/-+$/, "");
 }
 
-// Export the main server function
+// Helper function to create agent tools
+async function createAgentTools(server: McpServer, selectedAgents: AgentConfiguration[]) {
+  const dustClient = await getDustClient();
+  if (!dustClient) {
+    throw new Error("Dust client not initialized. Please run 'dust login'.");
+  }
+
+  const meRes = await dustClient.me();
+  if (meRes.isErr()) {
+    throw new Error(`Failed to get user information: ${meRes.error.message}`);
+  }
+
+  const user = meRes.value;
+
+  for (const agent of selectedAgents) {
+    const toolName = `run_agent_${slugify(agent.name)}`;
+    let toolDescription = `This tool allows to call a Dust AI agent name ${agent.name}.`;
+    if (agent.description) {
+      toolDescription += `\nThe agent is described as follows: ${agent.description}`;
+    }
+
+    server.tool(
+      toolName,
+      toolDescription,
+      { userInput: z.string().describe("The user input to the agent.") },
+      async ({ userInput }: { userInput: string }) => {
+        const convRes = await dustClient.createConversation({
+          title: `MCP CLI (${toolName}) - ${new Date().toISOString()}`,
+          visibility: "unlisted",
+          message: {
+            content: userInput,
+            mentions: [{ configurationId: agent.sId }],
+            context: {
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              username: user.username,
+              fullName: user.fullName,
+              email: user.email,
+              profilePictureUrl: user.image,
+              origin: "api",
+            },
+          },
+          contentFragment: undefined,
+        });
+
+        if (convRes.isErr()) {
+          const errorMessage = `Failed to create conversation: ${convRes.error.message}`;
+          console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+          return {
+            content: [{ type: "text", text: errorMessage }],
+            isError: true,
+          };
+        }
+
+        const { conversation, message: createdUserMessage } = convRes.value;
+        if (!createdUserMessage) {
+          const errorMessage = `Failed to create user message`;
+          console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+          return {
+            content: [{ type: "text", text: errorMessage }],
+            isError: true,
+          };
+        }
+        const streamRes = await dustClient.streamAgentAnswerEvents({
+          conversation: conversation,
+          userMessageId: createdUserMessage.sId,
+        });
+
+        if (streamRes.isErr()) {
+          const errorMessage = `Failed to stream agent answer: ${streamRes.error.message}`;
+          console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+          return {
+            content: [{ type: "text", text: errorMessage }],
+            isError: true,
+          };
+        }
+
+        let finalContent = "";
+        try {
+          for await (const event of streamRes.value.eventStream) {
+            if (event.type === "generation_tokens") {
+              finalContent += event.text;
+            } else if (event.type === "agent_error") {
+              const errorMessage = `Agent error: ${event.error.message}`;
+              console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+              return {
+                content: [{ type: "text", text: errorMessage }],
+                isError: true,
+              };
+            } else if (event.type === "user_message_error") {
+              const errorMessage = `User message error: ${event.error.message}`;
+              console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+              return {
+                content: [{ type: "text", text: errorMessage }],
+                isError: true,
+              };
+            } else if (event.type === "agent_message_success") {
+              break;
+            }
+          }
+        } catch (streamError) {
+          const errorMessage = `Error processing agent stream: ${
+            normalizeError(streamError).message
+          }`;
+          console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+          return {
+            content: [{ type: "text", text: errorMessage }],
+            isError: true,
+          };
+        }
+
+        console.error(`[MCP Tool Success ${toolName}] Execution finished.`);
+        return { content: [{ type: "text", text: finalContent.trim() }] };
+      }
+    );
+  }
+}
+
+// Function to detect transport type
+function detectTransportType(): 'stdio' | 'http' {
+  // Check for explicit STDIO flag
+  if (process.argv.includes('--stdio')) {
+    return 'stdio';
+  }
+  
+  // Check environment variable
+  if (process.env.MCP_TRANSPORT === 'stdio') {
+    return 'stdio';
+  }
+  
+  // Default to HTTP
+  return 'http';
+}
+
+// STDIO MCP Server function
+export async function startMcpServerStdio(selectedAgents: AgentConfiguration[]) {
+  console.error("[STDIO] Starting MCP server with STDIO transport...");
+  
+  try {
+    const server = new McpServer({
+      name: "dust-cli-mcp-server",
+      version: process.env.npm_package_version || "0.1.0",
+    });
+
+    // Create agent tools
+    await createAgentTools(server, selectedAgents);
+
+    // Create STDIO transport
+    const transport = new StdioServerTransport();
+    
+    // Connect server to transport
+    await server.connect(transport);
+    console.error("[STDIO] MCP server started and listening on stdio");
+
+    // Handle process signals for graceful shutdown
+    const shutdown = async () => {
+      console.error("[STDIO] Shutting down MCP server...");
+      try {
+        await server.close();
+        console.error("[STDIO] MCP server closed.");
+      } catch (error) {
+        console.error("[STDIO] Error closing MCP server:", normalizeError(error).message);
+      }
+      process.exit(0);
+    };
+
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+    
+    // Handle unhandled errors to prevent crashes
+    process.on("uncaughtException", (error) => {
+      console.error("[STDIO] Uncaught exception:", normalizeError(error).message);
+      shutdown();
+    });
+    
+    process.on("unhandledRejection", (reason) => {
+      console.error("[STDIO] Unhandled rejection:", normalizeError(reason).message);
+      shutdown();
+    });
+
+    return server;
+  } catch (error) {
+    console.error("[STDIO] Failed to start MCP server:", normalizeError(error).message);
+    process.exit(1);
+  }
+}
+
+// Export the main server function (HTTP/SSE)
 export async function startMcpServer(
   selectedAgents: AgentConfiguration[],
   onServerStart: (url: string) => void,
@@ -73,107 +260,8 @@ export async function startMcpServer(
         version: process.env.npm_package_version || "0.1.0",
       });
 
-      for (const agent of selectedAgents) {
-        const toolName = `run_agent_${slugify(agent.name)}`;
-        let toolDescription = `This tool allows to call a Dust AI agent name ${agent.name}.`;
-        if (agent.description) {
-          toolDescription += `\nThe agent is described as follows: ${agent.description}`;
-        }
-
-        server.tool(
-          toolName,
-          toolDescription,
-          { userInput: z.string().describe("The user input to the agent.") },
-          async ({ userInput }: { userInput: string }) => {
-            const convRes = await dustClient.createConversation({
-              title: `MCP CLI (${toolName}) - ${new Date().toISOString()}`,
-              visibility: "unlisted",
-              message: {
-                content: userInput,
-                mentions: [{ configurationId: agent.sId }],
-                context: {
-                  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                  username: user.username,
-                  fullName: user.fullName,
-                  email: user.email,
-                  profilePictureUrl: user.image,
-                  origin: "api",
-                },
-              },
-              contentFragment: undefined,
-            });
-
-            if (convRes.isErr()) {
-              const errorMessage = `Failed to create conversation: ${convRes.error.message}`;
-              console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
-              return {
-                content: [{ type: "text", text: errorMessage }],
-                isError: true,
-              };
-            }
-
-            const { conversation, message: createdUserMessage } = convRes.value;
-            if (!createdUserMessage) {
-              const errorMessage = `Failed to create user message`;
-              console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
-              return {
-                content: [{ type: "text", text: errorMessage }],
-                isError: true,
-              };
-            }
-            const streamRes = await dustClient.streamAgentAnswerEvents({
-              conversation: conversation,
-              userMessageId: createdUserMessage.sId,
-            });
-
-            if (streamRes.isErr()) {
-              const errorMessage = `Failed to stream agent answer: ${streamRes.error.message}`;
-              console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
-              return {
-                content: [{ type: "text", text: errorMessage }],
-                isError: true,
-              };
-            }
-
-            let finalContent = "";
-            try {
-              for await (const event of streamRes.value.eventStream) {
-                if (event.type === "generation_tokens") {
-                  finalContent += event.text;
-                } else if (event.type === "agent_error") {
-                  const errorMessage = `Agent error: ${event.error.message}`;
-                  console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
-                  return {
-                    content: [{ type: "text", text: errorMessage }],
-                    isError: true,
-                  };
-                } else if (event.type === "user_message_error") {
-                  const errorMessage = `User message error: ${event.error.message}`;
-                  console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
-                  return {
-                    content: [{ type: "text", text: errorMessage }],
-                    isError: true,
-                  };
-                } else if (event.type === "agent_message_success") {
-                  break;
-                }
-              }
-            } catch (streamError) {
-              const errorMessage = `Error processing agent stream: ${
-                normalizeError(streamError).message
-              }`;
-              console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
-              return {
-                content: [{ type: "text", text: errorMessage }],
-                isError: true,
-              };
-            }
-
-            console.error(`[MCP Tool Success ${toolName}] Execution finished.`);
-            return { content: [{ type: "text", text: finalContent.trim() }] };
-          }
-        );
-      }
+      // Create agent tools using the helper function
+      await createAgentTools(server, selectedAgents);
 
       // Store session
       if (sessionId) {
@@ -302,5 +390,25 @@ export async function startMcpServer(
   } catch (error) {
     console.error("Fatal HTTP server error:", error);
     process.exit(1);
+  }
+}
+
+// Universal MCP server function that auto-detects transport
+export async function startMcpServerAuto(
+  selectedAgents: AgentConfiguration[],
+  onServerStart?: (url: string) => void,
+  options?: { transport?: 'stdio' | 'http', port?: number }
+) {
+  const transport = options?.transport || detectTransportType();
+  
+  if (transport === 'stdio') {
+    console.error("[AUTO] Detected STDIO transport");
+    return await startMcpServerStdio(selectedAgents);
+  } else {
+    console.error("[AUTO] Detected HTTP transport");
+    if (!onServerStart) {
+      throw new Error("onServerStart callback is required for HTTP transport");
+    }
+    return await startMcpServer(selectedAgents, onServerStart, options?.port);
   }
 }

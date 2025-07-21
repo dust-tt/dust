@@ -41,7 +41,7 @@ const cli = meow({
       type: "string",
       shortFlag: "s",
       isMultiple: true,
-      description: "Specify agent sId(s) to use directly (can be repeated)",
+      description: "Specify agent sId(s) or name(s) to use directly (can be repeated)",
     },
     agent: {
       type: "string",
@@ -69,6 +69,10 @@ const cli = meow({
       shortFlag: "d",
       description:
         "Show detailed message information (requires --agent and --message)",
+    },
+    stdio: {
+      type: "boolean",
+      description: "Use STDIO transport (default: HTTP)",
     },
   },
 });
