@@ -1134,7 +1134,6 @@ async function runAction(
       }
     }
 
-    // TODO(DURABLE-AGENTS 2025-07-21): Avoid this in-function mutation
     return {
       citationsIncrement: getCitationsCount({
         agentConfiguration: agentConfiguration,
