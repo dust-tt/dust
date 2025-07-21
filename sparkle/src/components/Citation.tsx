@@ -122,7 +122,7 @@ const CitationGrid = React.forwardRef<HTMLDivElement, CitationGridProps>(
     return (
       <div
         ref={ref}
-        className={cn("s-min-w-[240px] s-@container", className)}
+        className={cn("s-min-w-60 s-@container", className)}
         {...props}
       >
         <div className={citationGridVariants({ variant })}>{children}</div>
