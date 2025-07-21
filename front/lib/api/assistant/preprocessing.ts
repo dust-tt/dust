@@ -29,6 +29,7 @@ import {
 } from "@app/types";
 import type {
   AgentContentItemType,
+  ErrorContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
 
@@ -81,7 +82,10 @@ export async function renderConversationForModel(
       const stepByStepIndex = {} as Record<
         string,
         {
-          contents: Array<{ step: number; content: AgentContentItemType }>;
+          contents: Array<{
+            step: number;
+            content: Exclude<AgentContentItemType, ErrorContentType>;
+          }>;
           actions: Array<{
             call: FunctionCallType;
             result: FunctionMessageTypeModel;
@@ -111,6 +115,20 @@ export async function renderConversationForModel(
       for (const content of m.contents) {
         stepByStepIndex[content.step] =
           stepByStepIndex[content.step] || emptyStep();
+
+        if (content.content.type === "error") {
+          // Don't render error content.
+          logger.warn(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              agentMessageId: m.sId,
+            },
+            "agent message step with error content in renderConversationForModelMultiActions"
+          );
+          continue;
+        }
+
         stepByStepIndex[content.step].contents.push({
           step: content.step,
           content: content.content,

@@ -22,10 +22,20 @@ export type FunctionCallContentType = {
   value: FunctionCallType;
 };
 
+export type ErrorContentType = {
+  type: "error";
+  value: {
+    code: string;
+    message: string;
+    metadata: Record<string, string | number | boolean> | null;
+  };
+};
+
 export type AgentContentItemType =
   | TextContentType
   | ReasoningContentType
-  | FunctionCallContentType;
+  | FunctionCallContentType
+  | ErrorContentType;
 
 export function isTextContent(
   content: AgentContentItemType
@@ -43,6 +53,12 @@ export function isFunctionCallContent(
   content: AgentContentItemType
 ): content is FunctionCallContentType {
   return content.type === "function_call";
+}
+
+export function isErrorContent(
+  content: AgentContentItemType
+): content is ErrorContentType {
+  return content.type === "error";
 }
 
 // Type matching AgentMCPActionResource.toJSON() output
