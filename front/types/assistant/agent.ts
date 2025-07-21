@@ -10,14 +10,17 @@ import type { FunctionCallContentType } from "@app/types/assistant/agent_message
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
 
-import type { ModelId } from "../shared/model_id";
-import type { ModelIdType, ModelProviderIdType } from "./assistant";
+import type { ModelId } from "@app/types/shared/model_id";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types/assistant/assistant";
 import type {
   AgentActionType,
   AgentMessageType,
   ConversationType,
   UserMessageType,
-} from "./conversation";
+} from "@app/types/assistant/conversation";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 
 /**

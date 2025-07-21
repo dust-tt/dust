@@ -224,10 +224,10 @@ export async function runAgentWithStreaming(
 
   await titlePromise;
 
+  assert(authType.workspaceId, "Workspace ID is required");
+
   // It's fine to start the workflow here because the workflow will sleep for one hour before
   // computing usage.
-
-  assert(authType.workspaceId, "Workspace ID is required");
   await launchUpdateUsageWorkflow({
     workspaceId: authType.workspaceId,
   });
