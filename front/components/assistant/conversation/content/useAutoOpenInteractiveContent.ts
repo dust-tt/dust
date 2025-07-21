@@ -14,6 +14,7 @@ interface UseAutoOpenInteractiveContentProps {
 
 /**
  * Custom hook to automatically open interactive content drawer based on agent message state.
+ * Also returns the interactive files that were generated in the agent message.
  *
  * Logic:
  * - Progress notifications (real-time): Always open drawer with updatedAt timestamp.
@@ -25,26 +26,34 @@ export function useAutoOpenInteractiveContent({
   messageStreamState,
 }: UseAutoOpenInteractiveContentProps) {
   const { openContent } = useInteractiveContentContext();
-  React.useEffect(() => {
-    // Get interactive files from progress notifications.
-    const interactiveFilesFromProgress = removeNulls(
-      Array.from(messageStreamState.actionProgress.entries()).map(
-        ([, progress]) => {
-          const output = progress.progress?.data.output;
-          if (isInteractiveFileContentOutput(output)) {
-            return output;
-          }
-          return null;
-        }
-      )
-    );
 
-    // Also check for completed interactive files in generatedFiles.
-    const completedInteractiveFiles =
+  // Get interactive files from progress notifications.
+  const interactiveFilesFromProgress = React.useMemo(
+    () =>
+      removeNulls(
+        Array.from(messageStreamState.actionProgress.entries()).map(
+          ([, progress]) => {
+            const output = progress.progress?.data.output;
+            if (isInteractiveFileContentOutput(output)) {
+              return output;
+            }
+            return null;
+          }
+        )
+      ),
+    [messageStreamState.actionProgress]
+  );
+
+  // Get completed interactive files from generatedFiles.
+  const completedInteractiveFiles = React.useMemo(
+    () =>
       agentMessageToRender.generatedFiles.filter((file) =>
         isInteractiveFileContentType(file.contentType)
-      );
+      ),
+    [agentMessageToRender.generatedFiles]
+  );
 
+  React.useEffect(() => {
     // Handle progress notifications - always open drawer (real-time updates).
     if (interactiveFilesFromProgress.length > 0) {
       const [firstFile] = interactiveFilesFromProgress;
@@ -62,9 +71,13 @@ export function useAutoOpenInteractiveContent({
       }
     }
   }, [
-    messageStreamState.actionProgress,
-    agentMessageToRender.generatedFiles,
+    interactiveFilesFromProgress,
+    completedInteractiveFiles,
     isLastMessage,
     openContent,
   ]);
+
+  return {
+    interactiveFiles: completedInteractiveFiles,
+  };
 }
