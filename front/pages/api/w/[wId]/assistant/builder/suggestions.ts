@@ -4,7 +4,6 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
-import { filterSuggestedNames } from "@app/lib/api/assistant/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
@@ -14,6 +13,7 @@ import type {
   BuilderSuggestionsType,
   ModelConfigurationType,
   WithAPIErrorResponse,
+  WorkspaceType,
 } from "@app/types";
 import {
   assertNever,
@@ -24,6 +24,7 @@ import {
   getSmallWhitelistedModel,
   InternalPostBuilderSuggestionsRequestBodySchema,
 } from "@app/types";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 
 // Minimum number of suggestions output by the suggestion app.
 const SUGGESTIONS_MIN_COUNT = 8;
@@ -35,6 +36,27 @@ const SUGGESTION_MAX_LENGTH = 100;
 // Threshold on the score output by the suggestion app at which we consider the instructions
 // to be good enough and not require any additional suggestions.
 const SCORE_THRESHOLD = 50;
+
+async function filterSuggestedNames(
+  owner: WorkspaceType,
+  suggestions: string[] | undefined | null
+) {
+  if (!suggestions || suggestions.length === 0) {
+    return [];
+  }
+  // Filter out suggested names that are already in use in the workspace.
+  const existingNames = (
+    await AgentConfiguration.findAll({
+      where: {
+        workspaceId: owner.id,
+        status: "active",
+      },
+      attributes: ["name"],
+    })
+  ).map((ac) => ac.name.toLowerCase());
+
+  return suggestions?.filter((s) => !existingNames.includes(s.toLowerCase()));
+}
 
 async function handler(
   req: NextApiRequest,
