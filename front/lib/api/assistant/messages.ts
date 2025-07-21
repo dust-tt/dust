@@ -183,6 +183,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           .map((sc) => sc.toJSON().mcpActions ?? [])
           .flat();
       })(),
+      // TODO(2025-07-21, durable agents): remove this shadow read.
       (async () => {
         const actions = await AgentMCPAction.findAll({
           where: {
