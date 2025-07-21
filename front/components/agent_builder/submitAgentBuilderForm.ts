@@ -21,8 +21,6 @@ import type {
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const USE_AGENT_TO_YAML = false;
-
 function convertDataSourceConfigurations(
   dataSourceConfigurations: DataSourceViewSelectionConfigurations,
   owner: WorkspaceType
@@ -176,7 +174,6 @@ export async function submitAgentBuilderForm({
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
-  // TODO: some values are currently mocked for the sake of testing agent creation
   const requestBody: PostOrPatchAgentConfigurationRequestBody = {
     assistant: {
       name: formData.agentSettings.name,
@@ -281,7 +278,7 @@ export async function submitAgentBuilderForm({
     const agentConfiguration = result.agentConfiguration;
 
     // Export agent configuration to YAML
-    if (!isDraft && USE_AGENT_TO_YAML) {
+    if (!isDraft) {
       try {
         const yamlRequest = { formData, isDraft };
 
