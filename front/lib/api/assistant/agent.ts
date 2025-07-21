@@ -50,7 +50,6 @@ import type {
   ConversationType,
   ModelId,
   RunAgentArgs,
-  RunAgentFullArgs,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -190,20 +189,8 @@ export async function runAgentWithStreaming(
             ? functionCallStepContentIds[functionCallId]
             : undefined;
 
-          if (!stepContentId) {
-            localLogger.error(
-              {
-                functionCallId,
-                actionConfigurationId: action.sId,
-                agentConfigurationId: configuration.sId,
-              },
-              "No step content for function call"
-            );
-          }
-
           return runAction(authType, {
             runAgentArgs,
-            actionConfiguration: action,
             inputs,
             functionCallId,
             step: i,
@@ -1037,7 +1024,6 @@ async function runAction(
   authType: AuthenticatorType,
   {
     runAgentArgs,
-    actionConfiguration,
     inputs,
     functionCallId,
     step,
@@ -1047,7 +1033,6 @@ async function runAction(
     stepContentId,
   }: {
     runAgentArgs: RunAgentArgs;
-    actionConfiguration: ActionConfigurationType;
     inputs: Record<string, string | boolean | number>;
     functionCallId: string | null;
     step: number;
@@ -1059,8 +1044,20 @@ async function runAction(
 ): Promise<{ citationsIncrement: number }> {
   const auth = await Authenticator.fromJSON(authType);
 
+  const actionConfiguration = stepActions[stepActionIndex];
   const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
     getRunAgentData(runAgentArgs);
+
+  if (!stepContentId) {
+    logger.error(
+      {
+        functionCallId,
+        actionConfigurationId: actionConfiguration.sId,
+        agentConfigurationId: agentConfiguration.sId,
+      },
+      "No step content for function call"
+    );
+  }
 
   if (isMCPToolConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
