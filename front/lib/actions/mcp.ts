@@ -61,7 +61,6 @@ import {
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FileModel } from "@app/lib/resources/storage/models/files";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -235,7 +234,7 @@ export type ActionBaseParams = Omit<
   "id" | "type" | "executionState" | "output" | "isError"
 >;
 
-function hideFileFromActionOutput({
+export function hideFileFromActionOutput({
   fileId,
   content,
   workspaceId,
@@ -1176,74 +1175,4 @@ async function handleBase64Upload(
       file: null,
     };
   }
-}
-
-/**
- * Action rendering.
- */
-
-// Internal interface for the retrieval and rendering of an MCPAction action. Should not be used
-// outside api/assistant. We allow a ModelId interface here because we don't have `sId` on actions
-// (the `sId` is on the `Message` object linked to the `UserMessage` parent of this action).
-// This function only returns the actions with the maximum version for each step.
-export async function mcpActionTypesFromAgentMessageIds(
-  auth: Authenticator,
-  { agentMessageIds }: { agentMessageIds: ModelId[] }
-): Promise<MCPActionType[]> {
-  const actions = await AgentMCPAction.findAll({
-    where: {
-      agentMessageId: agentMessageIds,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-    include: [
-      {
-        model: AgentMCPActionOutputItem,
-        as: "outputItems",
-        required: false,
-        include: [
-          {
-            model: FileModel,
-            as: "file",
-            required: false,
-          },
-        ],
-      },
-    ],
-  });
-
-  return actions.map((action) => {
-    return new MCPActionType({
-      id: action.id,
-      params: action.params,
-      output: removeNulls(action.outputItems.map(hideFileFromActionOutput)),
-      functionCallId: action.functionCallId,
-      functionCallName: action.functionCallName,
-      agentMessageId: action.agentMessageId,
-      step: action.step,
-      mcpServerConfigurationId: action.mcpServerConfigurationId,
-      executionState: action.executionState,
-      isError: action.isError,
-      type: "tool_action",
-      generatedFiles: removeNulls(
-        action.outputItems.map((o) => {
-          if (!o.file) {
-            return null;
-          }
-
-          const file = o.file;
-          const fileSid = FileResource.modelIdToSId({
-            id: file.id,
-            workspaceId: action.workspaceId,
-          });
-
-          return {
-            fileId: fileSid,
-            contentType: file.contentType,
-            title: file.fileName,
-            snippet: file.snippet,
-          };
-        })
-      ),
-    });
-  });
 }
