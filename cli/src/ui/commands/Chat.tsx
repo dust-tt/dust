@@ -8,6 +8,7 @@ import open from "open";
 import type { FC } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import { useFileSystemServer } from "../../mcp/servers/fsServer.js";
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
@@ -25,6 +26,7 @@ import AgentSelector from "../components/AgentSelector.js";
 import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
 import { DiffApprovalSelector } from "../components/DiffApprovalSelector.js";
+import FileAccessSelector from "../components/FileAccessSelector.js";
 import { FileSelector } from "../components/FileSelector.js";
 import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
@@ -96,7 +98,10 @@ const CliChat: FC<CliChatProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [showFileSelector, setShowFileSelector] = useState(false);
-
+  const [chosenFileSystemUsage, setChosenFileSystemUsage] = useState(false);
+  const [fileSystemServerId, setFileSystemServerId] = useState<string | null>(
+    null
+  );
   const updateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const contentRef = useRef<string>("");
   const chainOfThoughtRef = useRef<string>("");
@@ -196,6 +201,22 @@ const CliChat: FC<CliChatProps> = ({
       }
     },
     [diffApprovalResolver, pendingDiffApproval]
+  );
+
+  const requestDiffApproval = useCallback(
+    async (
+      originalContent: string,
+      updatedContent: string,
+      filePath: string
+    ): Promise<boolean> => {
+      return new Promise<boolean>((resolve) => {
+        setPendingDiffApproval({ originalContent, updatedContent, filePath });
+        setDiffApprovalResolver(() => (approved: boolean) => {
+          resolve(approved);
+        });
+      });
+    },
+    []
   );
 
   // const requestDiffApproval = useCallback(
@@ -508,6 +529,9 @@ const CliChat: FC<CliChatProps> = ({
               content: questionText,
               mentions: [{ configurationId: selectedAgent.sId }],
               context: {
+                clientSideMCPServerIds: fileSystemServerId
+                  ? [fileSystemServerId]
+                  : null,
                 timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 username: me.username,
                 fullName: me.fullName,
@@ -726,6 +750,7 @@ const CliChat: FC<CliChatProps> = ({
       meError,
       isMeLoading,
       uploadedFiles,
+      fileSystemServerId,
     ]
   );
 
@@ -1191,6 +1216,30 @@ const CliChat: FC<CliChatProps> = ({
             // Clear terminal and force re-render.
             await clearTerminal();
           }
+        }}
+      />
+    );
+  }
+
+  if ((selectedAgent || !isSelectingNewAgent) && !chosenFileSystemUsage) {
+    return (
+      <FileAccessSelector
+        selectMultiple={false}
+        onConfirm={async (selectedModelFileAccess) => {
+          if (selectedModelFileAccess[0].id === "y") {
+            const dustClient = await getDustClient();
+            if (!dustClient) {
+              throw new Error("No Dust API set.");
+            }
+            await useFileSystemServer(
+              dustClient,
+              (serverId) => {
+                setFileSystemServerId(serverId);
+              },
+              requestDiffApproval
+            );
+          }
+          setChosenFileSystemUsage(true);
         }}
       />
     );
