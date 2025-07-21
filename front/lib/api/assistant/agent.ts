@@ -625,7 +625,7 @@ async function runMultiActionsAgent(
 
   // Errors occurring during the multi-actions-agent dust app may be retryable.
   // Their implicit code should be "multi_actions_error".
-  const handlePossiblyRetryableError = async (message: string) => {
+  async function handlePossiblyRetryableError(message: string) {
     const { category, publicMessage, errorTitle } = categorizeAgentErrorMessage(
       {
         code: "multi_actions_error",
@@ -676,7 +676,7 @@ async function runMultiActionsAgent(
     });
 
     return null;
-  };
+  }
 
   if (res.isErr()) {
     return handlePossiblyRetryableError(res.error.message);
@@ -706,7 +706,7 @@ async function runMultiActionsAgent(
     getDelimitersConfiguration({ agentConfiguration })
   );
 
-  const _checkCancellation = async () => {
+  async function _checkCancellation() {
     try {
       const cancelled = await redis.get(
         `assistant:generation:cancelled:${agentMessage.sId}`
@@ -725,7 +725,7 @@ async function runMultiActionsAgent(
       localLogger.error({ error }, "Error checking cancellation");
       return false;
     }
-  };
+  }
 
   let nativeChainOfThought = "";
 
@@ -1207,10 +1207,10 @@ async function runAction(
   }
 }
 
-export const filterSuggestedNames = async (
+export async function filterSuggestedNames(
   owner: WorkspaceType,
   suggestions: string[] | undefined | null
-) => {
+) {
   if (!suggestions || suggestions.length === 0) {
     return [];
   }
@@ -1225,7 +1225,5 @@ export const filterSuggestedNames = async (
     })
   ).map((ac) => ac.name.toLowerCase());
 
-  return suggestions?.filter(
-    (s: string) => !existingNames.includes(s.toLowerCase())
-  );
-};
+  return suggestions?.filter((s) => !existingNames.includes(s.toLowerCase()));
+}
