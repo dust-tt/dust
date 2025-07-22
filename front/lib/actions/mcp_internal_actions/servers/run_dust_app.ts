@@ -130,6 +130,17 @@ async function prepareAppContext(
     actionConfig.dustAppConfiguration.appId
   );
   if (!app) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        userId: auth.user()?.sId || "no_user",
+        role: auth.role(),
+        groupIds: auth.groups().map((g) => g.sId),
+        appId: actionConfig.dustAppConfiguration.appId,
+        actionConfig,
+      },
+      "[run_dust_app] Could not find Dust app"
+    );
     throw new Error("Could not find Dust app");
   }
 
