@@ -13,7 +13,6 @@ import {
   PencilSquareIcon,
   SparklesIcon,
   Spinner,
-  TextArea,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
@@ -270,7 +269,7 @@ function AgentDescriptionInput() {
       </label>
       <div className="flex items-center gap-2">
         <div className="flex-grow">
-          <TextArea placeholder="Enter agent description" rows={3} {...field} />
+          <Input placeholder="Enter agent description" {...field} />
         </div>
         <DropdownMenu
           onOpenChange={(open) => open && handleGenerateDescription()}

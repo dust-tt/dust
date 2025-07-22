@@ -87,7 +87,6 @@ export const TagsSelector = ({
           >
             <DropdownMenuTrigger asChild>
               <Button
-                size="xs"
                 icon={PlusIcon}
                 variant="outline"
                 label="Add"

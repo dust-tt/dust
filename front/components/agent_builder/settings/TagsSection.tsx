@@ -141,7 +141,9 @@ export function TagsSection() {
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <h3>Tags</h3>
+      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+        Tags
+      </label>
       <TagsSelector
         owner={owner}
         tags={selectedTags}
@@ -151,7 +153,6 @@ export function TagsSection() {
             <PopoverTrigger asChild>
               <Button
                 label="Suggest"
-                size="xs"
                 icon={SparklesIcon}
                 variant="outline"
                 isSelect
