@@ -37,9 +37,7 @@ export async function launchSlackSyncWorkflow(
   }
 
   if (channelsToSync === null) {
-    const slackClient = await getSlackClient(connectorId, {
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(connectorId);
     channelsToSync = removeNulls(
       (await getChannelsToSync(slackClient, connectorId)).map(
         (c) => c.id || null

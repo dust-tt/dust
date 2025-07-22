@@ -96,19 +96,12 @@ function isWebAPIPlatformError(error: unknown): error is WebAPIPlatformError {
  * const result = await slackClient.conversations.list({ types: "public_channel" });
  * ```
  */
+export async function getSlackClient(connectorId: ModelId): Promise<WebClient>;
 export async function getSlackClient(
-  connectorId: ModelId,
-  options?: { rejectRateLimitedCalls?: boolean }
+  slackAccessToken: string
 ): Promise<WebClient>;
 export async function getSlackClient(
-  slackAccessToken: string,
-  options?: { rejectRateLimitedCalls?: boolean }
-): Promise<WebClient>;
-export async function getSlackClient(
-  connectorIdOrAccessToken: string | ModelId,
-  options: { rejectRateLimitedCalls?: boolean } = {
-    rejectRateLimitedCalls: true,
-  }
+  connectorIdOrAccessToken: string | ModelId
 ): Promise<WebClient> {
   let slackAccessToken: string | undefined = undefined;
   if (typeof connectorIdOrAccessToken === "number") {
@@ -124,7 +117,6 @@ export async function getSlackClient(
   }
   const slackClient = new WebClient(slackAccessToken, {
     timeout: SLACK_NETWORK_TIMEOUT_MS,
-    rejectRateLimitedCalls: options.rejectRateLimitedCalls ?? true,
     retryConfig: {
       retries: 1,
       factor: 1,

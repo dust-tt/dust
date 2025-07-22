@@ -124,10 +124,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
 
     if (connectionId) {
       const accessToken = await getSlackAccessToken(connectionId);
-      const slackClient = await getSlackClient(accessToken, {
-        // Do not reject rate limited calls in update connector. Called from the API.
-        rejectRateLimitedCalls: false,
-      });
+      const slackClient = await getSlackClient(accessToken);
 
       reportSlackUsage({
         connectorId: c.id,
@@ -605,10 +602,7 @@ export async function uninstallSlack(
 
   try {
     const slackAccessToken = await getSlackAccessToken(connectionId);
-    const slackClient = await getSlackClient(slackAccessToken, {
-      // Do not reject rate limited calls in uninstall slack. Called from the API.
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(slackAccessToken);
     reportSlackUsage({
       connectorId: Number(connectionId),
       method: "auth.test",
@@ -725,10 +719,7 @@ async function getFilteredChannels(
       }))
     );
   } else {
-    const slackClient = await getSlackClient(connectorId, {
-      // Do not reject rate limited calls in update connector. Called from the API.
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(connectorId);
 
     const [remoteChannels, localChannels] = await Promise.all([
       getChannels(slackClient, connectorId, false),

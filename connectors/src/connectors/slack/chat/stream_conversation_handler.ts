@@ -329,7 +329,7 @@ async function postSlackMessageUpdate(
   let lastSentDate = new Date();
   let backoffTime = initialBackoffTime;
 
-  const { slackChannelId, slackMessageTs, slackClient } = slack;
+  const { slackChannelId, slackClient } = slack;
   const conversationUrl = makeConversationUrl(
     connector.workspaceId,
     conversation.sId
@@ -355,7 +355,6 @@ async function postSlackMessageUpdate(
       messageUpdate
     ),
     channel: slackChannelId,
-    thread_ts: slackMessageTs,
     ts: mainMessage.ts as string,
   });
 

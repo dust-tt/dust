@@ -1,10 +1,7 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
-import type {
-  Channel,
-  ConversationsListResponse,
-} from "@slack/web-api/dist/response/ConversationsListResponse";
+import type { Channel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse";
 import { Op } from "sequelize";
 
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
@@ -159,10 +156,7 @@ export async function joinChannel(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const client = await getSlackClient(connector.id, {
-    // Do not reject rate limited calls in join channel.
-    rejectRateLimitedCalls: false,
-  });
+  const client = await getSlackClient(connector.id);
   try {
     reportSlackUsage({
       connectorId,
@@ -316,7 +310,7 @@ async function _getTypedChannelsUncached(
       method: "conversations.list",
       useCase: "batch_sync",
     });
-    const c: ConversationsListResponse = await slackClient.conversations.list({
+    const c = await slackClient.conversations.list({
       types,
       // despite the limit being 1000, slack may return fewer channels
       // we observed ~50 channels per call at times see https://github.com/dust-tt/tasks/issues/1655

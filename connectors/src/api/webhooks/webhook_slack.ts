@@ -152,10 +152,7 @@ const _webhookSlackAPIHandler = async (
               });
             }
 
-            const slackClient = await getSlackClient(slackConfig.connectorId, {
-              // Do not reject rate limited calls in webhook handler.
-              rejectRateLimitedCalls: false,
-            });
+            const slackClient = await getSlackClient(slackConfig.connectorId);
 
             const myUserId = await getBotUserIdMemoized(
               slackClient,
@@ -499,10 +496,7 @@ const _webhookSlackAPIHandler = async (
             });
           }
 
-          const slackClient = await getSlackClient(slackConfig.connectorId, {
-            // Do not reject rate limited calls in webhook handler.
-            rejectRateLimitedCalls: false,
-          });
+          const slackClient = await getSlackClient(slackConfig.connectorId);
 
           const myUserId = await getBotUserIdMemoized(
             slackClient,
