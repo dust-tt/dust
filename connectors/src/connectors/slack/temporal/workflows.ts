@@ -2,6 +2,7 @@ import {
   continueAsNew,
   executeChild,
   log,
+  proxyActivities,
   setHandler,
   sleep,
   workflowInfo,
@@ -11,24 +12,11 @@ import PQueue from "p-queue";
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
 import type { ModelId } from "@connectors/types";
 
-import {
-  getActivitiesForConnector,
-  getConnectorIdFromWorkflow,
-} from "../../../lib/temporal_queue_routing";
 import { getWeekEnd, getWeekStart } from "../lib/utils";
-import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
-
-// Configuration for slow lane routing.
-const SLOW_LANE_CONNECTOR_IDS: string[] = [
-  // Add connector IDs that should be routed to slow lane.
-  // TODO(spolu): remove slock queue logic entirely once the queue are completely emptied
-];
 
 // Dynamic activity creation with fresh routing evaluation (enables retry queue switching).
 function getSlackActivities() {
-  const connectorId = getConnectorIdFromWorkflow();
-
   const {
     getChannel,
     fetchUsers,
@@ -38,33 +26,20 @@ function getSlackActivities() {
     getChannelsToGarbageCollect,
     attemptChannelJoinActivity,
     deleteChannelsFromConnectorDb,
-  } = getActivitiesForConnector<typeof activities>({
-    baseQueue: QUEUE_NAME,
-    connectorId,
-    slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
-    activityOptions: { startToCloseTimeout: "10 minutes" },
+  } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minutes",
   });
 
-  const { deleteChannel, syncThread, syncChannel } = getActivitiesForConnector<
+  const { deleteChannel, syncThread, syncChannel } = proxyActivities<
     typeof activities
   >({
-    baseQueue: QUEUE_NAME,
-    connectorId,
-    slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
-    activityOptions: {
-      heartbeatTimeout: "15 minutes",
-      startToCloseTimeout: "90 minutes",
-    },
+    heartbeatTimeout: "15 minutes",
+    startToCloseTimeout: "90 minutes",
   });
 
-  const { syncNonThreaded } = getActivitiesForConnector<typeof activities>({
-    baseQueue: QUEUE_NAME,
-    connectorId,
-    slowLaneConnectorIds: SLOW_LANE_CONNECTOR_IDS,
-    activityOptions: {
-      heartbeatTimeout: "5 minutes",
-      startToCloseTimeout: "60 minutes",
-    },
+  const { syncNonThreaded } = proxyActivities<typeof activities>({
+    heartbeatTimeout: "5 minutes",
+    startToCloseTimeout: "60 minutes",
   });
 
   return {
