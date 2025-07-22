@@ -52,10 +52,6 @@ const MAX_AUTO_RETRY = 3;
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
-//
-// TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage, this must
-
-// be refactored in a follow up PR.
 export async function runModelActivity({
   authType,
   runAgentArgs,
@@ -79,9 +75,11 @@ export async function runModelActivity({
     agentConfiguration,
     conversation,
     userMessage,
-    agentMessage,
+    agentMessage: agentMessageMutable,
     agentMessageRow,
   } = getRunAgentData(runAgentArgs);
+
+  const agentMessage = Object.freeze(agentMessageMutable);
 
   const now = Date.now();
 
@@ -689,18 +687,8 @@ export async function runModelActivity({
       );
     }
 
-    // TODO(DURABLE-AGENTS 2025-07-20): Avoid mutating agentMessage here
     const chainOfThought =
       (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
-
-    if (chainOfThought.length) {
-      if (!agentMessage.chainOfThought) {
-        agentMessage.chainOfThought = "";
-      }
-      agentMessage.chainOfThought += chainOfThought;
-    }
-    agentMessage.content = (agentMessage.content ?? "") + processedContent;
-    agentMessage.status = "succeeded";
 
     await updateResourceAndPublishEvent(
       {
@@ -708,7 +696,17 @@ export async function runModelActivity({
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        message: agentMessage,
+        message: {
+          ...agentMessage,
+          ...(chainOfThought.length
+            ? {
+                chainOfThought:
+                  (agentMessage.chainOfThought || "") + chainOfThought,
+              }
+            : {}),
+          content: (agentMessage.content ?? "") + processedContent,
+          status: "succeeded",
+        },
         runIds: [...runIds, await dustRunId],
       },
       conversation,
@@ -825,24 +823,6 @@ export async function runModelActivity({
 
   await flushParserTokens();
 
-  const chainOfThought =
-    (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
-
-  agentMessage.content =
-    (agentMessage.content ?? "") + (contentParser.getContent() ?? "");
-
-  if (chainOfThought.length) {
-    if (!agentMessage.chainOfThought) {
-      agentMessage.chainOfThought = "";
-    }
-    agentMessage.chainOfThought += chainOfThought;
-  }
-
-  const newContents = output.contents.map((content) => ({
-    step,
-    content,
-  }));
-  agentMessage.contents.push(...newContents);
   return {
     actions,
     runId: await dustRunId,
