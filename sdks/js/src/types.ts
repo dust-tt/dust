@@ -909,7 +909,7 @@ const AgentMessageTypeSchema = z.object({
     .object({
       code: z.string(),
       message: z.string(),
-      metadata: z.record(z.any()).optional(),
+      metadata: z.record(z.any()).nullable(),
     })
     .nullable(),
 });
@@ -1088,7 +1088,7 @@ const AgentErrorEventSchema = z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),
-    metadata: z.record(z.any()).optional(),
+    metadata: z.record(z.any()).nullable(),
   }),
 });
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
