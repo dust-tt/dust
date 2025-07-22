@@ -951,6 +951,15 @@ export class Authenticator {
 
       if (groupsResult.isOk()) {
         groups = groupsResult.value;
+      } else {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            groupIds: authType.groupIds,
+            error: groupsResult.error,
+          },
+          "[Authenticator.fromJSON] Failed to fetch groups"
+        );
       }
     }
 
