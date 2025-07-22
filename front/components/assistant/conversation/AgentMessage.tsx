@@ -1,4 +1,3 @@
-import { datadogLogs } from "@datadog/browser-logs";
 import {
   ArrowPathIcon,
   Button,
@@ -96,45 +95,6 @@ function makeInitialMessageStreamState(
     lastUpdated: new Date(),
     message,
   };
-}
-
-const loggedAgentErrorsPerSession = new Map<string, Set<string>>();
-
-function logFailedAgentMessageOncePerSession(
-  agentMessage: LightAgentMessageType
-) {
-  if (agentMessage.status !== "failed" || !agentMessage.sId) {
-    return;
-  }
-
-  const context = datadogLogs.getInternalContext();
-  const sessionId = context?.session_id?.toString() || "";
-
-  let seenErrors = loggedAgentErrorsPerSession.get(sessionId);
-  if (!seenErrors) {
-    loggedAgentErrorsPerSession.clear(); // reset the map to prevent memory leak
-    seenErrors = new Set();
-    loggedAgentErrorsPerSession.set(sessionId, seenErrors);
-  }
-  if (seenErrors.has(agentMessage.sId)) {
-    return; // already logged for this session
-  }
-  seenErrors.add(agentMessage.sId);
-
-  datadogLogs.logger.info(
-    `Failed agent message rendered${agentMessage.error ? `: ${agentMessage.error.code}` : ""}`,
-    {
-      agentMessageId: agentMessage.sId,
-      ...(agentMessage.error
-        ? {
-            error: {
-              short: agentMessage.error.code,
-              long: agentMessage.error.message,
-            },
-          }
-        : {}),
-    }
-  );
 }
 
 /**
@@ -570,7 +530,6 @@ export function AgentMessage({
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
-    logFailedAgentMessageOncePerSession(agentMessage);
     if (agentMessage.status === "failed") {
       if (
         agentMessage.error &&
