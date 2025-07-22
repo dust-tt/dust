@@ -288,19 +288,22 @@ export async function getConversation(
     return new Err(renderRes.error);
   }
 
-  const render = renderRes.value;
+  const messagesWithRankType = renderRes.value;
 
-  // We need to escape the type system here to create content. We pre-create an array that will hold
-  // the versions of each User/Assistant/ContentFragment message. The lenght of that array is by definition the
+  // We pre-create an array that will hold
+  // the versions of each User/Assistant/ContentFragment message. The length of that array is by definition the
   // maximal rank of the conversation messages we just retrieved. In the case there is no message
   // the rank is -1 and the array length is 0 as expected.
-  const content: any[] = Array.from(
-    { length: messages.reduce((acc, m) => Math.max(acc, m.rank), -1) + 1 },
-    () => []
-  );
+  const rankMax = messages.reduce((acc, m) => Math.max(acc, m.rank), -1);
+  const content: (
+    | UserMessageType[]
+    | AgentMessageType[]
+    | ContentFragmentType[]
+  )[] = Array.from({ length: rankMax + 1 }, () => []);
 
-  for (const { rank, ...m } of render) {
-    content[rank] = [...content[rank], m];
+  // We need to escape the type system here to fill content.
+  for (const m of messagesWithRankType) {
+    (content[m.rank] as any).push(m);
   }
 
   return new Ok({
