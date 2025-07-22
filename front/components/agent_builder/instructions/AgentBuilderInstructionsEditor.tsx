@@ -141,7 +141,7 @@ export function AgentBuilderInstructionsEditor({
 
   return (
     <div className="flex h-full flex-col gap-1">
-      <div className="relative h-full min-h-60 grow p-px">
+      <div className="relative h-full min-h-100 grow p-px">
         <EditorContent editor={editor} className="absolute inset-0" />
         <div className="absolute bottom-2 right-2">
           <InstructionTipsPopover owner={owner} />
