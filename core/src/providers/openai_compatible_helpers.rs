@@ -140,7 +140,7 @@ impl TryFrom<&OpenAIToolCall> for ChatFunctionCall {
 
     fn try_from(tc: &OpenAIToolCall) -> Result<Self, Self::Error> {
         // Some providers don't provide a function call ID (eg google_ai_studio)
-        // or provide an empty string ID
+        // or provide an empty string ID.
         let id = tc
             .id
             .clone()
