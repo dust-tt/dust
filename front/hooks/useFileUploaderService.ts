@@ -114,7 +114,7 @@ export function useFileUploaderService({
       return;
     }
     const previewResults = processSelectedFiles(files);
-    const newFileBlobs = processResults(previewResults);
+    const newFileBlobs = processResults(previewResults, true);
 
     const uploadResults = await uploadFiles(newFileBlobs);
     const finalFileBlobs = processResults(uploadResults);
@@ -286,17 +286,26 @@ export function useFileUploaderService({
     );
   };
 
-  const processResults = (results: Result<FileBlob, FileBlobUploadError>[]) => {
+  const processResults = (
+    results: Result<FileBlob, FileBlobUploadError>[],
+    previewMode: boolean = false
+  ) => {
     const successfulBlobs: FileBlob[] = [];
     const erroredBlobs: FileBlobUploadError[] = [];
 
     results.forEach((result) => {
       if (result.isErr()) {
         erroredBlobs.push(result.error);
+        const maybeTruncatedFilename =
+          result.error.file.name.length > 50
+            ? result.error.file.name.slice(0, 47) + "..."
+            : result.error.file.name;
         sendNotification({
           type: "error",
-          title: `Failed to upload file`,
-          description: `Error uploading  "${result.error.file.name.slice(0, 20)}..." ${result.error.message ? ": " + result.error.message : ""}`,
+          title: `Failed to upload file${previewMode ? " preview" : ""}`,
+          description: result.error.message
+            ? `${result.error.message} (${maybeTruncatedFilename})`
+            : `Error uploading ${maybeTruncatedFilename}`,
         });
       } else {
         successfulBlobs.push(result.value);
