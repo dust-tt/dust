@@ -5,10 +5,10 @@ import { UniqueConstraintError } from "sequelize";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   createConversation,
-  getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";

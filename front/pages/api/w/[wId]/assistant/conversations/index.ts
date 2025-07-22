@@ -5,10 +5,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
-  getConversation,
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

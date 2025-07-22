@@ -3,10 +3,8 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import {
-  getConversation,
-  postUserMessage,
-} from "@app/lib/api/assistant/conversation";
+import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

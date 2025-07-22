@@ -6,8 +6,9 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
-import type { RunAgentArgs } from "@app/types";
-import { assertNever, getRunAgentData } from "@app/types";
+import { assertNever } from "@app/types";
+import type { RunAgentArgs } from "@app/types/assistant/agent_run";
+import { getRunAgentData } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 
 export async function runToolActivity(
@@ -35,8 +36,13 @@ export async function runToolActivity(
   const auth = await Authenticator.fromJSON(authType);
 
   const actionConfiguration = stepActions[stepActionIndex];
+  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  if (runAgentDataRes.isErr()) {
+    throw runAgentDataRes.error;
+  }
+
   const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
-    getRunAgentData(runAgentArgs);
+    runAgentDataRes.value;
 
   if (!stepContentId) {
     logger.error(

@@ -191,6 +191,7 @@ export function isTemplateAgentConfiguration(
 
 export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 128;
+export const MAX_ACTIONS_PER_STEP = 16;
 
 /**
  * Agent events
@@ -325,38 +326,3 @@ export type AgentStepContentEvent = {
   index: number;
   content: TextContentType | FunctionCallContentType | ReasoningContentType;
 };
-
-/**
- * Run agent arguments
- */
-
-export type RunAgentIdArgs = {
-  agentMessageId: string;
-  conversationId: string;
-  userMessageId: string;
-};
-
-export type RunAgentFullArgs = {
-  agentMessage: AgentMessageType;
-  agentMessageRow: AgentMessage;
-  conversation: ConversationType;
-  userMessage: UserMessageType;
-  agentConfiguration: AgentConfigurationType;
-};
-
-export type RunAgentArgs =
-  | {
-      sync: true;
-      inMemoryData: RunAgentFullArgs;
-    }
-  | {
-      sync: false;
-      idArgs: RunAgentIdArgs;
-    };
-
-export function getRunAgentData(runAgentArgs: RunAgentArgs): RunAgentFullArgs {
-  if (runAgentArgs.sync) {
-    return runAgentArgs.inMemoryData;
-  }
-  throw new Error("Not implemented");
-}
