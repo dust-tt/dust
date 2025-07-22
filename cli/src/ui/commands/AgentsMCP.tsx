@@ -45,7 +45,7 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
         }
       };
 
-      startServer();
+      void startServer();
     }
   }, [confirmedSelection, isServerStarted, port]);
 
