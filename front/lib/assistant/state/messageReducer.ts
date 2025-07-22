@@ -111,18 +111,8 @@ export function messageReducer(
       return updateProgress(state, event);
     }
 
-    case "agent_error":
-      return {
-        ...state,
-        message: {
-          ...state.message,
-          status: "failed",
-          error: event.error,
-        },
-        agentState: "done",
-      };
-
     case "tool_error":
+    case "agent_error":
       return {
         ...state,
         message: {
