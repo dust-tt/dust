@@ -1322,5 +1322,7 @@ export const computeWorkspaceOverallSizeCached = cacheWithRedis(
     const workspaceId = auth.getNonNullableWorkspace().sId;
     return `compute-datasource-stats:${workspaceId}`;
   },
-  60 * 10 * 1000 // 10 minutes
+  {
+    ttlMs: 60 * 10 * 1000, // 10 minutes
+  }
 );
