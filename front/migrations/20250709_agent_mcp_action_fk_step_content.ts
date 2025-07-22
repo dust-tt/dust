@@ -196,20 +196,9 @@ async function attachStepContentToMcpActions({
           return false;
         }
 
-        const functionCallId =
-          matchingStepContent?.value.type === "function_call"
-            ? matchingStepContent.value.value.id
-            : null;
-        if (!functionCallId) {
-          throw new Error("Unreachable: function call ID not found.");
-        }
-
         // If the step content is found, we can attach it to the MCP action.
         if (execute) {
-          await mcpAction.update({
-            stepContentId: matchingStepContent.id,
-            functionCallId,
-          });
+          await mcpAction.update({ stepContentId: matchingStepContent.id });
         }
         return true;
       },
