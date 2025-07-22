@@ -133,6 +133,9 @@ async function prepareAppContext(
     logger.error(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
+        userId: auth.user()?.sId || "no_user",
+        role: auth.role(),
+        groupIds: auth.groups().map((g) => g.sId),
         appId: actionConfig.dustAppConfiguration.appId,
         actionConfig,
       },
