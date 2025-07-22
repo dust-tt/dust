@@ -31,13 +31,13 @@ export type MCPAction = {
   messageId: string;
 };
 
-export type GetMCPActionsResult = {
+type GetMCPActionsResult = {
   actions: MCPAction[];
   nextCursor: string | null;
   totalCount: number;
 };
 
-export type GetMCPActionsOptions = {
+type GetMCPActionsOptions = {
   agentConfigurationId: string;
   limit: number;
   cursor?: string;
