@@ -1,4 +1,3 @@
-import { get, set, unset } from "lodash";
 import { createContext, useCallback, useContext, useReducer } from "react";
 
 import type {
@@ -7,12 +6,17 @@ import type {
   SpaceType,
 } from "@app/types";
 
-type DataSourceBuilderNode = {
-  excludes?: string[];
-  childs?: DataSourceBuilderTree;
-};
+type DataSourceBuilderTree = {
+  /**
+   * List of path that are included
+   */
+  in: string[];
 
-type DataSourceBuilderTree = Record<string, DataSourceBuilderNode>;
+  /**
+   * List of path that are excluded
+   */
+  notIn: string[];
+};
 
 export type NavigationHistoryEntryType =
   | { type: "root" }
@@ -21,7 +25,17 @@ export type NavigationHistoryEntryType =
   | { type: "node"; node: DataSourceViewContentNode };
 
 type State = {
-  nodes: DataSourceBuilderTree;
+  sources: {
+    /**
+     * List of path that are included
+     */
+    in: string[];
+
+    /**
+     * List of path that are excluded
+     */
+    notIn: string[];
+  };
   /**
    * Shape is `[root, space, category, ...node]`
    * so in this case we can use index to update specific values
@@ -139,7 +153,7 @@ function dataSourceBuilderReducer(
       nodePath.push(payload.rowId);
       return {
         ...state,
-        nodes: addNodeToTree(state.nodes, nodePath),
+        sources: addNodeToTree(state.sources, nodePath),
       };
     }
     case "REMOVE_DATA_SOURCE_NODE": {
@@ -147,7 +161,7 @@ function dataSourceBuilderReducer(
       nodePath.push(payload.rowId);
       return {
         ...state,
-        nodes: removeNodeFromTree(state.nodes, nodePath),
+        sources: removeNodeFromTree(state.sources, nodePath),
       };
     }
     default:
@@ -162,7 +176,10 @@ export function DataSourceBuilderProvider({
   children: React.ReactNode;
 }) {
   const [state, dispatch] = useReducer(dataSourceBuilderReducer, {
-    nodes: {},
+    sources: {
+      in: [],
+      notIn: [],
+    },
     navigationHistory: [{ type: "root" }],
   });
 
@@ -184,7 +201,7 @@ export function DataSourceBuilderProvider({
     (rowId) => {
       const nodePath = computeNavigationPath(state.navigationHistory);
       nodePath.push(rowId);
-      return isNodeSelected(state.nodes, nodePath);
+      return isNodeSelected(state.sources, nodePath);
     },
     [state]
   );
@@ -244,22 +261,7 @@ export function useDataSourceBuilderContext() {
 }
 
 /**
- * Interpolate a given input with `.childs.`
- * This is a helper to allow us to only manage known path
- * in the component which add or remove node, and keep the
- * real tree structure hidden (not useful).
- *
- * i.e:
- * `root.vlt_732fda` => `root.childs.vlt_732fda`
- */
-export function replaceDotsWithChilds(input: string): string {
-  return input.replace(/\./g, ".childs.");
-}
-
-/**
- * Adds a path to the tree by either:
- * 1. Removing it from parent's excludes list if present
- * 2. Creating a new empty node at the path location
+ * Adds a path to the tree by adding it to the 'in' array and removing it from 'notIn' if present.
  *
  * @returns New tree with the node added
  */
@@ -267,35 +269,23 @@ export function addNodeToTree(
   tree: DataSourceBuilderTree,
   path: string[]
 ): DataSourceBuilderTree {
-  const newTree = { ...tree };
-  const nodeName = path[path.length - 1];
-  const parentPath = replaceDotsWithChilds(path.slice(0, -1).join("."));
-  const parentNode = get(newTree, parentPath);
+  const pathStr = path.join(".");
+  const newIn = [...tree.in];
+  const newNotIn = tree.notIn.filter((notInPath) => notInPath !== pathStr);
 
-  if (parentNode?.excludes?.includes(nodeName)) {
-    // Remove from excludes if present
-    const exludesPath = `${parentPath}.excludes`;
-    const newExcludes = parentNode.excludes.filter((n) => n !== nodeName);
-
-    if (newExcludes.length <= 0) {
-      unset(newTree, exludesPath);
-    } else {
-      set(newTree, exludesPath, newExcludes);
-    }
-  } else {
-    // Create new empty node
-    set(newTree, replaceDotsWithChilds(path.join(".")), {});
+  // Don't add if already present
+  if (!newIn.includes(pathStr)) {
+    newIn.push(pathStr);
   }
 
-  return newTree;
+  return {
+    in: newIn,
+    notIn: newNotIn,
+  };
 }
 
 /**
- * Removes a node from the tree by either:
- * 1. Removing it from parent's childs if present
- * 2. Adding it to parent's excludes list
- * 3. Cleaning up empty parent nodes
- * 4. Creating new parent with node in excludes if parent doesn't exist
+ * Removes a node from the tree by adding it to the 'notIn' array and removing it from 'in' if present.
  *
  * @returns New tree with the node removed
  */
@@ -303,74 +293,45 @@ export function removeNodeFromTree(
   tree: DataSourceBuilderTree,
   path: string[]
 ): DataSourceBuilderTree {
-  const newTree = { ...tree };
-  const nodeName = path[path.length - 1];
-  const parentPath = replaceDotsWithChilds(path.slice(0, -1).join("."));
-  const parentNode = get(newTree, parentPath);
+  const pathStr = path.join(".");
+  const newIn = tree.in.filter((inPath) => inPath !== pathStr);
+  const newNotIn = [...tree.notIn];
 
-  if (!parentNode) {
-    // Create new parent with node in excludes
-    set(newTree, parentPath, { excludes: [nodeName] });
-    return newTree;
+  // Don't add if already present
+  if (!newNotIn.includes(pathStr)) {
+    newNotIn.push(pathStr);
   }
 
-  // Remove from childs or add to excludes
-  if (parentNode.childs?.[nodeName]) {
-    unset(newTree, `${parentPath}.childs.${nodeName}`);
-    if (Object.keys(parentNode.childs).length === 0) {
-      delete parentNode.childs;
-    }
-  } else {
-    parentNode.excludes = [...(parentNode.excludes || []), nodeName];
-  }
-
-  // Clean up empty parent
-  if (
-    !parentNode.childs &&
-    (!parentNode.excludes || parentNode.excludes.length === 0)
-  ) {
-    unset(newTree, parentPath);
-  }
-
-  return newTree;
+  return {
+    in: newIn,
+    notIn: newNotIn,
+  };
 }
 
 /**
  * Determines if a path should be selected based on tree configuration.
  * A path is selected if:
- * 1. Any ancestor node is fully selected (no excludes, no childs)
- * 2. The specific node is included in its parent's childs
- * 3. The node is not in its parent's excludes list
+ * 1. The path or any parent path is in the 'in' array
+ * 2. The path is not explicitly excluded in the 'notIn' array
+ * 3. notIn takes priority over in for exact matches
  */
 export function isNodeSelected(
   tree: DataSourceBuilderTree,
   path: string[]
 ): boolean {
-  for (let i = path.length - 1; i >= 0; i--) {
-    const currentNodeName = path[i];
-    const ancestorPath = replaceDotsWithChilds(path.slice(0, i).join("."));
-    const ancestorNode = get(tree, ancestorPath);
+  const pathStr = path.join(".");
 
-    if (!ancestorNode) {
-      continue;
-    }
-
-    // Case 1: Ancestor is fully selected (no excludes/childs)
-    if (
-      !ancestorNode.excludes?.length &&
-      !Object.keys(ancestorNode.childs ?? {}).length
-    ) {
-      return true;
-    }
-
-    // Case 2: Node is explicitly excluded
-    if (ancestorNode.excludes?.includes(currentNodeName)) {
+  // Check if explicitly excluded (notIn takes priority)
+  for (const notInPath of tree.notIn) {
+    if (pathStr === notInPath || pathStr.startsWith(notInPath + ".")) {
       return false;
     }
+  }
 
-    // Case 3: Node is explicitly included in childs
-    if (ancestorNode.childs) {
-      return !!ancestorNode.childs[currentNodeName];
+  // Check if included (exact match or parent path)
+  for (const inPath of tree.in) {
+    if (pathStr === inPath || pathStr.startsWith(inPath + ".")) {
+      return true;
     }
   }
 

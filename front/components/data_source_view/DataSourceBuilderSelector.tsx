@@ -158,9 +158,9 @@ export const DataSourceBuilderSelectorContent = ({
 };
 
 function ContextLog() {
-  const { nodes } = useDataSourceBuilderContext();
+  const { sources } = useDataSourceBuilderContext();
 
-  return <pre>{JSON.stringify(nodes, undefined, 2)}</pre>;
+  return <pre>{JSON.stringify(sources, undefined, 2)}</pre>;
 }
 
 function getBreadcrumbConfig(

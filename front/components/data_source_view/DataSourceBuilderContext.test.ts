@@ -4,312 +4,209 @@ import {
   addNodeToTree,
   isNodeSelected,
   removeNodeFromTree,
-  replaceDotsWithChilds,
 } from "./DataSourceBuilderContext";
 
 describe("DataSourceBuilder utilities", () => {
-  describe("replaceDotsWithChilds", () => {
-    it("should replace dots with .childs.", () => {
-      expect(replaceDotsWithChilds("root.a.b")).toBe("root.childs.a.childs.b");
-      expect(replaceDotsWithChilds("single")).toBe("single");
-    });
-  });
-
   describe("addNodeToTree", () => {
     it("should add a node to an empty tree", () => {
-      const result = addNodeToTree({}, ["root", "a"]);
+      const result = addNodeToTree({ in: [], notIn: [] }, ["root", "a"]);
       expect(result).toEqual({
-        root: {
-          childs: {
-            a: {},
-          },
-        },
+        in: ["root.a"],
+        notIn: [],
       });
     });
 
     it("should add a nested node", () => {
       const tree = {
-        root: {
-          childs: {
-            a: {},
-          },
-        },
+        in: ["root.a"],
+        notIn: [],
       };
       const result = addNodeToTree(tree, ["root", "a", "b"]);
       expect(result).toEqual({
-        root: {
-          childs: {
-            a: {
-              childs: {
-                b: {},
-              },
-            },
-          },
-        },
+        in: ["root.a", "root.a.b"],
+        notIn: [],
       });
     });
 
-    it("should remove node from excludes when adding it", () => {
+    it("should remove node from notIn when adding it", () => {
       const tree = {
-        root: {
-          excludes: ["a"],
-        },
+        in: [],
+        notIn: ["root.a"],
       };
       const result = addNodeToTree(tree, ["root", "a"]);
       expect(result).toEqual({
-        root: {},
+        in: ["root.a"],
+        notIn: [],
       });
     });
 
-    it("should remove node from deep excludes when adding it", () => {
+    it("should not duplicate paths in in array", () => {
       const tree = {
-        root: {
-          childs: {
-            a: {
-              childs: {
-                b: {
-                  excludes: ["c"],
-                },
-              },
-            },
-          },
-        },
+        in: ["root.a"],
+        notIn: [],
       };
-
-      const result = addNodeToTree(tree, ["root", "a", "b", "c"]);
+      const result = addNodeToTree(tree, ["root", "a"]);
       expect(result).toEqual({
-        root: {
-          childs: {
-            a: {
-              childs: {
-                b: {},
-              },
-            },
-          },
-        },
+        in: ["root.a"],
+        notIn: [],
       });
     });
 
-    it("should add a node next to other childs", () => {
+    it("should handle partial path additions", () => {
       const tree = {
-        root: {
-          childs: {
-            a: {},
-            b: {},
-          },
-        },
+        in: ["root"],
+        notIn: [],
       };
-
-      const result = addNodeToTree(tree, ["root", "c"]);
+      const result = addNodeToTree(tree, ["root", "a", "b"]);
       expect(result).toEqual({
-        root: {
-          childs: {
-            a: {},
-            b: {},
-            c: {},
-          },
-        },
+        in: ["root", "root.a.b"],
+        notIn: [],
       });
     });
   });
 
   describe("removeNodeFromTree", () => {
-    it("should remove a leaf node", () => {
+    it("should add node to notIn when removing", () => {
       const tree = {
-        root: {
-          childs: {
-            a: {
-              childs: {
-                b: {},
-              },
-            },
-          },
-        },
+        in: [],
+        notIn: [],
       };
-      const result = removeNodeFromTree(tree, ["root", "a", "b"]);
-      expect(result).toEqual({
-        root: {
-          childs: {},
-        },
-      });
-    });
-
-    it("should add to excludes when removing non-existent node", () => {
-      const tree = {};
       const result = removeNodeFromTree(tree, ["root", "a"]);
       expect(result).toEqual({
-        root: {
-          excludes: ["a"],
-        },
+        in: [],
+        notIn: ["root.a"],
       });
     });
 
-    it("should cleanup empty nodes after removal", () => {
+    it("should remove node from in when excluding it", () => {
       const tree = {
-        root: {
-          childs: {
-            a: {
-              childs: {
-                b: {},
-              },
-            },
-          },
-        },
+        in: ["root.a"],
+        notIn: [],
       };
-      const result = removeNodeFromTree(tree, ["root", "a", "b"]);
+      const result = removeNodeFromTree(tree, ["root", "a"]);
       expect(result).toEqual({
-        root: {
-          childs: {},
-        },
+        in: [],
+        notIn: ["root.a"],
       });
     });
 
-    it("should add excludes in nested tree", () => {
+    it("should not duplicate paths in notIn array", () => {
       const tree = {
-        root: {
-          childs: {
-            a: {
-              childs: {
-                b: {},
-              },
-            },
-          },
-        },
+        in: [],
+        notIn: ["root.a"],
       };
+      const result = removeNodeFromTree(tree, ["root", "a"]);
+      expect(result).toEqual({
+        in: [],
+        notIn: ["root.a"],
+      });
+    });
 
+    it("should handle removing nested paths", () => {
+      const tree = {
+        in: ["root.a.b"],
+        notIn: [],
+      };
       const result = removeNodeFromTree(tree, ["root", "a", "b", "c"]);
       expect(result).toEqual({
-        root: {
-          childs: {
-            a: {
-              childs: {
-                b: {
-                  excludes: ["c"],
-                },
-              },
-            },
-          },
-        },
+        in: ["root.a.b"],
+        notIn: ["root.a.b.c"],
       });
     });
 
-    it("should add node and excludes for deep nested tree", () => {
+    it("should remove specific paths while keeping broader ones", () => {
       const tree = {
-        root: {
-          childs: {
-            a: {
-              childs: {
-                b: {},
-              },
-            },
-          },
-        },
+        in: ["root", "root.a.b"],
+        notIn: [],
       };
-
-      expect(isNodeSelected(tree, ["root", "a", "b", "e"])).toBe(true);
-      const result = removeNodeFromTree(tree, ["root", "a", "b", "c", "d"]);
+      const result = removeNodeFromTree(tree, ["root", "a"]);
       expect(result).toEqual({
-        root: {
-          childs: {
-            a: {
-              childs: {
-                b: {
-                  childs: {
-                    c: {
-                      excludes: ["d"],
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+        in: ["root"],
+        notIn: ["root.a"],
       });
-      expect(isNodeSelected(tree, ["root", "a", "b", "e"])).toBe(true);
     });
   });
 
   describe("isNodeSelected", () => {
-    it("should return true for explicitly selected node", () => {
+    it("should return true for explicitly included node", () => {
       const tree = {
-        root: {
-          childs: {
-            a: {},
-          },
-        },
+        in: ["root.a"],
+        notIn: [],
       };
       expect(isNodeSelected(tree, ["root", "a"])).toBe(true);
     });
 
     it("should return false for excluded node", () => {
       const tree = {
-        root: {
-          excludes: ["a"],
-        },
+        in: [],
+        notIn: ["root.a"],
       };
       expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
     });
 
-    it("should return true for parent with no excludes and no childs", () => {
+    it("should return true for child of included parent", () => {
       const tree = {
-        root: {
-          excludes: [],
-          childs: {},
-        },
+        in: ["root"],
+        notIn: [],
       };
       expect(isNodeSelected(tree, ["root", "a"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "a", "b"])).toBe(true);
+    });
+
+    it("should return false for child of excluded parent", () => {
+      const tree = {
+        in: [],
+        notIn: ["root"],
+      };
+      expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
+    });
+
+    it("should handle partial path matches", () => {
+      const tree = {
+        in: ["root.a"],
+        notIn: [],
+      };
+      expect(isNodeSelected(tree, ["root", "a", "b"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "b"])).toBe(false);
+    });
+
+    it("should prioritize notIn over in for exact matches", () => {
+      const tree = {
+        in: ["root"],
+        notIn: ["root.a"],
+      };
+      expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "b"])).toBe(true);
     });
 
     it("should handle deeply nested paths", () => {
       const tree = {
-        root: {
-          childs: {
-            a: {
-              childs: {
-                b: {
-                  childs: {
-                    c: {},
-                  },
-                },
-              },
-            },
-          },
-        },
+        in: ["a.b.c"],
+        notIn: [],
       };
-      expect(isNodeSelected(tree, ["root", "a", "b", "c"])).toBe(true);
+      expect(isNodeSelected(tree, ["a", "b", "c"])).toBe(true);
+      expect(isNodeSelected(tree, ["a", "b", "c", "d"])).toBe(true);
     });
 
-    it("should handle nested excludes", () => {
+    it("should handle complex inclusion/exclusion scenarios", () => {
       const tree = {
-        root: {
-          childs: {
-            a: {
-              excludes: ["b"],
-            },
-          },
-        },
+        in: ["root"],
+        notIn: ["root.a", "root.b.c"],
       };
-
-      expect(isNodeSelected(tree, ["root", "a", "b"])).toBe(false);
+      expect(isNodeSelected(tree, ["root"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "b"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "b", "c"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "b", "d"])).toBe(true);
     });
 
-    it("should handle deep path with just parent selected", () => {
+    it("should return false for paths not matching any included pattern", () => {
       const tree = {
-        root: {
-          childs: {
-            a: {
-              childs: {
-                b: {},
-              },
-            },
-          },
-        },
+        in: ["root.a"],
+        notIn: [],
       };
-
-      expect(isNodeSelected(tree, ["root", "a", "b", "c"])).toBe(true);
-      expect(isNodeSelected(tree, ["root", "a", "b", "c", "d"])).toBe(true);
-      expect(isNodeSelected(tree, ["root", "a", "e"])).toBe(false);
-      expect(isNodeSelected(tree, ["root", "a", "f"])).toBe(false);
+      expect(isNodeSelected(tree, ["other"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "b"])).toBe(false);
     });
   });
 });
