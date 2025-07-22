@@ -40,6 +40,13 @@ struct Args {
 
     #[arg(long, help = "Verify migrated tables instead of migrating data")]
     verify: bool,
+
+    #[arg(
+        long,
+        help = "Timeout in seconds for listing table rows",
+        default_value = "100"
+    )]
+    list_table_rows_timeout: u64,
 }
 
 /*
@@ -62,6 +69,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let start_cursor = args.start_cursor;
     let batch_size = args.batch_size;
+    let list_table_rows_timeout = args.list_table_rows_timeout;
 
     let db_uri = std::env::var("CORE_DATABASE_URI").expect("CORE_DATABASE_URI must be set");
     let db_store_uri = std::env::var("DATABASES_STORE_DATABASE_URI")
@@ -123,6 +131,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             next_cursor,
             batch_size as i64,
             project_filter.clone(),
+            list_table_rows_timeout,
         )
         .await
         {
@@ -159,6 +168,7 @@ async fn process_tables_batch(
     id_cursor: i64,
     batch_size: i64,
     project_filter: Option<Vec<i64>>,
+    list_table_rows_timeout: u64,
 ) -> Result<Option<i64>, Box<dyn std::error::Error>> {
     let c = store.raw_pool().get().await?;
 
@@ -217,7 +227,16 @@ async fn process_tables_batch(
     }
 
     let futures = tables.into_iter().map(|(id, table)| async move {
-        match process_one_table(&store, &db_store, &gcs_store, table, id).await {
+        match process_one_table(
+            &store,
+            &db_store,
+            &gcs_store,
+            table,
+            id,
+            list_table_rows_timeout,
+        )
+        .await
+        {
             Ok(_) => Ok(id),
             Err(e) => Err(e),
         }
@@ -234,6 +253,7 @@ async fn process_one_table(
     gcs_store: &GoogleCloudStorageDatabasesStore,
     table: Table,
     table_id: i64,
+    list_table_rows_timeout: u64,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("Processing table id {}: {}", table_id, table.unique_id());
     let mut now = utils::now();
@@ -241,7 +261,7 @@ async fn process_one_table(
     // For now, we bail out if it takes too long to list the rows. This way, we can go through
     // all the smaller tables first, and then come back to the larger ones.
     let (rows, _count) = match timeout(
-        Duration::from_secs(10),
+        Duration::from_secs(list_table_rows_timeout),
         db_store.list_table_rows(&table, None),
     )
     .await
