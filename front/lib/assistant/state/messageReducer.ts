@@ -10,6 +10,7 @@ import type {
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
+  ToolErrorEvent,
 } from "@app/types";
 import { assertNever } from "@app/types";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
@@ -36,6 +37,7 @@ export type AgentMessageStateEvent =
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | AgentErrorEvent
+  | ToolErrorEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | GenerationTokensEvent
@@ -109,6 +111,7 @@ export function messageReducer(
       return updateProgress(state, event);
     }
 
+    case "tool_error":
     case "agent_error":
       return {
         ...state,
