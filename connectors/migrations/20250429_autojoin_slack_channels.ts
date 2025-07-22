@@ -1,4 +1,5 @@
-import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
+// import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
+import type { Channel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse";
 import { makeScript } from "scripts/helpers";
 
 import {

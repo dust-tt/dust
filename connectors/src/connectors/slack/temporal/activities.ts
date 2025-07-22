@@ -4,11 +4,11 @@ import type {
   WebClient,
 } from "@slack/web-api";
 import { ErrorCode } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/response/ChannelsInfoResponse";
+import type { Channel } from "@slack/web-api/dist/types/response/ChannelsInfoResponse";
 import type {
   ConversationsHistoryResponse,
   MessageElement,
-} from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+} from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 

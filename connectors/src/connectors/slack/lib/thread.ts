@@ -1,6 +1,6 @@
 import type { WebClient } from "@slack/web-api";
-import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
-import type { ConversationsRepliesResponse } from "@slack/web-api/dist/response/ConversationsRepliesResponse";
+import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
+import type { ConversationsRepliesResponse } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 
 import mainLogger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";

@@ -16,7 +16,7 @@ import {
   removeNulls,
 } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
-import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import removeMarkdown from "remove-markdown";
 import jaroWinkler from "talisman/metrics/jaro-winkler";
 
@@ -409,7 +409,6 @@ async function processErrorResult(
       await slackClient.chat.update({
         ...errorPost,
         channel: slackChannel,
-        thread_ts: slackMessageTs,
         ts: mainMessage.ts,
       });
     } else {
