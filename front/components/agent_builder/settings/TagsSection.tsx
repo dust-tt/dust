@@ -1,4 +1,12 @@
-import { Button, SparklesIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Chip,
+  PopoverContent,
+  PopoverTrigger,
+  SparklesIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { PopoverRoot } from "@dust-tt/sparkle";
 import { useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -45,44 +53,6 @@ async function getTagsSuggestions({
   });
 }
 
-interface TagsSuggestionsProps {
-  tags: TagType[];
-  onTagsChange: (tags: TagType[]) => void;
-  tagsSuggestions: TagType[];
-}
-
-function TagsSuggestions({
-  tags,
-  onTagsChange,
-  tagsSuggestions,
-}: TagsSuggestionsProps) {
-  const addTag = (tag: TagType) => {
-    const isTagInAgent = tags.findIndex((t) => t.sId === tag.sId) !== -1;
-
-    if (!isTagInAgent) {
-      onTagsChange([...tags, tag]);
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="text-muted-foregroup text-xs font-semibold dark:text-muted-foreground-night">
-        Suggestions:
-      </div>
-
-      {tagsSuggestions.map((tag) => (
-        <Button
-          key={`tag-suggestion-${tag.sId}`}
-          size="xs"
-          variant="outline"
-          label={tag.name}
-          onClick={() => addTag(tag)}
-        />
-      ))}
-    </div>
-  );
-}
-
 export function TagsSection() {
   const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
@@ -100,7 +70,12 @@ export function TagsSection() {
   const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
 
   const updateTagsSuggestions = async () => {
+    if (isTagsSuggestionLoading) {
+      return;
+    }
+
     setTagsSuggestionsLoading(true);
+    setFilteredTagsSuggestions([]);
 
     try {
       const instructions = getValues("instructions");
@@ -156,28 +131,58 @@ export function TagsSection() {
   };
 
   return (
-    <div className="flex flex-grow flex-col gap-4">
+    <div className="flex h-full flex-col gap-4">
       <h3>Tags</h3>
-      {filteredTagsSuggestions.length > 0 && (
-        <TagsSuggestions
-          tags={selectedTags}
-          onTagsChange={field.onChange}
-          tagsSuggestions={filteredTagsSuggestions}
-        />
-      )}
       <TagsSelector
         owner={owner}
         tags={selectedTags}
         onTagsChange={field.onChange}
         suggestionButton={
-          <Button
-            label="Suggest"
-            size="xs"
-            icon={SparklesIcon}
-            variant="outline"
-            isLoading={isTagsSuggestionLoading}
-            onClick={updateTagsSuggestions}
-          />
+          <PopoverRoot onOpenChange={(open) => open && updateTagsSuggestions()}>
+            <PopoverTrigger asChild>
+              <Button
+                label="Suggest"
+                size="xs"
+                icon={SparklesIcon}
+                variant="outline"
+                isSelect
+              />
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-3">
+              {isTagsSuggestionLoading ? (
+                <div className="flex items-center justify-center p-4">
+                  <Spinner size="sm" />
+                </div>
+              ) : filteredTagsSuggestions.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
+                    Suggestions:
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {filteredTagsSuggestions.map((tag) => (
+                      <Chip
+                        key={`tag-suggestion-chip-${tag.sId}`}
+                        label={tag.name}
+                        size="xs"
+                        color="golden"
+                        onClick={() => {
+                          field.onChange([...selectedTags, tag]);
+                          setFilteredTagsSuggestions((prev) =>
+                            prev.filter((t) => t.sId !== tag.sId)
+                          );
+                        }}
+                        className="cursor-pointer hover:opacity-80"
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
+                  No suggestions available
+                </div>
+              )}
+            </PopoverContent>
+          </PopoverRoot>
         }
       />
     </div>
