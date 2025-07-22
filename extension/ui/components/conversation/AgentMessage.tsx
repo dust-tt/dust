@@ -659,7 +659,7 @@ function ErrorMessage({
       icon={InformationCircleIcon}
     >
       <div className="whitespace-normal break-words">{error.message}</div>
-      <div className="flex flex-col gap-2 pt-3 sm:flex-row">
+      <div className="flex flex-row gap-2 pt-3">
         <Button
           variant="outline"
           size="xs"
