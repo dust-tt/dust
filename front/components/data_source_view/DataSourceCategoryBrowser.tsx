@@ -1,4 +1,3 @@
-import type { WorkspaceType } from "@dust-tt/client";
 import {
   Checkbox,
   DataTable,
@@ -6,13 +5,14 @@ import {
   ScrollableDataTable,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
 import React, { useMemo } from "react";
 
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { WorkspaceType } from "@app/types";
 import type {
   DataSourceViewCategory,
   DataSourceViewCategoryWithoutApps,
@@ -25,8 +25,6 @@ import {
   isDataSourceViewCategoryWithoutApps,
   removeNulls,
 } from "@app/types";
-
-import { useDataSourceBuilderContext } from "./DataSourceBuilderContext";
 
 const columns: ColumnDef<CategoryRowData>[] = [
   {
@@ -112,7 +110,7 @@ export function DataSourceCategoryBrowser({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
-  const { state, dispatch } = useDataSourceBuilderContext();
+  // const { state, dispatch } = useDataSourceBuilderContext();
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -129,33 +127,6 @@ export function DataSourceCategoryBrowser({
     return emptyArray<CategoryRowData>();
   }, [hasFeature, isSpaceInfoLoading, onSelectCategory, spaceInfo]);
 
-  const rowSelection = useMemo(() => {
-    const selectionState: RowSelectionState = {};
-
-    for (const category of categoryRows) {
-      selectionState[category.id] =
-        ((state.spaces[space.sId] != null &&
-          Object.keys(state.spaces[space.sId].nodes).length <= 0) ||
-          state.spaces[space.sId].nodes[category.id] != null) &&
-        !state.spaces[space.sId].excludedPath.includes(category.id);
-    }
-
-    console.log("row state", selectionState);
-
-    return selectionState;
-  }, [categoryRows, space.sId, state.spaces]);
-
-  const setRowSelection = (selectionState: RowSelectionState) => {
-    console.log("new selection state", selectionState);
-    dispatch({
-      type: "set-nodes",
-      payload: {
-        spaceId: space.sId,
-        rowSelectionState: selectionState,
-      },
-    });
-  };
-
   if (isSpaceInfoLoading) {
     return (
       <div className="flex justify-center p-4">
@@ -169,9 +140,6 @@ export function DataSourceCategoryBrowser({
       data={categoryRows}
       columns={columns}
       getRowId={(originalRow) => originalRow.id}
-      enableRowSelection
-      rowSelection={rowSelection}
-      setRowSelection={setRowSelection}
     />
   );
 }

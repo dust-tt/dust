@@ -22,7 +22,10 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 
-import { DataSourceBuilderProvider } from "./DataSourceBuilderContext";
+import {
+  DataSourceBuilderProvider,
+  useDataSourceBuilderContext,
+} from "./DataSourceBuilderContext";
 import { DataSourceSpaceSelector } from "./DataSourceSpaceSelector";
 
 type NavigationHistoryEntryType =
@@ -183,9 +186,16 @@ export const DataSourceBuilderSelector = ({
           />
         )}
       </div>
+      <ContextLog />
     </DataSourceBuilderProvider>
   );
 };
+
+function ContextLog() {
+  const { nodes } = useDataSourceBuilderContext();
+
+  return <pre>{JSON.stringify(nodes, undefined, 2)}</pre>;
+}
 
 function getBreadcrumbConfig(
   entry: NavigationHistoryEntryType

@@ -1,88 +1,142 @@
-import type { RowSelectionState } from "@tanstack/react-table";
-import { createContext, useContext, useReducer } from "react";
+import { get, set, unset } from "lodash";
+import { createContext, useCallback, useContext, useState } from "react";
 
-import type { SpaceType } from "@app/types";
-import { removeNulls } from "@app/types";
-
-type SpaceTypeForm = SpaceType & {
-  /**
-   * Selected node under a space.
-   * Can be a category or a straight node.
-   * The key represent a path, can be `folder.[folderId]` or `managed.[managedId].[folderId]`
-   * And the values are the excluded sub folder, one level deep in the given path.
-   */
-  nodes: Record<string, string[]>;
-  excludedPath: string[];
+type DataSourceBuilderNode = {
+  excludes?: string[];
+  childs?: DataSourceBuilderNode;
 };
 
-export type DataSourceBuilderContextState = {
-  spaces: Record<string, SpaceTypeForm>;
+type DataSourceBuilderState = {
+  nodes: Record<string, DataSourceBuilderNode>;
+
+  addNode: (path: string[]) => void;
+  removeNode: (path: string[]) => void;
+  isSelected: (path: string[]) => boolean;
 };
-
-type ActionSetSpacePayload = Record<string, SpaceType>;
-type ActionSetNodesPayload = {
-  spaceId: string;
-  path?: string;
-  rowSelectionState: RowSelectionState;
-};
-
-type DataSourceBuilderContextAction =
-  | {
-      type: "set-spaces";
-      payload: ActionSetSpacePayload;
-    }
-  | {
-      type: "set-nodes";
-      payload: ActionSetNodesPayload;
-    };
-
-type DataSourceBuilderContextDispatch = (
-  action: DataSourceBuilderContextAction
-) => void;
 
 const DataSourceBuilderContext = createContext<
-  | {
-      state: DataSourceBuilderContextState;
-      dispatch: DataSourceBuilderContextDispatch;
-    }
-  | undefined
+  DataSourceBuilderState | undefined
 >(undefined);
-
-function dataSourceContextReducer(
-  state: DataSourceBuilderContextState,
-  action: DataSourceBuilderContextAction
-): DataSourceBuilderContextState {
-  switch (action.type) {
-    case "set-spaces": {
-      return {
-        ...state,
-        spaces: mergeSpaces(state.spaces, action.payload),
-      };
-    }
-    case "set-nodes":
-      return {
-        ...state,
-        spaces: {
-          [action.payload.spaceId]: {
-            ...state.spaces[action.payload.spaceId],
-            ...computeNewSelectedNodes(state.spaces, action.payload),
-          },
-        },
-      };
-  }
-}
 
 export function DataSourceBuilderProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [state, dispatch] = useReducer(dataSourceContextReducer, {
-    spaces: {},
-  });
+  const [nodes, setNodes] = useState<Record<string, DataSourceBuilderNode>>({});
+
+  const addNode = useCallback((path: string[]) => {
+    setNodes((prev) => {
+      const newState = { ...prev };
+      const leaf = path[path.length - 1];
+
+      const parentPath = replaceDotsWithChilds(
+        path.slice(0, path.length - 1).join(".")
+      );
+      const parent = get(newState, parentPath);
+
+      // If node is only in excludes, we remove it from it
+      if (parent?.excludes?.includes(leaf)) {
+        set(
+          newState,
+          parentPath + ".excludes",
+          (parent.excludes ?? []).filter((path) => path !== leaf)
+        );
+      } else {
+        // Otherwise we can add it a new node
+        set(newState, replaceDotsWithChilds(path.join(".")), { excludes: [] });
+      }
+
+      return newState;
+    });
+  }, []);
+
+  const removeNode = useCallback((path: string[]) => {
+    setNodes((prev) => {
+      const leaf: string = path[path.length - 1];
+      const newState = { ...prev };
+      // path without parent
+      const parentPath = replaceDotsWithChilds(
+        path.slice(0, path.length - 1).join(".")
+      );
+      const node = get(newState, parentPath);
+
+      if (node) {
+        if (node.childs && leaf in node.childs) {
+          // delete node.childs[leaf];
+          unset(newState, parentPath + ".childs." + leaf);
+        } else {
+          if (!node.excludes) {
+            node.excludes = [];
+          }
+          node.excludes.push(leaf);
+        }
+
+        if (node.childs && Object.keys(node.childs).length <= 0) {
+          delete node.childs;
+        }
+
+        // If everything is empty for the parent node, we remove it
+        if (
+          (!node.childs || Object.keys(node.childs).length <= 0) &&
+          (!node.excludes || node.excludes.length <= 0)
+        ) {
+          unset(newState, parentPath);
+        }
+      } else {
+        set(newState, parentPath, { excludes: [path[path.length - 1]] });
+      }
+
+      return newState;
+    });
+  }, []);
+
+  const isSelected = useCallback(
+    (path: string[]) => {
+      for (let i = path.length - 1; i >= 0; i--) {
+        const sections = path.slice(0, i);
+        const pp = replaceDotsWithChilds(sections.join("."));
+        const node = get(nodes, pp);
+        const leaf = path[path.length - 1];
+
+        // We're in the first parent, it's present if it isn't in the excludes
+        // or it's in the childs
+        if (node && i === path.length - 1) {
+          // It selected if the parent has no childs and no excludes
+          if (
+            node.excludes &&
+            node.excludes.length <= 0 &&
+            Object.keys(node.childs ?? {}).length <= 0
+          ) {
+            return true;
+          }
+
+          // OR
+          // it's not in the excludes or in the childs
+          if (node.excludes?.includes(leaf)) {
+            return false;
+          }
+
+          if (Object.keys(node.childs ?? {}).includes(leaf)) {
+            return true;
+          }
+          return Object.keys(node.childs ?? {}).length <= 0;
+        }
+      }
+      return false;
+    },
+    [nodes]
+  );
 
   return (
-    <DataSourceBuilderContext.Provider value={{ state, dispatch }}>
+    <DataSourceBuilderContext.Provider
+      value={{
+        nodes,
+        addNode,
+        removeNode,
+        isSelected,
+      }}
+    >
       {children}
     </DataSourceBuilderContext.Provider>
   );
@@ -98,66 +152,6 @@ export function useDataSourceBuilderContext() {
   return context;
 }
 
-// Actions helpers
-
-/**
- * Function to get the new state of selected spaces.
- * If a `newSpaces` space is also part of `currentStateSpaces`, we keep its selected nodes.
- */
-function mergeSpaces(
-  currentStateSpaces: DataSourceBuilderContextState["spaces"],
-  newSpaces: Record<string, SpaceType>
-): DataSourceBuilderContextState["spaces"] {
-  const spaces: DataSourceBuilderContextState["spaces"] = {};
-
-  for (const [id, newSpace] of Object.entries(newSpaces)) {
-    const currentSpace = currentStateSpaces[id];
-    if (currentSpace) {
-      spaces[id] = currentSpace;
-    } else {
-      spaces[id] = {
-        ...newSpace,
-        nodes: {},
-        excludedPath: [],
-      };
-    }
-  }
-
-  return spaces;
-}
-
-function computeNewSelectedNodes(
-  spaces: Record<string, SpaceTypeForm>,
-  { spaceId, path, rowSelectionState }: ActionSetNodesPayload
-): Pick<SpaceTypeForm, "nodes" | "excludedPath"> {
-  const space = spaces[spaceId];
-  const nodes: Record<string, string[]> = {};
-  const excludedPath: string[] = [];
-
-  console.log("Current nodes", space.nodes);
-
-  for (const [id, selected] of Object.entries(rowSelectionState)) {
-    const fullPath = removeNulls([path, id]).join(".");
-    const existingNode = space?.nodes[fullPath];
-
-    // Node is still selected and it existing so we keep the excluded paths
-    if (selected && existingNode) {
-      nodes[fullPath] = existingNode;
-    } else if (selected && !existingNode) {
-      nodes[fullPath] = [];
-    } else {
-      excludedPath.push(fullPath);
-    }
-  }
-
-  // Clean node that might have been deleted
-  for (const existingNode of Object.keys(space.nodes)) {
-    if (!rowSelectionState[existingNode]) {
-      excludedPath.push(existingNode);
-    }
-  }
-
-  const res = { nodes, excludedPath };
-  console.log("Result", res);
-  return res;
+function replaceDotsWithChilds(input: string): string {
+  return input.replace(/\./g, ".childs.");
 }
