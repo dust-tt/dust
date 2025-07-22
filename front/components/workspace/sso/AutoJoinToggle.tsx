@@ -15,6 +15,7 @@ import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type { PlanType, WorkspaceDomain, WorkspaceType } from "@app/types";
+import { pluralize } from "@app/types";
 
 type DomainAutoJoinModalProps = {
   domains: Organization["domains"];
@@ -152,8 +153,12 @@ export function AutoJoinToggle({
             </div>
             <Page.P variant="secondary">
               Allow your team members to access your Dust workspace when they
-              authenticate with a{" "}
-              {domains.map((d) => `"@${d.domain}"`).join(", ")} accounts.
+              authenticate with
+              {domains.length > 0
+                ? domains.map((d) => `" @${d.domain}"`).join(", ")
+                : " verified"}{" "}
+              account
+              {pluralize(domains.length)}.
             </Page.P>
           </div>
           <div className="flex justify-end">

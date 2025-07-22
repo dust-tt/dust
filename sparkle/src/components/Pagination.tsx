@@ -113,10 +113,10 @@ export function Pagination({
         )}
       >
         {controlsAreHidden
-          ? `${rowCount} items`
+          ? `${rowCount} item${rowCount === 1 ? "" : "s"}`
           : `Showing ${firstItemOnPageIndex}-${lastItemOnPageIndex} of ${rowCount}${
               rowCountIsCapped ? "+" : ""
-            } items`}
+            } item${rowCount === 1 ? "" : "s"}`}
       </span>
     </div>
   );
