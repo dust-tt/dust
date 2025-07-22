@@ -83,7 +83,7 @@ export async function getRunAgentData(
     return new Err(new Error("Agent message not found"));
   }
 
-  // Get the AgentMessage database row by querying through Message model
+  // Get the AgentMessage database row by querying through Message model.
   const agentMessageRow = await Message.findOne({
     where: {
       sId: agentMessageId,

@@ -62,8 +62,9 @@ export async function agentLoopWorkflow({
     idArgs: runAsynchronousAgentArgs,
   };
 
-  // Start a child workflow to compute the conversation title. Do not await it.
-  // Swallow the error if one is already running.
+  // Launch a child workflow to generate the conversation title in the background.
+  // If a workflow with the same ID is already running, ignore the error and continue.
+  // Do not wait for the child workflow to complete at this point.
   let childWorkflowHandle: ChildWorkflowHandle<
     typeof agentLoopConversationTitleWorkflow
   >;
