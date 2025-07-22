@@ -1,49 +1,56 @@
-/* eslint-disable dust/no-raw-sql */
-
+import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns";
-import { writeFileSync } from "fs";
-import { QueryTypes } from "sequelize";
+import { readFileSync, writeFileSync } from "fs";
+import { z } from "zod";
 
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
+import { normalizeError } from "@app/types";
+
+const csvSchema = z.array(
+  z.object({
+    sId: z.string(),
+    name: z.string(),
+    domain: z.string(),
+    workOSOrganizationId: z.string(),
+  })
+);
 
 makeScript(
   {
-    file: {
-      alias: "f",
+    input: {
+      alias: "i",
+      type: "string",
+      describe:
+        "List of workspaces to update. Columns must be sId, name, domain and workOSOrganizationId",
+    },
+    output: {
+      alias: "o",
+      type: "string",
       describe: "If provided, file to save the found domains to",
     },
   },
-  async ({ execute, file }, logger) => {
-    const domains = await frontSequelize.query<{
-      sId: string;
-      name: string;
-      domain: string;
-      workOSOrganizationId: string;
-    }>(
-      `
-SELECT
-  w."sId",
-  w.name,
-  ws.domain,
-  w."workOSOrganizationId"
-FROM
-  workspace_has_domains ws,
-  workspaces w
-  LEFT OUTER JOIN subscriptions s ON s."workspaceId" = w.id
-WHERE
-  w.id = ws."workspaceId"
-  AND ws."domainAutoJoinEnabled" = FALSE
-  AND s.id IS NULL
-  AND w."workOSOrganizationId" IS NOT NULL
-`,
-      { type: QueryTypes.SELECT }
-    );
+  async ({ execute, input, output }, logger) => {
+    if (!input) {
+      logger.error("Missing --input args");
+      return;
+    }
 
-    logger.info(`${domains.length} found`);
+    const inputContent = readFileSync(input, { encoding: "utf8" });
+    const parsedInput = parse(inputContent, {
+      columns: true,
+    });
+
+    const parseResult = csvSchema.safeParse(parsedInput);
+    if (!parseResult.success) {
+      logger.error({ error: parseResult.error }, "Wrong CSV format");
+      return;
+    }
+    const domains = parseResult.data;
+
+    logger.info(`${domains.length} in the given CSV`);
 
     const workOS = getWorkOS();
 
@@ -105,6 +112,7 @@ WHERE
           }
         } catch (err) {
           domainRecord.missingOrg = true;
+          domainRecord.error = normalizeError(err).message;
         }
 
         return domainRecord;
@@ -114,8 +122,13 @@ WHERE
       }
     );
 
-    if (file) {
-      writeFileSync(file, stringify(records));
+    if (output) {
+      writeFileSync(
+        output,
+        stringify(records, {
+          header: true,
+        })
+      );
       logger.info(`File saved`);
     }
   }
