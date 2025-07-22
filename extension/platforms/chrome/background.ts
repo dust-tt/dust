@@ -17,8 +17,7 @@ import type { OAuthAuthorizeResponse } from "@app/shared/services/auth";
 import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
-// We set a value lower than the access token duration for a proactive refresh rather than a reactive one.
-const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 4 * 60; // 4 minutes
+const DEFAULT_TOKEN_EXPIRY_IN_SECONDS = 5 * 60; // 5 minutes.
 
 // Initialize the platform service.
 const platform = new ChromeCorePlatformService();
