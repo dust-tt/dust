@@ -215,6 +215,7 @@ type MCPErrorEvent = {
   error: {
     code: string;
     message: string;
+    // TODO(2025-07-22 aubin): make this non nullable (we can always pass an empty object).
     metadata: Record<string, string | number | boolean> | null;
   };
 };
