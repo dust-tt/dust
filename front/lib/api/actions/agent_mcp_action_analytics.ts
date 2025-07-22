@@ -1,4 +1,5 @@
-import type { Attributes, ModelStatic } from "sequelize";
+import assert from "assert";
+import type { WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { MCPActionType } from "@app/lib/actions/mcp";
@@ -9,52 +10,42 @@ import {
   ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
-import { BaseResource } from "@app/lib/resources/base_resource";
-import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-type AgentMCPActionWithConversation = AgentMCPAction & {
-  agent_message: AgentMessage & {
-    message: Message & {
-      conversation: ConversationModel;
-    };
-  };
+// AgentMCPAction serialized for analytics purposes.
+export type AnalyticsMCPAction = {
+  sId: string;
+  createdAt: string;
+  functionCallName: string | null;
+  params: Record<string, unknown>;
+  executionState: string;
+  isError: boolean;
+  conversationId: string;
+  messageId: string;
 };
 
-// Resource for AgentMCPAction.
-// Only used for analytics purposes, the rendering is handled AgentStepContentResource.
+export type GetMCPActionsResult = {
+  actions: AnalyticsMCPAction[];
+  nextCursor: string | null;
+  totalCount: number;
+};
 
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMCPActionResource
-  extends ReadonlyAttributesType<AgentMCPAction> {}
+type GetMCPActionsOptions = {
+  agentConfigurationId: string;
+  limit: number;
+  cursor?: string;
+};
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
-  static model: ModelStatic<AgentMCPAction> = AgentMCPAction;
-
-  constructor(
-    model: ModelStatic<AgentMCPAction>,
-    blob: Attributes<AgentMCPAction>
-  ) {
-    super(AgentMCPAction, blob);
-  }
-
-  async delete(): Promise<Result<undefined, Error>> {
-    return new Err(
-      new Error("Direct deletion of MCP actions is not supported")
-    );
-  }
-
+export class AgentMCPActionsAnalytics {
   static async getMCPActionsForAgent(
     auth: Authenticator,
     { agentConfigurationId, limit, cursor }: GetMCPActionsOptions
   ): Promise<Result<GetMCPActionsResult, Error>> {
     const owner = auth.getNonNullableWorkspace();
 
-    const whereClause: any = {
+    const whereClause: WhereOptions<AgentMCPAction> = {
       workspaceId: owner.id,
     };
 
@@ -74,7 +65,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
         include: [
           {
             model: AgentMessage,
-            as: "agent_message",
+            as: "agentMessage",
             required: true,
             where: {
               agentConfigurationId: agentConfigurationId,
@@ -104,11 +95,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
       });
 
       // Get all MCP actions for the specific agent with conversation info and limit
-      const mcpActions = (await AgentMCPAction.findAll({
+      const mcpActions = await AgentMCPAction.findAll({
         include: [
           {
             model: AgentMessage,
-            as: "agent_message",
+            as: "agentMessage",
             required: true,
             where: {
               agentConfigurationId: agentConfigurationId,
@@ -135,7 +126,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
         where: whereClause,
         order: [["createdAt", "DESC"]],
         limit: limit + 1, // Fetch one extra to determine if there are more results
-      })) as AgentMCPActionWithConversation[];
+      });
 
       // Determine if there are more results and get the actual results
       const hasMore = mcpActions.length > limit;
@@ -144,22 +135,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
         ? actualActions[actualActions.length - 1].createdAt.toISOString()
         : null;
 
-      const actionsData: MCPAction[] = actualActions.map((action) => {
-        const agentMessage = action.agent_message;
-        return {
-          sId: MCPActionType.modelIdToSId({
-            id: action.id,
-            workspaceId: owner.id,
-          }),
-          createdAt: action.createdAt.toISOString(),
-          functionCallName: action.functionCallName,
-          params: action.params,
-          executionState: action.executionState,
-          isError: action.isError,
-          conversationId: agentMessage.message.conversation.sId,
-          messageId: agentMessage.message.sId,
-        };
-      });
+      const actionsData = actualActions.map((a) => serializeMCPAction(a));
 
       return new Ok({
         actions: actionsData,
@@ -180,25 +156,22 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
   }
 }
 
-export type MCPAction = {
-  sId: string;
-  createdAt: string;
-  functionCallName: string | null;
-  params: Record<string, unknown>;
-  executionState: string;
-  isError: boolean;
-  conversationId: string;
-  messageId: string;
-};
+function serializeMCPAction(action: AgentMCPAction): AnalyticsMCPAction {
+  assert(action.agentMessage, "Agent message must exist");
+  assert(action.agentMessage.message, "Message must exist");
+  assert(action.agentMessage.message.conversation, "Conversation must exist");
 
-export type GetMCPActionsResult = {
-  actions: MCPAction[];
-  nextCursor: string | null;
-  totalCount: number;
-};
-
-export type GetMCPActionsOptions = {
-  agentConfigurationId: string;
-  limit: number;
-  cursor?: string;
-};
+  return {
+    sId: MCPActionType.modelIdToSId({
+      id: action.id,
+      workspaceId: action.workspaceId,
+    }),
+    createdAt: action.createdAt.toISOString(),
+    functionCallName: action.functionCallName,
+    params: action.params,
+    executionState: action.executionState,
+    isError: action.isError,
+    conversationId: action.agentMessage.message.conversation.sId,
+    messageId: action.agentMessage.message.sId,
+  };
+}
