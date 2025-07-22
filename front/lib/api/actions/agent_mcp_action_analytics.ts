@@ -65,7 +65,7 @@ export class AgentMCPActionsAnalytics {
         include: [
           {
             model: AgentMessage,
-            as: "agent_message",
+            as: "agentMessage",
             required: true,
             where: {
               agentConfigurationId: agentConfigurationId,
@@ -99,7 +99,7 @@ export class AgentMCPActionsAnalytics {
         include: [
           {
             model: AgentMessage,
-            as: "agent_message",
+            as: "agentMessage",
             required: true,
             where: {
               agentConfigurationId: agentConfigurationId,
