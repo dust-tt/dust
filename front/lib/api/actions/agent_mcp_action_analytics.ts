@@ -15,7 +15,7 @@ import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 // AgentMCPAction serialized for analytics purposes.
-type AnalyticsMCPAction = {
+export type AnalyticsMCPAction = {
   sId: string;
   createdAt: string;
   functionCallName: string | null;

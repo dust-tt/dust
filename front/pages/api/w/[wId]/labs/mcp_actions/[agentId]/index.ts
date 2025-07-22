@@ -4,7 +4,7 @@ import * as reporter from "io-ts-reporters";
 import { NumberFromString, withFallback } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { GetMCPActionsResult} from "@app/lib/api/actions/agent_mcp_action_analytics";
+import type { GetMCPActionsResult } from "@app/lib/api/actions/agent_mcp_action_analytics";
 import { AgentMCPActionsAnalytics } from "@app/lib/api/actions/agent_mcp_action_analytics";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
