@@ -203,6 +203,9 @@ async function attachStepContentToMcpActions({
         if (!functionCallId) {
           throw new Error("Unreachable: function call ID not found.");
         }
+        if (functionCallId.trim().length === 0) {
+          throw new Error("Unreachable: function call ID is empty.");
+        }
 
         // If the step content is found, we can attach it to the MCP action.
         if (execute) {
