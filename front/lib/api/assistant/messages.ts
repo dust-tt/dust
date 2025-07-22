@@ -247,7 +247,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     ]);
 
   if (newAgentMCPActions.length !== agentMCPActions.length) {
-    logger.error(
+    logger.warn(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
         agentMessageIds,
