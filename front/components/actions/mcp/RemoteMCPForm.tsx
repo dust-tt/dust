@@ -126,14 +126,26 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         return;
       }
 
-      const updateData = {
+      const updateData: {
+        name: string;
+        description: string;
+        icon: string;
+        sharedSecret: string;
+        addCustomHeaders?: Record<string, string>;
+        removeCustomHeaders?: string[];
+      } = {
         name: values.name,
         description: values.description,
         icon: values.icon,
         sharedSecret: values.sharedSecret || "",
-        addCustomHeaders: newHeaders,
-        removeCustomHeaders: headersToRemove,
       };
+
+      if (Object.keys(newHeaders).length > 0) {
+        updateData.addCustomHeaders = newHeaders;
+      }
+      if (headersToRemove.length > 0) {
+        updateData.removeCustomHeaders = headersToRemove;
+      }
 
       const updated = await updateServer(updateData);
       if (updated) {
@@ -148,7 +160,6 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
       form,
       newHeaders,
       headersToRemove,
-      authenticationState.hasCustomHeaders,
       authenticationState.hasBearerToken,
     ]
   );
