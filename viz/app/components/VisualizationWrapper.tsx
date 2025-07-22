@@ -355,18 +355,18 @@ export function VisualizationWrapper({
         isFullHeight ? "h-screen" : ""
       }`}
     >
-      <div className="flex flex-row gap-2 absolute top-2 right-2 bg-white rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
+      <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
         <button
           onClick={handleScreenshotDownload}
           title="Download screenshot"
-          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border dark:border-border-night text-primary dark:text-primary-night bg-background dark:bg-background-night hover:text-primary dark:hover:text-primary-night hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-150 dark:hover:border-border-night active:bg-primary-300 dark:active:bg-primary-900"
+          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
         >
           Png
         </button>
         <button
           onClick={handleSVGDownload}
           title="Download SVG"
-          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border dark:border-border-night text-primary dark:text-primary-night bg-background dark:bg-background-night hover:text-primary dark:hover:text-primary-night hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-150 dark:hover:border-border-night active:bg-primary-300 dark:active:bg-primary-900"
+          className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
         >
           Svg
         </button>
@@ -374,13 +374,13 @@ export function VisualizationWrapper({
           <button
             title="Show code"
             onClick={handleDisplayCode}
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border dark:border-border-night text-primary dark:text-primary-night bg-background dark:bg-background-night hover:text-primary dark:hover:text-primary-night hover:bg-primary-100 dark:hover:bg-primary-900 hover:border-primary-150 dark:hover:border-border-night active:bg-primary-300 dark:active:bg-primary-900"
+            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
           >
             Code
           </button>
         )}
       </div>
-      <div ref={ref} className={isFullHeight ? "h-full" : ""}>
+      <div ref={ref}>
         <Runner
           code={runnerParams.code}
           scope={runnerParams.scope}
