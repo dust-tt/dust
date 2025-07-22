@@ -75,11 +75,9 @@ export async function runModelActivity({
     agentConfiguration,
     conversation,
     userMessage,
-    agentMessage: agentMessageMutable,
+    agentMessage,
     agentMessageRow,
   } = getRunAgentData(runAgentArgs);
-
-  const agentMessage = Object.freeze(agentMessageMutable);
 
   const now = Date.now();
 
