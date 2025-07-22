@@ -54,8 +54,8 @@ export function AgentSuggestion({
       if (!mRes.isOk()) {
         sendNotification({
           type: "error",
-          title: "Invite sent",
-          description: `Error adding mention to message: ${mRes.error.message}`,
+          title: "Error adding mention to message",
+          description: mRes.error.message,
         });
       }
     }

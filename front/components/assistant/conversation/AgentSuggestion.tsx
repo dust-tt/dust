@@ -85,8 +85,8 @@ export function AgentSuggestion({
         const data = await mRes.json();
         sendNotification({
           type: "error",
-          title: "Invite sent",
-          description: `Error adding mention to message: ${data.error.message}`,
+          title: "Error adding mention to message",
+          description: data.error.message,
         });
       }
     }
