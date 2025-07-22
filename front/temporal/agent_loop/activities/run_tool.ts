@@ -70,7 +70,7 @@ export async function runToolActivity(
         case "tool_error":
           await updateResourceAndPublishEvent(
             {
-              type: "agent_error",
+              type: "tool_error",
               created: event.created,
               configurationId: agentConfiguration.sId,
               messageId: agentMessage.sId,

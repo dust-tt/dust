@@ -12,6 +12,7 @@ async function processEventForDatabase(
 ): Promise<void> {
   switch (event.type) {
     case "agent_error":
+    case "tool_error":
       // Store error in database.
       await agentMessageRow.update({
         status: "failed",
@@ -19,25 +20,28 @@ async function processEventForDatabase(
         errorMessage: event.error.message,
         errorMetadata: event.error.metadata,
       });
-      await AgentStepContentResource.makeNew({
-        workspaceId: agentMessageRow.workspaceId,
-        agentMessageId: agentMessageRow.id,
-        step,
-        index: 0, // Errors are the only content for this step
-        type: "error",
-        value: {
+
+      if (event.type === "agent_error") {
+        await AgentStepContentResource.makeNew({
+          workspaceId: agentMessageRow.workspaceId,
+          agentMessageId: agentMessageRow.id,
+          step,
+          index: 0, // Errors are the only content for this step
           type: "error",
           value: {
-            code: event.error.code,
-            message: event.error.message,
-            metadata: {
-              ...event.error.metadata,
-              category: event.error.metadata?.category || "",
+            type: "error",
+            value: {
+              code: event.error.code,
+              message: event.error.message,
+              metadata: {
+                ...event.error.metadata,
+                category: event.error.metadata?.category || "",
+              },
             },
           },
-        },
-        version: 0,
-      });
+          version: 0,
+        });
+      }
       break;
 
     case "agent_generation_cancelled":

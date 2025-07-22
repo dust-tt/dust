@@ -6,6 +6,7 @@ import type {
   AgentMessageNewEvent,
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
+  ToolErrorEvent,
   UserMessageNewEvent,
 } from "@app/types";
 
@@ -15,6 +16,7 @@ export type AgentMessageEvents =
   | AgentErrorEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | GenerationTokensEvent;
+  | GenerationTokensEvent
+  | ToolErrorEvent;
 
 export type ConversationEvents = AgentMessageNewEvent | UserMessageNewEvent;
