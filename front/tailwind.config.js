@@ -340,6 +340,14 @@ module.exports = {
       borderRadius: {
         "4xl": "2rem",
       },
+      containers: {
+        xxs: "24rem",
+        xs: "32rem",
+        sm: "40rem",
+        md: "48rem",
+        lg: "64rem",
+        xl: "80rem",
+      },
       width: {
         100: "400px",
         125: "500px",

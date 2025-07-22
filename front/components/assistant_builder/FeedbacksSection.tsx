@@ -158,7 +158,7 @@ export const FeedbacksSection = ({
                   isLatestVersion={isLatestVersion}
                 />
                 <div className="@container">
-                  <div className="grid grid-cols-1 gap-4 @[48rem]:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 @md:grid-cols-2">
                     {versionFeedbacks?.map((feedback) => (
                       <MemoizedFeedbackCard
                         key={feedback.id}
