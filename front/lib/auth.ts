@@ -934,11 +934,16 @@ export class Authenticator {
 
     let groups: GroupResource[] = [];
     if (authType.groupIds.length > 0 && workspace) {
-      // Create a temporary authenticator for fetching groups
+      // Temporary authenticator used solely to fetch the group resources. We
+      // grant it the `admin` role so that it can read any group in the
+      // workspace, irrespective of membership. The returned authenticator
+      // (see below) will still use the original `authType.role`, so this
+      // escalation is confined to the internal bootstrap step and does not
+      // leak outside of this scope.
       const tempAuth = new Authenticator({
         workspace,
         user,
-        role: authType.role,
+        role: "admin",
         groups: [],
         subscription,
         key: authType.key,
