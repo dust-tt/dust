@@ -1253,7 +1253,8 @@ const CliChat: FC<CliChatProps> = ({
 
             const dustClient = dustClientRes.value;
             if (!dustClient) {
-              throw new Error("No Dust API set.");
+              setError("No Dust API set.");
+              return;
             }
             await useFileSystemServer(
               dustClient,

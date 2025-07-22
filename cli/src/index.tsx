@@ -68,6 +68,14 @@ const cli = meow({
       type: "boolean",
       description: "Skip update check",
     },
+    apiKey: {
+      type: "string",
+      description: "API key for headless authentication",
+    },
+    wId: {
+      type: "string",
+      description: "Workspace ID for headless authentication",
+    },
   },
 });
 

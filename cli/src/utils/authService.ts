@@ -68,6 +68,12 @@ export const AuthService = {
    * Gets a valid access token, refreshing if needed
    */
   async getValidAccessToken(): Promise<string | null> {
+    const accessToken = await TokenStorage.getAccessToken();
+
+    if (accessToken?.startsWith("sk-")) {
+      return accessToken;
+    }
+
     const isValid = await TokenStorage.hasValidAccessToken();
 
     if (!isValid) {

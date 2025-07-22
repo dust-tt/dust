@@ -42,11 +42,32 @@ interface DecodedAccessToken {
 
 interface AuthProps {
   force?: boolean;
+  apiKey?: string;
+  wId?: string;
 }
 
-const Auth: FC<AuthProps> = ({ force = false }) => {
+const Auth: FC<AuthProps> = ({ force = false, apiKey, wId }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Validate that both apiKey and wId are provided together
+  const hasApiKey = Boolean(apiKey);
+  const hasWId = Boolean(wId);
+
+  if (hasApiKey !== hasWId) {
+    return (
+      <Box flexDirection="column">
+        <Text color="red">
+          Error: Both --api-key and --wId flags must be provided together for
+          headless authentication.
+        </Text>
+        <Text>
+          Use either both flags for headless mode, or neither for interactive
+          authentication.
+        </Text>
+      </Box>
+    );
+  }
   const [deviceCode, setDeviceCode] = useState<DeviceCodeResponse | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [showWorkspaceSelector, setShowWorkspaceSelector] = useState(false);
@@ -254,9 +275,46 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
     setAuthComplete(true);
   }, []);
 
+  const handleHeadlessAuth = useCallback(async () => {
+    if (!apiKey || !wId) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Store the API key as the access token and refresh token
+      await TokenStorage.saveTokens(apiKey, apiKey);
+
+      // Store the workspace ID
+      await TokenStorage.saveWorkspaceId(wId);
+
+      // Store a default region for API key auth
+      await TokenStorage.saveRegion("us-central1");
+
+      // Reset the dust client to use the new tokens
+      resetDustClient();
+
+      // For headless auth, we don't validate with .me endpoint
+      // Set user info to null since API keys don't have access to user info
+      setUserInfo(null);
+      setIsLoading(false);
+      setAuthComplete(true);
+    } catch (err) {
+      setError(normalizeError(err).message);
+      setIsLoading(false);
+    }
+  }, [apiKey, wId]);
+
   useEffect(() => {
-    void startDeviceFlow();
-  }, [startDeviceFlow]);
+    // If both apiKey and wId are provided, use headless authentication
+    if (apiKey && wId) {
+      void handleHeadlessAuth();
+    } else {
+      // Otherwise, use the existing OAuth device flow
+      void startDeviceFlow();
+    }
+  }, [apiKey, wId, handleHeadlessAuth, startDeviceFlow]);
 
   if (error) {
     return (
