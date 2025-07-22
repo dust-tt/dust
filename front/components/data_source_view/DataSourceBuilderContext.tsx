@@ -252,7 +252,7 @@ export function useDataSourceBuilderContext() {
  * i.e:
  * `root.vlt_732fda` => `root.childs.vlt_732fda`
  */
-function replaceDotsWithChilds(input: string): string {
+export function replaceDotsWithChilds(input: string): string {
   return input.replace(/\./g, ".childs.");
 }
 
@@ -261,7 +261,7 @@ function replaceDotsWithChilds(input: string): string {
  *
  * @returns - A new tree with the node added
  */
-function addNodeToTree(
+export function addNodeToTree(
   tree: DataSourceBuilderTree,
   path: string[]
 ): DataSourceBuilderTree {
@@ -288,7 +288,7 @@ function addNodeToTree(
   return newTree;
 }
 
-function removeNodeFromTree(
+export function removeNodeFromTree(
   tree: DataSourceBuilderTree,
   path: string[]
 ): DataSourceBuilderTree {
@@ -332,7 +332,10 @@ function removeNodeFromTree(
  * Check wether or not a given path should be selected.
  * Selected mean it's specifically selected or a parents is selected.
  */
-function isNodeSelected(tree: DataSourceBuilderTree, path: string[]): boolean {
+export function isNodeSelected(
+  tree: DataSourceBuilderTree,
+  path: string[]
+): boolean {
   // Start looping at the parent
   for (let i = path.length - 1; i >= 0; i--) {
     const sections = path.slice(0, i);
