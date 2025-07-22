@@ -12,6 +12,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { CustomHeadersSection } from "@app/components/actions/mcp/CustomHeadersSection";
 import { MCPServerOAuthConnexion } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
@@ -19,13 +20,7 @@ import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import type { AuthMethod } from "@app/lib/actions/mcp_remote_actions/remote_mcp_custom_headers";
 import {
-  addNewHeader,
-  getDisplayHeaderKey,
-  isValidHeaderKey,
   MCP_VALIDATION,
-  removeHeader,
-  updateHeaderKey,
-  updateHeaderValue,
   validateCustomHeaders,
   validateCustomHeadersForSubmission,
 } from "@app/lib/actions/mcp_remote_actions/remote_mcp_custom_headers";
@@ -553,95 +548,11 @@ export function CreateMCPServerDialog({
                     )}
 
                     {isCustomAuthEnabled && authMethod === "custom-headers" && (
-                      <div className="space-y-3">
-                        {customHeadersErrors.length > 0 && (
-                          <div className="space-y-1 text-sm text-red-600">
-                            {customHeadersErrors.map((error, index) => (
-                              <div key={index}>• {error}</div>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="space-y-2">
-                          {Object.entries(customHeaders).map(
-                            ([key, value], index) => {
-                              const totalHeaders =
-                                Object.keys(customHeaders).length;
-                              const isOnlyHeader = totalHeaders === 1;
-                              const isEmpty = !key.trim() && !value.trim();
-
-                              return (
-                                <div
-                                  key={`header-${index}`}
-                                  className="flex space-x-2"
-                                >
-                                  <Input
-                                    placeholder="Header name"
-                                    value={getDisplayHeaderKey(key)}
-                                    onChange={(e) => {
-                                      const newKey = e.target.value;
-                                      setCustomHeaders(
-                                        updateHeaderKey(
-                                          customHeaders,
-                                          key,
-                                          newKey
-                                        )
-                                      );
-                                    }}
-                                    isError={
-                                      !isValidHeaderKey(
-                                        getDisplayHeaderKey(key)
-                                      )
-                                    }
-                                  />
-                                  <Input
-                                    placeholder="Header value"
-                                    value={value}
-                                    onChange={(e) => {
-                                      setCustomHeaders(
-                                        updateHeaderValue(
-                                          customHeaders,
-                                          key,
-                                          e.target.value
-                                        )
-                                      );
-                                    }}
-                                    isError={!value.trim() && key.trim() !== ""}
-                                  />
-                                  {isOnlyHeader && isEmpty ? (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      label="Remove"
-                                      disabled
-                                      className="opacity-50"
-                                    />
-                                  ) : (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      label="Remove"
-                                      onClick={() => {
-                                        setCustomHeaders(
-                                          removeHeader(customHeaders, key)
-                                        );
-                                      }}
-                                    />
-                                  )}
-                                </div>
-                              );
-                            }
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            label="Add Header"
-                            onClick={() => {
-                              setCustomHeaders(addNewHeader(customHeaders));
-                            }}
-                          />
-                        </div>
-                      </div>
+                      <CustomHeadersSection
+                        customHeaders={customHeaders}
+                        customHeadersErrors={customHeadersErrors}
+                        onCustomHeadersChange={setCustomHeaders}
+                      />
                     )}
                   </div>
                 </>

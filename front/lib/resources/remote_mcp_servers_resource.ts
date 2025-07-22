@@ -389,6 +389,23 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         : this.sharedSecret
       : null;
 
+    const shouldRedactHeaders =
+      differenceInMinutes > SECRET_REDACTION_COOLDOWN_IN_MINUTES;
+    let headers: Record<string, string> | null = null;
+
+    if (this.customHeaders) {
+      if (shouldRedactHeaders) {
+        headers = Object.fromEntries(
+          Object.entries(this.customHeaders).map(([key, value]) => [
+            key,
+            redactString(value, 4),
+          ])
+        );
+      } else {
+        headers = this.customHeaders;
+      }
+    }
+
     return {
       sId: this.sId,
 
@@ -409,7 +426,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastSyncAt: this.lastSyncAt?.getTime() ?? null,
       lastError: this.lastError,
       sharedSecret: secret,
-      customHeaders: this.customHeaders,
+      customHeaders: headers,
       documentationUrl: null,
     };
   }

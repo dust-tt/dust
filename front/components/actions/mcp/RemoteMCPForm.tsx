@@ -18,16 +18,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { EditCustomHeadersSection } from "@app/components/actions/mcp/EditCustomHeadersSection";
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { isDefaultRemoteMcpServerURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import {
-  addNewHeader,
-  getDisplayHeaderKey,
-  isValidHeaderKey,
-  removeHeader,
-  updateHeaderKey,
-  updateHeaderValue,
   validateCustomHeaders,
   validateCustomHeadersForSubmission,
 } from "@app/lib/actions/mcp_remote_actions/remote_mcp_custom_headers";
@@ -53,45 +48,14 @@ const MCPFormSchema = z.object({
 
 export type MCPFormType = z.infer<typeof MCPFormSchema>;
 
-interface CustomHeadersState {
-  headers: Record<string, string>;
-  hasHeaders: boolean;
-}
-
-const createCustomHeadersState = (
-  headers: Record<string, string> = {}
-): CustomHeadersState => ({
-  headers,
-  hasHeaders: Object.keys(headers).length > 0,
-});
-
-const createHeaderManager = (field: {
-  value: Record<string, string>;
-  onChange: (value: Record<string, string>) => void;
-}) => ({
-  addHeader: () => {
-    const newHeaders = addNewHeader(field.value || {});
-    field.onChange(newHeaders);
-  },
-  removeHeader: (keyToRemove: string) => {
-    const newHeaders = removeHeader(field.value || {}, keyToRemove);
-    field.onChange(newHeaders);
-  },
-  updateHeaderKey: (oldKey: string, newKey: string) => {
-    const newHeaders = updateHeaderKey(field.value || {}, oldKey, newKey);
-    field.onChange(newHeaders);
-  },
-  updateHeaderValue: (key: string, newValue: string) => {
-    const newHeaders = updateHeaderValue(field.value || {}, key, newValue);
-    field.onChange(newHeaders);
-  },
-});
-
 export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [customHeadersErrors, setCustomHeadersErrors] = useState<string[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [newHeaders, setNewHeaders] = useState<Record<string, string>>({});
+  const [headersToRemove, setHeadersToRemove] = useState<string[]>([]);
 
   const isDefaultServer = isDefaultRemoteMcpServerURL(mcpServer.url);
 
@@ -124,22 +88,18 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   });
 
   useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === "customHeaders" || !name) {
-        const rawHeaders = value.customHeaders || {};
-        const customHeaders: Record<string, string> = {};
-        Object.entries(rawHeaders).forEach(([key, val]) => {
-          if (typeof val === "string") {
-            customHeaders[key] = val;
-          }
-        });
+    const errors = validateCustomHeaders(newHeaders);
+    const allErrors = [...errors];
+    if (saveError) {
+      allErrors.push(saveError);
+    }
+    setCustomHeadersErrors(allErrors);
 
-        const errors = validateCustomHeaders(customHeaders);
-        setCustomHeadersErrors(errors);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
+    // Clear save error when validation errors are fixed
+    if (saveError && errors.length === 0) {
+      setSaveError(null);
+    }
+  }, [newHeaders, saveError]);
 
   // Use the serverId from state for the hooks
   const { updateServer } = useUpdateMCPServer(owner, mcpServer.sId);
@@ -149,20 +109,20 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const onSubmit = useCallback(
     async (values: MCPFormType) => {
       setError(null);
+      setSaveError(null);
 
-      const customHeadersState = createCustomHeadersState(values.customHeaders);
-      if (authenticationState.hasCustomHeaders) {
-        const submissionErrors = validateCustomHeadersForSubmission(
-          values.customHeaders || {}
-        );
+      if (Object.keys(newHeaders).length > 0) {
+        const submissionErrors = validateCustomHeadersForSubmission(newHeaders);
         if (submissionErrors.length > 0) {
-          setError(submissionErrors.join(". "));
+          setSaveError(submissionErrors.join(". "));
           return;
         }
       }
 
       if (authenticationState.hasBearerToken && !values.sharedSecret?.trim()) {
-        setError("Bearer token is required for this server's authentication.");
+        setSaveError(
+          "Bearer token is required for this server's authentication."
+        );
         return;
       }
 
@@ -170,23 +130,24 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         name: values.name,
         description: values.description,
         icon: values.icon,
-        sharedSecret: customHeadersState.hasHeaders
-          ? ""
-          : values.sharedSecret || "",
-        customHeaders: customHeadersState.hasHeaders
-          ? values.customHeaders
-          : {},
+        sharedSecret: values.sharedSecret || "",
+        addCustomHeaders: newHeaders,
+        removeCustomHeaders: headersToRemove,
       };
 
       const updated = await updateServer(updateData);
       if (updated) {
         form.reset(values);
+        setNewHeaders({});
+        setHeadersToRemove([]);
+        setSaveError(null);
       }
     },
     [
       updateServer,
       form,
-      customHeadersErrors,
+      newHeaders,
+      headersToRemove,
       authenticationState.hasCustomHeaders,
       authenticationState.hasBearerToken,
     ]
@@ -197,6 +158,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     await syncServer();
     setIsSynchronizing(false);
     setError(null);
+    setSaveError(null);
   }, [syncServer]);
 
   const closePopover = () => {
@@ -207,92 +169,13 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     return form.formState.isValid && customHeadersErrors.length === 0;
   }, [form.formState.isValid, customHeadersErrors]);
 
-  const renderCustomHeadersController = useCallback(
-    ({ field }: { field: any }) => {
-      const customHeadersState = createCustomHeadersState(field.value);
-      const headerManager = createHeaderManager(field);
-
-      if (!customHeadersState.hasHeaders) {
-        headerManager.addHeader();
-        return <div></div>; // Will re-render with the new header
-      }
-
-      return (
-        <div className="space-y-3">
-          <div>
-            <Label>Custom Headers</Label>
-            {customHeadersErrors.length > 0 && (
-              <div className="mt-2 space-y-1 text-sm text-red-600">
-                {customHeadersErrors.map((error, index) => (
-                  <div key={index}>• {error}</div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            {Object.entries(customHeadersState.headers).map(
-              ([key, value], index) => {
-                const totalHeaders = Object.keys(
-                  customHeadersState.headers
-                ).length;
-                const isOnlyHeader = totalHeaders === 1;
-
-                return (
-                  <div key={`header-${index}`} className="flex space-x-2">
-                    <Input
-                      placeholder="Header name"
-                      value={getDisplayHeaderKey(key)}
-                      onChange={(e) => {
-                        const newKey = e.target.value;
-                        headerManager.updateHeaderKey(key, newKey);
-                      }}
-                      isError={
-                        !isValidHeaderKey(getDisplayHeaderKey(key)) &&
-                        getDisplayHeaderKey(key).trim() !== ""
-                      }
-                      className="flex-1"
-                    />
-                    <Input
-                      placeholder="Header value"
-                      value={value}
-                      onChange={(e) => {
-                        headerManager.updateHeaderValue(key, e.target.value);
-                      }}
-                      isError={!value.trim() && key.trim() !== ""}
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      label="Remove"
-                      disabled={isOnlyHeader}
-                      className={isOnlyHeader ? "opacity-50" : ""}
-                      onClick={() => {
-                        if (!isOnlyHeader) {
-                          headerManager.removeHeader(key);
-                        }
-                      }}
-                    />
-                  </div>
-                );
-              }
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              label="Add Header"
-              onClick={headerManager.addHeader}
-            />
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-500-night">
-            These custom headers will be sent with each request to your server.
-          </p>
-        </div>
-      );
-    },
-    [form, customHeadersErrors]
-  );
+  const hasChanges = useMemo(() => {
+    return (
+      form.formState.isDirty ||
+      Object.keys(newHeaders).length > 0 ||
+      headersToRemove.length > 0
+    );
+  }, [form.formState.isDirty, newHeaders, headersToRemove]);
 
   return (
     <div className="space-y-5 text-foreground dark:text-foreground-night">
@@ -449,12 +332,15 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
               )}
 
               {!authenticationState.hasBearerToken && (
-                <Controller
-                  control={form.control}
-                  name="customHeaders"
-                  render={({ field }) =>
-                    renderCustomHeadersController({ field })
-                  }
+                <EditCustomHeadersSection
+                  existingHeaders={mcpServer.customHeaders || {}}
+                  newHeaders={newHeaders}
+                  customHeadersErrors={customHeadersErrors}
+                  headersToRemove={headersToRemove}
+                  onNewHeadersChange={setNewHeaders}
+                  onRemoveExistingHeader={(key) => {
+                    setHeadersToRemove((prev) => [...prev, key]);
+                  }}
                 />
               )}
             </div>
@@ -462,7 +348,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         />
       )}
 
-      {form.formState.isDirty && (
+      {hasChanges && (
         <div className="flex flex-row items-end justify-end gap-2">
           <Button
             variant="outline"
@@ -470,7 +356,10 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             disabled={form.formState.isSubmitting}
             onClick={() => {
               form.reset();
+              setNewHeaders({});
+              setHeadersToRemove([]);
               setError(null);
+              setSaveError(null);
             }}
           />
 
