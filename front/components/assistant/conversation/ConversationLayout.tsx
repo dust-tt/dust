@@ -241,8 +241,7 @@ function ConversationInnerLayout({
             !isContentOpen && "hidden",
             // On mobile: overlay full screen with absolute positioning.
             "md:relative",
-            isContentOpen &&
-              "absolute inset-0 z-50 md:relative md:inset-auto md:z-auto"
+            isContentOpen && "absolute inset-0 md:relative md:inset-auto"
           )}
         >
           {isContentOpen && (
