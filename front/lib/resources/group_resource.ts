@@ -28,6 +28,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   GroupKind,
@@ -536,7 +537,17 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    if (groups.some((group) => !group.canRead(auth))) {
+    const unreadableGroups = groups.filter((group) => !group.canRead(auth));
+    if (unreadableGroups.length > 0) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          unreadableGroupIds: unreadableGroups.map((g) => g.sId),
+          authRole: auth.role(),
+          authGroupIds: auth.groups().map((g) => g.sId),
+        },
+        "[GroupResource.fetchByIds] User cannot read some groups"
+      );
       return new Err(
         new DustError(
           "unauthorized",
