@@ -536,7 +536,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       isError: false,
       executionState: "pending",
       version: 0,
-      stepContentId: stepContentId || null,
+      stepContentId,
     });
 
     const mcpAction = new MCPActionType({

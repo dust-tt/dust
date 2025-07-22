@@ -53,13 +53,8 @@ export async function runAgentWithStreaming(
       const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
       const citationsIncrements = await Promise.all(
-        actionsToRun.map(({ inputs, functionCallId }, index) => {
-          // Find the step content ID for this function call
-          const stepContentId = functionCallId
-            ? functionCallStepContentIds[functionCallId]
-            : undefined;
-
-          return runToolActivity(authType, {
+        actionsToRun.map(({ inputs, functionCallId }, index) =>
+          runToolActivity(authType, {
             runAgentArgs,
             inputs,
             functionCallId,
@@ -67,9 +62,9 @@ export async function runAgentWithStreaming(
             stepActionIndex: index,
             stepActions: actionsToRun.map((a) => a.action),
             citationsRefsOffset,
-            stepContentId,
-          });
-        })
+            stepContentId: functionCallStepContentIds[functionCallId],
+          })
+        )
       );
 
       citationsRefsOffset += citationsIncrements.reduce(

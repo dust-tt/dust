@@ -99,7 +99,7 @@ export interface BaseActionRunParams {
   rawInputs: Record<string, unknown>;
   functionCallId: string;
   step: number;
-  stepContentId?: ModelId;
+  stepContentId: ModelId;
 }
 
 export abstract class BaseActionConfigurationServerRunner<
