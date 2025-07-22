@@ -296,12 +296,16 @@ export function useFileUploaderService({
     results.forEach((result) => {
       if (result.isErr()) {
         erroredBlobs.push(result.error);
+        const maybeTruncatedFilename =
+          result.error.file.name.length > 50
+            ? result.error.file.name.slice(0, 47) + "..."
+            : result.error.file.name;
         sendNotification({
           type: "error",
           title: `Failed to upload file${previewMode ? " preview" : ""}`,
           description: result.error.message
-            ? `${result.error.message} (${result.error.file.name.length > 50 ? result.error.file.name.slice(0, 47) + "..." : result.error.file.name})`
-            : `Error uploading ${result.error.file.name.length > 50 ? result.error.file.name.slice(0, 47) + "..." : result.error.file.name}`,
+            ? `${result.error.message} (${maybeTruncatedFilename})`
+            : `Error uploading ${maybeTruncatedFilename}`,
         });
       } else {
         successfulBlobs.push(result.value);
