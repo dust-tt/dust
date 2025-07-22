@@ -330,16 +330,16 @@ export function removeNodeFromTree(
 
 /**
  * Check wether or not a given path should be selected.
- * Selected mean it's specifically selected or a parents is selected.
+ * Selected mean it's specifically selected or a parents is selected
+ * and it's not ignored.
  */
 export function isNodeSelected(
   tree: DataSourceBuilderTree,
   path: string[]
 ): boolean {
-  // Start looping at the parent
   for (let i = path.length - 1; i >= 0; i--) {
-    const sections = path.slice(0, i);
     const leaf = path[i];
+    const sections = path.slice(0, i); // Ignore the leaf
     const currentPath = replaceDotsWithChilds(sections.join("."));
     const node = get(tree, currentPath);
 
@@ -348,9 +348,6 @@ export function isNodeSelected(
       continue;
     }
 
-    // We're in the first parent, it's present if it isn't in the excludes
-    // or it's in the childs
-    // if (i === path.length - 1) {
     // It's selected if the parent has no childs and no excludes
     if (
       node.excludes &&
@@ -364,9 +361,10 @@ export function isNodeSelected(
       return false;
     }
 
-    // If the parent has some childs and it includes the given node
-    if (node.childs != null && node.childs[leaf] != null) {
-      return true;
+    // If the parent has some childs
+    if (node.childs != null) {
+      // we can check if it includes the given node
+      return node.childs[leaf] != null;
     }
   }
   return false;

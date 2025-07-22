@@ -62,6 +62,28 @@ describe("DataSourceBuilder utilities", () => {
         },
       });
     });
+
+    it("should add a node next to other childs", () => {
+      const tree = {
+        root: {
+          childs: {
+            a: {},
+            b: {},
+          },
+        },
+      };
+
+      const result = addNodeToTree(tree, ["root", "c"]);
+      expect(result).toEqual({
+        root: {
+          childs: {
+            a: {},
+            b: {},
+            c: {},
+          },
+        },
+      });
+    });
   });
 
   describe("removeNodeFromTree", () => {
@@ -164,6 +186,39 @@ describe("DataSourceBuilder utilities", () => {
         },
       };
       expect(isNodeSelected(tree, ["root", "a", "b", "c"])).toBe(true);
+    });
+
+    it("should handle nested excludes", () => {
+      const tree = {
+        root: {
+          childs: {
+            a: {
+              excludes: ["b"],
+            },
+          },
+        },
+      };
+
+      expect(isNodeSelected(tree, ["root", "a", "b"])).toBe(false);
+    });
+
+    it("should handle deep path with just parent selected", () => {
+      const tree = {
+        root: {
+          childs: {
+            a: {
+              childs: {
+                b: {},
+              },
+            },
+          },
+        },
+      };
+
+      expect(isNodeSelected(tree, ["root", "a", "b", "c"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "a", "b", "c", "d"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "a", "e"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "a", "f"])).toBe(false);
     });
   });
 });
