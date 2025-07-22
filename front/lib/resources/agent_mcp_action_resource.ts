@@ -1,4 +1,3 @@
-import type { Attributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
 import { MCPActionType } from "@app/lib/actions/mcp";
@@ -9,8 +8,6 @@ import {
   ConversationModel,
   Message,
 } from "@app/lib/models/assistant/conversation";
-import { BaseResource } from "@app/lib/resources/base_resource";
-import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -23,31 +20,7 @@ type AgentMCPActionWithConversation = AgentMCPAction & {
   };
 };
 
-// Resource for AgentMCPAction.
-// Only used for analytics purposes, the rendering is handled AgentStepContentResource.
-
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMCPActionResource
-  extends ReadonlyAttributesType<AgentMCPAction> {}
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class AgentMCPActionResource extends BaseResource<AgentMCPAction> {
-  static model: ModelStatic<AgentMCPAction> = AgentMCPAction;
-
-  constructor(
-    model: ModelStatic<AgentMCPAction>,
-    blob: Attributes<AgentMCPAction>
-  ) {
-    super(AgentMCPAction, blob);
-  }
-
-  async delete(): Promise<Result<undefined, Error>> {
-    return new Err(
-      new Error("Direct deletion of MCP actions is not supported")
-    );
-  }
-
+export class AgentMCPActionsAnalytics {
   static async getMCPActionsForAgent(
     auth: Authenticator,
     { agentConfigurationId, limit, cursor }: GetMCPActionsOptions

@@ -9,7 +9,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { MCPAction } from "@app/lib/resources/agent_mcp_action_resource";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentMCPActionsAnalytics } from "@app/lib/resources/agent_mcp_action_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -99,11 +99,14 @@ async function handler(
         });
       }
 
-      const result = await AgentMCPActionResource.getMCPActionsForAgent(auth, {
-        agentConfigurationId: agentConfiguration.sId,
-        limit,
-        cursor,
-      });
+      const result = await AgentMCPActionsAnalytics.getMCPActionsForAgent(
+        auth,
+        {
+          agentConfigurationId: agentConfiguration.sId,
+          limit,
+          cursor,
+        }
+      );
 
       if (result.isErr()) {
         const error = result.error;
