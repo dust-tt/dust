@@ -71,6 +71,7 @@ export async function publishConversationRelatedEvent(
 
     case "agent_action_success":
     case "agent_error":
+    case "tool_error":
     case "agent_generation_cancelled":
     case "agent_message_success":
     case "generation_tokens":
