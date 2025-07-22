@@ -74,17 +74,17 @@ export const b2bSaasConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Build an organizational intelligence machine",
-        description:
-          "Transform scattered conversations, documents, and insights across all departments into a unified knowledge base that gets smarter with every interaction",
-        color: "blue",
-      },
-      {
-        icon: "/static/landing/industry/d-red.svg",
         title: "Automate busywork that slows you down",
         description:
           "Stop wasting hours on research, data entry, and repetitive tasks. Deploy AI that works your way—understanding your processes, terminology, and decision-making patterns",
         color: "red",
+      },
+      {
+        icon: "/static/landing/industry/d-red.svg",
+        title: "Build your intelligence engine",
+        description:
+          "Transform scattered conversations, documents, and insights across all departments into a unified knowledge base that gets smarter with every interaction",
+        color: "blue",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
