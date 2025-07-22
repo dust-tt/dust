@@ -1,3 +1,4 @@
+import assert from "assert";
 import type { WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
@@ -133,22 +134,7 @@ export class AgentMCPActionsAnalytics {
         ? actualActions[actualActions.length - 1].createdAt.toISOString()
         : null;
 
-      const actionsData: MCPAction[] = actualActions.map((action) => {
-        const { agentMessage } = action;
-        return {
-          sId: MCPActionType.modelIdToSId({
-            id: action.id,
-            workspaceId: owner.id,
-          }),
-          createdAt: action.createdAt.toISOString(),
-          functionCallName: action.functionCallName,
-          params: action.params,
-          executionState: action.executionState,
-          isError: action.isError,
-          conversationId: agentMessage?.message?.conversation?.sId,
-          messageId: agentMessage?.message?.sId,
-        };
-      });
+      const actionsData = actualActions.map((a) => serializeMCPAction(a));
 
       return new Ok({
         actions: actionsData,
@@ -167,4 +153,24 @@ export class AgentMCPActionsAnalytics {
       return new Err(new Error("Failed to fetch MCP actions from database"));
     }
   }
+}
+
+function serializeMCPAction(action: AgentMCPAction): MCPAction {
+  assert(action.agentMessage, "Agent message must exist");
+  assert(action.agentMessage.message, "Message must exist");
+  assert(action.agentMessage.message.conversation, "Conversation must exist");
+
+  return {
+    sId: MCPActionType.modelIdToSId({
+      id: action.id,
+      workspaceId: action.workspaceId,
+    }),
+    createdAt: action.createdAt.toISOString(),
+    functionCallName: action.functionCallName,
+    params: action.params,
+    executionState: action.executionState,
+    isError: action.isError,
+    conversationId: action.agentMessage.message.conversation.sId,
+    messageId: action.agentMessage.message.sId,
+  };
 }
