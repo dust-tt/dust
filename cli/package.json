@@ -28,7 +28,7 @@
   "license": "MIT",
   "dependencies": {
     "@dust-tt/client": "^1.1.1",
-    "@modelcontextprotocol/sdk": "^1.9.0",
+    "@modelcontextprotocol/sdk": "github:dust-tt/typescript-sdk#bca26e405d6db2cf71fd7211234a72ecc46d0215",
     "clipboardy": "^4.0.0",
     "execa": "^9.6.0",
     "express": "^5.1.0",
