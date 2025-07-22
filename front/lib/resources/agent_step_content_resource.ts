@@ -94,7 +94,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     }
   }
 
-  static async makeNew(
+  private static async makeNew(
     blob: CreationAttributes<AgentStepContentModel>,
     transaction?: Transaction
   ): Promise<AgentStepContentResource> {
