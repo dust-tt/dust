@@ -24,7 +24,7 @@ export function InteractiveContentHeader({
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         <span
           className={cn(
-            "@xxs:inline hidden min-w-0 truncate text-sm font-medium",
+            "hidden min-w-0 truncate text-sm font-medium @xxs:inline",
             "text-primary dark:text-primary-night"
           )}
         >
