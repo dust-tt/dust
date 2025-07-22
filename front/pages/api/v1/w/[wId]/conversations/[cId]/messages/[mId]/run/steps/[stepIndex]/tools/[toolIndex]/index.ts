@@ -1,25 +1,11 @@
-import { isLeft } from "fp-ts/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { apiError } from "@app/logger/withlogging";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
-
-const QuerySchema = t.intersection([
-  t.type({
-    cId: t.string,
-    mId: t.string,
-    stepIndex: t.string,
-    toolIndex: t.string,
-  }),
-  t.partial({
-    version: t.string,
-  }),
-]);
 
 export type ConversationsMessagesRunStepsToolsResponseBody = {
   agentStepContent: AgentStepContentType | null;
@@ -34,25 +20,59 @@ async function handler(
     WithAPIErrorResponse<ConversationsMessagesRunStepsToolsResponseBody>
   >
 ): Promise<void> {
-  const queryValidation = QuerySchema.decode(req.query);
-  if (isLeft(queryValidation)) {
-    const pathError = reporter.formatValidationErrors(queryValidation.left);
+  const {
+    cId,
+    mId,
+    stepIndex: stepIndexParam,
+    toolIndex: toolIndexParam,
+    version: versionParam,
+  } = req.query;
+
+  if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid query parameters: ${pathError}`,
+        message: "Invalid conversation ID",
       },
     });
   }
 
-  const {
-    cId: conversationId,
-    mId: agentMessageIdStr,
-    stepIndex: stepIndexStr,
-    toolIndex: toolIndexStr,
-    version: versionStr,
-  } = queryValidation.right;
+  if (!isString(mId)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid message ID",
+      },
+    });
+  }
+
+  if (!isString(stepIndexParam)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid step index",
+      },
+    });
+  }
+
+  if (!isString(toolIndexParam)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid tool index",
+      },
+    });
+  }
+
+  const conversationId = cId;
+  const agentMessageIdStr = mId;
+  const stepIndexStr = stepIndexParam;
+  const toolIndexStr = toolIndexParam;
+  const versionStr = versionParam;
 
   const agentMessageId = parseInt(agentMessageIdStr, 10);
   if (isNaN(agentMessageId) || agentMessageId < 0) {
@@ -89,6 +109,15 @@ async function handler(
 
   let version = 0;
   if (versionStr !== undefined) {
+    if (!isString(versionStr)) {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "version must be a string",
+        },
+      });
+    }
     version = parseInt(versionStr, 10);
     if (isNaN(version) || version < 0) {
       return apiError(req, res, {
@@ -103,7 +132,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      // TODO(DURABLE-AGENTS 2025-07-21): Use step index, tool index and version
+      // TODO(DURABLE-AGENTS 2025-07-21): Use step index, tool index and version.
       const result = await launchAgentLoopWorkflow({
         agentMessageId,
         conversationId,

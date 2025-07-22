@@ -7,12 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { apiError } from "@app/logger/withlogging";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { WithAPIErrorResponse } from "@app/types";
-
-const QuerySchema = t.type({
-  cId: t.string,
-  mId: t.string,
-  stepIndex: t.string,
-});
+import { isString } from "@app/types";
 
 const ConversationsMessagesRunStepsRetrySchema = t.type({
   retryBlockedToolsOnly: t.boolean,
@@ -32,23 +27,41 @@ async function handler(
     WithAPIErrorResponse<ConversationsMessagesRunStepsRetryResponseBody>
   >
 ): Promise<void> {
-  const queryValidation = QuerySchema.decode(req.query);
-  if (isLeft(queryValidation)) {
-    const pathError = reporter.formatValidationErrors(queryValidation.left);
+  const { cId, mId, stepIndex: stepIndexParam } = req.query;
+
+  if (!isString(cId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid query parameters: ${pathError}`,
+        message: "Invalid conversation ID",
       },
     });
   }
 
-  const {
-    cId: conversationId,
-    mId: agentMessageIdStr,
-    stepIndex: stepIndexStr,
-  } = queryValidation.right;
+  if (!isString(mId)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid message ID",
+      },
+    });
+  }
+
+  if (!isString(stepIndexParam)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid step index",
+      },
+    });
+  }
+
+  const conversationId = cId;
+  const agentMessageIdStr = mId;
+  const stepIndexStr = stepIndexParam;
 
   const agentMessageId = parseInt(agentMessageIdStr, 10);
   if (isNaN(agentMessageId) || agentMessageId < 0) {
@@ -87,7 +100,7 @@ async function handler(
           },
         });
       }
-      // TODO(DURABLE-AGENTS 2025-07-21): Use step index, version and retryBlockedToolsOnly
+      // TODO(DURABLE-AGENTS 2025-07-21): Use step index, version and retryBlockedToolsOnly.
       const result = await launchAgentLoopWorkflow({
         agentMessageId,
         conversationId,
