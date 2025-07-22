@@ -224,21 +224,29 @@ export type AgentMessageErrorEvent = {
   };
 };
 
-// Generic type for the content of an agent error.
-export type AgentErrorContent = {
+// Generic type for the content of an agent / tool error.
+export type ErrorContent = {
   code: string;
   message: string;
   metadata: Record<string, string | number | boolean> | null;
 };
 
-// Generic event sent when an error occurred (whether it's during the action or the message
-// generation).
+// Generic event sent when an error occurred during the model call.
 export type AgentErrorEvent = {
   type: "agent_error";
   created: number;
   configurationId: string;
   messageId: string;
-  error: AgentErrorContent;
+  error: ErrorContent;
+};
+
+// Event sent when an error occurred during the tool call.
+export type ToolErrorEvent = {
+  type: "tool_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: ErrorContent;
 };
 
 export type AgentDisabledErrorEvent = {
