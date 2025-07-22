@@ -23,6 +23,8 @@ import type {
   WorkspaceType,
 } from "@app/types";
 
+import { useDataSourceBuilderContext } from "./DataSourceBuilderContext";
+
 const PAGE_SIZE = 25;
 
 interface DataSourceNodeTableProps {
@@ -55,6 +57,8 @@ export function DataSourceNodeTable({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [nodeRows, setNodeRows] = useState<NodeRowData[]>([]);
   const { isDark } = useTheme();
+  const { selectNode, removeNode, isRowSelected } =
+    useDataSourceBuilderContext();
 
   const {
     cursorPagination,
@@ -182,22 +186,16 @@ export function DataSourceNodeTable({
         id: "select",
         enableSorting: false,
         enableHiding: false,
-        header: ({ table }) => (
+        header: () => (
           <Checkbox
             size="xs"
-            checked={
-              table.getIsAllRowsSelected()
-                ? true
-                : table.getIsSomeRowsSelected()
-                  ? "partial"
-                  : false
-            }
             onClick={(event) => event.stopPropagation()}
             onCheckedChange={(state) => {
               if (state === "indeterminate") {
                 return;
               }
-              table.toggleAllRowsSelected(state);
+
+              // TODO: Add method
             }}
           />
         ),
@@ -205,14 +203,19 @@ export function DataSourceNodeTable({
           <div className="flex h-full w-full items-center">
             <Checkbox
               size="xs"
-              checked={row.getIsSelected()}
+              checked={isRowSelected(row.original.id)}
               disabled={!row.getCanSelect()}
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
                 if (state === "indeterminate") {
                   return;
                 }
-                row.toggleSelected(state);
+
+                if (state) {
+                  selectNode(row.original.id);
+                } else {
+                  removeNode(row.original.id);
+                }
               }}
             />
           </div>
@@ -238,7 +241,7 @@ export function DataSourceNodeTable({
         },
       },
     ],
-    []
+    [isRowSelected, removeNode, selectNode]
   );
 
   const isLoading =

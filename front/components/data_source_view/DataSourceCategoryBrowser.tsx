@@ -26,67 +26,7 @@ import {
   removeNulls,
 } from "@app/types";
 
-const columns: ColumnDef<CategoryRowData>[] = [
-  {
-    id: "select",
-    enableSorting: false,
-    enableHiding: false,
-    header: ({ table }) => (
-      <Checkbox
-        size="xs"
-        checked={
-          table.getIsAllRowsSelected()
-            ? true
-            : table.getIsSomeRowsSelected()
-              ? "partial"
-              : false
-        }
-        onClick={(event) => event.stopPropagation()}
-        onCheckedChange={(state) => {
-          if (state === "indeterminate") {
-            return;
-          }
-          table.toggleAllRowsSelected(state);
-        }}
-      />
-    ),
-    cell: ({ row }) => (
-      <div className="flex h-full items-center">
-        <Checkbox
-          size="xs"
-          checked={row.getIsSelected()}
-          disabled={!row.getCanSelect()}
-          onClick={(event) => event.stopPropagation()}
-          onCheckedChange={(state) => {
-            if (state === "indeterminate") {
-              return;
-            }
-            row.toggleSelected(state);
-          }}
-        />
-      </div>
-    ),
-    meta: {
-      sizeRatio: 5,
-    },
-  },
-  {
-    accessorKey: "title",
-    id: "name",
-    header: "Name",
-    cell: ({ row }) => (
-      <DataTable.CellContent>
-        <span className="flex items-center gap-2 truncate text-ellipsis font-semibold">
-          {row.original.icon}
-          {row.original.title}
-        </span>
-      </DataTable.CellContent>
-    ),
-    meta: {
-      sizeRatio: 100,
-    },
-  },
-];
+import { useDataSourceBuilderContext } from "./DataSourceBuilderContext";
 
 interface CategoryRowData {
   id: string;
@@ -110,7 +50,8 @@ export function DataSourceCategoryBrowser({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
-  // const { state, dispatch } = useDataSourceBuilderContext();
+  const { selectNode, removeNode, isRowSelected } =
+    useDataSourceBuilderContext();
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -126,6 +67,70 @@ export function DataSourceCategoryBrowser({
     }
     return emptyArray<CategoryRowData>();
   }, [hasFeature, isSpaceInfoLoading, onSelectCategory, spaceInfo]);
+
+  const columns: ColumnDef<CategoryRowData>[] = useMemo(
+    () => [
+      {
+        id: "select",
+        enableSorting: false,
+        enableHiding: false,
+        header: () => (
+          <Checkbox
+            size="xs"
+            onClick={(event) => event.stopPropagation()}
+            onCheckedChange={(state) => {
+              if (state === "indeterminate") {
+                return;
+              }
+
+              // TODO: add method
+            }}
+          />
+        ),
+        cell: ({ row }) => (
+          <div className="flex h-full items-center">
+            <Checkbox
+              size="xs"
+              checked={isRowSelected(row.original.id)}
+              disabled={!row.getCanSelect()}
+              onClick={(event) => event.stopPropagation()}
+              onCheckedChange={(state) => {
+                if (state === "indeterminate") {
+                  return;
+                }
+
+                if (state) {
+                  selectNode(row.original.id);
+                } else {
+                  removeNode(row.original.id);
+                }
+              }}
+            />
+          </div>
+        ),
+        meta: {
+          sizeRatio: 5,
+        },
+      },
+      {
+        accessorKey: "title",
+        id: "name",
+        header: "Name",
+        cell: ({ row }) => (
+          <DataTable.CellContent>
+            <span className="flex items-center gap-2 truncate text-ellipsis font-semibold">
+              {row.original.icon}
+              {row.original.title}
+            </span>
+          </DataTable.CellContent>
+        ),
+        meta: {
+          sizeRatio: 100,
+        },
+      },
+    ],
+    [isRowSelected, removeNode, selectNode]
+  );
 
   if (isSpaceInfoLoading) {
     return (
