@@ -232,7 +232,7 @@ function ConversationInnerLayout({
         {isContentOpen && <ResizableHandle />}
         <ResizablePanel
           minSize={20}
-          defaultSize={50}
+          defaultSize={70}
           className={cn(!isContentOpen && "hidden")}
         >
           {isContentOpen && (
