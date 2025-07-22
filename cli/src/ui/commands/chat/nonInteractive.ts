@@ -37,7 +37,18 @@ export async function sendNonInteractiveMessage(
   existingConversationId?: string,
   showDetails?: boolean
 ): Promise<void> {
-  const dustClient = await getDustClient();
+  const dustClientRes = await getDustClient();
+  if (dustClientRes.isErr()) {
+    console.error(
+      JSON.stringify({
+        error: "Failed to get client",
+        details: dustClientRes.error.message,
+      })
+    );
+    process.exit(1);
+  }
+
+  const dustClient = dustClientRes.value;
   if (!dustClient) {
     console.error(
       JSON.stringify({
@@ -284,7 +295,18 @@ export async function fetchAgentMessageFromConversation(
   conversationId: string,
   messageId: string
 ): Promise<void> {
-  const dustClient = await getDustClient();
+  const dustClientRes = await getDustClient();
+  if (dustClientRes.isErr()) {
+    console.error(
+      JSON.stringify({
+        error: "Failed to get client",
+        details: dustClientRes.error.message,
+      })
+    );
+    process.exit(1);
+  }
+
+  const dustClient = dustClientRes.value;
   if (!dustClient) {
     console.error(
       JSON.stringify({

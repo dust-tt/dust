@@ -230,7 +230,13 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
   const handleWorkspaceSelectionComplete = useCallback(async () => {
     setShowWorkspaceSelector(false);
     // Get user info
-    const dustClient = await getDustClient();
+    const dustClientRes = await getDustClient();
+    if (dustClientRes.isErr()) {
+      setError(dustClientRes.error.message);
+      return;
+    }
+
+    const dustClient = dustClientRes.value;
     if (!dustClient) {
       setError(
         "Failed to get Dust client. Try authenticating again using `dust login`."

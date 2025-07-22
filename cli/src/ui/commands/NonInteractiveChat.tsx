@@ -51,7 +51,19 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
         }
 
         // Get dust client
-        const dustClient = await getDustClient();
+        const dustClientRes = await getDustClient();
+        if (dustClientRes.isErr()) {
+          console.error(
+            JSON.stringify({
+              error: "Authentication Error",
+              details:
+                "Try re-logging in by running `dust logout` and `dust login`",
+            })
+          );
+          process.exit(1);
+        }
+
+        const dustClient = dustClientRes.value;
         if (!dustClient) {
           console.error(
             JSON.stringify({
@@ -118,7 +130,9 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
           console.error(
             JSON.stringify({
               error: "Multiple agents found",
-              details: `Multiple agents match "${agentSearch}": ${matchingAgents.map((a) => a.name).join(", ")}`,
+              details: `Multiple agents match "${agentSearch}": ${matchingAgents
+                .map((a) => a.name)
+                .join(", ")}`,
             })
           );
           process.exit(1);
@@ -153,4 +167,3 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
 };
 
 export default NonInteractiveChat;
-
