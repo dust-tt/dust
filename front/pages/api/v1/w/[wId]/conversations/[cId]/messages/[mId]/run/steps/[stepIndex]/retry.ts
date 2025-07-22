@@ -3,7 +3,10 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { getConversation } from "@app/lib/api/assistant/conversation";
+import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -25,7 +28,8 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<ConversationsMessagesRunStepsRetryResponseBody>
-  >
+  >,
+  auth: Authenticator
 ): Promise<void> {
   const { cId, mId, stepIndex: stepIndexParam } = req.query;
 
@@ -85,6 +89,11 @@ async function handler(
     });
   }
 
+  const conversationRes = await getConversation(auth, cId);
+  if (conversationRes.isErr()) {
+    return apiErrorForConversation(req, res, conversationRes.error);
+  }
+
   switch (req.method) {
     case "POST":
       const bodyValidation = ConversationsMessagesRunStepsRetrySchema.decode(
@@ -124,4 +133,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withPublicAPIAuthentication(handler, {
+  requiredScopes: { POST: "update:conversation" },
+});
