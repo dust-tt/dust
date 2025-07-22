@@ -42,6 +42,7 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
+  const forceAsynchronousLoop = req.query.async === "true";
 
   switch (req.method) {
     case "GET":
@@ -157,6 +158,7 @@ async function handler(
         },
         // For now we never skip tools when interacting with agents from the web client.
         skipToolsValidation: false,
+        forceAsynchronousLoop,
       });
 
       if (messageRes.isErr()) {

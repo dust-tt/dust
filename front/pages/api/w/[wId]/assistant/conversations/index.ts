@@ -74,6 +74,8 @@ async function handler(
       const { title, visibility, message, contentFragments } =
         bodyValidation.right;
 
+      const forceAsynchronousLoop = req.query.async === "true";
+
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
           message.context.clientSideMCPServerIds,
@@ -179,6 +181,7 @@ async function handler(
           },
           // For now we never skip tools when interacting with agents from the web client.
           skipToolsValidation: false,
+          forceAsynchronousLoop,
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

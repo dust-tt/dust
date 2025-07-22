@@ -339,12 +339,14 @@ export async function postUserMessage(
     mentions,
     context,
     skipToolsValidation,
+    forceAsynchronousLoop = false,
   }: {
     conversation: ConversationType;
     content: string;
     mentions: MentionType[];
     context: UserMessageContext;
     skipToolsValidation: boolean;
+    forceAsynchronousLoop?: boolean;
   }
 ): Promise<
   Result<
@@ -689,7 +691,11 @@ export async function postUserMessage(
         agentMessageRow,
       };
 
-      void runAgentWithStreaming(auth.toJSON(), { sync: true, inMemoryData });
+      void runAgentWithStreaming(
+        auth.toJSON(),
+        { sync: true, inMemoryData },
+        { forceAsynchronousLoop }
+      );
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -1126,7 +1132,11 @@ export async function editUserMessage(
         agentMessageRow,
       };
 
-      void runAgentWithStreaming(auth.toJSON(), { sync: true, inMemoryData });
+      void runAgentWithStreaming(
+        auth.toJSON(),
+        { sync: true, inMemoryData },
+        { forceAsynchronousLoop: false }
+      );
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
@@ -1344,7 +1354,11 @@ export async function retryAgentMessage(
     agentMessageRow,
   };
 
-  void runAgentWithStreaming(auth.toJSON(), { sync: true, inMemoryData });
+  void runAgentWithStreaming(
+    auth.toJSON(),
+    { sync: true, inMemoryData },
+    { forceAsynchronousLoop: false }
+  );
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
   // conversation state synchronization in multiplex mode. This is a temporary solution -
