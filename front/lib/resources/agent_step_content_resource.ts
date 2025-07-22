@@ -420,14 +420,10 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     index,
     type,
     value,
-  }: {
-    agentMessageId: ModelId;
-    workspaceId: ModelId;
-    step: number;
-    index: number;
-    type: "text_content" | "reasoning" | "function_call";
-    value: AgentContentItemType;
-  }): Promise<AgentStepContentResource> {
+  }: Omit<
+    CreationAttributes<AgentStepContentModel>,
+    "version"
+  >): Promise<AgentStepContentResource> {
     return frontSequelize.transaction(async (transaction: Transaction) => {
       const existingContent = await this.model.findAll({
         where: {
