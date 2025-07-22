@@ -1,3 +1,4 @@
+import type { WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { MCPActionType } from "@app/lib/actions/mcp";
@@ -11,14 +12,6 @@ import {
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
-
-type AgentMCPActionWithConversation = AgentMCPAction & {
-  agent_message: AgentMessage & {
-    message: Message & {
-      conversation: ConversationModel;
-    };
-  };
-};
 
 export type MCPAction = {
   sId: string;
@@ -50,7 +43,7 @@ export class AgentMCPActionsAnalytics {
   ): Promise<Result<GetMCPActionsResult, Error>> {
     const owner = auth.getNonNullableWorkspace();
 
-    const whereClause: any = {
+    const whereClause: WhereOptions<AgentMCPAction> = {
       workspaceId: owner.id,
     };
 
@@ -100,7 +93,7 @@ export class AgentMCPActionsAnalytics {
       });
 
       // Get all MCP actions for the specific agent with conversation info and limit
-      const mcpActions = (await AgentMCPAction.findAll({
+      const mcpActions = await AgentMCPAction.findAll({
         include: [
           {
             model: AgentMessage,
@@ -131,7 +124,7 @@ export class AgentMCPActionsAnalytics {
         where: whereClause,
         order: [["createdAt", "DESC"]],
         limit: limit + 1, // Fetch one extra to determine if there are more results
-      })) as AgentMCPActionWithConversation[];
+      });
 
       // Determine if there are more results and get the actual results
       const hasMore = mcpActions.length > limit;
@@ -141,7 +134,7 @@ export class AgentMCPActionsAnalytics {
         : null;
 
       const actionsData: MCPAction[] = actualActions.map((action) => {
-        const agentMessage = action.agent_message;
+        const { agentMessage } = action;
         return {
           sId: MCPActionType.modelIdToSId({
             id: action.id,
@@ -152,8 +145,8 @@ export class AgentMCPActionsAnalytics {
           params: action.params,
           executionState: action.executionState,
           isError: action.isError,
-          conversationId: agentMessage.message.conversation.sId,
-          messageId: agentMessage.message.sId,
+          conversationId: agentMessage?.message?.conversation?.sId,
+          messageId: agentMessage?.message?.sId,
         };
       });
 
