@@ -7,10 +7,10 @@ import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isString } from "@app/types";
+import { isString, Ok } from "@app/types";
 
 const ConversationsMessagesRunStepsRetrySchema = t.type({
   retryBlockedToolsOnly: t.boolean,
@@ -60,19 +60,8 @@ async function handler(
   }
 
   const conversationId = cId;
-  const agentMessageIdStr = mId;
+  const agentMessageId = mId;
   const stepIndexStr = stepIndexParam;
-
-  const agentMessageId = parseInt(agentMessageIdStr, 10);
-  if (isNaN(agentMessageId) || agentMessageId < 0) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "agentMessageId must be a valid non-negative integer",
-      },
-    });
-  }
 
   const stepIndex = parseInt(stepIndexStr, 10);
   if (isNaN(stepIndex) || stepIndex < 0) {
@@ -105,11 +94,10 @@ async function handler(
           },
         });
       }
+      logger.info("endpoint called", { conversationId, agentMessageId });
       // TODO(DURABLE-AGENTS 2025-07-21): Use step index, version and retryBlockedToolsOnly.
-      const result = await launchAgentLoopWorkflow({
-        agentMessageId,
-        conversationId,
-      });
+      // const result = await launchAgentLoopWorkflow();
+      const result = new Ok({});
 
       if (result.isErr()) {
         return apiError(req, res, {
