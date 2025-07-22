@@ -9,7 +9,12 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type {
+  AgentMessageType,
+  ContentFragmentType,
+  UserMessageType,
+  WithAPIErrorResponse,
+} from "@app/types";
 import { isString, Ok } from "@app/types";
 
 const ConversationsMessagesRunStepsRetrySchema = t.type({
@@ -63,8 +68,6 @@ async function handler(
     });
   }
 
-  const conversationId = cId;
-  const agentMessageId = mId;
   const stepIndexStr = stepIndexParam;
 
   const stepIndex = parseInt(stepIndexStr, 10);
@@ -82,6 +85,39 @@ async function handler(
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
   }
+  const conversation = conversationRes.value;
+
+  let messageAnyType:
+    | AgentMessageType
+    | UserMessageType
+    | ContentFragmentType
+    | undefined;
+  for (const messages of conversation.content) {
+    messageAnyType = messages.find((item) => item.sId === mId);
+    if (messageAnyType) {
+      break;
+    }
+  }
+
+  if (!messageAnyType) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message: `Message ${mId} not found in conversation ${cId}`,
+      },
+    });
+  }
+  if (messageAnyType.type !== "agent_message") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Message ${mId} is not an agent message`,
+      },
+    });
+  }
+  const agentMessage = messageAnyType;
 
   switch (req.method) {
     case "POST":
@@ -100,7 +136,11 @@ async function handler(
       }
       // TODO(DURABLE-AGENTS 2025-07-21): Use step index, version and retryBlockedToolsOnly.
       // const result = await launchAgentLoopWorkflow();
-      logger.info("endpoint called", { conversationId, agentMessageId });
+      logger.info("endpoint called", {
+        cId,
+        mId,
+        agentMessage,
+      });
       const result = new Ok({});
 
       if (result.isErr()) {
