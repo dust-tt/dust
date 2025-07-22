@@ -14,7 +14,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-export type MCPAction = {
+// AgentMCPAction serialized for analytics purposes.
+type AnalyticsMCPAction = {
   sId: string;
   createdAt: string;
   functionCallName: string | null;
@@ -26,7 +27,7 @@ export type MCPAction = {
 };
 
 export type GetMCPActionsResult = {
-  actions: MCPAction[];
+  actions: AnalyticsMCPAction[];
   nextCursor: string | null;
   totalCount: number;
 };
@@ -155,7 +156,7 @@ export class AgentMCPActionsAnalytics {
   }
 }
 
-function serializeMCPAction(action: AgentMCPAction): MCPAction {
+function serializeMCPAction(action: AgentMCPAction): AnalyticsMCPAction {
   assert(action.agentMessage, "Agent message must exist");
   assert(action.agentMessage.message, "Message must exist");
   assert(action.agentMessage.message.conversation, "Conversation must exist");
