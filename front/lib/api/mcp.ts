@@ -56,6 +56,7 @@ export type RemoteMCPServerType = MCPServerType & {
   cachedName?: string;
   cachedDescription?: string | null;
   sharedSecret?: string | null;
+  customHeaders?: Record<string, string> | null;
   lastSyncAt?: Date | null;
   lastError?: string | null;
   icon: CustomServerIconType | InternalAllowedIconType;

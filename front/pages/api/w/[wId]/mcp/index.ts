@@ -43,6 +43,7 @@ const PostQueryParamsSchema = t.union([
     url: t.string,
     includeGlobal: t.union([t.boolean, t.undefined]),
     sharedSecret: t.union([t.string, t.undefined]),
+    customHeaders: t.union([t.record(t.string, t.string), t.undefined]),
     useCase: t.union([
       t.literal("platform_actions"),
       t.literal("personal_actions"),
@@ -116,7 +117,7 @@ async function handler(
 
       const body = r.right;
       if (body.serverType === "remote") {
-        const { url, sharedSecret } = body;
+        const { url, sharedSecret, customHeaders } = body;
 
         if (!url) {
           return apiError(req, res, {
@@ -143,9 +144,16 @@ async function handler(
           });
         }
 
-        // Default to the shared secret if it exists.
+        let headers: Record<string, string> | undefined = undefined;
         let bearerToken = sharedSecret || null;
         let authorization: AuthorizationInfo | null = null;
+
+        if (customHeaders && Object.keys(customHeaders).length > 0) {
+          headers = customHeaders;
+          bearerToken = null;
+        } else if (sharedSecret) {
+          headers = { Authorization: `Bearer ${sharedSecret}` };
+        }
 
         // If a connectionId is provided, we use it to fetch the access token that must have been created by the admin.
         if (body.connectionId) {
@@ -156,6 +164,7 @@ async function handler(
           });
           if (token.isOk()) {
             bearerToken = token.value.access_token;
+            headers = { Authorization: `Bearer ${token.value.access_token}` };
             authorization = {
               provider: "mcp",
               supported_use_cases: ["platform_actions", "personal_actions"],
@@ -172,15 +181,7 @@ async function handler(
           }
         }
 
-        const r = await fetchRemoteServerMetaDataByURL(
-          auth,
-          url,
-          bearerToken
-            ? {
-                Authorization: `Bearer ${bearerToken}`,
-              }
-            : undefined
-        );
+        const r = await fetchRemoteServerMetaDataByURL(auth, url, headers);
         if (r.isErr()) {
           return apiError(req, res, {
             status_code: 400,
@@ -209,7 +210,8 @@ async function handler(
               ? metadata.icon
               : DEFAULT_MCP_SERVER_ICON),
           version: metadata.version,
-          sharedSecret: sharedSecret || null,
+          sharedSecret: bearerToken,
+          customHeaders: customHeaders || null,
           authorization,
           oAuthUseCase: body.useCase ?? null,
         });

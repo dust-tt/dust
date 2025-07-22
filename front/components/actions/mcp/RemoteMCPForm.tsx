@@ -14,13 +14,18 @@ import {
   PopoverTrigger,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { EditCustomHeadersSection } from "@app/components/actions/mcp/EditCustomHeadersSection";
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { isDefaultRemoteMcpServerURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import {
+  validateCustomHeaders,
+  validateCustomHeadersForSubmission,
+} from "@app/lib/actions/mcp_remote_actions/remote_mcp_custom_headers";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import {
   useSyncRemoteMCPServer,
@@ -38,6 +43,7 @@ const MCPFormSchema = z.object({
   description: z.string().min(1, "Description is required."),
   icon: z.string({ required_error: "Icon is required." }),
   sharedSecret: z.string().optional(),
+  customHeaders: z.record(z.string()).optional(),
 });
 
 export type MCPFormType = z.infer<typeof MCPFormSchema>;
@@ -45,9 +51,30 @@ export type MCPFormType = z.infer<typeof MCPFormSchema>;
 export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [customHeadersErrors, setCustomHeadersErrors] = useState<string[]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [newHeaders, setNewHeaders] = useState<Record<string, string>>({});
+  const [headersToRemove, setHeadersToRemove] = useState<string[]>([]);
 
-  // Check if this is a default server (should be read-only for name/description)
   const isDefaultServer = isDefaultRemoteMcpServerURL(mcpServer.url);
+
+  const authenticationState = useMemo(() => {
+    const hasCustomHeaders =
+      mcpServer.customHeaders &&
+      Object.keys(mcpServer.customHeaders).length > 0;
+    const hasBearerToken = mcpServer.sharedSecret && !hasCustomHeaders;
+
+    return {
+      hasCustomHeaders,
+      hasBearerToken,
+      authMethod: hasCustomHeaders
+        ? "custom-headers"
+        : hasBearerToken
+          ? "bearer"
+          : "none",
+    } as const;
+  }, [mcpServer.customHeaders, mcpServer.sharedSecret]);
 
   const form = useForm<MCPFormType>({
     resolver: zodResolver(MCPFormSchema),
@@ -56,39 +83,110 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
       description: mcpServer.description,
       icon: mcpServer.icon,
       sharedSecret: mcpServer.sharedSecret || "",
+      customHeaders: mcpServer.customHeaders || {},
     },
   });
 
-  const { url, lastError, lastSyncAt } = mcpServer;
+  useEffect(() => {
+    const errors = validateCustomHeaders(newHeaders);
+    const allErrors = [...errors];
+    if (saveError) {
+      allErrors.push(saveError);
+    }
+    setCustomHeadersErrors(allErrors);
+
+    // Clear save error when validation errors are fixed
+    if (saveError && errors.length === 0) {
+      setSaveError(null);
+    }
+  }, [newHeaders, saveError]);
 
   // Use the serverId from state for the hooks
   const { updateServer } = useUpdateMCPServer(owner, mcpServer.sId);
   const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer.sId);
+  const { url, lastError, lastSyncAt } = mcpServer;
 
   const onSubmit = useCallback(
     async (values: MCPFormType) => {
-      const updated = await updateServer({
+      setError(null);
+      setSaveError(null);
+
+      if (Object.keys(newHeaders).length > 0) {
+        const submissionErrors = validateCustomHeadersForSubmission(newHeaders);
+        if (submissionErrors.length > 0) {
+          setSaveError(submissionErrors.join(". "));
+          return;
+        }
+      }
+
+      if (authenticationState.hasBearerToken && !values.sharedSecret?.trim()) {
+        setSaveError(
+          "Bearer token is required for this server's authentication."
+        );
+        return;
+      }
+
+      const updateData: {
+        name: string;
+        description: string;
+        icon: string;
+        sharedSecret: string;
+        addCustomHeaders?: Record<string, string>;
+        removeCustomHeaders?: string[];
+      } = {
         name: values.name,
         description: values.description,
         icon: values.icon,
-        sharedSecret: values.sharedSecret,
-      });
+        sharedSecret: values.sharedSecret || "",
+      };
+
+      if (Object.keys(newHeaders).length > 0) {
+        updateData.addCustomHeaders = newHeaders;
+      }
+      if (headersToRemove.length > 0) {
+        updateData.removeCustomHeaders = headersToRemove;
+      }
+
+      const updated = await updateServer(updateData);
       if (updated) {
         form.reset(values);
+        setNewHeaders({});
+        setHeadersToRemove([]);
+        setSaveError(null);
       }
     },
-    [updateServer, form]
+    [
+      updateServer,
+      form,
+      newHeaders,
+      headersToRemove,
+      authenticationState.hasBearerToken,
+    ]
   );
 
   const handleSynchronize = useCallback(async () => {
     setIsSynchronizing(true);
     await syncServer();
     setIsSynchronizing(false);
+    setError(null);
+    setSaveError(null);
   }, [syncServer]);
 
   const closePopover = () => {
     setIsPopoverOpen(false);
   };
+
+  const isFormValid = useMemo(() => {
+    return form.formState.isValid && customHeadersErrors.length === 0;
+  }, [form.formState.isValid, customHeadersErrors]);
+
+  const hasChanges = useMemo(() => {
+    return (
+      form.formState.isDirty ||
+      Object.keys(newHeaders).length > 0 ||
+      headersToRemove.length > 0
+    );
+  }, [form.formState.isDirty, newHeaders, headersToRemove]);
 
   return (
     <div className="space-y-5 text-foreground dark:text-foreground-night">
@@ -104,6 +202,8 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           {lastError}
         </ContentMessage>
       )}
+
+      {error && <div className="text-sm text-red-600">{error}</div>}
 
       <div className="space-y-2">
         <Label htmlFor="url">Server URL</Label>
@@ -125,6 +225,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
           />
         </div>
       </div>
+
       <div className="flex items-end space-x-2">
         <div className="flex-grow">
           <Controller
@@ -212,32 +313,53 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         <CollapsibleComponent
           triggerChildren={<div className="heading-lg">Advanced Settings</div>}
           contentChildren={
-            <div className="space-y-2">
-              <Controller
-                control={form.control}
-                name="sharedSecret"
-                render={({ field }) => (
-                  <>
-                    <Input
-                      {...field}
-                      label="Bearer Token (Authorization)"
-                      isError={!!form.formState.errors.sharedSecret}
-                      message={form.formState.errors.sharedSecret?.message}
-                      placeholder="Paste the Bearer Token here"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-500-night">
-                      This will be sent alongside the request made to your
-                      server as a Bearer token in the headers.
-                    </p>
-                  </>
-                )}
-              />
+            <div className="space-y-4">
+              {!authenticationState.hasCustomHeaders && (
+                <Controller
+                  control={form.control}
+                  name="sharedSecret"
+                  render={({ field }) => (
+                    <>
+                      <Input
+                        {...field}
+                        label="Bearer Token (Authorization)"
+                        isError={!!form.formState.errors.sharedSecret}
+                        message={form.formState.errors.sharedSecret?.message}
+                        placeholder="Paste the Bearer Token here"
+                        onChange={(e) => {
+                          field.onChange(e);
+                          if (e.target.value.trim()) {
+                            form.setValue("customHeaders", {});
+                          }
+                        }}
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-500-night">
+                        This will be sent alongside the request made to your
+                        server as a Bearer token in the headers.
+                      </p>
+                    </>
+                  )}
+                />
+              )}
+
+              {!authenticationState.hasBearerToken && (
+                <EditCustomHeadersSection
+                  existingHeaders={mcpServer.customHeaders || {}}
+                  newHeaders={newHeaders}
+                  customHeadersErrors={customHeadersErrors}
+                  headersToRemove={headersToRemove}
+                  onNewHeadersChange={setNewHeaders}
+                  onRemoveExistingHeader={(key) => {
+                    setHeadersToRemove((prev) => [...prev, key]);
+                  }}
+                />
+              )}
             </div>
           }
         />
       )}
 
-      {form.formState.isDirty && (
+      {hasChanges && (
         <div className="flex flex-row items-end justify-end gap-2">
           <Button
             variant="outline"
@@ -245,13 +367,17 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
             disabled={form.formState.isSubmitting}
             onClick={() => {
               form.reset();
+              setNewHeaders({});
+              setHeadersToRemove([]);
+              setError(null);
+              setSaveError(null);
             }}
           />
 
           <Button
             variant="highlight"
             label={form.formState.isSubmitting ? "Saving..." : "Save"}
-            disabled={form.formState.isSubmitting}
+            disabled={form.formState.isSubmitting || !isFormValid}
             onClick={async (event: Event) => {
               event.preventDefault();
               void form.handleSubmit(onSubmit)();

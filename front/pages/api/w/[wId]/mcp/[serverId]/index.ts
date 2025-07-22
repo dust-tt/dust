@@ -1,6 +1,16 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import type {
+  CustomServerIconType,
+  InternalAllowedIconType,
+} from "@app/lib/actions/mcp_icons";
+import {
+  isCustomServerIconType,
+  isInternalAllowedIcon,
+} from "@app/lib/actions/mcp_icons";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -24,6 +34,33 @@ export type PatchMCPServerResponseBody = {
 export type DeleteMCPServerResponseBody = {
   deleted: boolean;
 };
+
+const IconSchema = t.refinement(
+  t.string,
+  (s): s is CustomServerIconType | InternalAllowedIconType =>
+    isCustomServerIconType(s) || isInternalAllowedIcon(s),
+  "ValidIcon"
+);
+
+const PatchRemoteMCPServerSchema = t.partial({
+  name: t.string,
+  icon: IconSchema,
+  description: t.string,
+  sharedSecret: t.string,
+  addCustomHeaders: t.record(t.string, t.string),
+  removeCustomHeaders: t.array(t.string),
+  oAuthUseCase: t.union([
+    t.literal("platform_actions"),
+    t.literal("personal_actions"),
+  ]),
+});
+
+const PatchInternalMCPServerSchema = t.partial({
+  oAuthUseCase: t.union([
+    t.literal("platform_actions"),
+    t.literal("personal_actions"),
+  ]),
+});
 
 async function handler(
   req: NextApiRequest,
@@ -122,7 +159,19 @@ async function handler(
               },
             });
           }
-          const { oAuthUseCase } = req.body;
+
+          const validation = PatchInternalMCPServerSchema.decode(req.body);
+          if (isLeft(validation)) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Invalid request body",
+              },
+            });
+          }
+
+          const { oAuthUseCase } = validation.right;
 
           if (!oAuthUseCase) {
             return apiError(req, res, {
@@ -185,14 +234,48 @@ async function handler(
             });
           }
 
-          const { name, icon, description, sharedSecret, oAuthUseCase } =
-            req.body;
+          const validation = PatchRemoteMCPServerSchema.decode(req.body);
+          if (isLeft(validation)) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Invalid request body",
+              },
+            });
+          }
+
+          const {
+            name,
+            icon,
+            description,
+            sharedSecret,
+            addCustomHeaders,
+            removeCustomHeaders,
+            oAuthUseCase,
+          } = validation.right;
+
+          let mergedHeaders: Record<string, string> | undefined = undefined;
+          if (addCustomHeaders || removeCustomHeaders) {
+            mergedHeaders = { ...server.customHeaders };
+
+            if (removeCustomHeaders) {
+              removeCustomHeaders.forEach(
+                (key: string) => delete mergedHeaders![key]
+              );
+            }
+
+            if (addCustomHeaders) {
+              Object.assign(mergedHeaders, addCustomHeaders);
+            }
+          }
 
           if (
             !name &&
             !icon &&
             !description &&
             !sharedSecret &&
+            !mergedHeaders &&
             !oAuthUseCase
           ) {
             return apiError(req, res, {
@@ -204,12 +287,13 @@ async function handler(
             });
           }
 
-          if (name || icon || description || sharedSecret) {
+          if (name || icon || description || sharedSecret || mergedHeaders) {
             const r = await server.updateMetadata(auth, {
               name,
               icon,
               description,
               sharedSecret,
+              customHeaders: mergedHeaders,
               lastSyncAt: new Date(),
             });
             if (r.isErr()) {

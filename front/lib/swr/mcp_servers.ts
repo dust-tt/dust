@@ -333,16 +333,21 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       url,
       includeGlobal,
       sharedSecret,
+      customHeaders,
       oauthConnection,
     }: {
       url: string;
       includeGlobal: boolean;
       sharedSecret?: string;
+      customHeaders?: Record<string, string>;
       oauthConnection?: MCPConnectionType;
     }): Promise<Result<CreateMCPServerResponseBody, Error>> => {
       const body: any = { url, serverType: "remote", includeGlobal };
       if (sharedSecret) {
         body.sharedSecret = sharedSecret;
+      }
+      if (customHeaders && Object.keys(customHeaders).length > 0) {
+        body.customHeaders = customHeaders;
       }
 
       if (oauthConnection) {
@@ -455,6 +460,7 @@ export function useUpdateMCPServer(
           icon: string;
           description: string;
           sharedSecret?: string;
+          customHeaders?: Record<string, string>;
         }
       | {
           oAuthUseCase: MCPOAuthUseCase;

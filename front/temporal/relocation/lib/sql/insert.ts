@@ -8,6 +8,10 @@ const JSONB_COLUMNS = [
     tableName: "agent_configurations",
     columns: ["responseFormat"],
   },
+  {
+    tableName: "remote_mcp_servers",
+    columns: ["customHeaders"],
+  },
 ];
 
 export function generateParameterizedInsertStatements(
