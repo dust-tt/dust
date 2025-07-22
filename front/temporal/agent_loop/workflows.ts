@@ -1,37 +1,23 @@
 import { proxyActivities } from "@temporalio/workflow";
 
-import type * as activities from "@app/temporal/agent_loop/activities";
+import type { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
+import type { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 
-const { planActivity, runToolActivity } = proxyActivities<typeof activities>({
+const activities = proxyActivities<{
+  runModelActivity: typeof runModelActivity;
+  runToolActivity: typeof runToolActivity;
+}>({
   startToCloseTimeout: "5 minute",
 });
 
 export async function agentLoopWorkflow({
-  agentMessageId,
-  conversationId,
+  authType,
+  runAgentArgs,
 }: {
-  agentMessageId: number;
-  conversationId: string;
+  authType: any; // Will be fixed when we have proper types
+  runAgentArgs: any; // Will be fixed when we have proper types
 }) {
-  let step = 0;
-
-  for (;;) {
-    const { maxStepsExhausted, toolCallsCount } = await planActivity({
-      agentMessageId,
-      conversationId,
-      step,
-    });
-
-    if (maxStepsExhausted || toolCallsCount === 0) {
-      return;
-    }
-
-    await Promise.all(
-      Array.from({ length: toolCallsCount }).map((_, index) =>
-        runToolActivity({ agentMessageId, conversationId, step, index })
-      )
-    );
-
-    step += 1;
-  }
+  // This workflow is a placeholder that will be filled in when we migrate
+  // the agent loop to temporal workflows
+  throw new Error("Not implemented yet");
 }
