@@ -288,12 +288,12 @@ AgentMessage.hasMany(AgentMCPAction, {
 });
 
 AgentMCPAction.belongsTo(AgentStepContentModel, {
-  foreignKey: { name: "stepContentId", allowNull: true },
+  foreignKey: { name: "stepContentId", allowNull: false },
   onDelete: "RESTRICT",
 });
 
 AgentStepContentModel.hasMany(AgentMCPAction, {
-  foreignKey: { name: "stepContentId", allowNull: true },
+  foreignKey: { name: "stepContentId", allowNull: false },
   as: "agentMCPActions",
 });
 
