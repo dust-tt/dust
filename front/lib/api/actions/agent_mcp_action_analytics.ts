@@ -20,6 +20,29 @@ type AgentMCPActionWithConversation = AgentMCPAction & {
   };
 };
 
+export type MCPAction = {
+  sId: string;
+  createdAt: string;
+  functionCallName: string | null;
+  params: Record<string, unknown>;
+  executionState: string;
+  isError: boolean;
+  conversationId: string;
+  messageId: string;
+};
+
+export type GetMCPActionsResult = {
+  actions: MCPAction[];
+  nextCursor: string | null;
+  totalCount: number;
+};
+
+export type GetMCPActionsOptions = {
+  agentConfigurationId: string;
+  limit: number;
+  cursor?: string;
+};
+
 export class AgentMCPActionsAnalytics {
   static async getMCPActionsForAgent(
     auth: Authenticator,
@@ -152,26 +175,3 @@ export class AgentMCPActionsAnalytics {
     }
   }
 }
-
-export type MCPAction = {
-  sId: string;
-  createdAt: string;
-  functionCallName: string | null;
-  params: Record<string, unknown>;
-  executionState: string;
-  isError: boolean;
-  conversationId: string;
-  messageId: string;
-};
-
-export type GetMCPActionsResult = {
-  actions: MCPAction[];
-  nextCursor: string | null;
-  totalCount: number;
-};
-
-export type GetMCPActionsOptions = {
-  agentConfigurationId: string;
-  limit: number;
-  cursor?: string;
-};
