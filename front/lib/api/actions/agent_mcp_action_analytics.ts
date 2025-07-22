@@ -25,7 +25,7 @@ export type MCPAction = {
   messageId: string;
 };
 
-type GetMCPActionsResult = {
+export type GetMCPActionsResult = {
   actions: MCPAction[];
   nextCursor: string | null;
   totalCount: number;
