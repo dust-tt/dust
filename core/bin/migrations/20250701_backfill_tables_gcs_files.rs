@@ -6,6 +6,7 @@ use dust::{
         csv::GoogleCloudStorageCSVContent,
         table::{Row, Table},
         table_schema::TableSchema,
+        table_upserts_background_worker::{REDIS_CLIENT, REDIS_TABLE_UPSERT_HASH_NAME},
     },
     databases_store::{
         gcs::GoogleCloudStorageDatabasesStore, postgres::PostgresDatabasesStore,
@@ -16,6 +17,7 @@ use dust::{
     utils,
 };
 use futures::future::try_join_all;
+use redis::AsyncCommands;
 use serde_json::Value;
 use std::collections::HashMap;
 use tikv_jemallocator::Jemalloc;
@@ -47,6 +49,12 @@ struct Args {
         default_value = "100"
     )]
     list_table_rows_timeout: u64,
+
+    #[arg(long, help = "Dump the redis queue")]
+    dump_queue: bool,
+
+    #[arg(long, help = "Redis queue item to remove")]
+    remove_queue_item: Option<String>,
 }
 
 /*
@@ -86,6 +94,17 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             .filter_map(|s| s.trim().parse::<i64>().ok())
             .collect::<Vec<_>>()
     });
+
+    if args.dump_queue {
+        dump_queue().await?;
+        return Ok(());
+    }
+
+    if let Some(key) = args.remove_queue_item {
+        remove_queue_item(&key).await?;
+        println!("Removed queue item: {}", key);
+        return Ok(());
+    }
 
     if args.verify {
         println!("Verifying migrated tables...");
@@ -294,6 +313,16 @@ async fn process_one_table(
 
     // If we got neither rows nor schema, we don't create any CSV (but we still set the migrated flag)
     if let Some(ref schema) = table_schema {
+        // MAX_TABLE_COLUMNS is set to 512 in csv.rs. We can't migrate those, but what should we do?
+        if schema.columns().len() > 512 {
+            println!(
+                "******* Table {} has too many columns ({}), skipping",
+                table.unique_id(),
+                schema.columns().len()
+            );
+            return Ok(());
+        }
+
         gcs_store
             .batch_upsert_table_rows(&table, schema, &rows, true)
             .await?;
@@ -629,4 +658,21 @@ fn dump_row(row: &Row) {
         print!("{}={}", field_name, field_value);
     }
     println!();
+}
+
+async fn dump_queue() -> Result<()> {
+    let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
+    let all_values: HashMap<String, String> =
+        redis_conn.hgetall(REDIS_TABLE_UPSERT_HASH_NAME).await?;
+
+    for (key, value) in all_values {
+        println!("{}: {}", key, value);
+    }
+    Ok(())
+}
+
+async fn remove_queue_item(key: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
+    let _: () = redis_conn.hdel(REDIS_TABLE_UPSERT_HASH_NAME, key).await?;
+    Ok(())
 }
