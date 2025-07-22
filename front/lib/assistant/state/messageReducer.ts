@@ -1,17 +1,9 @@
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { BaseAction } from "@app/lib/actions/types";
-import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import type {
-  AgentActionSuccessEvent,
-  AgentActionType,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
-  GenerationTokensEvent,
-  ToolErrorEvent,
-} from "@app/types";
+import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import type { AgentActionType } from "@app/types";
 import { assertNever } from "@app/types";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 
@@ -33,15 +25,7 @@ export interface MessageTemporaryState {
   actionProgress: ActionProgressState;
 }
 
-export type AgentMessageStateEvent =
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | AgentErrorEvent
-  | ToolErrorEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | GenerationTokensEvent
-  | ToolNotificationEvent;
+export type AgentMessageStateEvent = AgentMessageEvents | ToolNotificationEvent;
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
