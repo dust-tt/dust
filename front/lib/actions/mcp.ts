@@ -322,6 +322,7 @@ export class MCPActionType extends BaseAction {
   readonly mcpServerConfigurationId: string;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
   readonly output: CallToolResult["content"] | null;
+  // TODO(durable-agents): drop this column.
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number = -1;

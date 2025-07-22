@@ -285,7 +285,7 @@ export type AgentActionsEvent = {
   actions: Array<{
     action: ActionConfigurationType;
     inputs: Record<string, string | boolean | number>;
-    functionCallId: string | null;
+    functionCallId: string;
   }>;
 };
 

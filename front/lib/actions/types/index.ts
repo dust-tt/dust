@@ -97,7 +97,7 @@ export interface BaseActionRunParams {
   conversation: ConversationType;
   agentMessage: AgentMessageType;
   rawInputs: Record<string, unknown>;
-  functionCallId: string | null;
+  functionCallId: string;
   step: number;
   stepContentId?: ModelId;
 }
