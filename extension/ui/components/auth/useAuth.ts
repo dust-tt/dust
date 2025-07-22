@@ -8,6 +8,7 @@ import {
 import type { WorkspaceType } from "@dust-tt/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+const PROACTIVE_REFRESH_WINDOW_MS = 1000 * 60; // 1 minute
 const log = console.error;
 
 export const useAuthHook = () => {
@@ -102,7 +103,7 @@ export const useAuthHook = () => {
       setUser(savedUser);
 
       // Token refresh.
-      if (storedTokens.expiresAt <= Date.now()) {
+      if (storedTokens.expiresAt < Date.now() + PROACTIVE_REFRESH_WINDOW_MS) {
         await handleRefreshToken();
       }
 
