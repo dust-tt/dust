@@ -262,6 +262,7 @@ export function useDataSourceBuilderContext() {
 
 /**
  * Adds a path to the tree by adding it to the 'in' array and removing it from 'notIn' if present.
+ * Optimization: If a parent path is already included, don't add child paths to avoid redundancy.
  *
  * @returns New tree with the node added
  */
@@ -270,8 +271,22 @@ export function addNodeToTree(
   path: string[]
 ): DataSourceBuilderTree {
   const pathStr = path.join(".");
-  const newIn = [...tree.in];
   const newNotIn = tree.notIn.filter((notInPath) => notInPath !== pathStr);
+
+  // Check if any parent path is already in the 'in' array
+  const hasParentPath = tree.in.some((inPath) => {
+    return pathStr.startsWith(inPath + ".") || pathStr === inPath;
+  });
+
+  // If a parent path is already selected, don't add this child path
+  if (hasParentPath) {
+    return {
+      in: tree.in,
+      notIn: newNotIn,
+    };
+  }
+
+  const newIn = [...tree.in];
 
   // Don't add if already present
   if (!newIn.includes(pathStr)) {
@@ -286,6 +301,8 @@ export function addNodeToTree(
 
 /**
  * Removes a node from the tree by adding it to the 'notIn' array and removing it from 'in' if present.
+ * Also removes any child paths from 'in' that would be blocked by the exclusion.
+ * Optimization: If a parent path is already excluded, don't add redundant child exclusions.
  *
  * @returns New tree with the node removed
  */
@@ -294,8 +311,39 @@ export function removeNodeFromTree(
   path: string[]
 ): DataSourceBuilderTree {
   const pathStr = path.join(".");
-  const newIn = tree.in.filter((inPath) => inPath !== pathStr);
-  const newNotIn = [...tree.notIn];
+
+  // Check if any parent path is already excluded
+  const hasParentExclusion = tree.notIn.some((notInPath) => {
+    return pathStr.startsWith(notInPath + ".") || pathStr === notInPath;
+  });
+
+  // Remove the exact path and any child paths from 'in' array
+  // Child paths would be blocked by the exclusion anyway
+  const newIn = tree.in.filter((inPath) => {
+    // Remove exact match
+    if (inPath === pathStr) {
+      return false;
+    }
+    // Remove child paths (paths that start with pathStr + ".")
+    if (inPath.startsWith(pathStr + ".")) {
+      return false;
+    }
+    return true;
+  });
+
+  // Remove any child paths from 'notIn' array since they'll be redundant after adding parent exclusion
+  const newNotIn = tree.notIn.filter((notInPath) => {
+    // Keep paths that are not children of the path being excluded
+    return !notInPath.startsWith(pathStr + ".");
+  });
+
+  // If a parent path is already excluded, don't add this child exclusion
+  if (hasParentExclusion) {
+    return {
+      in: newIn,
+      notIn: newNotIn,
+    };
+  }
 
   // Don't add if already present
   if (!newNotIn.includes(pathStr)) {
