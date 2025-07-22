@@ -46,7 +46,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 
-const MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION = 30;
+const MIN_INSTRUCTIONS_LENGTH = 20;
 
 async function getEmojiSuggestions({
   owner,
@@ -91,7 +91,11 @@ function AgentNameInput() {
   });
 
   const handleGenerateNameSuggestions = async () => {
-    if (isGenerating) {
+    if (
+      isGenerating ||
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH
+    ) {
       return;
     }
 
@@ -151,6 +155,14 @@ function AgentNameInput() {
               icon={SparklesIcon}
               variant="outline"
               isSelect
+              disabled={
+                !instructions || instructions.length < MIN_INSTRUCTIONS_LENGTH
+              }
+              tooltip={
+                !instructions || instructions.length < MIN_INSTRUCTIONS_LENGTH
+                  ? `Add at least ${MIN_INSTRUCTIONS_LENGTH} characters to instructions to get suggestions`
+                  : undefined
+              }
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-64">
@@ -206,7 +218,11 @@ function AgentDescriptionInput() {
   };
 
   const handleGenerateDescription = async () => {
-    if (isGenerating) {
+    if (
+      isGenerating ||
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH
+    ) {
       return;
     }
 
@@ -265,6 +281,14 @@ function AgentDescriptionInput() {
               icon={SparklesIcon}
               variant="outline"
               isSelect
+              disabled={
+                !instructions || instructions.length < MIN_INSTRUCTIONS_LENGTH
+              }
+              tooltip={
+                !instructions || instructions.length < MIN_INSTRUCTIONS_LENGTH
+                  ? `Add at least 20 ${MIN_INSTRUCTIONS_LENGTH} to instructions to get suggestions`
+                  : undefined
+              }
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-80">
@@ -344,7 +368,7 @@ function AgentPictureInput() {
     if (
       !field.value &&
       instructions &&
-      instructions.length >= MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION
+      instructions.length >= MIN_INSTRUCTIONS_LENGTH
     ) {
       void updateEmojiFromSuggestions();
     }

@@ -25,6 +25,8 @@ import type {
 import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
+const MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS = 20;
+
 async function getTagsSuggestions({
   owner,
   instructions,
@@ -74,11 +76,18 @@ export function TagsSection() {
       return;
     }
 
+    const instructions = getValues("instructions");
+    if (
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
+    ) {
+      return;
+    }
+
     setTagsSuggestionsLoading(true);
     setFilteredTagsSuggestions([]);
 
     try {
-      const instructions = getValues("instructions");
       const description = getValues("agentSettings.description");
 
       const tagsSuggestionsResult = await getTagsSuggestions({
@@ -146,6 +155,22 @@ export function TagsSection() {
                 icon={SparklesIcon}
                 variant="outline"
                 isSelect
+                disabled={(() => {
+                  const instructions = getValues("instructions");
+                  return (
+                    !instructions ||
+                    instructions.length <
+                      MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
+                  );
+                })()}
+                tooltip={(() => {
+                  const instructions = getValues("instructions");
+                  return !instructions ||
+                    instructions.length <
+                      MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
+                    ? "Add at least 20 characters to instructions to get suggestions"
+                    : undefined;
+                })()}
               />
             </PopoverTrigger>
             <PopoverContent className="w-64 p-3">
