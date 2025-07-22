@@ -22,7 +22,12 @@ export function InteractiveContentHeader({
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-        <span className="min-w-0 truncate text-sm font-medium text-primary dark:text-primary-night @xxs:inline hidden">
+        <span
+          className={cn(
+            "@xxs:inline hidden min-w-0 truncate text-sm font-medium",
+            "text-primary dark:text-primary-night"
+          )}
+        >
           {title}
         </span>
         {subtitle && (
