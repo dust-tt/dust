@@ -436,6 +436,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           index,
         },
         order: [["version", "DESC"]],
+        attributes: ["version"],
         limit: 1,
         transaction,
       });
