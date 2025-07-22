@@ -45,7 +45,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 
-const MIN_INSTRUCTIONS_LENGTH = 20;
+const MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS = 20;
 
 async function getEmojiSuggestions({
   owner,
@@ -93,7 +93,7 @@ function AgentNameInput() {
     if (
       isGenerating ||
       !instructions ||
-      instructions.length < MIN_INSTRUCTIONS_LENGTH
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
     ) {
       return;
     }
@@ -155,11 +155,13 @@ function AgentNameInput() {
               variant="outline"
               isSelect
               disabled={
-                !instructions || instructions.length < MIN_INSTRUCTIONS_LENGTH
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
               }
               tooltip={
-                !instructions || instructions.length < MIN_INSTRUCTIONS_LENGTH
-                  ? `Add at least ${MIN_INSTRUCTIONS_LENGTH} characters to instructions to get suggestions`
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+                  ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to instructions to get suggestions`
                   : undefined
               }
             />
@@ -220,7 +222,7 @@ function AgentDescriptionInput() {
     if (
       isGenerating ||
       !instructions ||
-      instructions.length < MIN_INSTRUCTIONS_LENGTH
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
     ) {
       return;
     }
@@ -281,11 +283,13 @@ function AgentDescriptionInput() {
               variant="outline"
               isSelect
               disabled={
-                !instructions || instructions.length < MIN_INSTRUCTIONS_LENGTH
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
               }
               tooltip={
-                !instructions || instructions.length < MIN_INSTRUCTIONS_LENGTH
-                  ? `Add at least 20 ${MIN_INSTRUCTIONS_LENGTH} to instructions to get suggestions`
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+                  ? `Add at least 20 ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} to instructions to get suggestions`
                   : undefined
               }
             />
@@ -367,7 +371,7 @@ function AgentPictureInput() {
     if (
       !field.value &&
       instructions &&
-      instructions.length >= MIN_INSTRUCTIONS_LENGTH
+      instructions.length >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
     ) {
       void updateEmojiFromSuggestions();
     }
