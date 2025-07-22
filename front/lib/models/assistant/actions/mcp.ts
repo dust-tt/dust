@@ -192,7 +192,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare step: number;
   declare version: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
-  declare stepContentId: ForeignKey<AgentStepContentModel["id"]> | null;
+  declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
   declare isError: boolean;
   declare executionState:
