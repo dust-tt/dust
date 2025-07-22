@@ -112,56 +112,47 @@ export const DataSourceBuilderSelectorContent = ({
   }
 
   return (
-    <>
-      <div className="flex flex-col gap-4">
-        {breadcrumbItems.length > 0 && <Breadcrumbs items={breadcrumbItems} />}
+    <div className="flex flex-col gap-4">
+      {breadcrumbItems.length > 0 && <Breadcrumbs items={breadcrumbItems} />}
 
-        {currentNavigationEntry.type === "root" ? (
-          <DataSourceSpaceSelector
-            spaces={filteredSpaces}
-            allowedSpaces={allowedSpaces}
-            onSelectSpace={setSpaceEntry}
-          />
-        ) : (
-          <SearchInput
-            name="search"
-            placeholder="Search (Name)"
-            value={searchQuery}
-            onChange={setSearchQuery}
-          />
-        )}
+      {currentNavigationEntry.type === "root" ? (
+        <DataSourceSpaceSelector
+          spaces={filteredSpaces}
+          allowedSpaces={allowedSpaces}
+          onSelectSpace={setSpaceEntry}
+        />
+      ) : (
+        <SearchInput
+          name="search"
+          placeholder="Search (Name)"
+          value={searchQuery}
+          onChange={setSearchQuery}
+        />
+      )}
 
-        {currentNavigationEntry.type === "space" && (
-          <DataSourceCategoryBrowser
-            owner={owner}
-            space={currentNavigationEntry.space}
-            onSelectCategory={setCategoryEntry}
-          />
-        )}
+      {currentNavigationEntry.type === "space" && (
+        <DataSourceCategoryBrowser
+          owner={owner}
+          space={currentNavigationEntry.space}
+          onSelectCategory={setCategoryEntry}
+        />
+      )}
 
-        {(currentNavigationEntry.type === "node" ||
-          currentNavigationEntry.type === "category") && (
-          <DataSourceNodeTable
-            owner={owner}
-            viewType={viewType}
-            categoryDataSourceViews={categoryDataSourceViews}
-            selectedCategory={selectedCategory}
-            traversedNode={traversedNode}
-            onNavigate={addNodeEntry}
-            isCategoryLoading={isCategoryLoading}
-          />
-        )}
-      </div>
-      <ContextLog />
-    </>
+      {(currentNavigationEntry.type === "node" ||
+        currentNavigationEntry.type === "category") && (
+        <DataSourceNodeTable
+          owner={owner}
+          viewType={viewType}
+          categoryDataSourceViews={categoryDataSourceViews}
+          selectedCategory={selectedCategory}
+          traversedNode={traversedNode}
+          onNavigate={addNodeEntry}
+          isCategoryLoading={isCategoryLoading}
+        />
+      )}
+    </div>
   );
 };
-
-function ContextLog() {
-  const { sources } = useDataSourceBuilderContext();
-
-  return <pre>{JSON.stringify(sources, undefined, 2)}</pre>;
-}
 
 function getBreadcrumbConfig(
   entry: NavigationHistoryEntryType
