@@ -429,7 +429,7 @@ export async function runModelActivity({
   const { eventStream, dustRunId } = res.value;
   let output: {
     actions: Array<{
-      functionCallId: string | null;
+      functionCallId: string;
       name: string | null;
       arguments: Record<string, string | boolean | number> | null;
     }>;

@@ -24,7 +24,7 @@ export async function runToolActivity(
   }: {
     runAgentArgs: RunAgentArgs;
     inputs: Record<string, string | boolean | number>;
-    functionCallId: string | null;
+    functionCallId: string;
     step: number;
     stepActionIndex: number;
     stepActions: ActionConfigurationType[];
