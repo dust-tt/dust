@@ -909,12 +909,13 @@ const AgentMessageTypeSchema = z.object({
     .object({
       code: z.string(),
       message: z.string(),
+      metadata: z.record(z.any()).nullable(),
     })
     .nullable(),
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
 
-const AgentMesssageFeedbackSchema = z.object({
+const AgentMessageFeedbackSchema = z.object({
   messageId: z.string(),
   agentMessageId: z.number(),
   userId: z.number(),
@@ -1087,6 +1088,7 @@ const AgentErrorEventSchema = z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),
+    metadata: z.record(z.any()).nullable(),
   }),
 });
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
@@ -1610,7 +1612,7 @@ export type CreateConversationResponseType = z.infer<
 >;
 
 export const GetFeedbacksResponseSchema = z.object({
-  feedbacks: z.array(AgentMesssageFeedbackSchema),
+  feedbacks: z.array(AgentMessageFeedbackSchema),
 });
 
 export type GetFeedbacksResponseType = z.infer<
