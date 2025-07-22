@@ -117,10 +117,11 @@ export async function getSlackClient(
   }
   const slackClient = new WebClient(slackAccessToken, {
     timeout: SLACK_NETWORK_TIMEOUT_MS,
-    retryConfig: {
-      retries: 1,
-      factor: 1,
-    },
+    rejectRateLimitedCalls: true,
+    // retryConfig: {
+    //   retries: 1,
+    //   factor: 1,
+    // },
   });
 
   return slackClient;
