@@ -19,6 +19,7 @@ import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_cont
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -26,7 +27,10 @@ import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 import { Err, Ok } from "@app/types";
-import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
+import type {
+  AgentContentItemType,
+  AgentStepContentType,
+} from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -407,5 +411,51 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     }
 
     return base;
+  }
+
+  static async createNewVersion({
+    agentMessageId,
+    workspaceId,
+    step,
+    index,
+    type,
+    value,
+  }: {
+    agentMessageId: ModelId;
+    workspaceId: ModelId;
+    step: number;
+    index: number;
+    type: "text_content" | "reasoning" | "function_call";
+    value: AgentContentItemType;
+  }): Promise<AgentStepContentResource> {
+    return frontSequelize.transaction(async (transaction: Transaction) => {
+      const existingContent = await this.model.findAll({
+        where: {
+          agentMessageId,
+          step,
+          index,
+        },
+        order: [["version", "DESC"]],
+        attributes: ["version"],
+        limit: 1,
+        transaction,
+      });
+
+      const currentMaxVersion =
+        existingContent.length > 0 ? existingContent[0].version + 1 : 0;
+
+      return this.makeNew(
+        {
+          agentMessageId,
+          workspaceId,
+          step,
+          index,
+          version: currentMaxVersion,
+          type,
+          value,
+        },
+        transaction
+      );
+    });
   }
 }
