@@ -1,4 +1,5 @@
 import { assertNever } from "@dust-tt/client";
+import { Storage } from "@google-cloud/storage";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
@@ -37,6 +38,7 @@ import {
   DATABASE_PROCESSING_INTERVAL_MS,
   DATABASE_TO_CSV_MAX_SIZE,
 } from "@connectors/connectors/notion/temporal/config";
+import { connectorsConfig } from "@connectors/connectors/shared/config";
 import {
   dataSourceConfigFromConnector,
   dataSourceInfoFromConnector,
@@ -82,6 +84,7 @@ import type { DataSourceConfig } from "@connectors/types";
 import {
   getNotionDatabaseTableId,
   INTERNAL_MIME_TYPES,
+  isDevelopment,
   slugify,
 } from "@connectors/types";
 
@@ -3154,6 +3157,89 @@ export async function markDatabasesAsUpserted({
   );
 
   return { isNewDatabase: !db.lastUpsertedRunTs, isMissing: false };
+}
+
+export async function getResourcesFromGCSFile({
+  gcsFilePath,
+}: {
+  gcsFilePath: string;
+}): Promise<
+  Array<{
+    resourceId: string;
+    resourceType: "page" | "database";
+  }>
+> {
+  const logger = mainLogger.child({ gcsFilePath });
+
+  const storage = new Storage({
+    keyFilename: isDevelopment()
+      ? connectorsConfig.getServiceAccount()
+      : undefined,
+  });
+  const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
+
+  try {
+    // Validate file metadata for security
+    const file = bucket.file(gcsFilePath);
+    const [metadata] = await file.getMetadata();
+
+    // Check if this is a Dust internal file
+    if (metadata.metadata?.dustInternal !== "notion-accessibility-check") {
+      throw new Error(
+        "Invalid file: not a Dust internal accessibility check file"
+      );
+    }
+
+    const [content] = await file.download();
+
+    const lines = content.toString().trim().split("\n");
+
+    // Validate file has content (at least header + 1 data line)
+    if (lines.length < 2) {
+      throw new Error(
+        `GCS file ${gcsFilePath} is empty or only contains header`
+      );
+    }
+
+    const resources: Array<{
+      resourceId: string;
+      resourceType: "page" | "database";
+    }> = [];
+
+    // Skip header
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line || !line.trim()) {
+        continue;
+      }
+
+      const [resourceId, resourceType] = line.split(",").map((s) => s.trim());
+      if (
+        resourceId &&
+        (resourceType === "page" || resourceType === "database")
+      ) {
+        resources.push({
+          resourceId,
+          resourceType: resourceType as "page" | "database",
+        });
+      }
+    }
+
+    // Ensure we found at least one valid resource
+    if (resources.length === 0) {
+      throw new Error(`No valid resources found in GCS file ${gcsFilePath}`);
+    }
+
+    logger.info(
+      { resourceCount: resources.length },
+      "[NOTION_RESOURCE_CHECK] Loaded resources from GCS file"
+    );
+
+    return resources;
+  } catch (error) {
+    logger.error({ error }, "Failed to read resources from GCS file");
+    throw new Error(`Failed to read GCS file: ${gcsFilePath}`);
+  }
 }
 
 export async function checkResourceAccessibility({
