@@ -57,8 +57,35 @@ describe("DataSourceBuilder utilities", () => {
       };
       const result = addNodeToTree(tree, ["root", "a"]);
       expect(result).toEqual({
+        root: {},
+      });
+    });
+
+    it("should remove node from deep excludes when adding it", () => {
+      const tree = {
         root: {
-          excludes: [],
+          childs: {
+            a: {
+              childs: {
+                b: {
+                  excludes: ["c"],
+                },
+              },
+            },
+          },
+        },
+      };
+
+      const result = addNodeToTree(tree, ["root", "a", "b", "c"]);
+      expect(result).toEqual({
+        root: {
+          childs: {
+            a: {
+              childs: {
+                b: {},
+              },
+            },
+          },
         },
       });
     });
@@ -135,6 +162,70 @@ describe("DataSourceBuilder utilities", () => {
           childs: {},
         },
       });
+    });
+
+    it("should add excludes in nested tree", () => {
+      const tree = {
+        root: {
+          childs: {
+            a: {
+              childs: {
+                b: {},
+              },
+            },
+          },
+        },
+      };
+
+      const result = removeNodeFromTree(tree, ["root", "a", "b", "c"]);
+      expect(result).toEqual({
+        root: {
+          childs: {
+            a: {
+              childs: {
+                b: {
+                  excludes: ["c"],
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it("should add node and excludes for deep nested tree", () => {
+      const tree = {
+        root: {
+          childs: {
+            a: {
+              childs: {
+                b: {},
+              },
+            },
+          },
+        },
+      };
+
+      expect(isNodeSelected(tree, ["root", "a", "b", "e"])).toBe(true);
+      const result = removeNodeFromTree(tree, ["root", "a", "b", "c", "d"]);
+      expect(result).toEqual({
+        root: {
+          childs: {
+            a: {
+              childs: {
+                b: {
+                  childs: {
+                    c: {
+                      excludes: ["d"],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+      expect(isNodeSelected(tree, ["root", "a", "b", "e"])).toBe(true);
     });
   });
 

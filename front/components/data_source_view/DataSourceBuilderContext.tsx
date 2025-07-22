@@ -257,116 +257,123 @@ export function replaceDotsWithChilds(input: string): string {
 }
 
 /**
- * Add a path to the given tree.
+ * Adds a path to the tree by either:
+ * 1. Removing it from parent's excludes list if present
+ * 2. Creating a new empty node at the path location
  *
- * @returns - A new tree with the node added
+ * @returns New tree with the node added
  */
 export function addNodeToTree(
   tree: DataSourceBuilderTree,
   path: string[]
 ): DataSourceBuilderTree {
   const newTree = { ...tree };
-  const leaf = path[path.length - 1];
+  const nodeName = path[path.length - 1];
+  const parentPath = replaceDotsWithChilds(path.slice(0, -1).join("."));
+  const parentNode = get(newTree, parentPath);
 
-  const parentPath = replaceDotsWithChilds(
-    path.slice(0, path.length - 1).join(".")
-  );
-  const parent = get(newTree, parentPath);
+  if (parentNode?.excludes?.includes(nodeName)) {
+    // Remove from excludes if present
+    const exludesPath = `${parentPath}.excludes`;
+    const newExcludes = parentNode.excludes.filter((n) => n !== nodeName);
 
-  // If node is only in excludes, we remove it from it
-  if (parent?.excludes?.includes(leaf)) {
-    set(
-      newTree,
-      parentPath + ".excludes",
-      (parent.excludes ?? []).filter((path) => path !== leaf)
-    );
+    if (newExcludes.length <= 0) {
+      unset(newTree, exludesPath);
+    } else {
+      set(newTree, exludesPath, newExcludes);
+    }
   } else {
-    // Otherwise we can add it a new node
+    // Create new empty node
     set(newTree, replaceDotsWithChilds(path.join(".")), {});
   }
 
   return newTree;
 }
 
+/**
+ * Removes a node from the tree by either:
+ * 1. Removing it from parent's childs if present
+ * 2. Adding it to parent's excludes list
+ * 3. Cleaning up empty parent nodes
+ * 4. Creating new parent with node in excludes if parent doesn't exist
+ *
+ * @returns New tree with the node removed
+ */
 export function removeNodeFromTree(
   tree: DataSourceBuilderTree,
   path: string[]
 ): DataSourceBuilderTree {
-  const leaf = path[path.length - 1];
   const newTree = { ...tree };
-
-  const parentPath = replaceDotsWithChilds(
-    path.slice(0, path.length - 1).join(".")
-  );
+  const nodeName = path[path.length - 1];
+  const parentPath = replaceDotsWithChilds(path.slice(0, -1).join("."));
   const parentNode = get(newTree, parentPath);
 
-  if (parentNode) {
-    if (parentNode.childs && leaf in parentNode.childs) {
-      unset(newTree, parentPath + ".childs." + leaf);
-    } else {
-      if (!parentNode.excludes) {
-        parentNode.excludes = [];
-      }
-      parentNode.excludes.push(leaf);
-    }
+  if (!parentNode) {
+    // Create new parent with node in excludes
+    set(newTree, parentPath, { excludes: [nodeName] });
+    return newTree;
+  }
 
-    if (parentNode.childs && Object.keys(parentNode.childs).length <= 0) {
+  // Remove from childs or add to excludes
+  if (parentNode.childs?.[nodeName]) {
+    unset(newTree, `${parentPath}.childs.${nodeName}`);
+    if (Object.keys(parentNode.childs).length === 0) {
       delete parentNode.childs;
     }
-
-    // If everything is empty for the parent node, we remove it
-    if (
-      (!parentNode.childs || Object.keys(parentNode.childs).length <= 0) &&
-      (!parentNode.excludes || parentNode.excludes.length <= 0)
-    ) {
-      unset(newTree, parentPath);
-    }
   } else {
-    set(newTree, parentPath, { excludes: [path[path.length - 1]] });
+    parentNode.excludes = [...(parentNode.excludes || []), nodeName];
+  }
+
+  // Clean up empty parent
+  if (
+    !parentNode.childs &&
+    (!parentNode.excludes || parentNode.excludes.length === 0)
+  ) {
+    unset(newTree, parentPath);
   }
 
   return newTree;
 }
 
 /**
- * Check wether or not a given path should be selected.
- * Selected mean it's specifically selected or a parents is selected
- * and it's not ignored.
+ * Determines if a path should be selected based on tree configuration.
+ * A path is selected if:
+ * 1. Any ancestor node is fully selected (no excludes, no childs)
+ * 2. The specific node is included in its parent's childs
+ * 3. The node is not in its parent's excludes list
  */
 export function isNodeSelected(
   tree: DataSourceBuilderTree,
   path: string[]
 ): boolean {
   for (let i = path.length - 1; i >= 0; i--) {
-    const leaf = path[i];
-    const sections = path.slice(0, i); // Ignore the leaf
-    const currentPath = replaceDotsWithChilds(sections.join("."));
-    const node = get(tree, currentPath);
+    const currentNodeName = path[i];
+    const ancestorPath = replaceDotsWithChilds(path.slice(0, i).join("."));
+    const ancestorNode = get(tree, ancestorPath);
 
-    // The current node doesn't exist, we can continue going up in the tree
-    if (node == null) {
+    if (!ancestorNode) {
       continue;
     }
 
-    // It's selected if the parent has no childs and no excludes
+    // Case 1: Ancestor is fully selected (no excludes/childs)
     if (
-      node.excludes &&
-      node.excludes.length <= 0 &&
-      Object.keys(node.childs ?? {}).length <= 0
+      !ancestorNode.excludes?.length &&
+      !Object.keys(ancestorNode.childs ?? {}).length
     ) {
       return true;
-    } else if (node.excludes?.includes(leaf)) {
-      // OR
-      // it's not in the excludes or in the childs
+    }
+
+    // Case 2: Node is explicitly excluded
+    if (ancestorNode.excludes?.includes(currentNodeName)) {
       return false;
     }
 
-    // If the parent has some childs
-    if (node.childs != null) {
-      // we can check if it includes the given node
-      return node.childs[leaf] != null;
+    // Case 3: Node is explicitly included in childs
+    if (ancestorNode.childs) {
+      return !!ancestorNode.childs[currentNodeName];
     }
   }
+
   return false;
 }
 
