@@ -142,10 +142,7 @@ export async function botAnswerMessage(
       // This means that the message has been deleted, so we don't need to send an error message.
       return new Ok(undefined);
     }
-    const slackClient = await getSlackClient(connector.id, {
-      // Do not reject rate limited calls in bot answer message.
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(connector.id);
     try {
       reportSlackUsage({
         connectorId: connector.id,
@@ -220,10 +217,7 @@ export async function botReplaceMention(
       },
       "Unexpected exception updating mention on Chat Bot message"
     );
-    const slackClient = await getSlackClient(connector.id, {
-      // Do not reject rate limited calls in bot replace mention.
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(connector.id);
     reportSlackUsage({
       connectorId: connector.id,
       method: "chat.postMessage",
@@ -324,10 +318,7 @@ export async function botValidateToolExecution(
         );
       }
     }
-    const slackClient = await getSlackClient(connector.id, {
-      // Do not reject rate limited calls in bot validate tool execution.
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(connector.id);
 
     reportSlackUsage({
       connectorId: connector.id,
@@ -352,10 +343,7 @@ export async function botValidateToolExecution(
       },
       "Unexpected exception validating tool execution"
     );
-    const slackClient = await getSlackClient(connector.id, {
-      // Do not reject rate limited calls in bot validate tool execution.
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(connector.id);
 
     reportSlackUsage({
       connectorId: connector.id,
@@ -404,10 +392,7 @@ async function processErrorResult(
       slackChatBotMessage?.conversationId
     );
 
-    const slackClient = await getSlackClient(connector.id, {
-      // Do not reject rate limited calls in process error result.
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(connector.id);
 
     const errorPost = makeErrorBlock(
       conversationUrl,
@@ -479,10 +464,7 @@ async function answerMessage(
   }
 
   // We start by retrieving the slack user info.
-  const slackClient = await getSlackClient(connector.id, {
-    // Do not reject rate limited calls in answer message.
-    rejectRateLimitedCalls: false,
-  });
+  const slackClient = await getSlackClient(connector.id);
 
   let slackUserInfo: SlackUserInfo | null = null;
 
