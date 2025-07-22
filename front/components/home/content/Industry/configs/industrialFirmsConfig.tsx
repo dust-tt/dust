@@ -45,23 +45,23 @@ export const industrialFirmsConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Give every team the power of AI—leave nobody behind",
+        title: "Break down knowledge silos across functions",
         description:
-          "From sales teams crafting proposals to technicians troubleshooting equipment, ensure every department has access to the same AI-powered capabilities. No more digital divides between functions.",
+          "Make technical expertise, safety procedures, and commercial knowledge instantly accessible to every employee across manufacturing, engineering, sales, and operations.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Give everyone access to your best knowledge",
+        title: "Eliminate manual processes that drain productivity",
         description:
-          "Your organization has decades of technical knowledge and commercial experience. Make that expertise instantly available to every employee, regardless of their role or experience level.",
+          "Let AI handle repetitive tasks like processing vendor documents, navigating compliance manuals, or updating systems while experts focus on strategic work.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Accelerate operations without sacrificing precision",
+        title: "Connect systems while maintaining security control",
         description:
-          "Speed up everything from compliance documentation to customer responses while maintaining the quality and standards your industry demands. Let AI handle routine tasks so your teams focus on strategic work.",
+          "Unify scattered enterprise systems—CRM, ERP, SharePoint, technical databases—into one intelligent platform with enterprise-grade security and departmental access control.",
         color: "green",
       },
     ],
