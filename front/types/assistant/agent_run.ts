@@ -65,21 +65,43 @@ export async function getRunAgentData(
 
   const conversation = conversationRes.value;
 
-  // Here, we assume that both the user message and agent message have been added to the
-  // conversation.content array. Flatten all message arrays to find individual messages.
-  const allMessages = conversation.content.flat();
+  // Find messages by searching in reverse order since we are likely working on recent messages.
+  let userMessage: UserMessageType | undefined;
+  let agentMessage: AgentMessageType | undefined;
+  let found = false;
 
-  const userMessage = allMessages.find(
-    (m) => m.sId === userMessageId && isUserMessageType(m)
-  );
-  if (!userMessage || !isUserMessageType(userMessage)) {
+  // Search in reverse order - most recent message groups first.
+  for (let i = conversation.content.length - 1; i >= 0 && !found; i--) {
+    const messageGroup = conversation.content[i];
+    for (const message of messageGroup) {
+      if (
+        !userMessage &&
+        message.sId === userMessageId &&
+        isUserMessageType(message)
+      ) {
+        userMessage = message;
+      }
+      if (
+        !agentMessage &&
+        message.sId === agentMessageId &&
+        isAgentMessageType(message)
+      ) {
+        agentMessage = message;
+      }
+
+      // Early exit if we found both messages.
+      if (userMessage && agentMessage) {
+        found = true;
+        break;
+      }
+    }
+  }
+
+  if (!userMessage) {
     return new Err(new Error("User message not found"));
   }
 
-  const agentMessage = allMessages.find(
-    (m) => m.sId === agentMessageId && isAgentMessageType(m)
-  );
-  if (!agentMessage || !isAgentMessageType(agentMessage)) {
+  if (!agentMessage) {
     return new Err(new Error("Agent message not found"));
   }
 
@@ -102,6 +124,7 @@ export async function getRunAgentData(
     return new Err(new Error("Agent message database row not found"));
   }
 
+  // Fetch the agent configuration as we need the full version of the agent configuration.
   const agentConfiguration = await getAgentConfiguration(
     auth,
     agentMessage.configuration.sId,
