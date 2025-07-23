@@ -277,41 +277,6 @@ export async function submitAgentBuilderForm({
 
     const agentConfiguration = result.agentConfiguration;
 
-    // Export agent configuration to YAML
-    if (!isDraft) {
-      try {
-        const yamlRequest = { formData, isDraft };
-
-        const yamlResponse = await fetch(
-          `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/yaml`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(yamlRequest),
-          }
-        );
-
-        const yamlResult = await yamlResponse.json();
-
-        if (yamlResult.success) {
-          console.log(
-            "Agent YAML configuration exported successfully to:",
-            yamlResult.filePath
-          );
-        } else {
-          console.error(
-            "Failed to export agent configuration to YAML:",
-            yamlResult.error
-          );
-        }
-      } catch (error) {
-        // Don't fail the entire submission if YAML export fails
-        console.error("Failed to export agent configuration to YAML:", error);
-      }
-    }
-
     const { slackChannels, slackProvider } = formData.agentSettings;
     // PATCH the linked Slack channels if either:
     // - there were already linked channels

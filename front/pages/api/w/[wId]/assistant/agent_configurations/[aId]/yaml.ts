@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
-import { saveYAMLFile } from "@app/lib/agent_yaml_converter/file_operations";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -12,7 +11,6 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 export const yamlAPIRequestSchema = z.object({
   formData: agentBuilderFormSchema,
-  isDraft: z.boolean().default(false),
 });
 
 export type YamlAPIResponse = {
@@ -55,7 +53,7 @@ async function handler(
   try {
     const user = auth.getNonNullableUser();
 
-    const { formData, isDraft } = yamlAPIRequestSchema.parse(req.body);
+    const { formData } = yamlAPIRequestSchema.parse(req.body);
 
     // Get the agent configuration to access the version
     const agentConfiguration = await getAgentConfiguration(
@@ -104,16 +102,6 @@ async function handler(
         },
       });
     }
-
-    // Save YAML content to file for debugging
-    const yamlContent = yamlStringResult.value;
-    const filePath = await saveYAMLFile(
-      yamlContent,
-      agentSId,
-      owner.sId,
-      isDraft,
-      user.sId
-    );
 
     return res.status(200).json({
       yamlContent,
