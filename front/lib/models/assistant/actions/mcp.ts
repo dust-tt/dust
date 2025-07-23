@@ -183,13 +183,6 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
 
   declare mcpServerConfigurationId: string;
 
-  declare params: Record<string, unknown>;
-
-  // TODO(durable-agents): drop this column (in addition to params and functionCallName).
-  declare functionCallId: string | null;
-  declare functionCallName: string | null;
-
-  declare step: number;
   declare version: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
@@ -220,22 +213,6 @@ AgentMCPAction.init(
     },
     mcpServerConfigurationId: {
       type: DataTypes.STRING,
-      allowNull: false,
-    },
-    params: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-    },
-    functionCallId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    functionCallName: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    step: {
-      type: DataTypes.INTEGER,
       allowNull: false,
     },
     version: {
