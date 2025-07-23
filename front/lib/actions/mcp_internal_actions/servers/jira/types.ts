@@ -7,6 +7,7 @@ export const FIELD_MAPPINGS = {
   assignee: { jqlField: "assignee" },
   dueDate: { jqlField: "dueDate" },
   issueType: { jqlField: "issueType" },
+  labels: { jqlField: "labels" },
   priority: { jqlField: "priority" },
   parentIssueKey: { jqlField: "parent" },
   project: { jqlField: "project" },
@@ -68,6 +69,7 @@ export const JiraIssueFieldsSchema = z
       })
       .nullable(),
     labels: z.array(z.string()).nullable(),
+    duedate: z.string().nullable().optional(),
     parent: z
       .object({
         key: z.string(),
@@ -123,7 +125,7 @@ export const JiraCommentSchema = z.object({
 });
 
 export const JiraCreateMetaSchema = z.object({
-  fields: z.record(z.string(), z.unknown()),
+  fields: z.array(z.unknown()), // JIRA returns an array of field definitions, not an object
 });
 
 export const JiraSearchResultSchema = z.object({
@@ -221,6 +223,62 @@ export const JiraTransitionRequestSchema = z.object({
     .optional(),
 });
 
+export const JiraIssueLinkTypeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  inward: z.string(),
+  outward: z.string(),
+});
+
+export const JiraIssueLinkSchema = z.object({
+  id: z.string(),
+  type: JiraIssueLinkTypeSchema,
+  inwardIssue: z
+    .object({
+      key: z.string(),
+      fields: z
+        .object({
+          summary: z.string(),
+        })
+        .optional(),
+    })
+    .optional(),
+  outwardIssue: z
+    .object({
+      key: z.string(),
+      fields: z
+        .object({
+          summary: z.string(),
+        })
+        .optional(),
+    })
+    .optional(),
+});
+
+export const JiraCreateIssueLinkRequestSchema = z.object({
+  type: z.object({
+    name: z
+      .string()
+      .describe("Link type name (e.g., 'Blocks', 'Relates', 'Duplicates')"),
+  }),
+  inwardIssue: z.object({
+    key: z
+      .string()
+      .describe("Issue key that will be on the 'inward' side of the link"),
+  }),
+  outwardIssue: z.object({
+    key: z
+      .string()
+      .describe("Issue key that will be on the 'outward' side of the link"),
+  }),
+  comment: z
+    .object({
+      body: z.string(),
+    })
+    .optional()
+    .describe("Optional comment when creating the link"),
+});
+
 export const JiraIssueTypeSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -239,4 +297,9 @@ export type JiraUserInfo = z.infer<typeof JiraUserInfoSchema>;
 export type JiraConnectionInfo = z.infer<typeof JiraConnectionInfoSchema>;
 export type JiraCreateIssueRequest = z.infer<
   typeof JiraCreateIssueRequestSchema
+>;
+export type JiraIssueLink = z.infer<typeof JiraIssueLinkSchema>;
+export type JiraIssueLinkType = z.infer<typeof JiraIssueLinkTypeSchema>;
+export type JiraCreateIssueLinkRequest = z.infer<
+  typeof JiraCreateIssueLinkRequestSchema
 >;

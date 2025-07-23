@@ -337,12 +337,15 @@ export const INTERNAL_MCP_SERVERS: Record<
       get_issue_types: "never_ask",
       get_issue_fields: "never_ask",
       get_connection_info: "never_ask",
+      get_issue_link_types: "never_ask",
 
       // Update operations - low stakes
       create_comment: "low",
       transition_issue: "low",
       create_issue: "low",
       update_issue: "low",
+      create_issue_link: "low",
+      delete_issue_link: "low",
     },
   },
   search: {

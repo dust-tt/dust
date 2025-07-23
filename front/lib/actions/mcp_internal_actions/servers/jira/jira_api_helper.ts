@@ -8,8 +8,8 @@ import { createJQLFromSearchFilters } from "@app/lib/actions/mcp_internal_action
 import type {
   JiraConnectionInfoSchema,
   JiraCreateCommentRequestSchema,
+  JiraCreateIssueLinkRequestSchema,
   JiraCreateIssueRequestSchema,
-  JiraCreateMetaSchema,
   JiraErrorResult,
   JiraSearchRequestSchema,
   JiraSearchResult,
@@ -19,6 +19,8 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
 import {
   JiraCommentSchema,
+  JiraCreateMetaSchema,
+  JiraIssueLinkTypeSchema,
   JiraIssueSchema,
   JiraIssueTypeSchema,
   JiraProjectSchema,
@@ -33,6 +35,17 @@ import {
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
+
+// Generic helper to handle errors consistently
+function handleResults<T>(
+  result: Result<T, JiraErrorResult>,
+  defaultValue: T
+): Result<T, JiraErrorResult> {
+  if (result.isErr() && result.error.includes("404")) {
+    return new Ok(defaultValue);
+  }
+  return result;
+}
 
 // Generic wrapper for JIRA API calls with validation
 async function jiraApiCall<T extends z.ZodTypeAny>(
@@ -69,19 +82,8 @@ async function jiraApiCall<T extends z.ZodTypeAny>(
     }
 
     const responseText = await response.text();
-
-    // Handle empty responses for successful status codes (like 204 No Content)
-    if (!responseText && response.status >= 200 && response.status < 300) {
-      // Only try to parse undefined for void schemas
-      if (schema === z.void()) {
-        return new Ok(undefined);
-      }
-      // For other schemas, return an error if we get empty response unexpectedly
-      return new Err("Unexpected empty response from JIRA API");
-    }
-
     if (!responseText) {
-      return new Err("Empty response from JIRA API");
+      return new Ok(undefined);
     }
 
     const rawData = JSON.parse(responseText);
@@ -117,21 +119,23 @@ export async function getIssue({
     JiraIssueSchema,
     { baseUrl }
   );
-  if (result.isErr()) {
-    // Handle 404 as "not found" rather than an error
-    if (result.error.includes("404")) {
-      return new Ok(null);
-    }
-    return result;
+
+  const handledResult = handleResults(result, null);
+  if (handledResult.isErr()) {
+    return handledResult;
   }
+  if (handledResult.value === null) {
+    return new Ok(null);
+  }
+
   const resourceInfo = await getJiraResourceInfo(accessToken);
   if (resourceInfo) {
-    result.value = {
-      ...result.value,
-      browseUrl: `${resourceInfo.url}/browse/${result.value.key}`,
+    handledResult.value = {
+      ...handledResult.value,
+      browseUrl: `${resourceInfo.url}/browse/${handledResult.value.key}`,
     };
   }
-  return new Ok(result.value);
+  return new Ok(handledResult.value);
 }
 
 export async function getProjects(
@@ -148,7 +152,8 @@ export async function getProjects(
     z.array(JiraProjectSchema),
     { baseUrl }
   );
-  return result;
+
+  return handleResults(result, []);
 }
 
 export async function getProject(
@@ -164,14 +169,8 @@ export async function getProject(
     JiraProjectSchema,
     { baseUrl }
   );
-  if (result.isErr()) {
-    // Handle 404 as "not found" rather than an error
-    if (result.error.includes("404")) {
-      return new Ok(null);
-    }
-    return result;
-  }
-  return result;
+
+  return handleResults(result, null);
 }
 
 export async function getTransitions(
@@ -189,7 +188,8 @@ export async function getTransitions(
     JiraTransitionsSchema,
     { baseUrl }
   );
-  return result;
+
+  return handleResults(result, null);
 }
 
 // Jira resource and URL utilities
@@ -281,15 +281,7 @@ export async function createComment(
     }
   );
 
-  if (result.isErr()) {
-    // Handle 404 as "not found" rather than an error
-    if (result.error.includes("404")) {
-      return new Ok(null);
-    }
-    return result;
-  }
-
-  return result;
+  return handleResults(result, null);
 }
 
 export async function searchIssues(
@@ -385,11 +377,12 @@ export async function getIssueTypes(
     { baseUrl }
   );
 
-  if (result.isErr()) {
-    return result;
+  const handledResult = handleResults(result, { issueTypes: [] });
+  if (handledResult.isErr()) {
+    return handledResult;
   }
 
-  return new Ok(result.value?.issueTypes || []);
+  return new Ok(handledResult.value?.issueTypes || []);
 }
 
 export async function getIssueFields(
@@ -397,17 +390,20 @@ export async function getIssueFields(
   accessToken: string,
   projectKey: string,
   issueTypeId: string
-): Promise<Result<z.infer<typeof JiraCreateMetaSchema>, JiraErrorResult>> {
-  const LenientSchema = z.any();
+): Promise<
+  Result<z.infer<typeof JiraCreateMetaSchema> | null, JiraErrorResult>
+> {
   const endpoint = `/rest/api/3/issue/createmeta/${projectKey}/issuetypes/${issueTypeId}`;
-  return jiraApiCall(
+  const result = await jiraApiCall(
     {
       endpoint,
       accessToken,
     },
-    LenientSchema,
+    JiraCreateMetaSchema,
     { baseUrl }
   );
+
+  return handleResults(result, null);
 }
 
 async function getUserInfo(
@@ -486,15 +482,7 @@ export async function transitionIssue(
     }
   );
 
-  if (result.isErr()) {
-    // Handle 404 as "not found" rather than an error
-    if (result.error.includes("404")) {
-      return new Ok(null);
-    }
-    return result;
-  }
-
-  return result;
+  return handleResults(result, null);
 }
 
 export async function createIssue(
@@ -548,12 +536,9 @@ export async function updateIssue(
     }
   );
 
-  if (result.isErr()) {
-    // Handle 404 as "not found" rather than an error
-    if (result.error.includes("404")) {
-      return new Ok(null);
-    }
-    return result;
+  const handledResult = handleResults(result, undefined);
+  if (handledResult.isErr()) {
+    return handledResult;
   }
 
   const responseData = { issueKey };
@@ -573,6 +558,94 @@ type WithAuthParams = {
   authInfo?: AuthInfo;
   action: (baseUrl: string, accessToken: string) => Promise<CallToolResult>;
 };
+
+export async function createIssueLink(
+  baseUrl: string,
+  accessToken: string,
+  linkData: z.infer<typeof JiraCreateIssueLinkRequestSchema>
+): Promise<Result<void, JiraErrorResult>> {
+  const requestBody = { ...linkData };
+
+  // If there's a comment, transform it to JIRA document format
+  if (
+    requestBody.comment?.body &&
+    typeof requestBody.comment.body === "string"
+  ) {
+    const commentText = requestBody.comment.body;
+    (requestBody.comment as any).body = {
+      type: "doc",
+      version: 1,
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: commentText,
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  const result = await jiraApiCall(
+    {
+      endpoint: "/rest/api/3/issueLink",
+      accessToken,
+    },
+    z.void(),
+    {
+      method: "POST",
+      body: requestBody,
+      baseUrl,
+    }
+  );
+
+  return handleResults(result, undefined);
+}
+
+export async function deleteIssueLink(
+  baseUrl: string,
+  accessToken: string,
+  linkId: string
+): Promise<Result<void, JiraErrorResult>> {
+  const result = await jiraApiCall(
+    {
+      endpoint: `/rest/api/3/issueLink/${linkId}`,
+      accessToken,
+    },
+    z.void(),
+    {
+      method: "DELETE",
+      baseUrl,
+    }
+  );
+
+  return result;
+}
+
+export async function getIssueLinkTypes(
+  baseUrl: string,
+  accessToken: string
+): Promise<Result<z.infer<typeof JiraIssueLinkTypeSchema>[], JiraErrorResult>> {
+  const result = await jiraApiCall(
+    {
+      endpoint: "/rest/api/3/issueLinkType",
+      accessToken,
+    },
+    z.object({
+      issueLinkTypes: z.array(JiraIssueLinkTypeSchema),
+    }),
+    { baseUrl }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  return new Ok(result.value.issueLinkTypes);
+}
 
 export const withAuth = async ({
   authInfo,

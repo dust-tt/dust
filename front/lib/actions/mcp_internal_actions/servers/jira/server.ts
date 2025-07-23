@@ -4,9 +4,12 @@ import { z } from "zod";
 import {
   createComment,
   createIssue,
+  createIssueLink,
+  deleteIssueLink,
   getConnectionInfo,
   getIssue,
   getIssueFields,
+  getIssueLinkTypes,
   getIssueTypes,
   getProject,
   getProjects,
@@ -17,6 +20,7 @@ import {
   withAuth,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/jira_api_helper";
 import {
+  JiraCreateIssueLinkRequestSchema,
   JiraCreateIssueRequestSchema,
   SEARCH_FILTER_FIELDS,
 } from "@app/lib/actions/mcp_internal_actions/servers/jira/types";
@@ -30,14 +34,13 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "jira",
   version: "1.0.0",
   description:
-    "Comprehensive JIRA integration providing full issue management capabilities including create, read, update, comment, and workflow transition operations using the JIRA REST API.",
+    "Comprehensive JIRA integration providing full issue management capabilities including create, read, update, comment, workflow transitions, and issue linking operations using the JIRA REST API.",
   authorization: {
     provider: "jira" as const,
     supported_use_cases: ["platform_actions", "personal_actions"] as const,
   },
   icon: "JiraLogo",
-  documentationUrl:
-    "https://developer.atlassian.com/server/jira/platform/rest/v10007/intro/",
+  documentationUrl: null,
 };
 
 const createServer = (): McpServer => {
@@ -216,7 +219,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_issues",
-    "Search issues one or more filters.",
+    "Search issues using one or more filters (e.g., status, priority, labels, assignee). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field.",
     {
       filters: z
         .array(
@@ -233,7 +236,7 @@ const createServer = (): McpServer => {
               .boolean()
               .optional()
               .describe(
-                "Use fuzzy search (~) instead of exact match (=). Currently only supported for summary field."
+                "Use fuzzy search (~) for partial/similar matches instead of exact match (=). Only supported for 'summary' field. Use fuzzy when: searching for partial text, handling typos, finding related terms. Use exact when: looking for specific titles, precise matching needed."
               ),
           })
         )
@@ -387,9 +390,18 @@ const createServer = (): McpServer => {
             transitionId
           );
           if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error transitioning issue: ${result.error}`
-            );
+            // Provide more helpful error messages for transition issues
+            let errorMessage = `Error transitioning issue: ${result.error}`;
+            if (
+              result.error.includes("transition") &&
+              (result.error.includes("not valid") ||
+                result.error.includes("not allowed"))
+            ) {
+              errorMessage = `Transition failed: ${result.error}. This transition may not be available from the current status, or you may lack permission to perform it.`;
+            } else if (result.error.includes("workflow")) {
+              errorMessage = `Workflow error: ${result.error}. The issue's workflow may have conditions or validators preventing this transition.`;
+            }
+            return makeMCPToolTextError(errorMessage);
           }
           if (result.value === null) {
             return makeMCPToolJSONSuccess({
@@ -412,7 +424,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "create_issue",
-    "Creates a new JIRA issue with the specified details.",
+    "Creates a new JIRA issue with the specified details. Note: Available fields vary by project and issue type. Use get_issue_fields to check which fields are required and available.",
     {
       issueData: JiraCreateIssueRequestSchema.describe(
         "The description of the issue"
@@ -423,9 +435,14 @@ const createServer = (): McpServer => {
         action: async (baseUrl, accessToken) => {
           const result = await createIssue(baseUrl, accessToken, issueData);
           if (result.isErr()) {
-            return makeMCPToolTextError(
-              `Error creating issue: ${result.error}`
-            );
+            let errorMessage = `Error creating issue: ${result.error}`;
+            if (
+              result.error.includes("cannot be set") ||
+              result.error.includes("not on the appropriate screen")
+            ) {
+              errorMessage = `Field configuration error: ${result.error}. Some fields are not available for this project/issue type. Use get_issue_fields to check which fields are required and available before creating issues.`;
+            }
+            return makeMCPToolTextError(errorMessage);
           }
           return makeMCPToolJSONSuccess({
             message: "Issue created successfully",
@@ -439,7 +456,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "update_issue",
-    "Updates an existing JIRA issue with new field values.",
+    "Updates an existing JIRA issue with new field values (e.g., summary, description, priority, assignee). Note: Issue links, attachments, and some system fields require separate APIs and are not supported.",
     {
       issueKey: z.string().describe("The JIRA issue key (e.g., 'PROJ-123')"),
       updateData: JiraCreateIssueRequestSchema.partial().describe(
@@ -472,6 +489,83 @@ const createServer = (): McpServer => {
               ...result.value,
               updatedFields: Object.keys(updateData),
             },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "create_issue_link",
+    "Creates a link between two JIRA issues with a specified relationship type (e.g., 'Blocks', 'Relates', 'Duplicates').",
+    {
+      linkData: JiraCreateIssueLinkRequestSchema.describe(
+        "Link configuration including type and issues to link"
+      ),
+    },
+    async ({ linkData }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await createIssueLink(baseUrl, accessToken, linkData);
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error creating issue link: ${result.error}`
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Issue link created successfully",
+            result: {
+              ...linkData,
+            },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "delete_issue_link",
+    "Deletes an existing link between JIRA issues.",
+    {
+      linkId: z.string().describe("The ID of the issue link to delete"),
+    },
+    async ({ linkId }, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await deleteIssueLink(baseUrl, accessToken, linkId);
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error deleting issue link: ${result.error}`
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Issue link deleted successfully",
+            result: { linkId },
+          });
+        },
+        authInfo,
+      });
+    }
+  );
+
+  server.tool(
+    "get_issue_link_types",
+    "Retrieves all available issue link types that can be used when creating issue links.",
+    {},
+    async (_, { authInfo }) => {
+      return withAuth({
+        action: async (baseUrl, accessToken) => {
+          const result = await getIssueLinkTypes(baseUrl, accessToken);
+          if (result.isErr()) {
+            return makeMCPToolTextError(
+              `Error retrieving issue link types: ${result.error}`
+            );
+          }
+          return makeMCPToolJSONSuccess({
+            message: "Issue link types retrieved successfully",
+            result: result.value,
           });
         },
         authInfo,
