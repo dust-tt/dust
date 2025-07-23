@@ -13,6 +13,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  GoogleLogo,
   Icon,
   LightbulbIcon,
   LogoutIcon,
@@ -22,7 +23,7 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
@@ -51,6 +52,18 @@ export function UserMenu({
 
   const sendNotification = useSendNotification();
   const { setNavigationSelection } = usePersistedNavigationSelection();
+
+  const [isChrome, setIsChrome] = useState(false);
+
+  useEffect(() => {
+    const hasChromeObject = !!(window as any).chrome;
+    const hasChromeUserAgent =
+      navigator.userAgent.includes("Chrome") ||
+      navigator.userAgent.includes("Chromium");
+
+    const isChromeDetected = hasChromeObject && hasChromeUserAgent;
+    setIsChrome(isChromeDetected);
+  }, []);
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -153,6 +166,18 @@ export function UserMenu({
               label="Exploratory features"
               icon={TestTubeIcon}
               href={`/w/${owner.sId}/labs`}
+            />
+          </>
+        )}
+
+        {isChrome && (
+          <>
+            <DropdownMenuLabel label="Extension" />
+            <DropdownMenuItem
+              label="Install Chrome Extension"
+              icon={GoogleLogo} // TODO Use a Chrome icon from Sparkle.
+              href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn?authuser=0&hl=fr"
+              target="_blank"
             />
           </>
         )}
