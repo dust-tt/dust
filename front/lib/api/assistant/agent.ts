@@ -71,6 +71,7 @@ export async function runAgentLoop(
         conversationId: conversation.sId,
         conversationTitle: conversation.title,
         userMessageId: userMessage.sId,
+        userMessageVersion: userMessage.version,
       },
     });
   } else {

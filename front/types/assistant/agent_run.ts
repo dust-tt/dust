@@ -27,6 +27,7 @@ export type RunAgentAsynchronousArgs = {
   conversationId: string;
   conversationTitle: string | null;
   userMessageId: string;
+  userMessageVersion: number;
 };
 
 export type RunAgentSynchronousArgs = {
@@ -57,8 +58,13 @@ export async function getRunAgentData(
 
   const auth = await Authenticator.fromJSON(authType);
 
-  const { agentMessageId, agentMessageVersion, conversationId, userMessageId } =
-    runAgentArgs.idArgs;
+  const {
+    agentMessageId,
+    agentMessageVersion,
+    conversationId,
+    userMessageId,
+    userMessageVersion,
+  } = runAgentArgs.idArgs;
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err(
@@ -68,44 +74,50 @@ export async function getRunAgentData(
 
   const conversation = conversationRes.value;
 
-  // Find messages by searching in reverse order since we are likely working on recent messages.
-  let userMessage: UserMessageType | undefined;
-  let agentMessage: AgentMessageType | undefined;
-  let found = false;
-
-  // Search in reverse order - most recent message groups first.
-  for (let i = conversation.content.length - 1; i >= 0 && !found; i--) {
-    const messageGroup = conversation.content[i];
-    for (const message of messageGroup) {
-      if (
-        !userMessage &&
-        message.sId === userMessageId &&
-        isUserMessageType(message)
-      ) {
-        userMessage = message;
-      }
-      if (
-        !agentMessage &&
-        message.sId === agentMessageId &&
-        message.version === agentMessageVersion &&
-        isAgentMessageType(message)
-      ) {
-        agentMessage = message;
+  // Find the agent message group by searching in reverse order.
+  const agentMessageGroup = conversation.content.findLast((messageGroup) => {
+    return messageGroup.some((message) => {
+      if (isAgentMessageType(message)) {
+        return message.sId === agentMessageId;
       }
 
-      // Early exit if we found both messages.
-      if (userMessage && agentMessage) {
-        found = true;
-        break;
-      }
-    }
-  }
+      return false;
+    });
+  });
 
-  if (!userMessage) {
+  // We assume that the message group is ordered by version ASC. Message version starts from 0.
+  const agentMessage = agentMessageGroup?.[agentMessageVersion];
+
+  // Find the user message group by searching in reverse order.
+  const userMessageGroup = conversation.content.findLast((messageGroup) => {
+    return messageGroup.some((message) => {
+      if (isUserMessageType(message)) {
+        return message.sId === userMessageId;
+      }
+
+      return false;
+    });
+  });
+
+  // We assume that the message group is ordered by version ASC. Message version starts from 0.
+  const userMessage = userMessageGroup?.[userMessageVersion];
+
+  console.log("agentMessageGroup", agentMessageGroup);
+  console.log("userMessageGroup", userMessageGroup);
+
+  if (
+    !userMessage ||
+    !isUserMessageType(userMessage) ||
+    userMessage.version !== userMessageVersion
+  ) {
     return new Err(new Error("User message not found"));
   }
 
-  if (!agentMessage) {
+  if (
+    !agentMessage ||
+    !isAgentMessageType(agentMessage) ||
+    agentMessage.version !== agentMessageVersion
+  ) {
     return new Err(new Error("Agent message not found"));
   }
 
