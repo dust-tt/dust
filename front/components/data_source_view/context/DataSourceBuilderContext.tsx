@@ -1,3 +1,35 @@
+/**
+ * DataSourceBuilderContext manages data source selection using a flat array approach
+ * with 'in' and 'notIn' arrays instead of a traditional tree structure.
+ *
+ * Why this approach?
+ *
+ * 1. **Hierarchical Selection Efficiency**: When selecting a parent node (e.g., a folder),
+ *    we want all its children to be automatically included without having to store every
+ *    child path explicitly. With arrays, we store "documents/folder1" once instead of
+ *    storing every file path within that folder.
+ *
+ * 2. **Granular Exclusions**: Users can select a parent but exclude specific children.
+ *    For example: include "documents/" but exclude "documents/sensitive.pdf".
+ *    The 'notIn' array allows us to handle these exceptions efficiently.
+ *
+ * 3. **Memory Efficiency**: A tree structure would require storing every possible node,
+ *    even unselected ones. Arrays only store what's explicitly selected or excluded,
+ *    making it much more memory efficient for large hierarchies.
+ *
+ * 4. **Simple State Management**: Arrays are easier to serialize, compare, and debug
+ *    than complex nested tree structures. State updates are straightforward array
+ *    operations rather than complex tree traversals.
+ *
+ * 5. **Path-based Logic**: Since data sources are naturally hierarchical with path-like
+ *    identifiers (e.g., "space.category.document"), array-based path matching using
+ *    string prefixes is both intuitive and performant.
+ *
+ * The helper functions (isNodeSelected, addNodeToTree, removeNodeFromTree) handle
+ * the complexity of parent-child relationships, allowing the rest of the application
+ * to work with simple boolean selection states.
+ */
+
 import {
   createContext,
   useCallback,
@@ -33,7 +65,6 @@ type StateType = {
 };
 
 type DataSourceBuilderState = StateType & {
-  // TREE HELPERS
   /**
    * Select a specific row.
    * Total path is deduced from the current navigationHistory state.
@@ -71,18 +102,24 @@ type DataSourceBuilderState = StateType & {
    */
   isCurrentNavigationEntrySelected: () => boolean | "partial";
 
-  // NAVIGATION HELPERS
-
-  /// Add the current selected space
+  /**
+   * Add the current selected space
+   */
   setSpaceEntry: (space: SpaceType) => void;
 
-  /// Set the current selected category in the navigation
+  /**
+   * Set the current selected category in the navigation
+   */
   setCategoryEntry: (category: DataSourceViewCategoryWithoutApps) => void;
 
-  /// Add a new node to the navigation
+  /**
+   * Add a new node to the navigation
+   */
   addNodeEntry: (node: DataSourceViewContentNode) => void;
 
-  /// Navigate to a specific node
+  /**
+   * Navigate to a specific node
+   */
   navigateTo: (index: number) => void;
 };
 
