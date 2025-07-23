@@ -52,6 +52,12 @@ type DataSourceBuilderState = State & {
    */
   selectNode: (rowId: string) => void;
 
+  /*
+   * Select current navigationHistory entry.
+   * Used for the select all of the current page in the table
+   */
+  selectCurrentNavigationEntry: () => void;
+
   /**
    * Remove a specific row.
    * Total path is deduced from the current navigationHistory state.
@@ -60,10 +66,21 @@ type DataSourceBuilderState = State & {
   removeNode: (rowId: string) => void;
 
   /**
+   * Remove the current navigationHistory entry
+   * Used for the select all of the current page in the table
+   */
+  removeCurrentNavigationEntry: () => void;
+
+  /**
    * Check selection status for the specific row.
    * Total path is deduced from the current navigationHistory state.
    */
   isRowSelected: (rowId: string) => boolean | "partial";
+
+  /**
+   * Use the current navigationHistory entry and check its selection status
+   */
+  isCurrentNavigationEntrySelected: () => boolean | "partial";
 
   // NAVIGATION HELPERS
 
@@ -83,11 +100,11 @@ type DataSourceBuilderState = State & {
 type Action =
   | {
       type: "SELECT_DATA_SOURCE_NODE";
-      payload: { rowId: string };
+      payload: { rowId?: string };
     }
   | {
       type: "REMOVE_DATA_SOURCE_NODE";
-      payload: { rowId: string };
+      payload: { rowId?: string };
     }
   | {
       type: "NAVIGATION_SET_SPACE";
@@ -150,7 +167,9 @@ function dataSourceBuilderReducer(
     }
     case "SELECT_DATA_SOURCE_NODE": {
       const nodePath = computeNavigationPath(state.navigationHistory);
-      nodePath.push(payload.rowId);
+      if (payload.rowId) {
+        nodePath.push(payload.rowId);
+      }
       return {
         ...state,
         sources: addNodeToTree(state.sources, nodePath),
@@ -158,10 +177,13 @@ function dataSourceBuilderReducer(
     }
     case "REMOVE_DATA_SOURCE_NODE": {
       const nodePath = computeNavigationPath(state.navigationHistory);
-      nodePath.push(payload.rowId);
+      if (payload.rowId) {
+        nodePath.push(payload.rowId);
+      }
+      const sources = removeNodeFromTree(state.sources, nodePath);
       return {
         ...state,
-        sources: removeNodeFromTree(state.sources, nodePath),
+        sources,
       };
     }
     default:
@@ -190,12 +212,22 @@ export function DataSourceBuilderProvider({
     []
   );
 
+  const selectCurrentNavigationEntry: DataSourceBuilderState["selectCurrentNavigationEntry"] =
+    useCallback(() => {
+      dispatch({ type: "SELECT_DATA_SOURCE_NODE", payload: {} });
+    }, []);
+
   const removeNode: DataSourceBuilderState["removeNode"] = useCallback(
     (rowId) => {
       dispatch({ type: "REMOVE_DATA_SOURCE_NODE", payload: { rowId } });
     },
     []
   );
+
+  const removeCurrentNavigationEntry: DataSourceBuilderState["removeCurrentNavigationEntry"] =
+    useCallback(() => {
+      dispatch({ type: "REMOVE_DATA_SOURCE_NODE", payload: {} });
+    }, []);
 
   const isRowSelected: DataSourceBuilderState["isRowSelected"] = useCallback(
     (rowId) => {
@@ -205,6 +237,12 @@ export function DataSourceBuilderProvider({
     },
     [state]
   );
+
+  const isCurrentNavigationEntrySelected: DataSourceBuilderState["isCurrentNavigationEntrySelected"] =
+    useCallback(() => {
+      const nodePath = computeNavigationPath(state.navigationHistory);
+      return isNodeSelected(state.sources, nodePath);
+    }, [state]);
 
   const setSpaceEntry: DataSourceBuilderState["setSpaceEntry"] = useCallback(
     (space) => {
@@ -237,8 +275,11 @@ export function DataSourceBuilderProvider({
       value={{
         ...state,
         selectNode,
+        selectCurrentNavigationEntry,
         removeNode,
+        removeCurrentNavigationEntry,
         isRowSelected,
+        isCurrentNavigationEntrySelected,
         setSpaceEntry,
         setCategoryEntry,
         addNodeEntry,

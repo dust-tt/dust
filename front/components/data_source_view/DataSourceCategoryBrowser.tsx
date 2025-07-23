@@ -50,8 +50,14 @@ export function DataSourceCategoryBrowser({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
-  const { selectNode, removeNode, isRowSelected } =
-    useDataSourceBuilderContext();
+  const {
+    selectNode,
+    selectCurrentNavigationEntry,
+    removeNode,
+    removeCurrentNavigationEntry,
+    isRowSelected,
+    isCurrentNavigationEntrySelected,
+  } = useDataSourceBuilderContext();
 
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -77,17 +83,18 @@ export function DataSourceCategoryBrowser({
         header: () => (
           <Checkbox
             size="xs"
-            checked={isRowSelected(space.sId)}
+            checked={isCurrentNavigationEntrySelected()}
             onClick={(event) => event.stopPropagation()}
             onCheckedChange={(state) => {
               if (state === "indeterminate") {
+                removeCurrentNavigationEntry();
                 return;
               }
 
               if (state) {
-                selectNode(space.sId);
+                selectCurrentNavigationEntry();
               } else {
-                removeNode(space.sId);
+                removeCurrentNavigationEntry();
               }
             }}
           />
@@ -97,10 +104,10 @@ export function DataSourceCategoryBrowser({
             <Checkbox
               size="xs"
               checked={isRowSelected(row.original.id)}
-              disabled={!row.getCanSelect()}
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
                 if (state === "indeterminate") {
+                  removeNode(row.original.id);
                   return;
                 }
 
@@ -134,7 +141,14 @@ export function DataSourceCategoryBrowser({
         },
       },
     ],
-    [isRowSelected, removeNode, selectNode]
+    [
+      isCurrentNavigationEntrySelected,
+      isRowSelected,
+      removeCurrentNavigationEntry,
+      removeNode,
+      selectCurrentNavigationEntry,
+      selectNode,
+    ]
   );
 
   if (isSpaceInfoLoading) {

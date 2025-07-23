@@ -57,8 +57,14 @@ export function DataSourceNodeTable({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [nodeRows, setNodeRows] = useState<NodeRowData[]>([]);
   const { isDark } = useTheme();
-  const { selectNode, removeNode, isRowSelected } =
-    useDataSourceBuilderContext();
+  const {
+    selectNode,
+    selectCurrentNavigationEntry,
+    removeNode,
+    removeCurrentNavigationEntry,
+    isRowSelected,
+    isCurrentNavigationEntrySelected,
+  } = useDataSourceBuilderContext();
 
   const {
     cursorPagination,
@@ -189,13 +195,19 @@ export function DataSourceNodeTable({
         header: () => (
           <Checkbox
             size="xs"
+            checked={isCurrentNavigationEntrySelected()}
             onClick={(event) => event.stopPropagation()}
             onCheckedChange={(state) => {
               if (state === "indeterminate") {
+                removeCurrentNavigationEntry();
                 return;
               }
 
-              // TODO: Add method
+              if (state) {
+                selectCurrentNavigationEntry();
+              } else {
+                removeCurrentNavigationEntry();
+              }
             }}
           />
         ),
@@ -208,6 +220,7 @@ export function DataSourceNodeTable({
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
                 if (state === "indeterminate") {
+                  removeNode(row.original.id);
                   return;
                 }
 
@@ -241,7 +254,14 @@ export function DataSourceNodeTable({
         },
       },
     ],
-    [isRowSelected, removeNode, selectNode]
+    [
+      isCurrentNavigationEntrySelected,
+      isRowSelected,
+      removeCurrentNavigationEntry,
+      removeNode,
+      selectCurrentNavigationEntry,
+      selectNode,
+    ]
   );
 
   const isLoading =

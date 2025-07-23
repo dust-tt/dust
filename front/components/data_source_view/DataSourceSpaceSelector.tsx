@@ -51,6 +51,7 @@ export function DataSourceSpaceSelector({
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
                 if (state === "indeterminate") {
+                  removeNode(row.original.id);
                   return;
                 }
 
