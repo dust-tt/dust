@@ -372,6 +372,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     if ("agentMCPActions" in this && Array.isArray(this.agentMCPActions)) {
       if (this.agentMCPActions.length === 0) {
         base.mcpActions = [];
+        return base;
       }
       const { value } = this;
       assert(
