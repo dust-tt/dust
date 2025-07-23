@@ -33,19 +33,17 @@ function PanelHeader({
   return (
     <div className="flex h-16 items-end">
       {isPreviewPanelOpen ? (
-        <div className="flex w-full items-center">
-          <div className="px-1">
-            <Button
-              icon={SidebarRightCloseIcon}
-              size="sm"
-              variant="ghost-secondary"
-              tooltip="Hide preview"
-              onClick={onTogglePanel}
-            />
-          </div>
+        <div className="flex w-full items-center px-6">
           <ScrollArea aria-orientation="horizontal" className="flex-1">
             <Tabs value={selectedTab} className="w-full">
               <TabsList>
+                <Button
+                  icon={SidebarRightCloseIcon}
+                  size="sm"
+                  variant="ghost-secondary"
+                  tooltip="Hide preview"
+                  onClick={onTogglePanel}
+                />
                 <TabsTrigger
                   value="testing"
                   label="Testing"
@@ -63,7 +61,7 @@ function PanelHeader({
           </ScrollArea>
         </div>
       ) : (
-        <div className="flex h-full w-full items-end justify-center px-1">
+        <div className="flex h-full w-full items-end justify-center">
           <Button
             icon={SidebarRightOpenIcon}
             size="sm"
