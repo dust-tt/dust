@@ -1256,13 +1256,17 @@ const CliChat: FC<CliChatProps> = ({
               setError("No Dust API set.");
               return;
             }
-            await useFileSystemServer(
+
+            const useFsServerRes = await useFileSystemServer(
               dustClient,
               (serverId) => {
                 setFileSystemServerId(serverId);
               },
               requestDiffApproval
             );
+            if (useFsServerRes.isErr()) {
+              setError(useFsServerRes.error.message);
+            }
           }
           setChosenFileSystemUsage(true);
         }}
