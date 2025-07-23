@@ -1,3 +1,5 @@
+// @ts-nocheck
+// This migration file references the old data model where stepContentId was nullable.
 import { Op } from "sequelize";
 
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
