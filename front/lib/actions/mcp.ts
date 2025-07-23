@@ -532,7 +532,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     // the generation of the params. We store the action here as the params have been generated, if
     // an error occurs later on, the error will be stored on the parent agent message.
     const action = await AgentMCPAction.create({
-      ...actionBaseParams,
+      agentMessageId: agentMessage.agentMessageId,
+      mcpServerConfigurationId: `${actionConfiguration.id}`,
       workspaceId: owner.id,
       isError: false,
       executionState: "pending",

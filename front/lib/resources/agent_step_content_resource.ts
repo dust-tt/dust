@@ -370,19 +370,27 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     };
 
     if ("agentMCPActions" in this && Array.isArray(this.agentMCPActions)) {
+      if (this.agentMCPActions.length === 0) {
+        base.mcpActions = [];
+      }
+      const { value } = this;
+      assert(
+        value.type === "function_call",
+        "Unexpected: MCP actions on non-function call step content"
+      );
       // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
       base.mcpActions = this.agentMCPActions.map(
         (action: AgentMCPAction) =>
           new MCPActionType({
             id: action.id,
-            params: action.params,
+            params: JSON.parse(value.value.arguments),
             output: removeNulls(
               action.outputItems.map(hideFileFromActionOutput)
             ),
-            functionCallId: action.functionCallId,
-            functionCallName: action.functionCallName,
+            functionCallId: value.value.id,
+            functionCallName: value.value.name,
             agentMessageId: action.agentMessageId,
-            step: action.step,
+            step: this.step,
             mcpServerConfigurationId: action.mcpServerConfigurationId,
             executionState: action.executionState,
             isError: action.isError,
