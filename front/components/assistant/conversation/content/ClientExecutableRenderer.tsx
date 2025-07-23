@@ -71,7 +71,7 @@ export function ClientExecutableRenderer({
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {showCode ? (
-          <div className="h-full overflow-auto p-4">
+          <div className="h-full overflow-auto px-4">
             <CodeBlock wrapLongLines className="language-tsx">
               {fileContent}
             </CodeBlock>

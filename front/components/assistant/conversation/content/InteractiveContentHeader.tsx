@@ -15,36 +15,33 @@ export function InteractiveContentHeader({
   title,
 }: InteractiveContentHeaderProps) {
   return (
-    <div
-      className={cn(
-        "bg-structure-0/60 flex border-border/70 backdrop-blur-sm dark:border-border-night/70",
-        "items-center justify-between border-b px-4 py-2 @container"
-      )}
-    >
-      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-        <span
-          className={cn(
-            "hidden min-w-0 truncate text-sm font-medium @xxs:inline",
-            "text-primary dark:text-primary-night"
-          )}
-        >
-          {title}
-        </span>
-        {subtitle && (
-          <span className="text-element-700 hidden shrink-0 text-xs @xs:inline">
-            {subtitle}
+    <div className="shrink-0 border-b border-border bg-background bg-gray-50 px-4 py-3 dark:border-border-night dark:bg-background-night dark:bg-gray-900 sm:px-8">
+      <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
+        <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+          <span
+            className={cn(
+              "min-w-0 truncate text-sm font-medium",
+              "text-primary dark:text-primary-night"
+            )}
+          >
+            {title}
           </span>
-        )}
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {children}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onClose}
-          icon={XMarkIcon}
-          className="text-element-600 hover:text-element-900"
-        />
+          {subtitle && (
+            <span className="text-element-700 shrink-0 text-xs">
+              {subtitle}
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {children}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            icon={XMarkIcon}
+            className="text-element-600 hover:text-element-900"
+          />
+        </div>
       </div>
     </div>
   );

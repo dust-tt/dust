@@ -147,11 +147,6 @@ const ConversationLayoutContent = ({
             : `Dust - New Conversation`
         }
         noSidePadding
-        titleChildren={
-          activeConversationId && (
-            <ConversationTitle owner={owner} baseUrl={baseUrl} />
-          )
-        }
         hasTopPadding={false}
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
@@ -173,6 +168,8 @@ const ConversationLayoutContent = ({
                 <ConversationInnerLayout
                   conversation={conversation}
                   owner={owner}
+                  activeConversationId={activeConversationId}
+                  baseUrl={baseUrl}
                 >
                   {children}
                 </ConversationInnerLayout>
@@ -200,12 +197,16 @@ interface ConversationInnerLayoutProps {
   children: React.ReactNode;
   conversation: ConversationType | null;
   owner: LightWorkspaceType;
+  activeConversationId: string | null;
+  baseUrl: string;
 }
 
 function ConversationInnerLayout({
   children,
   conversation,
   owner,
+  activeConversationId,
+  baseUrl,
 }: ConversationInnerLayoutProps) {
   const { isContentOpen } = useInteractiveContentContext();
 
@@ -218,15 +219,23 @@ function ConversationInnerLayout({
         <ResizablePanel defaultSize={100}>
           <FileDropProvider>
             <GenerationContextProvider>
-              <div
-                id={CONVERSATION_VIEW_SCROLL_LAYOUT}
-                className={cn(
-                  "h-full overflow-y-auto scroll-smooth px-4 sm:px-8",
-                  // Hide conversation on mobile when interactive content is opened.
-                  isContentOpen && "hidden md:block"
+              <div className="flex h-full flex-col">
+                {/* Conversation Title */}
+                {activeConversationId && (
+                  <div className="shrink-0 border-b border-border bg-background px-4 py-3 dark:border-border-night dark:bg-background-night sm:px-8">
+                    <ConversationTitle owner={owner} baseUrl={baseUrl} />
+                  </div>
                 )}
-              >
-                {children}
+                <div
+                  id={CONVERSATION_VIEW_SCROLL_LAYOUT}
+                  className={cn(
+                    "flex-1 overflow-y-auto scroll-smooth px-4 sm:px-8",
+                    // Hide conversation on mobile when interactive content is opened.
+                    isContentOpen && "hidden md:block"
+                  )}
+                >
+                  {children}
+                </div>
               </div>
             </GenerationContextProvider>
           </FileDropProvider>
@@ -246,7 +255,11 @@ function ConversationInnerLayout({
         >
           {isContentOpen && (
             // On mobile: adding a padding-top to account for the conversation title.
-            <div className="bg-structure-50 dark:bg-structure-950 h-full pt-16 md:bg-transparent md:pt-0">
+            <div
+              className={cn(
+                "bg-structure-50 dark:bg-structure-950 h-full md:bg-transparent md:pt-0"
+              )}
+            >
               <InteractiveContentContainer
                 conversation={conversation}
                 isOpen={isContentOpen}
