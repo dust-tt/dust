@@ -10,6 +10,7 @@ import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { statsDClient } from "@app/logger/statsDClient";
 import { apiError } from "@app/logger/withlogging";
@@ -42,7 +43,11 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const forceAsynchronousLoop = req.query.async === "true";
+
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  const hasAsyncLoopFeature = featureFlags.includes("async_loop");
+  const forceAsynchronousLoop =
+    req.query.async === "true" || hasAsyncLoopFeature;
 
   switch (req.method) {
     case "GET":
