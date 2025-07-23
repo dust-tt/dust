@@ -286,7 +286,7 @@ export function useDataSourceBuilderContext() {
 
 /**
  * Adds a path to the tree by adding it to the 'in' array and removing it from 'notIn' if present.
- * Optimization: If a parent path is already included, don't add child paths to avoid redundancy.
+ * If a parent path is already included, don't add child paths to avoid redundancy.
  *
  * @returns New tree with the node added
  */
@@ -295,12 +295,32 @@ export function addNodeToTree(
   path: string[]
 ): DataSourceBuilderTree {
   const pathStr = path.join(".");
-  const newNotIn = tree.notIn.filter((notInPath) => notInPath !== pathStr);
+  const inSet = new Set(tree.in);
+  const notInSet = new Set(tree.notIn);
 
-  // Check if any parent path is already in the 'in' array
-  const hasParentPath = tree.in.some((inPath) => {
-    return pathStr.startsWith(inPath + ".") || pathStr === inPath;
-  });
+  if (inSet.has(pathStr)) {
+    // Only need to remove from notIn if it exists there
+    if (notInSet.has(pathStr)) {
+      return {
+        in: tree.in,
+        notIn: tree.notIn.filter((notInPath) => notInPath !== pathStr),
+      };
+    }
+    return tree;
+  }
+
+  let hasParentPath = false;
+  for (const inPath of tree.in) {
+    if (pathStr.startsWith(inPath + ".") || pathStr === inPath) {
+      hasParentPath = true;
+      break;
+    }
+  }
+
+  // Remove from notIn if present, filter only if needed
+  const newNotIn = notInSet.has(pathStr)
+    ? tree.notIn.filter((notInPath) => notInPath !== pathStr)
+    : tree.notIn;
 
   // If a parent path is already selected, don't add this child path
   if (hasParentPath) {
@@ -310,15 +330,9 @@ export function addNodeToTree(
     };
   }
 
-  const newIn = [...tree.in];
-
-  // Don't add if already present
-  if (!newIn.includes(pathStr)) {
-    newIn.push(pathStr);
-  }
-
+  // Add to in array (we already know it's not present from early check)
   return {
-    in: newIn,
+    in: [...tree.in, pathStr],
     notIn: newNotIn,
   };
 }
