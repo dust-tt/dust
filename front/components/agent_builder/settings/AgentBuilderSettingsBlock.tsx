@@ -289,7 +289,7 @@ function AgentDescriptionInput() {
               tooltip={
                 !instructions ||
                 instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-                  ? `Add at least 20 ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} to instructions to get suggestions`
+                  ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} to the instructions to get suggestions`
                   : undefined
               }
             />

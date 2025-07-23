@@ -7,7 +7,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { PopoverRoot } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -71,12 +71,34 @@ export function TagsSection() {
   >([]);
   const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
 
+  const instructions = getValues("instructions");
+
+  const isButtonDisabled = useMemo(() => {
+    return (
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS ||
+      allTags.length === 0
+    );
+  }, [instructions, allTags.length]);
+
+  const buttonTooltip = useMemo(() => {
+    if (
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
+    ) {
+      return `Add at least ${MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS} characters to instructions to get suggestions`;
+    }
+    if (allTags.length === 0) {
+      return "Create tags to start using suggestions";
+    }
+    return undefined;
+  }, [instructions, allTags.length]);
+
   const updateTagsSuggestions = async () => {
     if (isTagsSuggestionLoading) {
       return;
     }
 
-    const instructions = getValues("instructions");
     if (
       !instructions ||
       instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
@@ -156,22 +178,8 @@ export function TagsSection() {
                 icon={SparklesIcon}
                 variant="outline"
                 isSelect
-                disabled={(() => {
-                  const instructions = getValues("instructions");
-                  return (
-                    !instructions ||
-                    instructions.length <
-                      MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
-                  );
-                })()}
-                tooltip={(() => {
-                  const instructions = getValues("instructions");
-                  return !instructions ||
-                    instructions.length <
-                      MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
-                    ? "Add at least 20 characters to instructions to get suggestions"
-                    : undefined;
-                })()}
+                disabled={isButtonDisabled}
+                tooltip={buttonTooltip}
               />
             </PopoverTrigger>
             <PopoverContent className="w-64 p-3">
