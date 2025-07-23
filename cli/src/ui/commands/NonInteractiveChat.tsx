@@ -1,5 +1,5 @@
-import type { FC } from "react";
-import { useEffect } from "react";
+import { Box, Text } from "ink";
+import React, { type FC, useEffect, useState } from "react";
 
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
@@ -24,15 +24,22 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
   messageId,
   details,
 }) => {
+  const [error, setError] = useState<string | null>(null);
+
   // Validate flags usage
   useEffect(() => {
-    validateNonInteractiveFlags(
-      message,
-      agentSearch,
-      conversationId,
-      messageId,
-      details
-    );
+    try {
+      validateNonInteractiveFlags(
+        message,
+        agentSearch,
+        conversationId,
+        messageId,
+        details,
+        setError
+      );
+    } catch (err) {
+      setError(normalizeError(err).message);
+    }
   }, [message, agentSearch, conversationId, messageId, details]);
 
   // Handle all non-interactive operations
@@ -41,7 +48,11 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
       try {
         // Handle messageId mode - fetch agent message from conversation
         if (messageId && conversationId) {
-          await fetchAgentMessageFromConversation(conversationId, messageId);
+          await fetchAgentMessageFromConversation(
+            conversationId,
+            messageId,
+            setError
+          );
           return;
         }
 
@@ -53,61 +64,37 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
         // Get dust client
         const dustClientRes = await getDustClient();
         if (dustClientRes.isErr()) {
-          console.error(
-            JSON.stringify({
-              error: "Authentication Error",
-              details:
-                "Try re-logging in by running `dust logout` and `dust login`",
-            })
+          setError(
+            "Authentication Error: Try re-logging in by running `dust logout` and `dust login`"
           );
-          process.exit(1);
+          return;
         }
 
         const dustClient = dustClientRes.value;
         if (!dustClient) {
-          console.error(
-            JSON.stringify({
-              error: "Authentication required",
-              details: "Run `dust login` first",
-            })
-          );
-          process.exit(1);
+          setError("Authentication required: Run `dust login` first");
+          return;
         }
 
         // Get current user info
         const meRes = await dustClient.me();
         if (meRes.isErr()) {
-          console.error(
-            JSON.stringify({
-              error: "Authentication error",
-              details: meRes.error.message,
-            })
-          );
-          process.exit(1);
+          setError(`Authentication error: ${meRes.error.message}`);
+          return;
         }
         const me = meRes.value;
 
         // Get all agents
         const agentsRes = await dustClient.getAgentConfigurations({});
         if (agentsRes.isErr()) {
-          console.error(
-            JSON.stringify({
-              error: "Failed to load agents",
-              details: agentsRes.error.message,
-            })
-          );
-          process.exit(1);
+          setError(`Failed to load agents: ${agentsRes.error.message}`);
+          return;
         }
 
         const allAgents = agentsRes.value;
         if (!allAgents || allAgents.length === 0) {
-          console.error(
-            JSON.stringify({
-              error: "No agents available",
-              details: "No agents found for the current user",
-            })
-          );
-          process.exit(1);
+          setError("No agents available: No agents found for the current user");
+          return;
         }
 
         // Search for agents matching the search string (case-insensitive)
@@ -117,25 +104,17 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
         );
 
         if (matchingAgents.length === 0) {
-          console.error(
-            JSON.stringify({
-              error: "Agent not found",
-              details: `No agent found matching "${agentSearch}"`,
-            })
-          );
-          process.exit(1);
+          setError(`Agent not found: No agent found matching "${agentSearch}"`);
+          return;
         }
 
         if (matchingAgents.length > 1) {
-          console.error(
-            JSON.stringify({
-              error: "Multiple agents found",
-              details: `Multiple agents match "${agentSearch}": ${matchingAgents
-                .map((a) => a.name)
-                .join(", ")}`,
-            })
+          setError(
+            `Multiple agents found: Multiple agents match "${agentSearch}": ${matchingAgents
+              .map((a) => a.name)
+              .join(", ")}`
           );
-          process.exit(1);
+          return;
         }
 
         const selectedAgent = matchingAgents[0];
@@ -146,23 +125,26 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
           selectedAgent,
           me,
           conversationId,
-          details
+          details,
+          setError
         );
       } catch (error) {
-        console.error(
-          JSON.stringify({
-            error: "Unexpected error",
-            details: normalizeError(error).message,
-          })
-        );
-        process.exit(1);
+        setError(`Unexpected error: ${normalizeError(error).message}`);
       }
     }
 
     void handleNonInteractive();
   }, [message, agentSearch, conversationId, messageId, details]);
 
-  // Don't render anything - all output is handled via console.log/console.error
+  if (error) {
+    return (
+      <Box flexDirection="column">
+        <Text color="red">Error: {error}</Text>
+      </Box>
+    );
+  }
+
+  // Don't render anything in success cases - all output is handled via console.log
   return null;
 };
 
