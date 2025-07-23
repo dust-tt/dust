@@ -205,8 +205,6 @@ function ConversationInnerLayout({
 }: ConversationInnerLayoutProps) {
   const { isContentOpen } = useInteractiveContentContext();
 
-  console.log("activeConversationId", activeConversationId);
-
   return (
     <div className="flex h-full w-full flex-col">
       <ResizablePanelGroup
