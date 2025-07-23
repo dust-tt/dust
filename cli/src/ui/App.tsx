@@ -55,6 +55,9 @@ interface AppProps {
       type: "boolean";
       shortFlag: "d";
     };
+    autoAcceptEdits: {
+      type: "boolean";
+    };
     noUpdateCheck: {
       type: "boolean";
     };
@@ -112,6 +115,7 @@ const App: FC<AppProps> = ({ cli }) => {
           sId={flags.sId?.[0]}
           agentSearch={flags.agent}
           conversationId={flags.conversationId}
+          autoAcceptEdits={flags.autoAcceptEdits}
         />
       );
     case "cache:clear":

@@ -40,6 +40,7 @@ interface CliChatProps {
   sId?: string;
   agentSearch?: string;
   conversationId?: string;
+  autoAcceptEdits?: boolean;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -59,6 +60,7 @@ const CliChat: FC<CliChatProps> = ({
   sId: requestedSId,
   agentSearch,
   conversationId,
+  autoAcceptEdits = false,
 }) => {
   const [error, setError] = useState<string | null>(null);
 
@@ -209,6 +211,11 @@ const CliChat: FC<CliChatProps> = ({
       updatedContent: string,
       filePath: string
     ): Promise<boolean> => {
+      // If always accept flag is set, immediately return true
+      if (autoAcceptEdits) {
+        return Promise.resolve(true);
+      }
+
       return new Promise<boolean>((resolve) => {
         setPendingDiffApproval({ originalContent, updatedContent, filePath });
         setDiffApprovalResolver(() => (approved: boolean) => {
@@ -216,7 +223,7 @@ const CliChat: FC<CliChatProps> = ({
         });
       });
     },
-    []
+    [autoAcceptEdits]
   );
 
   const clearFiles = useCallback(() => {
