@@ -102,9 +102,6 @@ export async function getRunAgentData(
   // We assume that the message group is ordered by version ASC. Message version starts from 0.
   const userMessage = userMessageGroup?.[userMessageVersion];
 
-  console.log("agentMessageGroup", agentMessageGroup);
-  console.log("userMessageGroup", userMessageGroup);
-
   if (
     !userMessage ||
     !isUserMessageType(userMessage) ||
