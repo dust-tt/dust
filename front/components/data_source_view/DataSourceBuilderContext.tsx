@@ -305,6 +305,18 @@ export function useDataSourceBuilderContext() {
   return context;
 }
 
+function pathToString(path: string[]): string {
+  return path.join(".");
+}
+
+function getPathPrefix(pathStr: string): string {
+  return pathStr + ".";
+}
+
+function isParentOrSamePath(parentPath: string, childPath: string): boolean {
+  return childPath === parentPath || childPath.startsWith(parentPath + ".");
+}
+
 /**
  * Adds a path to the tree by adding it to the 'in' array and removing it from 'notIn' if present.
  * If a parent path is already included, don't add child paths to avoid redundancy.
@@ -315,7 +327,7 @@ export function addNodeToTree(
   tree: DataSourceBuilderTree,
   path: string[]
 ): DataSourceBuilderTree {
-  const pathStr = path.join(".");
+  const pathStr = pathToString(path);
   const inSet = new Set(tree.in);
   const notInSet = new Set(tree.notIn);
 
@@ -329,13 +341,9 @@ export function addNodeToTree(
     return tree;
   }
 
-  let hasParentPath = false;
-  for (const inPath of tree.in) {
-    if (pathStr.startsWith(inPath + ".") || pathStr === inPath) {
-      hasParentPath = true;
-      break;
-    }
-  }
+  const hasParentPath = tree.in.some((inPath) =>
+    isParentOrSamePath(inPath, pathStr)
+  );
 
   const newNotIn = notInSet.has(pathStr)
     ? tree.notIn.filter((notInPath) => notInPath !== pathStr)
@@ -366,27 +374,26 @@ export function removeNodeFromTree(
   tree: DataSourceBuilderTree,
   path: string[]
 ): DataSourceBuilderTree {
-  const pathStr = path.join(".");
-  const pathPrefix = pathStr + ".";
-
+  const pathStr = pathToString(path);
+  const pathPrefix = getPathPrefix(pathStr);
   const notInSet = new Set(tree.notIn);
 
   let hasParentExclusion = false;
   const newNotIn: string[] = [];
 
   for (const notInPath of tree.notIn) {
-    if (pathStr.startsWith(notInPath + ".") || pathStr === notInPath) {
+    if (isParentOrSamePath(notInPath, pathStr)) {
       hasParentExclusion = true;
     }
 
-    if (!notInPath.startsWith(pathPrefix)) {
+    if (!notInPath.startsWith(getPathPrefix(pathStr))) {
       newNotIn.push(notInPath);
     }
   }
 
-  const newIn = tree.in.filter((inPath) => {
-    return inPath !== pathStr && !inPath.startsWith(pathPrefix);
-  });
+  const newIn = tree.in.filter(
+    (inPath) => inPath !== pathStr && !inPath.startsWith(pathPrefix)
+  );
 
   if (hasParentExclusion) {
     return {
@@ -418,15 +425,16 @@ export function isNodeSelected(
   tree: DataSourceBuilderTree,
   path: string[]
 ): boolean | "partial" {
-  const pathStr = path.join(".");
-  const pathPrefix = pathStr + ".";
+  const pathStr = pathToString(path);
+  const pathPrefix = getPathPrefix(pathStr);
 
   let hasChildExclusions = false;
 
   for (const notInPath of tree.notIn) {
-    if (pathStr === notInPath || pathStr.startsWith(notInPath + ".")) {
+    if (isParentOrSamePath(notInPath, pathStr)) {
       return false;
     }
+
     if (notInPath.startsWith(pathPrefix)) {
       hasChildExclusions = true;
     }
@@ -436,9 +444,10 @@ export function isNodeSelected(
   let hasChildInclusions = false;
 
   for (const inPath of tree.in) {
-    if (pathStr === inPath || pathStr.startsWith(inPath + ".")) {
+    if (isParentOrSamePath(inPath, pathStr)) {
       isIncluded = true;
     }
+
     if (inPath.startsWith(pathPrefix)) {
       hasChildInclusions = true;
     }
