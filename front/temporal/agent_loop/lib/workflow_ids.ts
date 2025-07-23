@@ -18,5 +18,5 @@ export function makeAgentLoopConversationTitleWorkflowId(
   const { workspaceId } = authType;
   const { conversationId } = runAgentArgs;
 
-  return `agent-loop-conv-title-workflow-${workspaceId}-${conversationId}`;
+  return `agent-loop-conversation-title-workflow-${workspaceId}-${conversationId}`;
 }

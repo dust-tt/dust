@@ -2,7 +2,7 @@ import assert from "assert";
 import _, { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 
-import { runAgentWithStreaming } from "@app/lib/api/assistant/agent";
+import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   getAgentConfigurations,
@@ -691,7 +691,7 @@ export async function postUserMessage(
         agentMessageRow,
       };
 
-      void runAgentWithStreaming(
+      void runAgentLoop(
         auth.toJSON(),
         { sync: true, inMemoryData },
         { forceAsynchronousLoop }
@@ -1132,7 +1132,7 @@ export async function editUserMessage(
         agentMessageRow,
       };
 
-      void runAgentWithStreaming(
+      void runAgentLoop(
         auth.toJSON(),
         { sync: true, inMemoryData },
         { forceAsynchronousLoop: false }
@@ -1354,7 +1354,7 @@ export async function retryAgentMessage(
     agentMessageRow,
   };
 
-  void runAgentWithStreaming(
+  void runAgentLoop(
     auth.toJSON(),
     { sync: true, inMemoryData },
     { forceAsynchronousLoop: false }

@@ -23,7 +23,9 @@ import {
 
 export type RunAgentAsynchronousArgs = {
   agentMessageId: string;
+  agentMessageVersion: number;
   conversationId: string;
+  conversationTitle: string | null;
   userMessageId: string;
 };
 
@@ -55,7 +57,8 @@ export async function getRunAgentData(
 
   const auth = await Authenticator.fromJSON(authType);
 
-  const { agentMessageId, conversationId, userMessageId } = runAgentArgs.idArgs;
+  const { agentMessageId, agentMessageVersion, conversationId, userMessageId } =
+    runAgentArgs.idArgs;
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err(
@@ -84,6 +87,7 @@ export async function getRunAgentData(
       if (
         !agentMessage &&
         message.sId === agentMessageId &&
+        message.version === agentMessageVersion &&
         isAgentMessageType(message)
       ) {
         agentMessage = message;
@@ -108,8 +112,12 @@ export async function getRunAgentData(
   // Get the AgentMessage database row by querying through Message model.
   const agentMessageRow = await Message.findOne({
     where: {
+      // Leveraging the index on workspaceId, conversationId, sId.
+      conversationId: conversation.id,
       sId: agentMessageId,
       workspaceId: auth.getNonNullableWorkspace().id,
+      // No proper index on version.
+      version: agentMessageVersion,
     },
     include: [
       {

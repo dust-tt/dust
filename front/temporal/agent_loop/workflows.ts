@@ -20,7 +20,7 @@ import type {
 
 const activities: AgentLoopActivities = {
   runModelActivity: proxyActivities<typeof runModelActivities>({
-    startToCloseTimeout: "10 minutes",
+    startToCloseTimeout: "5 minutes",
   }).runModelActivity,
   runToolActivity: proxyActivities<typeof runToolActivities>({
     startToCloseTimeout: "10 minutes",
@@ -62,30 +62,39 @@ export async function agentLoopWorkflow({
     idArgs: runAsynchronousAgentArgs,
   };
 
-  // Launch a child workflow to generate the conversation title in the background.
-  // If a workflow with the same ID is already running, ignore the error and continue.
-  // Do not wait for the child workflow to complete at this point.
   let childWorkflowHandle: ChildWorkflowHandle<
     typeof agentLoopConversationTitleWorkflow
-  >;
-  try {
-    childWorkflowHandle = await startChild(agentLoopConversationTitleWorkflow, {
-      workflowId: makeAgentLoopConversationTitleWorkflowId(
-        authType,
-        runAsynchronousAgentArgs
-      ),
-      searchAttributes: parentSearchAttributes,
-      args: [{ authType, runAsynchronousAgentArgs }],
-      memo,
-    });
-  } catch (err) {
-    if (err instanceof WorkflowExecutionAlreadyStartedError) {
-      return;
+  > | null = null;
+
+  // If conversation title is not set, launch a child workflow to generate the conversation title in
+  // the background. If a workflow with the same ID is already running, ignore the error and
+  // continue. Do not wait for the child workflow to complete at this point.
+  // This is to avoid blocking the main workflow.
+  if (!runAsynchronousAgentArgs.conversationTitle) {
+    try {
+      childWorkflowHandle = await startChild(
+        agentLoopConversationTitleWorkflow,
+        {
+          workflowId: makeAgentLoopConversationTitleWorkflowId(
+            authType,
+            runAsynchronousAgentArgs
+          ),
+          searchAttributes: parentSearchAttributes,
+          args: [{ authType, runAsynchronousAgentArgs }],
+          memo,
+        }
+      );
+    } catch (err) {
+      if (err instanceof WorkflowExecutionAlreadyStartedError) {
+        return;
+      }
+      throw err;
     }
-    throw err;
   }
 
   await executeAgentLoop(authType, runAgentArgs, activities);
 
-  await childWorkflowHandle.result();
+  if (childWorkflowHandle) {
+    await childWorkflowHandle.result();
+  }
 }

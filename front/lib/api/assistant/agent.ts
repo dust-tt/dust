@@ -52,7 +52,7 @@ async function runAgentSynchronousWithStreaming(
  * Higher-level function that serves as single entry point to either synchronous or asynchronous
  * execution based on the RunAgentArgs type.
  */
-export async function runAgentWithStreaming(
+export async function runAgentLoop(
   authType: AuthenticatorType,
   runAgentArgs: RunAgentArgs,
   { forceAsynchronousLoop = false }: { forceAsynchronousLoop?: boolean } = {}
@@ -67,7 +67,9 @@ export async function runAgentWithStreaming(
       authType,
       runAsynchronousAgentArgs: {
         agentMessageId: agentMessage.sId,
+        agentMessageVersion: agentMessage.version,
         conversationId: conversation.sId,
+        conversationTitle: conversation.title,
         userMessageId: userMessage.sId,
       },
     });

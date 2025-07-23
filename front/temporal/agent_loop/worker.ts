@@ -31,7 +31,9 @@ export async function runAgentLoopWorker() {
       ],
     },
     bundlerOptions: {
-      // Update the webpack config to use aliases from our tsconfig.json.
+      // Update the webpack config to use aliases from our tsconfig.json. This let us import code
+      // in the workflows and activities files using the @app/ prefix. We also need to ignore some
+      // modules that are not available in Temporal environment.
       webpackConfigHook: (config) => {
         const plugins = config.resolve?.plugins ?? [];
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
