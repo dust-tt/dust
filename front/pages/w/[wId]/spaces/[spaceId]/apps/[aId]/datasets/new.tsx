@@ -127,15 +127,13 @@ export default function NewDatasetView({
       subscription={subscription}
       owner={owner}
       hideSidebar
-      titleChildren={
-        <AppLayoutSimpleCloseTitle
-          title={app.name}
-          onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.space));
-          }}
-        />
-      }
     >
+      <AppLayoutSimpleCloseTitle
+        title={app.name}
+        onClose={() => {
+          void router.push(dustAppsListUrl(owner, app.space));
+        }}
+      />
       <div className="flex w-full flex-col">
         <Tabs value="datasets" className="mt-2">
           <TabsList>

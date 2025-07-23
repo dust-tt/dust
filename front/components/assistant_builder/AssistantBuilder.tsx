@@ -434,31 +434,29 @@ export default function AssistantBuilder({
         isWideMode
         owner={owner}
         noSidePadding
-        titleChildren={
-          !edited ? (
-            <AppLayoutSimpleCloseTitle
-              title={modalTitle}
-              onClose={async () => {
-                await appLayoutBack(owner, router);
-              }}
-            />
-          ) : (
-            <AppLayoutSimpleSaveCancelTitle
-              title={modalTitle}
-              onCancel={async () => {
-                await appLayoutBack(owner, router);
-              }}
-              onSave={isSavingDisabled ? undefined : onAssistantSave}
-              isSaving={isSavingOrDeleting}
-              saveTooltip={
-                isSavingDisabled
-                  ? "Saving agents is temporarily disabled and will be re-enabled shortly."
-                  : undefined
-              }
-            />
-          )
-        }
       >
+        {!edited ? (
+          <AppLayoutSimpleCloseTitle
+            title={modalTitle}
+            onClose={async () => {
+              await appLayoutBack(owner, router);
+            }}
+          />
+        ) : (
+          <AppLayoutSimpleSaveCancelTitle
+            title={modalTitle}
+            onCancel={async () => {
+              await appLayoutBack(owner, router);
+            }}
+            onSave={isSavingDisabled ? undefined : onAssistantSave}
+            isSaving={isSavingOrDeleting}
+            saveTooltip={
+              isSavingDisabled
+                ? "Saving agents is temporarily disabled and will be re-enabled shortly."
+                : undefined
+            }
+          />
+        )}
         <BuilderLayout
           leftPanel={
             <div className="flex h-full flex-col gap-4 pb-6 pt-4">

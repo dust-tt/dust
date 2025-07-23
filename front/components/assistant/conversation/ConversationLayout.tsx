@@ -147,14 +147,12 @@ const ConversationLayoutContent = ({
             : `Dust - New Conversation`
         }
         noSidePadding
-        titleChildren={
-          activeConversationId && (
-            <ConversationTitle owner={owner} baseUrl={baseUrl} />
-          )
-        }
         hasTopPadding={false}
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
+        {activeConversationId && (
+          <ConversationTitle owner={owner} baseUrl={baseUrl} />
+        )}
         {conversationError ? (
           <ConversationErrorDisplay error={conversationError} />
         ) : (

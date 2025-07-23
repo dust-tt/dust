@@ -141,15 +141,13 @@ export default function AppRun({
       subscription={subscription}
       owner={owner}
       hideSidebar
-      titleChildren={
-        <AppLayoutSimpleCloseTitle
-          title={app.name}
-          onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.space));
-          }}
-        />
-      }
     >
+      <AppLayoutSimpleCloseTitle
+        title={app.name}
+        onClose={() => {
+          void router.push(dustAppsListUrl(owner, app.space));
+        }}
+      />
       <div className="flex w-full flex-col">
         <Tabs value="runs" className="mt-2">
           <TabsList className="inline-flex h-10 items-center gap-2 border-b border-separator">

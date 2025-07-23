@@ -10,6 +10,8 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+
+import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useRouter } from "next/router";
 import type { MouseEvent } from "react";
 import React, { useCallback, useRef, useState } from "react";
@@ -111,7 +113,8 @@ export function ConversationTitle({
           void onDelete();
         }}
       />
-      <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
+      <AppLayoutTitle>
+        <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
         <div className="flex min-w-0 flex-row items-center gap-4 text-muted-foreground dark:text-muted-foreground-night">
           {!isEditingTitle ? (
             <div className="min-w-0 overflow-hidden truncate">
@@ -233,7 +236,8 @@ export function ConversationTitle({
             }
           />
         </div>
-      </div>
+        </div>
+      </AppLayoutTitle>
     </>
   );
 }

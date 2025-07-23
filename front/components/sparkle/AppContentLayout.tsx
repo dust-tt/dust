@@ -53,7 +53,6 @@ interface AppContentLayoutProps {
   pageTitle?: string;
   subNavigation?: SidebarNavigation[] | null;
   subscription: SubscriptionType;
-  titleChildren?: React.ReactNode;
 }
 
 // TODO(2025-04-11 yuka) We need to refactor AppLayout to avoid re-mounting on every page navigation.
@@ -70,7 +69,6 @@ export default function AppContentLayout({
   pageTitle,
   subNavigation,
   subscription,
-  titleChildren,
 }: AppContentLayoutProps) {
   const [loaded, setLoaded] = useState(false);
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
@@ -105,19 +103,9 @@ export default function AppContentLayout({
           id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
           className={classNames(
             "flex h-full w-full flex-col items-center overflow-y-auto",
-            hasTopPadding ?? !titleChildren ? "lg:pt-8" : ""
+            hasTopPadding ? "lg:pt-8" : ""
           )}
         >
-          <div
-            className={cn(
-              "flex h-14 w-full shrink-0 flex-col px-4 pl-14 lg:pl-4",
-              !hideSidebar &&
-                "border-b border-border bg-background dark:border-border-night dark:bg-background-night",
-              titleChildren ? "" : "lg:hidden"
-            )}
-          >
-            {loaded && titleChildren && titleChildren}
-          </div>
 
           <div
             className={cn(

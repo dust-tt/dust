@@ -215,15 +215,13 @@ export default function EditDustAssistant({
       subscription={subscription}
       hideSidebar
       owner={owner}
-      titleChildren={
-        <AppLayoutSimpleCloseTitle
-          title="Manage Dust Agent"
-          onClose={async () => {
-            await router.push(`/w/${owner.sId}/builder/assistants`);
-          }}
-        />
-      }
     >
+      <AppLayoutSimpleCloseTitle
+        title="Manage Dust Agent"
+        onClose={async () => {
+          await router.push(`/w/${owner.sId}/builder/assistants`);
+        }}
+      />
       <div className="h-12" />
       <Page.Header
         title="Dust Agent"

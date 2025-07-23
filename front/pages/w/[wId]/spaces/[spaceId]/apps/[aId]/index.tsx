@@ -332,15 +332,13 @@ export default function AppView({
       subscription={subscription}
       hideSidebar
       owner={owner}
-      titleChildren={
-        <AppLayoutSimpleCloseTitle
-          title={app.name}
-          onClose={() => {
-            void router.push(dustAppsListUrl(owner, app.space));
-          }}
-        />
-      }
     >
+      <AppLayoutSimpleCloseTitle
+        title={app.name}
+        onClose={() => {
+          void router.push(dustAppsListUrl(owner, app.space));
+        }}
+      />
       <div className="flex w-full flex-col">
         <Tabs value="specification" className="mt-2">
           <TabsList>

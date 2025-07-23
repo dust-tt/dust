@@ -1,5 +1,22 @@
-import { BarHeader } from "@dust-tt/sparkle";
+import { BarHeader, cn } from "@dust-tt/sparkle";
 import React from "react";
+
+interface AppLayoutTitleProps {
+  children: React.ReactNode;
+}
+
+export function AppLayoutTitle({ children }: AppLayoutTitleProps) {
+  return (
+    <div
+      className={cn(
+        "flex h-14 w-full shrink-0 flex-col border-b border-border px-4 pl-14 lg:pl-4",
+        "dark:border-border-night"
+      )}
+    >
+      {children}
+    </div>
+  );
+}
 
 export function AppLayoutSimpleCloseTitle({
   title,
@@ -9,11 +26,13 @@ export function AppLayoutSimpleCloseTitle({
   onClose: () => void;
 }) {
   return (
-    <BarHeader
-      title={title}
-      rightActions={<BarHeader.ButtonBar variant="close" onClose={onClose} />}
-      className="ml-10 lg:ml-0"
-    />
+    <AppLayoutTitle>
+      <BarHeader
+        title={title}
+        rightActions={<BarHeader.ButtonBar variant="close" onClose={onClose} />}
+        className="ml-10 lg:ml-0"
+      />
+    </AppLayoutTitle>
   );
 }
 
@@ -31,32 +50,34 @@ export function AppLayoutSimpleSaveCancelTitle({
   saveTooltip?: string;
 }) {
   return (
-    <BarHeader
-      title={title}
-      rightActions={
-        <BarHeader.ButtonBar
-          variant="validate"
-          cancelButtonProps={{
-            size: "sm",
-            label: "Cancel",
-            variant: "ghost",
-            onClick: onCancel,
-          }}
-          saveButtonProps={
-            onSave
-              ? {
-                  size: "sm",
-                  label: isSaving ? "Saving..." : "Save",
-                  variant: "primary",
-                  onClick: onSave,
-                  disabled: isSaving,
-                  tooltip: saveTooltip,
-                }
-              : undefined
-          }
-        />
-      }
-      className="ml-10 lg:ml-0"
-    />
+    <AppLayoutTitle>
+      <BarHeader
+        title={title}
+        rightActions={
+          <BarHeader.ButtonBar
+            variant="validate"
+            cancelButtonProps={{
+              size: "sm",
+              label: "Cancel",
+              variant: "ghost",
+              onClick: onCancel,
+            }}
+            saveButtonProps={
+              onSave
+                ? {
+                    size: "sm",
+                    label: isSaving ? "Saving..." : "Save",
+                    variant: "primary",
+                    onClick: onSave,
+                    disabled: isSaving,
+                    tooltip: saveTooltip,
+                  }
+                : undefined
+            }
+          />
+        }
+        className="ml-10 lg:ml-0"
+      />
+    </AppLayoutTitle>
   );
 }
