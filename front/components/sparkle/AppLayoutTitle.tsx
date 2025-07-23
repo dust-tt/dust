@@ -10,6 +10,7 @@ export function AppLayoutTitle({ children }: AppLayoutTitleProps) {
     <div
       className={cn(
         "flex h-14 w-full shrink-0 flex-col border-b border-border px-4 pl-14 lg:pl-4",
+        "bg-background dark:bg-background-night",
         "dark:border-border-night"
       )}
     >

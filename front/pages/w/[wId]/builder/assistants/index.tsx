@@ -299,7 +299,6 @@ export default function WorkspaceAssistants({
         subscription={subscription}
         owner={owner}
         navChildren={<AssistantSidebarMenu owner={owner} />}
-        hasTopPadding={false}
         isWideMode
       >
         <AssistantDetails

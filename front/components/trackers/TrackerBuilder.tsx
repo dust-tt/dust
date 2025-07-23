@@ -19,7 +19,7 @@ import { useContext, useMemo, useState } from "react";
 
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import { ConfirmContext } from "@app/components/Confirm";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import {
   AppLayoutSimpleCloseTitle,
   AppLayoutSimpleSaveCancelTitle,
@@ -275,11 +275,10 @@ export const TrackerBuilder = ({
   );
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       owner={owner}
       subscription={subscription}
       hideSidebar
-      isWideMode
       pageTitle={
         initialTrackerId ? "Dust - Edit Tracker" : "Dust - New Tracker"
       }
@@ -301,7 +300,7 @@ export const TrackerBuilder = ({
           isSaving={isSubmitting}
         />
       )}
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-16 pb-12 pt-2">
+      <div className="flex flex-col gap-16 pb-12 pt-2">
         <div className="flex">
           <div className="flex flex-grow" />
           <div className="flex flex-shrink-0 gap-2">
@@ -639,6 +638,6 @@ export const TrackerBuilder = ({
           </div>
         </div>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 };

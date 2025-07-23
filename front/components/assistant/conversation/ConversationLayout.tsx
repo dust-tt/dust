@@ -33,6 +33,7 @@ import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
+  ConversationError,
   ConversationType,
   LightWorkspaceType,
   SubscriptionType,
@@ -140,54 +141,45 @@ const ConversationLayoutContent = ({
       <AppContentLayout
         subscription={subscription}
         owner={owner}
-        isWideMode
         pageTitle={
           conversation?.title
             ? `Dust - ${conversation?.title}`
             : `Dust - New Conversation`
         }
-        noSidePadding
-        hasTopPadding={false}
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
-        {activeConversationId && (
-          <ConversationTitle owner={owner} baseUrl={baseUrl} />
-        )}
-        {conversationError ? (
-          <ConversationErrorDisplay error={conversationError} />
-        ) : (
-          <>
-            <AssistantDetails
+        <AssistantDetails
+          owner={owner}
+          user={user}
+          assistantId={assistantSId}
+          onClose={() => onOpenChangeAssistantModal(false)}
+        />
+        <CoEditionProvider
+          owner={owner}
+          hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+        >
+          <InteractiveContentProvider>
+            <ConversationInnerLayout
+              conversation={conversation}
               owner={owner}
-              user={user}
-              assistantId={assistantSId}
-              onClose={() => onOpenChangeAssistantModal(false)}
-            />
-            <CoEditionProvider
-              owner={owner}
-              hasCoEditionFeatureFlag={hasCoEditionFeatureFlag}
+              baseUrl={baseUrl}
+              conversationError={conversationError}
+              activeConversationId={activeConversationId}
             >
-              <InteractiveContentProvider>
-                <ConversationInnerLayout
-                  conversation={conversation}
-                  owner={owner}
-                >
-                  {children}
-                </ConversationInnerLayout>
-              </InteractiveContentProvider>
-            </CoEditionProvider>
-            {shouldDisplayWelcomeTourGuide && (
-              <WelcomeTourGuide
-                owner={owner}
-                user={user}
-                isAdmin={isAdmin}
-                startConversationRef={startConversationRef}
-                spaceMenuButtonRef={spaceMenuButtonRef}
-                createAgentButtonRef={createAgentButtonRef}
-                onTourGuideEnd={onTourGuideEnd}
-              />
-            )}
-          </>
+              {children}
+            </ConversationInnerLayout>
+          </InteractiveContentProvider>
+        </CoEditionProvider>
+        {shouldDisplayWelcomeTourGuide && (
+          <WelcomeTourGuide
+            owner={owner}
+            user={user}
+            isAdmin={isAdmin}
+            startConversationRef={startConversationRef}
+            spaceMenuButtonRef={spaceMenuButtonRef}
+            createAgentButtonRef={createAgentButtonRef}
+            onTourGuideEnd={onTourGuideEnd}
+          />
         )}
       </AppContentLayout>
     </InputBarProvider>
@@ -198,14 +190,22 @@ interface ConversationInnerLayoutProps {
   children: React.ReactNode;
   conversation: ConversationType | null;
   owner: LightWorkspaceType;
+  baseUrl: string;
+  conversationError: ConversationError | null;
+  activeConversationId: string | null;
 }
 
 function ConversationInnerLayout({
   children,
   conversation,
   owner,
+  baseUrl,
+  conversationError,
+  activeConversationId,
 }: ConversationInnerLayoutProps) {
   const { isContentOpen } = useInteractiveContentContext();
+
+  console.log("activeConversationId", activeConversationId);
 
   return (
     <div className="flex h-full w-full flex-col">
@@ -214,20 +214,29 @@ function ConversationInnerLayout({
         className="flex h-full w-full flex-1"
       >
         <ResizablePanel defaultSize={100}>
-          <FileDropProvider>
-            <GenerationContextProvider>
-              <div
-                id={CONVERSATION_VIEW_SCROLL_LAYOUT}
-                className={cn(
-                  "h-full overflow-y-auto scroll-smooth px-4 sm:px-8",
-                  // Hide conversation on mobile when interactive content is opened.
-                  isContentOpen && "hidden md:block"
-                )}
-              >
-                {children}
-              </div>
-            </GenerationContextProvider>
-          </FileDropProvider>
+          <div className="flex h-full flex-col">
+            {activeConversationId && (
+              <ConversationTitle owner={owner} baseUrl={baseUrl} />
+            )}
+            {conversationError ? (
+              <ConversationErrorDisplay error={conversationError} />
+            ) : (
+              <FileDropProvider>
+                <GenerationContextProvider>
+                  <div
+                    id={CONVERSATION_VIEW_SCROLL_LAYOUT}
+                    className={cn(
+                      "h-full overflow-y-auto scroll-smooth px-4 sm:px-8",
+                      // Hide conversation on mobile when interactive content is opened.
+                      isContentOpen && "hidden md:block"
+                    )}
+                  >
+                    {children}
+                  </div>
+                </GenerationContextProvider>
+              </FileDropProvider>
+            )}
+          </div>
         </ResizablePanel>
 
         {/* Interactive Content Panel */}

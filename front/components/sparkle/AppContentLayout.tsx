@@ -1,13 +1,11 @@
 import { cn } from "@dust-tt/sparkle";
 import Head from "next/head";
 import type { NextRouter } from "next/router";
-import React, { useEffect, useState } from "react";
+import React from "react";
 
-import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
-import { classNames } from "@app/lib/utils";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
@@ -44,9 +42,7 @@ export const appLayoutBack = async (
 
 interface AppContentLayoutProps {
   children: React.ReactNode;
-  hasTopPadding?: boolean;
   hideSidebar?: boolean;
-  noSidePadding?: boolean;
   isWideMode?: boolean;
   navChildren?: React.ReactNode;
   owner: WorkspaceType;
@@ -60,9 +56,7 @@ interface AppContentLayoutProps {
 // When you need to use AppContentLayout, add `getLayout` function to your page and wrap the page with AppRootLayout.
 export default function AppContentLayout({
   children,
-  hasTopPadding,
   hideSidebar = false,
-  noSidePadding,
   isWideMode = false,
   navChildren,
   owner,
@@ -70,11 +64,12 @@ export default function AppContentLayout({
   subNavigation,
   subscription,
 }: AppContentLayoutProps) {
-  const [loaded, setLoaded] = useState(false);
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useAppKeyboardShortcuts(owner);
 
-  useEffect(() => {
+  const [loaded, setLoaded] = React.useState(false);
+
+  React.useEffect(() => {
     setLoaded(true);
   }, []);
 
@@ -94,34 +89,13 @@ export default function AppContentLayout({
       />
       <div
         className={cn(
-          "relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden",
+          "relative h-full w-full flex-1 overflow-hidden",
           "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night"
+          "dark:bg-background-night dark:text-foreground-night",
+          isWideMode && "px-4 sm:px-8"
         )}
       >
-        <main
-          id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
-          className={classNames(
-            "flex h-full w-full flex-col items-center overflow-y-auto",
-            hasTopPadding ? "lg:pt-8" : ""
-          )}
-        >
-
-          <div
-            className={cn(
-              "flex h-full w-full flex-col items-center overflow-y-auto",
-              !noSidePadding && "px-4 sm:px-8"
-            )}
-          >
-            {isWideMode ? (
-              loaded && children
-            ) : (
-              <div className="flex w-full max-w-4xl grow flex-col">
-                {loaded && children}
-              </div>
-            )}
-          </div>
-        </main>
+        {loaded && children}
       </div>
     </div>
   );

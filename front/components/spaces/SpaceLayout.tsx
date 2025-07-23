@@ -92,7 +92,6 @@ export function SpaceLayout({
     <AppContentLayout
       subscription={subscription}
       owner={owner}
-      hasTopPadding={false}
       isWideMode
       navChildren={
         <SpaceSideBarMenu
@@ -102,21 +101,23 @@ export function SpaceLayout({
         />
       }
     >
-      <div className="flex w-full flex-col pt-8">
-        <Page.Vertical gap="lg" align="stretch">
-          <SpaceSearchInput
-            category={category}
-            canReadInSpace={canReadInSpace}
-            canWriteInSpace={canWriteInSpace}
-            owner={owner}
-            useBackendSearch={useBackendSearch}
-            space={space}
-            dataSourceView={dataSourceView}
-            parentId={parentId}
-          >
-            {children}
-          </SpaceSearchInput>
-        </Page.Vertical>
+      <div className="flex w-full overflow-y-auto">
+        <div className="flex w-full flex-col pt-8">
+          <Page.Vertical gap="lg" align="stretch">
+            <SpaceSearchInput
+              category={category}
+              canReadInSpace={canReadInSpace}
+              canWriteInSpace={canWriteInSpace}
+              owner={owner}
+              useBackendSearch={useBackendSearch}
+              space={space}
+              dataSourceView={dataSourceView}
+              parentId={parentId}
+            >
+              {children}
+            </SpaceSearchInput>
+          </Page.Vertical>
+        </div>
       </div>
 
       {isAdmin && !isLimitReached && (
