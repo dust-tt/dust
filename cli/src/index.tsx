@@ -59,9 +59,9 @@ const cli = meow({
       description:
         "Show detailed message information (requires --agent and --message)",
     },
-    noAutoUpdate: {
+    noUpdateCheck: {
       type: "boolean",
-      description: "Skip automatic update check",
+      description: "Skip update check",
     },
   },
 });

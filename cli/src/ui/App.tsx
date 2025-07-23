@@ -10,7 +10,7 @@ import Chat from "./commands/Chat.js";
 import Logout from "./commands/Logout.js";
 import NonInteractiveChat from "./commands/NonInteractiveChat.js";
 import Status from "./commands/Status.js";
-import AutoUpdater from "./components/AutoUpdater.js";
+import UpdateInfo from "./components/UpdateInfo.js";
 import Help from "./Help.js";
 
 interface AppProps {
@@ -55,18 +55,18 @@ interface AppProps {
       type: "boolean";
       shortFlag: "d";
     };
-    noAutoUpdate: {
+    noUpdateCheck: {
       type: "boolean";
     };
   }>;
 }
 
 const App: FC<AppProps> = ({ cli }) => {
-  const [updateComplete, setUpdateComplete] = useState(false);
+  const [updateCheckComplete, setUpdateCheckComplete] = useState(false);
   const { input, flags } = cli;
 
   const handleUpdateComplete = useCallback(() => {
-    setUpdateComplete(true);
+    setUpdateCheckComplete(true);
   }, []);
 
   if (flags.version) {
@@ -77,9 +77,9 @@ const App: FC<AppProps> = ({ cli }) => {
     return <Help />;
   }
 
-  // Show auto updater unless --noAutoUpdate flag is set or update is complete
-  if (!flags.noAutoUpdate && !updateComplete) {
-    return <AutoUpdater onComplete={handleUpdateComplete} />;
+  // Show update info unless --noUpdateCheck flag is set or check is complete
+  if (!flags.noUpdateCheck && !updateCheckComplete) {
+    return <UpdateInfo onComplete={handleUpdateComplete} />;
   }
 
   const command = input[0] || "chat";
