@@ -111,7 +111,6 @@ export default function DatasetsView({
           }}
         />
       }
-      hasTopPadding={false}
     >
       <div className="flex w-full flex-col">
         <Tabs value="datasets" className="mt-2">

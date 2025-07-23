@@ -1,9 +1,7 @@
 import type { AppContentLayoutProps } from "@app/components/sparkle/AppContentLayout";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 
-type AppCenteredLayoutProps = AppContentLayoutProps & {
-  title?: React.ReactNode;
-};
+type AppWideModeLayoutProps = AppContentLayoutProps;
 
 /**
  * A centered layout that wraps AppContentLayout and provides a max-width container
@@ -11,18 +9,14 @@ type AppCenteredLayoutProps = AppContentLayoutProps & {
  *
  * Pages can include their own title components (like AppLayoutSimpleCloseTitle) as the first child.
  */
-export function AppCenteredLayout({
+export function AppWideModeLayout({
   children,
-  title,
   ...props
-}: AppCenteredLayoutProps) {
+}: AppWideModeLayoutProps) {
   return (
     <AppContentLayout {...props}>
-      {title && title}
       <div className="flex h-full w-full flex-col items-center overflow-y-auto pt-8">
-        <div className="flex w-full max-w-4xl grow flex-col px-4 sm:px-8">
-          {children}
-        </div>
+        <div className="flex w-full grow flex-col px-4 sm:px-8">{children}</div>
       </div>
     </AppContentLayout>
   );

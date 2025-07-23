@@ -26,8 +26,8 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -295,11 +295,10 @@ export default function WorkspaceAssistants({
 
   return (
     <ConversationsNavigationProvider>
-      <AppContentLayout
+      <AppWideModeLayout
         subscription={subscription}
         owner={owner}
         navChildren={<AssistantSidebarMenu owner={owner} />}
-        isWideMode
       >
         <AssistantDetails
           owner={owner}
@@ -441,7 +440,7 @@ export default function WorkspaceAssistants({
             </div>
           </Page.Vertical>
         </div>
-      </AppContentLayout>
+      </AppWideModeLayout>
     </ConversationsNavigationProvider>
   );
 }

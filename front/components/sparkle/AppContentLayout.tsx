@@ -40,10 +40,9 @@ export const appLayoutBack = async (
   }
 };
 
-interface AppContentLayoutProps {
+export interface AppContentLayoutProps {
   children: React.ReactNode;
   hideSidebar?: boolean;
-  isWideMode?: boolean;
   navChildren?: React.ReactNode;
   owner: WorkspaceType;
   pageTitle?: string;
@@ -57,7 +56,6 @@ interface AppContentLayoutProps {
 export default function AppContentLayout({
   children,
   hideSidebar = false,
-  isWideMode = false,
   navChildren,
   owner,
   pageTitle,
@@ -91,8 +89,7 @@ export default function AppContentLayout({
         className={cn(
           "relative h-full w-full flex-1 overflow-hidden",
           "bg-background text-foreground",
-          "dark:bg-background-night dark:text-foreground-night",
-          isWideMode && "px-4 sm:px-8"
+          "dark:bg-background-night dark:text-foreground-night"
         )}
       >
         {loaded && children}

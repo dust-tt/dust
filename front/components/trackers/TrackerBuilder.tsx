@@ -282,24 +282,26 @@ export const TrackerBuilder = ({
       pageTitle={
         initialTrackerId ? "Dust - Edit Tracker" : "Dust - New Tracker"
       }
+      title={
+        !edited ? (
+          <AppLayoutSimpleCloseTitle
+            title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
+            onClose={() => {
+              void router.push(`/w/${owner.sId}/labs/trackers`);
+            }}
+          />
+        ) : (
+          <AppLayoutSimpleSaveCancelTitle
+            title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
+            onCancel={() => {
+              void router.push(`/w/${owner.sId}/labs/trackers`);
+            }}
+            onSave={onSubmit}
+            isSaving={isSubmitting}
+          />
+        )
+      }
     >
-      {!edited ? (
-        <AppLayoutSimpleCloseTitle
-          title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
-          onClose={() => {
-            void router.push(`/w/${owner.sId}/labs/trackers`);
-          }}
-        />
-      ) : (
-        <AppLayoutSimpleSaveCancelTitle
-          title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
-          onCancel={() => {
-            void router.push(`/w/${owner.sId}/labs/trackers`);
-          }}
-          onSave={onSubmit}
-          isSaving={isSubmitting}
-        />
-      )}
       <div className="flex flex-col gap-16 pb-12 pt-2">
         <div className="flex">
           <div className="flex flex-grow" />

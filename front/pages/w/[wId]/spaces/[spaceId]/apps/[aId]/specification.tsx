@@ -3,7 +3,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import config from "@app/lib/api/config";
@@ -104,10 +104,18 @@ export default function Specification({
   const router = useRouter();
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
+      title={
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(dustAppsListUrl(owner, app.space));
+          }}
+        />
+      }
     >
       <AppLayoutSimpleCloseTitle
         title={app.name}
@@ -150,7 +158,7 @@ export default function Specification({
           )}
         </div>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 

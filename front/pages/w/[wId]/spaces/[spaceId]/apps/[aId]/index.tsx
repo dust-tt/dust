@@ -16,7 +16,7 @@ import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { extractConfig } from "@app/lib/config";
@@ -328,17 +328,19 @@ export default function AppView({
   const router = useRouter();
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       hideSidebar
       owner={owner}
+      title={
+        <AppLayoutSimpleCloseTitle
+          title={app.name}
+          onClose={() => {
+            void router.push(dustAppsListUrl(owner, app.space));
+          }}
+        />
+      }
     >
-      <AppLayoutSimpleCloseTitle
-        title={app.name}
-        onClose={() => {
-          void router.push(dustAppsListUrl(owner, app.space));
-        }}
-      />
       <div className="flex w-full flex-col">
         <Tabs value="specification" className="mt-2">
           <TabsList>
@@ -508,7 +510,7 @@ export default function AppView({
         </div>
         <div ref={bottomRef} className="mt-4"></div>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 
