@@ -146,10 +146,11 @@ export async function updateAllWorkspaceUsersRegionMetadata(
 
   if (externalMemberships.length > 0) {
     // Group memberships by workspace to check each one
-    const workspaceIds = [
+    const workspaceModelIds = [
       ...new Set(externalMemberships.map((m) => m.workspaceId)),
     ];
-    const workspaces = await WorkspaceResource.fetchByModelIds(workspaceIds);
+    const workspaces =
+      await WorkspaceResource.fetchByModelIds(workspaceModelIds);
 
     const nonEmptyWorkspaces = [];
     for (const w of workspaces) {
