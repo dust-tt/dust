@@ -61,10 +61,10 @@ interface AppProps {
     noUpdateCheck: {
       type: "boolean";
     };
-    apiKey: {
+    key: {
       type: "string";
     };
-    wId: {
+    workspaceId: {
       type: "string";
     };
   }>;
@@ -95,7 +95,9 @@ const App: FC<AppProps> = ({ cli }) => {
 
   switch (command) {
     case "login":
-      return <Auth force={flags.force} apiKey={flags.apiKey} wId={flags.wId} />;
+      return (
+        <Auth force={flags.force} apiKey={flags.key} wId={flags.workspaceId} />
+      );
     case "status":
       return <Status />;
     case "logout":
