@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import config from "@app/lib/api/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 
 const workosConfig = {
@@ -51,11 +51,7 @@ async function handleAuthorize(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const workspace = workspaceId
-    ? await WorkspaceModel.findOne({
-        where: {
-          sId: workspaceId,
-        },
-      })
+    ? await WorkspaceResource.fetchById(workspaceId)
     : null;
 
   const options: Record<string, string | undefined> = {

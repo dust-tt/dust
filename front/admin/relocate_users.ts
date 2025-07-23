@@ -12,8 +12,8 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import { makeScript } from "@app/scripts/helpers";
@@ -146,14 +146,11 @@ export async function updateAllWorkspaceUsersRegionMetadata(
 
   if (externalMemberships.length > 0) {
     // Group memberships by workspace to check each one
-    const workspaceIds = [
+    const workspaceModelIds = [
       ...new Set(externalMemberships.map((m) => m.workspaceId)),
     ];
-    const workspaces = await WorkspaceModel.findAll({
-      where: {
-        id: workspaceIds,
-      },
-    });
+    const workspaces =
+      await WorkspaceResource.fetchByModelIds(workspaceModelIds);
 
     const nonEmptyWorkspaces = [];
     for (const w of workspaces) {
