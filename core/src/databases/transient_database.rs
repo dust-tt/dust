@@ -47,7 +47,11 @@ impl TransientDatabase {
     pub async fn invalidate(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
         if let Some(worker) = self.sqlite_worker() {
             let now = utils::now();
-            info!(db_id = self.unique_id(), "Before invalidate_database())");
+            info!(
+                db_id = self.unique_id(),
+                worker_url = worker.url(),
+                "Before invalidate_database())"
+            );
             worker.invalidate_database(self.unique_id()).await?;
             info!(
                 duration = utils::now() - now,
