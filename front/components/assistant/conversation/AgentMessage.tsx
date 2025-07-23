@@ -150,7 +150,7 @@ export function AgentMessage({
 
   // Track if this is a fresh mount (no lastEventId) with existing content
   const isFreshMountWithContent = React.useRef(
-    message.status === "created" && !!message.content
+    message.status === "created" && (!!message.content || !!message.chainOfThought)
   );
 
   const buildEventSourceURL = React.useCallback(
@@ -217,7 +217,8 @@ export function AgentMessage({
       if (
         isFreshMountWithContent.current &&
         eventType === "generation_tokens" &&
-        eventPayload.data.classification === "tokens"
+        (eventPayload.data.classification === "tokens" ||
+          eventPayload.data.classification === "chain_of_thought")
       ) {
         // Clear the existing content from the state
         dispatch({

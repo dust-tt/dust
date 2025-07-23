@@ -87,6 +87,7 @@ export function messageReducer(
         message: {
           ...state.message,
           content: null,
+          chainOfThought: null,
         },
       };
     case "agent_action_success":
