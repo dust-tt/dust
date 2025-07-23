@@ -3,8 +3,14 @@ import { Breadcrumbs, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
+import type { NavigationHistoryEntryType } from "@app/components/data_source_view/DataSourceBuilderContext";
+import {
+  DataSourceBuilderProvider,
+  useDataSourceBuilderContext,
+} from "@app/components/data_source_view/DataSourceBuilderContext";
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
+import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import {
   useSpaceDataSourceViewsWithDetails,
@@ -21,13 +27,6 @@ import type {
   DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
 } from "@app/types";
-
-import type { NavigationHistoryEntryType } from "./DataSourceBuilderContext";
-import {
-  DataSourceBuilderProvider,
-  useDataSourceBuilderContext,
-} from "./DataSourceBuilderContext";
-import { DataSourceSpaceSelector } from "./DataSourceSpaceSelector";
 
 interface DataSourceBuilderSelectorProps {
   allowedSpaces?: SpaceType[];

@@ -5,16 +5,10 @@ import type {
   DataSourceViewContentNode,
   SpaceType,
 } from "@app/types";
+import { assertNever } from "@app/types";
 
 type DataSourceBuilderTree = {
-  /**
-   * List of path that are included
-   */
   in: string[];
-
-  /**
-   * List of path that are excluded
-   */
   notIn: string[];
 };
 
@@ -24,18 +18,8 @@ export type NavigationHistoryEntryType =
   | { type: "category"; category: DataSourceViewCategoryWithoutApps }
   | { type: "node"; node: DataSourceViewContentNode };
 
-type State = {
-  sources: {
-    /**
-     * List of path that are included
-     */
-    in: string[];
-
-    /**
-     * List of path that are excluded
-     */
-    notIn: string[];
-  };
+type StateType = {
+  sources: DataSourceBuilderTree;
   /**
    * Shape is `[root, space, category, ...node]`
    * so in this case we can use index to update specific values
@@ -43,7 +27,7 @@ type State = {
   navigationHistory: NavigationHistoryEntryType[];
 };
 
-type DataSourceBuilderState = State & {
+type DataSourceBuilderState = StateType & {
   // TREE HELPERS
   /**
    * Select a specific row.
@@ -97,7 +81,7 @@ type DataSourceBuilderState = State & {
   navigateTo: (index: number) => void;
 };
 
-type Action =
+type ActionType =
   | {
       type: "SELECT_DATA_SOURCE_NODE";
       payload: { rowId?: string };
@@ -128,9 +112,9 @@ const DataSourceBuilderContext = createContext<
 >(undefined);
 
 function dataSourceBuilderReducer(
-  state: State,
-  { type, payload }: Action
-): State {
+  state: StateType,
+  { type, payload }: ActionType
+): StateType {
   switch (type) {
     case "NAVIGATION_SET_SPACE": {
       return {
@@ -187,8 +171,7 @@ function dataSourceBuilderReducer(
       };
     }
     default:
-      console.error(`action ${type} not handled`);
-      return state;
+      assertNever(type);
   }
 }
 
