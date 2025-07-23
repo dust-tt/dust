@@ -135,12 +135,17 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       try {
         await getFirecrawl().cancelCrawl(webConfig.crawlId);
       } catch (error) {
+        // If we don't find the job, we might just have an expired ID, so it's safe to continue.
         if (!(error instanceof FirecrawlError) || error.statusCode !== 404) {
-          // If we don't find the job, we might just have an expired ID, so it's safe to continue.
           return new Err(
             new Error(
               `Error cancelling crawl on Firecrawl: ${normalizeError(error)}`
             )
+          );
+        } else {
+          logger.info(
+            { connectorId: this.connectorId, webConfigId: webConfig.id },
+            "Firecrawl job not found. Nothing to cancel."
           );
         }
       }
