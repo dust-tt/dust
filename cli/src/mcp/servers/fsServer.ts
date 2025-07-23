@@ -1,5 +1,5 @@
-import type { DustAPI } from "@dust-tt/client";
-import { DustMcpServerTransport } from "@dust-tt/client";
+import type { DustAPI, Result } from "@dust-tt/client";
+import { DustMcpServerTransport, Err, Ok } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { EditFileTool } from "../tools/editFile.js";
@@ -17,7 +17,17 @@ export const useFileSystemServer = async (
     updatedContent: string,
     filePath: string
   ) => Promise<boolean>
-) => {
+): Promise<Result<void, Error>> => {
+  // Check if using API key authentication - MCP servers require OAuth
+  const apiKey = await dustAPI.getApiKey();
+  if (apiKey?.startsWith("sk-")) {
+    return new Err(
+      new Error(
+        "File system access requires OAuth authentication. API keys don't support MCP server registration. Please use 'dust login' to authenticate with OAuth for file system features."
+      )
+    );
+  }
+
   const server = new McpServer({
     name: "fs-cli",
     version: process.env.npm_package_version || "0.1.0",
@@ -88,12 +98,15 @@ export const useFileSystemServer = async (
 
   try {
     await server.connect(transport);
+    return new Ok(undefined);
   } catch (error) {
     console.error("[MCP Connection Failed]", error);
-    throw new Error(
-      `Failed to connect MCP server: ${
-        error instanceof Error ? error.message : String(error)
-      }`
+    return new Err(
+      new Error(
+        `Failed to connect MCP server: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      )
     );
   }
 };

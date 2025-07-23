@@ -1,4 +1,10 @@
-import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
+import type {
+  Result} from "@dust-tt/client";
+import type {GetAgentConfigurationsResponseType} from "@dust-tt/client";
+import {
+  Err,
+  Ok
+} from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import type { Request, Response } from "express";
@@ -29,15 +35,26 @@ export async function startMcpServer(
   selectedAgents: AgentConfiguration[],
   onServerStart: (url: string) => void,
   requestedPort?: number
-) {
-  const dustClient = await getDustClient();
+): Promise<Result<void, Error>> {
+  const dustClientRes = await getDustClient();
+  if (dustClientRes.isErr()) {
+    return new Err(
+      new Error(`Failed to get client: ${dustClientRes.error.message}`)
+    );
+  }
+
+  const dustClient = dustClientRes.value;
   if (!dustClient) {
-    throw new Error("Dust client not initialized. Please run 'dust login'.");
+    return new Err(
+      new Error("Dust client not initialized. Please run 'dust login'.")
+    );
   }
 
   const meRes = await dustClient.me();
   if (meRes.isErr()) {
-    throw new Error(`Failed to get user information: ${meRes.error.message}`);
+    return new Err(
+      new Error(`Failed to get user information: ${meRes.error.message}`)
+    );
   }
 
   const user = meRes.value;
@@ -260,8 +277,7 @@ export async function startMcpServer(
 
       httpServer.listen(port, () => {
         const address = httpServer.address();
-        const boundPort =
-          typeof address === "string" ? 0 : (address?.port ?? 0);
+        const boundPort = typeof address === "string" ? 0 : address?.port ?? 0;
         resolve(boundPort);
       });
     });
@@ -299,8 +315,9 @@ export async function startMcpServer(
     // Register shutdown handlers
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
+    return new Ok(undefined);
   } catch (error) {
     console.error("Fatal HTTP server error:", error);
-    process.exit(1);
+    return new Err(normalizeError(error));
   }
 }
