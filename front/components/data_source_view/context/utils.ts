@@ -43,9 +43,22 @@ export function addNodeToTree(
     isParentOrSamePath(inPath, pathStr)
   );
 
-  const newNotIn = notInSet.has(pathStr)
-    ? tree.notIn.filter((notInPath) => notInPath !== pathStr)
-    : tree.notIn;
+  // Check if there's a parent path in notIn that we should remove
+  const parentToRemove = tree.notIn.find(
+    (notInPath) =>
+      isParentOrSamePath(notInPath, pathStr) && notInPath !== pathStr
+  );
+
+  let newNotIn: string[] = tree.notIn;
+  if (notInSet.has(pathStr)) {
+    // Remove both the path itself and any parent path
+    newNotIn = tree.notIn.filter(
+      (notInPath) => notInPath !== pathStr && notInPath !== parentToRemove
+    );
+  } else if (parentToRemove) {
+    // Remove only the parent path
+    newNotIn = tree.notIn.filter((notInPath) => notInPath !== parentToRemove);
+  }
 
   if (hasParentPath) {
     return {
