@@ -63,7 +63,7 @@ type DataSourceBuilderState = State & {
    * Check selection status for the specific row.
    * Total path is deduced from the current navigationHistory state.
    */
-  isRowSelected: (rowId: string) => boolean;
+  isRowSelected: (rowId: string) => boolean | "partial";
 
   // NAVIGATION HELPERS
 
@@ -358,15 +358,15 @@ export function removeNodeFromTree(
 
 /**
  * Determines if a path should be selected based on tree configuration.
- * A path is selected if:
- * 1. The path or any parent path is in the 'in' array
- * 2. The path is not explicitly excluded in the 'notIn' array
- * 3. notIn takes priority over in for exact matches
+ * Returns:
+ * - true: The path is fully selected (explicitly or through parent selection)
+ * - false: The path is fully unselected (explicitly excluded or not included)
+ * - 'partial': The path has mixed selection state (some children selected, some not)
  */
 export function isNodeSelected(
   tree: DataSourceBuilderTree,
   path: string[]
-): boolean {
+): boolean | "partial" {
   const pathStr = path.join(".");
 
   // Check if explicitly excluded (notIn takes priority)
@@ -377,9 +377,51 @@ export function isNodeSelected(
   }
 
   // Check if included (exact match or parent path)
+  let isIncluded = false;
   for (const inPath of tree.in) {
     if (pathStr === inPath || pathStr.startsWith(inPath + ".")) {
-      return true;
+      isIncluded = true;
+      break;
+    }
+  }
+
+  // If explicitly included, check if any children are excluded (making it partial)
+  if (isIncluded) {
+    for (const notInPath of tree.notIn) {
+      if (notInPath.startsWith(pathStr + ".")) {
+        return "partial";
+      }
+    }
+    return true;
+  }
+
+  // If not explicitly included, check if any children are included (making it partial)
+  for (const inPath of tree.in) {
+    if (inPath.startsWith(pathStr + ".")) {
+      // Check if all children under this path are included or if some are excluded
+      let hasIncludedChild = false;
+      let hasExcludedChild = false;
+
+      // Check for included children
+      for (const checkInPath of tree.in) {
+        if (checkInPath.startsWith(pathStr + ".")) {
+          hasIncludedChild = true;
+          break;
+        }
+      }
+
+      // Check for excluded children
+      for (const notInPath of tree.notIn) {
+        if (notInPath.startsWith(pathStr + ".")) {
+          hasExcludedChild = true;
+          break;
+        }
+      }
+
+      // If we have children but they're not all included/excluded, it's partial
+      if (hasIncludedChild || hasExcludedChild) {
+        return "partial";
+      }
     }
   }
 

@@ -230,11 +230,53 @@ describe("DataSourceBuilder utilities", () => {
         in: ["root"],
         notIn: ["root.a", "root.b.c"],
       };
-      expect(isNodeSelected(tree, ["root"])).toBe(true);
+      expect(isNodeSelected(tree, ["root"])).toBe("partial");
       expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
-      expect(isNodeSelected(tree, ["root", "b"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "b"])).toBe("partial");
       expect(isNodeSelected(tree, ["root", "b", "c"])).toBe(false);
       expect(isNodeSelected(tree, ["root", "b", "d"])).toBe(true);
+    });
+
+    it("should return 'partial' when parent has mixed children", () => {
+      const tree = {
+        in: ["root.a", "root.c"],
+        notIn: ["root.b"],
+      };
+      expect(isNodeSelected(tree, ["root"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "a"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "b"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "c"])).toBe(true);
+    });
+
+    it("should return 'partial' when included parent has excluded children", () => {
+      const tree = {
+        in: ["root"],
+        notIn: ["root.a"],
+      };
+      expect(isNodeSelected(tree, ["root"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "a"])).toBe(false);
+      expect(isNodeSelected(tree, ["root", "b"])).toBe(true);
+    });
+
+    it("should return true when all children are included", () => {
+      const tree = {
+        in: ["root"],
+        notIn: [],
+      };
+      expect(isNodeSelected(tree, ["root"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "a"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "b"])).toBe(true);
+    });
+
+    it("should return 'partial' for parent with some included children", () => {
+      const tree = {
+        in: ["root.a.b"],
+        notIn: [],
+      };
+      expect(isNodeSelected(tree, ["root"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "a"])).toBe("partial");
+      expect(isNodeSelected(tree, ["root", "a", "b"])).toBe(true);
+      expect(isNodeSelected(tree, ["root", "a", "c"])).toBe(false);
     });
 
     it("should return false for paths not matching any included pattern", () => {

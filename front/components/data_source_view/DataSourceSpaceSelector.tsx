@@ -42,19 +42,6 @@ export function DataSourceSpaceSelector({
         id: "select",
         enableSorting: false,
         enableHiding: false,
-        header: () => (
-          <Checkbox
-            size="xs"
-            onClick={(event) => event.stopPropagation()}
-            onCheckedChange={(state) => {
-              if (state === "indeterminate") {
-                return;
-              }
-
-              // TODO: add proper method to handle select all
-            }}
-          />
-        ),
         cell: ({ row }) => (
           <div className="flex h-full items-center">
             <Checkbox

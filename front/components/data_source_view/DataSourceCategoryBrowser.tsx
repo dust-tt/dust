@@ -77,13 +77,18 @@ export function DataSourceCategoryBrowser({
         header: () => (
           <Checkbox
             size="xs"
+            checked={isRowSelected(space.sId)}
             onClick={(event) => event.stopPropagation()}
             onCheckedChange={(state) => {
               if (state === "indeterminate") {
                 return;
               }
 
-              // TODO: add method
+              if (state) {
+                selectNode(space.sId);
+              } else {
+                removeNode(space.sId);
+              }
             }}
           />
         ),
