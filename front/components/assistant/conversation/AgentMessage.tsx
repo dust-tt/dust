@@ -148,6 +148,11 @@ export function AgentMessage({
     message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
+  // Track if this is a fresh mount (no lastEventId) with existing content
+  const isFreshMountWithContent = React.useRef(
+    message.status === "created" && !!message.content
+  );
+
   const buildEventSourceURL = React.useCallback(
     (lastEvent: string | null) => {
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
@@ -157,6 +162,8 @@ export function AgentMessage({
           eventId: string;
         } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
+        // We have a lastEventId, so this is not a fresh mount
+        isFreshMountWithContent.current = false;
       }
       const url = esURL + "?lastEventId=" + lastEventId;
 
@@ -203,6 +210,20 @@ export function AgentMessage({
       // event, so we just return.
       if (eventType === "end-of-stream") {
         return;
+      }
+
+      // If this is a fresh mount with existing content and we're getting generation_tokens,
+      // we need to clear the content first to avoid duplication
+      if (
+        isFreshMountWithContent.current &&
+        eventType === "generation_tokens" &&
+        eventPayload.data.classification === "tokens"
+      ) {
+        // Clear the existing content from the state
+        dispatch({
+          type: "clear_content",
+        } as any);
+        isFreshMountWithContent.current = false;
       }
 
       const shouldRefresh = [

@@ -25,7 +25,10 @@ export interface MessageTemporaryState {
   actionProgress: ActionProgressState;
 }
 
-export type AgentMessageStateEvent = AgentMessageEvents | ToolNotificationEvent;
+export type AgentMessageStateEvent =
+  | AgentMessageEvents
+  | ToolNotificationEvent
+  | { type: "clear_content" };
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
@@ -78,6 +81,14 @@ export function messageReducer(
   event: AgentMessageStateEventWithoutToolApproveExecution
 ): MessageTemporaryState {
   switch (event.type) {
+    case "clear_content":
+      return {
+        ...state,
+        message: {
+          ...state.message,
+          content: null,
+        },
+      };
     case "agent_action_success":
       return {
         ...state,
