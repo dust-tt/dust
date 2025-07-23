@@ -11,4 +11,5 @@ export type KeyType = {
   name: string | null;
   groupId?: ModelId;
   role: RoleType;
+  scope: "default" | "restricted_group_only";
 };
