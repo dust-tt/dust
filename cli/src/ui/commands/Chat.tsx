@@ -495,6 +495,9 @@ const CliChat: FC<CliChatProps> = ({
                 fullName: me.fullName,
                 email: me.email,
                 origin: "api",
+                clientSideMCPServerIds: fileSystemServerId
+                  ? [fileSystemServerId]
+                  : null,
               },
             },
             contentFragments,
