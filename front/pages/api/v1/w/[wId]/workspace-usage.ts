@@ -76,11 +76,11 @@ import { assertNever } from "@app/types";
  *           - "assistant_messages": The list of messages sent by users including the mentioned agents.
  *           - "builders": The list of builders categorized by their activity level.
  *           - "assistants": The list of workspace agents and their corresponding usage.
- *           - "feedbacks": The list of feedbacks given by users on the agent messages.
+ *           - "feedback": The list of feedback given by users on the agent messages.
  *           - "all": A concatenation of all the above tables.
  *         schema:
  *           type: string
- *           enum: [users, inactive_users, assistant_messages, builders, assistants, feedbacks, all]
+ *           enum: [users, inactive_users, assistant_messages, builders, assistants, feedback, all]
  *     responses:
  *       200:
  *         description: The usage data in CSV or JSON format, or a ZIP of multiple CSVs if table is equal to "all"

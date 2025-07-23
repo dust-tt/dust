@@ -742,7 +742,17 @@ impl LocalTable {
                 .map(|db| {
                     let store = store.clone();
                     async move {
+                        info!(
+                            table_id = self.table.table_id(),
+                            db_id = db.unique_id(),
+                            "DSSTRUCTSTAT [upsert_rows_gcs] invalidating db"
+                        );
                         db.invalidate(store).await?;
+                        info!(
+                            table_id = self.table.table_id(),
+                            db_id = db.unique_id(),
+                            "DSSTRUCTSTAT [upsert_rows_gcs] invalidated db"
+                        );
                         Ok::<_, anyhow::Error>(())
                     }
                 }),
