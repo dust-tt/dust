@@ -651,12 +651,11 @@ export async function runModelActivity({
   // Create AgentStepContent for each content item (reasoning, text, function calls)
   // This replaces the original agent_step_content event emission
   for (const [index, content] of output.contents.entries()) {
-    const stepContent = await AgentStepContentResource.makeNew({
+    const stepContent = await AgentStepContentResource.createNewVersion({
       workspaceId: conversation.owner.id,
       agentMessageId: agentMessage.agentMessageId,
       step,
       index,
-      version: autoRetryCount,
       type: content.type,
       value: content,
     });

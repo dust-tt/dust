@@ -27,10 +27,7 @@ import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 import { Err, Ok } from "@app/types";
-import type {
-  AgentContentItemType,
-  AgentStepContentType,
-} from "@app/types/assistant/agent_message_content";
+import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -94,7 +91,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     }
   }
 
-  static async makeNew(
+  private static async makeNew(
     blob: CreationAttributes<AgentStepContentModel>,
     transaction?: Transaction
   ): Promise<AgentStepContentResource> {
@@ -420,14 +417,10 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     index,
     type,
     value,
-  }: {
-    agentMessageId: ModelId;
-    workspaceId: ModelId;
-    step: number;
-    index: number;
-    type: "text_content" | "reasoning" | "function_call";
-    value: AgentContentItemType;
-  }): Promise<AgentStepContentResource> {
+  }: Omit<
+    CreationAttributes<AgentStepContentModel>,
+    "version"
+  >): Promise<AgentStepContentResource> {
     return frontSequelize.transaction(async (transaction: Transaction) => {
       const existingContent = await this.model.findAll({
         where: {
