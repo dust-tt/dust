@@ -174,7 +174,6 @@ export async function submitAgentBuilderForm({
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
-  // TODO: some values are currently mocked for the sake of testing agent creation
   const requestBody: PostOrPatchAgentConfigurationRequestBody = {
     assistant: {
       name: formData.agentSettings.name,

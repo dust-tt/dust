@@ -161,6 +161,7 @@
     "@types/formidable": "^3.4.3",
     "@types/fs-extra": "^11.0.1",
     "@types/html-escaper": "^3.0.4",
+    "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.2",
     "@types/lodash": "^4.14.202",
     "@types/luxon": "^3.4.2",
