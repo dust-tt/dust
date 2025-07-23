@@ -118,6 +118,27 @@ const Help: FC = () => {
           with --api-key)
         </Text>
       </Box>
+      <Box marginTop={1}>
+        <Text>Environment Variables:</Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>DUST_API_KEY</Text> API key for headless authentication
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>DUST_WORKSPACE_ID</Text> Workspace ID for headless
+          authentication
+        </Text>
+      </Box>
+      <Box marginTop={1}>
+        <Text>
+          <Text italic>
+            Note: Environment variables take precedence over command-line flags
+          </Text>
+        </Text>
+      </Box>
     </Box>
   );
 };

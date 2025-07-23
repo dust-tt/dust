@@ -53,19 +53,28 @@ const Auth: FC<AuthProps> = ({ force = false, apiKey, wId }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Validate that both apiKey and wId are provided together
-  const hasApiKey = Boolean(apiKey);
-  const hasWId = Boolean(wId);
+  // Check for environment variables first, then fall back to passed flags
+  const effectiveApiKey = process.env.DUST_API_KEY || apiKey;
+  const effectiveWId = process.env.DUST_WORKSPACE_ID || wId;
+
+  console.log("effectiveApiKey:", effectiveApiKey);
+  console.log("effectiveWId:", effectiveWId);
+  // Validate that both apiKey and wId are provided together (from either env vars or flags)
+  const hasApiKey = Boolean(effectiveApiKey);
+  const hasWId = Boolean(effectiveWId);
 
   if (hasApiKey !== hasWId) {
     return (
       <Box flexDirection="column">
         <Text color="red">
-          Error: Both --api-key and --wId flags must be provided together for
+          Error: Both API key and workspace ID must be provided together for
           headless authentication.
         </Text>
         <Text>
-          Use either both flags for headless mode, or neither for interactive
+          Set both DUST_API_KEY and DUST_WORKSPACE_ID environment variables,
+        </Text>
+        <Text>
+          or use both --api-key and --wId flags, or neither for interactive
           authentication.
         </Text>
       </Box>
@@ -279,7 +288,7 @@ const Auth: FC<AuthProps> = ({ force = false, apiKey, wId }) => {
   }, []);
 
   const handleHeadlessAuth = useCallback(async () => {
-    if (!apiKey || !wId) {
+    if (!effectiveApiKey || !effectiveWId) {
       return;
     }
 
@@ -287,10 +296,10 @@ const Auth: FC<AuthProps> = ({ force = false, apiKey, wId }) => {
 
     try {
       // Store the API key as the access token and refresh token
-      await TokenStorage.saveTokens(apiKey, apiKey);
+      await TokenStorage.saveTokens(effectiveApiKey, effectiveApiKey);
 
       // Store the workspace ID
-      await TokenStorage.saveWorkspaceId(wId);
+      await TokenStorage.saveWorkspaceId(effectiveWId);
 
       // Store a default region for API key auth
       await TokenStorage.saveRegion("us-central1");
@@ -307,17 +316,17 @@ const Auth: FC<AuthProps> = ({ force = false, apiKey, wId }) => {
       setError(normalizeError(err).message);
       setIsLoading(false);
     }
-  }, [apiKey, wId]);
+  }, [effectiveApiKey, effectiveWId]);
 
   useEffect(() => {
-    // If both apiKey and wId are provided, use headless authentication
-    if (apiKey && wId) {
+    // If both apiKey and wId are provided (from env vars or flags), use headless authentication
+    if (effectiveApiKey && effectiveWId) {
       void handleHeadlessAuth();
     } else {
       // Otherwise, use the existing OAuth device flow
       void startDeviceFlow();
     }
-  }, [apiKey, wId, handleHeadlessAuth, startDeviceFlow]);
+  }, [effectiveApiKey, effectiveWId, handleHeadlessAuth, startDeviceFlow]);
 
   if (error) {
     return (

@@ -53,11 +53,28 @@ When no command is provided, the `chat` command will be used by default.
 
 ### Headless Authentication
 
-The Dust CLI supports headless authentication for automated workflows and CI/CD environments. This allows you to authenticate without interactive prompts by providing credentials directly via command-line arguments.
+The Dust CLI supports headless authentication for automated workflows and CI/CD environments. This allows you to authenticate without interactive prompts by providing credentials via environment variables or command-line arguments.
 
 #### Usage
 
-To use headless authentication, pass both required parameters with any command:
+**Method 1: Environment Variables (Recommended)**
+
+Set the following environment variables:
+
+```bash
+export DUST_API_KEY="sk_your_api_key_here"
+export DUST_WORKSPACE_ID="ws_abc123"
+```
+
+Then run any command normally:
+
+```bash
+dust [command]
+```
+
+**Method 2: Command-line Arguments**
+
+Pass both required parameters with any command:
 
 ```bash
 dust [command] --wId <workspace-id> --api-key <your-api-key>
@@ -65,10 +82,31 @@ dust [command] --wId <workspace-id> --api-key <your-api-key>
 
 #### Parameters
 
-- `--wId`: Your workspace ID
-- `--api-key`: Your API key for authentication
+- `DUST_API_KEY` (env) or `--api-key` (flag): Your API key for authentication
+- `DUST_WORKSPACE_ID` (env) or `--wId` (flag): Your workspace ID
+
+**Note:** Environment variables take precedence over command-line flags. If both are set, the environment variables will be used.
 
 #### Examples
+
+**Using Environment Variables:**
+
+```bash
+# Set environment variables once
+export DUST_API_KEY="sk_your_api_key_here"
+export DUST_WORKSPACE_ID="ws_abc123"
+
+# Chat with headless auth
+dust chat
+
+# Launch agents-mcp with headless auth
+dust agents-mcp --port 8080
+
+# Use with specific agent
+dust chat --sId 1234567890
+```
+
+**Using Command-line Arguments:**
 
 ```bash
 # Chat with headless auth
@@ -91,9 +129,10 @@ Headless authentication is particularly useful for:
 
 #### Security Considerations
 
-- Store API keys securely (use environment variables in production)
-- Avoid committing API keys to version control
+- **Use environment variables** instead of command-line flags when possible, as command-line arguments may be visible in process lists
+- Store API keys securely and avoid committing them to version control
 - Consider using secrets management tools for production deployments
+- Use `.env` files locally and proper secrets management in CI/CD environments
 
 ### Options
 
