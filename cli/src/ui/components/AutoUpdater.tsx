@@ -20,12 +20,15 @@ const AutoUpdater: FC<AutoUpdaterProps> = ({ onComplete }) => {
   const [waitingForInput, setWaitingForInput] = useState(false);
 
   // Handle user input when waiting
-  useInput((input, key) => {
-    if (waitingForInput) {
-      // Any key press continues
-      onComplete();
-    }
-  }, { isActive: waitingForInput });
+  useInput(
+    () => {
+      if (waitingForInput) {
+        // Any key press continues
+        onComplete();
+      }
+    },
+    { isActive: waitingForInput }
+  );
 
   useEffect(() => {
     const checkAndUpdate = async () => {
