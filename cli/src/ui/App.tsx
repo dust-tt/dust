@@ -1,7 +1,7 @@
 import { Box, Text } from "ink";
 import type { Result } from "meow";
 import type { FC } from "react";
-import React from "react";
+import React, { useCallback, useState } from "react";
 
 import AgentsMCP from "./commands/AgentsMCP.js";
 import Auth from "./commands/Auth.js";
@@ -10,6 +10,7 @@ import Chat from "./commands/Chat.js";
 import Logout from "./commands/Logout.js";
 import NonInteractiveChat from "./commands/NonInteractiveChat.js";
 import Status from "./commands/Status.js";
+import AutoUpdater from "./components/AutoUpdater.js";
 import Help from "./Help.js";
 
 interface AppProps {
@@ -54,11 +55,19 @@ interface AppProps {
       type: "boolean";
       shortFlag: "d";
     };
+    noAutoUpdate: {
+      type: "boolean";
+    };
   }>;
 }
 
 const App: FC<AppProps> = ({ cli }) => {
+  const [updateComplete, setUpdateComplete] = useState(false);
   const { input, flags } = cli;
+
+  const handleUpdateComplete = useCallback(() => {
+    setUpdateComplete(true);
+  }, []);
 
   if (flags.version) {
     return <Text>Dust CLI v{process.env.npm_package_version || "0.1.0"}</Text>;
@@ -66,6 +75,11 @@ const App: FC<AppProps> = ({ cli }) => {
 
   if (flags.help) {
     return <Help />;
+  }
+
+  // Show auto updater unless --noAutoUpdate flag is set or update is complete
+  if (!flags.noAutoUpdate && !updateComplete) {
+    return <AutoUpdater onComplete={handleUpdateComplete} />;
   }
 
   const command = input[0] || "chat";
