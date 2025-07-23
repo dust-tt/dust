@@ -60,11 +60,11 @@ export function ClientExecutableRenderer({
         onClose={closeContent}
       >
         <Button
-          size="xs"
-          variant="outline"
           icon={showCode ? SparklesIcon : CommandLineIcon}
           onClick={() => setShowCode(!showCode)}
+          size="xs"
           tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
+          variant="outline"
         />
       </InteractiveContentHeader>
 
