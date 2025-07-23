@@ -67,19 +67,20 @@ export async function autoUpdateIfAvailable(): Promise<Result<boolean, Error>> {
   }
 
   const notifier = updateNotifier({pkg})
+  const updateInfo = await notifier.fetchInfo()
 
-  const updateInfo = {
-    hasUpdate: notifier.update !== null,
-    currentVersion: pkg.version,
-    latestVersion: notifier.update?.latest || pkg.version,
-  }
+  // const updateInfo = {
+  //   hasUpdate: notifier.update !== null,
+  //   currentVersion: pkg.version,
+  //   latestVersion: notifier.update?.latest || pkg.version,
+  // }
 
-  if (!updateInfo.hasUpdate) {
+  if (updateInfo.latest === updateInfo.current) {
     return new Ok(false);
   }
 
   console.log(
-    `↻ Update available: ${updateInfo.currentVersion} → ${updateInfo.latestVersion}`
+    `↻ Update available: ${updateInfo.current} → ${updateInfo.latest}`
   );
   console.log("▶ Updating Dust CLI...");
 
@@ -90,7 +91,7 @@ export async function autoUpdateIfAvailable(): Promise<Result<boolean, Error>> {
     return new Err(new Error(errorMsg));
   }
 
-  console.log(`✓ Successfully updated to version ${updateInfo.latestVersion}`);
+  console.log(`✓ Successfully updated to version ${updateInfo.latest}`);
 
   return new Ok(true);
 }

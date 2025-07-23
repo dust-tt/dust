@@ -1,4 +1,4 @@
-import { Box, Text } from "ink";
+import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import type { FC } from "react";
 import React, { useEffect, useState } from "react";
@@ -17,6 +17,15 @@ const AutoUpdater: FC<AutoUpdaterProps> = ({ onComplete }) => {
   const [isChecking, setIsChecking] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [waitingForInput, setWaitingForInput] = useState(false);
+
+  // Handle user input when waiting
+  useInput((input, key) => {
+    if (waitingForInput) {
+      // Any key press continues
+      onComplete();
+    }
+  }, { isActive: waitingForInput });
 
   useEffect(() => {
     const checkAndUpdate = async () => {
@@ -26,10 +35,10 @@ const AutoUpdater: FC<AutoUpdaterProps> = ({ onComplete }) => {
         const updateResult = await autoUpdateIfAvailable();
 
         if (updateResult.isErr()) {
-          // Update check failed, but continue with app
+          // Update check failed, wait for user input
           setError(updateResult.error.message);
           setIsChecking(false);
-          setTimeout(onComplete, 2000); // Show error briefly then continue
+          setWaitingForInput(true); // Enable input handling
           return;
         }
 
@@ -44,10 +53,10 @@ const AutoUpdater: FC<AutoUpdaterProps> = ({ onComplete }) => {
           onComplete();
         }
       } catch (err) {
-        // Silently handle errors and continue
+        // Handle unexpected errors, wait for user input
         setError(normalizeError(err).message);
         setIsChecking(false);
-        setTimeout(onComplete, 2000);
+        setWaitingForInput(true); // Enable input handling
       }
     };
 
@@ -59,6 +68,7 @@ const AutoUpdater: FC<AutoUpdaterProps> = ({ onComplete }) => {
       <Box flexDirection="column">
         <Text color="yellow">⚠ Update check failed: {error}</Text>
         <Text>Continuing with current version...</Text>
+        <Text color="dim">Press any key to continue...</Text>
       </Box>
     );
   }
