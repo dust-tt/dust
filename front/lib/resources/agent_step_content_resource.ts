@@ -229,7 +229,11 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     });
 
     if (latestVersionsOnly) {
-      contents = this.filterLatestVersions(contents, ["step", "index"]);
+      contents = this.filterLatestVersions(contents, [
+        "agentMessageId",
+        "step",
+        "index",
+      ]);
 
       // Also filter MCP actions to latest versions
       if (includeMCPActions) {
