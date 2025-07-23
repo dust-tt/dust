@@ -149,120 +149,38 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   const agentMessageIds = removeNulls(
     agentMessages.map((m) => m.agentMessageId || null)
   );
-  const [agentConfigurations, newAgentMCPActions, agentMCPActions] =
-    await Promise.all([
-      (async () => {
-        const agentConfigurationIds: Set<string> = agentMessages.reduce(
-          (acc: Set<string>, m) => {
-            const agentId = m.agentMessage?.agentConfigurationId;
-            if (agentId) {
-              acc.add(agentId);
-            }
-            return acc;
-          },
-          new Set<string>()
-        );
-        const agents = await getAgentConfigurations({
-          auth,
-          agentsGetView: { agentIds: [...agentConfigurationIds] },
-          variant: "extra_light",
+  const [agentConfigurations, agentMCPActions] = await Promise.all([
+    (async () => {
+      const agentConfigurationIds: Set<string> = agentMessages.reduce(
+        (acc: Set<string>, m) => {
+          const agentId = m.agentMessage?.agentConfigurationId;
+          if (agentId) {
+            acc.add(agentId);
+          }
+          return acc;
+        },
+        new Set<string>()
+      );
+      const agents = await getAgentConfigurations({
+        auth,
+        agentsGetView: { agentIds: [...agentConfigurationIds] },
+        variant: "extra_light",
+      });
+      if (agents.some((a) => !a)) {
+        return null;
+      }
+      return agents as LightAgentConfigurationType[];
+    })(),
+    (async () => {
+      const agentStepContents =
+        await AgentStepContentResource.fetchByAgentMessages(auth, {
+          agentMessageIds,
+          includeMCPActions: true,
+          latestVersionsOnly: true,
         });
-        if (agents.some((a) => !a)) {
-          return null;
-        }
-        return agents as LightAgentConfigurationType[];
-      })(),
-      (async () => {
-        const agentStepContents =
-          await AgentStepContentResource.fetchByAgentMessages(auth, {
-            agentMessageIds,
-            includeMCPActions: true,
-            latestVersionsOnly: true,
-          });
-        return agentStepContents
-          .map((sc) => sc.toJSON().mcpActions ?? [])
-          .flat();
-      })(),
-      // TODO(2025-07-21, durable agents): remove this shadow read.
-      (async () => {
-        const actions = await AgentMCPAction.findAll({
-          where: {
-            agentMessageId: agentMessageIds,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-          include: [
-            {
-              model: AgentMCPActionOutputItem,
-              as: "outputItems",
-              required: false,
-              include: [
-                {
-                  model: FileModel,
-                  as: "file",
-                  required: false,
-                },
-              ],
-            },
-          ],
-        });
-        return actions.map(
-          (action) =>
-            new MCPActionType({
-              id: action.id,
-              params: action.params,
-              output: removeNulls(
-                action.outputItems.map(hideFileFromActionOutput)
-              ),
-              functionCallId: action.functionCallId,
-              functionCallName: action.functionCallName,
-              agentMessageId: action.agentMessageId,
-              step: action.step,
-              mcpServerConfigurationId: action.mcpServerConfigurationId,
-              executionState: action.executionState,
-              isError: action.isError,
-              type: "tool_action",
-              generatedFiles: removeNulls(
-                action.outputItems.map((o) => {
-                  if (!o.file) {
-                    return null;
-                  }
-
-                  const file = o.file;
-                  const fileSid = FileResource.modelIdToSId({
-                    id: file.id,
-                    workspaceId: action.workspaceId,
-                  });
-
-                  return {
-                    fileId: fileSid,
-                    contentType: file.contentType,
-                    title: file.fileName,
-                    snippet: file.snippet,
-                  };
-                })
-              ),
-            })
-        );
-      })(),
-    ]);
-
-  if (newAgentMCPActions.length !== agentMCPActions.length) {
-    const correctIds = new Set(agentMCPActions.map((a) => a.id));
-    const newIds = new Set(newAgentMCPActions.map((a) => a.id));
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        agentMessageIds,
-        missingActions: agentMCPActions
-          .map((a) => a.id)
-          .filter((id) => !newIds.has(id)),
-        extraActions: newAgentMCPActions
-          .map((a) => a.id)
-          .filter((id) => !correctIds.has(id)),
-      },
-      "[Shadow read] Agent MCP actions mismatch"
-    );
-  }
+      return agentStepContents.map((sc) => sc.toJSON().mcpActions ?? []).flat();
+    })(),
+  ]);
 
   if (!agentConfigurations) {
     return new Err(
