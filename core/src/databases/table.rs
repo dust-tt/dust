@@ -460,63 +460,73 @@ impl LocalTable {
         let rows = Arc::new(rows);
 
         let mut now = utils::now();
-        let new_table_schema = match truncate {
-            // If the new rows replace existing ones, we need to clear the schema cache.
-            true => TableSchema::from_rows_async(rows.clone()).await?,
-            false => match self.table.schema_cached() {
-                // If there is no existing schema cache, simply use the new schema.
-                None => TableSchema::from_rows_async(rows.clone()).await?,
-                Some(existing_table_schema) => {
-                    // If there is an existing schema cache, merge it with the new schema.
-                    existing_table_schema
-                        .merge(&TableSchema::from_rows_async(rows.clone()).await?)?
-                }
-            },
-        };
-        info!(
-            duration = utils::now() - now,
-            table_id = self.table.table_id(),
-            row_count = rows.len(),
-            "DSSTRUCTSTAT [upsert_rows] table schema"
-        );
 
-        now = utils::now();
-        store
-            .update_data_source_table_schema(
-                &self.table.project,
-                &self.table.data_source_id,
-                &self.table.table_id,
-                &new_table_schema,
-            )
-            .await?;
-        info!(
-            duration = utils::now() - now,
-            table_id = self.table.table_id(),
-            "DSSTRUCTSTAT [upsert_rows] update table_schema"
-        );
+        // If we skip all the logic under 'if !SAVE_TABLES_TO_GCS', this will end up getting passed to
+        // batch_upsert_table_rows, which is quirky but ok since the Postgres implementation
+        // ignores this parameter.
+        let mut new_table_schema = TableSchema::empty();
 
-        now = utils::now();
-        if !truncate {
-            // When doing incremental updates to a table's rows, the schema may become too wide.
-            // For example, if a column has only integers, it's an integer column. If a new row has
-            // a string in that column, the column becomes a string column.
-            // However, if that row is later updated to have an integer, the column should become
-            // an integer column again, but we cannot know that without looking at all the rows.
-            // This is why we invalidate the schema when doing incremental updates, and next time
-            // the schema is requested, it will be recomputed from all the rows.
+        // We skip all this if saving to GCS, since it does all those same things. In the non-truncate case,
+        // that does mean that it may not happen until a bit later, but it will catch up
+        if !SAVE_TABLES_TO_GCS {
+            new_table_schema = match truncate {
+                // If the new rows replace existing ones, we need to clear the schema cache.
+                true => TableSchema::from_rows_async(rows.clone()).await?,
+                false => match self.table.schema_cached() {
+                    // If there is no existing schema cache, simply use the new schema.
+                    None => TableSchema::from_rows_async(rows.clone()).await?,
+                    Some(existing_table_schema) => {
+                        // If there is an existing schema cache, merge it with the new schema.
+                        existing_table_schema
+                            .merge(&TableSchema::from_rows_async(rows.clone()).await?)?
+                    }
+                },
+            };
+            info!(
+                duration = utils::now() - now,
+                table_id = self.table.table_id(),
+                row_count = rows.len(),
+                "DSSTRUCTSTAT [upsert_rows] table schema"
+            );
+
+            now = utils::now();
             store
-                .invalidate_data_source_table_schema(
+                .update_data_source_table_schema(
                     &self.table.project,
                     &self.table.data_source_id,
                     &self.table.table_id,
+                    &new_table_schema,
                 )
                 .await?;
+            info!(
+                duration = utils::now() - now,
+                table_id = self.table.table_id(),
+                "DSSTRUCTSTAT [upsert_rows] update table_schema"
+            );
+
+            now = utils::now();
+            if !truncate {
+                // When doing incremental updates to a table's rows, the schema may become too wide.
+                // For example, if a column has only integers, it's an integer column. If a new row has
+                // a string in that column, the column becomes a string column.
+                // However, if that row is later updated to have an integer, the column should become
+                // an integer column again, but we cannot know that without looking at all the rows.
+                // This is why we invalidate the schema when doing incremental updates, and next time
+                // the schema is requested, it will be recomputed from all the rows.
+                store
+                    .invalidate_data_source_table_schema(
+                        &self.table.project,
+                        &self.table.data_source_id,
+                        &self.table.table_id,
+                    )
+                    .await?;
+            }
+            info!(
+                duration = utils::now() - now,
+                table_id = self.table.table_id(),
+                "DSSTRUCTSTAT [upsert_rows] invalidate table schema"
+            );
         }
-        info!(
-            duration = utils::now() - now,
-            table_id = self.table.table_id(),
-            "DSSTRUCTSTAT [upsert_rows] invalidate table schema"
-        );
 
         now = utils::now();
         // Upsert the rows in the table.
@@ -536,32 +546,35 @@ impl LocalTable {
             "DSSTRUCTSTAT [upsert_rows] rows upsert"
         );
 
-        now = utils::now();
-        // Invalidate the databases that use the table.
-        try_join_all(
-            (store
-                .find_databases_using_table(
-                    &self.table.project,
-                    &self.table.data_source_id,
-                    &self.table.table_id,
-                    HEARTBEAT_INTERVAL_MS,
-                )
-                .await?)
-                .into_iter()
-                .map(|db| {
-                    let store = store.clone();
-                    async move {
-                        db.invalidate(store).await?;
-                        Ok::<_, anyhow::Error>(())
-                    }
-                }),
-        )
-        .await?;
-        info!(
-            duration = utils::now() - now,
-            table_id = self.table.table_id(),
-            "DSSTRUCTSTAT [upsert_rows] invalidate dbs"
-        );
+        // We skip all this if saving to GCS, since it does all those same things
+        if !SAVE_TABLES_TO_GCS {
+            now = utils::now();
+            // Invalidate the databases that use the table.
+            try_join_all(
+                (store
+                    .find_databases_using_table(
+                        &self.table.project,
+                        &self.table.data_source_id,
+                        &self.table.table_id,
+                        HEARTBEAT_INTERVAL_MS,
+                    )
+                    .await?)
+                    .into_iter()
+                    .map(|db| {
+                        let store = store.clone();
+                        async move {
+                            db.invalidate(store).await?;
+                            Ok::<_, anyhow::Error>(())
+                        }
+                    }),
+            )
+            .await?;
+            info!(
+                duration = utils::now() - now,
+                table_id = self.table.table_id(),
+                "DSSTRUCTSTAT [upsert_rows] invalidate dbs"
+            );
+        }
 
         Ok(())
     }
