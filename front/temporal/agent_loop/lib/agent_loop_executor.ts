@@ -52,13 +52,8 @@ export async function executeAgentLoop(
     const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
     const citationsIncrements = await Promise.all(
-      actionsToRun.map(({ inputs, functionCallId }, index) => {
-        // Find the step content ID for this function call
-        const stepContentId = functionCallId
-          ? functionCallStepContentIds[functionCallId]
-          : undefined;
-
-        return activities.runToolActivity(authType, {
+      actionsToRun.map(({ inputs, functionCallId }, index) =>
+        activities.runToolActivity(authType, {
           runAgentArgs,
           inputs,
           functionCallId,
@@ -66,9 +61,9 @@ export async function executeAgentLoop(
           stepActionIndex: index,
           stepActions: actionsToRun.map((a) => a.action),
           citationsRefsOffset,
-          stepContentId,
-        });
-      })
+          stepContentId: functionCallStepContentIds[functionCallId],
+        })
+      )
     );
 
     citationsRefsOffset += citationsIncrements.reduce(

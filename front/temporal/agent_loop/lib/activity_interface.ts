@@ -28,7 +28,7 @@ export interface AgentLoopActivities {
       stepActionIndex: number;
       stepActions: ActionConfigurationType[];
       citationsRefsOffset: number;
-      stepContentId?: ModelId;
+      stepContentId: ModelId;
     }
   ): Promise<{ citationsIncrement: number }>;
 }
