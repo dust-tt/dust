@@ -372,52 +372,52 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     if ("agentMCPActions" in this && Array.isArray(this.agentMCPActions)) {
       if (this.agentMCPActions.length === 0) {
         base.mcpActions = [];
-        return base;
+      } else {
+        const { value } = this;
+        assert(
+          value.type === "function_call",
+          "Unexpected: MCP actions on non-function call step content"
+        );
+        // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
+        base.mcpActions = this.agentMCPActions.map(
+          (action: AgentMCPAction) =>
+            new MCPActionType({
+              id: action.id,
+              params: JSON.parse(value.value.arguments),
+              output: removeNulls(
+                action.outputItems.map(hideFileFromActionOutput)
+              ),
+              functionCallId: value.value.id,
+              functionCallName: value.value.name,
+              agentMessageId: action.agentMessageId,
+              step: this.step,
+              mcpServerConfigurationId: action.mcpServerConfigurationId,
+              executionState: action.executionState,
+              isError: action.isError,
+              type: "tool_action",
+              generatedFiles: removeNulls(
+                action.outputItems.map((o) => {
+                  if (!o.file) {
+                    return null;
+                  }
+
+                  const file = o.file;
+                  const fileSid = FileResource.modelIdToSId({
+                    id: file.id,
+                    workspaceId: action.workspaceId,
+                  });
+
+                  return {
+                    fileId: fileSid,
+                    contentType: file.contentType,
+                    title: file.fileName,
+                    snippet: file.snippet,
+                  };
+                })
+              ),
+            })
+        );
       }
-      const { value } = this;
-      assert(
-        value.type === "function_call",
-        "Unexpected: MCP actions on non-function call step content"
-      );
-      // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
-      base.mcpActions = this.agentMCPActions.map(
-        (action: AgentMCPAction) =>
-          new MCPActionType({
-            id: action.id,
-            params: JSON.parse(value.value.arguments),
-            output: removeNulls(
-              action.outputItems.map(hideFileFromActionOutput)
-            ),
-            functionCallId: value.value.id,
-            functionCallName: value.value.name,
-            agentMessageId: action.agentMessageId,
-            step: this.step,
-            mcpServerConfigurationId: action.mcpServerConfigurationId,
-            executionState: action.executionState,
-            isError: action.isError,
-            type: "tool_action",
-            generatedFiles: removeNulls(
-              action.outputItems.map((o) => {
-                if (!o.file) {
-                  return null;
-                }
-
-                const file = o.file;
-                const fileSid = FileResource.modelIdToSId({
-                  id: file.id,
-                  workspaceId: action.workspaceId,
-                });
-
-                return {
-                  fileId: fileSid,
-                  contentType: file.contentType,
-                  title: file.fileName,
-                  snippet: file.snippet,
-                };
-              })
-            ),
-          })
-      );
     }
 
     return base;
