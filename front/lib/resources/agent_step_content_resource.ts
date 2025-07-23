@@ -496,7 +496,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       limit: number;
       cursor?: string;
     }
-  ): Promise<Result<GetMCPActionsResult, Error>> {
+  ): Promise<GetMCPActionsResult> {
     const owner = auth.getNonNullableWorkspace();
 
     const whereClause: WhereOptions<AgentStepContentModel> = {
@@ -547,72 +547,60 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       },
     ];
 
-    try {
-      const [totalCount, stepContents] = await Promise.all([
-        this.model.count({
-          include: includeClause,
-          where: whereClause,
-        }),
-        this.model.findAll({
-          include: includeClause,
-          where: whereClause,
-          order: [["createdAt", "DESC"]],
-          limit: limit + 1,
-        }),
-      ]);
+    const [totalCount, stepContents] = await Promise.all([
+      this.model.count({
+        include: includeClause,
+        where: whereClause,
+      }),
+      this.model.findAll({
+        include: includeClause,
+        where: whereClause,
+        order: [["createdAt", "DESC"]],
+        limit: limit + 1,
+      }),
+    ]);
 
-      const hasMore = stepContents.length > limit;
-      const actualStepContents = hasMore
-        ? stepContents.slice(0, limit)
-        : stepContents;
-      const nextCursor = hasMore
-        ? actualStepContents[
-            actualStepContents.length - 1
-          ].createdAt.toISOString()
-        : null;
+    const hasMore = stepContents.length > limit;
+    const actualStepContents = hasMore
+      ? stepContents.slice(0, limit)
+      : stepContents;
+    const nextCursor = hasMore
+      ? actualStepContents[
+          actualStepContents.length - 1
+        ].createdAt.toISOString()
+      : null;
 
-      const actions = actualStepContents.flatMap((stepContent) =>
-        (stepContent.agentMCPActions || []).map((action) => {
-          assert(
-            stepContent.agentMessage?.message?.conversation,
-            "Missing required relations"
-          );
-          assert(
-            stepContent.value.type === "function_call",
-            "Step content must be a function call"
-          );
+    const actions = actualStepContents.flatMap((stepContent) =>
+      (stepContent.agentMCPActions || []).map((action) => {
+        assert(
+          stepContent.agentMessage?.message?.conversation,
+          "Missing required relations"
+        );
+        assert(
+          stepContent.value.type === "function_call",
+          "Step content must be a function call"
+        );
 
-          return {
-            sId: MCPActionType.modelIdToSId({
-              id: action.id,
-              workspaceId: action.workspaceId,
-            }),
-            createdAt: action.createdAt.toISOString(),
-            functionCallName: stepContent.value.value.name,
-            params: JSON.parse(stepContent.value.value.arguments),
-            executionState: action.executionState,
-            isError: action.isError,
-            conversationId: stepContent.agentMessage.message.conversation.sId,
-            messageId: stepContent.agentMessage.message.sId,
-          };
-        })
-      );
+        return {
+          sId: MCPActionType.modelIdToSId({
+            id: action.id,
+            workspaceId: action.workspaceId,
+          }),
+          createdAt: action.createdAt.toISOString(),
+          functionCallName: stepContent.value.value.name,
+          params: JSON.parse(stepContent.value.value.arguments),
+          executionState: action.executionState,
+          isError: action.isError,
+          conversationId: stepContent.agentMessage.message.conversation.sId,
+          messageId: stepContent.agentMessage.message.sId,
+        };
+      })
+    );
 
-      return new Ok({
-        actions,
-        nextCursor,
-        totalCount,
-      });
-    } catch (error) {
-      logger.error(
-        {
-          workspaceId: owner.id,
-          agentConfigurationId,
-          error,
-        },
-        "Failed to fetch MCP actions from database"
-      );
-      return new Err(new Error("Failed to fetch MCP actions from database"));
-    }
+    return {
+      actions,
+      nextCursor,
+      totalCount,
+    };
   }
 }
