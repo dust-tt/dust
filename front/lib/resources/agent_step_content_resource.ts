@@ -3,6 +3,7 @@ import _ from "lodash";
 import type {
   Attributes,
   CreationAttributes,
+  IncludeOptions,
   ModelStatic,
   Transaction,
   WhereOptions,
@@ -500,7 +501,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       };
     }
 
-    const includeClause = [
+    const includeClause: IncludeOptions[] = [
       {
         model: AgentMessage,
         as: "agentMessage",
