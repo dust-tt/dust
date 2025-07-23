@@ -96,7 +96,7 @@ export function UserMenu({
             }
             clickable
           />
-          <div className="flex min-w-0 flex-1 flex-col items-start">
+          <div className="flex min-w-0 flex-1 flex-col items-start text-left">
             <span
               className={cn(
                 "heading-sm w-full truncate transition-colors duration-200",
