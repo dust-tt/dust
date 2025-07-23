@@ -197,6 +197,8 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
   declare agentMessage?: NonAttribute<AgentMessage>;
+  // TODO(2025-07-23 aubin): remove this once the analytics have been moved to the resource.
+  declare stepContent?: NonAttribute<AgentStepContentModel>;
 }
 
 AgentMCPAction.init(
@@ -268,6 +270,7 @@ AgentMessage.hasMany(AgentMCPAction, {
 
 AgentMCPAction.belongsTo(AgentStepContentModel, {
   foreignKey: { name: "stepContentId", allowNull: false },
+  as: "stepContent",
   onDelete: "RESTRICT",
 });
 
