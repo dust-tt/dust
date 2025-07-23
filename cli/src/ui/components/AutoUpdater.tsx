@@ -7,6 +7,7 @@ import {
   autoUpdateIfAvailable,
   restartProcess,
 } from "../../utils/autoUpdater.js";
+import { normalizeError } from "../../utils/errors.js";
 
 interface AutoUpdaterProps {
   onComplete: () => void;
@@ -44,8 +45,9 @@ const AutoUpdater: FC<AutoUpdaterProps> = ({ onComplete }) => {
         }
       } catch (err) {
         // Silently handle errors and continue
+        setError(normalizeError(err).message);
         setIsChecking(false);
-        onComplete();
+        setTimeout(onComplete, 2000);
       }
     };
 
