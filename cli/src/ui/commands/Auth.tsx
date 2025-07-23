@@ -54,8 +54,8 @@ const Auth: FC<AuthProps> = ({ force = false, apiKey, wId }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Check for environment variables first, then fall back to passed flags
-  const effectiveApiKey = process.env.DUST_API_KEY || apiKey;
-  const effectiveWId = process.env.DUST_WORKSPACE_ID || wId;
+  const effectiveApiKey = apiKey || process.env.DUST_API_KEY;
+  const effectiveWId = wId || process.env.DUST_WORKSPACE_ID;
 
   // Validate that both apiKey and wId are provided together (from either env vars or flags)
   const hasApiKey = Boolean(effectiveApiKey);
