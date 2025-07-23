@@ -41,8 +41,11 @@ interface DecodedAccessToken {
 }
 
 interface AuthProps {
+  /** Force re-authentication even if already logged in */
   force?: boolean;
+  /** API key for headless authentication (must be used with wId) */
   apiKey?: string;
+  /** Workspace ID for headless authentication (must be used with apiKey) */
   wId?: string;
 }
 

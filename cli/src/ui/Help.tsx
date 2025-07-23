@@ -102,7 +102,20 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>--auto</Text> Always accept edit operations without prompting for approval
+          <Text bold>--auto</Text> Always accept edit operations without
+          prompting for approval
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>--api-key</Text> API key for headless authentication (use
+          with --wId)
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>--wId</Text> Workspace ID for headless authentication (use
+          with --api-key)
         </Text>
       </Box>
     </Box>

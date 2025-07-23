@@ -51,6 +51,50 @@ When no command is provided, the `chat` command will be used by default.
 - **`help`**: Display help information.
   - `dust help`
 
+### Headless Authentication
+
+The Dust CLI supports headless authentication for automated workflows and CI/CD environments. This allows you to authenticate without interactive prompts by providing credentials directly via command-line arguments.
+
+#### Usage
+
+To use headless authentication, pass both required parameters with any command:
+
+```bash
+dust [command] --wId <workspace-id> --api-key <your-api-key>
+```
+
+#### Parameters
+
+- `--wId`: Your workspace ID
+- `--api-key`: Your API key for authentication
+
+#### Examples
+
+```bash
+# Chat with headless auth
+dust chat --wId ws_abc123 --api-key sk_your_api_key_here
+
+# Launch agents-mcp with headless auth
+dust agents-mcp --wId ws_abc123 --api-key sk_your_api_key_here --port 8080
+
+# Use with specific agent
+dust chat --sId 1234567890 --wId ws_abc123 --api-key sk_your_api_key_here
+```
+
+#### When to Use Headless Auth
+
+Headless authentication is particularly useful for:
+- Automated scripts and workflows
+- CI/CD pipelines
+- Server environments without interactive terminals
+- Batch processing operations
+
+#### Security Considerations
+
+- Store API keys securely (use environment variables in production)
+- Avoid committing API keys to version control
+- Consider using secrets management tools for production deployments
+
 ### Options
 
 - **`-v`, `--version`**: Display the installed CLI version.
