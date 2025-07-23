@@ -4,7 +4,7 @@ import type { Fetcher } from "swr";
 import type {
   AnalyticsMCPAction,
   GetMCPActionsResult,
-} from "@app/lib/api/actions/agent_mcp_action_analytics";
+} from "@app/lib/resources/agent_step_content_resource";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types";
 
