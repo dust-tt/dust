@@ -144,7 +144,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
           );
         } else {
           logger.info(
-            { connectorId: this.connectorId, webConfigId: webConfig.id },
+            { connectorId: this.connectorId, crawlId: webConfig.crawlId },
             "Firecrawl job not found. Nothing to cancel."
           );
         }
