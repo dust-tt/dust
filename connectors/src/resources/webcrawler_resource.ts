@@ -25,6 +25,8 @@ import type { WebCrawlerConfigurationType } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
 import {
   CrawlingFrequencies,
+  WEBCRAWLER_MAX_DEPTH,
+  WEBCRAWLER_MAX_PAGES,
   WebCrawlerHeaderRedactedValue,
 } from "@connectors/types";
 
@@ -245,6 +247,20 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     return this.headers;
   }
 
+  /**
+   * Get the depth, or default to WEBCRAWLER_MAX_DEPTH
+   */
+  getDepth(): number {
+    return this.depth ?? WEBCRAWLER_MAX_DEPTH;
+  }
+
+  /**
+   * Get the maxPageToCrawl, or default to WEBCRAWLER_MAX_PAGES
+   */
+  getMaxPagesToCrawl(): number {
+    return this.maxPageToCrawl ?? WEBCRAWLER_MAX_PAGES;
+  }
+
   async updateCrawlFrequency(crawlFrequency: CrawlingFrequency) {
     return this.update({ crawlFrequency });
   }
@@ -255,6 +271,10 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
 
   async updateActions(actions: Action[] | null) {
     return this.update({ actions });
+  }
+
+  async setSitemap(sitemapOnly: boolean) {
+    return this.update({ sitemapOnly });
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
