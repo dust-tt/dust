@@ -148,11 +148,7 @@ export default function CreateAgent({
   };
 
   return (
-    <AppContentLayout
-      subscription={subscription}
-      hideSidebar
-      owner={owner}
-    >
+    <AppContentLayout subscription={subscription} hideSidebar owner={owner}>
       <AppLayoutSimpleCloseTitle
         title="Create an Agent"
         onClose={async () => {
