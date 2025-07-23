@@ -20,8 +20,13 @@ const Status: FC = () => {
     const checkAuth = async () => {
       setIsLoading(true);
 
-      const dustClient = await getDustClient();
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return;
+      }
 
+      const dustClient = dustClientRes.value;
       if (!dustClient) {
         setError("Not authenticated.");
         return;

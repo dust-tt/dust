@@ -4,11 +4,11 @@ import type {
   WebClient,
 } from "@slack/web-api";
 import { ErrorCode } from "@slack/web-api";
-import type { Channel } from "@slack/web-api/dist/response/ChannelsInfoResponse";
+import type { Channel } from "@slack/web-api/dist/types/response/ChannelsInfoResponse";
 import type {
   ConversationsHistoryResponse,
   MessageElement,
-} from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+} from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
@@ -91,11 +91,7 @@ export async function syncChannel(
     throw new Error(`Connector ${connectorId} not found`);
   }
 
-  const slackClient = await getSlackClient(connectorId, {
-    // Let the Slack client handle rate limited calls in the slow lane.
-    // TODO(SLACK-PANIC): Remove/uncomment.
-    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
-  });
+  const slackClient = await getSlackClient(connectorId);
 
   const remoteChannel = await withSlackErrorHandling(() =>
     getChannelById(slackClient, connectorId, channelId)
@@ -292,11 +288,7 @@ export async function getMessagesForChannel(
   limit = 100,
   nextCursor?: string
 ): Promise<ConversationsHistoryResponse> {
-  const slackClient = await getSlackClient(connectorId, {
-    // Let the Slack client handle rate limited calls in the slow lane.
-    // TODO(SLACK-PANIC): Remove/uncomment.
-    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
-  });
+  const slackClient = await getSlackClient(connectorId);
 
   reportSlackUsage({
     connectorId,
@@ -425,10 +417,7 @@ export async function syncNonThreaded({
     }
   }
 
-  const slackClient = await getSlackClient(connectorId, {
-    // Let the Slack client handle rate limited calls in the slow lane.
-    rejectRateLimitedCalls: false,
-  });
+  const slackClient = await getSlackClient(connectorId);
 
   let hasMore: boolean | undefined = undefined;
   let latestTsSec = endTsSec;
@@ -775,11 +764,7 @@ export async function syncThread(
     throw new Error(`Connector ${connectorId} not found`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const slackClient = await getSlackClient(connectorId, {
-    // Let the Slack client handle rate limited calls in the slow lane.
-    // TODO(SLACK-PANIC): Remove/uncomment.
-    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
-  });
+  const slackClient = await getSlackClient(connectorId);
 
   let allMessages: MessageElement[] = [];
 
@@ -980,11 +965,7 @@ export async function syncThread(
 
 export async function fetchUsers(connectorId: ModelId) {
   let cursor: string | undefined;
-  const slackClient = await getSlackClient(connectorId, {
-    // Let the Slack client handle rate limited calls in the slow lane.
-    // TODO(SLACK-PANIC): Remove/uncomment.
-    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
-  });
+  const slackClient = await getSlackClient(connectorId);
   do {
     reportSlackUsage({
       connectorId,
@@ -1033,11 +1014,7 @@ export async function getChannel(
   connectorId: ModelId,
   channelId: string
 ): Promise<Channel> {
-  const slackClient = await getSlackClient(connectorId, {
-    // Let the Slack client handle rate limited calls in the slow lane.
-    // TODO(SLACK-PANIC): Remove/uncomment.
-    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
-  });
+  const slackClient = await getSlackClient(connectorId);
 
   return getChannelById(slackClient, connectorId, channelId);
 }
@@ -1110,11 +1087,7 @@ export async function getChannelsToGarbageCollect(
       .map((c) => c.slackChannelId)
   );
 
-  const slackClient = await getSlackClient(connectorId, {
-    // Let the Slack client handle rate limited calls in the slow lane.
-    // TODO(SLACK-PANIC): Remove/uncomment.
-    rejectRateLimitedCalls: false, // !isSlowLaneQueue(Context.current().info.taskQueue),
-  });
+  const slackClient = await getSlackClient(connectorId);
 
   const remoteChannels = new Set(
     (

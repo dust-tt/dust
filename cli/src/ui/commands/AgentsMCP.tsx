@@ -29,14 +29,23 @@ const AgentsMCP: FC<AgentsMCPProps> = ({ port, sId: requestedSIds }) => {
   // This useEffect handles starting the server after confirmedSelection is set
   useEffect(() => {
     if (confirmedSelection && !isServerStarted) {
-      void startMcpServer(
-        confirmedSelection,
-        (url) => {
-          setIsServerStarted(true);
-          setServerUrl(url);
-        },
-        port
-      );
+      const startServer = async () => {
+        const startMcpServerRes = await startMcpServer(
+          confirmedSelection,
+          (url) => {
+            setIsServerStarted(true);
+            setServerUrl(url);
+          },
+          port
+        );
+
+        if (startMcpServerRes.isErr()) {
+          setError(startMcpServerRes.error.message);
+          process.exit(1);
+        }
+      };
+
+      void startServer();
     }
   }, [confirmedSelection, isServerStarted, port]);
 

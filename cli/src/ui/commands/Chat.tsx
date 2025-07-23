@@ -238,7 +238,13 @@ const CliChat: FC<CliChatProps> = ({
         return null;
       }
 
-      const dustClient = await getDustClient();
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return null;
+      }
+
+      const dustClient = dustClientRes.value;
       if (!dustClient) {
         setError("Authentication required. Run `dust login` first.");
         return null;
@@ -423,7 +429,13 @@ const CliChat: FC<CliChatProps> = ({
       const controller = new AbortController();
       setAbortController(controller);
 
-      const dustClient = await getDustClient();
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return;
+      }
+
+      const dustClient = dustClientRes.value;
       if (!dustClient) {
         setError("Authentication required. Run `dust login` first.");
         setIsProcessingQuestion(false);
@@ -1211,7 +1223,13 @@ const CliChat: FC<CliChatProps> = ({
         selectMultiple={false}
         onConfirm={async (selectedModelFileAccess) => {
           if (selectedModelFileAccess[0].id === "y") {
-            const dustClient = await getDustClient();
+            const dustClientRes = await getDustClient();
+            if (dustClientRes.isErr()) {
+              setError(dustClientRes.error.message);
+              return;
+            }
+
+            const dustClient = dustClientRes.value;
             if (!dustClient) {
               throw new Error("No Dust API set.");
             }

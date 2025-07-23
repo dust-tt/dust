@@ -1,11 +1,11 @@
 import { FeatureFlag } from "@app/lib/models/feature_flag";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { WhitelistableFeature } from "@app/types";
 import { WHITELISTABLE_FEATURES } from "@app/types";
 
 async function enableFeatureFlag(
-  workspace: WorkspaceModel,
+  workspace: WorkspaceResource,
   featureFlag: WhitelistableFeature,
   execute: boolean
 ) {
@@ -39,7 +39,7 @@ async function enableFeatureFlag(
 }
 
 async function disableFeatureFlag(
-  workspace: WorkspaceModel,
+  workspace: WorkspaceResource,
   featureFlag: WhitelistableFeature,
   execute: boolean
 ) {
@@ -89,11 +89,7 @@ makeScript(
   },
   async ({ enable, featureFlag, workspaceIds, execute }) => {
     for (const wId of workspaceIds) {
-      const workspace = await WorkspaceModel.findOne({
-        where: {
-          sId: wId,
-        },
-      });
+      const workspace = await WorkspaceResource.fetchById(wId);
       if (!workspace) {
         console.log(`Workspace ${wId} not found -- Skipping.`);
         continue;

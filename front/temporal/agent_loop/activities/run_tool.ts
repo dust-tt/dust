@@ -30,7 +30,7 @@ export async function runToolActivity(
     stepActionIndex: number;
     stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
-    stepContentId?: ModelId;
+    stepContentId: ModelId;
   }
 ): Promise<{ citationsIncrement: number }> {
   const auth = await Authenticator.fromJSON(authType);
@@ -43,17 +43,6 @@ export async function runToolActivity(
 
   const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
     runAgentDataRes.value;
-
-  if (!stepContentId) {
-    logger.error(
-      {
-        functionCallId,
-        actionConfigurationId: actionConfiguration.sId,
-        agentConfigurationId: agentConfiguration.sId,
-      },
-      "No step content for function call"
-    );
-  }
 
   if (isMCPToolConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(

@@ -22,7 +22,7 @@ async function processEventForDatabase(
       });
 
       if (event.type === "agent_error") {
-        await AgentStepContentResource.makeNew({
+        await AgentStepContentResource.createNewVersion({
           workspaceId: agentMessageRow.workspaceId,
           agentMessageId: agentMessageRow.id,
           step,
@@ -39,7 +39,6 @@ async function processEventForDatabase(
               },
             },
           },
-          version: 0,
         });
       }
       break;

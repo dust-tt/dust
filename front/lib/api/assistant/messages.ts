@@ -247,12 +247,18 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
     ]);
 
   if (newAgentMCPActions.length !== agentMCPActions.length) {
-    logger.error(
+    const correctIds = new Set(agentMCPActions.map((a) => a.id));
+    const newIds = new Set(newAgentMCPActions.map((a) => a.id));
+    logger.warn(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
         agentMessageIds,
-        newAgentMCPActions: newAgentMCPActions.map((a) => a.id),
-        agentMCPActions: agentMCPActions.map((a) => a.id),
+        missingActions: agentMCPActions
+          .map((a) => a.id)
+          .filter((id) => !newIds.has(id)),
+        extraActions: newAgentMCPActions
+          .map((a) => a.id)
+          .filter((id) => !correctIds.has(id)),
       },
       "[Shadow read] Agent MCP actions mismatch"
     );

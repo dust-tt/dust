@@ -17,7 +17,13 @@ export function useMe() {
       setIsLoading(true);
       setError(null);
 
-      const dustClient = await getDustClient();
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return;
+      }
+
+      const dustClient = dustClientRes.value;
       if (!dustClient) {
         setError("Authentication required. Run `dust login` first.");
         setIsLoading(false);

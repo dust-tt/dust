@@ -78,84 +78,89 @@ export const TagsSelector = ({
         setIsOpen={setIsDialogOpen}
         addTag={addTag}
       />
-      <div className="mb-2 flex flex-wrap gap-2">
-        {sortedTags.map((tag) => (
-          <Chip
-            key={tag.sId}
-            onRemove={
-              tag.kind === "protected" && !isBuilder(owner)
-                ? undefined
-                : () => removeTag(tag.sId)
-            }
-            size="xs"
-            color="golden"
-            label={tag.name}
-          />
-        ))}
-        <DropdownMenu
-          open={isMenuOpen}
-          onOpenChange={onMenuOpenChange}
-          modal={false}
-        >
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="xs"
-              icon={PlusIcon}
-              variant="outline"
-              label="Add"
-              isSelect
-              tooltip="Select a tag"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="h-96 w-96"
-            dropdownHeaders={
-              <>
-                <DropdownMenuSearchbar
-                  autoFocus
-                  placeholder="Search"
-                  name="input"
-                  value={searchText}
-                  onChange={setSearchText}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && filteredTags.length > 0) {
-                      addTag(filteredTags[0]);
-                      onMenuOpenChange(false);
-                    }
-                  }}
-                  button={
-                    isAdmin(owner) ? (
-                      <Button
-                        label="Create"
-                        variant="primary"
-                        icon={PlusIcon}
-                        onClick={() => {
-                          onMenuOpenChange(false);
-                          setIsDialogOpen(true);
-                        }}
-                      />
-                    ) : undefined
-                  }
-                />
-                <DropdownMenuSeparator />
-              </>
-            }
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <DropdownMenu
+            open={isMenuOpen}
+            onOpenChange={onMenuOpenChange}
+            modal={false}
           >
-            <DropdownMenuTagList>
-              {filteredTags.map((tag) => (
-                <DropdownMenuTagItem
-                  color="golden"
-                  key={tag.sId}
-                  label={tag.name}
-                  onClick={() => {
-                    addTag(tag);
-                  }}
-                />
-              ))}
-            </DropdownMenuTagList>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        {suggestionButton}
+            <DropdownMenuTrigger asChild>
+              <Button
+                icon={PlusIcon}
+                variant="outline"
+                label="Add"
+                isSelect
+                tooltip="Select a tag"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="h-96 w-96"
+              dropdownHeaders={
+                <>
+                  <DropdownMenuSearchbar
+                    autoFocus
+                    placeholder="Search"
+                    name="input"
+                    value={searchText}
+                    onChange={setSearchText}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && filteredTags.length > 0) {
+                        addTag(filteredTags[0]);
+                        onMenuOpenChange(false);
+                      }
+                    }}
+                    button={
+                      isAdmin(owner) ? (
+                        <Button
+                          label="Create"
+                          variant="primary"
+                          icon={PlusIcon}
+                          onClick={() => {
+                            onMenuOpenChange(false);
+                            setIsDialogOpen(true);
+                          }}
+                        />
+                      ) : undefined
+                    }
+                  />
+                  <DropdownMenuSeparator />
+                </>
+              }
+            >
+              <DropdownMenuTagList>
+                {filteredTags.map((tag) => (
+                  <DropdownMenuTagItem
+                    color="golden"
+                    key={tag.sId}
+                    label={tag.name}
+                    onClick={() => {
+                      addTag(tag);
+                    }}
+                  />
+                ))}
+              </DropdownMenuTagList>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {suggestionButton}
+        </div>
+        {sortedTags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {sortedTags.map((tag) => (
+              <Chip
+                key={tag.sId}
+                onRemove={
+                  tag.kind === "protected" && !isBuilder(owner)
+                    ? undefined
+                    : () => removeTag(tag.sId)
+                }
+                size="xs"
+                color="golden"
+                label={tag.name}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </>
   );

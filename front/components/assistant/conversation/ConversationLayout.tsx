@@ -220,7 +220,11 @@ function ConversationInnerLayout({
             <GenerationContextProvider>
               <div
                 id={CONVERSATION_VIEW_SCROLL_LAYOUT}
-                className="h-full overflow-y-auto scroll-smooth px-4 sm:px-8"
+                className={cn(
+                  "h-full overflow-y-auto scroll-smooth px-4 sm:px-8",
+                  // Hide conversation on mobile when interactive content is opened.
+                  isContentOpen && "hidden md:block"
+                )}
               >
                 {children}
               </div>
@@ -229,18 +233,26 @@ function ConversationInnerLayout({
         </ResizablePanel>
 
         {/* Interactive Content Panel */}
-        {isContentOpen && <ResizableHandle />}
+        {isContentOpen && <ResizableHandle className="hidden md:block" />}
         <ResizablePanel
           minSize={20}
-          defaultSize={50}
-          className={cn(!isContentOpen && "hidden")}
+          defaultSize={70}
+          className={cn(
+            !isContentOpen && "hidden",
+            // On mobile: overlay full screen with absolute positioning.
+            "md:relative",
+            isContentOpen && "absolute inset-0 md:relative md:inset-auto"
+          )}
         >
           {isContentOpen && (
-            <InteractiveContentContainer
-              conversation={conversation}
-              isOpen={isContentOpen}
-              owner={owner}
-            />
+            // On mobile: adding a padding-top to account for the conversation title.
+            <div className="bg-structure-50 dark:bg-structure-950 h-full pt-16 md:bg-transparent md:pt-0">
+              <InteractiveContentContainer
+                conversation={conversation}
+                isOpen={isContentOpen}
+                owner={owner}
+              />
+            </div>
           )}
         </ResizablePanel>
       </ResizablePanelGroup>

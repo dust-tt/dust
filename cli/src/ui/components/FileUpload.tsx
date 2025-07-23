@@ -44,7 +44,13 @@ export const FileUpload: FC<FileUploadProps> = ({
     const uploadedFiles: UploadedFile[] = [];
 
     try {
-      const dustClient = await getDustClient();
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        onUploadError(`Failed to get client: ${dustClientRes.error.message}`);
+        return;
+      }
+
+      const dustClient = dustClientRes.value;
       if (!dustClient) {
         onUploadError("Authentication required. Run `dust login` first.");
         return;

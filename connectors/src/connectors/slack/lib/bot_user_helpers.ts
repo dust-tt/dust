@@ -1,5 +1,5 @@
 import type { WebClient } from "@slack/web-api";
-import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
+import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
 
 import {
   isSlackWebAPIPlatformError,

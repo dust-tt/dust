@@ -192,7 +192,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare step: number;
   declare version: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
-  declare stepContentId: ForeignKey<AgentStepContentModel["id"]> | null;
+  declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
   declare isError: boolean;
   declare executionState:
@@ -203,6 +203,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "denied";
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
+  declare agentMessage?: NonAttribute<AgentMessage>;
 }
 
 AgentMCPAction.init(
@@ -281,6 +282,7 @@ AgentMCPAction.init(
 
 AgentMCPAction.belongsTo(AgentMessage, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+  as: "agentMessage",
 });
 
 AgentMessage.hasMany(AgentMCPAction, {
@@ -288,12 +290,12 @@ AgentMessage.hasMany(AgentMCPAction, {
 });
 
 AgentMCPAction.belongsTo(AgentStepContentModel, {
-  foreignKey: { name: "stepContentId", allowNull: true },
+  foreignKey: { name: "stepContentId", allowNull: false },
   onDelete: "RESTRICT",
 });
 
 AgentStepContentModel.hasMany(AgentMCPAction, {
-  foreignKey: { name: "stepContentId", allowNull: true },
+  foreignKey: { name: "stepContentId", allowNull: false },
   as: "agentMCPActions",
 });
 
