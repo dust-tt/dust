@@ -57,7 +57,10 @@ import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
 } from "@app/lib/assistant/state/messageReducer";
-import { messageReducer } from "@app/lib/assistant/state/messageReducer";
+import {
+  CLEAR_CONTENT_EVENT,
+  messageReducer,
+} from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
   LightAgentMessageType,
@@ -150,7 +153,8 @@ export function AgentMessage({
 
   // Track if this is a fresh mount (no lastEventId) with existing content
   const isFreshMountWithContent = React.useRef(
-    message.status === "created" && (!!message.content || !!message.chainOfThought)
+    message.status === "created" &&
+      (!!message.content || !!message.chainOfThought)
   );
 
   const buildEventSourceURL = React.useCallback(
@@ -221,9 +225,7 @@ export function AgentMessage({
           eventPayload.data.classification === "chain_of_thought")
       ) {
         // Clear the existing content from the state
-        dispatch({
-          type: "clear_content",
-        } as any);
+        dispatch(CLEAR_CONTENT_EVENT);
         isFreshMountWithContent.current = false;
       }
 

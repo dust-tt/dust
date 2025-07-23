@@ -25,10 +25,7 @@ export interface MessageTemporaryState {
   actionProgress: ActionProgressState;
 }
 
-export type AgentMessageStateEvent =
-  | AgentMessageEvents
-  | ToolNotificationEvent
-  | { type: "clear_content" };
+export type AgentMessageStateEvent = AgentMessageEvents | ToolNotificationEvent;
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
@@ -76,9 +73,13 @@ function updateProgress(
   return newState;
 }
 
+export const CLEAR_CONTENT_EVENT = { type: "clear_content" as const };
+
+export type ClearContentEvent = typeof CLEAR_CONTENT_EVENT;
+
 export function messageReducer(
   state: MessageTemporaryState,
-  event: AgentMessageStateEventWithoutToolApproveExecution
+  event: AgentMessageStateEventWithoutToolApproveExecution | ClearContentEvent
 ): MessageTemporaryState {
   switch (event.type) {
     case "clear_content":
