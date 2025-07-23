@@ -34,28 +34,19 @@ import { removeNulls } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
 
-// AgentMCPAction serialized for analytics purposes.
-export type AnalyticsMCPAction = {
-  sId: string;
-  createdAt: string;
-  functionCallName: string | null;
-  params: Record<string, unknown>;
-  executionState: string;
-  isError: boolean;
-  conversationId: string;
-  messageId: string;
-};
-
 export type GetMCPActionsResult = {
-  actions: AnalyticsMCPAction[];
+  actions: {
+    sId: string;
+    createdAt: string;
+    functionCallName: string | null;
+    params: Record<string, unknown>;
+    executionState: string;
+    isError: boolean;
+    conversationId: string;
+    messageId: string;
+  }[];
   nextCursor: string | null;
   totalCount: number;
-};
-
-type GetMCPActionsOptions = {
-  agentConfigurationId: string;
-  limit: number;
-  cursor?: string;
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -496,7 +487,15 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
   static async getMCPActionsForAgent(
     auth: Authenticator,
-    { agentConfigurationId, limit, cursor }: GetMCPActionsOptions
+    {
+      agentConfigurationId,
+      limit,
+      cursor,
+    }: {
+      agentConfigurationId: string;
+      limit: number;
+      cursor?: string;
+    }
   ): Promise<Result<GetMCPActionsResult, Error>> {
     const owner = auth.getNonNullableWorkspace();
 
@@ -515,102 +514,92 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       };
     }
 
+    const includeClause = [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+        where: {
+          agentConfigurationId: agentConfigurationId,
+        },
+        include: [
+          {
+            model: Message,
+            as: "message",
+            required: true,
+            include: [
+              {
+                model: ConversationModel,
+                as: "conversation",
+                required: true,
+                where: {
+                  visibility: { [Op.ne]: "deleted" },
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        model: AgentMCPAction,
+        as: "agentMCPActions",
+        required: true,
+      },
+    ];
+
     try {
-      // Get total count for pagination
-      const totalCount = await AgentStepContentModel.count({
-        include: [
-          {
-            model: AgentMessage,
-            as: "agentMessage",
-            required: true,
-            where: {
-              agentConfigurationId: agentConfigurationId,
-            },
-            include: [
-              {
-                model: Message,
-                as: "message",
-                required: true,
-                include: [
-                  {
-                    model: ConversationModel,
-                    as: "conversation",
-                    required: true,
-                    where: {
-                      visibility: { [Op.ne]: "deleted" },
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            model: AgentMCPAction,
-            as: "agentMCPActions",
-            required: true,
-          },
-        ],
-        where: whereClause,
-      });
+      const [totalCount, stepContents] = await Promise.all([
+        this.model.count({
+          include: includeClause,
+          where: whereClause,
+        }),
+        this.model.findAll({
+          include: includeClause,
+          where: whereClause,
+          order: [["createdAt", "DESC"]],
+          limit: limit + 1,
+        }),
+      ]);
 
-      // Get all function call step contents with their MCP actions
-      const stepContents = await AgentStepContentModel.findAll({
-        include: [
-          {
-            model: AgentMessage,
-            as: "agentMessage",
-            required: true,
-            where: {
-              agentConfigurationId: agentConfigurationId,
-            },
-            include: [
-              {
-                model: Message,
-                as: "message",
-                required: true,
-                include: [
-                  {
-                    model: ConversationModel,
-                    as: "conversation",
-                    required: true,
-                    where: {
-                      visibility: { [Op.ne]: "deleted" },
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            model: AgentMCPAction,
-            as: "agentMCPActions",
-            required: true,
-          },
-        ],
-        where: whereClause,
-        order: [["createdAt", "DESC"]],
-        limit: limit + 1, // Fetch one extra to determine if there are more results
-      });
-
-      // Determine if there are more results and get the actual results
       const hasMore = stepContents.length > limit;
-      const actualStepContents = hasMore ? stepContents.slice(0, limit) : stepContents;
+      const actualStepContents = hasMore
+        ? stepContents.slice(0, limit)
+        : stepContents;
       const nextCursor = hasMore
-        ? actualStepContents[actualStepContents.length - 1].createdAt.toISOString()
+        ? actualStepContents[
+            actualStepContents.length - 1
+          ].createdAt.toISOString()
         : null;
 
-      // Flatten MCP actions from step contents
-      const actionsData: AnalyticsMCPAction[] = [];
-      for (const stepContent of actualStepContents) {
-        if (stepContent.agentMCPActions) {
-          for (const action of stepContent.agentMCPActions) {
-            actionsData.push(serializeMCPActionFromStepContent(stepContent, action));
-          }
-        }
-      }
+      const actions = actualStepContents.flatMap((stepContent) =>
+        (stepContent.agentMCPActions || []).map((action) => {
+          assert(
+            stepContent.agentMessage?.message?.conversation,
+            "Missing required relations"
+          );
+          assert(
+            stepContent.value.type === "function_call",
+            "Step content must be a function call"
+          );
+
+          return {
+            sId: MCPActionType.modelIdToSId({
+              id: action.id,
+              workspaceId: action.workspaceId,
+            }),
+            createdAt: action.createdAt.toISOString(),
+            functionCallName: stepContent.value.value.name,
+            params: JSON.parse(stepContent.value.value.arguments),
+            executionState: action.executionState,
+            isError: action.isError,
+            conversationId: stepContent.agentMessage.message.conversation.sId,
+            messageId: stepContent.agentMessage.message.sId,
+          };
+        })
+      );
 
       return new Ok({
-        actions: actionsData,
+        actions,
         nextCursor,
         totalCount,
       });
@@ -626,31 +615,4 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       return new Err(new Error("Failed to fetch MCP actions from database"));
     }
   }
-}
-
-function serializeMCPActionFromStepContent(
-  stepContent: AgentStepContentModel,
-  action: AgentMCPAction
-): AnalyticsMCPAction {
-  assert(stepContent.agentMessage, "Agent message must exist");
-  assert(stepContent.agentMessage.message, "Message must exist");
-  assert(stepContent.agentMessage.message.conversation, "Conversation must exist");
-  assert(
-    stepContent.value.type === "function_call",
-    "Step content must be a function call"
-  );
-
-  return {
-    sId: MCPActionType.modelIdToSId({
-      id: action.id,
-      workspaceId: action.workspaceId,
-    }),
-    createdAt: action.createdAt.toISOString(),
-    functionCallName: stepContent.value.value.name,
-    params: JSON.parse(stepContent.value.value.arguments),
-    executionState: action.executionState,
-    isError: action.isError,
-    conversationId: stepContent.agentMessage.message.conversation.sId,
-    messageId: stepContent.agentMessage.message.sId,
-  };
 }
