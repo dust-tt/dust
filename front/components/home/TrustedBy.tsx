@@ -1,6 +1,8 @@
 import Image from "next/image";
 
 import { H4 } from "@app/components/home/ContentComponents";
+import { isEUCountry } from "@app/lib/geo/eu-detection";
+import { useGeolocation } from "@app/lib/swr/geo";
 import { classNames } from "@app/lib/utils";
 
 const LOGO_SETS = {
@@ -134,10 +136,11 @@ interface TrustedByProps {
 
 export default function TrustedBy({
   logoSet = "default",
-  region = "eu",
   title = "Trusted by 1,000+ organizations",
 }: TrustedByProps) {
-  const logos = LOGO_SETS[logoSet][region];
+  const { geoData } = useGeolocation();
+  const isEU = isEUCountry(geoData?.countryCode);
+  const logos = LOGO_SETS[logoSet][isEU ? "eu" : "us"];
 
   return (
     <div
