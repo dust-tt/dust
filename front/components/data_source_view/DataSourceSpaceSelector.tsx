@@ -2,10 +2,9 @@ import { Checkbox, DataTable, ScrollableDataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
+import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { SpaceType } from "@app/types";
-
-import { useDataSourceBuilderContext } from "./DataSourceBuilderContext";
 
 type SpaceRowData = {
   id: string;

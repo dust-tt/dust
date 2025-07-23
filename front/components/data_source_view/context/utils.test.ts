@@ -4,7 +4,7 @@ import {
   addNodeToTree,
   isNodeSelected,
   removeNodeFromTree,
-} from "./DataSourceBuilderContext";
+} from "@app/components/data_source_view/context/utils";
 
 describe("DataSourceBuilder utilities", () => {
   describe("addNodeToTree", () => {

@@ -3,11 +3,11 @@ import { Breadcrumbs, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
-import type { NavigationHistoryEntryType } from "@app/components/data_source_view/DataSourceBuilderContext";
 import {
   DataSourceBuilderProvider,
   useDataSourceBuilderContext,
-} from "@app/components/data_source_view/DataSourceBuilderContext";
+} from "@app/components/data_source_view/context/DataSourceBuilderContext";
+import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
 import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
