@@ -873,9 +873,7 @@ export class Authenticator {
   static async fromJSON(authType: AuthenticatorType): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       authType.workspaceId
-        ? WorkspaceModel.findOne({
-            where: { sId: authType.workspaceId },
-          })
+        ? WorkspaceResource.fetchById(authType.workspaceId)
         : null,
       authType.userId ? UserResource.fetchById(authType.userId) : null,
     ]);
