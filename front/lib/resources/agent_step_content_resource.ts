@@ -29,25 +29,11 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type { AgentStepContentType } from "@app/types/assistant/agent_message_content";
-
-export type GetMCPActionsResult = {
-  actions: {
-    sId: string;
-    createdAt: string;
-    functionCallName: string | null;
-    params: Record<string, unknown>;
-    executionState: string;
-    isError: boolean;
-    conversationId: string;
-    messageId: string;
-  }[];
-  nextCursor: string | null;
-  totalCount: number;
-};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -496,7 +482,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       limit: number;
       cursor?: string;
     }
-  ): Promise<GetMCPActionsResult> {
+  ): Promise<Result<GetMCPActionsResult, Error>> {
     const owner = auth.getNonNullableWorkspace();
 
     const whereClause: WhereOptions<AgentStepContentModel> = {
@@ -597,10 +583,10 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       })
     );
 
-    return {
+    return new Ok({
       actions,
       nextCursor,
       totalCount,
-    };
+    });
   }
 }

@@ -8,10 +8,24 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { GetMCPActionsResult } from "@app/lib/resources/agent_step_content_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+
+export type GetMCPActionsResult = {
+  actions: {
+    sId: string;
+    createdAt: string;
+    functionCallName: string | null;
+    params: Record<string, unknown>;
+    executionState: string;
+    isError: boolean;
+    conversationId: string;
+    messageId: string;
+  }[];
+  nextCursor: string | null;
+  totalCount: number;
+};
 
 const GetMCPActionsQuerySchema = t.type({
   agentId: t.string,
