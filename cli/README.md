@@ -85,7 +85,7 @@ dust [command] --wId <workspace-id> --api-key <your-api-key>
 - `DUST_API_KEY` (env) or `--api-key` (flag): Your API key for authentication
 - `DUST_WORKSPACE_ID` (env) or `--wId` (flag): Your workspace ID
 
-**Note:** Environment variables take precedence over command-line flags. If both are set, the environment variables will be used.
+**Note:** Command-line flags take precedence over environment variables. If both are set, the command line flags will be used.
 
 #### Examples
 
@@ -122,6 +122,7 @@ dust chat --sId 1234567890 --wId ws_abc123 --api-key sk_your_api_key_here
 #### When to Use Headless Auth
 
 Headless authentication is particularly useful for:
+
 - Automated scripts and workflows
 - CI/CD pipelines
 - Server environments without interactive terminals
