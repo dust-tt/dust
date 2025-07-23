@@ -87,8 +87,14 @@ import {
   isDevelopment,
   slugify,
 } from "@connectors/types";
+import { sha256 } from "@connectors/types/shared/utils/hashing";
 
 const logger = mainLogger.child({ provider: "notion" });
+
+// Connector ID hashes for which deletion should be skipped during garbage collection.
+const SKIP_DELETION_CONNECTOR_ID_HASHES = new Set<string>([
+  "vket28uPYFZqPX/Vo2+BlXmOKEizaBldml0g4AfFmgw=",
+]);
 
 export async function fetchDatabaseChildPages({
   connectorId,
@@ -694,6 +700,22 @@ export async function deletePage({
   pageId: string;
   logger: Logger;
 }) {
+  const connectorIdHash = sha256(connectorId.toString());
+
+  if (SKIP_DELETION_CONNECTOR_ID_HASHES.has(connectorIdHash)) {
+    logger.info(
+      {
+        action: "skip_deletion",
+        resource_type: "page",
+        pageId,
+        connectorId,
+        connectorIdHash,
+      },
+      "Skipping page deletion for connector with deletion disabled"
+    );
+    return;
+  }
+
   logger.info("Deleting page.");
   await deleteDataSourceDocument(dataSourceConfig, `notion-${pageId}`);
   const notionPage = await NotionPage.findOne({
@@ -729,6 +751,22 @@ export async function deleteDatabase({
   databaseId: string;
   logger: Logger;
 }) {
+  const connectorIdHash = sha256(connectorId.toString());
+
+  if (SKIP_DELETION_CONNECTOR_ID_HASHES.has(connectorIdHash)) {
+    logger.info(
+      {
+        action: "skip_deletion",
+        resource_type: "database",
+        databaseId,
+        connectorId,
+        connectorIdHash,
+      },
+      "Skipping database deletion for connector with deletion disabled"
+    );
+    return;
+  }
+
   logger.info("Deleting database.");
   await deleteDataSourceDocument(
     dataSourceConfig,
