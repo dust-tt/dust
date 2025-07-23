@@ -7,7 +7,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { PopoverRoot } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -24,6 +24,8 @@ import type {
 } from "@app/types";
 import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
+
+const MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS = 20;
 
 async function getTagsSuggestions({
   owner,
@@ -69,8 +71,38 @@ export function TagsSection() {
   >([]);
   const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
 
+  const instructions = getValues("instructions");
+
+  const isButtonDisabled = useMemo(() => {
+    return (
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS ||
+      allTags.length === 0
+    );
+  }, [instructions, allTags.length]);
+
+  const buttonTooltip = useMemo(() => {
+    if (
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
+    ) {
+      return `Add at least ${MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS} characters to instructions to get suggestions`;
+    }
+    if (allTags.length === 0) {
+      return "Create tags to start using suggestions";
+    }
+    return undefined;
+  }, [instructions, allTags.length]);
+
   const updateTagsSuggestions = async () => {
     if (isTagsSuggestionLoading) {
+      return;
+    }
+
+    if (
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
+    ) {
       return;
     }
 
@@ -78,7 +110,6 @@ export function TagsSection() {
     setFilteredTagsSuggestions([]);
 
     try {
-      const instructions = getValues("instructions");
       const description = getValues("agentSettings.description");
 
       const tagsSuggestionsResult = await getTagsSuggestions({
@@ -132,7 +163,9 @@ export function TagsSection() {
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <h3>Tags</h3>
+      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+        Tags
+      </label>
       <TagsSelector
         owner={owner}
         tags={selectedTags}
@@ -142,10 +175,11 @@ export function TagsSection() {
             <PopoverTrigger asChild>
               <Button
                 label="Suggest"
-                size="xs"
                 icon={SparklesIcon}
                 variant="outline"
                 isSelect
+                disabled={isButtonDisabled}
+                tooltip={buttonTooltip}
               />
             </PopoverTrigger>
             <PopoverContent className="w-64 p-3">

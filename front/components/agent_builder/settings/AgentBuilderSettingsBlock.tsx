@@ -13,7 +13,6 @@ import {
   PencilSquareIcon,
   SparklesIcon,
   Spinner,
-  TextArea,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
@@ -46,7 +45,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 
-const MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION = 30;
+const MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS = 20;
 
 async function getEmojiSuggestions({
   owner,
@@ -91,7 +90,11 @@ function AgentNameInput() {
   });
 
   const handleGenerateNameSuggestions = async () => {
-    if (isGenerating) {
+    if (
+      isGenerating ||
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
       return;
     }
 
@@ -151,6 +154,16 @@ function AgentNameInput() {
               icon={SparklesIcon}
               variant="outline"
               isSelect
+              disabled={
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+              }
+              tooltip={
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+                  ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to instructions to get suggestions`
+                  : undefined
+              }
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-64">
@@ -206,7 +219,11 @@ function AgentDescriptionInput() {
   };
 
   const handleGenerateDescription = async () => {
-    if (isGenerating) {
+    if (
+      isGenerating ||
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+    ) {
       return;
     }
 
@@ -254,7 +271,7 @@ function AgentDescriptionInput() {
       </label>
       <div className="flex items-center gap-2">
         <div className="flex-grow">
-          <TextArea placeholder="Enter agent description" rows={3} {...field} />
+          <Input placeholder="Enter agent description" {...field} />
         </div>
         <DropdownMenu
           onOpenChange={(open) => open && handleGenerateDescription()}
@@ -265,6 +282,16 @@ function AgentDescriptionInput() {
               icon={SparklesIcon}
               variant="outline"
               isSelect
+              disabled={
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+              }
+              tooltip={
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+                  ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} to the instructions to get suggestions`
+                  : undefined
+              }
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-80">
@@ -344,7 +371,7 @@ function AgentPictureInput() {
     if (
       !field.value &&
       instructions &&
-      instructions.length >= MIN_INSTRUCTIONS_LENGTH_FOR_SUGGESTION
+      instructions.length >= MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
     ) {
       void updateEmojiFromSuggestions();
     }
