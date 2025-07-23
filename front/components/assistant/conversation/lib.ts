@@ -74,6 +74,7 @@ export async function submitMessage({
   user,
   conversationId,
   messageData,
+  forceAsync = false,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -84,6 +85,7 @@ export async function submitMessage({
     contentFragments: ContentFragmentsType;
     clientSideMCPServerIds?: string[];
   };
+  forceAsync?: boolean;
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments, clientSideMCPServerIds } =
     messageData;
@@ -151,8 +153,9 @@ export async function submitMessage({
   }
 
   // Create a new user message.
+  const queryParams = forceAsync ? "?async=true" : "";
   const mRes = await fetch(
-    `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
+    `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages${queryParams}`,
     {
       method: "POST",
       headers: {
@@ -227,6 +230,7 @@ export async function createConversationWithMessage({
   messageData,
   visibility = "unlisted",
   title,
+  forceAsync = false,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -238,6 +242,7 @@ export async function createConversationWithMessage({
   };
   visibility?: ConversationVisibility;
   title?: string;
+  forceAsync?: boolean;
 }): Promise<Result<ConversationType, SubmitMessageError>> {
   const { input, mentions, contentFragments, clientSideMCPServerIds } =
     messageData;
@@ -288,13 +293,17 @@ export async function createConversationWithMessage({
   };
 
   // Create new conversation and post the initial message at the same time.
-  const cRes = await fetch(`/api/w/${owner.sId}/assistant/conversations`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  const queryParams = forceAsync ? "?async=true" : "";
+  const cRes = await fetch(
+    `/api/w/${owner.sId}/assistant/conversations${queryParams}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
 
   if (!cRes.ok) {
     const data = await cRes.json();

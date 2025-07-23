@@ -3,7 +3,7 @@ import { ValidateActionRequestBodySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { MCPActionType } from "@app/lib/actions/mcp";
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
