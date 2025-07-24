@@ -123,33 +123,10 @@ const dustAppRunConfigurationSchema = z.object({
   appId: z.string(),
 });
 
-const dataSourceViewSelectionConfigurationsSchema = z
-  .array(
-    z.object({
-      dataSourceViewId: z.string(),
-      filter: z.object({
-        parents: z
-          .object({
-            in: z.array(z.string()),
-            not: z.array(z.string()),
-          })
-          .nullable(),
-        tags: z
-          .object({
-            in: z.array(z.string()),
-            not: z.array(z.string()),
-            mode: z.enum(["custom", "auto"]),
-          })
-          .nullable(),
-      }),
-    })
-  )
-  .nullable();
-
 const mcpServerConfigurationSchema = z.object({
   mcpServerViewId: z.string(),
-  dataSourceConfigurations: dataSourceViewSelectionConfigurationsSchema,
-  tablesConfigurations: dataSourceViewSelectionConfigurationsSchema,
+  dataSourceConfigurations: dataSourceViewSelectionConfigurationSchema,
+  tablesConfigurations: dataSourceViewSelectionConfigurationSchema,
   childAgentId: z.string().nullable(),
   reasoningModel: reasoningModelConfigurationSchema.nullable(),
   timeFrame: timeFrameSchema,
