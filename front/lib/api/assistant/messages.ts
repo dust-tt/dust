@@ -1,7 +1,6 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { hideFileFromActionOutput, MCPActionType } from "@app/lib/actions/mcp";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -10,10 +9,6 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
-import {
-  AgentMCPAction,
-  AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import {
   AgentMessage,
@@ -24,11 +19,8 @@ import {
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserResource } from "@app/lib/resources/user_resource";
-import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
   ContentFragmentType,
@@ -149,120 +141,38 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   const agentMessageIds = removeNulls(
     agentMessages.map((m) => m.agentMessageId || null)
   );
-  const [agentConfigurations, newAgentMCPActions, agentMCPActions] =
-    await Promise.all([
-      (async () => {
-        const agentConfigurationIds: Set<string> = agentMessages.reduce(
-          (acc: Set<string>, m) => {
-            const agentId = m.agentMessage?.agentConfigurationId;
-            if (agentId) {
-              acc.add(agentId);
-            }
-            return acc;
-          },
-          new Set<string>()
-        );
-        const agents = await getAgentConfigurations({
-          auth,
-          agentsGetView: { agentIds: [...agentConfigurationIds] },
-          variant: "extra_light",
+  const [agentConfigurations, agentMCPActions] = await Promise.all([
+    (async () => {
+      const agentConfigurationIds: Set<string> = agentMessages.reduce(
+        (acc: Set<string>, m) => {
+          const agentId = m.agentMessage?.agentConfigurationId;
+          if (agentId) {
+            acc.add(agentId);
+          }
+          return acc;
+        },
+        new Set<string>()
+      );
+      const agents = await getAgentConfigurations({
+        auth,
+        agentsGetView: { agentIds: [...agentConfigurationIds] },
+        variant: "extra_light",
+      });
+      if (agents.some((a) => !a)) {
+        return null;
+      }
+      return agents as LightAgentConfigurationType[];
+    })(),
+    (async () => {
+      const agentStepContents =
+        await AgentStepContentResource.fetchByAgentMessages(auth, {
+          agentMessageIds,
+          includeMCPActions: true,
+          latestVersionsOnly: true,
         });
-        if (agents.some((a) => !a)) {
-          return null;
-        }
-        return agents as LightAgentConfigurationType[];
-      })(),
-      (async () => {
-        const agentStepContents =
-          await AgentStepContentResource.fetchByAgentMessages(auth, {
-            agentMessageIds,
-            includeMCPActions: true,
-            latestVersionsOnly: true,
-          });
-        return agentStepContents
-          .map((sc) => sc.toJSON().mcpActions ?? [])
-          .flat();
-      })(),
-      // TODO(2025-07-21, durable agents): remove this shadow read.
-      (async () => {
-        const actions = await AgentMCPAction.findAll({
-          where: {
-            agentMessageId: agentMessageIds,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          },
-          include: [
-            {
-              model: AgentMCPActionOutputItem,
-              as: "outputItems",
-              required: false,
-              include: [
-                {
-                  model: FileModel,
-                  as: "file",
-                  required: false,
-                },
-              ],
-            },
-          ],
-        });
-        return actions.map(
-          (action) =>
-            new MCPActionType({
-              id: action.id,
-              params: action.params,
-              output: removeNulls(
-                action.outputItems.map(hideFileFromActionOutput)
-              ),
-              functionCallId: action.functionCallId,
-              functionCallName: action.functionCallName,
-              agentMessageId: action.agentMessageId,
-              step: action.step,
-              mcpServerConfigurationId: action.mcpServerConfigurationId,
-              executionState: action.executionState,
-              isError: action.isError,
-              type: "tool_action",
-              generatedFiles: removeNulls(
-                action.outputItems.map((o) => {
-                  if (!o.file) {
-                    return null;
-                  }
-
-                  const file = o.file;
-                  const fileSid = FileResource.modelIdToSId({
-                    id: file.id,
-                    workspaceId: action.workspaceId,
-                  });
-
-                  return {
-                    fileId: fileSid,
-                    contentType: file.contentType,
-                    title: file.fileName,
-                    snippet: file.snippet,
-                  };
-                })
-              ),
-            })
-        );
-      })(),
-    ]);
-
-  if (newAgentMCPActions.length !== agentMCPActions.length) {
-    const correctIds = new Set(agentMCPActions.map((a) => a.id));
-    const newIds = new Set(newAgentMCPActions.map((a) => a.id));
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        agentMessageIds,
-        missingActions: agentMCPActions
-          .map((a) => a.id)
-          .filter((id) => !newIds.has(id)),
-        extraActions: newAgentMCPActions
-          .map((a) => a.id)
-          .filter((id) => !correctIds.has(id)),
-      },
-      "[Shadow read] Agent MCP actions mismatch"
-    );
-  }
+      return agentStepContents.map((sc) => sc.toJSON().mcpActions ?? []).flat();
+    })(),
+  ]);
 
   if (!agentConfigurations) {
     return new Err(

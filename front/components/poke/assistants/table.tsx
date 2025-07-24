@@ -23,6 +23,7 @@ import { GLOBAL_AGENTS_SID } from "@app/types";
 
 interface AssistantsDataTableProps {
   owner: LightWorkspaceType;
+  agentsRetention: Record<string, number>;
 }
 
 function prepareAgentConfigurationForDisplay(
@@ -70,12 +71,14 @@ const importAssistant = async (
   input.click();
 };
 
-export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
+export function AssistantsDataTable({
+  owner,
+  agentsRetention,
+}: AssistantsDataTableProps) {
   const router = useRouter();
   const [showRestoreAssistantModal, setShowRestoreAssistantModal] =
     useState(false);
   const [importing, setImporting] = useState(false);
-
   const assistantButtons = (
     <div className="flex flex-row gap-2">
       <Button
@@ -101,6 +104,7 @@ export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
       <RestoreAssistantModal
         show={showRestoreAssistantModal}
         onClose={() => setShowRestoreAssistantModal(false)}
+        agentsRetention={agentsRetention}
         owner={owner}
       />
       <PokeDataTableConditionalFetch
@@ -111,9 +115,13 @@ export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
       >
         {(data, mutate) => (
           <PokeDataTable
-            columns={makeColumnsForAssistants(owner, async () => {
-              await mutate();
-            })}
+            columns={makeColumnsForAssistants(
+              owner,
+              agentsRetention,
+              async () => {
+                await mutate();
+              }
+            )}
             data={prepareAgentConfigurationForDisplay(data)}
           />
         )}
@@ -126,10 +134,12 @@ function RestoreAssistantModal({
   show,
   onClose,
   owner,
+  agentsRetention,
 }: {
   show: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
+  agentsRetention: Record<string, number>;
 }) {
   const { data: archivedAssistants, mutate } = usePokeAgentConfigurations({
     owner,
@@ -153,9 +163,13 @@ function RestoreAssistantModal({
         <SheetContainer>
           {!!archivedAssistants?.length && (
             <PokeDataTable
-              columns={makeColumnsForAssistants(owner, async () => {
-                await mutate();
-              })}
+              columns={makeColumnsForAssistants(
+                owner,
+                agentsRetention,
+                async () => {
+                  await mutate();
+                }
+              )}
               data={prepareAgentConfigurationForDisplay(archivedAssistants)}
             />
           )}

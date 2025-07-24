@@ -657,6 +657,7 @@ export const WebcrawlerCommandSchema = t.type({
   command: t.union([
     t.literal("start-scheduler"),
     t.literal("update-frequency"),
+    t.literal("set-actions"),
   ]),
   args: t.record(t.string, t.string),
 });

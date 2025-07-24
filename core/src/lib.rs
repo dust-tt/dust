@@ -50,6 +50,7 @@ pub mod databases {
     pub mod table_upserts_background_worker;
     pub mod transient_database;
 }
+pub mod gcp_auth;
 pub mod project;
 pub mod run;
 pub mod search_filter;
@@ -71,6 +72,7 @@ pub mod providers {
     }
     pub mod anthropic {
         pub mod anthropic;
+        pub mod backend;
         pub mod helpers;
         pub mod streaming;
         pub mod types;

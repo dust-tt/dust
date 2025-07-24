@@ -70,7 +70,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     "Perfect for CRM data management and user activity analysis.",
   authorization: {
     provider: "hubspot" as const,
-    supported_use_cases: ["platform_actions"] as const,
+    supported_use_cases: ["platform_actions", "personal_actions"] as const,
   },
   icon: "HubspotLogo",
   documentationUrl: null,

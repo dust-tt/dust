@@ -42,15 +42,15 @@ export class KeyResource extends BaseResource<KeyModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<KeyModel>, "secret" | "groupId">,
+    blob: Omit<CreationAttributes<KeyModel>, "secret" | "groupId" | "scope">,
     group: GroupResource
   ) {
     const secret = this.createNewSecret();
-
     const key = await KeyResource.model.create({
       ...blob,
       groupId: group.id,
       secret,
+      scope: "default",
     });
 
     return new this(KeyResource.model, key.get());
@@ -236,6 +236,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       status: this.status,
       groupId: this.groupId,
       role: this.role,
+      scope: this.scope,
     };
   }
 

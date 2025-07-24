@@ -1,12 +1,8 @@
+import { TOOL_RUNNING_LABEL } from "@dust-tt/client";
 import { Button, Chip, CommandLineIcon } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
-import { getActionSpecification } from "@app/components/actions/types";
 import { AgentMessageActionsDrawer } from "@app/components/assistant/conversation/actions/AgentMessageActionsDrawer";
-import type {
-  BaseActionType,
-  BaseAgentActionType,
-} from "@app/lib/actions/types";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 import type { AgentStateClassification } from "@app/lib/assistant/state/messageReducer";
 import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
@@ -37,7 +33,7 @@ export function AgentMessageActions({
         break;
       case "acting":
         if (agentMessage.actions && agentMessage.actions.length > 0) {
-          setChipLabel(renderActionName(agentMessage.actions));
+          setChipLabel(TOOL_RUNNING_LABEL);
         }
         break;
       case "done":
@@ -106,18 +102,4 @@ function ActionDetails({
       onClick={onClick}
     />
   );
-}
-
-function renderActionName(actions: BaseAgentActionType[]): string {
-  const uniqueActionTypes = actions.reduce<BaseActionType[]>((acc, action) => {
-    if (!acc.includes(action.type)) {
-      acc.push(action.type);
-    }
-
-    return acc;
-  }, []);
-
-  return uniqueActionTypes
-    .map((actionType) => getActionSpecification(actionType).runningLabel)
-    .join(", ");
 }

@@ -1,6 +1,5 @@
-import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
+import { runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import { isMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
@@ -43,86 +42,80 @@ export async function runToolActivity(
   const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
     runAgentDataRes.value;
 
-  if (isMCPToolConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: agentConfiguration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-      stepActionIndex,
-      stepActions,
-      citationsRefsOffset,
-      stepContentId,
-    });
+  const eventStream = runToolWithStreaming(auth, actionConfiguration, {
+    agentConfiguration: agentConfiguration,
+    conversation,
+    agentMessage,
+    rawInputs: inputs,
+    functionCallId,
+    step,
+    stepActionIndex,
+    stepActions,
+    citationsRefsOffset,
+    stepContentId,
+  });
 
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "tool_error":
-          await updateResourceAndPublishEvent(
-            {
-              type: "tool_error",
-              created: event.created,
-              configurationId: agentConfiguration.sId,
-              messageId: agentMessage.sId,
-              error: {
-                code: event.error.code,
-                message: event.error.message,
-                metadata: event.error.metadata,
-              },
+  for await (const event of eventStream) {
+    switch (event.type) {
+      case "tool_error":
+        await updateResourceAndPublishEvent(
+          {
+            type: "tool_error",
+            created: event.created,
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+              metadata: event.error.metadata,
             },
-            conversation,
-            agentMessageRow,
-            step
-          );
-          return { citationsIncrement: 0 };
+          },
+          conversation,
+          agentMessageRow,
+          step
+        );
+        return { citationsIncrement: 0 };
 
-        case "tool_success":
-          await updateResourceAndPublishEvent(
-            {
-              type: "agent_action_success",
-              created: event.created,
-              configurationId: agentConfiguration.sId,
-              messageId: agentMessage.sId,
-              action: event.action,
-            },
-            conversation,
-            agentMessageRow,
-            step
-          );
+      case "tool_success":
+        await updateResourceAndPublishEvent(
+          {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          },
+          conversation,
+          agentMessageRow,
+          step
+        );
 
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
+        // We stitch the action into the agent message. The conversation is expected to include
+        // the agentMessage object, updating this object will update the conversation as well.
+        agentMessage.actions.push(event.action);
+        break;
 
-        case "tool_params":
-        case "tool_approve_execution":
-        case "tool_notification":
-          await updateResourceAndPublishEvent(
-            event,
-            conversation,
-            agentMessageRow,
-            step
-          );
-          break;
+      case "tool_params":
+      case "tool_approve_execution":
+      case "tool_notification":
+        await updateResourceAndPublishEvent(
+          event,
+          conversation,
+          agentMessageRow,
+          step
+        );
+        break;
 
-        default:
-          assertNever(event);
-      }
+      default:
+        assertNever(event);
     }
-
-    return {
-      citationsIncrement: getCitationsCount({
-        agentConfiguration: agentConfiguration,
-        stepActions: stepActions,
-        stepActionIndex: stepActionIndex,
-      }),
-    };
-  } else {
-    assertNever(actionConfiguration);
   }
+
+  return {
+    citationsIncrement: getCitationsCount({
+      agentConfiguration: agentConfiguration,
+      stepActions: stepActions,
+      stepActionIndex: stepActionIndex,
+    }),
+  };
 }

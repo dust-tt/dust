@@ -22,11 +22,13 @@ export function WorkspaceInfoTable({
   workspaceVerifiedDomains,
   workspaceCreationDay,
   extensionConfig,
+  workspaceRetention,
 }: {
   owner: WorkspaceType;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
+  workspaceRetention: number | null;
 }) {
   const { dsyncStatus } = useWorkOSDSyncStatus({ owner });
 
@@ -90,6 +92,12 @@ export function WorkspaceInfoTable({
             <PokeTableRow>
               <PokeTableCell>Creation</PokeTableCell>
               <PokeTableCell>{workspaceCreationDay}</PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
+              <PokeTableCell>Conversations retention</PokeTableCell>
+              <PokeTableCell>
+                {workspaceRetention ? `${workspaceRetention} days` : "❌"}
+              </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>SSO Enforced</PokeTableCell>
