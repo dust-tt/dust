@@ -1,13 +1,18 @@
+import { z } from "zod";
+
 import type {
   DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
   SpaceType,
 } from "@app/types";
 
-export type DataSourceBuilderTreeType = {
-  in: string[];
-  notIn: string[];
-};
+export const dataSourceBuilderTreeType = z.object({
+  in: z.string().array(),
+  notIn: z.string().array(),
+});
+export type DataSourceBuilderTreeType = z.infer<
+  typeof dataSourceBuilderTreeType
+>;
 
 export type NavigationHistoryEntryType =
   | { type: "root" }

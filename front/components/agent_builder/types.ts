@@ -9,6 +9,8 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SupportedModel, WhitelistableFeature } from "@app/types";
 import { ioTsEnum } from "@app/types";
 
+import { dataSourceBuilderTreeType } from "../data_source_view/context/types";
+
 type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
@@ -170,17 +172,12 @@ export const DESCRIPTION_MAX_LENGTH = 800;
 
 // TODO: use mcpFormSchema for all tools.
 export const capabilityFormSchema = z.object({
-  sources: z
-    .object({
-      in: z.string().array(),
-      notIn: z.string().array(),
-    })
-    .refine(
-      (val) => {
-        return val.in.length > 0;
-      },
-      { message: "You must select at least on data sources" }
-    ),
+  sources: dataSourceBuilderTreeType.refine(
+    (val) => {
+      return val.in.length > 0;
+    },
+    { message: "You must select at least on data sources" }
+  ),
   description: z
     .string()
     .min(1, "Description is required")
