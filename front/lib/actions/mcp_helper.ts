@@ -100,7 +100,7 @@ export function isRemoteMCPServerType(
 
 export function getMcpServerViewDisplayName(
   view: MCPServerViewType,
-  action?: AgentBuilderMCPAction
+  action?: AssistantBuilderMCPConfiguration | AgentBuilderMCPAction
 ) {
   return getMcpServerDisplayName(view.server, action);
 }
