@@ -122,9 +122,8 @@ function createServer(
       );
     }
 
-    // Get the topK and refsOffset from pre-computed step context.
-    const topK = agentLoopContext.runContext.stepContext.retrievalTopK;
-    const refsOffset = agentLoopContext.runContext.stepContext.citationsOffset;
+    const { citationsOffset, retrievalTopK } =
+      agentLoopContext.runContext.stepContext;
 
     // Get the core search args for each data source, fail if any of them are invalid.
     const coreSearchArgsResults = await concurrentExecutor(
@@ -164,7 +163,7 @@ function createServer(
 
     const searchResults = await coreAPI.searchDataSources(
       "",
-      topK,
+      retrievalTopK,
       credentials,
       false,
       coreSearchArgs.map((args) => {
@@ -202,13 +201,16 @@ function createServer(
       return makeMCPToolTextError(searchResults.error.message);
     }
 
-    if (refsOffset + topK > getRefs().length) {
+    if (citationsOffset + retrievalTopK > getRefs().length) {
       return makeMCPToolTextError(
         "The inclusion exhausted the total number of references available for citations"
       );
     }
 
-    const refs = getRefs().slice(refsOffset, refsOffset + topK);
+    const refs = getRefs().slice(
+      citationsOffset,
+      citationsOffset + retrievalTopK
+    );
 
     const results: IncludeResultResourceType[] =
       searchResults.value.documents.map((doc) => {
@@ -238,7 +240,7 @@ function createServer(
 
     const warningResource = makeWarningResource(
       searchResults.value.documents,
-      topK,
+      retrievalTopK,
       timeFrame ?? null
     );
 

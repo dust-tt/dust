@@ -266,12 +266,11 @@ const createServer = (
             ],
           };
         } else {
-          const refsOffset =
-            agentLoopContext.runContext.stepContext.citationsOffset;
+          const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
           const refs = getRefs().slice(
-            refsOffset,
-            refsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+            citationsOffset,
+            citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
           );
 
           const results: SearchResultResourceType[] = matches.map(
@@ -394,12 +393,11 @@ const createServer = (
             ],
           };
         } else {
-          const refsOffset =
-            agentLoopContext.runContext.stepContext.citationsOffset;
+          const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
           const refs = getRefs().slice(
-            refsOffset,
-            refsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+            citationsOffset,
+            citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
           );
 
           const results: SearchResultResourceType[] = matches.map(

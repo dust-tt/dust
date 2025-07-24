@@ -155,9 +155,8 @@ async function searchCallback(
     );
   }
 
-  // Get the topK and refsOffset from pre-computed step context.
-  const topK = agentLoopContext.runContext.stepContext.retrievalTopK;
-  const refsOffset = agentLoopContext.runContext.stepContext.citationsOffset;
+  const { retrievalTopK, citationsOffset } =
+    agentLoopContext.runContext.stepContext;
 
   const agentDataSourceConfigurationsResult =
     await getAgentDataSourceConfigurations(auth, dataSources);
@@ -237,7 +236,7 @@ async function searchCallback(
 
   const searchResults = await coreAPI.searchDataSources(
     query,
-    topK,
+    retrievalTopK,
     credentials,
     false,
     coreSearchArgs.map((args) => {
@@ -273,13 +272,16 @@ async function searchCallback(
     );
   }
 
-  if (refsOffset + topK > getRefs().length) {
+  if (citationsOffset + retrievalTopK > getRefs().length) {
     return makeMCPToolTextError(
       "The search exhausted the total number of references available for citations"
     );
   }
 
-  const refs = getRefs().slice(refsOffset, refsOffset + topK);
+  const refs = getRefs().slice(
+    citationsOffset,
+    citationsOffset + retrievalTopK
+  );
 
   const results = searchResults.value.documents.map(
     (doc): SearchResultResourceType => {

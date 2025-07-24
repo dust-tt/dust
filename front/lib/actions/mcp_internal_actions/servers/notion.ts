@@ -366,12 +366,11 @@ const createServer = (
           ],
         };
       } else {
-        const refsOffset =
-          agentLoopContext.runContext.stepContext.citationsOffset;
+        const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
         const refs = getRefs().slice(
-          refsOffset,
-          refsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
+          citationsOffset,
+          citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
         );
 
         const resultResources = results.map((result) => {
