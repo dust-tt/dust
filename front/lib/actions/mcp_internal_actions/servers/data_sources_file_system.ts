@@ -157,10 +157,7 @@ async function searchCallback(
 
   // Get the topK and refsOffset from pre-computed step context.
   const topK = agentLoopContext.runContext.stepContext.retrievalTopK;
-  const refsOffset =
-    agentLoopContext.runContext.stepContext.citationsOffsets.get(
-      agentLoopContext.runContext.stepActionIndex
-    ) ?? 0;
+  const refsOffset = agentLoopContext.runContext.stepContext.citationsOffset;
 
   const agentDataSourceConfigurationsResult =
     await getAgentDataSourceConfigurations(auth, dataSources);

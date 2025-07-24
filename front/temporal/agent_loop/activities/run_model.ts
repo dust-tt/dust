@@ -1,11 +1,11 @@
 import { removeNulls } from "@dust-tt/client";
 
+import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
   tryListMCPTools,
 } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   isDustAppChatBlockType,
   runActionStreamed,
@@ -15,8 +15,8 @@ import type {
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
-import { computeStepContext } from "@app/lib/actions/utils";
 import type { StepContext } from "@app/lib/actions/utils";
+import { computeStepContext } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
@@ -79,7 +79,7 @@ export async function runModelActivity({
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
-  stepContext: StepContext;
+  stepContexts: StepContext[];
   totalCitationsIncrement: number;
 } | null> {
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
@@ -855,7 +855,7 @@ export async function runModelActivity({
   }));
   agentMessage.contents.push(...newContents);
 
-  const { stepContext, totalCitationsIncrement } = computeStepContext({
+  const { stepContexts, totalCitationsIncrement } = computeStepContext({
     agentConfiguration,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
@@ -865,7 +865,7 @@ export async function runModelActivity({
     actions,
     runId: await dustRunId,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
-    stepContext,
+    stepContexts,
     totalCitationsIncrement,
   };
 }

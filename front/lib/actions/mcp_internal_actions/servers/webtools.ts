@@ -78,10 +78,7 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         );
       }
 
-      const refsOffset =
-        agentLoopRunContext.stepContext.citationsOffsets.get(
-          agentLoopRunContext.stepActionIndex
-        ) ?? 0;
+      const refsOffset = agentLoopRunContext.stepContext.citationsOffset;
       const refs = getRefs().slice(refsOffset, refsOffset + numResults);
 
       const results: WebsearchResultResourceType[] = [];

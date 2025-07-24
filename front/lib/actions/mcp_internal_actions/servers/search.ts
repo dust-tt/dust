@@ -76,10 +76,7 @@ export async function searchFunction({
 
   // Get the topK and refsOffset from pre-computed step context.
   const topK = agentLoopContext.runContext.stepContext.retrievalTopK;
-  const refsOffset =
-    agentLoopContext.runContext.stepContext.citationsOffsets.get(
-      agentLoopContext.runContext.stepActionIndex
-    ) ?? 0;
+  const refsOffset = agentLoopContext.runContext.stepContext.citationsOffset;
 
   // Get the core search args for each data source, fail if any of them are invalid.
   const coreSearchArgsResults = await concurrentExecutor(

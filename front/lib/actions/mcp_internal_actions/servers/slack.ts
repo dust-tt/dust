@@ -267,9 +267,7 @@ const createServer = (
           };
         } else {
           const refsOffset =
-            agentLoopContext.runContext.stepContext.citationsOffsets.get(
-              agentLoopContext.runContext.stepActionIndex
-            ) ?? 0;
+            agentLoopContext.runContext.stepContext.citationsOffset;
 
           const refs = getRefs().slice(
             refsOffset,
@@ -397,9 +395,7 @@ const createServer = (
           };
         } else {
           const refsOffset =
-            agentLoopContext.runContext.stepContext.citationsOffsets.get(
-              agentLoopContext.runContext.stepActionIndex
-            ) ?? 0;
+            agentLoopContext.runContext.stepContext.citationsOffset;
 
           const refs = getRefs().slice(
             refsOffset,

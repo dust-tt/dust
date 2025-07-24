@@ -29,7 +29,7 @@ export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
 
 export type StepContext = {
   retrievalTopK: number;
-  citationsOffsets: Map<number, number>;
+  citationsOffset: number;
   websearchResultCount: number;
 };
 
@@ -242,7 +242,7 @@ export function computeStepContext({
   agentConfiguration: AgentConfigurationType;
   stepActions: ActionConfigurationType[];
   citationsRefsOffset: number;
-}): { stepContext: StepContext; totalCitationsIncrement: number } {
+}): { stepContexts: StepContext[]; totalCitationsIncrement: number } {
   const retrievalTopK = getRetrievalTopK({
     agentConfiguration,
     stepActions,
@@ -252,8 +252,7 @@ export function computeStepContext({
     stepActions,
   });
 
-  const citationsOffsets = new Map<number, number>();
-
+  const stepContexts: StepContext[] = [];
   let currentOffset = citationsRefsOffset;
 
   for (let i = 0; i < stepActions.length; i++) {
@@ -263,16 +262,17 @@ export function computeStepContext({
       stepActionIndex: i,
     });
 
-    citationsOffsets.set(i, currentOffset);
+    stepContexts.push({
+      retrievalTopK,
+      citationsOffset: currentOffset,
+      websearchResultCount: websearchResults,
+    });
+
     currentOffset += citationCount;
   }
 
   return {
-    stepContext: {
-      retrievalTopK,
-      citationsOffsets,
-      websearchResultCount: websearchResults,
-    },
+    stepContexts,
     totalCitationsIncrement: currentOffset - citationsRefsOffset,
   };
 }
