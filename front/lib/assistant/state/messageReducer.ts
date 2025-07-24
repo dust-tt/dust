@@ -1,16 +1,15 @@
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { BaseAction } from "@app/lib/actions/types";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import type { AgentActionType } from "@app/types";
+import type { AgentActionType, ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 
 export type AgentStateClassification = "thinking" | "acting" | "done";
 
 export type ActionProgressState = Map<
-  BaseAction["id"],
+  ModelId,
   {
     action: AgentActionType;
     progress?: ProgressNotificationContentType;

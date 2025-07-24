@@ -259,6 +259,7 @@ export function ConversationContainer({
       }
     },
     [
+      async,
       isSubmitting,
       owner,
       user,

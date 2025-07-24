@@ -4,6 +4,7 @@ import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionD
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentActionType, LightWorkspaceType } from "@app/types";
 
+// TODO(2025-07-24 aubin): cleanup here.
 export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType,
 > {
