@@ -290,8 +290,14 @@ async function handler(
         }
       }
 
+      // Fetch the feature flags of the app's workspace.
       const flags = await getFeatureFlags(owner);
       const storeBlocksResults = !flags.includes("disable_run_logs");
+
+      // Fetch the feature flags for the owner of the run.
+      const keyWorkspaceFlags = await getFeatureFlags(
+        keyAuth.getNonNullableWorkspace()
+      );
 
       logger.info(
         {
@@ -306,6 +312,7 @@ async function handler(
 
       const runRes = await coreAPI.createRunStream(
         keyAuth.getNonNullableWorkspace(),
+        keyWorkspaceFlags,
         keyAuth.groups(),
         {
           projectId: app.dustAPIProjectId,

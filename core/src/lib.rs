@@ -71,6 +71,7 @@ pub mod providers {
     }
     pub mod anthropic {
         pub mod anthropic;
+        pub mod backend;
         pub mod helpers;
         pub mod streaming;
         pub mod types;
