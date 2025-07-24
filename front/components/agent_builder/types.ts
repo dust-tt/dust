@@ -6,7 +6,11 @@ import type {
   agentBuilderFormSchema,
   agentBuilderMCPFormSchema,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { DEFAULT_DATA_VISUALIZATION_DESCRIPTION, DEFAULT_DATA_VISUALIZATION_NAME, DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
+import {
+  DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+  DEFAULT_DATA_VISUALIZATION_NAME,
+  DEFAULT_MCP_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
