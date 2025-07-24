@@ -21,6 +21,7 @@ import type {
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
@@ -64,16 +65,14 @@ export function AddToolsDropdown({
     }
 
     // TODO: Extract it to a function
-    const dataVisualizationAction = {
+    addTools({
       id: uniqueId(),
       type: "DATA_VISUALIZATION",
       configuration: null,
       name: DEFAULT_DATA_VISUALIZATION_NAME,
       description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
       noConfigurationRequired: true,
-    };
-
-    addTools(dataVisualizationAction);
+    });
   };
 
   // TODO: Add Reasoning logic here (see how it's done in Assistant Builder).
