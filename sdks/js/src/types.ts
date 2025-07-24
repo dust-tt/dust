@@ -584,12 +584,11 @@ export type RetrievalDocumentPublicType = z.infer<
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
-  | "anthropic_vertex_fallback"
-  | "notion_private_integration"
   | "advanced_search"
   | "agent_builder_instructions_autocomplete"
   | "agent_builder_v2"
   | "agent_memory_tools"
+  | "anthropic_vertex_fallback"
   | "claude_4_opus_feature"
   | "co_edition"
   | "deepseek_feature"
@@ -607,6 +606,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_trackers"
   | "labs_transcripts"
   | "monday_tool"
+  | "notion_private_integration"
   | "okta_enterprise_connection"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
@@ -618,8 +618,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "show_debug_tools"
   | "usage_data_api"
-  | "workos_user_provisioning"
   | "workos"
+  | "workos_user_provisioning"
   | "xai_feature"
 >();
 
@@ -688,8 +688,6 @@ const MCPActionTypeSchema = z.object({
   output: CallToolResultSchema.shape.content.nullable(),
   type: z.literal("tool_action"),
 });
-
-export type MCPActionPublicType = z.infer<typeof MCPActionTypeSchema>;
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "active"
@@ -2384,12 +2382,6 @@ export type CancelMessageGenerationRequestType = z.infer<
 >;
 
 // Typeguards.
-
-export function isMCPActionType(
-  action: AgentActionPublicType
-): action is MCPActionPublicType {
-  return action.type === "tool_action";
-}
 
 export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {
   return (arg as AgentMentionType).configurationId !== undefined;
