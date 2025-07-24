@@ -3,9 +3,8 @@ import Spinner from "ink-spinner";
 import type { FC } from "react";
 import React, { useEffect, useState } from "react";
 
-import { checkForUpdates } from "../../utils/updateChecker.js";
 import pkg from "../../../package.json" with { type: "json" };
-import { normalizeError } from "../../utils/errors.js";
+import { checkForUpdates } from "../../utils/updateChecker.js";
 
 interface UpdateInfoProps {
   onComplete: () => void;
