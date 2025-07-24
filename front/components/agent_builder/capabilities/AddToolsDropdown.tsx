@@ -19,6 +19,7 @@ import type {
   AgentBuilderFormData,
   AgentBuilderMCPAction,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
@@ -28,8 +29,6 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-
-type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 
 interface AddToolsDropdownProps {
   tools: FieldArrayWithId<AgentBuilderFormData, "actions", "id">[];

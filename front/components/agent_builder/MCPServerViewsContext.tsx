@@ -11,7 +11,8 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
-type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
+
+export type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
 
 interface MCPServerViewsContextType {
   mcpServerViews: MCPServerViewType[];

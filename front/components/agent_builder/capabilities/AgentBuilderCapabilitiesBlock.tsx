@@ -19,6 +19,7 @@ import type {
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
+import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
   AgentBuilderAction,
@@ -183,6 +184,7 @@ const dataVisualizationAction = {
 };
 
 function filterSelectableViews(
+  views: MCPServerViewTypeWithLabel[],
   fields: FieldArrayWithId<AgentBuilderFormData, "actions", "id">[]
 ) {
   return views.filter((view) => {
