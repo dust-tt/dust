@@ -59,19 +59,6 @@ export const categorizeAgentErrorMessage = (error: {
           publicMessage:
             "Anthropic (Claude's provider) encountered an error. Please try again.",
         };
-      } else if (
-        error.message.includes(
-          "tool_use` ids were found without `tool_result` blocks"
-        ) ||
-        error.message.includes(
-          "tool_use block must have a corresponding tool_result block"
-        )
-      ) {
-        return {
-          category: "invalid_response_format_configuration",
-          publicMessage:
-            "The agent encountered an issue with tool execution. Some actions were not completed properly. This is typically a temporary issue. Please try your request again.",
-        };
       }
     } else if (error.message.includes("OpenAIError")) {
       if (error.message.includes("maximum context length")) {
