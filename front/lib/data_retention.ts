@@ -25,11 +25,8 @@ export const getAgentsDataRetention = async (
     where: { workspaceId: workspace.id },
   });
 
-  return agentRetentions.reduce(
-    (acc, retention) => {
-      acc[retention.agentConfigurationId] = retention.retentionDays;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
+  return agentRetentions.reduce<Record<string, number>>((acc, retention) => {
+    acc[retention.agentConfigurationId] = retention.retentionDays;
+    return acc;
+  }, {});
 };
