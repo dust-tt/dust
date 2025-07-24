@@ -3,9 +3,7 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type {
-  ActionConfigurationType,
-} from "@app/lib/actions/types/agent";
+import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import type {
   AgentConfigurationType,
   AgentMessageType,
