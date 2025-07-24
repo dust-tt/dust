@@ -44,7 +44,7 @@ When no command is provided, the `chat` command will be used by default.
   - `dust agents-mcp`
   - Optional: `--port <number>` or `-p <number>` to specify the listening port for HTTP transport (defaults to auto-selection)
   - Optional: `--sId <sId>` or `-s <sId>` to specify the agent sId or name to use directly (can be repeated)
-  - Optional: `--stdio` to use STDIO transport for AI clients (default: HTTP transport)
+  - Optional: `--http` to use HTTP transport for AI clients (default: STDIO transport)
 - **`chat`**: Chat with a Dust agent (default command).
   - `dust chat` or simply `dust`
   - Optional: `--sId <sId>` or `-s <sId>` to specify the agent sId to use directly
@@ -63,9 +63,10 @@ When no command is provided, the `chat` command will be used by default.
 - `dust login`
 - `dust agents-mcp` (HTTP transport, default)
 - `dust agents-mcp --port 8080` (HTTP transport on specific port)
-- `dust agents-mcp --stdio` (STDIO transport for AI clients)
-- `dust agents-mcp --sId "Claude 4 Sonnet" --stdio` (specific agent by name with STDIO)
-- `dust agents-mcp --sId 1234567890 --stdio` (specific agent by sId with STDIO)
+- `dust agents-mcp` (STDIO transport for AI clients - default)
+- `dust agents-mcp --http` (HTTP transport for AI clients)
+- `dust agents-mcp --sId "Claude 4 Sonnet"` (specific agent by name with STDIO)
+- `dust agents-mcp --sId 1234567890 --http` (specific agent by sId with HTTP)
 - `dust chat`
 - `dust chat --sId 1234567890`
 - `dust help`
@@ -80,7 +81,7 @@ The `agents-mcp` command supports two transport mechanisms:
   - Runs a local HTTP server (default or specified port)
   - Use when you want a URL to connect MCP clients to
   
-- **STDIO Transport** (`--stdio`):
+- **STDIO Transport** (default):
   - Uses standard input/output for communication
   - Perfect for AI clients like Claude Desktop, Cursor, or other MCP-enabled applications
   - The server runs in the foreground and communicates via stdin/stdout
@@ -96,7 +97,7 @@ For AI clients like Claude Desktop or Cursor, use the STDIO transport:
   "mcpServers": {
     "dust-agents": {
       "command": "dust",
-      "args": ["agents-mcp", "--stdio", "--sId", "Claude 4 Sonnet"]
+      "args": ["agents-mcp", "--sId", "Claude 4 Sonnet"]
     }
   }
 }
@@ -105,7 +106,7 @@ For AI clients like Claude Desktop or Cursor, use the STDIO transport:
 {
   "dust-agents": {
     "command": "dust",
-    "args": ["agents-mcp", "--stdio"],
+    "args": ["agents-mcp"],
     "env": {}
   }
 }

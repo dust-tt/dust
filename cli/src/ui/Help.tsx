@@ -101,7 +101,7 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>--stdio</Text> Use STDIO transport (default: HTTP)
+          <Text bold>--http</Text> Use HTTP transport (default: STDIO)
         </Text>
       </Box>
     </Box>

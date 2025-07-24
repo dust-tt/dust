@@ -70,9 +70,9 @@ const cli = meow({
       description:
         "Show detailed message information (requires --agent and --message)",
     },
-    stdio: {
+    http: {
       type: "boolean",
-      description: "Use STDIO transport (default: HTTP)",
+      description: "Use HTTP transport (default: STDIO)",
     },
   },
 });
