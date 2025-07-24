@@ -40,8 +40,8 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
       query: z
         .string()
         .describe(
-          "The query used to perform the google search. If requested by the " +
-            "user, use the google syntax `site:` to restrict the the search " +
+          "The query used to perform the Google search. If requested by the " +
+            "user, use the Google syntax `site:` to restrict the search " +
             "to a particular website or domain. " +
             "Unicode characters are not supported."
         ),
@@ -50,7 +50,7 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         .optional()
         .describe(
           "A 1-indexed page number used to paginate through the search results." +
-            " Should only be provided if page is stricly greater than 1 in order" +
+            " Should only be provided if the page is strictly greater than 1 in order" +
             " to go deeper into the search results for a specific query."
         ),
     },
