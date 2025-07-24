@@ -8,6 +8,11 @@ import {
   useDataSourceBuilderContext,
 } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
+import {
+  findCategoryFromNavigationHistory,
+  findSpaceFromNavigationHistory,
+  getLatestNodeFromNavigationHistory,
+} from "@app/components/data_source_view/context/utils";
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
 import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
@@ -22,8 +27,6 @@ import type {
   SpaceType,
 } from "@app/types";
 import type {
-  DataSourceViewCategoryWithoutApps,
-  DataSourceViewContentNode,
   DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
 } from "@app/types";
@@ -42,8 +45,16 @@ interface DataSourceBuilderSelectorProps {
 export const DataSourceBuilderSelector = (
   props: DataSourceBuilderSelectorProps
 ) => {
+  const { spaces, isSpacesLoading } = useSpaces({
+    workspaceId: props.owner.sId,
+  });
+
+  if (isSpacesLoading) {
+    return <Spinner />;
+  }
+
   return (
-    <DataSourceBuilderProvider>
+    <DataSourceBuilderProvider spaces={spaces}>
       <DataSourceBuilderSelectorContent {...props} />
     </DataSourceBuilderProvider>
   );
@@ -55,9 +66,8 @@ export const DataSourceBuilderSelectorContent = ({
   owner,
   viewType,
 }: DataSourceBuilderSelectorProps) => {
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-
   const {
+    spaces,
     navigationHistory,
     navigateTo,
     setSpaceEntry,
@@ -100,10 +110,6 @@ export const DataSourceBuilderSelectorContent = ({
     const spaceIds = new Set(dataSourceViews.map((dsv) => dsv.spaceId));
     return spaces.filter((s) => spaceIds.has(s.sId));
   }, [spaces, dataSourceViews]);
-
-  if (isSpacesLoading) {
-    return <Spinner />;
-  }
 
   if (filteredSpaces.length === 0) {
     return <div>No spaces with data sources available.</div>;
@@ -173,38 +179,4 @@ function getBreadcrumbConfig(
         label: entry.node.title,
       };
   }
-}
-
-function findSpaceFromNavigationHistory(
-  navigationHistory: NavigationHistoryEntryType[]
-): SpaceType | null {
-  const entry = navigationHistory[1];
-  if (entry != null && entry.type === "space") {
-    return entry.space;
-  }
-
-  return null;
-}
-
-function findCategoryFromNavigationHistory(
-  navigationHistory: NavigationHistoryEntryType[]
-): DataSourceViewCategoryWithoutApps | null {
-  const entry = navigationHistory[2];
-  if (entry != null && entry.type === "category") {
-    return entry.category;
-  }
-
-  return null;
-}
-
-function getLatestNodeFromNavigationHistory(
-  navigationHistory: NavigationHistoryEntryType[]
-): DataSourceViewContentNode | null {
-  const latestEntry = navigationHistory[navigationHistory.length - 1];
-
-  if (latestEntry.type === "node") {
-    return latestEntry.node;
-  }
-
-  return null;
 }
