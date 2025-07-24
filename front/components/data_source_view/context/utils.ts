@@ -28,17 +28,14 @@ export function addNodeToTree(
   const pathStr = pathToString(path);
   const pathPrefix = getPathPrefix(pathStr);
 
-  // Check if a parent path is already included
   const hasParentInclusion = tree.in.some((inPath) =>
     isParentOrSamePath(inPath, pathStr)
   );
 
-  // Remove the path from notIn if present
   const newNotIn = tree.notIn.filter(
     (notInPath) => notInPath !== pathStr && !notInPath.startsWith(pathPrefix)
   );
 
-  // If parent is already included, don't add child paths
   if (hasParentInclusion) {
     return {
       in: tree.in,
@@ -46,7 +43,6 @@ export function addNodeToTree(
     };
   }
 
-  // If the path was in notIn, only remove it from notIn, don't add to in
   if (tree.notIn.includes(pathStr)) {
     return {
       in: tree.in,
@@ -54,7 +50,6 @@ export function addNodeToTree(
     };
   }
 
-  // Check if path is already in the in array
   if (tree.in.includes(pathStr)) {
     return {
       in: tree.in,
@@ -62,7 +57,6 @@ export function addNodeToTree(
     };
   }
 
-  // Add the path to in array only if it wasn't in notIn
   const newIn = [...tree.in, pathStr];
 
   return {
@@ -107,15 +101,12 @@ export function removeNodeFromTree(
     (inPath) => inPath !== pathStr && !inPath.startsWith(pathPrefix)
   );
 
-  // Check if we removed any child paths from the 'in' array (not including the exact path)
   const hasChildInclusions = tree.in.some((inPath) =>
     inPath.startsWith(pathPrefix)
   );
 
-  // Check if we removed the exact path from the 'in' array
   const removedExactPath = tree.in.includes(pathStr);
 
-  // Check if the path would be included by virtue of a parent path being in the 'in' array
   const hasParentInclusion = tree.in.some((inPath) =>
     isParentOrSamePath(inPath, pathStr)
   );
