@@ -19,11 +19,7 @@ import type {
   AgentBuilderFormData,
   AgentBuilderMCPAction,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type {
-  ActionSpecification,
-  DataVisualizationAgentBuilderAction,
-} from "@app/components/agent_builder/types";
-import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import type { ActionSpecification } from "@app/components/agent_builder/types";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
@@ -68,7 +64,15 @@ export function AddToolsDropdown({
       return;
     }
 
-    const dataVisualizationAction = getDataVisualizationActionConfiguration();
+    // TODO: Extract it to a function
+    const dataVisualizationAction = {
+      id: uniqueId(),
+      type: "DATA_VISUALIZATION",
+      configuration: null,
+      name: DEFAULT_DATA_VISUALIZATION_NAME,
+      description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+      noConfigurationRequired: true,
+    };
 
     addTools(dataVisualizationAction);
   };

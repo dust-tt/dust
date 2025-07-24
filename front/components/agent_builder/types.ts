@@ -276,17 +276,6 @@ export function getDefaultMCPAction(
   };
 }
 
-export function getDataVisualizationActionConfiguration() {
-  return {
-    id: uniqueId(),
-    type: "DATA_VISUALIZATION",
-    configuration: null,
-    name: DEFAULT_DATA_VISUALIZATION_NAME,
-    description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-    noConfigurationRequired: true,
-  };
-}
-
 export function isDefaultActionName(action: AgentBuilderAction) {
   return action.name.includes(DEFAULT_MCP_ACTION_NAME);
 }

@@ -8,6 +8,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
+import type { FieldArrayWithId } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
 
 import type {
@@ -181,6 +182,22 @@ const dataVisualizationAction = {
   ...DATA_VISUALIZATION_SPECIFICATION,
 };
 
+function filterSelectableViews(
+  fields: FieldArrayWithId<AgentBuilderFormData, "actions", "id">[]
+) {
+  return views.filter((view) => {
+    const selectedAction = fields.find(
+      (field) => field.name === view.server.name
+    );
+
+    if (selectedAction) {
+      return !selectedAction.noConfigurationRequired;
+    }
+
+    return true;
+  });
+}
+
 export function AgentBuilderCapabilitiesBlock() {
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -201,6 +218,7 @@ export function AgentBuilderCapabilitiesBlock() {
   } | null>(null);
 
   const [openSheet, setOpenSheet] = useState<KnowledgeServerName | null>(null);
+
   // TODO: Open single sheet for selected MCP action.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedAction, setSelectedAction] =
@@ -208,34 +226,12 @@ export function AgentBuilderCapabilitiesBlock() {
 
   // TODO: Add logic for reasoning.
   const selectableDefaultMCPServerViews = useMemo(
-    () =>
-      defaultMCPServerViews.filter((view) => {
-        const selectedAction = fields.find(
-          (field) => field.name === view.server.name
-        );
-
-        if (selectedAction) {
-          return !selectedAction.noConfigurationRequired;
-        }
-
-        return true;
-      }),
+    () => filterSelectableViews(defaultMCPServerViews, fields),
     [defaultMCPServerViews, fields]
   );
 
   const selectableNonDefaultMCPServerViews = useMemo(
-    () =>
-      nonDefaultMCPServerViews.filter((view) => {
-        const selectedAction = fields.find(
-          (action) => action.name === view.server.name
-        );
-
-        if (selectedAction) {
-          return !selectedAction.noConfigurationRequired;
-        }
-
-        return true;
-      }),
+    () => filterSelectableViews(nonDefaultMCPServerViews, fields),
     [nonDefaultMCPServerViews, fields]
   );
 
