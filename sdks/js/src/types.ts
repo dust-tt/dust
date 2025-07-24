@@ -544,15 +544,6 @@ export const GenerationTokensEventSchema = z.object({
 });
 export type GenerationTokensEvent = z.infer<typeof GenerationTokensEventSchema>;
 
-const BaseActionTypeSchema = FlexibleEnumSchema<
-  "dust_app_run_action" | "process_action" | "visualization_action"
->();
-
-const BaseActionSchema = z.object({
-  id: ModelIdSchema,
-  type: BaseActionTypeSchema,
-});
-
 const DataSourceViewKindSchema = FlexibleEnumSchema<"default" | "custom">();
 
 const DataSourceViewSchema = z.object({
@@ -689,7 +680,8 @@ export const WebsearchResultSchema = z.object({
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
-const MCPActionTypeSchema = BaseActionSchema.extend({
+const MCPActionTypeSchema = z.object({
+  id: ModelIdSchema,
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
   params: z.unknown(),
@@ -1279,7 +1271,6 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "subscription_state_invalid"
   | "table_not_found"
   | "template_not_found"
-  | "template_not_found"
   | "transcripts_configuration_already_exists"
   | "transcripts_configuration_default_not_allowed"
   | "transcripts_configuration_not_found"
@@ -1289,7 +1280,6 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "unexpected_response_format"
   | "user_not_found"
   | "workspace_auth_error"
-  | "workspace_not_found"
   | "workspace_not_found"
   | "workspace_user_not_found"
 >();
