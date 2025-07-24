@@ -100,7 +100,6 @@ export function SpaceLayout({
           openSpaceCreationModal={openSpaceCreationModal}
         />
       }
-      title={<AppLayoutTitle />}
     >
       <div className="flex w-full flex-col">
         <Page.Vertical gap="lg" align="stretch">

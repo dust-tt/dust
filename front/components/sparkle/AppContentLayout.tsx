@@ -74,21 +74,6 @@ export default function AppContentLayout({
     setLoaded(true);
   }, []);
 
-  // Temporary measure to preserve title existence on smaller screens.
-  const contentWithTitle = React.useMemo(() => {
-    if (!loaded || hasTitle) {
-      return children;
-    }
-
-    // Page has no title, prepend empty AppLayoutTitle.
-    return (
-      <>
-        <AppLayoutTitle />
-        {children}
-      </>
-    );
-  }, [children, hasTitle, loaded]);
-
   return (
     <div className="flex h-full flex-row">
       <Head>
@@ -110,7 +95,16 @@ export default function AppContentLayout({
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        {loaded && contentWithTitle}
+        {/* Temporary measure to preserve title existence on smaller screens.
+         * Page has no title, prepend empty AppLayoutTitle. */}
+        {loaded && !hasTitle ? (
+          <>
+            <AppLayoutTitle />
+            {children}
+          </>
+        ) : (
+          children
+        )}
       </div>
     </div>
   );
