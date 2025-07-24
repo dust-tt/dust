@@ -218,18 +218,6 @@ export async function startMcpServer(
   onServerStart: (url: string) => void,
   requestedPort?: number
 ) {
-  const dustClient = await getDustClient();
-  if (!dustClient) {
-    throw new Error("Dust client not initialized. Please run 'dust login'.");
-  }
-
-  const meRes = await dustClient.me();
-  if (meRes.isErr()) {
-    throw new Error(`Failed to get user information: ${meRes.error.message}`);
-  }
-
-  const user = meRes.value;
-
   const app = express();
 
   const activeSessions = new Map<
