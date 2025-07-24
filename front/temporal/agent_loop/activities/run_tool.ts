@@ -1,4 +1,4 @@
-import { runToolWithStreaming } from "@app/lib/actions/runners";
+import { runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
