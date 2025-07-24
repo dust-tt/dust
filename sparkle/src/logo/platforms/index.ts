@@ -1,6 +1,7 @@
 export { default as Ai21Logo } from "./Ai21";
 export { default as AnthropicLogo } from "./Anthropic";
 export { default as BigQueryLogo } from "./BigQuery";
+export { default as ChromeLogo } from "./Chrome";
 export { default as ClaudeLogo } from "./Claude";
 export { default as CohereLogo } from "./Cohere";
 export { default as ConfluenceLogo } from "./Confluence";
@@ -40,7 +41,6 @@ export { default as ReplicateLogo } from "./Replicate";
 export { default as SalesforceLogo } from "./Salesforce";
 export { default as SlackLogo } from "./Slack";
 export { default as SnowflakeLogo } from "./Snowflake";
-export { default as StripeLogo } from "./Stripe";
 export { default as TogetheraiLogo } from "./Togetherai";
 export { default as ZapierLogo } from "./Zapier";
 export { default as ZendeskLogo } from "./Zendesk";
