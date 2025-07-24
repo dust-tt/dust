@@ -34,6 +34,10 @@ import config from "@app/lib/api/config";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import {
+  getAgentsDataRetention,
+  getWorkspaceDataRetention,
+} from "@app/lib/data_retention";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
@@ -60,6 +64,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   whitelistableFeatures: WhitelistableFeature[];
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
+  workspaceRetention: number | null;
+  agentsRetention: Record<string, number>;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const activeSubscription = auth.subscription();
@@ -93,6 +99,9 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   const workspaceVerifiedDomains = await getWorkspaceVerifiedDomains(owner);
   const workspaceCreationDay = await getWorkspaceCreationDate(owner.sId);
 
+  const workspaceRetention = await getWorkspaceDataRetention(auth);
+  const agentsRetention = await getAgentsDataRetention(auth);
+
   const extensionConfig =
     await ExtensionConfigurationResource.fetchForWorkspace(auth);
 
@@ -106,6 +115,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       workspaceVerifiedDomains,
       workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
       extensionConfig: extensionConfig?.toJSON() ?? null,
+      workspaceRetention,
+      agentsRetention,
       baseUrl: config.getClientFacingUrl(),
     },
   };
@@ -120,6 +131,8 @@ const WorkspacePage = ({
   workspaceVerifiedDomains,
   workspaceCreationDay,
   extensionConfig,
+  workspaceRetention,
+  agentsRetention,
   baseUrl,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
@@ -201,6 +214,7 @@ const WorkspacePage = ({
                 workspaceVerifiedDomains={workspaceVerifiedDomains}
                 workspaceCreationDay={workspaceCreationDay}
                 extensionConfig={extensionConfig}
+                workspaceRetention={workspaceRetention}
               />
               <div className="flex flex-grow flex-col gap-4">
                 <PluginList
@@ -222,7 +236,10 @@ const WorkspacePage = ({
             <MCPServerViewsDataTable owner={owner} />
             <SpaceDataTable owner={owner} />
             <GroupDataTable owner={owner} />
-            <AssistantsDataTable owner={owner} />
+            <AssistantsDataTable
+              owner={owner}
+              agentsRetention={agentsRetention}
+            />
             <AppDataTable owner={owner} />
             <FeatureFlagsDataTable
               owner={owner}
