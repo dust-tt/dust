@@ -904,6 +904,17 @@ async fn runs_create(
         },
         None => (),
     };
+
+    match headers.get("X-Dust-Feature-Flags") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_FEATURE_FLAGS".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
+
     match headers.get("X-Dust-Group-Ids") {
         Some(v) => match v.to_str() {
             Ok(v) => {
@@ -976,6 +987,17 @@ async fn runs_create_stream(
         },
         None => (),
     };
+
+    match headers.get("X-Dust-Feature-Flags") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_FEATURE_FLAGS".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
+
     match headers.get("X-Dust-Group-Ids") {
         Some(v) => match v.to_str() {
             Ok(v) => {
