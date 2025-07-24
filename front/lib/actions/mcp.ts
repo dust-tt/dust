@@ -34,9 +34,7 @@ import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
-import type {
-  AgentActionSpecification,
-} from "@app/lib/actions/types/agent";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import type { StepContext } from "@app/lib/actions/utils";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
