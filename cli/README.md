@@ -77,7 +77,7 @@ dust [command]
 Pass both required parameters with any command:
 
 ```bash
-dust [command] --wId <workspace-id> --api-key <your-api-key>
+dust [command] --workspaceId <workspace-id> --key <your-api-key>
 ```
 
 #### Parameters

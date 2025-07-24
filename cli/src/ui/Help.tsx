@@ -108,8 +108,8 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>--api-key</Text> API key for headless authentication (use
-          with --wId)
+          <Text bold>--key</Text> API key for headless authentication (use with
+          --workspaceId)
         </Text>
       </Box>
       <Box marginLeft={2}>

@@ -53,6 +53,12 @@ const Auth: FC<AuthProps> = ({ force = false, apiKey, wId }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [deviceCode, setDeviceCode] = useState<DeviceCodeResponse | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+  const [showWorkspaceSelector, setShowWorkspaceSelector] = useState(false);
+  const [authComplete, setAuthComplete] = useState(false);
+  const [userInfo, setUserInfo] = useState<MeResponseType["user"] | null>(null);
+
   // Check for environment variables first, then fall back to passed flags
   const effectiveApiKey = apiKey || process.env.DUST_API_KEY;
   const effectiveWId = wId || process.env.DUST_WORKSPACE_ID;
@@ -78,11 +84,6 @@ const Auth: FC<AuthProps> = ({ force = false, apiKey, wId }) => {
       </Box>
     );
   }
-  const [deviceCode, setDeviceCode] = useState<DeviceCodeResponse | null>(null);
-  const [isPolling, setIsPolling] = useState(false);
-  const [showWorkspaceSelector, setShowWorkspaceSelector] = useState(false);
-  const [authComplete, setAuthComplete] = useState(false);
-  const [userInfo, setUserInfo] = useState<MeResponseType["user"] | null>(null);
 
   const workOSDomain = process.env.WORKOS_DOMAIN || "";
   const clientId = process.env.WORKOS_CLIENT_ID || "";
