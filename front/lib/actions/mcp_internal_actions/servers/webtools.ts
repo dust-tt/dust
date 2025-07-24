@@ -65,9 +65,7 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
 
       const agentLoopRunContext = agentLoopContext.runContext;
 
-      const numResults = getWebsearchNumResults({
-        stepActions: agentLoopRunContext.stepActions,
-      });
+      const numResults = agentLoopRunContext.stepContext.websearchResultCount;
 
       const websearchRes = await webSearch({
         provider: "serpapi",
@@ -82,12 +80,9 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         );
       }
 
-      const refsOffset = actionRefsOffset({
-        agentConfiguration: agentLoopRunContext.agentConfiguration,
-        stepActionIndex: agentLoopRunContext.stepActionIndex,
-        stepActions: agentLoopRunContext.stepActions,
-        refsOffset: agentLoopRunContext.citationsRefsOffset,
-      });
+      const refsOffset = agentLoopRunContext.stepContext.citationsOffsets.get(
+        agentLoopRunContext.stepActionIndex
+      ) ?? 0;
       const refs = getRefs().slice(refsOffset, refsOffset + numResults);
 
       const results: WebsearchResultResourceType[] = [];

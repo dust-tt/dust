@@ -156,17 +156,11 @@ async function searchCallback(
     );
   }
 
-  // Compute the topK and refsOffset for the search.
-  const topK = getRetrievalTopK({
-    agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-    stepActions: agentLoopContext.runContext.stepActions,
-  });
-  const refsOffset = actionRefsOffset({
-    agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-    stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-    stepActions: agentLoopContext.runContext.stepActions,
-    refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-  });
+  // Get the topK and refsOffset from pre-computed step context.
+  const topK = agentLoopContext.runContext.stepContext.retrievalTopK;
+  const refsOffset = agentLoopContext.runContext.stepContext.citationsOffsets.get(
+    agentLoopContext.runContext.stepActionIndex
+  ) ?? 0;
 
   const agentDataSourceConfigurationsResult =
     await getAgentDataSourceConfigurations(auth, dataSources);

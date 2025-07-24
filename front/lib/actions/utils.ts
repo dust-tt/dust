@@ -27,6 +27,13 @@ export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
 
+export type StepContext = {
+  retrievalTopK: number;
+  citationsAllocation: Map<number, number>; // Map <index, >
+  citationsOffsets: Map<number, number>;
+  websearchResultCount: number;
+};
+
 export const MCP_SPECIFICATION: ActionSpecification = {
   label: "More...",
   description: "Add additional sets of tools",
@@ -226,6 +233,55 @@ export function actionRefsOffset({
   }
 
   return refsOffset;
+}
+
+/**
+ * Computes all step-level context information that was previously calculated
+ * per-action using stepActions. This enables moving the computations earlier
+ * in the pipeline and removing the stepActions dependency from individual tools.
+ */
+export function computeStepContext({
+  agentConfiguration,
+  stepActions,
+  citationsRefsOffset,
+}: {
+  agentConfiguration: AgentConfigurationType;
+  stepActions: ActionConfigurationType[];
+  citationsRefsOffset: number;
+}): StepContext {
+  const retrievalTopK = getRetrievalTopK({
+    agentConfiguration,
+    stepActions,
+  });
+
+  const websearchResults = getWebsearchNumResults({
+    stepActions,
+  });
+
+  // Pre-compute citations allocation for each action
+  const citationsAllocation = new Map<number, number>();
+  const citationsOffsets = new Map<number, number>();
+
+  let currentOffset = citationsRefsOffset;
+
+  for (let i = 0; i < stepActions.length; i++) {
+    const citationCount = getCitationsCount({
+      agentConfiguration,
+      stepActions,
+      stepActionIndex: i,
+    });
+
+    citationsAllocation.set(i, citationCount);
+    citationsOffsets.set(i, currentOffset);
+    currentOffset += citationCount;
+  }
+
+  return {
+    retrievalTopK,
+    citationsAllocation,
+    citationsOffsets,
+    websearchResultCount: websearchResults,
+  };
 }
 
 export function getMCPApprovalKey({

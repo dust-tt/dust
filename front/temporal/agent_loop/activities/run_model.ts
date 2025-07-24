@@ -15,6 +15,8 @@ import type {
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
+import { computeStepContext } from "@app/lib/actions/utils";
+import type { StepContext } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
@@ -63,6 +65,7 @@ export async function runModelActivity({
   runIds,
   step,
   functionCallStepContentIds,
+  citationsRefsOffset,
   autoRetryCount = 0,
 }: {
   authType: AuthenticatorType;
@@ -70,11 +73,14 @@ export async function runModelActivity({
   runIds: string[];
   step: number;
   functionCallStepContentIds: Record<string, ModelId>;
+  citationsRefsOffset: number;
   autoRetryCount?: number;
 }): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
+  stepContext: StepContext;
+  totalCitationsIncrement: number;
 } | null> {
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
@@ -410,6 +416,7 @@ export async function runModelActivity({
         runIds,
         step,
         functionCallStepContentIds,
+        citationsRefsOffset,
         autoRetryCount: autoRetryCount + 1,
       });
     }
@@ -847,9 +854,25 @@ export async function runModelActivity({
     content,
   }));
   agentMessage.contents.push(...newContents);
+
+  // Compute StepContext for the actions that will be executed
+  const stepContext = computeStepContext({
+    agentConfiguration,
+    stepActions: actions.map(a => a.action),
+    citationsRefsOffset,
+  });
+
+  // Calculate total citations increment for this step
+  const totalCitationsIncrement = Array.from(stepContext.citationsAllocation.values()).reduce(
+    (acc, curr) => acc + curr,
+    0
+  );
+
   return {
     actions,
     runId: await dustRunId,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
+    stepContext,
+    totalCitationsIncrement,
   };
 }

@@ -1,4 +1,5 @@
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { StepContext } from "@app/lib/actions/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type { ModelId } from "@app/types";
 import type { AgentActionsEvent } from "@app/types/assistant/agent";
@@ -11,11 +12,14 @@ export interface AgentLoopActivities {
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
+    citationsRefsOffset: number;
     autoRetryCount?: number;
   }): Promise<{
     actions: AgentActionsEvent["actions"];
     runId: string;
     functionCallStepContentIds: Record<string, ModelId>;
+    stepContext: StepContext;
+    totalCitationsIncrement: number;
   } | null>;
 
   runToolActivity(
@@ -27,9 +31,8 @@ export interface AgentLoopActivities {
       step: number;
       stepActionIndex: number;
       action: ActionConfigurationType;
-      stepActions: ActionConfigurationType[];
-      citationsRefsOffset: number;
+      stepContext: StepContext;
       stepContentId: ModelId;
     }
-  ): Promise<{ citationsIncrement: number }>;
+  ): Promise<void>;
 }

@@ -123,17 +123,11 @@ function createServer(
       );
     }
 
-    // Compute the topK and refsOffset for the search.
-    const topK = getRetrievalTopK({
-      agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-      stepActions: agentLoopContext.runContext.stepActions,
-    });
-    const refsOffset = actionRefsOffset({
-      agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-      stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-      stepActions: agentLoopContext.runContext.stepActions,
-      refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-    });
+    // Get the topK and refsOffset from pre-computed step context.
+    const topK = agentLoopContext.runContext.stepContext.retrievalTopK;
+    const refsOffset = agentLoopContext.runContext.stepContext.citationsOffsets.get(
+      agentLoopContext.runContext.stepActionIndex
+    ) ?? 0;
 
     // Get the core search args for each data source, fail if any of them are invalid.
     const coreSearchArgsResults = await concurrentExecutor(

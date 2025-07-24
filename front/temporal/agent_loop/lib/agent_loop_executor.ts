@@ -34,6 +34,7 @@ export async function executeAgentLoop(
       runIds,
       step: i,
       functionCallStepContentIds,
+      citationsRefsOffset,
       autoRetryCount: 0,
     });
 
@@ -45,13 +46,14 @@ export async function executeAgentLoop(
     // Update state with results from runMultiActionsAgent.
     runIds.push(result.runId);
     functionCallStepContentIds = result.functionCallStepContentIds;
+    const { stepContext, totalCitationsIncrement } = result;
 
     // We received the actions to run, but will enforce a limit on the number of actions
     // which is very high. Over that the latency will just be too high. This is a guardrail
     // against the model outputting something unreasonable.
     const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
-    const citationsIncrements = await Promise.all(
+    await Promise.all(
       actionsToRun.map(({ inputs, functionCallId, action }, index) =>
         activities.runToolActivity(authType, {
           runAgentArgs,
@@ -60,16 +62,13 @@ export async function executeAgentLoop(
           step: i,
           stepActionIndex: index,
           action,
-          stepActions: actionsToRun.map((a) => a.action),
-          citationsRefsOffset,
+          stepContext,
           stepContentId: functionCallStepContentIds[functionCallId],
         })
       )
     );
 
-    citationsRefsOffset += citationsIncrements.reduce(
-      (acc, curr) => acc + curr.citationsIncrement,
-      0
-    );
+    // Update citations offset with pre-computed increment
+    citationsRefsOffset += totalCitationsIncrement;
   }
 }

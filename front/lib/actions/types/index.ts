@@ -4,6 +4,8 @@ import type {
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { StepContext } from "@app/lib/actions/utils";
+import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   AgentMessageType,
@@ -25,8 +27,7 @@ export type AgentLoopRunContextType = {
   conversation: ConversationType;
   agentMessage: AgentMessageType;
   stepActionIndex: number;
-  stepActions: ActionConfigurationType[];
-  citationsRefsOffset: number;
+  stepContext: StepContext;
 };
 
 export type AgentLoopListToolsContextType = {

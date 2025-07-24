@@ -35,10 +35,10 @@ import type {
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
 import type {
-  ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import type { StepContext } from "@app/lib/actions/utils";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import {
@@ -492,8 +492,7 @@ export async function* runToolWithStreaming(
     step,
     stepContentId,
     stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
+    stepContext,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
@@ -503,8 +502,7 @@ export async function* runToolWithStreaming(
     step: number;
     stepContentId: ModelId;
     stepActionIndex: number;
-    stepActions: ActionConfigurationType[];
-    citationsRefsOffset: number;
+    stepContext: StepContext;
   }
 ): AsyncGenerator<
   | MCPParamsEvent
@@ -737,8 +735,7 @@ export async function* runToolWithStreaming(
     conversation,
     agentMessage,
     stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
+    stepContext,
   };
 
   let toolCallResult: Result<

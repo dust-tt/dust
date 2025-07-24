@@ -369,12 +369,9 @@ const createServer = (
           ],
         };
       } else {
-        const refsOffset = actionRefsOffset({
-          agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-          stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-          stepActions: agentLoopContext.runContext.stepActions,
-          refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-        });
+        const refsOffset = agentLoopContext.runContext.stepContext.citationsOffsets.get(
+          agentLoopContext.runContext.stepActionIndex
+        ) ?? 0;
 
         const refs = getRefs().slice(
           refsOffset,
