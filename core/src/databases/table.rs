@@ -827,13 +827,8 @@ impl LocalTable {
         let csv_parse_duration = utils::now() - now;
 
         let now = utils::now();
-        self.upsert_rows(
-            store.clone(),
-            databases_store.clone(),
-            rows.clone(),
-            truncate,
-        )
-        .await?;
+        self.upsert_rows(store.clone(), databases_store.clone(), rows, truncate)
+            .await?;
         let upsert_duration = utils::now() - now;
 
         info!(
