@@ -58,6 +58,16 @@ When no command is provided, the `chat` command will be used by default.
 - **`--auto`**: Automatically accept all file edit operations without prompting for approval (chat command only).
 - **`--help`**: Display help information for the CLI.
 
+### In-Chat Commands
+
+While chatting with an agent, you can use these commands by typing them with a forward slash:
+
+- **`/exit`**: Exit the chat session
+- **`/switch`**: Switch to a different agent
+- **`/attach`**: Open file selector to attach a file
+- **`/clear-files`**: Clear any attached files
+- **`/auto`**: Toggle auto-approval of file edits on/off
+
 ## Examples
 
 - `dust` (starts a chat with a Dust agent)
