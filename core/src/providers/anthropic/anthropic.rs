@@ -108,17 +108,14 @@ impl AnthropicLLM {
             body["system"] = json!(system);
         }
 
-        // FIXME: Make this more functional.
-        if thinking.is_some() {
-            if let Some((thinking_type, thinking_budget_tokens)) = thinking {
-                body["thinking"] = json!({
-                    "type": thinking_type,
-                    "budget_tokens": thinking_budget_tokens,
-                });
-                // We can't pass a temperature different from 1.0 in thinking mode: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
-                body["temperature"] = 1.0f32.into();
-                body.as_object_mut().unwrap().remove("top_p");
-            }
+        if let Some((thinking_type, thinking_budget_tokens)) = thinking {
+            body["thinking"] = json!({
+                "type": thinking_type,
+                "budget_tokens": thinking_budget_tokens,
+            });
+            // We can't pass a temperature different from 1.0 in thinking mode: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
+            body["temperature"] = 1.0f32.into();
+            body.as_object_mut().unwrap().remove("top_p");
         }
 
         if !tools.is_empty() {
