@@ -56,7 +56,6 @@ export function AddToolsDropdown({
   isMCPServerViewsLoading,
 }: AddToolsDropdownProps) {
   const [searchText, setSearchText] = useState("");
-
   const [filteredServerViews, setFilteredServerViews] = useState([
     ...defaultMCPServerViews,
     ...nonDefaultMCPServerViews,
@@ -69,15 +68,7 @@ export function AddToolsDropdown({
       return;
     }
 
-    // TODO: Extract it to a function.
-    const dataVisualizationAction: DataVisualizationAgentBuilderAction = {
-      id: uniqueId(),
-      type: "DATA_VISUALIZATION",
-      configuration: null,
-      name: DEFAULT_DATA_VISUALIZATION_NAME,
-      description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
-      noConfigurationRequired: true,
-    };
+    const dataVisualizationAction = getDataVisualizationActionConfiguration();
 
     addTools(dataVisualizationAction);
   };
@@ -121,6 +112,7 @@ export function AddToolsDropdown({
     }
   }
 
+  // TODO: handle the case which there is no more option to add.
   return (
     <DropdownMenu modal={false} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>

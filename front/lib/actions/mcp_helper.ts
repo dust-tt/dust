@@ -1,7 +1,4 @@
-import type {
-  AgentBuilderAction,
-  AgentBuilderMCPAction,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderMCPAction } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
@@ -110,7 +107,7 @@ export function getMcpServerViewDisplayName(
 
 export function getMcpServerDisplayName(
   server: MCPServerType,
-  action?: AssistantBuilderMCPConfiguration | AgentBuilderAction
+  action?: AssistantBuilderMCPConfiguration | AgentBuilderMCPAction
 ) {
   // Unreleased internal servers are displayed with a suffix in the UI.
   const res = getInternalMCPServerNameAndWorkspaceId(server.sId);
