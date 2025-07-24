@@ -137,8 +137,10 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
         truncate: bool,
     ) -> Result<()> {
         let mut now = utils::now();
-        let mut new_rows = rows.clone();
         let mut merge_rows_duration = 0;
+
+        let merged_rows: Vec<Row>;
+        let mut rows_ref: &Vec<Row> = rows;
 
         // We need to merge the existing rows with the new rows based on the row_id.
         if !truncate {
@@ -155,7 +157,8 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
             let previous_rows = Self::get_rows_from_csv(table).await?;
 
             // Use spawn_blocking to offload the merge operation to a blocking thread.
-            let merged = tokio::task::spawn_blocking({
+            merged_rows = tokio::task::spawn_blocking({
+                let rows = rows.clone();
                 move || {
                     // Use Hashmaps with the row_id as the key.
                     let previous_rows_map = previous_rows
@@ -163,7 +166,7 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
                         .map(|r| (r.row_id.clone(), r.clone()))
                         .collect::<HashMap<_, _>>();
 
-                    let new_rows_map = new_rows
+                    let new_rows_map = rows
                         .into_iter()
                         .map(|r| (r.row_id.clone(), r.clone()))
                         .collect::<HashMap<_, _>>();
@@ -187,19 +190,18 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
                 }
             })
             .await?;
-            new_rows = merged;
-
+            rows_ref = &merged_rows;
             merge_rows_duration = utils::now() - now;
             now = utils::now();
         }
 
         // Write the rows to the CSV file.
-        Self::write_rows_to_csv(table, &schema, &new_rows).await?;
+        Self::write_rows_to_csv(table, &schema, rows_ref).await?;
         let write_rows_to_csv_duration = utils::now() - now;
 
         info!(
             truncate,
-            row_count = new_rows.len(),
+            row_count = rows_ref.len(),
             duration = merge_rows_duration + write_rows_to_csv_duration,
             merge_rows_duration,
             write_rows_to_csv_duration,
