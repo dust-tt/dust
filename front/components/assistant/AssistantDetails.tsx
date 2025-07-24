@@ -253,7 +253,7 @@ export function AssistantDetails({
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const showEditorsTabs = assistantId != null && !isGlobalAgent;
   const showAgentMemory = !!agentConfiguration?.actions.find(
-    (a) => a.name === "agent_memory"
+    (a) => a.mcpServerName === "agent_memory"
   );
 
   const showPerformanceTabs =

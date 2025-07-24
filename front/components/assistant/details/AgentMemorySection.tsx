@@ -115,42 +115,47 @@ export function AgentMemorySection({
       <div className="flex flex-col gap-4">
         <Page.P variant="secondary">Memories the agent has about you:</Page.P>
 
-        {isMemoriesLoading && (
+        {isMemoriesLoading ? (
           <div className="mt-6 flex h-full w-full items-center justify-center">
             <Spinner size="md" />
           </div>
-        )}
-
-        {memories.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No memories yet.</div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {memories.map((memory) => (
-              <Card
-                key={memory.sId}
-                size={"md"}
-                className="flex flex-col gap-2"
-                action={
-                  <CardActionButton
-                    size="mini"
-                    icon={XMarkIcon}
-                    onClick={() => {
-                      setMemoryToDelete(memory.sId);
-                    }}
-                  />
-                }
-              >
-                <div className="flex flex-col gap-2">
-                  <div className="text-xs text-muted-foreground">
-                    {timeAgoFrom(new Date(memory.lastUpdated).getTime())} ago
-                  </div>
-                  <div className="text-sm text-foreground">
-                    {memory.content}
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+          <>
+            {memories.length === 0 ? (
+              <div className="text-sm text-muted-foreground">
+                No memories yet.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {memories.map((memory) => (
+                  <Card
+                    key={memory.sId}
+                    size={"md"}
+                    className="flex flex-col gap-2"
+                    action={
+                      <CardActionButton
+                        size="mini"
+                        icon={XMarkIcon}
+                        onClick={() => {
+                          setMemoryToDelete(memory.sId);
+                        }}
+                      />
+                    }
+                  >
+                    <div className="flex flex-col gap-2">
+                      <div className="text-xs text-muted-foreground">
+                        {timeAgoFrom(new Date(memory.lastUpdated).getTime())}{" "}
+                        ago
+                      </div>
+                      <div className="text-sm text-foreground">
+                        {memory.content}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </>
