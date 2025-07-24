@@ -146,29 +146,22 @@ async function createAgentTools(
 }
 
 // STDIO MCP Server function
-export async function startMcpServerStdio(
-  selectedAgents: AgentConfiguration[]
-) {
-  console.error("[STDIO] Starting MCP server with STDIO transport...");
+// Transport setup function types
+type TransportSetup = (server: McpServer) => Promise<{
+  cleanup: () => Promise<void>;
+  logPrefix: string;
+}>;
 
-  try {
-    const server = new McpServer({
-      name: "dust-cli-mcp-server",
-      version: process.env.npm_package_version || "0.1.0",
-    });
+// STDIO transport setup
+export const createStdioTransport: TransportSetup = async (
+  server: McpServer
+) => {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("[STDIO] MCP server started and listening on stdio");
 
-    // Create agent tools
-    await createAgentTools(server, selectedAgents);
-
-    // Create STDIO transport
-    const transport = new StdioServerTransport();
-
-    // Connect server to transport
-    await server.connect(transport);
-    console.error("[STDIO] MCP server started and listening on stdio");
-
-    // Handle process signals for graceful shutdown
-    const shutdown = async () => {
+  return {
+    cleanup: async () => {
       console.error("[STDIO] Shutting down MCP server...");
       try {
         await server.close();
@@ -176,6 +169,189 @@ export async function startMcpServerStdio(
       } catch (error) {
         console.error(
           "[STDIO] Error closing MCP server:",
+          normalizeError(error).message
+        );
+      }
+    },
+    logPrefix: "[STDIO]",
+  };
+};
+
+// HTTP transport setup
+export const createHttpTransport =
+  (onServerStart: (url: string) => void, requestedPort?: number) =>
+  async (server: McpServer) => {
+    const app = express();
+    const activeSessions = new Map<
+      string,
+      { server: McpServer; transport: SSEServerTransport }
+    >();
+
+    // SSE endpoint
+    app.get("/sse", async (req: Request, res: Response) => {
+      console.error(
+        `[SSE] Connection request from ${req.ip} for ${req.originalUrl}`
+      );
+
+      let transport: SSEServerTransport | undefined = undefined;
+      let sessionId: string | undefined = undefined;
+
+      try {
+        // Configure socket for long-lived SSE connection
+        req.socket.setTimeout(0);
+        req.socket.setNoDelay(true);
+        req.socket.setKeepAlive(true);
+
+        transport = new SSEServerTransport("/message", res);
+        sessionId = transport.sessionId;
+        console.error(`[SSE] Session ${sessionId} created`);
+
+        // Store session
+        if (sessionId) {
+          activeSessions.set(sessionId, { server, transport });
+        }
+
+        // Handle connection close
+        res.on("close", () => {
+          if (sessionId) {
+            console.error(`[SSE] Connection closed for session ${sessionId}`);
+            activeSessions.delete(sessionId);
+          }
+        });
+
+        // Connect server to transport
+        await server.connect(transport);
+        console.error(`[SSE] Server connected for session ${sessionId}`);
+      } catch (error) {
+        console.error("[SSE] Error handling connection:", error);
+        if (!res.headersSent) {
+          res.status(500).end("Failed to establish SSE connection.");
+        } else {
+          res.end();
+        }
+        if (sessionId) {
+          activeSessions.delete(sessionId);
+        }
+      }
+    });
+
+    // Message handling endpoint
+    app.post("/message", async (req: Request, res: Response) => {
+      const sessionId = req.query.sessionId as string;
+
+      try {
+        if (!sessionId) {
+          res.status(400).send("Missing sessionId query parameter");
+          return;
+        }
+
+        const session = activeSessions.get(sessionId);
+        if (!session) {
+          res.status(404).send(`Session not found: ${sessionId}`);
+          return;
+        }
+
+        session.transport.handlePostMessage(req, res).catch((handlerError) => {
+          console.error(
+            `[POST /message] Error handling message for session ${sessionId}:`,
+            handlerError
+          );
+          if (!res.headersSent) {
+            res.status(500).send("Error processing message");
+          }
+        });
+      } catch (error) {
+        console.error(
+          `[POST /message] Error handling message for session ${sessionId}:`,
+          error
+        );
+        if (!res.headersSent) {
+          res.status(500).send("Error processing message");
+        }
+      }
+    });
+
+    const httpServer = http.createServer(app);
+
+    const startHttpServer = (port = requestedPort || 0): Promise<number> =>
+      new Promise((resolve, reject) => {
+        httpServer.once("error", (err: Error & { code?: string }) => {
+          if (requestedPort && err.code === "EADDRINUSE") {
+            reject(new Error(`Port ${requestedPort} is already in use.`));
+          } else if (err.code === "EADDRINUSE") {
+            console.error(`Port ${port} in use, trying another...`);
+            setTimeout(() => startHttpServer(0).then(resolve, reject), 100);
+          } else {
+            reject(err);
+          }
+        });
+
+        httpServer.listen(port, () => {
+          const address = httpServer.address();
+          const boundPort =
+            typeof address === "string" ? 0 : address?.port ?? 0;
+          resolve(boundPort);
+        });
+      });
+
+    // Start server
+    const port = await startHttpServer();
+    const url = `http://localhost:${port}/sse`;
+    console.error(`HTTP server listening on port ${port}`);
+    onServerStart(url);
+
+    return {
+      cleanup: async () => {
+        console.error("Shutting down HTTP server...");
+        for (const [sessionId, session] of activeSessions) {
+          try {
+            await session.server.close();
+            console.error(`Closed session ${sessionId}`);
+          } catch (error) {
+            console.error(`Error closing session ${sessionId}:`, error);
+          }
+        }
+
+        return new Promise<void>((resolve) => {
+          httpServer.close((err) => {
+            if (err) {
+              console.error("Error closing HTTP server:", err);
+              process.exit(1);
+            } else {
+              console.error("HTTP server closed.");
+              resolve();
+            }
+          });
+        });
+      },
+      logPrefix: "[HTTP]",
+    };
+  };
+
+// Unified MCP server function
+export async function startMcpServer(
+  selectedAgents: AgentConfiguration[],
+  transportSetup: TransportSetup
+): Promise<McpServer> {
+  try {
+    const server = new McpServer({
+      name: "dust-cli-mcp-server",
+      version: process.env.npm_package_version || "0.1.0",
+    });
+
+    // Create agent tools using the helper function
+    await createAgentTools(server, selectedAgents);
+
+    // Setup transport
+    const { cleanup, logPrefix } = await transportSetup(server);
+
+    // Handle process signals for graceful shutdown
+    const shutdown = async () => {
+      try {
+        await cleanup();
+      } catch (error) {
+        console.error(
+          `${logPrefix} Error during cleanup:`,
           normalizeError(error).message
         );
       }
@@ -188,7 +364,7 @@ export async function startMcpServerStdio(
     // Handle unhandled errors to prevent crashes
     process.on("uncaughtException", (error) => {
       console.error(
-        "[STDIO] Uncaught exception:",
+        `${logPrefix} Uncaught exception:`,
         normalizeError(error).message
       );
       shutdown();
@@ -196,7 +372,7 @@ export async function startMcpServerStdio(
 
     process.on("unhandledRejection", (reason) => {
       console.error(
-        "[STDIO] Unhandled rejection:",
+        `${logPrefix} Unhandled rejection:`,
         normalizeError(reason).message
       );
       shutdown();
@@ -204,179 +380,7 @@ export async function startMcpServerStdio(
 
     return server;
   } catch (error) {
-    console.error(
-      "[STDIO] Failed to start MCP server:",
-      normalizeError(error).message
-    );
-    process.exit(1);
-  }
-}
-
-// Export the main server function (HTTP/SSE)
-export async function startMcpServer(
-  selectedAgents: AgentConfiguration[],
-  onServerStart: (url: string) => void,
-  requestedPort?: number
-) {
-  const app = express();
-
-  const activeSessions = new Map<
-    string,
-    { server: McpServer; transport: SSEServerTransport }
-  >();
-
-  // SSE endpoint
-  app.get("/sse", async (req: Request, res: Response) => {
-    console.error(
-      `[SSE] Connection request from ${req.ip} for ${req.originalUrl}`
-    );
-
-    let transport: SSEServerTransport | undefined = undefined;
-    let sessionId: string | undefined = undefined;
-
-    try {
-      // Configure socket for long-lived SSE connection
-      req.socket.setTimeout(0);
-      req.socket.setNoDelay(true);
-      req.socket.setKeepAlive(true);
-
-      transport = new SSEServerTransport("/message", res);
-      sessionId = transport.sessionId;
-      console.error(`[SSE] Session ${sessionId} created`);
-
-      const server = new McpServer({
-        name: "dust-cli-mcp-server",
-        version: process.env.npm_package_version || "0.1.0",
-      });
-
-      // Create agent tools using the helper function
-      await createAgentTools(server, selectedAgents);
-
-      // Store session
-      if (sessionId) {
-        activeSessions.set(sessionId, { server, transport });
-      }
-
-      // Handle connection close
-      res.on("close", () => {
-        if (sessionId) {
-          console.error(`[SSE] Connection closed for session ${sessionId}`);
-          activeSessions.delete(sessionId);
-        }
-      });
-
-      // Connect server to transport - This should now handle sending headers
-      await server.connect(transport);
-      console.error(`[SSE] Server connected for session ${sessionId}`);
-    } catch (error) {
-      console.error("[SSE] Error handling connection:", error);
-      // If headers haven't been sent by the transport yet (e.g., error during connect),
-      // try sending an error code. Otherwise, just end the response.
-      if (!res.headersSent) {
-        res.status(500).end("Failed to establish SSE connection.");
-      } else {
-        res.end();
-      }
-      // Use sessionId declared outside
-      if (sessionId) {
-        activeSessions.delete(sessionId);
-      }
-    }
-  });
-
-  // Message handling endpoint
-  app.post("/message", async (req: Request, res: Response) => {
-    const sessionId = req.query.sessionId as string;
-
-    try {
-      if (!sessionId) {
-        res.status(400).send("Missing sessionId query parameter");
-        return;
-      }
-
-      const session = activeSessions.get(sessionId);
-      if (!session) {
-        res.status(404).send(`Session not found: ${sessionId}`);
-        return;
-      }
-
-      session.transport.handlePostMessage(req, res).catch((handlerError) => {
-        console.error(
-          `[POST /message] Error handling message for session ${sessionId}:`,
-          handlerError
-        );
-        if (!res.headersSent) {
-          res.status(500).send("Error processing message");
-        }
-      });
-    } catch (error) {
-      console.error(
-        `[POST /message] Error handling message for session ${sessionId}:`,
-        error
-      );
-      if (!res.headersSent) {
-        res.status(500).send("Error processing message");
-      }
-    }
-  });
-
-  const httpServer = http.createServer(app);
-
-  const startHttpServer = (port = requestedPort || 0): Promise<number> =>
-    new Promise((resolve, reject) => {
-      httpServer.once("error", (err: Error & { code?: string }) => {
-        if (requestedPort && err.code === "EADDRINUSE") {
-          reject(new Error(`Port ${requestedPort} is already in use.`));
-        } else if (err.code === "EADDRINUSE") {
-          console.error(`Port ${port} in use, trying another...`);
-          setTimeout(() => startHttpServer(0).then(resolve, reject), 100);
-        } else {
-          reject(err);
-        }
-      });
-
-      httpServer.listen(port, () => {
-        const address = httpServer.address();
-        const boundPort = typeof address === "string" ? 0 : address?.port ?? 0;
-        resolve(boundPort);
-      });
-    });
-
-  // Start server
-  try {
-    const port = await startHttpServer();
-    const url = `http://localhost:${port}/sse`;
-    console.error(`HTTP server listening on port ${port}`);
-    onServerStart(url);
-
-    // Graceful shutdown handler
-    const shutdown = async () => {
-      console.error("Shutting down HTTP server...");
-      for (const [sessionId, session] of activeSessions) {
-        try {
-          await session.server.close();
-          console.error(`Closed session ${sessionId}`);
-        } catch (error) {
-          console.error(`Error closing session ${sessionId}:`, error);
-        }
-      }
-
-      httpServer.close((err) => {
-        if (err) {
-          console.error("Error closing HTTP server:", err);
-          process.exit(1);
-        } else {
-          console.error("HTTP server closed.");
-          process.exit(0);
-        }
-      });
-    };
-
-    // Register shutdown handlers
-    process.on("SIGINT", shutdown);
-    process.on("SIGTERM", shutdown);
-  } catch (error) {
-    console.error("Fatal HTTP server error:", error);
+    console.error("Failed to start MCP server:", normalizeError(error).message);
     process.exit(1);
   }
 }

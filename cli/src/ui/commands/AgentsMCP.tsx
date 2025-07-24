@@ -6,7 +6,7 @@ import type { FC } from "react";
 import React, { useEffect, useState } from "react";
 
 import { useClearTerminalOnMount } from "../../utils/hooks/use_clear_terminal_on_mount.js";
-import { startMcpServer, startMcpServerStdio } from "../../utils/mcpServer.js";
+import { startMcpServer, createStdioTransport, createHttpTransport } from "../../utils/mcpServer.js";
 import AgentSelector from "../components/AgentSelector.js";
 
 type AgentConfiguration =
@@ -34,21 +34,22 @@ const AgentsMCP: FC<AgentsMCPProps> = ({
   // This useEffect handles starting the server after confirmedSelection is set
   useEffect(() => {
     if (confirmedSelection && !isServerStarted) {
-      if (transport === "stdio") {
-        void startMcpServerStdio(confirmedSelection).then(() => {
+      const transportSetup = transport === "stdio" 
+        ? createStdioTransport
+        : createHttpTransport(
+            (url) => {
+              setIsServerStarted(true);
+              setServerUrl(url);
+            },
+            port
+          );
+
+      void startMcpServer(confirmedSelection, transportSetup).then(() => {
+        if (transport === "stdio") {
           setIsServerStarted(true);
           setServerUrl("stdio://");
-        });
-      } else {
-        void startMcpServer(
-          confirmedSelection,
-          (url) => {
-            setIsServerStarted(true);
-            setServerUrl(url);
-          },
-          port
-        );
-      }
+        }
+      });
     }
   }, [confirmedSelection, isServerStarted, port, transport]);
 
