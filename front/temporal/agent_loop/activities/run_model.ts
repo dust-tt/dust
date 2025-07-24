@@ -855,18 +855,11 @@ export async function runModelActivity({
   }));
   agentMessage.contents.push(...newContents);
 
-  // Compute StepContext for the actions that will be executed
-  const stepContext = computeStepContext({
+  const { stepContext, totalCitationsIncrement } = computeStepContext({
     agentConfiguration,
-    stepActions: actions.map(a => a.action),
+    stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
   });
-
-  // Calculate total citations increment for this step
-  const totalCitationsIncrement = Array.from(stepContext.citationsAllocation.values()).reduce(
-    (acc, curr) => acc + curr,
-    0
-  );
 
   return {
     actions,
