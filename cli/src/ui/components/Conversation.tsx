@@ -72,6 +72,7 @@ interface ConversationProps {
   selectedCommandIndex: number;
   commandCursorPosition: number;
   commands?: Command[];
+  autoAcceptEdits: boolean;
 }
 
 const _Conversation: FC<ConversationProps> = ({
@@ -87,6 +88,7 @@ const _Conversation: FC<ConversationProps> = ({
   selectedCommandIndex,
   commandCursorPosition,
   commands = [],
+  autoAcceptEdits,
 }: ConversationProps) => {
   return (
     <Box flexDirection="column" height="100%">
@@ -117,6 +119,7 @@ const _Conversation: FC<ConversationProps> = ({
         }
         isProcessingQuestion={isProcessingQuestion}
         mentionPrefix={mentionPrefix}
+        autoAcceptEdits={autoAcceptEdits}
       />
       {showCommandSelector && (
         <CommandSelector

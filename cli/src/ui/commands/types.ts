@@ -2,6 +2,7 @@ export interface CommandContext {
   triggerAgentSwitch?: () => void;
   attachFile?: () => void;
   clearFiles?: () => void;
+  toggleAutoEdits?: () => void;
 }
 
 export interface Command {
@@ -42,6 +43,15 @@ export const createCommands = (context: CommandContext): Command[] => [
     execute: () => {
       if (context.clearFiles) {
         context.clearFiles();
+      }
+    },
+  },
+  {
+    name: "auto",
+    description: "Toggle auto-approval of file edits on/off",
+    execute: () => {
+      if (context.toggleAutoEdits) {
+        context.toggleAutoEdits();
       }
     },
   },
