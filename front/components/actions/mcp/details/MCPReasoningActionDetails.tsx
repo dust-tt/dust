@@ -1,12 +1,11 @@
 import { ChatBubbleThoughtIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import {
   ReasoningSuccessBlock,
   ThinkingBlock,
 } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
-import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isReasoningSuccessOutput,
   isThinkingOutput,
@@ -15,7 +14,7 @@ import {
 export function MCPReasoningActionDetails({
   action,
   defaultOpen,
-}: ActionDetailsComponentBaseProps<MCPActionType>) {
+}: MCPActionDetailsProps) {
   const { output } = action;
 
   const thinkingBlocks =
