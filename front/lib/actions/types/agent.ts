@@ -1,11 +1,8 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type {
-  ClientSideMCPServerConfigurationType,
-  MCPActionRunningEvents,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
-  ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 
 /**
@@ -126,6 +123,3 @@ export function inputSchemaToDustAppRunInputs(
     }
   );
 }
-
-// Event sent during the execution of an action. These are action-specific.
-export type AgentActionSpecificEvent = MCPActionRunningEvents;

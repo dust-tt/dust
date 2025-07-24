@@ -185,7 +185,7 @@ export type MCPApproveExecutionEvent = {
 };
 
 export function isMCPApproveExecutionEvent(
-  event: MCPActionRunningEvents
+  event: AgentActionRunningEvents
 ): event is MCPApproveExecutionEvent {
   return event.type === "tool_approve_execution";
 }
@@ -303,7 +303,7 @@ function rewriteContentForModel(
   return content;
 }
 
-export type MCPActionRunningEvents =
+export type AgentActionRunningEvents =
   | MCPParamsEvent
   | MCPApproveExecutionEvent
   | ToolNotificationEvent;
