@@ -8,6 +8,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import React, { useMemo } from "react";
 
+import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
@@ -25,8 +26,6 @@ import {
   isDataSourceViewCategoryWithoutApps,
   removeNulls,
 } from "@app/types";
-
-import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 
 interface CategoryRowData {
   id: string;
