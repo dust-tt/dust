@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -9,9 +11,7 @@ export const getWorkspaceDataRetention = async (
 
   // We go through the workspace resource because we don't want to expose the retention in workspace type.
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
-  if (!workspaceResource) {
-    throw new Error("Workspace not found");
-  }
+  assert(workspaceResource, "Workspace not found");
 
   return workspaceResource.conversationsRetentionDays;
 };
