@@ -39,7 +39,6 @@ interface DataSourceBuilderSelectorProps {
   viewType: ContentNodesViewType;
 }
 
-// Helper component to wrap with the provider
 export const DataSourceBuilderSelector = (
   props: DataSourceBuilderSelectorProps
 ) => {

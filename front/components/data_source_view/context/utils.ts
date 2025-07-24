@@ -12,7 +12,7 @@ function getPathPrefix(pathStr: string): string {
 }
 
 function isParentOrSamePath(parentPath: string, childPath: string): boolean {
-  return childPath === parentPath || childPath.startsWith(parentPath + ".");
+  return childPath === parentPath || childPath.startsWith(getPathPrefix(parentPath));
 }
 
 /**
@@ -90,9 +90,7 @@ export function removeNodeFromTree(
 
     if (!notInPath.startsWith(pathPrefix)) {
       newNotIn.push(notInPath);
-    }
-
-    if (notInPath.startsWith(pathPrefix)) {
+    } else {
       hasChildExclusions = true;
     }
   }

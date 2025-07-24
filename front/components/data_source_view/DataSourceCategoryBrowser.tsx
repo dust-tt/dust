@@ -26,7 +26,7 @@ import {
   removeNulls,
 } from "@app/types";
 
-import { useDataSourceBuilderContext } from "./context/DataSourceBuilderContext";
+import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 
 interface CategoryRowData {
   id: string;
