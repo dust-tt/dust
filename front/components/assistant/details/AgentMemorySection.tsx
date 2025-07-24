@@ -11,6 +11,7 @@ import {
   Spinner,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 import {
   useAgentMemoriesForUser,
@@ -18,7 +19,6 @@ import {
 } from "@app/lib/swr/agent_memories";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
-import { useState } from "react";
 
 type DeleteMemoryDialogProps = {
   owner: LightWorkspaceType;
