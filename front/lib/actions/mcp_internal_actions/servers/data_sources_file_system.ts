@@ -38,7 +38,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
@@ -158,9 +157,10 @@ async function searchCallback(
 
   // Get the topK and refsOffset from pre-computed step context.
   const topK = agentLoopContext.runContext.stepContext.retrievalTopK;
-  const refsOffset = agentLoopContext.runContext.stepContext.citationsOffsets.get(
-    agentLoopContext.runContext.stepActionIndex
-  ) ?? 0;
+  const refsOffset =
+    agentLoopContext.runContext.stepContext.citationsOffsets.get(
+      agentLoopContext.runContext.stepActionIndex
+    ) ?? 0;
 
   const agentDataSourceConfigurationsResult =
     await getAgentDataSourceConfigurations(auth, dataSources);

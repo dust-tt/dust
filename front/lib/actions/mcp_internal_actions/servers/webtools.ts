@@ -12,8 +12,6 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { actionRefsOffset } from "@app/lib/actions/utils";
-import { getWebsearchNumResults } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import {
@@ -80,9 +78,10 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         );
       }
 
-      const refsOffset = agentLoopRunContext.stepContext.citationsOffsets.get(
-        agentLoopRunContext.stepActionIndex
-      ) ?? 0;
+      const refsOffset =
+        agentLoopRunContext.stepContext.citationsOffsets.get(
+          agentLoopRunContext.stepActionIndex
+        ) ?? 0;
       const refs = getRefs().slice(refsOffset, refsOffset + numResults);
 
       const results: WebsearchResultResourceType[] = [];

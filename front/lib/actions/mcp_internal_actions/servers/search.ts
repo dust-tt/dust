@@ -22,7 +22,6 @@ import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/se
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -77,9 +76,10 @@ export async function searchFunction({
 
   // Get the topK and refsOffset from pre-computed step context.
   const topK = agentLoopContext.runContext.stepContext.retrievalTopK;
-  const refsOffset = agentLoopContext.runContext.stepContext.citationsOffsets.get(
-    agentLoopContext.runContext.stepActionIndex
-  ) ?? 0;
+  const refsOffset =
+    agentLoopContext.runContext.stepContext.citationsOffsets.get(
+      agentLoopContext.runContext.stepActionIndex
+    ) ?? 0;
 
   // Get the core search args for each data source, fail if any of them are invalid.
   const coreSearchArgsResults = await concurrentExecutor(

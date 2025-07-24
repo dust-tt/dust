@@ -17,10 +17,7 @@ import {
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import {
-  actionRefsOffset,
-  SLACK_SEARCH_ACTION_NUM_RESULTS,
-} from "@app/lib/actions/utils";
+import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -269,9 +266,10 @@ const createServer = (
             ],
           };
         } else {
-          const refsOffset = agentLoopContext.runContext.stepContext.citationsOffsets.get(
-            agentLoopContext.runContext.stepActionIndex
-          ) ?? 0;
+          const refsOffset =
+            agentLoopContext.runContext.stepContext.citationsOffsets.get(
+              agentLoopContext.runContext.stepActionIndex
+            ) ?? 0;
 
           const refs = getRefs().slice(
             refsOffset,
@@ -398,9 +396,10 @@ const createServer = (
             ],
           };
         } else {
-          const refsOffset = agentLoopContext.runContext.stepContext.citationsOffsets.get(
-            agentLoopContext.runContext.stepActionIndex
-          ) ?? 0;
+          const refsOffset =
+            agentLoopContext.runContext.stepContext.citationsOffsets.get(
+              agentLoopContext.runContext.stepActionIndex
+            ) ?? 0;
 
           const refs = getRefs().slice(
             refsOffset,
