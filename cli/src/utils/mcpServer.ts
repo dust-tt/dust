@@ -26,7 +26,10 @@ function slugify(text: string): string {
 }
 
 // Helper function to create agent tools
-async function createAgentTools(server: McpServer, selectedAgents: AgentConfiguration[]) {
+async function createAgentTools(
+  server: McpServer,
+  selectedAgents: AgentConfiguration[]
+) {
   const dustClient = await getDustClient();
   if (!dustClient) {
     throw new Error("Dust client not initialized. Please run 'dust login'.");
@@ -142,26 +145,12 @@ async function createAgentTools(server: McpServer, selectedAgents: AgentConfigur
   }
 }
 
-// Function to detect transport type
-function detectTransportType(): 'stdio' | 'http' {
-  // Check for explicit STDIO flag
-  if (process.argv.includes('--stdio')) {
-    return 'stdio';
-  }
-  
-  // Check environment variable
-  if (process.env.MCP_TRANSPORT === 'stdio') {
-    return 'stdio';
-  }
-  
-  // Default to HTTP
-  return 'http';
-}
-
 // STDIO MCP Server function
-export async function startMcpServerStdio(selectedAgents: AgentConfiguration[]) {
+export async function startMcpServerStdio(
+  selectedAgents: AgentConfiguration[]
+) {
   console.error("[STDIO] Starting MCP server with STDIO transport...");
-  
+
   try {
     const server = new McpServer({
       name: "dust-cli-mcp-server",
@@ -173,7 +162,7 @@ export async function startMcpServerStdio(selectedAgents: AgentConfiguration[]) 
 
     // Create STDIO transport
     const transport = new StdioServerTransport();
-    
+
     // Connect server to transport
     await server.connect(transport);
     console.error("[STDIO] MCP server started and listening on stdio");
@@ -185,28 +174,40 @@ export async function startMcpServerStdio(selectedAgents: AgentConfiguration[]) 
         await server.close();
         console.error("[STDIO] MCP server closed.");
       } catch (error) {
-        console.error("[STDIO] Error closing MCP server:", normalizeError(error).message);
+        console.error(
+          "[STDIO] Error closing MCP server:",
+          normalizeError(error).message
+        );
       }
       process.exit(0);
     };
 
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
-    
+
     // Handle unhandled errors to prevent crashes
     process.on("uncaughtException", (error) => {
-      console.error("[STDIO] Uncaught exception:", normalizeError(error).message);
+      console.error(
+        "[STDIO] Uncaught exception:",
+        normalizeError(error).message
+      );
       shutdown();
     });
-    
+
     process.on("unhandledRejection", (reason) => {
-      console.error("[STDIO] Unhandled rejection:", normalizeError(reason).message);
+      console.error(
+        "[STDIO] Unhandled rejection:",
+        normalizeError(reason).message
+      );
       shutdown();
     });
 
     return server;
   } catch (error) {
-    console.error("[STDIO] Failed to start MCP server:", normalizeError(error).message);
+    console.error(
+      "[STDIO] Failed to start MCP server:",
+      normalizeError(error).message
+    );
     process.exit(1);
   }
 }
@@ -348,8 +349,7 @@ export async function startMcpServer(
 
       httpServer.listen(port, () => {
         const address = httpServer.address();
-        const boundPort =
-          typeof address === "string" ? 0 : (address?.port ?? 0);
+        const boundPort = typeof address === "string" ? 0 : address?.port ?? 0;
         resolve(boundPort);
       });
     });
@@ -390,25 +390,5 @@ export async function startMcpServer(
   } catch (error) {
     console.error("Fatal HTTP server error:", error);
     process.exit(1);
-  }
-}
-
-// Universal MCP server function that auto-detects transport
-export async function startMcpServerAuto(
-  selectedAgents: AgentConfiguration[],
-  onServerStart?: (url: string) => void,
-  options?: { transport?: 'stdio' | 'http', port?: number }
-) {
-  const transport = options?.transport || detectTransportType();
-  
-  if (transport === 'stdio') {
-    console.error("[AUTO] Detected STDIO transport");
-    return await startMcpServerStdio(selectedAgents);
-  } else {
-    console.error("[AUTO] Detected HTTP transport");
-    if (!onServerStart) {
-      throw new Error("onServerStart callback is required for HTTP transport");
-    }
-    return await startMcpServer(selectedAgents, onServerStart, options?.port);
   }
 }
