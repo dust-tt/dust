@@ -31,7 +31,7 @@ import type {
 
 import type { CapabilityFormData } from "../agent_builder/types";
 
-interface DataSourceBuilderSelectorProps {
+type DataSourceBuilderSelectorProps = {
   allowedSpaces?: SpaceType[];
   owner: LightWorkspaceType;
   dataSourceViews: DataSourceViewType[];
@@ -41,13 +41,14 @@ interface DataSourceBuilderSelectorProps {
   >;
   viewType: ContentNodesViewType;
   control: Control<CapabilityFormData>;
-}
+};
 
-export const DataSourceBuilderSelector = (
-  props: DataSourceBuilderSelectorProps
-) => {
+export const DataSourceBuilderSelector = ({
+  control,
+  ...props
+}: DataSourceBuilderSelectorProps) => {
   return (
-    <DataSourceBuilderProvider control={props.control}>
+    <DataSourceBuilderProvider control={control}>
       <DataSourceBuilderSelectorContent {...props} />
     </DataSourceBuilderProvider>
   );
@@ -58,7 +59,7 @@ export const DataSourceBuilderSelectorContent = ({
   dataSourceViews,
   owner,
   viewType,
-}: DataSourceBuilderSelectorProps) => {
+}: Omit<DataSourceBuilderSelectorProps, "control">) => {
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
   const {
