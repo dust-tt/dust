@@ -234,9 +234,9 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
                 .collect::<Vec<_>>();
 
             if previous_rows_count != new_rows.len() {
-                let rows = Arc::new(new_rows.clone());
-                let schema = TableSchema::from_rows_async(rows).await?;
-                Self::write_rows_to_csv(table, &schema, &new_rows).await?;
+                let rows = Arc::new(new_rows);
+                let schema = TableSchema::from_rows_async(rows.clone()).await?;
+                Self::write_rows_to_csv(table, &schema, &rows).await?;
             }
         }
 
