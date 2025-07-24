@@ -137,14 +137,6 @@ type DataSourceBuilderState = StateType & {
 
 type ActionType =
   | {
-      type: "SELECT_DATA_SOURCE_NODE";
-      payload: { rowId?: string };
-    }
-  | {
-      type: "REMOVE_DATA_SOURCE_NODE";
-      payload: { rowId?: string };
-    }
-  | {
       type: "NAVIGATION_SET_SPACE";
       payload: { space: SpaceType };
     }
@@ -202,12 +194,6 @@ function dataSourceBuilderReducer(
         ...state,
         navigationHistory: state.navigationHistory.slice(0, payload.index + 1),
       };
-    }
-    case "SELECT_DATA_SOURCE_NODE": {
-      return state;
-    }
-    case "REMOVE_DATA_SOURCE_NODE": {
-      return state;
     }
     default:
       assertNever(type);

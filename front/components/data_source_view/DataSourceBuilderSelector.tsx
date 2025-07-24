@@ -29,7 +29,7 @@ import type {
   SpaceType,
 } from "@app/types";
 
-interface DataSourceBuilderSelectorProps {
+type DataSourceBuilderSelectorProps = {
   allowedSpaces?: SpaceType[];
   owner: LightWorkspaceType;
   dataSourceViews: DataSourceViewType[];
@@ -39,11 +39,12 @@ interface DataSourceBuilderSelectorProps {
   >;
   viewType: ContentNodesViewType;
   control: Control<CapabilityFormData>;
-}
+};
 
-export const DataSourceBuilderSelector = (
-  props: DataSourceBuilderSelectorProps
-) => {
+export const DataSourceBuilderSelector = ({
+  control,
+  ...props
+}: DataSourceBuilderSelectorProps) => {
   const { spaces, isSpacesLoading } = useSpacesContext();
 
   if (isSpacesLoading) {
@@ -51,7 +52,7 @@ export const DataSourceBuilderSelector = (
   }
 
   return (
-    <DataSourceBuilderProvider control={props.control} spaces={spaces}>
+    <DataSourceBuilderProvider control={control} spaces={spaces}>
       <DataSourceBuilderSelectorContent {...props} />
     </DataSourceBuilderProvider>
   );
@@ -62,7 +63,7 @@ export const DataSourceBuilderSelectorContent = ({
   dataSourceViews,
   owner,
   viewType,
-}: DataSourceBuilderSelectorProps) => {
+}: Omit<DataSourceBuilderSelectorProps, "control">) => {
   const {
     spaces,
     navigationHistory,
