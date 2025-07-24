@@ -29,7 +29,6 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
-import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
