@@ -2,6 +2,7 @@ import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import { Breadcrumbs, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
+import type { Control } from "react-hook-form";
 
 import {
   DataSourceBuilderProvider,
@@ -28,6 +29,8 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 
+import type { CapabilityFormData } from "../agent_builder/types";
+
 interface DataSourceBuilderSelectorProps {
   allowedSpaces?: SpaceType[];
   owner: LightWorkspaceType;
@@ -37,13 +40,14 @@ interface DataSourceBuilderSelectorProps {
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
   viewType: ContentNodesViewType;
+  control: Control<CapabilityFormData>;
 }
 
 export const DataSourceBuilderSelector = (
   props: DataSourceBuilderSelectorProps
 ) => {
   return (
-    <DataSourceBuilderProvider>
+    <DataSourceBuilderProvider control={props.control}>
       <DataSourceBuilderSelectorContent {...props} />
     </DataSourceBuilderProvider>
   );
