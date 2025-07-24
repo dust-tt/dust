@@ -13,10 +13,12 @@ import type {
   ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
+  ImageContent,
   ModelConfigurationType,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActions,
   Result,
+  TextContent,
 } from "@app/types";
 import {
   assertNever,
@@ -24,6 +26,8 @@ import {
   isAgentMessageType,
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
+  isImageContent,
+  isTextContent,
   isUserMessageType,
   Ok,
   removeNulls,
@@ -290,63 +294,26 @@ export async function renderConversationForModel(
     Math.floor(toolDefinitionsCount * toolDefinitionsCountAdjustmentFactor) +
     tokensMargin;
 
-  // Go backward and accumulate as much as we can within allowedTokenCount.
-  const selected: ModelMessageTypeMultiActions[] = [];
+  // Perform message selection
+  const messageSelectionResult = performMessageSelection(
+    messages,
+    messagesCount,
+    allowedTokenCount,
+    tokensUsed
+  );
+  let selected = messageSelectionResult.selected;
+  const finalTokensUsed = messageSelectionResult.tokensUsed;
 
-  // Selection loop.
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const c = messagesCount[i];
-
-    const currentMessage = messages[i];
-
-    if (tokensUsed + c <= allowedTokenCount) {
-      tokensUsed += c;
-      selected.unshift(currentMessage);
-    } else {
-      break;
-    }
-  }
-
-  // Merging loop: merging content fragments into the upcoming user message.
-  // Eg: [CF1, CF2, UserMessage, AgentMessage] => [CF1-CF2-UserMessage, AgentMessage]
-  for (let i = selected.length - 1; i >= 0; i--) {
-    const cfMessage = selected[i];
-    if (isContentFragmentMessageTypeModel(cfMessage)) {
-      const userMessage = selected[i + 1];
-      if (!userMessage || userMessage.role !== "user") {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            selected: selected.map((m) => ({
-              ...m,
-              content:
-                getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
-            })),
-          },
-          "Unexpected state, cannot find user message after a Content Fragment"
-        );
-        throw new Error(
-          "Unexpected state, cannot find user message after a Content Fragment"
-        );
-      }
-
-      userMessage.content = [...cfMessage.content, ...userMessage.content];
-      // Now we remove the content fragment from the array since it was merged into the upcoming
-      // user message.
-      selected.splice(i, 1);
-    }
-  }
-
-  while (
-    selected.length > 0 &&
-    // Most model providers don't support starting by a function result or agent message.
-    ["assistant", "function"].includes(selected[0].role)
-  ) {
-    const tokenCount = messagesCount[messages.length - selected.length];
-    tokensUsed -= tokenCount;
-    selected.shift();
-  }
+  // Post-process selected messages
+  const postProcessed = postProcessSelectedMessages(
+    selected,
+    messagesCount,
+    messages.length,
+    conversation,
+    finalTokensUsed
+  );
+  selected = postProcessed.selected;
+  tokensUsed = postProcessed.tokensUsed;
 
   logger.info(
     {
@@ -361,10 +328,288 @@ export async function renderConversationForModel(
     "[ASSISTANT_TRACE] renderConversationForModelMultiActions"
   );
 
+  // Fallback mechanism when context window is overloaded
+  if (selected.length === 0 && messages.length > 0) {
+    // Find the last agent message with tool calls
+    let lastAgentMessageIndex = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (
+        message.role === "assistant" &&
+        "function_calls" in message &&
+        message.function_calls.length > 0
+      ) {
+        lastAgentMessageIndex = i;
+        break;
+      }
+    }
+
+    if (lastAgentMessageIndex >= 0) {
+      // Try progressive tool output truncation
+      const truncationResult = await tryToolOutputTruncation(
+        messages,
+        messagesCount,
+        lastAgentMessageIndex,
+        model,
+        allowedTokenCount,
+        promptCount +
+          Math.floor(
+            toolDefinitionsCount * toolDefinitionsCountAdjustmentFactor
+          ) +
+          tokensMargin,
+        conversation
+      );
+
+      if (truncationResult.selected.length > 0) {
+        return new Ok({
+          modelConversation: {
+            messages: truncationResult.selected,
+          },
+          tokensUsed: truncationResult.tokensUsed,
+        });
+      }
+    }
+  }
+
+  // Log warning if we end up with 0 messages
+  if (selected.length === 0) {
+    logger.warn(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        totalMessages: messages.length,
+        modelContextSize: model.contextSize,
+        promptTokens: promptCount,
+        toolDefinitionsTokens: Math.floor(
+          toolDefinitionsCount * toolDefinitionsCountAdjustmentFactor
+        ),
+        tokensMargin,
+        allowedTokenCount,
+      },
+      "[CONTEXT_WINDOW_OVERFLOW] No messages could fit within the context window"
+    );
+  }
+
   return new Ok({
     modelConversation: {
       messages: selected,
     },
     tokensUsed,
   });
+}
+
+/**
+ * Helper function to calculate the size of tool output content
+ */
+function getToolOutputSize(
+  content: string | (TextContent | ImageContent)[]
+): number {
+  if (typeof content === "string") {
+    return content.length;
+  }
+
+  return content.reduce((acc, item) => {
+    if (isTextContent(item)) {
+      return acc + (item.text?.length ?? 0);
+    } else if (isImageContent(item)) {
+      // Estimate image size from URL length (base64 or reference)
+      return acc + (item.image_url.url?.length ?? 0);
+    } else {
+      assertNever(item);
+    }
+  }, 0);
+}
+
+/**
+ * Attempts to truncate tool outputs progressively to fit within token limits
+ */
+async function tryToolOutputTruncation(
+  messages: ModelMessageTypeMultiActions[],
+  originalTokenCounts: number[],
+  lastAgentMessageIndex: number,
+  model: ModelConfigurationType,
+  allowedTokenCount: number,
+  initialTokensUsed: number,
+  conversation: ConversationType
+): Promise<{
+  selected: ModelMessageTypeMultiActions[];
+  tokensUsed: number;
+}> {
+  const truncationMessage =
+    "[THE CONTEXT WINDOW IS OVERLOADED, THIS TOOL OUTPUT CAN'T BE RENDERED]";
+
+  // Find all function messages after the last agent message
+  const toolOutputs: Array<{
+    messageIndex: number;
+    originalContent: string | (TextContent | ImageContent)[];
+    size: number;
+  }> = [];
+
+  let i = lastAgentMessageIndex + 1;
+  while (i < messages.length && messages[i].role === "function") {
+    const functionMessage = messages[i] as FunctionMessageTypeModel;
+    toolOutputs.push({
+      messageIndex: i,
+      originalContent: functionMessage.content,
+      size: getToolOutputSize(functionMessage.content),
+    });
+    i++;
+  }
+
+  if (toolOutputs.length === 0) {
+    return { selected: [], tokensUsed: 0 };
+  }
+
+  // Sort by size (largest first)
+  toolOutputs.sort((a, b) => b.size - a.size);
+
+  // Clone messages and token counts for modification
+  const modifiedMessages = [...messages];
+  const modifiedTokenCounts = [...originalTokenCounts];
+
+  // Try truncating tool outputs one by one
+  for (
+    let truncateCount = 1;
+    truncateCount <= toolOutputs.length;
+    truncateCount++
+  ) {
+    // Truncate the next largest tool output
+    const toolOutput = toolOutputs[truncateCount - 1];
+    modifiedMessages[toolOutput.messageIndex] = {
+      ...modifiedMessages[toolOutput.messageIndex],
+      content: truncationMessage,
+    } as FunctionMessageTypeModel;
+
+    // Recalculate token count for the truncated message
+    const truncatedText = getTextRepresentationFromMessages([
+      modifiedMessages[toolOutput.messageIndex],
+    ])[0];
+    const tokenResult = await tokenCountForTexts([truncatedText], model);
+    if (tokenResult.isErr()) {
+      continue;
+    }
+    modifiedTokenCounts[toolOutput.messageIndex] = tokenResult.value[0];
+
+    // Try selection with modified token counts
+    const { selected, tokensUsed } = performMessageSelection(
+      modifiedMessages,
+      modifiedTokenCounts,
+      allowedTokenCount,
+      initialTokensUsed
+    );
+
+    // Apply post-processing
+    const postProcessed = postProcessSelectedMessages(
+      selected,
+      modifiedTokenCounts,
+      modifiedMessages.length,
+      conversation,
+      tokensUsed
+    );
+
+    if (postProcessed.selected.length > 0) {
+      // Log warning about truncated tool outputs
+      logger.warn(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          agentMessageIndex: lastAgentMessageIndex,
+          totalToolOutputs: toolOutputs.length,
+          modelContextSize: model.contextSize,
+        },
+        "[TOOL_OUTPUT_TRUNCATION] Tool outputs were truncated to fit within context window"
+      );
+
+      return postProcessed;
+    }
+  }
+
+  return { selected: [], tokensUsed: 0 };
+}
+
+/**
+ * Performs the backward message selection algorithm
+ */
+function performMessageSelection(
+  messages: ModelMessageTypeMultiActions[],
+  messagesCount: number[],
+  allowedTokenCount: number,
+  initialTokensUsed: number
+): { selected: ModelMessageTypeMultiActions[]; tokensUsed: number } {
+  const selected: ModelMessageTypeMultiActions[] = [];
+  let tokensUsed = initialTokensUsed;
+
+  // Go backward and accumulate as much as we can within allowedTokenCount
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const tokenCount = messagesCount[i];
+    const currentMessage = messages[i];
+
+    if (tokensUsed + tokenCount <= allowedTokenCount) {
+      tokensUsed += tokenCount;
+      selected.unshift(currentMessage);
+    } else {
+      break;
+    }
+  }
+
+  return { selected, tokensUsed };
+}
+
+/**
+ * Post-processes selected messages: merges content fragments and removes leading assistant/function messages
+ */
+function postProcessSelectedMessages(
+  selected: ModelMessageTypeMultiActions[],
+  messagesCount: number[],
+  totalMessagesLength: number,
+  conversation: ConversationType,
+  tokensUsed: number
+): { selected: ModelMessageTypeMultiActions[]; tokensUsed: number } {
+  // Clone to avoid mutation
+  const processed = [...selected];
+  let updatedTokensUsed = tokensUsed;
+
+  // Merge content fragments into user messages
+  for (let i = processed.length - 1; i >= 0; i--) {
+    const cfMessage = processed[i];
+    if (isContentFragmentMessageTypeModel(cfMessage)) {
+      const userMessage = processed[i + 1];
+      if (!userMessage || userMessage.role !== "user") {
+        logger.error(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            selected: processed.map((m) => ({
+              ...m,
+              content:
+                getTextContentFromMessage(m)?.slice(0, 100) + " (truncated...)",
+            })),
+          },
+          "Unexpected state, cannot find user message after a Content Fragment"
+        );
+        throw new Error(
+          "Unexpected state, cannot find user message after a Content Fragment"
+        );
+      }
+
+      userMessage.content = [...cfMessage.content, ...userMessage.content];
+      processed.splice(i, 1);
+    }
+  }
+
+  // Remove leading assistant/function messages
+  while (
+    processed.length > 0 &&
+    ["assistant", "function"].includes(processed[0].role)
+  ) {
+    // Find the index of the first selected message in the original messages array
+    const firstSelectedIndex = totalMessagesLength - selected.length;
+    const removedIndex =
+      firstSelectedIndex + (selected.length - processed.length);
+    const tokenCount = messagesCount[removedIndex];
+    updatedTokensUsed -= tokenCount;
+    processed.shift();
+  }
+
+  return { selected: processed, tokensUsed: updatedTokensUsed };
 }
