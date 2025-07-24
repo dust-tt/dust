@@ -1,5 +1,5 @@
-use crate::info;
 use crate::run::Credentials;
+use crate::{gcp_auth::get_gcp_access_token, info};
 use anyhow::{anyhow, Result};
 use hyper::Uri;
 use reqwest::header::HeaderMap;
@@ -138,8 +138,8 @@ impl VertexAnthropicBackend {
     pub fn new() -> Self {
         Self {
             api_key: None,
-            project_id: None,
             location: None,
+            project_id: None,
         }
     }
 }
@@ -147,19 +147,7 @@ impl VertexAnthropicBackend {
 #[async_trait::async_trait]
 impl AnthropicBackend for VertexAnthropicBackend {
     async fn initialize(&mut self, credentials: &Credentials) -> Result<String> {
-        let api_key = match credentials.get("GOOGLE_CLOUD_API_KEY") {
-            Some(api_key) => api_key.clone(),
-            None => {
-                match tokio::task::spawn_blocking(|| std::env::var("GOOGLE_CLOUD_API_KEY")).await? {
-                    Ok(key) => key,
-                    Err(_) => {
-                        return Err(anyhow!(
-                        "Credentials or environment variable `GOOGLE_CLOUD_API_KEY` is not set."
-                    ))
-                    }
-                }
-            }
-        };
+        let api_key = get_gcp_access_token().await?;
 
         let project_id = match credentials.get("GOOGLE_CLOUD_PROJECT_ID") {
             Some(project_id) => project_id.clone(),
@@ -228,7 +216,7 @@ impl AnthropicBackend for VertexAnthropicBackend {
         let api_key = self
             .api_key
             .as_ref()
-            .ok_or_else(|| anyhow!("GOOGLE_CLOUD_API_KEY is not set."))?;
+            .ok_or_else(|| anyhow!("Could not get GCP access token."))?;
 
         headers.insert("Authorization", format!("Bearer {}", api_key).parse()?);
 
