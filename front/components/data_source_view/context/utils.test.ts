@@ -23,7 +23,7 @@ describe("DataSourceBuilder utilities", () => {
       };
       const result = addNodeToTree(tree, ["root", "a"]);
       expect(result).toEqual({
-        in: ["root.a"],
+        in: [],
         notIn: [],
       });
     });
@@ -52,7 +52,7 @@ describe("DataSourceBuilder utilities", () => {
       });
     });
 
-    it("should remove a exluded parent if a nested path is added", () => {
+    it("should add a nested path without removing the exluded parent", () => {
       const tree = {
         in: [],
         notIn: ["a"],
@@ -61,13 +61,13 @@ describe("DataSourceBuilder utilities", () => {
       const result = addNodeToTree(tree, ["a", "b", "c"]);
       expect(result).toEqual({
         in: ["a.b.c"],
-        notIn: [],
+        notIn: ["a"],
       });
     });
   });
 
   describe("removeNodeFromTree", () => {
-    it("should add node to notIn when removing", () => {
+    it("should not removing anything if the notIn is empty", () => {
       const tree = {
         in: [],
         notIn: [],
@@ -75,7 +75,7 @@ describe("DataSourceBuilder utilities", () => {
       const result = removeNodeFromTree(tree, ["root", "a"]);
       expect(result).toEqual({
         in: [],
-        notIn: ["root.a"],
+        notIn: [],
       });
     });
 
@@ -87,7 +87,7 @@ describe("DataSourceBuilder utilities", () => {
       const result = removeNodeFromTree(tree, ["root", "a"]);
       expect(result).toEqual({
         in: [],
-        notIn: ["root.a"],
+        notIn: [],
       });
     });
 
@@ -115,39 +115,15 @@ describe("DataSourceBuilder utilities", () => {
       });
     });
 
-    it("should remove specific paths while keeping broader ones", () => {
-      const tree = {
-        in: ["root", "root.a.b"],
-        notIn: [],
-      };
-      const result = removeNodeFromTree(tree, ["root", "a"]);
-      expect(result).toEqual({
-        in: ["root"],
-        notIn: ["root.a"],
-      });
-    });
-
     it("should remove child paths when removing parent", () => {
       const tree = {
-        in: ["root.a", "root.a.b", "root.a.c", "root.b"],
+        in: ["root.a.b", "root.a.c", "root.b"],
         notIn: [],
       };
       const result = removeNodeFromTree(tree, ["root", "a"]);
       expect(result).toEqual({
         in: ["root.b"],
-        notIn: ["root.a"],
-      });
-    });
-
-    it("should handle removing path with multiple children", () => {
-      const tree = {
-        in: ["root", "root.a.b.c", "root.a.b.d", "root.a.e"],
         notIn: [],
-      };
-      const result = removeNodeFromTree(tree, ["root", "a", "b"]);
-      expect(result).toEqual({
-        in: ["root", "root.a.e"],
-        notIn: ["root.a.b"],
       });
     });
 

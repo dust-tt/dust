@@ -26,50 +26,41 @@ export function addNodeToTree(
   path: string[]
 ): DataSourceBuilderTree {
   const pathStr = pathToString(path);
-  const inSet = new Set(tree.in);
-  const notInSet = new Set(tree.notIn);
 
-  if (inSet.has(pathStr)) {
-    if (notInSet.has(pathStr)) {
-      return {
-        in: tree.in,
-        notIn: tree.notIn.filter((notInPath) => notInPath !== pathStr),
-      };
-    }
-    return tree;
-  }
-
-  const hasParentPath = tree.in.some((inPath) =>
+  // Check if a parent path is already included
+  const hasParentInclusion = tree.in.some((inPath) =>
     isParentOrSamePath(inPath, pathStr)
   );
 
-  // Check if there's a parent path in notIn that we should remove
-  const parentToRemove = tree.notIn.find(
-    (notInPath) =>
-      isParentOrSamePath(notInPath, pathStr) && notInPath !== pathStr
-  );
-
-  let newNotIn: string[] = tree.notIn;
-  if (notInSet.has(pathStr)) {
-    // Remove both the path itself and any parent path
-    newNotIn = tree.notIn.filter(
-      (notInPath) => notInPath !== pathStr && notInPath !== parentToRemove
-    );
-  } else if (parentToRemove) {
-    // Remove only the parent path
-    newNotIn = tree.notIn.filter((notInPath) => notInPath !== parentToRemove);
+  // If parent is already included, don't add child paths
+  if (hasParentInclusion) {
+    return tree;
   }
 
-  if (hasParentPath) {
+  // Remove the path from notIn if present
+  const newNotIn = tree.notIn.filter((notInPath) => notInPath !== pathStr);
+
+  // If the path was in notIn, only remove it from notIn, don't add to in
+  if (tree.notIn.includes(pathStr)) {
     return {
       in: tree.in,
       notIn: newNotIn,
     };
   }
 
-  // Add to in array (we already know it's not present from early check)
+  // Check if path is already in the in array
+  if (tree.in.includes(pathStr)) {
+    return {
+      in: tree.in,
+      notIn: newNotIn,
+    };
+  }
+
+  // Add the path to in array only if it wasn't in notIn
+  const newIn = [...tree.in, pathStr];
+
   return {
-    in: [...tree.in, pathStr],
+    in: newIn,
     notIn: newNotIn,
   };
 }
@@ -87,9 +78,9 @@ export function removeNodeFromTree(
 ): DataSourceBuilderTree {
   const pathStr = pathToString(path);
   const pathPrefix = getPathPrefix(pathStr);
-  const notInSet = new Set(tree.notIn);
 
   let hasParentExclusion = false;
+  let hasChildExclusions = false;
   const newNotIn: string[] = [];
 
   for (const notInPath of tree.notIn) {
@@ -97,13 +88,30 @@ export function removeNodeFromTree(
       hasParentExclusion = true;
     }
 
-    if (!notInPath.startsWith(getPathPrefix(pathStr))) {
+    if (!notInPath.startsWith(pathPrefix)) {
       newNotIn.push(notInPath);
+    }
+
+    if (notInPath.startsWith(pathPrefix)) {
+      hasChildExclusions = true;
     }
   }
 
   const newIn = tree.in.filter(
     (inPath) => inPath !== pathStr && !inPath.startsWith(pathPrefix)
+  );
+
+  // Check if we removed any child paths from the 'in' array (not including the exact path)
+  const hasChildInclusions = tree.in.some((inPath) =>
+    inPath.startsWith(pathPrefix)
+  );
+
+  // Check if we removed the exact path from the 'in' array
+  const removedExactPath = tree.in.includes(pathStr);
+
+  // Check if the path would be included by virtue of a parent path being in the 'in' array
+  const hasParentInclusion = tree.in.some((inPath) =>
+    isParentOrSamePath(inPath, pathStr)
   );
 
   if (hasParentExclusion) {
@@ -113,7 +121,14 @@ export function removeNodeFromTree(
     };
   }
 
-  if (!notInSet.has(pathStr)) {
+  // Add to notIn if:
+  // 1. We removed children from notIn (hasChildExclusions) - replace them with parent exclusion
+  // 2. OR the path would be included by a parent and we're not removing child inclusions
+  //    AND we didn't remove the exact path from in (if we removed exact path, just removing it is enough)
+  if (
+    hasChildExclusions ||
+    (hasParentInclusion && !hasChildInclusions && !removedExactPath)
+  ) {
     newNotIn.push(pathStr);
   }
 
