@@ -357,7 +357,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "GPT 4 turbo",
   contextSize: 128_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "OpenAI's GPT 4 Turbo model for complex tasks (128k context).",
   shortDescription: "OpenAI's second best model.",
@@ -377,7 +377,7 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "GPT 4o",
   contextSize: 128_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "OpenAI's GPT 4o model (128k context).",
   shortDescription: "OpenAI's GPT4-o model.",
@@ -396,7 +396,7 @@ export const GPT_4_1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "GPT 4.1 mini",
   contextSize: 1_000_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "OpenAI's GPT 4.1 mini model (1M context).",
   shortDescription: "OpenAI's most advanced mini model.",
@@ -415,7 +415,7 @@ export const GPT_4_1_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "GPT 4.1",
   contextSize: 1_000_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "OpenAI's GPT 4.1 model (1M context).",
   shortDescription: "OpenAI's most advanced model.",
@@ -434,7 +434,7 @@ export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "GPT 4o",
   contextSize: 128_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "OpenAI's GPT 4o model (128k context).",
   shortDescription: "OpenAI's older most advanced model.",
@@ -453,7 +453,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "GPT 4o-mini",
   contextSize: 128_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "OpenAI's GPT 4o mini model (128k context).",
   shortDescription: "OpenAI's fast model.",
@@ -473,7 +473,7 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "o1",
   contextSize: 200_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description:
     "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access).",
@@ -496,7 +496,7 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "o1-mini",
   contextSize: 128_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description:
     "OpenAI's fast reasoning model particularly good at coding, math, and science.",
@@ -518,7 +518,7 @@ export const O3_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "o3",
   contextSize: 200_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description:
     "OpenAI's most advanced reasoning model particularly good at coding, math, and science.",
@@ -539,7 +539,7 @@ export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "o3-mini",
   contextSize: 200_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description:
     "OpenAI's fast reasoning model particularly good at coding, math, and science.",
@@ -560,7 +560,7 @@ export const O4_MINI_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "o4-mini",
   contextSize: 200_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description: "OpenAI's o4 mini model (200k context).",
   shortDescription: "OpenAI's fast o4 model.",
@@ -583,7 +583,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 3 Opus",
   contextSize: 180_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "Anthropic's Claude 3 Opus model (200k context).",
   shortDescription: "Anthropic's largest model.",
@@ -604,7 +604,7 @@ export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurat
     displayName: "Claude 3.5 Sonnet",
     contextSize: 180_000,
     recommendedTopK: 32,
-    recommendedExhaustiveTopK: 128, // 65_536
+    recommendedExhaustiveTopK: 64, // 32_768
     largeModel: true,
     description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
     shortDescription: "Anthropic's latest model.",
@@ -624,7 +624,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 3.5 Sonnet",
   contextSize: 180_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "Anthropic's latest Claude 3.5 Sonnet model (200k context).",
   shortDescription: "Anthropic's latest model.",
@@ -643,7 +643,7 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 3.7 Sonnet",
   contextSize: 200_000,
   recommendedTopK: 16,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "Anthropic's latest Claude 3.7 Sonnet model (200k context).",
   shortDescription: "Anthropic's best model.",
@@ -663,7 +663,7 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 4 Opus",
   contextSize: 200_000,
   recommendedTopK: 16,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
     "Anthropic's Claude 4 Opus model, the most powerful model in the Claude 4 family (200k context).",
@@ -685,7 +685,7 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 4 Sonnet",
   contextSize: 200_000,
   recommendedTopK: 16,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
     "Anthropic's Claude 4 Sonnet model, balancing power and efficiency (200k context).",
@@ -705,7 +705,7 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 3.5 Haiku",
   contextSize: 180_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: false,
   description:
     "Anthropic's Claude 3.5 Haiku model, cost effective and high throughput (200k context).",
@@ -725,7 +725,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 3 Haiku",
   contextSize: 180_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: false,
   description:
     "Anthropic's Claude 3 Haiku model, cost effective and high throughput (200k context).",
@@ -745,7 +745,7 @@ export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude 2.1",
   contextSize: 180_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description: "Anthropic's Claude 2 model (200k context).",
   shortDescription: "Anthropic's legacy model.",
@@ -763,7 +763,7 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Claude Instant 1.2",
   contextSize: 90_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: false,
   description:
     "Anthropic's low-latency and high throughput model (100k context)",
@@ -858,7 +858,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Gemini Pro 1.5",
   contextSize: 1_000_000,
   recommendedTopK: 64,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description:
     "Google's best model for scaling across a wide range of tasks (1m context).",
@@ -878,7 +878,7 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Gemini Flash 1.5",
   contextSize: 1_000_000,
   recommendedTopK: 64,
-  recommendedExhaustiveTopK: 128, // 65_536
+  recommendedExhaustiveTopK: 64, // 32_768
   largeModel: true,
   description:
     "Google's lightweight, fast and cost-efficient model (1m context).",
@@ -898,7 +898,7 @@ export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Gemini Flash 2.0",
   contextSize: 1_000_000,
   recommendedTopK: 64,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description: "Google's fast large context model (1m context).",
   shortDescription: "Google's fast model.",
@@ -917,7 +917,7 @@ export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Gemini Flash 2.0 Lite",
   contextSize: 1_000_000,
   recommendedTopK: 64,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description: "Google's lightweight large context model (1m context).",
   shortDescription: "Google's lightweight model.",
@@ -937,7 +937,7 @@ export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Gemini 2.5 Pro Preview",
   contextSize: 1_000_000,
   recommendedTopK: 64,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description: "Google's powerful large context model (1m context).",
   shortDescription: "Google's powerful model (preview).",
@@ -958,7 +958,7 @@ export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
     displayName: "Gemini Flash 2.0 Lite Preview",
     contextSize: 1_000_000,
     recommendedTopK: 64,
-    recommendedExhaustiveTopK: 128,
+    recommendedExhaustiveTopK: 64,
     largeModel: true,
     description: "Google's lightweight large context model (1m context).",
     shortDescription: "Google's lightweight model (preview).",
@@ -979,7 +979,7 @@ export const GEMINI_2_FLASH_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Gemini Flash 2.0",
   contextSize: 1_000_000,
   recommendedTopK: 64,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
     "Google's lightweight, fast and cost-efficient model (1m context).",
@@ -1001,7 +1001,7 @@ export const GEMINI_2_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Gemini Flash 2.0 Pro Preview",
   contextSize: 1_000_000,
   recommendedTopK: 64,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description: "Google's powerful large context model (1m context).",
   shortDescription: "Google's powerful model (preview).",
@@ -1023,7 +1023,7 @@ export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationTyp
     displayName: "Gemini Flash 2.0 Thinking",
     contextSize: 32_000,
     recommendedTopK: 64,
-    recommendedExhaustiveTopK: 128,
+    recommendedExhaustiveTopK: 64,
     largeModel: true,
     description:
       "Google's lightweight model optimized for reasoning (1m context).",
@@ -1045,7 +1045,7 @@ export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigur
     displayName: "Llama 3.3 70B Instruct Turbo",
     contextSize: 128_000,
     recommendedTopK: 32,
-    recommendedExhaustiveTopK: 128, // 65_536
+    recommendedExhaustiveTopK: 64, // 32_768
     largeModel: true,
     description: "Meta's fast, powerful and open source model (128k context).",
     shortDescription: "Meta's open source model.",
@@ -1202,7 +1202,7 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "DeepSeek R1 (Fireworks)",
   contextSize: 164_000,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
     "DeepSeek's reasoning model (164k context, served via Fireworks).",
@@ -1222,7 +1222,7 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Kimi K2 Instruct (Fireworks)",
   contextSize: 131_072,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description: "Kimi's K2 Instruct model (131k context, served via Fireworks).",
   shortDescription: "Kimi's K2 Instruct model.",
@@ -1241,7 +1241,7 @@ export const GROK_3_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Grok 3",
   contextSize: 131_072,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description: "xAI's Grok 3 flagship model (131k context).",
   shortDescription: "xAI's flagship model.",
@@ -1262,7 +1262,7 @@ export const GROK_3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Grok 3 Mini",
   contextSize: 131_072,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: false,
   description: "xAI's Grok 3 Mini model (131k context, reasoning).",
   shortDescription: "xAI's reasoning model.",
@@ -1283,7 +1283,7 @@ export const GROK_3_FAST_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Grok 3 Fast",
   contextSize: 131_072,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: true,
   description: "xAI's Grok 3 flagship model (131k context, fast infra).",
   shortDescription: "xAI's fast flagship model.",
@@ -1304,7 +1304,7 @@ export const GROK_3_MINI_FAST_MODEL_CONFIG: ModelConfigurationType = {
   displayName: "Grok 3 Mini (Fast)",
   contextSize: 131_072,
   recommendedTopK: 32,
-  recommendedExhaustiveTopK: 128,
+  recommendedExhaustiveTopK: 64,
   largeModel: false,
   description: "xAI's Grok 3 Mini model (131k context, reasoning, fast infra).",
   shortDescription: "xAI's reasoning model.",
