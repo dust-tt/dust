@@ -64,6 +64,19 @@ describe("DataSourceBuilder utilities", () => {
         notIn: ["a"],
       });
     });
+
+    it("should add a nested path that is notIn, when its parent is in", () => {
+      const tree = {
+        in: ["root.a"],
+        notIn: ["root.a.b.c"],
+      };
+
+      const result = addNodeToTree(tree, ["root", "a", "b", "c"]);
+      expect(result).toEqual({
+        in: ["root.a"],
+        notIn: [],
+      });
+    });
   });
 
   describe("removeNodeFromTree", () => {

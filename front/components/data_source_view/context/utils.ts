@@ -26,19 +26,25 @@ export function addNodeToTree(
   path: string[]
 ): DataSourceBuilderTree {
   const pathStr = pathToString(path);
+  const pathPrefix = getPathPrefix(pathStr);
 
   // Check if a parent path is already included
   const hasParentInclusion = tree.in.some((inPath) =>
     isParentOrSamePath(inPath, pathStr)
   );
 
+  // Remove the path from notIn if present
+  const newNotIn = tree.notIn.filter(
+    (notInPath) => notInPath !== pathStr && !notInPath.startsWith(pathPrefix)
+  );
+
   // If parent is already included, don't add child paths
   if (hasParentInclusion) {
-    return tree;
+    return {
+      in: tree.in,
+      notIn: newNotIn,
+    };
   }
-
-  // Remove the path from notIn if present
-  const newNotIn = tree.notIn.filter((notInPath) => notInPath !== pathStr);
 
   // If the path was in notIn, only remove it from notIn, don't add to in
   if (tree.notIn.includes(pathStr)) {
