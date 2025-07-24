@@ -331,6 +331,22 @@ export const INTERNAL_MCP_SERVERS: Record<
     tools_stakes: {
       // Read operations - never ask (no side effects)
       get_issue: "never_ask",
+      get_projects: "never_ask",
+      get_project: "never_ask",
+      get_transitions: "never_ask",
+      get_issues: "never_ask",
+      get_issue_types: "never_ask",
+      get_issue_fields: "never_ask",
+      get_connection_info: "never_ask",
+      get_issue_link_types: "never_ask",
+
+      // Update operations - low stakes
+      create_comment: "low",
+      transition_issue: "low",
+      create_issue: "low",
+      update_issue: "low",
+      create_issue_link: "low",
+      delete_issue_link: "low",
     },
   },
   interactive_content: {

@@ -19,6 +19,7 @@ import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { UserMenu } from "@app/components/UserMenu";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -74,17 +75,20 @@ export const NavigationSidebar = React.forwardRef<
     [navs, activePath]
   );
 
-  // We display the banner if the end date is in 60 days or less.
+  // We display the banner if the end date is in 30 days or less.
   const endDate = subscription.endDate;
   const shouldDisplaySubscriptionEndBanner =
-    endDate && endDate < Date.now() + 60 * 24 * 60 * 60 * 1000;
+    endDate && endDate < Date.now() + 30 * 24 * 60 * 60 * 1000;
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className="flex flex-col gap-2 pt-3">
         <AppStatusBanner />
         {shouldDisplaySubscriptionEndBanner && endDate && (
-          <SubscriptionEndBanner endDate={endDate} />
+          <SubscriptionEndBanner
+            endDate={endDate}
+            isFreePlan={isFreePlan(subscription.plan.code)}
+          />
         )}
         {subscription.paymentFailingSince && isAdmin(owner) && (
           <SubscriptionPastDueBanner />
@@ -188,7 +192,7 @@ export const NavigationSidebar = React.forwardRef<
 });
 
 interface StatusBannerProps {
-  variant?: "info" | "warning";
+  variant?: "info" | "warning" | "success";
   title: string;
   description: React.ReactNode;
   footer?: React.ReactNode;
@@ -210,6 +214,11 @@ function StatusBanner({
       "border-warning-200 dark:border-warning-200-night",
       "bg-warning-100 dark:bg-warning-100-night",
       "text-warning-900 dark:text-warning-900-night"
+    ),
+    success: cn(
+      "border-success-200 dark:border-success-200-night",
+      "bg-success-100 dark:bg-success-100-night",
+      "text-success-900 dark:text-success-900-night"
     ),
   };
 
@@ -266,20 +275,32 @@ function AppStatusBanner() {
   return null;
 }
 
-function SubscriptionEndBanner({ endDate }: { endDate: number }) {
+function SubscriptionEndBanner({
+  endDate,
+  isFreePlan,
+}: {
+  endDate: number;
+  isFreePlan: boolean;
+}) {
   const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 
+  const variant = isFreePlan ? "success" : "info";
+  const title = isFreePlan
+    ? `Free Trial Ending on ${formattedEndDate}`
+    : `Subscription ending on ${formattedEndDate}`;
+
   return (
     <StatusBanner
-      variant="warning"
-      title={`Subscription ending on ${formattedEndDate}`}
+      variant={variant}
+      title={title}
       description={
         <>
-          Connections will be deleted and members will be revoked. Details{" "}
+          Your connections and member access will be removed after this date.
+          Details{" "}
           <Link
             href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
             target="_blank"
@@ -288,6 +309,12 @@ function SubscriptionEndBanner({ endDate }: { endDate: number }) {
             here
           </Link>
           .
+          {isFreePlan && (
+            <p className="mt-2">
+              Make the best out of the remaining trial period or contact us to
+              subscribe.
+            </p>
+          )}
         </>
       }
     />
