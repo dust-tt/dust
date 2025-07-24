@@ -59,7 +59,7 @@ const cli = meow({
       description:
         "Show detailed message information (requires --agent and --message)",
     },
-    autoAcceptEdits: {
+    auto: {
       type: "boolean",
       description:
         "Always accept edit operations without prompting for approval",

@@ -47,7 +47,7 @@ export const createCommands = (context: CommandContext): Command[] => [
     },
   },
   {
-    name: "toggle-auto-edits",
+    name: "auto",
     description: "Toggle auto-approval of file edits on/off",
     execute: () => {
       if (context.toggleAutoEdits) {
