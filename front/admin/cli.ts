@@ -2,7 +2,7 @@ import fs from "fs/promises";
 import parseArgs from "minimist";
 import path from "path";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
 import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
 import { default as config } from "@app/lib/api/config";

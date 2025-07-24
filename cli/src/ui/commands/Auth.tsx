@@ -41,17 +41,49 @@ interface DecodedAccessToken {
 }
 
 interface AuthProps {
+  /** Force re-authentication even if already logged in */
   force?: boolean;
+  /** API key for headless authentication (must be used with wId) */
+  apiKey?: string;
+  /** Workspace ID for headless authentication (must be used with apiKey) */
+  wId?: string;
 }
 
-const Auth: FC<AuthProps> = ({ force = false }) => {
+const Auth: FC<AuthProps> = ({ force = false, apiKey, wId }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [deviceCode, setDeviceCode] = useState<DeviceCodeResponse | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [showWorkspaceSelector, setShowWorkspaceSelector] = useState(false);
   const [authComplete, setAuthComplete] = useState(false);
   const [userInfo, setUserInfo] = useState<MeResponseType["user"] | null>(null);
+
+  // Check for environment variables first, then fall back to passed flags
+  const effectiveApiKey = apiKey || process.env.DUST_API_KEY;
+  const effectiveWId = wId || process.env.DUST_WORKSPACE_ID;
+
+  // Validate that both apiKey and wId are provided together (from either env vars or flags)
+  const hasApiKey = Boolean(effectiveApiKey);
+  const hasWId = Boolean(effectiveWId);
+
+  if (hasApiKey !== hasWId) {
+    return (
+      <Box flexDirection="column">
+        <Text color="red">
+          Error: Both API key and workspace ID must be provided together for
+          headless authentication.
+        </Text>
+        <Text>
+          Set both DUST_API_KEY and DUST_WORKSPACE_ID environment variables,
+        </Text>
+        <Text>
+          or use both --api-key and --wId flags, or neither for interactive
+          authentication.
+        </Text>
+      </Box>
+    );
+  }
 
   const workOSDomain = process.env.WORKOS_DOMAIN || "";
   const clientId = process.env.WORKOS_CLIENT_ID || "";
@@ -254,9 +286,46 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
     setAuthComplete(true);
   }, []);
 
+  const handleHeadlessAuth = useCallback(async () => {
+    if (!effectiveApiKey || !effectiveWId) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Store the API key as the access token and refresh token
+      await TokenStorage.saveTokens(effectiveApiKey, effectiveApiKey);
+
+      // Store the workspace ID
+      await TokenStorage.saveWorkspaceId(effectiveWId);
+
+      // Store a default region for API key auth
+      await TokenStorage.saveRegion("us-central1");
+
+      // Reset the dust client to use the new tokens
+      resetDustClient();
+
+      // For headless auth, we don't validate with .me endpoint
+      // Set user info to null since API keys don't have access to user info
+      setUserInfo(null);
+      setIsLoading(false);
+      setAuthComplete(true);
+    } catch (err) {
+      setError(normalizeError(err).message);
+      setIsLoading(false);
+    }
+  }, [effectiveApiKey, effectiveWId]);
+
   useEffect(() => {
-    void startDeviceFlow();
-  }, [startDeviceFlow]);
+    // If both apiKey and wId are provided (from env vars or flags), use headless authentication
+    if (effectiveApiKey && effectiveWId) {
+      void handleHeadlessAuth();
+    } else {
+      // Otherwise, use the existing OAuth device flow
+      void startDeviceFlow();
+    }
+  }, [effectiveApiKey, effectiveWId, handleHeadlessAuth, startDeviceFlow]);
 
   if (error) {
     return (

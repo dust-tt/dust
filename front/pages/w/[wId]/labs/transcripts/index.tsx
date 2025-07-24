@@ -8,7 +8,7 @@ import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeletePro
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
 import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSelection";
 import { StorageConfiguration } from "@app/components/labs/transcripts/StorageConfiguration";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -150,7 +150,7 @@ export default function LabsTranscriptsIndex({
 
   return (
     <ConversationsNavigationProvider>
-      <AppContentLayout
+      <AppCenteredLayout
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - Transcripts processing"
@@ -209,7 +209,7 @@ export default function LabsTranscriptsIndex({
             )}
           </Page.Layout>
         </Page>
-      </AppContentLayout>
+      </AppCenteredLayout>
     </ConversationsNavigationProvider>
   );
 }

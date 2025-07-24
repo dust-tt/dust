@@ -428,14 +428,9 @@ export default function AssistantBuilder({
 
   return (
     <>
-      <AppContentLayout
-        subscription={subscription}
-        hideSidebar
-        isWideMode
-        owner={owner}
-        noSidePadding
-        titleChildren={
-          !edited ? (
+      <AppContentLayout subscription={subscription} hideSidebar owner={owner}>
+        <div className="flex h-full flex-col">
+          {!edited ? (
             <AppLayoutSimpleCloseTitle
               title={modalTitle}
               onClose={async () => {
@@ -456,141 +451,144 @@ export default function AssistantBuilder({
                   : undefined
               }
             />
-          )
-        }
-      >
-        <BuilderLayout
-          leftPanel={
-            <div className="flex h-full flex-col gap-4 pb-6 pt-4">
-              <div className="flex flex-row justify-between sm:flex-row">
-                <Tabs
-                  className="w-full"
-                  onValueChange={(t) => {
-                    setCurrentTab(t);
-                  }}
-                  value={screen}
-                >
-                  <TabsList>
-                    {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (
-                      <TabsTrigger
-                        key={tab.label}
-                        value={tab.id}
-                        label={tab.label}
-                        icon={tab.icon}
-                        data-gtm-label={tab.dataGtm.label}
-                        data-gtm-location={tab.dataGtm.location}
-                      />
-                    ))}
-                  </TabsList>
-                </Tabs>
-                <div className="border-b border-border">
-                  <Button
-                    icon={
-                      isPreviewPanelOpen
-                        ? SidebarRightCloseIcon
-                        : SidebarRightOpenIcon
-                    }
-                    variant="ghost"
-                    tooltip={
-                      isPreviewPanelOpen ? "Hide preview" : "Open preview"
-                    }
-                    onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
+          )}
+          <BuilderLayout
+            leftPanel={
+              <div className="flex h-full flex-col gap-4 pb-6 pt-4">
+                <div className="flex flex-row justify-between sm:flex-row">
+                  <Tabs
+                    className="w-full"
+                    onValueChange={(t) => {
+                      setCurrentTab(t);
+                    }}
+                    value={screen}
+                  >
+                    <TabsList>
+                      {Object.values(BUILDER_SCREENS_INFOS).map((tab) => (
+                        <TabsTrigger
+                          key={tab.label}
+                          value={tab.id}
+                          label={tab.label}
+                          icon={tab.icon}
+                          data-gtm-label={tab.dataGtm.label}
+                          data-gtm-location={tab.dataGtm.location}
+                        />
+                      ))}
+                    </TabsList>
+                  </Tabs>
+                  <div className="border-b border-border">
+                    <Button
+                      icon={
+                        isPreviewPanelOpen
+                          ? SidebarRightCloseIcon
+                          : SidebarRightOpenIcon
+                      }
+                      variant="ghost"
+                      tooltip={
+                        isPreviewPanelOpen ? "Hide preview" : "Open preview"
+                      }
+                      onClick={() => setIsPreviewPanelOpen(!isPreviewPanelOpen)}
+                    />
+                  </div>
+                </div>
+                <div className="flex h-full justify-center">
+                  <div className="h-full w-full max-w-4xl">
+                    {(() => {
+                      switch (screen) {
+                        case "instructions":
+                          return (
+                            <InstructionScreen
+                              owner={owner}
+                              builderState={builderState}
+                              setBuilderState={setBuilderState}
+                              setEdited={setEdited}
+                              resetAt={instructionsResetAt}
+                              isUsingTemplate={template !== null}
+                              instructionsError={instructionsError}
+                              doTypewriterEffect={doTypewriterEffect}
+                              setDoTypewriterEffect={setDoTypewriterEffect}
+                              agentConfigurationId={
+                                agentConfiguration?.sId ?? null
+                              }
+                              models={models}
+                              setIsInstructionDiffMode={
+                                setIsInstructionDiffMode
+                              }
+                              isInstructionDiffMode={isInstructionDiffMode}
+                            />
+                          );
+                        case "actions":
+                          return (
+                            <ActionsScreen
+                              owner={owner}
+                              builderState={builderState}
+                              reasoningModels={reasoningModels}
+                              setBuilderState={setBuilderState}
+                              setEdited={setEdited}
+                              setAction={setAction}
+                              pendingAction={pendingAction}
+                              isFetchingActions={isActionsLoading}
+                            />
+                          );
+
+                        case "settings":
+                          return (
+                            <SettingsScreen
+                              agentConfigurationId={
+                                agentConfiguration?.sId ?? null
+                              }
+                              baseUrl={baseUrl}
+                              owner={owner}
+                              builderState={builderState}
+                              initialHandle={initialBuilderState?.handle}
+                              setBuilderState={setBuilderState}
+                              setEdited={setEdited}
+                              assistantHandleError={assistantHandleError}
+                              descriptionError={descriptionError}
+                              slackChannelSelected={selectedSlackChannels || []}
+                              slackDataSource={slackDataSource}
+                              setSelectedSlackChannels={
+                                setSelectedSlackChannels
+                              }
+                              currentUser={user}
+                            />
+                          );
+                        default:
+                          assertNever(screen);
+                      }
+                    })()}
+                  </div>
+                </div>
+                <div className="mt-auto flex-shrink-0">
+                  <PrevNextButtons
+                    screen={screen}
+                    setCurrentTab={setCurrentTab}
                   />
                 </div>
               </div>
-              <div className="flex h-full justify-center">
-                <div className="h-full w-full max-w-4xl">
-                  {(() => {
-                    switch (screen) {
-                      case "instructions":
-                        return (
-                          <InstructionScreen
-                            owner={owner}
-                            builderState={builderState}
-                            setBuilderState={setBuilderState}
-                            setEdited={setEdited}
-                            resetAt={instructionsResetAt}
-                            isUsingTemplate={template !== null}
-                            instructionsError={instructionsError}
-                            doTypewriterEffect={doTypewriterEffect}
-                            setDoTypewriterEffect={setDoTypewriterEffect}
-                            agentConfigurationId={
-                              agentConfiguration?.sId ?? null
-                            }
-                            models={models}
-                            setIsInstructionDiffMode={setIsInstructionDiffMode}
-                            isInstructionDiffMode={isInstructionDiffMode}
-                          />
-                        );
-                      case "actions":
-                        return (
-                          <ActionsScreen
-                            owner={owner}
-                            builderState={builderState}
-                            reasoningModels={reasoningModels}
-                            setBuilderState={setBuilderState}
-                            setEdited={setEdited}
-                            setAction={setAction}
-                            pendingAction={pendingAction}
-                            isFetchingActions={isActionsLoading}
-                          />
-                        );
-
-                      case "settings":
-                        return (
-                          <SettingsScreen
-                            agentConfigurationId={
-                              agentConfiguration?.sId ?? null
-                            }
-                            baseUrl={baseUrl}
-                            owner={owner}
-                            builderState={builderState}
-                            initialHandle={initialBuilderState?.handle}
-                            setBuilderState={setBuilderState}
-                            setEdited={setEdited}
-                            assistantHandleError={assistantHandleError}
-                            descriptionError={descriptionError}
-                            slackChannelSelected={selectedSlackChannels || []}
-                            slackDataSource={slackDataSource}
-                            setSelectedSlackChannels={setSelectedSlackChannels}
-                            currentUser={user}
-                          />
-                        );
-                      default:
-                        assertNever(screen);
-                    }
-                  })()}
-                </div>
-              </div>
-              <div className="mt-auto flex-shrink-0">
-                <PrevNextButtons
-                  screen={screen}
-                  setCurrentTab={setCurrentTab}
-                />
-              </div>
-            </div>
-          }
-          rightPanel={
-            <AssistantBuilderRightPanel
-              screen={screen}
-              template={template}
-              mcpServerViews={mcpServerViews}
-              removeTemplate={removeTemplate}
-              resetToTemplateInstructions={async () => {
-                resetToTemplateInstructions(setBuilderState);
-                setEdited(true);
-              }}
-              resetToTemplateActions={async () => {
-                resetToTemplateActions(setBuilderState);
-                setEdited(true);
-              }}
-              owner={owner}
-              builderState={builderState}
-              agentConfiguration={agentConfiguration}
-              setAction={setAction}
-            />
-          }
-        />
+            }
+            rightPanel={
+              <AssistantBuilderRightPanel
+                screen={screen}
+                template={template}
+                mcpServerViews={mcpServerViews}
+                removeTemplate={removeTemplate}
+                resetToTemplateInstructions={async () => {
+                  resetToTemplateInstructions(setBuilderState);
+                  setEdited(true);
+                }}
+                resetToTemplateActions={async () => {
+                  resetToTemplateActions(setBuilderState);
+                  setEdited(true);
+                }}
+                owner={owner}
+                builderState={builderState}
+                agentConfiguration={agentConfiguration}
+                setAction={setAction}
+              />
+            }
+          />
+        </div>
       </AppContentLayout>
     </>
   );

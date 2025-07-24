@@ -1,24 +1,29 @@
+import type { AuthenticatorType } from "@app/lib/auth";
 import { getTemporalClient } from "@app/lib/temporal";
-import type { Result, RunAgentArgs } from "@app/types";
+import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
+import type { Result } from "@app/types";
 import { Ok } from "@app/types";
+import type { RunAgentAsynchronousArgs } from "@app/types/assistant/agent_run";
 
 import { QUEUE_NAME } from "./config";
 import { agentLoopWorkflow } from "./workflows";
-import { AuthenticatorType } from "@app/lib/auth";
 
 export async function launchAgentLoopWorkflow({
   authType,
-  runAgentArgs,
+  runAsynchronousAgentArgs,
 }: {
   authType: AuthenticatorType;
-  runAgentArgs: RunAgentArgs;
+  runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClient();
 
-  const workflowId = `TODO`;
+  const workflowId = makeAgentLoopWorkflowId(
+    authType,
+    runAsynchronousAgentArgs
+  );
 
   await client.workflow.start(agentLoopWorkflow, {
-    args: [{ authType: authType, runAgentArgs: runAgentArgs }],
+    args: [{ authType, runAsynchronousAgentArgs }],
     taskQueue: QUEUE_NAME,
     workflowId,
   });

@@ -5,6 +5,7 @@ import { Op } from "sequelize";
 import { MCPActionType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPAction } from "@app/lib/models/assistant/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import {
   ConversationModel,
@@ -39,6 +40,7 @@ type GetMCPActionsOptions = {
 };
 
 export class AgentMCPActionsAnalytics {
+  // TODO(2025-07-23 aubin): refactor this into the AgentStepContentResource (get all function calls).
   static async getMCPActionsForAgent(
     auth: Authenticator,
     { agentConfigurationId, limit, cursor }: GetMCPActionsOptions
@@ -122,6 +124,11 @@ export class AgentMCPActionsAnalytics {
               },
             ],
           },
+          {
+            model: AgentStepContentModel,
+            as: "stepContent",
+            required: true,
+          },
         ],
         where: whereClause,
         order: [["createdAt", "DESC"]],
@@ -160,6 +167,11 @@ function serializeMCPAction(action: AgentMCPAction): AnalyticsMCPAction {
   assert(action.agentMessage, "Agent message must exist");
   assert(action.agentMessage.message, "Message must exist");
   assert(action.agentMessage.message.conversation, "Conversation must exist");
+  assert(action.stepContent, "Step content must exist");
+  assert(
+    action.stepContent.value.type === "function_call",
+    "Step content must be a function call"
+  );
 
   return {
     sId: MCPActionType.modelIdToSId({
@@ -167,8 +179,8 @@ function serializeMCPAction(action: AgentMCPAction): AnalyticsMCPAction {
       workspaceId: action.workspaceId,
     }),
     createdAt: action.createdAt.toISOString(),
-    functionCallName: action.functionCallName,
-    params: action.params,
+    functionCallName: action.stepContent.value.value.name,
+    params: JSON.parse(action.stepContent.value.value.arguments),
     executionState: action.executionState,
     isError: action.isError,
     conversationId: action.agentMessage.message.conversation.sId,

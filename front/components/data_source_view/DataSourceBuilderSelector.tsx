@@ -1,10 +1,16 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import { Breadcrumbs, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
+import {
+  DataSourceBuilderProvider,
+  useDataSourceBuilderContext,
+} from "@app/components/data_source_view/context/DataSourceBuilderContext";
+import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
+import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import {
   useSpaceDataSourceViewsWithDetails,
@@ -22,59 +28,6 @@ import type {
   LightWorkspaceType,
 } from "@app/types";
 
-import { DataSourceSpaceSelector } from "./DataSourceSpaceSelector";
-
-type NavigationHistoryEntryType =
-  | { type: "root" }
-  | { type: "space"; space: SpaceType }
-  | { type: "category"; category: DataSourceViewCategoryWithoutApps }
-  | { type: "node"; node: DataSourceViewContentNode };
-
-/**
- * Hook helper to manage the navigation history in the DataSourceBuilderSelector
- *
- * Shape is `[root, space, category, ...node]`
- * so we case use index to update specific values
- */
-const useNavigationHistory = () => {
-  const [navigationHistory, setHistory] = useState<
-    NavigationHistoryEntryType[]
-  >([{ type: "root" }]);
-
-  const setSpace = useCallback((space: SpaceType) => {
-    setHistory((prev) => {
-      return [...prev.slice(0, 1), { type: "space", space }];
-    });
-  }, []);
-
-  const setCategory = useCallback(
-    (category: DataSourceViewCategoryWithoutApps) => {
-      setHistory((prev) => {
-        return [...prev.slice(0, 2), { type: "category", category }];
-      });
-    },
-    []
-  );
-
-  const addNode = useCallback((node: DataSourceViewContentNode) => {
-    setHistory((prev) => {
-      return [...prev, { type: "node", node }];
-    });
-  }, []);
-
-  const navigateTo = useCallback((index: number) => {
-    setHistory((prev) => prev.slice(0, index + 1));
-  }, []);
-
-  return {
-    navigationHistory,
-    setSpace,
-    setCategory,
-    addNode,
-    navigateTo,
-  };
-};
-
 interface DataSourceBuilderSelectorProps {
   allowedSpaces?: SpaceType[];
   owner: LightWorkspaceType;
@@ -86,7 +39,17 @@ interface DataSourceBuilderSelectorProps {
   viewType: ContentNodesViewType;
 }
 
-export const DataSourceBuilderSelector = ({
+export const DataSourceBuilderSelector = (
+  props: DataSourceBuilderSelectorProps
+) => {
+  return (
+    <DataSourceBuilderProvider>
+      <DataSourceBuilderSelectorContent {...props} />
+    </DataSourceBuilderProvider>
+  );
+};
+
+export const DataSourceBuilderSelectorContent = ({
   allowedSpaces,
   dataSourceViews,
   owner,
@@ -94,8 +57,13 @@ export const DataSourceBuilderSelector = ({
 }: DataSourceBuilderSelectorProps) => {
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
-  const { navigationHistory, setSpace, setCategory, addNode, navigateTo } =
-    useNavigationHistory();
+  const {
+    navigationHistory,
+    navigateTo,
+    setSpaceEntry,
+    setCategoryEntry,
+    addNodeEntry,
+  } = useDataSourceBuilderContext();
   const currentNavigationEntry =
     navigationHistory[navigationHistory.length - 1];
 
@@ -149,7 +117,7 @@ export const DataSourceBuilderSelector = ({
         <DataSourceSpaceSelector
           spaces={filteredSpaces}
           allowedSpaces={allowedSpaces}
-          onSelectSpace={setSpace}
+          onSelectSpace={setSpaceEntry}
         />
       ) : (
         <SearchInput
@@ -164,7 +132,7 @@ export const DataSourceBuilderSelector = ({
         <DataSourceCategoryBrowser
           owner={owner}
           space={currentNavigationEntry.space}
-          onSelectCategory={setCategory}
+          onSelectCategory={setCategoryEntry}
         />
       )}
 
@@ -176,7 +144,7 @@ export const DataSourceBuilderSelector = ({
           categoryDataSourceViews={categoryDataSourceViews}
           selectedCategory={selectedCategory}
           traversedNode={traversedNode}
-          onNavigate={addNode}
+          onNavigate={addNodeEntry}
           isCategoryLoading={isCategoryLoading}
         />
       )}

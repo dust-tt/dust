@@ -8,13 +8,10 @@ import { getDustProdAction } from "@app/lib/registry";
 import { cloneBaseConfig } from "@app/lib/registry";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType, Result, RunAgentArgs } from "@app/types";
-import {
-  Err,
-  getLargeNonAnthropicWhitelistedModel,
-  getRunAgentData,
-  Ok,
-} from "@app/types";
+import type { ConversationType, Result } from "@app/types";
+import { Err, getLargeNonAnthropicWhitelistedModel, Ok } from "@app/types";
+import type { RunAgentArgs } from "@app/types/assistant/agent_run";
+import { getRunAgentData } from "@app/types/assistant/agent_run";
 
 const MIN_GENERATION_TOKENS = 1024;
 
@@ -22,7 +19,12 @@ export async function ensureConversationTitle(
   authType: AuthenticatorType,
   runAgentArgs: RunAgentArgs
 ): Promise<void> {
-  const { conversation, userMessage } = getRunAgentData(runAgentArgs);
+  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  if (runAgentDataRes.isErr()) {
+    throw runAgentDataRes.error;
+  }
+
+  const { conversation, userMessage } = runAgentDataRes.value;
 
   // If the conversation has a title, return early.
   if (conversation.title) {

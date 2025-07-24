@@ -5,73 +5,36 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { wakeLock } from "@app/lib/wake_lock";
 import { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
+import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import type { AgentLoopActivities } from "@app/temporal/agent_loop/lib/activity_interface";
+import { executeAgentLoop } from "@app/temporal/agent_loop/lib/agent_loop_executor";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
-import type { ModelId, RunAgentArgs } from "@app/types";
-import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
-
-const MAX_ACTIONS_PER_STEP = 16;
+import type {
+  RunAgentArgs,
+  RunAgentSynchronousArgs,
+} from "@app/types/assistant/agent_run";
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // but it now handles updating it based on the execution results.
-export async function runAgentWithStreaming(
+async function runAgentSynchronousWithStreaming(
   authType: AuthenticatorType,
-  runAgentArgs: RunAgentArgs
+  runAgentSynchronousArgs: RunAgentSynchronousArgs
 ): Promise<void> {
+  const runAgentArgs: RunAgentArgs = {
+    sync: true,
+    inMemoryData: runAgentSynchronousArgs,
+  };
+
   const titlePromise = ensureConversationTitle(authType, runAgentArgs);
 
-  // Citations references offset kept up to date across steps.
-  let citationsRefsOffset = 0;
-
-  const runIds: string[] = [];
-
-  // Track step content IDs by function call ID for later use in actions.
-  let functionCallStepContentIds: Record<string, ModelId> = {};
+  // Create direct activities for non-Temporal execution.
+  const directActivities: AgentLoopActivities = {
+    runModelActivity: (args) => runModelActivity(args),
+    runToolActivity: (authType, args) => runToolActivity(authType, args),
+  };
 
   await wakeLock(async () => {
-    for (let i = 0; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
-      const result = await runModelActivity({
-        authType,
-        runAgentArgs,
-        runIds,
-        step: i,
-        functionCallStepContentIds,
-        autoRetryCount: 0,
-      });
-
-      if (!result) {
-        // Generation completed or error occurred
-        return;
-      }
-
-      // Update state with results from runMultiActionsAgent
-      runIds.push(result.runId);
-      functionCallStepContentIds = result.functionCallStepContentIds;
-
-      // We received the actions to run, but will enforce a limit on the number of actions (16)
-      // which is very high. Over that the latency will just be too high. This is a guardrail
-      // against the model outputting something unreasonable.
-      const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
-
-      const citationsIncrements = await Promise.all(
-        actionsToRun.map(({ inputs, functionCallId }, index) =>
-          runToolActivity(authType, {
-            runAgentArgs,
-            inputs,
-            functionCallId,
-            step: i,
-            stepActionIndex: index,
-            stepActions: actionsToRun.map((a) => a.action),
-            citationsRefsOffset,
-            stepContentId: functionCallStepContentIds[functionCallId],
-          })
-        )
-      );
-
-      citationsRefsOffset += citationsIncrements.reduce(
-        (acc, curr) => acc + curr.citationsIncrement,
-        0
-      );
-    }
+    await executeAgentLoop(authType, runAgentArgs, directActivities);
   });
 
   await titlePromise;
@@ -83,4 +46,38 @@ export async function runAgentWithStreaming(
   await launchUpdateUsageWorkflow({
     workspaceId: authType.workspaceId,
   });
+}
+
+/**
+ * Higher-level function that serves as single entry point to either synchronous or asynchronous
+ * execution based on the RunAgentArgs type.
+ */
+export async function runAgentLoop(
+  authType: AuthenticatorType,
+  runAgentArgs: RunAgentArgs,
+  { forceAsynchronousLoop = false }: { forceAsynchronousLoop?: boolean } = {}
+): Promise<void> {
+  if (runAgentArgs.sync && !forceAsynchronousLoop) {
+    await runAgentSynchronousWithStreaming(authType, runAgentArgs.inMemoryData);
+  } else if (runAgentArgs.sync) {
+    const { agentMessage, conversation, userMessage } =
+      runAgentArgs.inMemoryData;
+
+    await launchAgentLoopWorkflow({
+      authType,
+      runAsynchronousAgentArgs: {
+        agentMessageId: agentMessage.sId,
+        agentMessageVersion: agentMessage.version,
+        conversationId: conversation.sId,
+        conversationTitle: conversation.title,
+        userMessageId: userMessage.sId,
+        userMessageVersion: userMessage.version,
+      },
+    });
+  } else {
+    await launchAgentLoopWorkflow({
+      authType,
+      runAsynchronousAgentArgs: runAgentArgs.idArgs,
+    });
+  }
 }

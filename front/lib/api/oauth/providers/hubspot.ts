@@ -55,7 +55,12 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
     return getStringFromQuery(query, "state");
   }
 
-  isExtraConfigValid(extraConfig: ExtraConfigType) {
+  isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
+    if (useCase === "personal_actions") {
+      if (extraConfig.mcp_server_id) {
+        return true;
+      }
+    }
     return Object.keys(extraConfig).length === 0;
   }
 }

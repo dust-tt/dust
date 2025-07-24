@@ -5,7 +5,7 @@ import {
   tryListMCPTools,
 } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
+import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   isDustAppChatBlockType,
   runActionStreamed,
@@ -39,13 +39,14 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
-import type { AgentActionsEvent, ModelId, RunAgentArgs } from "@app/types";
-import { getRunAgentData } from "@app/types";
+import type { AgentActionsEvent, ModelId } from "@app/types";
 import type {
   FunctionCallContentType,
   ReasoningContentType,
   TextContentType,
 } from "@app/types/assistant/agent_message_content";
+import type { RunAgentArgs } from "@app/types/assistant/agent_run";
+import { getRunAgentData } from "@app/types/assistant/agent_run";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;
@@ -75,13 +76,18 @@ export async function runModelActivity({
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
 } | null> {
+  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  if (runAgentDataRes.isErr()) {
+    throw runAgentDataRes.error;
+  }
+
   const {
     agentConfiguration,
     conversation,
     userMessage,
     agentMessage,
     agentMessageRow,
-  } = getRunAgentData(runAgentArgs);
+  } = runAgentDataRes.value;
 
   const now = Date.now();
 
@@ -259,8 +265,7 @@ export async function runModelActivity({
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    const specRes =
-      await getRunnerForActionConfiguration(a).buildSpecification(auth);
+    const specRes = await buildToolSpecification(auth, a);
 
     if (specRes.isErr()) {
       await publishAgentError({

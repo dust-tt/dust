@@ -1,7 +1,7 @@
 import type { GetConversationResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

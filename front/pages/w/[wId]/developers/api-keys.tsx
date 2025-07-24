@@ -33,7 +33,7 @@ import React, { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -456,7 +456,7 @@ export default function APIKeysPage({
   groups,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "api_keys" })}
@@ -472,7 +472,7 @@ export default function APIKeysPage({
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 

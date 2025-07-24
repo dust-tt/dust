@@ -42,6 +42,7 @@ export function transformAgentConfigurationToFormData(
       responseFormat: agentConfiguration.model.responseFormat,
     },
     actions: [], // Actions are always loaded client-side via SWR
+    maxStepsPerRun: agentConfiguration.maxStepsPerRun || 8,
   };
 }
 
@@ -213,5 +214,6 @@ export function getDefaultAgentFormData(user: UserType): AgentBuilderFormData {
       responseFormat: undefined,
     },
     actions: [],
+    maxStepsPerRun: 8,
   };
 }

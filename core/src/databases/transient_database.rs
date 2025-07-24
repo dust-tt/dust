@@ -46,8 +46,24 @@ impl TransientDatabase {
 
     pub async fn invalidate(&self, store: Box<dyn Store + Sync + Send>) -> Result<()> {
         if let Some(worker) = self.sqlite_worker() {
+            let now = utils::now();
+            info!(
+                db_id = self.unique_id(),
+                worker_url = worker.url(),
+                "Before invalidate_database())"
+            );
             worker.invalidate_database(self.unique_id()).await?;
+            info!(
+                duration = utils::now() - now,
+                db_id = self.unique_id(),
+                worker_url = worker.url(),
+                "After invalidate_database())"
+            );
         } else {
+            info!(
+                db_id = self.unique_id(),
+                "Deleting transient database without worker"
+            );
             // If the worker is not alive, we delete the database row in case the worker becomes alive again.
             store.delete_database(self.unique_id()).await?;
         }

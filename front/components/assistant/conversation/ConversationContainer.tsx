@@ -62,6 +62,10 @@ export function ConversationContainer({
 
   const router = useRouter();
 
+  // TODO(DURABLE_AGENT 2025-07-22): Remove this once we have a proper way to handle
+  // asynchronous loops.
+  const { async } = router.query;
+
   const sendNotification = useSendNotification();
 
   const { mutateConversations } = useConversations({
@@ -130,6 +134,7 @@ export function ConversationContainer({
             user,
             conversationId: activeConversationId,
             messageData,
+            forceAsync: async === "true",
           });
 
           // Replace placeholder message with API response.
@@ -219,6 +224,7 @@ export function ConversationContainer({
           contentFragments,
           clientSideMCPServerIds: removeNulls([serverId]),
         },
+        forceAsync: async === "true",
       });
 
       setIsSubmitting(false);
@@ -253,14 +259,15 @@ export function ConversationContainer({
       }
     },
     [
+      async,
       isSubmitting,
-      owner,
-      user,
-      sendNotification,
-      router,
       mutateConversations,
+      owner,
+      router,
       scrollConversationsToTop,
+      sendNotification,
       serverId,
+      user,
     ]
   );
 
