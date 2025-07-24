@@ -2,6 +2,7 @@ import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
   ChevronDownIcon,
+  ChromeLogo,
   cn,
   DropdownMenu,
   DropdownMenuContent,
@@ -156,6 +157,14 @@ export function UserMenu({
             />
           </>
         )}
+
+        <DropdownMenuLabel label="Extension" />
+        <DropdownMenuItem
+          label="Dust Chrome Extension"
+          icon={ChromeLogo}
+          href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn?authuser=0&hl=fr"
+          target="_blank"
+        />
 
         <DropdownMenuLabel label="Account" />
         {subscription?.plan.limits.canUseProduct && (
