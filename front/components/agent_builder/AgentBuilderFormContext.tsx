@@ -206,6 +206,7 @@ export const agentBuilderFormSchema = z.object({
   generationSettings: generationSettingsSchema,
   actions: z.array(actionSchema),
 });
+
 export const agentBuilderMCPFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),

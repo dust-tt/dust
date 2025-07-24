@@ -1,4 +1,7 @@
-import type { AgentBuilderAction, AgentBuilderMCPAction } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  AgentBuilderAction,
+  AgentBuilderMCPAction,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {

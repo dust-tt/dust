@@ -1,7 +1,10 @@
 import { uniqueId } from "lodash";
 import { z } from "zod";
 
-import type { agentBuilderFormSchema, agentBuilderMCPFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type {
+  agentBuilderFormSchema,
+  agentBuilderMCPFormSchema,
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -10,7 +13,7 @@ import type { SupportedModel } from "@app/types";
 import { ioTsEnum } from "@app/types";
 
 type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
-type AgentBuilderMCPFormData = z.infer<typeof agentBuilderMCPFormSchema>
+type AgentBuilderMCPFormData = z.infer<typeof agentBuilderMCPFormSchema>;
 
 export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
 export type AgentBuilderMCPAction = AgentBuilderMCPFormData["actions"][number];
@@ -237,7 +240,6 @@ export const dataSourceConfigurationSchema = z.object({
       .optional(),
   }),
 });
-
 
 export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
