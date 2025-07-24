@@ -1,75 +1,136 @@
 import Image from "next/image";
 
 import { H4 } from "@app/components/home/ContentComponents";
+import { isEUCountry } from "@app/lib/geo/eu-detection";
+import { useGeolocation } from "@app/lib/swr/geo";
 import { classNames } from "@app/lib/utils";
 
-// Define logo sets for different pages
 const LOGO_SETS = {
-  default: [
-    { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-    { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
-    { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
-    { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
-    { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
-    { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-    { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
-    { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
-  ],
-  landing: [
-    { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-    { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
-    { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
-    { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
-    { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
-    { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
-    { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
-    { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
-    { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
-    { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-    { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
-    { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
-  ],
-  b2bSaas: [
-    { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-    {
-      name: "contentsquare",
-      src: "/static/landing/logos/gray/contentsquare.svg",
-    },
-    { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
-    { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
-    { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
-    { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
-  ],
-  marketplace: [
-    { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
-    { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-    { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
-    { name: "ornikar", src: "/static/landing/logos/gray/ornikar.svg" },
-    { name: "wttj", src: "/static/landing/logos/gray/WTTJ.svg" },
-  ],
-  finance: [
-    { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
-    { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
-    { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
-    { name: "keobiz", src: "/static/landing/logos/gray/keobiz.svg" },
-  ],
-  insurance: [
-    { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
-    { name: "wakam", src: "/static/landing/logos/gray/wakam.svg" },
-  ],
-  retail: [
-    { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
-    { name: "ankorstore", src: "/static/landing/logos/gray/ankorstore.svg" },
-    { name: "fleet", src: "/static/landing/logos/gray/fleet.svg" },
-    { name: "alma", src: "/static/landing/logos/gray/Alma.svg" },
-    { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
-  ],
+  default: {
+    us: [
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+      { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
+      { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+    ],
+    eu: [
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+      { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
+      { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+    ],
+  },
+  landing: {
+    us: [
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+      { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
+      { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
+      { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
+      { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+    ],
+    eu: [
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+      { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
+      { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+    ],
+  },
+  b2bSaas: {
+    us: [
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+      { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+    ],
+    eu: [
+      { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
+      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+    ],
+  },
+  marketplace: {
+    us: [
+      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+      { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
+      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+    ],
+    eu: [
+      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+    ],
+  },
+  finance: {
+    us: [
+      { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
+      { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
+      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
+    ],
+    eu: [
+      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
+      { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+    ],
+  },
+  insurance: {
+    us: [
+      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+      { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+    ],
+    eu: [
+      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+      { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+    ],
+  },
+  retail: {
+    us: [
+      { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+    ],
+    eu: [
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+    ],
+  },
 } as const;
 
 type LogoSetKey = keyof typeof LOGO_SETS;
+type RegionKey = "us" | "eu";
 
 interface TrustedByProps {
   logoSet?: LogoSetKey;
+  region?: RegionKey;
   title?: string;
 }
 
@@ -77,7 +138,9 @@ export default function TrustedBy({
   logoSet = "default",
   title = "Trusted by 1,000+ organizations",
 }: TrustedByProps) {
-  const logos = LOGO_SETS[logoSet];
+  const { geoData } = useGeolocation();
+  const isEU = isEUCountry(geoData?.countryCode);
+  const logos = LOGO_SETS[logoSet][isEU ? "eu" : "us"];
 
   return (
     <div
