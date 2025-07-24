@@ -27,6 +27,7 @@ export function JsonSchemaSection({
   owner,
   control,
 }: JsonSchemaSectionProps) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Left it here, unused due to NOTE below
   const { getValues } = useFormContext();
   const { field } = useController({
     control,
@@ -65,11 +66,12 @@ export function JsonSchemaSection({
     setIsGeneratingSchema(true);
 
     try {
-      let fullInstructions = agentInstructions;
-      const agentDescription = getValues("agentDescription");
-      if (agentDescription) {
-        fullInstructions += `\n\nTool description:\n${agentDescription}`;
-      }
+      const fullInstructions = agentInstructions;
+      // NOTE: commented, don't know where that agentDescription comes from. Not in AgentBuilderFormData
+      // const agentDescription = getValues("agentDescription");
+      // if (agentDescription) {
+      //   fullInstructions += `\n\nTool description:\n${agentDescription}`;
+      // }
 
       const res = await fetch(
         `/api/w/${owner.sId}/assistant/builder/process/generate_schema`,

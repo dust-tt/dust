@@ -41,12 +41,6 @@ export function getTimeFrame(action?: AgentBuilderAction): TimeFrame | null {
   return null;
 }
 
-export function hasDataSourceSelections(
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations
-): boolean {
-  return Object.keys(dataSourceConfigurations).length > 0;
-}
-
 export function getJsonSchema(action?: AgentBuilderAction): JSONSchema | null {
   if (!action) {
     return null;
