@@ -62,9 +62,7 @@ const CliChat: FC<CliChatProps> = ({
   conversationId,
   autoAcceptEditsFlag,
 }) => {
-  const [autoAcceptEdits, setAutoAcceptEdits] = useState(
-    autoAcceptEditsFlag ? autoAcceptEditsFlag : false
-  );
+  const [autoAcceptEdits, setAutoAcceptEdits] = useState(!!autoAcceptEditsFlag);
   const autoAcceptEditsRef = useRef(autoAcceptEdits);
 
   const [error, setError] = useState<string | null>(null);
