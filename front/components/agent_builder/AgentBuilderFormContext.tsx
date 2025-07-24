@@ -125,7 +125,8 @@ const dustAppRunConfigurationSchema = z.object({
 
 const mcpServerConfigurationSchema = z.object({
   mcpServerViewId: z.string(),
-  dataSourceConfigurations: dataSourceViewSelectionConfigurationSchema.nullable(),
+  dataSourceConfigurations:
+    dataSourceViewSelectionConfigurationSchema.nullable(),
   tablesConfigurations: dataSourceViewSelectionConfigurationSchema.nullable(),
   childAgentId: z.string().nullable(),
   reasoningModel: reasoningModelConfigurationSchema.nullable(),

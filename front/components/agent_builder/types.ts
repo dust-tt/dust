@@ -6,9 +6,7 @@ import type {
   agentBuilderFormSchema,
   agentBuilderMCPFormSchema,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  DEFAULT_MCP_ACTION_NAME,
-} from "@app/lib/actions/constants";
+import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SupportedModel, WhitelistableFeature } from "@app/types";
