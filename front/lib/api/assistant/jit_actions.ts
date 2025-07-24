@@ -236,7 +236,7 @@ export async function getJITServers(
       timeFrame: null,
       jsonSchema: null,
       additionalConfiguration: {},
-      mcpServerViewId: retrievalView.sId ,
+      mcpServerViewId: retrievalView.sId,
       mcpServerName: retrievalView.toJSON().server.name,
       dustAppConfiguration: null,
       internalMCPServerId: retrievalView.mcpServerId,
@@ -288,6 +288,7 @@ export async function getJITServers(
       mcpServerViewId: retrievalView.sId,
       dustAppConfiguration: null,
       internalMCPServerId: retrievalView.mcpServerId,
+      mcpServerName: retrievalView.toJSON().server.name,
     };
     jitServers.push(folderSearchServer);
   }
