@@ -5,7 +5,7 @@ import {
   tryListMCPTools,
 } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
+import { buildToolSpecification } from "@app/lib/actions/runners";
 import {
   isDustAppChatBlockType,
   runActionStreamed,
@@ -265,8 +265,7 @@ export async function runModelActivity({
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    const specRes =
-      await getRunnerForActionConfiguration(a).buildSpecification(auth);
+    const specRes = await buildToolSpecification(auth, a);
 
     if (specRes.isErr()) {
       await publishAgentError({

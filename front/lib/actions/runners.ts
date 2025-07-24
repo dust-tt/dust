@@ -1,74 +1,55 @@
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { MCPConfigurationServerRunner } from "@app/lib/actions/mcp";
+import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
-  BaseActionConfigurationServerRunner,
-  BaseActionConfigurationServerRunnerConstructor,
-  BaseActionConfigurationStaticMethods,
+  BaseActionRunParams,
 } from "@app/lib/actions/types";
-import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { ActionConfigurationType, AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { Authenticator } from "@app/lib/auth";
+import type { Result } from "@app/types";
+import { Ok } from "@app/types";
 
-interface ActionToConfigTypeMap {
-  mcp_configuration: MCPToolConfigurationType;
+/**
+ * Builds a tool specification for the given MCP action configuration.
+ * This replaces the buildSpecification method from the runner pattern.
+ */
+export async function buildToolSpecification(
+  auth: Authenticator,
+  actionConfiguration: MCPToolConfigurationType
+): Promise<Result<AgentActionSpecification, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error(
+      "Unexpected unauthenticated call to `buildToolSpecification`"
+    );
+  }
+
+  // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.TOOL_INPUT
+  const filteredInputSchema = hideInternalConfiguration(
+    actionConfiguration.inputSchema
+  );
+
+  return new Ok({
+    name: actionConfiguration.name,
+    description: actionConfiguration.description ?? "",
+    inputs: [],
+    inputSchema: filteredInputSchema,
+  });
 }
 
-interface ActionTypeToClassMap {
-  mcp_configuration: MCPConfigurationServerRunner;
-}
-
-// Ensure all AgentAction keys are present in ActionToConfigTypeMap.
-type EnsureAllAgentAreMapped<
-  T extends Record<ActionConfigurationType["type"], any>,
-> = T;
-
-// Validate the completeness of ActionToConfigTypeMap.
-type ValidatedActionToConfigTypeMap =
-  EnsureAllAgentAreMapped<ActionToConfigTypeMap>;
-
-// Ensure all class types extend the base class with the appropriate config type
-type EnsureClassTypeCompatibility<
-  T extends keyof ValidatedActionToConfigTypeMap,
-> =
-  ActionTypeToClassMap[T] extends BaseActionConfigurationServerRunner<
-    ValidatedActionToConfigTypeMap[T]
-  >
-    ? ActionTypeToClassMap[T]
-    : never;
-
-type CombinedMap = {
-  [K in keyof ValidatedActionToConfigTypeMap]: {
-    configType: ValidatedActionToConfigTypeMap[K];
-    classType: EnsureClassTypeCompatibility<K>;
-  };
-};
-
-export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
-  [K in keyof CombinedMap]: BaseActionConfigurationServerRunnerConstructor<
-    CombinedMap[K]["classType"],
-    CombinedMap[K]["configType"]
-  > &
-    BaseActionConfigurationStaticMethods<
-      CombinedMap[K]["classType"],
-      CombinedMap[K]["configType"]
-    >;
-} = {
-  mcp_configuration: MCPConfigurationServerRunner,
-} as const;
-
-export function getRunnerForActionConfiguration<K extends keyof CombinedMap>(
-  actionConfiguration: {
-    type: K;
-  } & CombinedMap[K]["configType"]
-): CombinedMap[K]["classType"] {
-  const RunnerClass = ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER[
-    actionConfiguration.type
-  ] as BaseActionConfigurationServerRunnerConstructor<
-    CombinedMap[K]["classType"],
-    CombinedMap[K]["configType"]
-  > &
-    BaseActionConfigurationStaticMethods<
-      CombinedMap[K]["classType"],
-      CombinedMap[K]["configType"]
-    >;
-
-  return RunnerClass.fromActionConfiguration(actionConfiguration);
+/**
+ * Runs a tool with streaming for the given MCP action configuration.
+ * This replaces the run method from the runner pattern.
+ */
+export async function* runToolWithStreaming(
+  auth: Authenticator,
+  actionConfiguration: MCPToolConfigurationType,
+  runParams: BaseActionRunParams & {
+    stepActionIndex: number;
+    stepActions: ActionConfigurationType[];
+    citationsRefsOffset: number;
+  }
+) {
+  const runner = new MCPConfigurationServerRunner(actionConfiguration);
+  yield* runner.run(auth, runParams);
 }

@@ -1,4 +1,4 @@
-import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
+import { runToolWithStreaming } from "@app/lib/actions/runners";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -42,8 +42,9 @@ export async function runToolActivity(
   const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
     runAgentDataRes.value;
 
-  const eventStream = getRunnerForActionConfiguration(actionConfiguration).run(
+  const eventStream = runToolWithStreaming(
     auth,
+    actionConfiguration,
     {
       agentConfiguration: agentConfiguration,
       conversation,
