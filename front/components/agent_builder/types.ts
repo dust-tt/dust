@@ -1,3 +1,4 @@
+import type { Icon } from "@dust-tt/sparkle";
 import { uniqueId } from "lodash";
 import { z } from "zod";
 
@@ -5,11 +6,11 @@ import type {
   agentBuilderFormSchema,
   agentBuilderMCPFormSchema,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
+import { DEFAULT_DATA_VISUALIZATION_DESCRIPTION, DEFAULT_DATA_VISUALIZATION_NAME, DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { SupportedModel } from "@app/types";
+import type { SupportedModel, WhitelistableFeature } from "@app/types";
 import { ioTsEnum } from "@app/types";
 
 type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
@@ -271,6 +272,17 @@ export function getDefaultMCPAction(
   };
 }
 
+export function getDataVisualizationActionConfiguration() {
+  return {
+    id: uniqueId(),
+    type: "DATA_VISUALIZATION",
+    configuration: null,
+    name: DEFAULT_DATA_VISUALIZATION_NAME,
+    description: DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
+    noConfigurationRequired: true,
+  };
+}
+
 export function isDefaultActionName(action: AgentBuilderAction) {
   return action.name.includes(DEFAULT_MCP_ACTION_NAME);
 }
@@ -280,4 +292,12 @@ export function getMcpServerViewDisplayName(
   action?: AgentBuilderAction
 ) {
   return getMcpServerDisplayName(view.server, action);
+}
+
+export interface ActionSpecification {
+  label: string;
+  description: string;
+  dropDownIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  cardIcon: NonNullable<React.ComponentProps<typeof Icon>["visual"]>;
+  flag: WhitelistableFeature | null;
 }

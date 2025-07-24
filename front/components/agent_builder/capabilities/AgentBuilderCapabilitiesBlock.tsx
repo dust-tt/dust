@@ -7,7 +7,7 @@ import {
   Page,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useFieldArray } from "react-hook-form";
 
 import type {
@@ -176,6 +176,11 @@ function ActionCard({
   );
 }
 
+const dataVisualizationAction = {
+  type: "DATA_VISUALIZATION",
+  ...DATA_VISUALIZATION_SPECIFICATION,
+};
+
 export function AgentBuilderCapabilitiesBlock() {
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
@@ -200,6 +205,45 @@ export function AgentBuilderCapabilitiesBlock() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedAction, setSelectedAction] =
     useState<AgentBuilderMCPAction | null>(null);
+
+  // TODO: Add logic for reasoning.
+  const selectableDefaultMCPServerViews = useMemo(
+    () =>
+      defaultMCPServerViews.filter((view) => {
+        const selectedAction = fields.find(
+          (field) => field.name === view.server.name
+        );
+
+        if (selectedAction) {
+          return !selectedAction.noConfigurationRequired;
+        }
+
+        return true;
+      }),
+    [defaultMCPServerViews, fields]
+  );
+
+  const selectableNonDefaultMCPServerViews = useMemo(
+    () =>
+      nonDefaultMCPServerViews.filter((view) => {
+        const selectedAction = fields.find(
+          (action) => action.name === view.server.name
+        );
+
+        if (selectedAction) {
+          return !selectedAction.noConfigurationRequired;
+        }
+
+        return true;
+      }),
+    [nonDefaultMCPServerViews, fields]
+  );
+
+  const dataVisualization = fields.some(
+    (field) => field.type === "DATA_VISUALIZATION"
+  )
+    ? null
+    : dataVisualizationAction;
 
   const handleEditSave = (updatedAction: AgentBuilderAction) => {
     if (editingAction) {
@@ -250,8 +294,9 @@ export function AgentBuilderCapabilitiesBlock() {
       <AddToolsDropdown
         tools={fields}
         addTools={append}
-        defaultMCPServerViews={defaultMCPServerViews}
-        nonDefaultMCPServerViews={nonDefaultMCPServerViews}
+        defaultMCPServerViews={selectableDefaultMCPServerViews}
+        nonDefaultMCPServerViews={selectableNonDefaultMCPServerViews}
+        dataVisualization={dataVisualization}
         isMCPServerViewsLoading={isMCPServerViewsLoading}
         setSelectedAction={setSelectedAction}
       />
