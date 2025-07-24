@@ -183,13 +183,6 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
 
   declare mcpServerConfigurationId: string;
 
-  declare params: Record<string, unknown>;
-
-  // TODO(durable-agents): drop this column (in addition to params and functionCallName).
-  declare functionCallId: string | null;
-  declare functionCallName: string | null;
-
-  declare step: number;
   declare version: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
   declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
@@ -204,6 +197,8 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
   declare agentMessage?: NonAttribute<AgentMessage>;
+  // TODO(2025-07-23 aubin): remove this once the analytics have been moved to the resource.
+  declare stepContent?: NonAttribute<AgentStepContentModel>;
 }
 
 AgentMCPAction.init(
@@ -220,22 +215,6 @@ AgentMCPAction.init(
     },
     mcpServerConfigurationId: {
       type: DataTypes.STRING,
-      allowNull: false,
-    },
-    params: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-    },
-    functionCallId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    functionCallName: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    step: {
-      type: DataTypes.INTEGER,
       allowNull: false,
     },
     version: {
@@ -291,6 +270,7 @@ AgentMessage.hasMany(AgentMCPAction, {
 
 AgentMCPAction.belongsTo(AgentStepContentModel, {
   foreignKey: { name: "stepContentId", allowNull: false },
+  as: "stepContent",
   onDelete: "RESTRICT",
 });
 
