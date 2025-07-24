@@ -4,7 +4,6 @@ import {
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { isMCPActionType } from "@app/lib/actions/types/guards";
 import { rand } from "@app/lib/utils/seeded_random";
 import type {
   AgentActionType,
@@ -53,11 +52,9 @@ export const getCitationsFromActions = (
 ): Record<string, CitationType> => {
   // MCP actions with search results.
   const searchResultsWithDocs = removeNulls(
-    actions
-      .filter(isMCPActionType)
-      .flatMap((action) =>
-        action.output?.filter(isSearchResultResourceType).map((o) => o.resource)
-      )
+    actions.flatMap((action) =>
+      action.output?.filter(isSearchResultResourceType).map((o) => o.resource)
+    )
   );
   const allMCPSearchResultsReferences = searchResultsWithDocs.reduce<{
     [key: string]: CitationType;
@@ -74,9 +71,9 @@ export const getCitationsFromActions = (
   );
 
   const websearchResultsWithDocs = removeNulls(
-    actions
-      .filter(isMCPActionType)
-      .flatMap((action) => action.output?.filter(isWebsearchResultResourceType))
+    actions.flatMap((action) =>
+      action.output?.filter(isWebsearchResultResourceType)
+    )
   );
 
   const allMCPWebsearchResultsReferences = websearchResultsWithDocs.reduce<{

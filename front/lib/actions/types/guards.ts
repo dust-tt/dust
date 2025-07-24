@@ -30,10 +30,6 @@ export function isDustAppRunConfiguration(
   );
 }
 
-export function isMCPActionType(arg: AgentActionType): arg is MCPActionType {
-  return arg.type === "tool_action";
-}
-
 export function isMCPServerConfiguration(
   arg: unknown
 ): arg is MCPServerConfigurationType {

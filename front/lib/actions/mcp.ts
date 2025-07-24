@@ -31,11 +31,9 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type {
+  ActionGeneratedFileType,
   AgentLoopRunContextType,
-  BaseActionRunParams,
-  ExtractActionBlob,
 } from "@app/lib/actions/types";
-import { BaseAction } from "@app/lib/actions/types";
 import type {
   ActionConfigurationType,
   AgentActionSpecification,
@@ -65,6 +63,7 @@ import { statsDClient } from "@app/logger/statsDClient";
 import type {
   AgentConfigurationType,
   AgentMessageType,
+  ConversationType,
   DustAppRunConfigurationType,
   FileUseCase,
   FileUseCaseMetadata,
@@ -305,10 +304,20 @@ export type AgentActionRunningEvents =
   | MCPApproveExecutionEvent
   | ToolNotificationEvent;
 
-type MCPActionBlob = ExtractActionBlob<MCPActionType>;
+type RemoveFunctionFields<T> = Pick<
+  T,
+  {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    [K in keyof T]: T[K] extends Function ? never : K;
+  }[keyof T]
+>;
+
+type MCPActionBlob = RemoveFunctionFields<MCPActionType>;
 
 // This action uses the MCP protocol to communicate
-export class MCPActionType extends BaseAction {
+export class MCPActionType {
+  readonly id: ModelId;
+  readonly generatedFiles: ActionGeneratedFileType[];
   readonly agentMessageId: ModelId;
   readonly executionState:
     | "pending"
@@ -328,7 +337,9 @@ export class MCPActionType extends BaseAction {
   readonly type = "tool_action" as const;
 
   constructor(blob: MCPActionBlob) {
-    super(blob.id, blob.type, blob.generatedFiles);
+    this.id = blob.id;
+    this.type = blob.type;
+    this.generatedFiles = blob.generatedFiles;
 
     this.agentMessageId = blob.agentMessageId;
     this.mcpServerConfigurationId = blob.mcpServerConfigurationId;
@@ -339,6 +350,10 @@ export class MCPActionType extends BaseAction {
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
+  }
+
+  getGeneratedFiles(): ActionGeneratedFileType[] {
+    return this.generatedFiles;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -478,7 +493,14 @@ export async function* runToolWithStreaming(
     stepActionIndex,
     stepActions,
     citationsRefsOffset,
-  }: BaseActionRunParams & {
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationType;
+    agentMessage: AgentMessageType;
+    rawInputs: Record<string, unknown>;
+    functionCallId: string;
+    step: number;
+    stepContentId: ModelId;
     stepActionIndex: number;
     stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
