@@ -39,7 +39,7 @@ import {
 } from "react";
 
 import type {
-  DataSourceBuilderTree,
+  DataSourceBuilderTreeType,
   NavigationHistoryEntryType,
 } from "@app/components/data_source_view/context/types";
 import {
@@ -56,7 +56,7 @@ import type {
 import { assertNever } from "@app/types";
 
 type StateType = {
-  sources: DataSourceBuilderTree;
+  sources: DataSourceBuilderTreeType;
   /**
    * Shape is `[root, space, category, ...node]`
    * so in this case we can use index to update specific values

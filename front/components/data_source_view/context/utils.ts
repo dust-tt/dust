@@ -1,5 +1,5 @@
 import type {
-  DataSourceBuilderTree,
+  DataSourceBuilderTreeType,
   NavigationHistoryEntryType,
 } from "@app/components/data_source_view/context/types";
 
@@ -12,7 +12,9 @@ function getPathPrefix(pathStr: string): string {
 }
 
 function isParentOrSamePath(parentPath: string, childPath: string): boolean {
-  return childPath === parentPath || childPath.startsWith(getPathPrefix(parentPath));
+  return (
+    childPath === parentPath || childPath.startsWith(getPathPrefix(parentPath))
+  );
 }
 
 /**
@@ -22,9 +24,9 @@ function isParentOrSamePath(parentPath: string, childPath: string): boolean {
  * @returns New tree with the node added
  */
 export function addNodeToTree(
-  tree: DataSourceBuilderTree,
+  tree: DataSourceBuilderTreeType,
   path: string[]
-): DataSourceBuilderTree {
+): DataSourceBuilderTreeType {
   const pathStr = pathToString(path);
   const pathPrefix = getPathPrefix(pathStr);
 
@@ -73,9 +75,9 @@ export function addNodeToTree(
  * @returns New tree with the node removed
  */
 export function removeNodeFromTree(
-  tree: DataSourceBuilderTree,
+  tree: DataSourceBuilderTreeType,
   path: string[]
-): DataSourceBuilderTree {
+): DataSourceBuilderTreeType {
   const pathStr = pathToString(path);
   const pathPrefix = getPathPrefix(pathStr);
 
@@ -143,7 +145,7 @@ export function removeNodeFromTree(
  * Optimized to use maximum 2 passes over the arrays.
  */
 export function isNodeSelected(
-  tree: DataSourceBuilderTree,
+  tree: DataSourceBuilderTreeType,
   path: string[]
 ): boolean | "partial" {
   const pathStr = pathToString(path);

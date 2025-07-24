@@ -4,7 +4,7 @@ import type {
   SpaceType,
 } from "@app/types";
 
-export type DataSourceBuilderTree = {
+export type DataSourceBuilderTreeType = {
   in: string[];
   notIn: string[];
 };
