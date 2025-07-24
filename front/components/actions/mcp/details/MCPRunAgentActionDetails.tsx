@@ -9,8 +9,7 @@ import { ExternalLinkIcon } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import {
   isRunAgentProgressOutput,
   isRunAgentQueryResourceType,
@@ -23,7 +22,7 @@ export function MCPRunAgentActionDetails({
   action,
   lastNotification,
   defaultOpen,
-}: ActionDetailsComponentBaseProps<MCPActionType>) {
+}: MCPActionDetailsProps) {
   const queryResource =
     action.output?.find(isRunAgentQueryResourceType) || null;
 

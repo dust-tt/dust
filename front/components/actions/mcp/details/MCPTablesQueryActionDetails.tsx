@@ -2,13 +2,12 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { CodeBlock, TableIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import {
   SqlQueryBlock,
   ThinkingBlock,
   ToolGeneratedFileDetails,
 } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
-import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isExecuteTablesQueryErrorResourceType,
   isSqlQueryOutput,
@@ -20,7 +19,7 @@ export function MCPTablesQueryActionDetails({
   action,
   defaultOpen,
   owner,
-}: ActionDetailsComponentBaseProps<MCPActionType>) {
+}: MCPActionDetailsProps) {
   const thinkingBlocks =
     action.output?.filter(isThinkingOutput).map((o) => o.resource) ?? [];
   const sqlQueryBlocks =
