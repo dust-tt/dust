@@ -280,13 +280,6 @@ export function isDefaultActionName(action: AgentBuilderAction) {
   return action.name.includes(DEFAULT_MCP_ACTION_NAME);
 }
 
-export function getMcpServerViewDisplayName(
-  view: MCPServerViewType,
-  action?: AgentBuilderAction
-) {
-  return getMcpServerDisplayName(view.server, action);
-}
-
 export interface ActionSpecification {
   label: string;
   description: string;
