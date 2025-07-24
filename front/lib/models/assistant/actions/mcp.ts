@@ -343,6 +343,10 @@ AgentMCPActionOutputItem.init(
     sequelize: frontSequelize,
     indexes: [
       {
+        fields: ["workspaceId"],
+        concurrently: true,
+      },
+      {
         fields: ["agentMCPActionId"],
         concurrently: true,
       },
