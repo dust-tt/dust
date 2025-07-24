@@ -83,7 +83,6 @@ impl AnthropicLLM {
         beta_flags: &Vec<&str>,
     ) -> Value {
         let mut body = json!({
-            // "model": self.id.clone(),
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
