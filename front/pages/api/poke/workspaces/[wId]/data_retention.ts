@@ -10,7 +10,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-export type GetDataRetentionResponseBody = {
+export type PokeGetDataRetentionResponseBody = {
   data: {
     workspace: number | null;
     agents: Record<string, number>;
@@ -19,7 +19,7 @@ export type GetDataRetentionResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetDataRetentionResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PokeGetDataRetentionResponseBody>>,
   session: SessionWithUser
 ): Promise<void> {
   const auth = await Authenticator.fromSuperUserSession(
@@ -52,7 +52,7 @@ async function handler(
   const workspaceRetention = await getWorkspaceDataRetention(auth);
   const agentsRetention = await getAgentsDataRetention(auth);
 
-  const response: GetDataRetentionResponseBody = {
+  const response: PokeGetDataRetentionResponseBody = {
     data: {
       workspace: workspaceRetention,
       agents: agentsRetention,
