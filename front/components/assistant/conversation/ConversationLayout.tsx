@@ -165,7 +165,6 @@ const ConversationLayoutContent = ({
               baseUrl={baseUrl}
               conversation={conversation}
               conversationError={conversationError}
-              conversationError={conversationError}
               owner={owner}
             >
               {children}

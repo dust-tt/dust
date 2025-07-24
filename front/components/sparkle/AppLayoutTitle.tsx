@@ -3,9 +3,10 @@ import React from "react";
 
 interface AppLayoutTitleProps {
   children?: React.ReactNode;
+  className?: string;
 }
 
-export function AppLayoutTitle({ children }: AppLayoutTitleProps) {
+export function AppLayoutTitle({ children, className }: AppLayoutTitleProps) {
   return (
     <div
       className={cn(
@@ -13,7 +14,8 @@ export function AppLayoutTitle({ children }: AppLayoutTitleProps) {
         "bg-background dark:bg-background-night",
         "dark:border-border-night",
         // When no children, only show on mobile for hamburger menu alignment.
-        !children && "block lg:hidden"
+        !children && "block lg:hidden",
+        className
       )}
     >
       {children}
