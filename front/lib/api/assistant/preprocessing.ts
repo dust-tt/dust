@@ -199,12 +199,72 @@ export async function renderConversationForModel(
           }
 
           if (step.actions.length) {
+            // Validate that all actions have results before pushing messages.
+            const actionsWithMissingResults = step.actions.filter(
+              (action) => !action.result
+            );
+
+            if (actionsWithMissingResults.length > 0) {
+              logger.error(
+                {
+                  workspaceId: conversation.owner.sId,
+                  conversationId: conversation.sId,
+                  agentMessageId: m.sId,
+                  missingResultCount: actionsWithMissingResults.length,
+                  actionIds: actionsWithMissingResults.map((a) => a.call.id),
+                },
+                "Agent message has actions without corresponding results"
+              );
+              // Skip this step to avoid Provider API error.
+              continue;
+            }
+
+            // Validate that function_call_ids match between calls and results
+            const mismatchedIds = step.actions.filter(
+              (action) => action.result && action.call.id !== action.result.function_call_id
+            );
+            
+            if (mismatchedIds.length > 0) {
+              logger.error(
+                {
+                  workspaceId: conversation.owner.sId,
+                  conversationId: conversation.sId,
+                  agentMessageId: m.sId,
+                  mismatchedCount: mismatchedIds.length,
+                  mismatches: mismatchedIds.map((a) => ({
+                    callId: a.call.id,
+                    resultId: a.result?.function_call_id,
+                  })),
+                },
+                "Function call IDs don't match between calls and results"
+              );
+            }
+
             messages.push({
               role: "assistant",
               function_calls: step.actions.map((s) => s.call),
               content: textContents.map((c) => c.value).join("\n"),
               contents: step.contents,
             } satisfies AssistantFunctionCallMessageTypeModel);
+
+            // Push all results immediately after function calls
+            for (const action of step.actions) {
+              if (!action.result) {
+                // This shouldn't happen due to validation above, but log if it does
+                logger.error(
+                  {
+                    workspaceId: conversation.owner.sId,
+                    conversationId: conversation.sId,
+                    agentMessageId: m.sId,
+                    actionCallId: action.call.id,
+                    actionName: action.call.name,
+                  },
+                  "Attempting to push null result for action"
+                );
+                continue;
+              }
+              messages.push(action.result);
+            }
           } else {
             messages.push({
               role: "assistant",
@@ -212,10 +272,6 @@ export async function renderConversationForModel(
               name: m.configuration.name,
               contents: step.contents,
             } satisfies AssistantContentMessageTypeModel);
-          }
-
-          for (const { result } of step.actions) {
-            messages.push(result);
           }
         }
       }
