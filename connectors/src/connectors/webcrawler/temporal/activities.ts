@@ -472,6 +472,17 @@ export async function firecrawlCrawlPage(
   });
 
   const connector = await ConnectorResource.fetchById(connectorId);
+
+  if (connector && connector.isPaused()) {
+    localLogger.info(
+      {
+        connectorId,
+      },
+      "Connector is paused, skipping"
+    );
+    return;
+  }
+
   const webCrawlerConfig =
     await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
 
