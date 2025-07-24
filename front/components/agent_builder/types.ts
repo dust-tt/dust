@@ -1,12 +1,19 @@
+import { uniqueId } from "lodash";
 import { z } from "zod";
 
-import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { agentBuilderFormSchema, agentBuilderMCPFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
+import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SupportedModel } from "@app/types";
 import { ioTsEnum } from "@app/types";
 
 type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
+type AgentBuilderMCPFormData = z.infer<typeof agentBuilderMCPFormSchema>
 
 export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
+export type AgentBuilderMCPAction = AgentBuilderMCPFormData["actions"][number];
 
 export type SearchAgentBuilderAction = Extract<
   AgentBuilderAction,
@@ -153,6 +160,7 @@ export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 
 export const DESCRIPTION_MAX_LENGTH = 800;
 
+// TODO: use mcpFormSchema for all tools.
 export const capabilityFormSchema = z.object({
   description: z
     .string()
@@ -166,6 +174,35 @@ export const capabilityFormSchema = z.object({
     .nullable()
     .default(null),
   jsonSchema: z.any().nullable().default(null),
+});
+
+export const mcpFormSchema = z.object({
+  configuration: z.object({
+    mcpServerViewId: z.string(),
+    dataSourceConfigurations: z.any().nullable().default(null),
+    tablesConfigurations: z.any().nullable().default(null),
+    childAgentId: z.string().nullable().default(null),
+    reasoningModel: z.any().nullable().default(null),
+    timeFrame: z
+      .object({
+        duration: z.number(),
+        unit: z.enum(["hour", "day", "week", "month", "year"]),
+      })
+      .nullable()
+      .default(null),
+    additionalConfiguration: z
+      .record(z.union([z.boolean(), z.number(), z.string()]))
+      .default({}),
+    dustAppConfiguration: z.any().nullable().default(null),
+    jsonSchema: z.any().nullable().default(null),
+    _jsonSchemaString: z.string().nullable().default(null),
+  }),
+  name: z.string().default(""),
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(DESCRIPTION_MAX_LENGTH, "Description too long")
+    .default(""),
 });
 
 export type CapabilityFormData = z.infer<typeof capabilityFormSchema>;
@@ -200,3 +237,45 @@ export const dataSourceConfigurationSchema = z.object({
       .optional(),
   }),
 });
+
+
+export function getDefaultMCPAction(
+  mcpServerView?: MCPServerViewType
+): AgentBuilderMCPAction {
+  const requirements = getMCPServerRequirements(mcpServerView);
+
+  return {
+    id: uniqueId(),
+    type: "MCP",
+    configuration: {
+      mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
+      dataSourceConfigurations: null,
+      tablesConfigurations: null,
+      childAgentId: null,
+      reasoningModel: null,
+      timeFrame: null,
+      additionalConfiguration: {},
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      _jsonSchemaString: null,
+    },
+    name: mcpServerView?.server.name ?? "",
+    description:
+      requirements.requiresDataSourceConfiguration ||
+      requirements.requiresTableConfiguration
+        ? ""
+        : mcpServerView?.server.description ?? "",
+    noConfigurationRequired: requirements.noRequirement,
+  };
+}
+
+export function isDefaultActionName(action: AgentBuilderAction) {
+  return action.name.includes(DEFAULT_MCP_ACTION_NAME);
+}
+
+export function getMcpServerViewDisplayName(
+  view: MCPServerViewType,
+  action?: AgentBuilderAction
+) {
+  return getMcpServerDisplayName(view.server, action);
+}

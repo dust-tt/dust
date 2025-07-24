@@ -51,10 +51,6 @@ const searchActionConfigurationSchema = z.object({
   ),
 });
 
-const dataVisualizationActionConfigurationSchema = z.object({
-  type: z.literal("DATA_VISUALIZATION"),
-});
-
 const timeFrameSchema = z
   .object({
     duration: z.number().min(1),
@@ -80,6 +76,7 @@ const extractDataActionConfigurationSchema = z.object({
   timeFrame: timeFrameSchema,
   jsonSchema: z.custom<JSONSchema>().nullable(),
 });
+
 const queryTablesActionConfigurationSchema = z.object({
   type: z.literal("QUERY_TABLES"),
   dataSourceConfigurations: z.record(
@@ -111,7 +108,62 @@ const searchActionSchema = baseActionSchema.extend({
 
 const dataVisualizationActionSchema = baseActionSchema.extend({
   type: z.literal("DATA_VISUALIZATION"),
-  configuration: dataVisualizationActionConfigurationSchema,
+  configuration: z.null(),
+});
+
+const reasoningModelConfigurationSchema = z.object({
+  providerId: z.string(),
+  modelId: z.string(),
+  temperature: z.number().nullable(),
+  reasoningEffort: z.string().nullable(),
+});
+
+const dustAppRunConfigurationSchema = z.object({
+  appWorkspaceId: z.string(),
+  appId: z.string(),
+});
+
+const dataSourceViewSelectionConfigurationsSchema = z
+  .array(
+    z.object({
+      dataSourceViewId: z.string(),
+      filter: z.object({
+        parents: z
+          .object({
+            in: z.array(z.string()),
+            not: z.array(z.string()),
+          })
+          .nullable(),
+        tags: z
+          .object({
+            in: z.array(z.string()),
+            not: z.array(z.string()),
+            mode: z.enum(["custom", "auto"]),
+          })
+          .nullable(),
+      }),
+    })
+  )
+  .nullable();
+
+const mcpServerConfigurationSchema = z.object({
+  mcpServerViewId: z.string(),
+  dataSourceConfigurations: dataSourceViewSelectionConfigurationsSchema,
+  tablesConfigurations: dataSourceViewSelectionConfigurationsSchema,
+  childAgentId: z.string().nullable(),
+  reasoningModel: reasoningModelConfigurationSchema.nullable(),
+  timeFrame: timeFrameSchema,
+  additionalConfiguration: z.record(
+    z.union([z.boolean(), z.number(), z.string()])
+  ),
+  dustAppConfiguration: dustAppRunConfigurationSchema.nullable(),
+  jsonSchema: z.custom<JSONSchema>().nullable(),
+  _jsonSchemaString: z.string().nullable(),
+});
+
+const mcpActionSchema = baseActionSchema.extend({
+  type: z.literal("MCP"),
+  configuration: mcpServerConfigurationSchema,
 });
 
 const includeDataActionSchema = baseActionSchema.extend({
@@ -129,12 +181,14 @@ const queryTablesActionSchema = baseActionSchema.extend({
   configuration: queryTablesActionConfigurationSchema,
 });
 
+// TODO: the goal is to have only two schema: mcpActionSchema and dataVizSchema.
 const actionSchema = z.discriminatedUnion("type", [
   searchActionSchema,
   dataVisualizationActionSchema,
   includeDataActionSchema,
   extractDataActionSchema,
   queryTablesActionSchema,
+  mcpActionSchema,
 ]);
 
 const userSchema = z.object({
@@ -175,9 +229,20 @@ export const agentBuilderFormSchema = z.object({
   generationSettings: generationSettingsSchema,
   actions: z.array(actionSchema),
 });
+export const agentBuilderMCPFormSchema = z.object({
+  agentSettings: agentSettingsSchema,
+  instructions: z.string().min(1, "Instructions are required"),
+  generationSettings: generationSettingsSchema,
+  actions: z.array(mcpActionSchema),
+});
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
+// TODO: have only one AgentBuilderAction.
 export type AgentBuilderAction = z.infer<typeof actionSchema>;
+export type AgentBuilderMCPAction = z.infer<typeof mcpActionSchema>;
+export type AgentBuilderDataVizAction = z.infer<
+  typeof dataVisualizationActionSchema
+>;
 
 export type BaseActionData = z.infer<typeof baseActionSchema>;
