@@ -41,7 +41,13 @@ import type {
   RolePermission,
   UserType,
 } from "@app/types";
-import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import {
+  AGENT_GROUP_PREFIX,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -87,7 +93,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const defaultGroup = await GroupResource.makeNew(
       {
         workspaceId: workspace.id,
-        name: `Group for Agent ${agent.name} (${agent.sId})`,
+        name: `${AGENT_GROUP_PREFIX} ${agent.name} (${agent.sId})`,
         kind: "agent_editors",
       },
       { transaction }

@@ -43,16 +43,6 @@ export function isAgentEditorGroupKind(value: GroupKind): boolean {
   return value === "agent_editors";
 }
 
-export function prettifyGroupName(group: GroupType) {
-  if (group.kind === "global") {
-    return "Company Data";
-  }
-  if (group.kind === "agent_editors") {
-    return group.name.replace("Group for Agent ", "");
-  }
-  return group.name.replace("Group for Space ", "");
-}
-
 export type GroupType = {
   id: ModelId;
   name: string;
@@ -116,3 +106,6 @@ export function getHeaderFromRole(role: RoleType | undefined) {
     [DustRoleHeader]: role,
   };
 }
+
+export const AGENT_GROUP_PREFIX = "Group for Agent";
+export const SPACE_GROUP_PREFIX = "Group for space";

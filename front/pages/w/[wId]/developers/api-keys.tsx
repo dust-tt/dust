@@ -13,9 +13,12 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   IconButton,
   Input,
+  Label,
   Page,
   PlusIcon,
   ShapesIcon,
@@ -49,7 +52,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { prettifyGroupName } from "@app/types";
+import { AGENT_GROUP_PREFIX, SPACE_GROUP_PREFIX } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -155,6 +158,25 @@ export function APIKeys({
   if (isValidating) {
     return <Spinner />;
   }
+
+  const prettifyGroupName = (group: GroupType, key?: KeyType) => {
+    const globalGroupName = "Company Data";
+
+    if (group.kind === "global") {
+      return globalGroupName;
+    }
+
+    const restrictedGroupName =
+      group.kind === "agent_editors"
+        ? group.name.replace(AGENT_GROUP_PREFIX, "")
+        : group.name.replace(SPACE_GROUP_PREFIX, "");
+
+    if (key?.scope === "restricted_group_only") {
+      return restrictedGroupName;
+    }
+
+    return `${globalGroupName} & ${restrictedGroupName}`;
+  };
 
   return (
     <>
@@ -273,16 +295,15 @@ export function APIKeys({
               <DialogTitle>New API Key</DialogTitle>
             </DialogHeader>
             <DialogContainer>
+              <Label>API Key Name</Label>
               <Input
                 name="API Key"
                 placeholder="Type an API key name"
                 value={newApiKeyName}
                 onChange={(e) => setNewApiKeyName(e.target.value)}
               />
-              <div className="align-center flex flex-row items-center gap-2 p-2">
-                <span className="mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-muted-foreground dark:text-muted-foreground-night">
-                  Assign permissions to space:{" "}
-                </span>
+              <Label>Assign permissions to space(s)</Label>
+              <div className="flex flex-row">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -292,6 +313,8 @@ export function APIKeys({
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
+                    <DropdownMenuLabel label="Company Data is always selected." />
+                    <DropdownMenuSeparator />
                     {groups
                       .sort((a, b) => {
                         // Put global groups first
@@ -324,7 +347,7 @@ export function APIKeys({
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Ok",
+                label: "Create",
                 variant: "primary",
                 onClick: async () => {
                   await handleGenerate({
@@ -388,7 +411,10 @@ export function APIKeys({
                             >
                               Scoped to space:{" "}
                               <strong>
-                                {prettifyGroupName(groupsById[key.groupId])}
+                                {prettifyGroupName(
+                                  groupsById[key.groupId],
+                                  key
+                                )}
                               </strong>
                             </p>
                           )}
