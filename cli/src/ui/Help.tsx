@@ -100,6 +100,11 @@ const Help: FC = () => {
           (requires --agent and --message)
         </Text>
       </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>--auto</Text> Always accept edit operations without prompting for approval
+        </Text>
+      </Box>
     </Box>
   );
 };

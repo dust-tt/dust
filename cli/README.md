@@ -47,6 +47,7 @@ When no command is provided, the `chat` command will be used by default.
 - **`chat`**: Chat with a Dust agent (default command).
   - `dust chat` or simply `dust`
   - Optional: `--sId <sId>` or `-s <sId>` to specify the agent sId to use directly
+  - Optional: `--auto` to automatically accept all file edit operations without prompting
 - **`help`**: Display help information.
   - `dust help`
 
@@ -54,6 +55,7 @@ When no command is provided, the `chat` command will be used by default.
 
 - **`-v`, `--version`**: Display the installed CLI version.
 - **`-f`, `--force`**: Used with the `login` command to force re-authentication.
+- **`--auto`**: Automatically accept all file edit operations without prompting for approval (chat command only).
 - **`--help`**: Display help information for the CLI.
 
 ## Examples
@@ -65,6 +67,7 @@ When no command is provided, the `chat` command will be used by default.
 - `dust agents-mcp --sId 1234567890`
 - `dust chat`
 - `dust chat --sId 1234567890`
+- `dust chat --auto` (automatically accept all file edits)
 - `dust help`
 
 ## Development
