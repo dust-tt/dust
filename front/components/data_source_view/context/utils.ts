@@ -123,7 +123,7 @@ export function removeNodeFromTree(
   // 2. OR the path would be included by a parent and we're not removing child inclusions
   //    AND we didn't remove the exact path from in (if we removed exact path, just removing it is enough)
   if (
-    hasChildExclusions ||
+    (hasChildExclusions && !hasParentInclusion) ||
     (hasParentInclusion && !hasChildInclusions && !removedExactPath)
   ) {
     newNotIn.push(pathStr);
