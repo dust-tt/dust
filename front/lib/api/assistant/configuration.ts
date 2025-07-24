@@ -1137,6 +1137,7 @@ export async function createAgentActionConfiguration(
       name: action.name,
       description: action.description,
       mcpServerViewId: action.mcpServerViewId,
+      mcpServerName: action.mcpServerName,
       internalMCPServerId: action.internalMCPServerId,
       dataSources: action.dataSources,
       tables: action.tables,
