@@ -1,6 +1,5 @@
 import type {
   ClientSideMCPToolConfigurationType,
-  MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
@@ -13,7 +12,6 @@ import type {
   UnsavedAgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
 import type {
-  AgentActionType,
   AgentConfigurationType,
   DustAppRunConfigurationType,
   TemplateAgentConfigurationType,
