@@ -170,6 +170,10 @@ export const DESCRIPTION_MAX_LENGTH = 800;
 
 // TODO: use mcpFormSchema for all tools.
 export const capabilityFormSchema = z.object({
+  sources: z.object({
+    in: z.string().array(),
+    notIn: z.string().array(),
+  }),
   description: z
     .string()
     .min(1, "Description is required")

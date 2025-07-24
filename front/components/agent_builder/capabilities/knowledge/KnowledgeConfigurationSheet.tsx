@@ -5,8 +5,9 @@ import {
   ScrollArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
+import type { Control } from "react-hook-form";
+import { createFormControl, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -25,6 +26,7 @@ import {
   CAPABILITY_CONFIGS,
   generateActionFromFormData,
 } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import type {
   CapabilityFormData,
   ConfigurationSheetPageId,
@@ -37,10 +39,7 @@ import {
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
-import { FormProvider } from "@app/components/sparkle/FormProvider";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
-
-import { useDataSourceViewsContext } from "../../DataSourceViewsContext";
 
 interface KnowledgeConfigurationSheetProps {
   capability: KnowledgeServerName | null;
@@ -70,12 +69,44 @@ export function KnowledgeConfigurationSheet({
     }, 200);
   };
 
+  const handleSave = (formData: CapabilityFormData) => {
+    if (!config) {
+      // never going here
+      return;
+    }
+
+    const newAction = generateActionFromFormData({
+      config,
+      formData,
+      dataSourceConfigurations: getDataSourceConfigurations(action),
+      actionId: action?.id,
+    });
+
+    if (newAction) {
+      onSave(newAction);
+    }
+
+    handleClose();
+  };
+
   useEffect(() => {
     if (isOpen) {
       setConfig(capability ? CAPABILITY_CONFIGS[capability] : null);
     }
   }, [capability, isOpen]);
 
+  const { control, handleSubmit } = createFormControl<CapabilityFormData>({
+    resolver: zodResolver(capabilityFormSchema),
+    defaultValues: {
+      sources: {
+        in: [],
+        notIn: [],
+      },
+      description: action?.description ?? "",
+      timeFrame: getTimeFrame(action),
+      jsonSchema: getJsonSchema(action),
+    },
+  });
   return (
     <MultiPageSheet
       open={isOpen}
@@ -90,7 +121,8 @@ export function KnowledgeConfigurationSheet({
           config={config}
           onClose={handleClose}
           action={action}
-          onSave={onSave}
+          onSave={handleSubmit(handleSave)}
+          control={control}
         />
       )}
     </MultiPageSheet>
@@ -100,16 +132,17 @@ export function KnowledgeConfigurationSheet({
 interface KnowledgeConfigurationSheetContentProps {
   config: CapabilityConfig;
   action?: AgentBuilderAction;
-  onSave: (action: AgentBuilderAction) => void;
+  onSave: () => void;
   onClose: () => void;
+  control: Control<CapabilityFormData>;
 }
 
 // This component gets unmounted when config is null so no need to reset the state.
 function KnowledgeConfigurationSheetContent({
   action,
-  onSave,
   config,
-  onClose,
+  onSave,
+  control,
 }: KnowledgeConfigurationSheetContentProps) {
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
@@ -127,31 +160,7 @@ function KnowledgeConfigurationSheetContent({
       getDataSourceConfigurations(action)
     );
 
-  const form = useForm<CapabilityFormData>({
-    resolver: zodResolver(capabilityFormSchema),
-    defaultValues: {
-      description: action?.description ?? "",
-      timeFrame: getTimeFrame(action),
-      jsonSchema: getJsonSchema(action),
-    },
-  });
-
   const hasDataSources = hasDataSourceSelections(dataSourceConfigurations);
-
-  const handleSave = (formData: CapabilityFormData) => {
-    const newAction = generateActionFromFormData({
-      config,
-      formData,
-      dataSourceConfigurations,
-      actionId: action?.id,
-    });
-
-    if (newAction) {
-      onSave(newAction);
-    }
-
-    onClose();
-  };
 
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
@@ -169,6 +178,7 @@ function KnowledgeConfigurationSheetContent({
         <div className="space-y-4">
           <ScrollArea>
             <DataSourceBuilderSelector
+              control={control}
               dataSourceViews={supportedDataSourceViews}
               allowedSpaces={spaces}
               owner={owner}
@@ -186,32 +196,43 @@ function KnowledgeConfigurationSheetContent({
       description: config.configPageDescription,
       icon: config.icon,
       content: (
-        <FormProvider form={form} onSubmit={handleSave}>
-          <div className="space-y-6">
-            {config.hasTimeFrame && (
-              <TimeFrameSection
-                actionType={
-                  config.name === "extract_data" ? "extract" : "include"
-                }
-              />
-            )}
-            {config.hasJsonSchema && (
-              <JsonSchemaSection
-                initialSchemaString={
-                  action && getJsonSchema(action)
-                    ? JSON.stringify(getJsonSchema(action), null, 2)
-                    : null
-                }
-                agentInstructions={instructions}
-                owner={owner}
-              />
-            )}
-            <DescriptionSection {...config.descriptionConfig} />
-          </div>
-        </FormProvider>
+        <div className="space-y-6">
+          {config.hasTimeFrame && (
+            <TimeFrameSection
+              control={control}
+              actionType={
+                config.name === "extract_data" ? "extract" : "include"
+              }
+            />
+          )}
+          {config.hasJsonSchema && (
+            <JsonSchemaSection
+              control={control}
+              initialSchemaString={
+                action && getJsonSchema(action)
+                  ? JSON.stringify(getJsonSchema(action), null, 2)
+                  : null
+              }
+              agentInstructions={instructions}
+              owner={owner}
+            />
+          )}
+          <DescriptionSection control={control} {...config.descriptionConfig} />
+        </div>
       ),
     },
   ];
+
+  const sources = useWatch({
+    control,
+    name: "sources",
+  });
+  const disableNext = useMemo(() => {
+    if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION) {
+      return sources.in.length <= 0 && sources.notIn.length <= 0;
+    }
+    return false;
+  }, [currentPageId, sources.in.length, sources.notIn.length]);
 
   return (
     <MultiPageSheetContent
@@ -220,19 +241,11 @@ function KnowledgeConfigurationSheetContent({
       onPageChange={handlePageChange}
       onSave={async (e) => {
         e.preventDefault();
-
-        const isValid = await form.trigger();
-
-        if (isValid) {
-          await form.handleSubmit(handleSave)();
-        }
+        onSave();
       }}
       size="lg"
       showNavigation
-      disableNext={
-        currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION &&
-        !hasDataSources
-      }
+      disableNext={disableNext}
       disableSave={!hasDataSources}
     />
   );

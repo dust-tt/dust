@@ -1,5 +1,6 @@
 import { Button, SparklesIcon, TextArea } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
+import type { Control } from "react-hook-form";
 import { useController, useFormContext } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
@@ -14,6 +15,7 @@ interface JsonSchemaSectionProps {
   helpText?: string;
   agentInstructions?: string;
   owner: WorkspaceType;
+  control: Control<CapabilityFormData>;
 }
 
 export function JsonSchemaSection({
@@ -23,9 +25,11 @@ export function JsonSchemaSection({
   helpText,
   agentInstructions,
   owner,
+  control,
 }: JsonSchemaSectionProps) {
   const { getValues } = useFormContext();
-  const { field } = useController<CapabilityFormData, "jsonSchema">({
+  const { field } = useController({
+    control,
     name: "jsonSchema",
   });
 

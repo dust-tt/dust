@@ -37,7 +37,9 @@ import {
   useMemo,
   useReducer,
 } from "react";
+import type { Control } from "react-hook-form";
 
+import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type {
   DataSourceBuilderTreeType,
   NavigationHistoryEntryType,
@@ -232,6 +234,7 @@ export function DataSourceBuilderProvider({
 }: {
   spaces: SpaceType[];
   children: React.ReactNode;
+  control: Control<CapabilityFormData>;
 }) {
   const [state, dispatch] = useReducer(dataSourceBuilderReducer, {
     spaces,

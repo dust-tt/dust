@@ -9,6 +9,7 @@ import {
   Input,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
+import type { Control } from "react-hook-form";
 import { useController, useFormContext } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
@@ -43,23 +44,23 @@ const ACTION_CONFIG: Record<
 
 interface TimeFrameSectionProps {
   actionType: ActionType;
+  control: Control<CapabilityFormData>;
 }
 
-export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
+export function TimeFrameSection({
+  actionType,
+  control,
+}: TimeFrameSectionProps) {
   const { setValue, getValues } = useFormContext();
   const [isChecked, setIsChecked] = useState(() => !!getValues("timeFrame"));
 
-  const { field: durationField } = useController<
-    CapabilityFormData,
-    "timeFrame.duration"
-  >({
+  const { field: durationField } = useController({
+    control,
     name: "timeFrame.duration",
   });
 
-  const { field: unitField } = useController<
-    CapabilityFormData,
-    "timeFrame.unit"
-  >({
+  const { field: unitField } = useController({
+    control,
     name: "timeFrame.unit",
   });
 
