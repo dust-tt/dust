@@ -8,10 +8,7 @@ use axum::{
 use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
 
 use dust::{
-    databases::{
-        table::{LocalTable, Table},
-        table_upserts_background_worker::TableUpsertsBackgroundWorker,
-    },
+    databases::table::{LocalTable, Table},
     databases_store::{self},
     open_telemetry::init_subscribers,
     sqlite_workers::{
@@ -348,12 +345,6 @@ fn main() {
 
     let r = rt.block_on(async {
         let _guard = init_subscribers()?;
-
-        // Start the background worker for table upserts. Note that this is not related
-        // to sqlite, but we put it here for convenience.
-        tokio::task::spawn(async move {
-            TableUpsertsBackgroundWorker::start_loop().await;
-        });
 
         let s =
             databases_store::postgres::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
