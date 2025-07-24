@@ -29,28 +29,20 @@ export async function runToolActivity(
   const auth = await Authenticator.fromJSON(authType);
 
   // Fetch step content to derive inputs, functionCallId, and step
-  const stepContent = await AgentStepContentResource.fetchByModelId(
-    stepContentId
-  );
+  const stepContent =
+    await AgentStepContentResource.fetchByModelId(stepContentId);
   if (!stepContent) {
     throw new Error(
       `Step content not found for stepContentId: ${stepContentId}`
     );
   }
-
   if (!isFunctionCallContent(stepContent.value)) {
     throw new Error(
       `Expected step content to be a function call, got: ${stepContent.value.type}`
     );
   }
 
-  const functionCallContent = stepContent.value as FunctionCallContentType;
-  const inputs = JSON.parse(functionCallContent.value.arguments) as Record<
-    string,
-    string | boolean | number
-  >;
-  const functionCallId = functionCallContent.value.id;
-  const step = stepContent.step;
+  const { step } = stepContent;
 
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
@@ -64,8 +56,8 @@ export async function runToolActivity(
     agentConfiguration: agentConfiguration,
     conversation,
     agentMessage,
-    rawInputs: inputs,
-    functionCallId,
+    rawInputs: JSON.parse(stepContent.value.value.arguments),
+    functionCallId: stepContent.value.value.id,
     step,
     stepContext,
     stepContentId,
