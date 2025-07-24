@@ -14,7 +14,7 @@ import CopyRun from "@app/components/app/CopyRun";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ConfirmContext } from "@app/components/Confirm";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { cleanSpecificationFromCore, getRun } from "@app/lib/api/run";
@@ -137,11 +137,11 @@ export default function AppRun({
   const router = useRouter();
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
-      titleChildren={
+      title={
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
@@ -249,7 +249,7 @@ export default function AppRun({
         </div>
         <div className="mt-4"></div>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 

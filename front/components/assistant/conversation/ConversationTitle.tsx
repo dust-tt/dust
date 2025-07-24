@@ -17,6 +17,7 @@ import { useSWRConfig } from "swr";
 
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
+import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   useConversation,
   useDeleteConversation,
@@ -111,129 +112,131 @@ export function ConversationTitle({
           void onDelete();
         }}
       />
-      <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
-        <div className="flex min-w-0 flex-row items-center gap-4 text-muted-foreground dark:text-muted-foreground-night">
-          {!isEditingTitle ? (
-            <div className="min-w-0 overflow-hidden truncate">
-              {conversation?.title || ""}
-            </div>
-          ) : (
-            <div className="w-[84%]">
-              <Input
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                onFocus={() => (titleInputFocused.current = true)}
-                onBlur={() => {
-                  setTimeout(() => {
-                    if (!saveButtonFocused.current) {
-                      setIsEditingTitle(false);
+      <AppLayoutTitle>
+        <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
+          <div className="flex min-w-0 flex-row items-center gap-4 text-muted-foreground dark:text-muted-foreground-night">
+            {!isEditingTitle ? (
+              <div className="min-w-0 overflow-hidden truncate">
+                {conversation?.title || ""}
+              </div>
+            ) : (
+              <div className="w-[84%]">
+                <Input
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onFocus={() => (titleInputFocused.current = true)}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      if (!saveButtonFocused.current) {
+                        setIsEditingTitle(false);
+                      }
+                      titleInputFocused.current = false;
+                    }, 0);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      return onTitleChange(editedTitle);
                     }
-                    titleInputFocused.current = false;
-                  }, 0);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    return onTitleChange(editedTitle);
-                  }
-                }}
-                autoFocus
-              />
-            </div>
-          )}
+                  }}
+                  autoFocus
+                />
+              </div>
+            )}
 
-          {isEditingTitle ? (
-            <div className="flex flex-row gap-2">
-              <div
-                onClick={(e: MouseEvent<HTMLDivElement>) => {
-                  e.preventDefault();
-                  return onTitleChange(editedTitle);
-                }}
-                // See comment on the input above.
-                onFocus={() => (saveButtonFocused.current = true)}
-                onBlur={() => {
-                  setTimeout(() => {
-                    if (!titleInputFocused.current) {
-                      setIsEditingTitle(false);
-                    }
-                    saveButtonFocused.current = false;
-                  }, 0);
-                }}
-                className="flex items-center"
-              >
-                <Button size="mini" icon={CheckIcon} variant="primary" />
+            {isEditingTitle ? (
+              <div className="flex flex-row gap-2">
+                <div
+                  onClick={(e: MouseEvent<HTMLDivElement>) => {
+                    e.preventDefault();
+                    return onTitleChange(editedTitle);
+                  }}
+                  // See comment on the input above.
+                  onFocus={() => (saveButtonFocused.current = true)}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      if (!titleInputFocused.current) {
+                        setIsEditingTitle(false);
+                      }
+                      saveButtonFocused.current = false;
+                    }, 0);
+                  }}
+                  className="flex items-center"
+                >
+                  <Button size="mini" icon={CheckIcon} variant="primary" />
+                </div>
+                <Button
+                  icon={XMarkIcon}
+                  size="mini"
+                  onClick={() => {
+                    setIsEditingTitle(false);
+                    setEditedTitle("");
+                  }}
+                  variant="outline"
+                />
               </div>
+            ) : (
               <Button
-                icon={XMarkIcon}
-                size="mini"
+                icon={PencilSquareIcon}
                 onClick={() => {
-                  setIsEditingTitle(false);
-                  setEditedTitle("");
+                  setEditedTitle(conversation?.title || "");
+                  setIsEditingTitle(true);
                 }}
-                variant="outline"
+                size="mini"
+                variant="ghost-secondary"
               />
-            </div>
-          ) : (
+            )}
+          </div>
+          <div className="flex items-center gap-2">
             <Button
-              icon={PencilSquareIcon}
-              onClick={() => {
-                setEditedTitle(conversation?.title || "");
-                setIsEditingTitle(true);
-              }}
-              size="mini"
-              variant="ghost-secondary"
+              size="sm"
+              variant="ghost"
+              tooltip="Delete Conversation"
+              icon={TrashIcon}
+              onClick={() => setShowDeleteDialog(true)}
             />
-          )}
+            <Popover
+              popoverTriggerAsChild
+              trigger={
+                <div>
+                  <div className="hidden sm:flex">
+                    <Button
+                      size="sm"
+                      label="Share"
+                      icon={ArrowUpOnSquareIcon}
+                      variant="ghost"
+                    />
+                  </div>
+                  <div className="flex sm:hidden">
+                    <Button
+                      size="sm"
+                      tooltip="Share"
+                      icon={ArrowUpOnSquareIcon}
+                      variant="ghost"
+                    />
+                  </div>
+                </div>
+              }
+              content={
+                <div className="flex flex-col gap-y-4">
+                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                    Share the conversation link with other members of your
+                    workspace to invite them to contribute.
+                  </div>
+                  <div className="flex">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      label={copyLinkSuccess ? "Copied!" : "Copy the link"}
+                      icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
+                      onClick={handleClick}
+                    />
+                  </div>
+                </div>
+              }
+            />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            tooltip="Delete Conversation"
-            icon={TrashIcon}
-            onClick={() => setShowDeleteDialog(true)}
-          />
-          <Popover
-            popoverTriggerAsChild
-            trigger={
-              <div>
-                <div className="hidden sm:flex">
-                  <Button
-                    size="sm"
-                    label="Share"
-                    icon={ArrowUpOnSquareIcon}
-                    variant="ghost"
-                  />
-                </div>
-                <div className="flex sm:hidden">
-                  <Button
-                    size="sm"
-                    tooltip="Share"
-                    icon={ArrowUpOnSquareIcon}
-                    variant="ghost"
-                  />
-                </div>
-              </div>
-            }
-            content={
-              <div className="flex flex-col gap-y-4">
-                <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                  Share the conversation link with other members of your
-                  workspace to invite them to contribute.
-                </div>
-                <div className="flex">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    label={copyLinkSuccess ? "Copied!" : "Copy the link"}
-                    icon={copyLinkSuccess ? ClipboardCheckIcon : LinkIcon}
-                    onClick={handleClick}
-                  />
-                </div>
-              </div>
-            }
-          />
-        </div>
-      </div>
+      </AppLayoutTitle>
     </>
   );
 }

@@ -13,7 +13,7 @@ import { useEffect } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -169,11 +169,11 @@ export default function SettingsView({
   }, [appName]);
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
-      titleChildren={
+      title={
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
@@ -247,7 +247,7 @@ export default function SettingsView({
           </div>
         </div>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 

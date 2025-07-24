@@ -261,13 +261,13 @@ export function ConversationContainer({
     [
       async,
       isSubmitting,
-      owner,
-      user,
-      sendNotification,
-      router,
       mutateConversations,
+      owner,
+      router,
       scrollConversationsToTop,
+      sendNotification,
       serverId,
+      user,
     ]
   );
 
