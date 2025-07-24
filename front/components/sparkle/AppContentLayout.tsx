@@ -5,6 +5,7 @@ import React from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
+import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
@@ -42,6 +43,7 @@ export const appLayoutBack = async (
 
 export interface AppContentLayoutProps {
   children: React.ReactNode;
+  hasTitle?: boolean;
   hideSidebar?: boolean;
   navChildren?: React.ReactNode;
   owner: WorkspaceType;
@@ -55,6 +57,7 @@ export interface AppContentLayoutProps {
 // When you need to use AppContentLayout, add `getLayout` function to your page and wrap the page with AppRootLayout.
 export default function AppContentLayout({
   children,
+  hasTitle = false,
   hideSidebar = false,
   navChildren,
   owner,
@@ -70,6 +73,21 @@ export default function AppContentLayout({
   React.useEffect(() => {
     setLoaded(true);
   }, []);
+
+  // Temporary measure to preserve title existence on smaller screens.
+  const contentWithTitle = React.useMemo(() => {
+    if (!loaded || hasTitle) {
+      return children;
+    }
+
+    // Page has no title, prepend empty AppLayoutTitle.
+    return (
+      <>
+        <AppLayoutTitle />
+        {children}
+      </>
+    );
+  }, [children, hasTitle, loaded]);
 
   return (
     <div className="flex h-full flex-row">
@@ -92,7 +110,7 @@ export default function AppContentLayout({
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        {loaded && children}
+        {loaded && contentWithTitle}
       </div>
     </div>
   );

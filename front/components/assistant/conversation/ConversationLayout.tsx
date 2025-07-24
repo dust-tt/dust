@@ -140,6 +140,7 @@ const ConversationLayoutContent = ({
   return (
     <InputBarProvider>
       <AppContentLayout
+        hasTitle={!!activeConversationId}
         subscription={subscription}
         owner={owner}
         pageTitle={
@@ -214,12 +215,8 @@ function ConversationInnerLayout({
       >
         <ResizablePanel defaultSize={100}>
           <div className="flex h-full flex-col">
-            {activeConversationId ? (
+            {activeConversationId && (
               <ConversationTitle owner={owner} baseUrl={baseUrl} />
-            ) : (
-              <AppLayoutTitle>
-                <></>
-              </AppLayoutTitle>
             )}
             {conversationError ? (
               <ConversationErrorDisplay error={conversationError} />

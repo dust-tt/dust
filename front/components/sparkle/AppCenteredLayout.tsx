@@ -17,7 +17,7 @@ export function AppCenteredLayout({
   ...props
 }: AppCenteredLayoutProps) {
   return (
-    <AppContentLayout {...props}>
+    <AppContentLayout hasTitle={!!title} {...props}>
       {title && title}
       <div className="flex h-full w-full flex-col items-center overflow-y-auto pt-8">
         <div className="flex w-full max-w-4xl grow flex-col px-4 sm:px-8">

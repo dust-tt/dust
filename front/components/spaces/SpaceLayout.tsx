@@ -13,6 +13,7 @@ import React, { useCallback, useState } from "react";
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
+import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
@@ -99,6 +100,7 @@ export function SpaceLayout({
           openSpaceCreationModal={openSpaceCreationModal}
         />
       }
+      title={<AppLayoutTitle />}
     >
       <div className="flex w-full flex-col">
         <Page.Vertical gap="lg" align="stretch">

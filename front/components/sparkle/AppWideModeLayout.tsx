@@ -14,7 +14,7 @@ export function AppWideModeLayout({
   ...props
 }: AppWideModeLayoutProps) {
   return (
-    <AppContentLayout {...props}>
+    <AppContentLayout hasTitle={false} {...props}>
       <div className="flex h-full w-full flex-col items-center overflow-y-auto pt-8">
         <div className="flex w-full grow flex-col px-4 sm:px-8">{children}</div>
       </div>
