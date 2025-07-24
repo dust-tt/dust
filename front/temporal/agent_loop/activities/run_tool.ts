@@ -17,6 +17,7 @@ export async function runToolActivity(
     functionCallId,
     step,
     stepActionIndex,
+    action,
     stepActions,
     citationsRefsOffset,
     stepContentId,
@@ -26,6 +27,7 @@ export async function runToolActivity(
     functionCallId: string;
     step: number;
     stepActionIndex: number;
+    action: ActionConfigurationType;
     stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
     stepContentId: ModelId;
@@ -33,7 +35,6 @@ export async function runToolActivity(
 ): Promise<{ citationsIncrement: number }> {
   const auth = await Authenticator.fromJSON(authType);
 
-  const actionConfiguration = stepActions[stepActionIndex];
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
@@ -42,7 +43,7 @@ export async function runToolActivity(
   const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
     runAgentDataRes.value;
 
-  const eventStream = runToolWithStreaming(auth, actionConfiguration, {
+  const eventStream = runToolWithStreaming(auth, action, {
     agentConfiguration: agentConfiguration,
     conversation,
     agentMessage,

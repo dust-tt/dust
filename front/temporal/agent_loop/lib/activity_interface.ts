@@ -26,6 +26,7 @@ export interface AgentLoopActivities {
       functionCallId: string;
       step: number;
       stepActionIndex: number;
+      action: ActionConfigurationType;
       stepActions: ActionConfigurationType[];
       citationsRefsOffset: number;
       stepContentId: ModelId;

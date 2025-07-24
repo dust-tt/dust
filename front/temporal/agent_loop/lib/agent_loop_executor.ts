@@ -52,13 +52,14 @@ export async function executeAgentLoop(
     const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
     const citationsIncrements = await Promise.all(
-      actionsToRun.map(({ inputs, functionCallId }, index) =>
+      actionsToRun.map(({ inputs, functionCallId, action }, index) =>
         activities.runToolActivity(authType, {
           runAgentArgs,
           inputs,
           functionCallId,
           step: i,
           stepActionIndex: index,
+          action,
           stepActions: actionsToRun.map((a) => a.action),
           citationsRefsOffset,
           stepContentId: functionCallStepContentIds[functionCallId],
