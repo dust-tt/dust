@@ -42,22 +42,18 @@ export async function runToolActivity(
   const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
     runAgentDataRes.value;
 
-  const eventStream = runToolWithStreaming(
-    auth,
-    actionConfiguration,
-    {
-      agentConfiguration: agentConfiguration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-      stepActionIndex,
-      stepActions,
-      citationsRefsOffset,
-      stepContentId,
-    }
-  );
+  const eventStream = runToolWithStreaming(auth, actionConfiguration, {
+    agentConfiguration: agentConfiguration,
+    conversation,
+    agentMessage,
+    rawInputs: inputs,
+    functionCallId,
+    step,
+    stepActionIndex,
+    stepActions,
+    citationsRefsOffset,
+    stepContentId,
+  });
 
   for await (const event of eventStream) {
     switch (event.type) {
