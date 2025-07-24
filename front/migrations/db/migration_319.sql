@@ -1,0 +1,2 @@
+-- Migration created on Jul 24, 2025
+CREATE UNIQUE INDEX CONCURRENTLY "agent_mcp_actions_workspace_msg_step_version_unique" ON "agent_mcp_actions" ("workspaceId", "agentMessageId", "stepContentId", "version");

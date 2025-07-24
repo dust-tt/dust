@@ -255,6 +255,12 @@ AgentMCPAction.init(
         fields: ["stepContentId"],
         concurrently: true,
       },
+      {
+        unique: true,
+        fields: ["workspaceId", "agentMessageId", "stepContentId", "version"],
+        concurrently: true,
+        name: "agent_mcp_actions_workspace_msg_step_version_unique",
+      },
     ],
   }
 );
