@@ -10,6 +10,7 @@ import {
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -55,6 +56,14 @@ export function DataSourceNodeTable({
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [nodeRows, setNodeRows] = useState<NodeRowData[]>([]);
   const { isDark } = useTheme();
+  const {
+    selectNode,
+    selectCurrentNavigationEntry,
+    removeNode,
+    removeCurrentNavigationEntry,
+    isRowSelected,
+    isCurrentNavigationEntrySelected,
+  } = useDataSourceBuilderContext();
 
   const {
     cursorPagination,
@@ -182,22 +191,22 @@ export function DataSourceNodeTable({
         id: "select",
         enableSorting: false,
         enableHiding: false,
-        header: ({ table }) => (
+        header: () => (
           <Checkbox
             size="xs"
-            checked={
-              table.getIsAllRowsSelected()
-                ? true
-                : table.getIsSomeRowsSelected()
-                  ? "partial"
-                  : false
-            }
+            checked={isCurrentNavigationEntrySelected()}
             onClick={(event) => event.stopPropagation()}
             onCheckedChange={(state) => {
               if (state === "indeterminate") {
+                removeCurrentNavigationEntry();
                 return;
               }
-              table.toggleAllRowsSelected(state);
+
+              if (state) {
+                selectCurrentNavigationEntry();
+              } else {
+                removeCurrentNavigationEntry();
+              }
             }}
           />
         ),
@@ -205,14 +214,20 @@ export function DataSourceNodeTable({
           <div className="flex h-full w-full items-center">
             <Checkbox
               size="xs"
-              checked={row.getIsSelected()}
+              checked={isRowSelected(row.original.id)}
               disabled={!row.getCanSelect()}
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
                 if (state === "indeterminate") {
+                  removeNode(row.original.id);
                   return;
                 }
-                row.toggleSelected(state);
+
+                if (state) {
+                  selectNode(row.original.id);
+                } else {
+                  removeNode(row.original.id);
+                }
               }}
             />
           </div>
@@ -238,7 +253,14 @@ export function DataSourceNodeTable({
         },
       },
     ],
-    []
+    [
+      isCurrentNavigationEntrySelected,
+      isRowSelected,
+      removeCurrentNavigationEntry,
+      removeNode,
+      selectCurrentNavigationEntry,
+      selectNode,
+    ]
   );
 
   const isLoading =
