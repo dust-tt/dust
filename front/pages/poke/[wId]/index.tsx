@@ -40,6 +40,7 @@ import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import type { ActionRegistry } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import type {
   ExtensionConfigurationType,
   SubscriptionType,
@@ -147,6 +148,14 @@ const WorkspacePage = ({
     }
   );
 
+  const { data: dataRetention } = usePokeDataRetention({
+    owner,
+    disabled: false,
+  });
+
+  const workspaceRetention = dataRetention?.workspace ?? null;
+  const agentsRetention = dataRetention?.agents ?? {};
+
   return (
     <>
       <div className="ml-8 p-6">
@@ -201,6 +210,7 @@ const WorkspacePage = ({
                 workspaceVerifiedDomains={workspaceVerifiedDomains}
                 workspaceCreationDay={workspaceCreationDay}
                 extensionConfig={extensionConfig}
+                workspaceRetention={workspaceRetention}
               />
               <div className="flex flex-grow flex-col gap-4">
                 <PluginList
@@ -222,7 +232,10 @@ const WorkspacePage = ({
             <MCPServerViewsDataTable owner={owner} />
             <SpaceDataTable owner={owner} />
             <GroupDataTable owner={owner} />
-            <AssistantsDataTable owner={owner} />
+            <AssistantsDataTable
+              owner={owner}
+              agentsRetention={agentsRetention}
+            />
             <AppDataTable owner={owner} />
             <FeatureFlagsDataTable
               owner={owner}
