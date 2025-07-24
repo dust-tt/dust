@@ -334,6 +334,7 @@ export class MCPActionType {
   readonly functionCallName: string | null;
   readonly step: number = -1;
   readonly isError: boolean = false;
+  // TODO(2025-07-24 aubin): remove the type here.
   readonly type = "tool_action" as const;
 
   constructor(blob: MCPActionBlob) {

@@ -176,6 +176,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     requestedGroupIds: string[][];
   };
   actions: {
+    // TODO(2025-07-24 aubin): remove the type here.
     type: "tool_action";
     id: ModelId;
   }[];
