@@ -43,10 +43,11 @@ export async function executeAgentLoop(
       return;
     }
 
+    const { runId, stepContexts, totalCitationsIncrement } = result;
+
     // Update state with results from runMultiActionsAgent.
-    runIds.push(result.runId);
+    runIds.push(runId);
     functionCallStepContentIds = result.functionCallStepContentIds;
-    const { stepContext, totalCitationsIncrement } = result;
 
     // We received the actions to run, but will enforce a limit on the number of actions
     // which is very high. Over that the latency will just be too high. This is a guardrail
@@ -62,7 +63,7 @@ export async function executeAgentLoop(
           step: i,
           stepActionIndex: index,
           action,
-          stepContext,
+          stepContext: stepContexts[index],
           stepContentId: functionCallStepContentIds[functionCallId],
         })
       )
