@@ -7,7 +7,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import type { Control } from "react-hook-form";
-import { createFormControl, useWatch } from "react-hook-form";
+import { createFormControl, useFormState, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -17,7 +17,6 @@ import {
   getDataSourceConfigurations,
   getJsonSchema,
   getTimeFrame,
-  hasDataSourceSelections,
   isValidPage,
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
@@ -160,8 +159,6 @@ function KnowledgeConfigurationSheetContent({
       getDataSourceConfigurations(action)
     );
 
-  const hasDataSources = hasDataSourceSelections(dataSourceConfigurations);
-
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
       setCurrentPageId(pageId);
@@ -223,6 +220,8 @@ function KnowledgeConfigurationSheetContent({
     },
   ];
 
+  const { isDirty } = useFormState({ control });
+
   const sources = useWatch({
     control,
     name: "sources",
@@ -246,7 +245,7 @@ function KnowledgeConfigurationSheetContent({
       size="lg"
       showNavigation
       disableNext={disableNext}
-      disableSave={!hasDataSources}
+      disableSave={!isDirty}
     />
   );
 }

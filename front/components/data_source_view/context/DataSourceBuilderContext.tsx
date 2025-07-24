@@ -38,12 +38,10 @@ import {
   useReducer,
 } from "react";
 import type { Control } from "react-hook-form";
+import { useController } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
-import type {
-  DataSourceBuilderTreeType,
-  NavigationHistoryEntryType,
-} from "@app/components/data_source_view/context/types";
+import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import {
   addNodeToTree,
   computeNavigationPath,
@@ -58,7 +56,6 @@ import type {
 import { assertNever } from "@app/types";
 
 type StateType = {
-  sources: DataSourceBuilderTreeType;
   /**
    * Shape is `[root, space, category, ...node]`
    * so in this case we can use index to update specific values
@@ -194,25 +191,10 @@ function dataSourceBuilderReducer(
       };
     }
     case "SELECT_DATA_SOURCE_NODE": {
-      const nodePath = computeNavigationPath(state.navigationHistory);
-      if (payload.rowId) {
-        nodePath.push(payload.rowId);
-      }
-      return {
-        ...state,
-        sources: addNodeToTree(state.sources, nodePath),
-      };
+      return state;
     }
     case "REMOVE_DATA_SOURCE_NODE": {
-      const nodePath = computeNavigationPath(state.navigationHistory);
-      if (payload.rowId) {
-        nodePath.push(payload.rowId);
-      }
-      const sources = removeNodeFromTree(state.sources, nodePath);
-      return {
-        ...state,
-        sources,
-      };
+      return state;
     }
     default:
       assertNever(type);
@@ -221,56 +203,65 @@ function dataSourceBuilderReducer(
 
 export function DataSourceBuilderProvider({
   children,
+  control,
 }: {
   children: React.ReactNode;
   control: Control<CapabilityFormData>;
 }) {
+  const { field } = useController({ control, name: "sources" });
   const [state, dispatch] = useReducer(dataSourceBuilderReducer, {
-    sources: {
-      in: [],
-      notIn: [],
-    },
     navigationHistory: [{ type: "root" }],
   });
 
   const selectNode: DataSourceBuilderState["selectNode"] = useCallback(
     (rowId) => {
-      dispatch({ type: "SELECT_DATA_SOURCE_NODE", payload: { rowId } });
+      const nodePath = computeNavigationPath(state.navigationHistory);
+      if (rowId) {
+        nodePath.push(rowId);
+      }
+
+      field.onChange(addNodeToTree(field.value, nodePath));
     },
-    []
+    [field, state.navigationHistory]
   );
 
   const selectCurrentNavigationEntry: DataSourceBuilderState["selectCurrentNavigationEntry"] =
     useCallback(() => {
-      dispatch({ type: "SELECT_DATA_SOURCE_NODE", payload: {} });
-    }, []);
+      const nodePath = computeNavigationPath(state.navigationHistory);
+      field.onChange(addNodeToTree(field.value, nodePath));
+    }, [field, state.navigationHistory]);
 
   const removeNode: DataSourceBuilderState["removeNode"] = useCallback(
     (rowId) => {
-      dispatch({ type: "REMOVE_DATA_SOURCE_NODE", payload: { rowId } });
+      const nodePath = computeNavigationPath(state.navigationHistory);
+      if (rowId) {
+        nodePath.push(rowId);
+      }
+      field.onChange(removeNodeFromTree(field.value, nodePath));
     },
-    []
+    [field, state.navigationHistory]
   );
 
   const removeCurrentNavigationEntry: DataSourceBuilderState["removeCurrentNavigationEntry"] =
     useCallback(() => {
-      dispatch({ type: "REMOVE_DATA_SOURCE_NODE", payload: {} });
-    }, []);
+      const nodePath = computeNavigationPath(state.navigationHistory);
+      field.onChange(removeNodeFromTree(field.value, nodePath));
+    }, [field, state.navigationHistory]);
 
   const isRowSelected: DataSourceBuilderState["isRowSelected"] = useCallback(
     (rowId) => {
       const nodePath = computeNavigationPath(state.navigationHistory);
       nodePath.push(rowId);
-      return isNodeSelected(state.sources, nodePath);
+      return isNodeSelected(field.value, nodePath);
     },
-    [state]
+    [field.value, state.navigationHistory]
   );
 
   const isCurrentNavigationEntrySelected: DataSourceBuilderState["isCurrentNavigationEntrySelected"] =
     useCallback(() => {
       const nodePath = computeNavigationPath(state.navigationHistory);
-      return isNodeSelected(state.sources, nodePath);
-    }, [state]);
+      return isNodeSelected(field.value, nodePath);
+    }, [field.value, state.navigationHistory]);
 
   const setSpaceEntry: DataSourceBuilderState["setSpaceEntry"] = useCallback(
     (space) => {
