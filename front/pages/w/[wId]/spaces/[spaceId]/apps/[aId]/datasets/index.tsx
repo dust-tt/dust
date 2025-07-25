@@ -14,7 +14,7 @@ import { useContext } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getDatasets } from "@app/lib/api/datasets";
@@ -99,11 +99,11 @@ export default function DatasetsView({
   };
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       owner={owner}
       hideSidebar
-      titleChildren={
+      title={
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
@@ -198,7 +198,7 @@ export default function DatasetsView({
                     );
                   })}
                 </ul>
-                <div className="mt-2 max-w-4xl px-2">
+                <div className="mt-2 px-2">
                   <div className="py-2 text-sm text-gray-400 dark:text-gray-400-night">
                     Datasets are used as input data to apps (
                     <Chip label="input" /> block) or few-shot examples to prompt
@@ -211,7 +211,7 @@ export default function DatasetsView({
           </div>
         </div>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 

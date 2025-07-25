@@ -3,7 +3,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
@@ -139,7 +139,7 @@ export default function Analytics({
 
   return (
     <>
-      <AppContentLayout
+      <AppCenteredLayout
         subscription={subscription}
         owner={owner}
         subNavigation={subNavigationAdmin({ owner, current: "analytics" })}
@@ -159,7 +159,7 @@ export default function Analytics({
             />
           </div>
         </Page.Vertical>
-      </AppContentLayout>
+      </AppCenteredLayout>
     </>
   );
 }

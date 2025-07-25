@@ -148,19 +148,13 @@ export default function CreateAgent({
   };
 
   return (
-    <AppContentLayout
-      subscription={subscription}
-      hideSidebar
-      owner={owner}
-      titleChildren={
-        <AppLayoutSimpleCloseTitle
-          title="Create an Agent"
-          onClose={async () => {
-            await appLayoutBack(owner, router);
-          }}
-        />
-      }
-    >
+    <AppContentLayout subscription={subscription} hideSidebar owner={owner}>
+      <AppLayoutSimpleCloseTitle
+        title="Create an Agent"
+        onClose={async () => {
+          await appLayoutBack(owner, router);
+        }}
+      />
       <div id="pageContent">
         <Page variant="modal">
           <div className="flex flex-col gap-6">

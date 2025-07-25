@@ -1,7 +1,7 @@
 import type { Result, WorkspaceDomainType } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
-import type {} from "@slack/web-api/dist/response/UsersInfoResponse";
+import type {} from "@slack/web-api/dist/types/response/UsersInfoResponse";
 
 import { SlackExternalUserError } from "@connectors/connectors/slack/lib/errors";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";

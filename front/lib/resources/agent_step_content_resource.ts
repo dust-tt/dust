@@ -19,6 +19,7 @@ import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_cont
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
@@ -90,7 +91,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     }
   }
 
-  static async makeNew(
+  private static async makeNew(
     blob: CreationAttributes<AgentStepContentModel>,
     transaction?: Transaction
   ): Promise<AgentStepContentResource> {
@@ -228,7 +229,11 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     });
 
     if (latestVersionsOnly) {
-      contents = this.filterLatestVersions(contents, ["step", "index"]);
+      contents = this.filterLatestVersions(contents, [
+        "agentMessageId",
+        "step",
+        "index",
+      ]);
 
       // Also filter MCP actions to latest versions
       if (includeMCPActions) {
@@ -365,47 +370,98 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     };
 
     if ("agentMCPActions" in this && Array.isArray(this.agentMCPActions)) {
-      // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
-      base.mcpActions = this.agentMCPActions.map(
-        (action: AgentMCPAction) =>
-          new MCPActionType({
-            id: action.id,
-            params: action.params,
-            output: removeNulls(
-              action.outputItems.map(hideFileFromActionOutput)
-            ),
-            functionCallId: action.functionCallId,
-            functionCallName: action.functionCallName,
-            agentMessageId: action.agentMessageId,
-            step: action.step,
-            mcpServerConfigurationId: action.mcpServerConfigurationId,
-            executionState: action.executionState,
-            isError: action.isError,
-            type: "tool_action",
-            generatedFiles: removeNulls(
-              action.outputItems.map((o) => {
-                if (!o.file) {
-                  return null;
-                }
+      if (this.agentMCPActions.length === 0) {
+        base.mcpActions = [];
+      } else {
+        const { value } = this;
+        assert(
+          value.type === "function_call",
+          "Unexpected: MCP actions on non-function call step content"
+        );
+        // MCP actions filtering already happened in fetch methods if latestVersionsOnly was requested
+        base.mcpActions = this.agentMCPActions.map(
+          (action: AgentMCPAction) =>
+            new MCPActionType({
+              id: action.id,
+              params: JSON.parse(value.value.arguments),
+              output: removeNulls(
+                action.outputItems.map(hideFileFromActionOutput)
+              ),
+              functionCallId: value.value.id,
+              functionCallName: value.value.name,
+              agentMessageId: action.agentMessageId,
+              step: this.step,
+              mcpServerConfigurationId: action.mcpServerConfigurationId,
+              executionState: action.executionState,
+              isError: action.isError,
+              type: "tool_action",
+              generatedFiles: removeNulls(
+                action.outputItems.map((o) => {
+                  if (!o.file) {
+                    return null;
+                  }
 
-                const file = o.file;
-                const fileSid = FileResource.modelIdToSId({
-                  id: file.id,
-                  workspaceId: action.workspaceId,
-                });
+                  const file = o.file;
+                  const fileSid = FileResource.modelIdToSId({
+                    id: file.id,
+                    workspaceId: action.workspaceId,
+                  });
 
-                return {
-                  fileId: fileSid,
-                  contentType: file.contentType,
-                  title: file.fileName,
-                  snippet: file.snippet,
-                };
-              })
-            ),
-          })
-      );
+                  return {
+                    fileId: fileSid,
+                    contentType: file.contentType,
+                    title: file.fileName,
+                    snippet: file.snippet,
+                  };
+                })
+              ),
+            })
+        );
+      }
     }
 
     return base;
+  }
+
+  static async createNewVersion({
+    agentMessageId,
+    workspaceId,
+    step,
+    index,
+    type,
+    value,
+  }: Omit<
+    CreationAttributes<AgentStepContentModel>,
+    "version"
+  >): Promise<AgentStepContentResource> {
+    return frontSequelize.transaction(async (transaction: Transaction) => {
+      const existingContent = await this.model.findAll({
+        where: {
+          agentMessageId,
+          step,
+          index,
+        },
+        order: [["version", "DESC"]],
+        attributes: ["version"],
+        limit: 1,
+        transaction,
+      });
+
+      const currentMaxVersion =
+        existingContent.length > 0 ? existingContent[0].version + 1 : 0;
+
+      return this.makeNew(
+        {
+          agentMessageId,
+          workspaceId,
+          step,
+          index,
+          version: currentMaxVersion,
+          type,
+          value,
+        },
+        transaction
+      );
+    });
   }
 }

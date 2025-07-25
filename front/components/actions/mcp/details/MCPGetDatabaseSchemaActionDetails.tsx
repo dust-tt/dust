@@ -1,8 +1,7 @@
 import { CodeBlock, CollapsibleComponent, TableIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import type {
   DatabaseSchemaResourceType,
   ExampleRowsResourceType,
@@ -15,7 +14,7 @@ import {
 export function MCPGetDatabaseSchemaActionDetails({
   action,
   defaultOpen,
-}: ActionDetailsComponentBaseProps<MCPActionType>) {
+}: MCPActionDetailsProps) {
   const { output } = action;
 
   // Extract different types of outputs

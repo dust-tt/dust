@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 
-import type { MCPAction } from "@app/lib/resources/agent_mcp_action_resource";
+import type {
+  AnalyticsMCPAction,
+  GetMCPActionsResult,
+} from "@app/lib/api/actions/agent_mcp_action_analytics";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetMCPActionsResponseBody } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { LightWorkspaceType } from "@app/types";
 
 interface UseMCPActionsProps {
@@ -13,7 +15,7 @@ interface UseMCPActionsProps {
 }
 
 interface UseMCPActionsReturn {
-  actions: MCPAction[];
+  actions: AnalyticsMCPAction[];
   totalCount: number;
   currentPage: number;
   totalPages: number;
@@ -35,7 +37,7 @@ export function useMCPActions({
   const [currentPage, setCurrentPage] = useState(0);
   const [cursors, setCursors] = useState<(string | null)[]>([null]);
 
-  const mcpActionsFetcher: Fetcher<GetMCPActionsResponseBody> = fetcher;
+  const mcpActionsFetcher: Fetcher<GetMCPActionsResult> = fetcher;
 
   // For the current page, we need the cursor from our cache
   const cursor = cursors[currentPage] || null;

@@ -74,23 +74,23 @@ export const b2bSaasConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Trade busy work for strategic work",
+        title: "Automate busywork that slows you down",
         description:
-          "Stop wasting hours on research and admin tasks. Focus your team on high-value work that actually moves the business forward",
-        color: "blue",
+          "Stop wasting hours on research, data entry, and repetitive tasks. Deploy AI that works your way—understanding your processes, terminology, and decision-making patterns",
+        color: "red",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Stop losing customer intelligence",
+        title: "Build your intelligence engine",
         description:
-          "Surface knowledge trapped in customer calls, support threads, and account discussions—making critical customer insights instantly available to every team",
-        color: "red",
+          "Transform scattered conversations, documents, and insights across all departments into a unified knowledge base that gets smarter with every interaction",
+        color: "blue",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
         title: "Scale your best people instantly",
         description:
-          "Let AI handle routine questions so your experts can focus on solving the problems that really matter",
+          "New team members gain immediate access to the expertise and methodologies that typically take years to develop, with AI agents that work exactly how your organization works",
         color: "green",
       },
     ],
@@ -107,25 +107,25 @@ export const b2bSaasConfig: IndustryPageConfig = {
             icon: "bg-red-500",
             title: "360° account intelligence",
             description:
-              "Merge engagement, CRM, and market signals for every account",
+              "Generate snapshots of your customers leveraging product usage, support tickets, and previous interactions",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
             title: "Automated follow-ups",
             description:
-              "Automate customer follow-ups and update your CRM using meeting transcripts and notes",
+              "Automate follow-ups and CRM updates using meeting transcripts and cross-team insights automatically",
           },
           {
             icon: "bg-blue-500 rounded-bl-full",
             title: "Prospect questions",
             description:
-              "Automate RFP responses and prospect answers using your internal knowledge base",
+              "Generate responses using your complete knowledge base—technical docs, competitive intel, customer stories",
           },
           {
             icon: "bg-sky-400 rounded-br-full",
             title: "Revenue intelligence",
             description:
-              "Extract actionable insights from customer-facing interactions",
+              "Extract insights from interactions to surface sales, support, and product feedback",
           },
         ],
       },
@@ -138,18 +138,19 @@ export const b2bSaasConfig: IndustryPageConfig = {
             icon: "bg-pink-400 rounded-tl-full",
             title: "Content localization at scale",
             description:
-              "Launch campaigns globally, keeping brand and technical consistency.",
+              "Maintain brand voice and technical accuracy across markets using tailored agents",
           },
           {
             icon: "bg-red-500",
             title: "Market intelligence",
             description:
-              "Monitor trends and competitors to equip GTM and sales teams.",
+              "Monitor trends and competitors leveraging external sources and real customer conversations",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
             title: "Content optimization",
-            description: "Turn drafts into high-conversion assets.",
+            description:
+              "Create content using authentic customer language from sales calls and brand guidelines",
           },
         ],
       },
@@ -168,17 +169,17 @@ export const b2bSaasConfig: IndustryPageConfig = {
             icon: "bg-red-500",
             title: "Accelerated case resolution",
             description:
-              "Suggest docs, similar tickets, and pre-draft responses for agents",
+              "Pre-draft responses using company context - internal docs, similar tickets, recent changes",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
             title: "Knowledge base automation",
             description:
-              "Turn support resolutions into always-fresh, searchable documentation",
+              "Convert tickets into help articles referencing actual customer conversations and decisions",
           },
           {
             icon: "bg-green-500",
-            title: "Support analytics",
+            title: "Support insights",
             description:
               "Analyze customer interactions to surface insights, optimize documentation, and improve CSAT",
           },
@@ -193,18 +194,19 @@ export const b2bSaasConfig: IndustryPageConfig = {
             icon: "bg-pink-400 rounded-tl-full",
             title: "AI-Powered code debugging",
             description:
-              "Surface relevant context, docs, and historical issues inside your IDE",
+              "Provide context beyond your codebase - recent changes, customer impact - to debug faster",
           },
           {
             icon: "bg-red-500",
             title: "Automated code reviews",
-            description: "Maintain standards and compliance at scale.",
+            description:
+              "Tie your internal guidelines to automate code reviews and maintain standards",
           },
           {
             icon: "bg-yellow-400 rounded-tr-full",
-            title: "incident response",
+            title: "Incident response",
             description:
-              "Execute automated runbooks, integrate communications, and enable rapid root cause analysis",
+              "Troubleshoot issues, automate communications, and dig deep into your context for your post-mortems",
           },
           {
             icon: "bg-green-500",

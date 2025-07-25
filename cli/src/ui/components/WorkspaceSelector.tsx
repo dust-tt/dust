@@ -28,8 +28,13 @@ const WorkspaceSelector: FC<WorkspaceSelectorProps> = ({ onComplete }) => {
       try {
         setIsLoading(true);
 
-        const client = await getDustClient();
+        const clientRes = await getDustClient();
+        if (clientRes.isErr()) {
+          setError(clientRes.error.message);
+          return;
+        }
 
+        const client = clientRes.value;
         if (!client) {
           setError(
             "Failed to initialize the API client. Please authenticate first using `dust login`."

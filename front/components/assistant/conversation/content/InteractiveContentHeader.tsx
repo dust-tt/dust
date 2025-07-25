@@ -18,18 +18,25 @@ export function InteractiveContentHeader({
     <div
       className={cn(
         "bg-structure-0/60 flex border-border/70 backdrop-blur-sm dark:border-border-night/70",
-        "items-center justify-between rounded-t-lg border-b px-4 py-2"
+        "items-center justify-between border-b px-4 py-2 @container"
       )}
     >
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-primary dark:text-primary-night">
+      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+        <span
+          className={cn(
+            "hidden min-w-0 truncate text-sm font-medium @xxs:inline",
+            "text-primary dark:text-primary-night"
+          )}
+        >
           {title}
         </span>
         {subtitle && (
-          <span className="text-element-700 text-xs">{subtitle}</span>
+          <span className="text-element-700 hidden shrink-0 text-xs @xs:inline">
+            {subtitle}
+          </span>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         {children}
         <Button
           variant="ghost"

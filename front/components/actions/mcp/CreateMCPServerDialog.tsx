@@ -147,8 +147,8 @@ export function CreateMCPServerDialog({
           } else if (discoverOAuthMetadataRes.isErr()) {
             sendNotification({
               type: "error",
-              title: `Failed to discover OAuth metadata for ${remoteServerUrl}`,
-              description: discoverOAuthMetadataRes.error.message,
+              title: "Failed to discover OAuth metadata for MCP server",
+              description: `${discoverOAuthMetadataRes.error.message} (${remoteServerUrl})`,
             });
             setRemoteMCPServerOAuthDiscoveryDone(false);
             setIsLoading(false);

@@ -1,5 +1,11 @@
 import type { ButtonProps } from "@dust-tt/sparkle";
-import { BarFooter, BarHeader, Button, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  BarFooter,
+  BarHeader,
+  Button,
+  Separator,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
@@ -51,11 +57,13 @@ export function AgentBuilderLeftPanel({
         }
       />
       <div className="flex-1 overflow-y-auto">
-        <div className="space-y-6 p-4">
+        <div className="space-y-4 p-4">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
+          <Separator />
           <AgentBuilderCapabilitiesBlock />
+          <Separator />
           <AgentBuilderSettingsBlock />
         </div>
       </div>

@@ -544,15 +544,6 @@ export const GenerationTokensEventSchema = z.object({
 });
 export type GenerationTokensEvent = z.infer<typeof GenerationTokensEventSchema>;
 
-const BaseActionTypeSchema = FlexibleEnumSchema<
-  "dust_app_run_action" | "process_action" | "visualization_action"
->();
-
-const BaseActionSchema = z.object({
-  id: ModelIdSchema,
-  type: BaseActionTypeSchema,
-});
-
 const DataSourceViewKindSchema = FlexibleEnumSchema<"default" | "custom">();
 
 const DataSourceViewSchema = z.object({
@@ -593,11 +584,11 @@ export type RetrievalDocumentPublicType = z.infer<
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
-  | "notion_private_integration"
   | "advanced_search"
   | "agent_builder_instructions_autocomplete"
   | "agent_builder_v2"
   | "agent_memory_tools"
+  | "anthropic_vertex_fallback"
   | "claude_4_opus_feature"
   | "co_edition"
   | "deepseek_feature"
@@ -615,6 +606,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_trackers"
   | "labs_transcripts"
   | "monday_tool"
+  | "notion_private_integration"
   | "okta_enterprise_connection"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
@@ -626,8 +618,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "show_debug_tools"
   | "usage_data_api"
-  | "workos_user_provisioning"
   | "workos"
+  | "workos_user_provisioning"
   | "xai_feature"
 >();
 
@@ -688,15 +680,14 @@ export const WebsearchResultSchema = z.object({
 
 export type WebsearchResultPublicType = z.infer<typeof WebsearchResultSchema>;
 
-const MCPActionTypeSchema = BaseActionSchema.extend({
+const MCPActionTypeSchema = z.object({
+  id: ModelIdSchema,
   agentMessageId: ModelIdSchema,
   functionCallName: z.string().nullable(),
   params: z.unknown(),
   output: CallToolResultSchema.shape.content.nullable(),
   type: z.literal("tool_action"),
 });
-
-export type MCPActionPublicType = z.infer<typeof MCPActionTypeSchema>;
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "active"
@@ -909,12 +900,13 @@ const AgentMessageTypeSchema = z.object({
     .object({
       code: z.string(),
       message: z.string(),
+      metadata: z.record(z.any()).nullable(),
     })
     .nullable(),
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
 
-const AgentMesssageFeedbackSchema = z.object({
+const AgentMessageFeedbackSchema = z.object({
   messageId: z.string(),
   agentMessageId: z.number(),
   userId: z.number(),
@@ -1087,6 +1079,7 @@ const AgentErrorEventSchema = z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),
+    metadata: z.record(z.any()).nullable(),
   }),
 });
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
@@ -1276,7 +1269,6 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "subscription_state_invalid"
   | "table_not_found"
   | "template_not_found"
-  | "template_not_found"
   | "transcripts_configuration_already_exists"
   | "transcripts_configuration_default_not_allowed"
   | "transcripts_configuration_not_found"
@@ -1286,7 +1278,6 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "unexpected_response_format"
   | "user_not_found"
   | "workspace_auth_error"
-  | "workspace_not_found"
   | "workspace_not_found"
   | "workspace_user_not_found"
 >();
@@ -1610,7 +1601,7 @@ export type CreateConversationResponseType = z.infer<
 >;
 
 export const GetFeedbacksResponseSchema = z.object({
-  feedbacks: z.array(AgentMesssageFeedbackSchema),
+  feedbacks: z.array(AgentMessageFeedbackSchema),
 });
 
 export type GetFeedbacksResponseType = z.infer<
@@ -2391,12 +2382,6 @@ export type CancelMessageGenerationRequestType = z.infer<
 >;
 
 // Typeguards.
-
-export function isMCPActionType(
-  action: AgentActionPublicType
-): action is MCPActionPublicType {
-  return action.type === "tool_action";
-}
 
 export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {
   return (arg as AgentMentionType).configurationId !== undefined;

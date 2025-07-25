@@ -54,6 +54,7 @@ import {
   DocumentPileIcon,
   DocumentTextIcon,
   EyeIcon,
+  InformationCircleIcon,
   Markdown,
   Page,
   Popover,
@@ -526,6 +527,7 @@ export function AgentMessage({
             agentMessage.error || {
               message: "Unexpected Error",
               code: "unexpected_error",
+              metadata: {},
             }
           }
           retryHandler={async () => retryHandler(agentMessage)}
@@ -631,37 +633,55 @@ function ErrorMessage({
   error,
   retryHandler,
 }: {
-  error: { code: string; message: string };
+  error: NonNullable<AgentMessagePublicType["error"]>;
   retryHandler: () => void;
 }) {
-  const fullMessage =
-    "ERROR: " + error.message + (error.code ? ` (code: ${error.code})` : "");
+  const errorIsRetryable =
+    error.metadata?.category === "retryable_model_error" ||
+    error.metadata?.category === "stream_error";
+
+  const debugInfo = [
+    error.metadata?.category ? `category: ${error.metadata?.category}` : "",
+    error.code ? `code: ${error.code}` : "",
+  ]
+    .filter((s) => s.length > 0)
+    .join(", ");
 
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () => retryHandler()
   );
 
   return (
-    <div className="flex flex-col gap-9">
-      <div className="flex flex-col gap-1 sm:flex-row">
-        <Chip
-          color="warning"
-          label={"ERROR: " + shortText(error.message)}
+    <ContentMessage
+      title={`${error.metadata?.errorTitle || "Agent error"}`}
+      variant={errorIsRetryable ? "golden" : "warning"}
+      className="flex flex-col gap-3"
+      icon={InformationCircleIcon}
+    >
+      <div className="whitespace-normal break-words">{error.message}</div>
+      <div className="flex flex-row gap-2 pt-3">
+        <Button
+          variant="outline"
           size="xs"
+          icon={ArrowPathIcon}
+          label="Retry"
+          onClick={retry}
+          disabled={isRetrying}
         />
         <Popover
+          popoverTriggerAsChild
           trigger={
             <Button
-              variant="ghost"
+              variant="outline"
               size="xs"
               icon={EyeIcon}
-              label="See the error"
+              label="Details"
             />
           }
           content={
             <div className="flex flex-col gap-3">
-              <div className="text-sm font-normal text-warning-800">
-                {fullMessage}
+              <div className="whitespace-normal text-sm font-normal text-warning">
+                {debugInfo}
               </div>
               <div className="self-end">
                 <Button
@@ -670,7 +690,9 @@ function ErrorMessage({
                   icon={DocumentPileIcon}
                   label={"Copy"}
                   onClick={() =>
-                    void navigator.clipboard.writeText(fullMessage)
+                    void navigator.clipboard.writeText(
+                      error.message + (debugInfo ? ` (${debugInfo})` : "")
+                    )
                   }
                 />
               </div>
@@ -678,20 +700,6 @@ function ErrorMessage({
           }
         />
       </div>
-      <div>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={ArrowPathIcon}
-          label="Retry"
-          onClick={retry}
-          disabled={isRetrying}
-        />
-      </div>
-    </div>
+    </ContentMessage>
   );
-}
-
-function shortText(text: string, maxLength = 30) {
-  return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
 }

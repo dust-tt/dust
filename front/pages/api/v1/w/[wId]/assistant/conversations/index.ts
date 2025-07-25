@@ -9,11 +9,11 @@ import { fromError } from "zod-validation-error";
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
-  getConversation,
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   apiErrorForConversation,
   isUserMessageContextOverflowing,

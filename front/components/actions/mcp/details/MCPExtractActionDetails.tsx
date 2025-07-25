@@ -11,7 +11,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isExtractQueryResourceType,
@@ -43,7 +43,7 @@ interface MCPExtractActionResultsProps {
 export function MCPExtractActionDetails({
   action,
   defaultOpen,
-}: ActionDetailsComponentBaseProps<MCPActionType>) {
+}: MCPActionDetailsProps) {
   const queryResource = action.output
     ?.filter(isExtractQueryResourceType)
     .map((o) => o.resource)?.[0];

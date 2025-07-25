@@ -183,15 +183,9 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
 
   declare mcpServerConfigurationId: string;
 
-  declare params: Record<string, unknown>;
-
-  declare functionCallId: string | null;
-  declare functionCallName: string | null;
-
-  declare step: number;
   declare version: number;
   declare agentMessageId: ForeignKey<AgentMessage["id"]>;
-  declare stepContentId: ForeignKey<AgentStepContentModel["id"]> | null;
+  declare stepContentId: ForeignKey<AgentStepContentModel["id"]>;
 
   declare isError: boolean;
   declare executionState:
@@ -202,6 +196,9 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "denied";
 
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
+  declare agentMessage?: NonAttribute<AgentMessage>;
+  // TODO(2025-07-23 aubin): remove this once the analytics have been moved to the resource.
+  declare stepContent?: NonAttribute<AgentStepContentModel>;
 }
 
 AgentMCPAction.init(
@@ -218,22 +215,6 @@ AgentMCPAction.init(
     },
     mcpServerConfigurationId: {
       type: DataTypes.STRING,
-      allowNull: false,
-    },
-    params: {
-      type: DataTypes.JSONB,
-      allowNull: false,
-    },
-    functionCallId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    functionCallName: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    step: {
-      type: DataTypes.INTEGER,
       allowNull: false,
     },
     version: {
@@ -280,6 +261,7 @@ AgentMCPAction.init(
 
 AgentMCPAction.belongsTo(AgentMessage, {
   foreignKey: { name: "agentMessageId", allowNull: false },
+  as: "agentMessage",
 });
 
 AgentMessage.hasMany(AgentMCPAction, {
@@ -287,12 +269,13 @@ AgentMessage.hasMany(AgentMCPAction, {
 });
 
 AgentMCPAction.belongsTo(AgentStepContentModel, {
-  foreignKey: { name: "stepContentId", allowNull: true },
+  foreignKey: { name: "stepContentId", allowNull: false },
+  as: "stepContent",
   onDelete: "RESTRICT",
 });
 
 AgentStepContentModel.hasMany(AgentMCPAction, {
-  foreignKey: { name: "stepContentId", allowNull: true },
+  foreignKey: { name: "stepContentId", allowNull: false },
   as: "agentMCPActions",
 });
 
@@ -339,6 +322,10 @@ AgentMCPActionOutputItem.init(
     modelName: "agent_mcp_action_output_item",
     sequelize: frontSequelize,
     indexes: [
+      {
+        fields: ["workspaceId"],
+        concurrently: true,
+      },
       {
         fields: ["agentMCPActionId"],
         concurrently: true,

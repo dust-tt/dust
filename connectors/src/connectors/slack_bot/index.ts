@@ -56,10 +56,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
     configuration: SlackConfigurationType;
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
     const accessToken = await getSlackAccessToken(connectionId);
-    const slackClient = await getSlackClient(accessToken, {
-      // Do not reject rate limited calls in update connector. Called from the API.
-      rejectRateLimitedCalls: false,
-    });
+    const slackClient = await getSlackClient(accessToken);
 
     const teamInfo = await slackClient.team.info();
     if (teamInfo.ok !== true) {
@@ -218,10 +215,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
 
     if (connectionId) {
       const accessToken = await getSlackAccessToken(connectionId);
-      const slackClient = await getSlackClient(accessToken, {
-        // Do not reject rate limited calls in update connector. Called from the API.
-        rejectRateLimitedCalls: false,
-      });
+      const slackClient = await getSlackClient(accessToken);
 
       reportSlackUsage({
         connectorId: c.id,
@@ -556,10 +550,7 @@ async function getFilteredChannels(
     return slackChannels;
   }
 
-  const slackClient = await getSlackClient(connectorId, {
-    // Do not reject rate limited calls in update connector. Called from the API.
-    rejectRateLimitedCalls: false,
-  });
+  const slackClient = await getSlackClient(connectorId);
 
   const [remoteChannels, localChannels] = await Promise.all([
     getChannels(slackClient, connectorId, true),

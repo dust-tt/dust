@@ -2,6 +2,7 @@ import {
   getTextContentFromMessage,
   getTextRepresentationFromMessages,
 } from "@app/lib/api/assistant/utils";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -65,6 +66,8 @@ export async function renderConversationForModel(
     Error
   >
 > {
+  const supportedModel = getSupportedModelConfig(model);
+
   const now = Date.now();
   const messages: ModelMessageTypeMultiActions[] = [];
 
@@ -82,10 +85,7 @@ export async function renderConversationForModel(
       const stepByStepIndex = {} as Record<
         string,
         {
-          contents: Array<{
-            step: number;
-            content: Exclude<AgentContentItemType, ErrorContentType>;
-          }>;
+          contents: Array<Exclude<AgentContentItemType, ErrorContentType>>;
           actions: Array<{
             call: FunctionCallType;
             result: FunctionMessageTypeModel;
@@ -113,9 +113,6 @@ export async function renderConversationForModel(
       }
 
       for (const content of m.contents) {
-        stepByStepIndex[content.step] =
-          stepByStepIndex[content.step] || emptyStep();
-
         if (content.content.type === "error") {
           // Don't render error content.
           logger.warn(
@@ -129,10 +126,18 @@ export async function renderConversationForModel(
           continue;
         }
 
-        stepByStepIndex[content.step].contents.push({
-          step: content.step,
-          content: content.content,
-        });
+        if (
+          content.content.type === "reasoning" &&
+          content.content.value.provider !== supportedModel.providerId
+        ) {
+          // Skip reasoning content from other providers.
+          continue;
+        }
+
+        stepByStepIndex[content.step] =
+          stepByStepIndex[content.step] || emptyStep();
+
+        stepByStepIndex[content.step].contents.push(content.content);
       }
 
       const steps = Object.entries(stepByStepIndex)
@@ -142,22 +147,22 @@ export async function renderConversationForModel(
       if (excludeActions) {
         // In Exclude Actions mode, we only render the last step that has text content.
         const stepsWithContent = steps.filter((s) =>
-          s?.contents.some((c) => c.content.type === "text_content")
+          s?.contents.some((c) => c.type === "text_content")
         );
         if (stepsWithContent.length) {
           const lastStepWithContent =
             stepsWithContent[stepsWithContent.length - 1];
           const textContents: TextContentType[] = [];
           for (const content of lastStepWithContent.contents) {
-            if (content.content.type === "text_content") {
-              textContents.push(content.content);
+            if (content.type === "text_content") {
+              textContents.push(content);
             }
           }
           messages.push({
             role: "assistant",
             name: m.configuration.name,
             content: textContents.map((c) => c.value).join("\n"),
-            contents: lastStepWithContent.contents.map((c) => c.content),
+            contents: lastStepWithContent.contents,
           } satisfies AssistantContentMessageTypeModel);
         }
       } else {
@@ -177,8 +182,8 @@ export async function renderConversationForModel(
           }
           const textContents: TextContentType[] = [];
           for (const content of step.contents) {
-            if (content.content.type === "text_content") {
-              textContents.push(content.content);
+            if (content.type === "text_content") {
+              textContents.push(content);
             }
           }
           if (!step.actions.length && !textContents.length) {
@@ -198,14 +203,14 @@ export async function renderConversationForModel(
               role: "assistant",
               function_calls: step.actions.map((s) => s.call),
               content: textContents.map((c) => c.value).join("\n"),
-              contents: step.contents.map((c) => c.content),
+              contents: step.contents,
             } satisfies AssistantFunctionCallMessageTypeModel);
           } else {
             messages.push({
               role: "assistant",
               content: textContents.map((c) => c.value).join("\n"),
               name: m.configuration.name,
-              contents: step.contents.map((c) => c.content),
+              contents: step.contents,
             } satisfies AssistantContentMessageTypeModel);
           }
 
@@ -261,17 +266,28 @@ export async function renderConversationForModel(
     return new Err(res.error);
   }
 
-  const [promptCount, toolsCount, ...messagesCount] = res.value;
+  const [promptCount, toolDefinitionsCount, ...messagesCount] = res.value;
+
+  // Add reasoning content token count to each message.
+  for (const [i, message] of messages.entries()) {
+    if (message.role === "assistant") {
+      for (const content of message.contents ?? []) {
+        if (content.type === "reasoning") {
+          messagesCount[i] += content.value.tokens ?? 0;
+        }
+      }
+    }
+  }
 
   // Models turns the json schema into an internal representation that is more efficient to tokenize.
-  const toolsCountAdjustmentFactor = 0.7;
+  const toolDefinitionsCountAdjustmentFactor = 0.7;
 
   // We initialize `tokensUsed` to the prompt tokens + a bit of buffer for message rendering
   // approximations.
   const tokensMargin = 1024;
   let tokensUsed =
     promptCount +
-    Math.floor(toolsCount * toolsCountAdjustmentFactor) +
+    Math.floor(toolDefinitionsCount * toolDefinitionsCountAdjustmentFactor) +
     tokensMargin;
 
   // Go backward and accumulate as much as we can within allowedTokenCount.

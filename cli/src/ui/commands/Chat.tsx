@@ -40,6 +40,7 @@ interface CliChatProps {
   sId?: string;
   agentSearch?: string;
   conversationId?: string;
+  autoAcceptEditsFlag?: boolean;
 }
 
 function getLastConversationItem<T extends ConversationItem>(
@@ -59,7 +60,11 @@ const CliChat: FC<CliChatProps> = ({
   sId: requestedSId,
   agentSearch,
   conversationId,
+  autoAcceptEditsFlag,
 }) => {
+  const [autoAcceptEdits, setAutoAcceptEdits] = useState(!!autoAcceptEditsFlag);
+  const autoAcceptEditsRef = useRef(autoAcceptEdits);
+
   const [error, setError] = useState<string | null>(null);
 
   const [selectedAgent, setSelectedAgent] = useState<AgentConfiguration | null>(
@@ -209,6 +214,11 @@ const CliChat: FC<CliChatProps> = ({
       updatedContent: string,
       filePath: string
     ): Promise<boolean> => {
+      // If always accept flag is set, immediately return true
+      if (autoAcceptEditsRef.current) {
+        return Promise.resolve(true);
+      }
+
       return new Promise<boolean>((resolve) => {
         setPendingDiffApproval({ originalContent, updatedContent, filePath });
         setDiffApprovalResolver(() => (approved: boolean) => {
@@ -230,6 +240,10 @@ const CliChat: FC<CliChatProps> = ({
     setShowFileSelector(true);
   }, []);
 
+  const toggleAutoEdits = useCallback(() => {
+    setAutoAcceptEdits((prev) => !prev);
+  }, [setAutoAcceptEdits]);
+
   // Helper to create a conversation for file uploads if none exists
   // Only useful for uploading files to the first message
   const createConversationForFiles = useCallback(
@@ -238,7 +252,13 @@ const CliChat: FC<CliChatProps> = ({
         return null;
       }
 
-      const dustClient = await getDustClient();
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return null;
+      }
+
+      const dustClient = dustClientRes.value;
       if (!dustClient) {
         setError("Authentication required. Run `dust login` first.");
         return null;
@@ -305,6 +325,7 @@ const CliChat: FC<CliChatProps> = ({
     triggerAgentSwitch,
     clearFiles,
     attachFile: showAttachDialog,
+    toggleAutoEdits,
   });
 
   // Cache Edit tool when agent is selected, since approval is asked anyways
@@ -354,6 +375,10 @@ const CliChat: FC<CliChatProps> = ({
       },
     ]);
   }, [agentSearch, allAgents, selectedAgent]);
+
+  useEffect(() => {
+    autoAcceptEditsRef.current = autoAcceptEdits;
+  }, [autoAcceptEdits]);
 
   const canSubmit =
     me &&
@@ -423,7 +448,13 @@ const CliChat: FC<CliChatProps> = ({
       const controller = new AbortController();
       setAbortController(controller);
 
-      const dustClient = await getDustClient();
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(dustClientRes.error.message);
+        return;
+      }
+
+      const dustClient = dustClientRes.value;
       if (!dustClient) {
         setError("Authentication required. Run `dust login` first.");
         setIsProcessingQuestion(false);
@@ -483,6 +514,9 @@ const CliChat: FC<CliChatProps> = ({
                 fullName: me.fullName,
                 email: me.email,
                 origin: "api",
+                clientSideMCPServerIds: fileSystemServerId
+                  ? [fileSystemServerId]
+                  : null,
               },
             },
             contentFragments,
@@ -1211,17 +1245,28 @@ const CliChat: FC<CliChatProps> = ({
         selectMultiple={false}
         onConfirm={async (selectedModelFileAccess) => {
           if (selectedModelFileAccess[0].id === "y") {
-            const dustClient = await getDustClient();
-            if (!dustClient) {
-              throw new Error("No Dust API set.");
+            const dustClientRes = await getDustClient();
+            if (dustClientRes.isErr()) {
+              setError(dustClientRes.error.message);
+              return;
             }
-            await useFileSystemServer(
+
+            const dustClient = dustClientRes.value;
+            if (!dustClient) {
+              setError("No Dust API set.");
+              return;
+            }
+
+            const useFsServerRes = await useFileSystemServer(
               dustClient,
               (serverId) => {
                 setFileSystemServerId(serverId);
               },
               requestDiffApproval
             );
+            if (useFsServerRes.isErr()) {
+              setError(useFsServerRes.error.message);
+            }
           }
           setChosenFileSystemUsage(true);
         }}
@@ -1322,6 +1367,7 @@ const CliChat: FC<CliChatProps> = ({
         selectedCommandIndex={selectedCommandIndex}
         commandCursorPosition={commandCursorPosition}
         commands={commands}
+        autoAcceptEdits={autoAcceptEdits}
       />
     </Box>
   );

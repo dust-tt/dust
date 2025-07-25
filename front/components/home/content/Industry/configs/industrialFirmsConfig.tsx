@@ -45,23 +45,23 @@ export const industrialFirmsConfig: IndustryPageConfig = {
     painPoints: [
       {
         icon: "/static/landing/industry/d-blue.svg",
-        title: "Give every team the power of AI—leave nobody behind",
+        title: "Break down knowledge silos across functions",
         description:
-          "From sales teams crafting proposals to technicians troubleshooting equipment, ensure every department has access to the same AI-powered capabilities. No more digital divides between functions.",
+          "Make technical expertise, safety procedures, and commercial knowledge instantly accessible to every employee across manufacturing, engineering, sales, and operations.",
         color: "blue",
       },
       {
         icon: "/static/landing/industry/d-red.svg",
-        title: "Give everyone access to your best knowledge",
+        title: "Eliminate manual processes that drain productivity",
         description:
-          "Your organization has decades of technical knowledge and commercial experience. Make that expertise instantly available to every employee, regardless of their role or experience level.",
+          "Let AI handle repetitive tasks like processing vendor documents, navigating compliance manuals, or updating systems while experts focus on strategic work.",
         color: "red",
       },
       {
         icon: "/static/landing/industry/d-green.svg",
-        title: "Accelerate operations without sacrificing precision",
+        title: "Connect systems while maintaining security control",
         description:
-          "Speed up everything from compliance documentation to customer responses while maintaining the quality and standards your industry demands. Let AI handle routine tasks so your teams focus on strategic work.",
+          "Unify scattered enterprise systems—CRM, ERP, SharePoint, technical databases—into one intelligent platform with enterprise-grade security and departmental access control.",
         color: "green",
       },
     ],
@@ -76,27 +76,27 @@ export const industrialFirmsConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Proposal & Quote Builder",
+            title: "Technical Proposal Engine",
             description:
-              "Create client proposals and presentation slides from RFQ requirements and product catalogs.",
+              "Generate RFP responses using product catalogs, past proposals, and engineering specifications.",
           },
           {
             icon: "bg-pink-400 rounded-tr-full",
-            title: "Contract Drafting",
+            title: "Contract Intelligence Platform",
             description:
-              "Generate purchase and service agreements from negotiation notes and standard templates.",
-          },
-          {
-            icon: "bg-green-500 rounded-bl-full",
-            title: "Customer Q&A Bot",
-            description:
-              "Answer product specs, delivery times, and warranty questions instantly.",
+              "Draft agreements using contract templates, negotiation history, and legal precedents.",
           },
           {
             icon: "bg-yellow-400 rounded-br-full",
-            title: "Account Summaries",
+            title: "Account Intelligence Dashboard",
             description:
-              "Compile install base, order history, and service tickets for sales follow-up.",
+              "Compile customer insights from CRM, service tickets, and sales conversations.",
+          },
+          {
+            icon: "bg-green-500 rounded-bl-full",
+            title: "RFP Analysis & Vendor Comparison",
+            description:
+              "Analyze vendor responses with synthesis grids and key differentiator identification.",
           },
         ],
       },
@@ -107,27 +107,27 @@ export const industrialFirmsConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-gray-600 rounded-tl-full",
-            title: "Work Instructions & SOPs",
+            title: "Work Instruction Automation",
             description:
-              "Update procedures, maintenance guides, and safety protocols from engineering changes.",
+              "Update SOPs and maintenance procedures using engineering changes and incident reports.",
           },
           {
             icon: "bg-blue-500 rounded-tr-full",
-            title: "Technical Troubleshooting",
+            title: "Expert Diagnostic Assistant",
             description:
-              "Help technicians solve equipment problems with expert guidance and solutions.",
+              "Troubleshoot equipment issues using maintenance logs, failure analyses, and expertise.",
           },
           {
             icon: "bg-yellow-400 rounded-bl-full",
-            title: "Regulatory Documentation",
+            title: "Regulatory Compliance Engine",
             description:
-              "Generate compliance reports, safety filings, and certification materials.",
+              "Generate compliance documentation using quality systems, audits, and regulatory databases.",
           },
           {
             icon: "bg-green-500",
-            title: "Equipment Manual Search",
+            title: "Safety & Technical Documentation Intelligence",
             description:
-              "Find specific information across technical drawings, specs, and maintenance documents.",
+              "Search P&IDs, manuals, and safety procedures while identifying appropriate processes.",
           },
         ],
       },
@@ -138,27 +138,27 @@ export const industrialFirmsConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-red-500 rounded-br-full",
-            title: "Training Material Generation",
+            title: "Competency Development Platform",
             description:
-              "Create safety training content, equipment guides, and onboarding materials.",
+              "Create training materials using safety procedures, equipment knowledge, and conversations.",
           },
           {
             icon: "bg-blue-500 rounded-tl-full",
-            title: "Meeting Summaries & Project Updates",
+            title: "Engineering Review Documentation",
             description:
-              "Turn project discussions into clear action items and status reports.",
+              "Structure project updates from meeting notes, discussions, and design reviews.",
           },
           {
             icon: "bg-sky-400",
-            title: "Internal Policy Help",
+            title: "Policy & Compliance Intelligence Assistant",
             description:
-              "Answer employee questions about company policies, procedures, and guidelines.",
+              "Answer operational questions using quality manuals, EHS guidelines, and finance standards.",
           },
           {
             icon: "bg-green-500 rounded-tr-full",
-            title: "Technical Translation",
+            title: "Technical Knowledge Transfer",
             description:
-              "Translate safety documents, manuals, and procedures between languages.",
+              "Preserve expertise by capturing insights from technical conversations and documentation.",
           },
         ],
       },
@@ -169,27 +169,27 @@ export const industrialFirmsConfig: IndustryPageConfig = {
         features: [
           {
             icon: "bg-red-500 rounded-br-full",
-            title: "Technical Content Creation",
+            title: "Technical Content Generation",
             description:
-              "Generate product datasheets, application guides, and case studies.",
+              "Create datasheets and guides using product specifications, test data, and expertise.",
           },
           {
             icon: "bg-purple-500 rounded-tl-full",
-            title: "Competitive Product Analysis",
+            title: "Market Intelligence Platform",
             description:
-              "Track competitor specifications, pricing, and market positioning.",
+              "Analyze competitive positioning using market research, customer feedback, and sales intelligence.",
           },
           {
             icon: "bg-blue-500 rounded-tr-full",
-            title: "Product Descriptions",
+            title: "Product Portfolio Intelligence",
             description:
-              "Create technical specifications and catalog content for new products.",
+              "Develop technical content connecting R&D insights, customer requirements, and application knowledge.",
           },
           {
             icon: "bg-green-500 rounded-bl-full",
-            title: "Supplier Evaluation",
+            title: "Supplier Intelligence Hub",
             description:
-              "Analyze vendor capabilities, performance, and risk assessments.",
+              "Evaluate vendors using procurement data, supplier assessments, and supply chain expertise.",
           },
         ],
       },

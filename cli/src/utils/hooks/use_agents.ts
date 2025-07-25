@@ -49,7 +49,14 @@ export function useAgents() {
     }
 
     async function fetchAndCacheAgents(workspaceId: string) {
-      const dustClient = await getDustClient();
+      const dustClientRes = await getDustClient();
+      if (dustClientRes.isErr()) {
+        setError(`Failed to get client: ${dustClientRes.error.message}`);
+        setIsLoading(false);
+        return;
+      }
+
+      const dustClient = dustClientRes.value;
       if (!dustClient) {
         setError("Authentication required. Run `dust login` first.");
         setIsLoading(false);

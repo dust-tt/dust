@@ -39,6 +39,7 @@ use dust::{
     databases::{
         database::{execute_query, get_tables_schema, QueryDatabaseError},
         table::{LocalTable, Row, Table},
+        table_upserts_background_worker::TableUpsertsBackgroundWorker,
     },
     databases_store::{self},
     dataset,
@@ -903,6 +904,17 @@ async fn runs_create(
         },
         None => (),
     };
+
+    match headers.get("X-Dust-Feature-Flags") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_FEATURE_FLAGS".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
+
     match headers.get("X-Dust-Group-Ids") {
         Some(v) => match v.to_str() {
             Ok(v) => {
@@ -975,6 +987,17 @@ async fn runs_create_stream(
         },
         None => (),
     };
+
+    match headers.get("X-Dust-Feature-Flags") {
+        Some(v) => match v.to_str() {
+            Ok(v) => {
+                credentials.insert("DUST_FEATURE_FLAGS".to_string(), v.to_string());
+            }
+            _ => (),
+        },
+        None => (),
+    };
+
     match headers.get("X-Dust-Group-Ids") {
         Some(v) => match v.to_str() {
             Ok(v) => {
@@ -4106,6 +4129,11 @@ fn main() {
         .unwrap();
 
     let r = rt.block_on(async {
+        // Start the background worker for table upserts
+        tokio::task::spawn(async move {
+            TableUpsertsBackgroundWorker::start_loop().await;
+        });
+
         let _guard = init_subscribers()?;
 
         let store: Box<dyn store::Store + Sync + Send> = match std::env::var("CORE_DATABASE_URI") {

@@ -4,10 +4,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import {
-  getConversation,
-  postUserMessage,
-} from "@app/lib/api/assistant/conversation";
+import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   apiErrorForConversation,
   isUserMessageContextOverflowing,

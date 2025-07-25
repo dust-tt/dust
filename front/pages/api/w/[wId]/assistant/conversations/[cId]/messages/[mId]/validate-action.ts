@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";

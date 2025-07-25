@@ -5,18 +5,18 @@ import { UniqueConstraintError } from "sequelize";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   createConversation,
-  getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import mainLogger from "@app/logger/logger";
 import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/transcripts/client";
 import {
@@ -64,11 +64,9 @@ export async function retrieveNewTranscriptsActivity(
     transcriptsConfigurationSid: transcriptsConfiguration.sId,
   });
 
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      id: transcriptsConfiguration.workspaceId,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchByModelId(
+    transcriptsConfiguration.workspaceId
+  );
 
   if (!workspace) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
@@ -211,11 +209,9 @@ export async function processTranscriptActivity(
     );
   }
 
-  const workspace = await WorkspaceModel.findOne({
-    where: {
-      id: transcriptsConfiguration.workspaceId,
-    },
-  });
+  const workspace = await WorkspaceResource.fetchByModelId(
+    transcriptsConfiguration.workspaceId
+  );
 
   if (!workspace) {
     await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);

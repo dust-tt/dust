@@ -1,5 +1,13 @@
-import { Button, SparklesIcon } from "@dust-tt/sparkle";
-import { useState } from "react";
+import {
+  Button,
+  Chip,
+  PopoverContent,
+  PopoverTrigger,
+  SparklesIcon,
+  Spinner,
+} from "@dust-tt/sparkle";
+import { PopoverRoot } from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -16,6 +24,8 @@ import type {
 } from "@app/types";
 import { isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
+
+const MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS = 20;
 
 async function getTagsSuggestions({
   owner,
@@ -45,44 +55,6 @@ async function getTagsSuggestions({
   });
 }
 
-interface TagsSuggestionsProps {
-  tags: TagType[];
-  onTagsChange: (tags: TagType[]) => void;
-  tagsSuggestions: TagType[];
-}
-
-function TagsSuggestions({
-  tags,
-  onTagsChange,
-  tagsSuggestions,
-}: TagsSuggestionsProps) {
-  const addTag = (tag: TagType) => {
-    const isTagInAgent = tags.findIndex((t) => t.sId === tag.sId) !== -1;
-
-    if (!isTagInAgent) {
-      onTagsChange([...tags, tag]);
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="text-muted-foregroup text-xs font-semibold dark:text-muted-foreground-night">
-        Suggestions:
-      </div>
-
-      {tagsSuggestions.map((tag) => (
-        <Button
-          key={`tag-suggestion-${tag.sId}`}
-          size="xs"
-          variant="outline"
-          label={tag.name}
-          onClick={() => addTag(tag)}
-        />
-      ))}
-    </div>
-  );
-}
-
 export function TagsSection() {
   const { owner } = useAgentBuilderContext();
   const { getValues } = useFormContext<AgentBuilderFormData>();
@@ -99,11 +71,45 @@ export function TagsSection() {
   >([]);
   const [isTagsSuggestionLoading, setTagsSuggestionsLoading] = useState(false);
 
+  const instructions = getValues("instructions");
+
+  const isButtonDisabled = useMemo(() => {
+    return (
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS ||
+      allTags.length === 0
+    );
+  }, [instructions, allTags.length]);
+
+  const buttonTooltip = useMemo(() => {
+    if (
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
+    ) {
+      return `Add at least ${MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS} characters to instructions to get suggestions`;
+    }
+    if (allTags.length === 0) {
+      return "Create tags to start using suggestions";
+    }
+    return undefined;
+  }, [instructions, allTags.length]);
+
   const updateTagsSuggestions = async () => {
+    if (isTagsSuggestionLoading) {
+      return;
+    }
+
+    if (
+      !instructions ||
+      instructions.length < MIN_INSTRUCTIONS_LENGTH_FOR_DROPDOWN_SUGGESTIONS
+    ) {
+      return;
+    }
+
     setTagsSuggestionsLoading(true);
+    setFilteredTagsSuggestions([]);
 
     try {
-      const instructions = getValues("instructions");
       const description = getValues("agentSettings.description");
 
       const tagsSuggestionsResult = await getTagsSuggestions({
@@ -156,28 +162,61 @@ export function TagsSection() {
   };
 
   return (
-    <div className="flex flex-grow flex-col gap-4">
-      <h3>Tags</h3>
-      {filteredTagsSuggestions.length > 0 && (
-        <TagsSuggestions
-          tags={selectedTags}
-          onTagsChange={field.onChange}
-          tagsSuggestions={filteredTagsSuggestions}
-        />
-      )}
+    <div className="flex h-full flex-col gap-4">
+      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+        Tags
+      </label>
       <TagsSelector
         owner={owner}
         tags={selectedTags}
         onTagsChange={field.onChange}
         suggestionButton={
-          <Button
-            label="Suggest"
-            size="xs"
-            icon={SparklesIcon}
-            variant="outline"
-            isLoading={isTagsSuggestionLoading}
-            onClick={updateTagsSuggestions}
-          />
+          <PopoverRoot onOpenChange={(open) => open && updateTagsSuggestions()}>
+            <PopoverTrigger asChild>
+              <Button
+                label="Suggest"
+                icon={SparklesIcon}
+                variant="outline"
+                isSelect
+                disabled={isButtonDisabled}
+                tooltip={buttonTooltip}
+              />
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-3">
+              {isTagsSuggestionLoading ? (
+                <div className="flex items-center justify-center p-4">
+                  <Spinner size="sm" />
+                </div>
+              ) : filteredTagsSuggestions.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
+                    Suggestions:
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {filteredTagsSuggestions.map((tag) => (
+                      <Chip
+                        key={`tag-suggestion-chip-${tag.sId}`}
+                        label={tag.name}
+                        size="xs"
+                        color="golden"
+                        onClick={() => {
+                          field.onChange([...selectedTags, tag]);
+                          setFilteredTagsSuggestions((prev) =>
+                            prev.filter((t) => t.sId !== tag.sId)
+                          );
+                        }}
+                        className="cursor-pointer hover:opacity-80"
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
+                  No suggestions available
+                </div>
+              )}
+            </PopoverContent>
+          </PopoverRoot>
         }
       />
     </div>

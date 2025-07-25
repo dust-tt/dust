@@ -191,6 +191,7 @@ export function isTemplateAgentConfiguration(
 
 export const DEFAULT_MAX_STEPS_USE_PER_RUN = 8;
 export const MAX_STEPS_USE_PER_RUN_LIMIT = 128;
+export const MAX_ACTIONS_PER_STEP = 16;
 
 /**
  * Agent events
@@ -224,21 +225,29 @@ export type AgentMessageErrorEvent = {
   };
 };
 
-// Generic type for the content of an agent error.
-export type AgentErrorContent = {
+// Generic type for the content of an agent / tool error.
+export type ErrorContent = {
   code: string;
   message: string;
   metadata: Record<string, string | number | boolean> | null;
 };
 
-// Generic event sent when an error occurred (whether it's during the action or the message
-// generation).
+// Generic event sent when an error occurred during the model call.
 export type AgentErrorEvent = {
   type: "agent_error";
   created: number;
   configurationId: string;
   messageId: string;
-  error: AgentErrorContent;
+  error: ErrorContent;
+};
+
+// Event sent when an error occurred during the tool call.
+export type ToolErrorEvent = {
+  type: "tool_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: ErrorContent;
 };
 
 export type AgentDisabledErrorEvent = {
@@ -285,7 +294,7 @@ export type AgentActionsEvent = {
   actions: Array<{
     action: ActionConfigurationType;
     inputs: Record<string, string | boolean | number>;
-    functionCallId: string | null;
+    functionCallId: string;
   }>;
 };
 
@@ -317,38 +326,3 @@ export type AgentStepContentEvent = {
   index: number;
   content: TextContentType | FunctionCallContentType | ReasoningContentType;
 };
-
-/**
- * Run agent arguments
- */
-
-export type RunAgentIdArgs = {
-  agentMessageId: string;
-  conversationId: string;
-  userMessageId: string;
-};
-
-export type RunAgentFullArgs = {
-  agentMessage: AgentMessageType;
-  agentMessageRow: AgentMessage;
-  conversation: ConversationType;
-  userMessage: UserMessageType;
-  agentConfiguration: AgentConfigurationType;
-};
-
-export type RunAgentArgs =
-  | {
-      sync: true;
-      inMemoryData: RunAgentFullArgs;
-    }
-  | {
-      sync: false;
-      idArgs: RunAgentIdArgs;
-    };
-
-export function getRunAgentData(runAgentArgs: RunAgentArgs): RunAgentFullArgs {
-  if (runAgentArgs.sync) {
-    return runAgentArgs.inMemoryData;
-  }
-  throw new Error("Not implemented");
-}

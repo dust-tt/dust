@@ -18,7 +18,7 @@ import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
@@ -121,7 +121,7 @@ export default function WorkspaceAdmin({
   );
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "members" })}
@@ -173,7 +173,7 @@ export default function WorkspaceAdmin({
           )}
         </Page.Vertical>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 

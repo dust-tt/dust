@@ -1,6 +1,6 @@
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Mention } from "@app/lib/models/assistant/conversation";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -112,11 +112,7 @@ makeScript(
   },
   async ({ workspaceId, execute }, logger) => {
     if (workspaceId) {
-      const workspace = await WorkspaceModel.findOne({
-        where: {
-          sId: workspaceId,
-        },
-      });
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
       if (!workspace) {
         logger.info({ workspaceId }, "Workspace not found!");
         return;

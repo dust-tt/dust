@@ -5,9 +5,9 @@ import { Op } from "sequelize";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import {
   createConversation,
-  getConversation,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { sendEmail } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";

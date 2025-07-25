@@ -16,7 +16,7 @@ import { useRouter } from "next/router";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -91,7 +91,7 @@ export default function MCPActionsDashboard({
 
   return (
     <ConversationsNavigationProvider>
-      <AppContentLayout
+      <AppCenteredLayout
         subscription={subscription}
         owner={owner}
         pageTitle="Dust - MCP Actions Dashboard"
@@ -172,7 +172,7 @@ export default function MCPActionsDashboard({
             )}
           </Page.Layout>
         </Page>
-      </AppContentLayout>
+      </AppCenteredLayout>
     </ConversationsNavigationProvider>
   );
 }

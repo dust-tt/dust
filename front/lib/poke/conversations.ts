@@ -1,4 +1,4 @@
-import { getConversation } from "@app/lib/api/assistant/conversation";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import type {

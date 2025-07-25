@@ -4,12 +4,12 @@ import * as reporter from "io-ts-reporters";
 import { NumberFromString, withFallback } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { GetMCPActionsResult } from "@app/lib/api/actions/agent_mcp_action_analytics";
+import { AgentMCPActionsAnalytics } from "@app/lib/api/actions/agent_mcp_action_analytics";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { MCPAction } from "@app/lib/resources/agent_mcp_action_resource";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -26,15 +26,9 @@ const GetMCPActionsQuerySchema = t.type({
   cursor: t.union([t.string, t.undefined]),
 });
 
-export type GetMCPActionsResponseBody = {
-  actions: MCPAction[];
-  nextCursor: string | null;
-  totalCount: number;
-};
-
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetMCPActionsResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetMCPActionsResult>>,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
@@ -99,11 +93,14 @@ async function handler(
         });
       }
 
-      const result = await AgentMCPActionResource.getMCPActionsForAgent(auth, {
-        agentConfigurationId: agentConfiguration.sId,
-        limit,
-        cursor,
-      });
+      const result = await AgentMCPActionsAnalytics.getMCPActionsForAgent(
+        auth,
+        {
+          agentConfigurationId: agentConfiguration.sId,
+          limit,
+          cursor,
+        }
+      );
 
       if (result.isErr()) {
         const error = result.error;

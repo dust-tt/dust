@@ -1,7 +1,7 @@
 import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
 import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { getWorkspaceByModelId } from "@app/lib/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 
 export async function syncRemoteMCPServers(ids: number[]): Promise<void> {
@@ -20,7 +20,9 @@ export async function syncRemoteMCPServers(ids: number[]): Promise<void> {
       }
 
       // Retrieve the workspace
-      const workspace = await getWorkspaceByModelId(server.workspaceId);
+      const workspace = await WorkspaceResource.fetchByModelId(
+        server.workspaceId
+      );
       if (!workspace) {
         logger.error({
           msg: "Workspace not found for remote MCP server",

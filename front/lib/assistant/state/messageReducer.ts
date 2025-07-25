@@ -1,23 +1,15 @@
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { BaseAction } from "@app/lib/actions/types";
-import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import type {
-  AgentActionSuccessEvent,
-  AgentActionType,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
-  GenerationTokensEvent,
-} from "@app/types";
+import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import type { AgentActionType, ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 
 export type AgentStateClassification = "thinking" | "acting" | "done";
 
 export type ActionProgressState = Map<
-  BaseAction["id"],
+  ModelId,
   {
     action: AgentActionType;
     progress?: ProgressNotificationContentType;
@@ -32,14 +24,7 @@ export interface MessageTemporaryState {
   actionProgress: ActionProgressState;
 }
 
-export type AgentMessageStateEvent =
-  | AgentActionSpecificEvent
-  | AgentActionSuccessEvent
-  | AgentErrorEvent
-  | AgentGenerationCancelledEvent
-  | AgentMessageSuccessEvent
-  | GenerationTokensEvent
-  | ToolNotificationEvent;
+export type AgentMessageStateEvent = AgentMessageEvents | ToolNotificationEvent;
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
@@ -109,6 +94,7 @@ export function messageReducer(
       return updateProgress(state, event);
     }
 
+    case "tool_error":
     case "agent_error":
       return {
         ...state,

@@ -5,6 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types";
@@ -44,7 +45,7 @@ export async function purgeConversationsBatchActivity({
   const res: PurgeConversationsBatchActivityReturnType[] = [];
 
   for (const workspaceId of workspaceIds) {
-    const workspace = await WorkspaceModel.findByPk(workspaceId);
+    const workspace = await WorkspaceResource.fetchByModelId(workspaceId);
     if (!workspace) {
       logger.error(
         { workspaceId },
@@ -135,7 +136,7 @@ export async function purgeAgentConversationsBatchActivity({
   retentionDays: number;
   nbConversationsDeleted: number;
 }> {
-  const workspace = await WorkspaceModel.findByPk(workspaceId);
+  const workspace = await WorkspaceResource.fetchByModelId(workspaceId);
   if (!workspace) {
     throw new Error("Workspace not found");
   }

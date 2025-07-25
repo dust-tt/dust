@@ -16,6 +16,7 @@ import { actionRefsOffset } from "@app/lib/actions/utils";
 import { getWebsearchNumResults } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
+import { tokenCountForTexts } from "@app/lib/tokenization";
 import {
   browseUrls,
   isBrowseScrapeSuccessResponse,
@@ -30,6 +31,8 @@ export const serverInfo: InternalMCPServerDefinitionType = {
   authorization: null,
   documentationUrl: null,
 };
+
+const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 
 const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
   const server = new McpServer(serverInfo);
@@ -132,20 +135,58 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
 
       const content: BrowseResultResourceType[] = [];
       for (const result of results) {
-        const [markdown, title, description, error] =
-          isBrowseScrapeSuccessResponse(result)
-            ? [result.markdown, result.title, result.description, undefined]
-            : [undefined, undefined, undefined, result.error];
+        if (!isBrowseScrapeSuccessResponse(result)) {
+          content.push({
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+            requestedUrl: result.url,
+            uri: result.url,
+            text: "There was an error while browsing the website.",
+            responseCode: result.status.toString(),
+            errorMessage: result.error,
+          });
+          continue;
+        }
+
+        const { markdown, title, description } = result;
+
+        const tokensRes = await tokenCountForTexts([markdown], {
+          providerId: "openai",
+          modelId: "gpt-4o",
+        });
+
+        if (tokensRes.isErr()) {
+          content.push({
+            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
+            requestedUrl: result.url,
+            uri: result.url,
+            text: "There was an error while browsing the website.",
+            title: title,
+            description: description,
+            responseCode: result.status.toString(),
+            errorMessage: tokensRes.error.message,
+          });
+          continue;
+        }
+
+        const tokensCount = tokensRes.value[0];
+        const avgCharactersPerToken = (markdown?.length ?? 0) / tokensCount;
+        const maxCharacters = BROWSE_MAX_TOKENS_LIMIT * avgCharactersPerToken;
+        let truncatedMarkdown = markdown?.slice(0, maxCharacters);
+
+        if (truncatedMarkdown?.length !== markdown?.length) {
+          truncatedMarkdown += `\n\n[...output truncated to ${BROWSE_MAX_TOKENS_LIMIT} tokens]`;
+        }
 
         content.push({
           mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.BROWSE_RESULT,
           requestedUrl: result.url,
           uri: result.url,
-          text: markdown ?? "There was an error while browsing the website.",
-          title: title ?? undefined,
-          description: description ?? undefined,
+          text:
+            truncatedMarkdown ??
+            "There was an error while browsing the website.",
+          title: title,
+          description: description,
           responseCode: result.status.toString(),
-          errorMessage: error,
         });
       }
 

@@ -88,10 +88,10 @@ export function InteractiveContentContainer({
       <div
         className={cn(
           "bg-structure-0/80 flex h-full w-full flex-col backdrop-blur-sm",
-          "rounded-lg border border-border shadow-lg dark:border-border-night"
+          "rounded-3xl border border-border dark:border-border-night"
         )}
       >
-        <div className="flex-1 overflow-hidden rounded-lg bg-gray-50 dark:bg-gray-900">
+        <div className="flex-1 overflow-hidden rounded-3xl bg-gray-50 dark:bg-gray-900">
           {renderContent()}
         </div>
       </div>

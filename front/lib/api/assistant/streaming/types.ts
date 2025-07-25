@@ -1,4 +1,4 @@
-import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
+import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -6,15 +6,17 @@ import type {
   AgentMessageNewEvent,
   AgentMessageSuccessEvent,
   GenerationTokensEvent,
+  ToolErrorEvent,
   UserMessageNewEvent,
 } from "@app/types";
 
 export type AgentMessageEvents =
-  | AgentActionSpecificEvent
+  | AgentActionRunningEvents
   | AgentActionSuccessEvent
   | AgentErrorEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
-  | GenerationTokensEvent;
+  | GenerationTokensEvent
+  | ToolErrorEvent;
 
 export type ConversationEvents = AgentMessageNewEvent | UserMessageNewEvent;

@@ -3,7 +3,7 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { getWorkspaceByModelId } from "@app/lib/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type {
   PokeDataSourceType,
   PokeDataSourceViewType,
@@ -22,7 +22,9 @@ export function spaceToPokeJSON(space: SpaceResource): PokeSpaceType {
 export async function dataSourceToPokeJSON(
   dataSource: DataSourceResource
 ): Promise<PokeDataSourceType> {
-  const workspace = await getWorkspaceByModelId(dataSource.workspaceId);
+  const workspace = await WorkspaceResource.fetchByModelId(
+    dataSource.workspaceId
+  );
 
   return {
     ...dataSource.toJSON(),
@@ -37,7 +39,9 @@ export async function dataSourceToPokeJSON(
 export async function dataSourceViewToPokeJSON(
   dataSourceView: DataSourceViewResource
 ): Promise<PokeDataSourceViewType> {
-  const workspace = await getWorkspaceByModelId(dataSourceView.workspaceId);
+  const workspace = await WorkspaceResource.fetchByModelId(
+    dataSourceView.workspaceId
+  );
 
   return {
     ...dataSourceView.toJSON(),
@@ -53,7 +57,9 @@ export async function dataSourceViewToPokeJSON(
 export async function mcpServerViewToPokeJSON(
   mcpServerView: MCPServerViewResource
 ): Promise<PokeMCPServerViewType> {
-  const workspace = await getWorkspaceByModelId(mcpServerView.workspaceId);
+  const workspace = await WorkspaceResource.fetchByModelId(
+    mcpServerView.workspaceId
+  );
   const json = mcpServerView.toJSON();
 
   return {

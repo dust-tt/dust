@@ -2,7 +2,7 @@
  * Script to check the accessibility of Notion pages and databases.
  *
  * Usage:
- *   npm run script notion_check_resources_accessibility -- -c <connectorId> -f <file_path>
+ *   npm run script notion_check_resources_accessibility -- -c <connectorId> -f <file_path> -n <name>
  *
  * File format: CSV with columns notion_id,type
  *   - First row is header (notion_id,type)
@@ -14,20 +14,24 @@
  *   abc123de-f456-7890-1234-567890123456,page
  *   12345678-9012-3456-7890-abcdef123456,database
  *
- * The script will launch a Temporal workflow that checks each resource
- * and logs whether it's accessible using the connector's token.
- *
- * The script returns immediately after starting the workflow and provides
- * a link to the Temporal UI to monitor progress.
+ * The script will:
+ * 1. Split the CSV into chunks of 8k resources
+ * 2. Upload chunks to GCS as separate CSV files
+ * 3. Launch a Temporal workflow with the list of GCS file paths
+ * 4. The workflow will process each file sequentially using continue-as-new
+ * 5. Return immediately with a link to the Temporal UI
  */
+import { Storage } from "@google-cloud/storage";
 import { readFile } from "fs/promises";
 import { makeScript } from "scripts/helpers";
 
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
 import { checkResourcesAccessibilityWorkflow } from "@connectors/connectors/notion/temporal/workflows/check_resources_accessibility";
+import { connectorsConfig } from "@connectors/connectors/shared/config";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
+import { isDevelopment } from "@connectors/types";
 
 makeScript(
   {
@@ -134,18 +138,79 @@ makeScript(
       "Parsed resources from CSV file"
     );
 
+    // Validate we have resources to process
+    if (resources.length === 0) {
+      throw new Error("No valid resources found in CSV file");
+    }
+
+    // Split resources into chunks of 8k
+    const CHUNK_SIZE = 8000;
+    const chunks: Array<typeof resources> = [];
+    for (let i = 0; i < resources.length; i += CHUNK_SIZE) {
+      chunks.push(resources.slice(i, i + CHUNK_SIZE));
+    }
+
     logger.info(
       {
-        connectorId,
-        resourceCount: resources.length,
-        resources,
+        totalResources: resources.length,
+        chunkSize: CHUNK_SIZE,
+        numberOfChunks: chunks.length,
       },
-      "Starting resource accessibility check"
+      "Split resources into chunks"
     );
 
     if (!execute) {
-      logger.info("Dry run mode - not executing workflow");
+      logger.info("Dry run mode - not uploading to GCS or executing workflow");
       return;
+    }
+
+    // Initialize GCS
+    const storage = new Storage({
+      keyFilename: isDevelopment()
+        ? connectorsConfig.getServiceAccount()
+        : undefined,
+    });
+    const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
+    const gcsPrefix = `notion-check-accessibility/${connectorId}/${name}/${Date.now()}`;
+
+    // Upload chunks to GCS and collect file paths
+    logger.info({ gcsPrefix }, "Uploading chunks to GCS");
+    const gcsFilePaths: string[] = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      if (!chunk || chunk.length === 0) {
+        throw new Error(`Empty chunk at index ${i} - this should never happen`);
+      }
+      const csvLines = ["notion_id,type"];
+      for (const resource of chunk) {
+        csvLines.push(`${resource.resourceId},${resource.resourceType}`);
+      }
+
+      const fileName = `${gcsPrefix}/chunk_${i}.csv`;
+      await bucket.file(fileName).save(csvLines.join("\n"), {
+        metadata: {
+          contentType: "text/csv",
+          metadata: {
+            dustInternal: "notion-accessibility-check",
+            connectorId: connectorId.toString(),
+            chunkIndex: i.toString(),
+            resourceCount: chunk.length.toString(),
+          },
+        },
+      });
+
+      // Add the file path to the list
+      gcsFilePaths.push(fileName);
+
+      logger.info(
+        {
+          chunkIndex: i,
+          fileName,
+          resourceCount: chunk.length,
+        },
+        "Uploaded chunk to GCS"
+      );
     }
 
     const connector = await ConnectorResource.fetchById(connectorId);
@@ -156,11 +221,18 @@ makeScript(
     const temporalClient = await getTemporalClient();
     const workflowId = `notion-check-resources-accessibility-${connectorId}-${name}`;
 
+    // Final validation before launching workflow
+    if (gcsFilePaths.length === 0) {
+      throw new Error("No GCS files were created - cannot start workflow");
+    }
+
     logger.info(
       {
         workflowId,
         connectorId,
         resourceCount: resources.length,
+        numberOfChunks: chunks.length,
+        gcsFilePaths: gcsFilePaths.length,
       },
       "Starting Temporal workflow"
     );
@@ -171,7 +243,7 @@ makeScript(
         args: [
           {
             connectorId,
-            resources,
+            gcsFilePaths,
           },
         ],
         taskQueue: QUEUE_NAME,
