@@ -24,7 +24,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { DataSourceWithAgentsUsageType, Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, Ok, removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -297,7 +297,7 @@ export async function createRegularSpaceAndGroup(
 
     const group = await GroupResource.makeNew(
       {
-        name: `Group for space ${name}`,
+        name: `${SPACE_GROUP_PREFIX} ${name}`,
         workspaceId: owner.id,
         kind: "regular",
       },

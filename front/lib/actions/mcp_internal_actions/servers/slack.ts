@@ -17,10 +17,7 @@ import {
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import {
-  actionRefsOffset,
-  SLACK_SEARCH_ACTION_NUM_RESULTS,
-} from "@app/lib/actions/utils";
+import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -269,16 +266,11 @@ const createServer = (
             ],
           };
         } else {
-          const refsOffset = actionRefsOffset({
-            agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-            stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-            stepActions: agentLoopContext.runContext.stepActions,
-            refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-          });
+          const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
           const refs = getRefs().slice(
-            refsOffset,
-            refsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+            citationsOffset,
+            citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
           );
 
           const results: SearchResultResourceType[] = matches.map(
@@ -401,16 +393,11 @@ const createServer = (
             ],
           };
         } else {
-          const refsOffset = actionRefsOffset({
-            agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-            stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-            stepActions: agentLoopContext.runContext.stepActions,
-            refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-          });
+          const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
           const refs = getRefs().slice(
-            refsOffset,
-            refsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+            citationsOffset,
+            citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
           );
 
           const results: SearchResultResourceType[] = matches.map(

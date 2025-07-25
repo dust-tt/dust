@@ -157,6 +157,7 @@ function _getDefaultWebActionsForGlobalAgent({
       // a legacy agent (see isLegacyAgent) and being capped to 1 action.
       description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
+      mcpServerName: webSearchBrowseMCPServerView.toJSON().server.name,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
@@ -187,6 +188,7 @@ function _getAgentRouterToolsConfiguration(
       description: DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
       mcpServerViewId: mcpServerView.sId,
       internalMCPServerId,
+      mcpServerName: mcpServerView.toJSON().server.name,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -258,6 +260,7 @@ function _getHelperGlobalAgent({
       name: "search_dust_docs",
       description: "The documentation of the Dust platform.",
       mcpServerViewId: searchMCPServerView.sId,
+      mcpServerName: searchMCPServerView.toJSON().server.name,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
       dataSources: [
         {
@@ -1373,6 +1376,7 @@ function _getManagedDataSourceAgent(
       name: "search_data_sources",
       description: `The user's ${connectorProvider} data source.`,
       mcpServerViewId: searchMCPServerView.sId,
+      mcpServerName: searchMCPServerView.toJSON().server.name,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
       dataSources: filteredDataSourceViews.map((dsView) => ({
         dataSourceViewId: dsView.sId,
@@ -1673,6 +1677,7 @@ The agent should not provide additional information or content that the user did
       description: "The user's entire workspace data sources",
       mcpServerViewId: searchMCPServerView.sId,
       internalMCPServerId: searchMCPServerView.internalMCPServerId,
+      mcpServerName: searchMCPServerView.toJSON().server.name,
       dataSources: dataSourceViews.map((dsView) => ({
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
@@ -1709,6 +1714,7 @@ The agent should not provide additional information or content that the user did
           name: "hidden_dust_search_" + dsView.dataSource.name,
           description: `The user's ${dsView.dataSource.connectorProvider} data source.`,
           mcpServerViewId: searchMCPServerView.sId,
+          mcpServerName: searchMCPServerView.toJSON().server.name,
           internalMCPServerId: searchMCPServerView.internalMCPServerId,
           dataSources: [
             {

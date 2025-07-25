@@ -38,7 +38,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
@@ -156,17 +155,8 @@ async function searchCallback(
     );
   }
 
-  // Compute the topK and refsOffset for the search.
-  const topK = getRetrievalTopK({
-    agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-    stepActions: agentLoopContext.runContext.stepActions,
-  });
-  const refsOffset = actionRefsOffset({
-    agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-    stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-    stepActions: agentLoopContext.runContext.stepActions,
-    refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-  });
+  const { retrievalTopK, citationsOffset } =
+    agentLoopContext.runContext.stepContext;
 
   const agentDataSourceConfigurationsResult =
     await getAgentDataSourceConfigurations(auth, dataSources);
@@ -246,7 +236,7 @@ async function searchCallback(
 
   const searchResults = await coreAPI.searchDataSources(
     query,
-    topK,
+    retrievalTopK,
     credentials,
     false,
     coreSearchArgs.map((args) => {
@@ -282,13 +272,16 @@ async function searchCallback(
     );
   }
 
-  if (refsOffset + topK > getRefs().length) {
+  if (citationsOffset + retrievalTopK > getRefs().length) {
     return makeMCPToolTextError(
       "The search exhausted the total number of references available for citations"
     );
   }
 
-  const refs = getRefs().slice(refsOffset, refsOffset + topK);
+  const refs = getRefs().slice(
+    citationsOffset,
+    citationsOffset + retrievalTopK
+  );
 
   const results = searchResults.value.documents.map(
     (doc): SearchResultResourceType => {

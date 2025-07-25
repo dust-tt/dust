@@ -318,9 +318,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   agent_memory: {
     id: 21,
     availability: "auto",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("agent_memory_tools");
-    },
   },
   jira: {
     id: 22,
@@ -363,7 +360,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   run_agent: {
     id: 1008,
     availability: "auto",
-    timeoutMs: 5 * 60 * 1000, // 5 minutes
+    timeoutMs: 10 * 60 * 1000, // 10 minutes
   },
   primitive_types_debugger: {
     id: 1004,

@@ -293,7 +293,6 @@ export type AgentActionsEvent = {
   runId: string;
   actions: Array<{
     action: ActionConfigurationType;
-    inputs: Record<string, string | boolean | number>;
     functionCallId: string;
   }>;
 };

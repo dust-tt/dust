@@ -11,7 +11,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import { isDevelopment } from "@app/types";
+import { isDevelopment, SPACE_GROUP_PREFIX } from "@app/types";
 
 const DEFAULT_WORKSPACE_NAME = "dust-apps";
 const DEFAULT_SPACE_NAME = "Public Dust Apps";
@@ -59,7 +59,7 @@ async function main() {
   if (!space) {
     console.log("Creating group");
     const group = await GroupResource.makeNew({
-      name: `Group for space ${DEFAULT_SPACE_NAME}`,
+      name: `${SPACE_GROUP_PREFIX} ${DEFAULT_SPACE_NAME}`,
       workspaceId: w.id,
       kind: "regular",
     });

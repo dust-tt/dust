@@ -227,7 +227,7 @@ export const industrialFirmsConfig: IndustryPageConfig = {
         content:
           "Germi, Qonto's AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
         href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Qonto-__-Dust.jpg",
       },
       {
         title: "Kyriba's adoption of Dust across all functions",

@@ -1,10 +1,12 @@
 import { runToolWithStreaming } from "@app/lib/actions/mcp";
+import type { StepContext } from "@app/lib/actions/types";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import { getCitationsCount } from "@app/lib/actions/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { assertNever } from "@app/types";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -13,27 +15,34 @@ export async function runToolActivity(
   authType: AuthenticatorType,
   {
     runAgentArgs,
-    inputs,
-    functionCallId,
-    step,
-    stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
+    action,
+    stepContext,
     stepContentId,
   }: {
     runAgentArgs: RunAgentArgs;
-    inputs: Record<string, string | boolean | number>;
-    functionCallId: string;
-    step: number;
-    stepActionIndex: number;
-    stepActions: ActionConfigurationType[];
-    citationsRefsOffset: number;
+    action: ActionConfigurationType;
+    stepContext: StepContext;
     stepContentId: ModelId;
   }
-): Promise<{ citationsIncrement: number }> {
+): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
 
-  const actionConfiguration = stepActions[stepActionIndex];
+  // Fetch step content to derive inputs, functionCallId, and step
+  const stepContent =
+    await AgentStepContentResource.fetchByModelId(stepContentId);
+  if (!stepContent) {
+    throw new Error(
+      `Step content not found for stepContentId: ${stepContentId}`
+    );
+  }
+  if (!isFunctionCallContent(stepContent.value)) {
+    throw new Error(
+      `Expected step content to be a function call, got: ${stepContent.value.type}`
+    );
+  }
+
+  const { step } = stepContent;
+
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
@@ -42,16 +51,14 @@ export async function runToolActivity(
   const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
     runAgentDataRes.value;
 
-  const eventStream = runToolWithStreaming(auth, actionConfiguration, {
+  const eventStream = runToolWithStreaming(auth, action, {
     agentConfiguration: agentConfiguration,
     conversation,
     agentMessage,
-    rawInputs: inputs,
-    functionCallId,
+    rawInputs: JSON.parse(stepContent.value.value.arguments),
+    functionCallId: stepContent.value.value.id,
     step,
-    stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
+    stepContext,
     stepContentId,
   });
 
@@ -74,7 +81,7 @@ export async function runToolActivity(
           agentMessageRow,
           step
         );
-        return { citationsIncrement: 0 };
+        return;
 
       case "tool_success":
         await updateResourceAndPublishEvent(
@@ -110,12 +117,4 @@ export async function runToolActivity(
         assertNever(event);
     }
   }
-
-  return {
-    citationsIncrement: getCitationsCount({
-      agentConfiguration: agentConfiguration,
-      stepActions: stepActions,
-      stepActionIndex: stepActionIndex,
-    }),
-  };
 }

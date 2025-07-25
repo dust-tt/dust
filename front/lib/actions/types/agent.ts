@@ -32,7 +32,7 @@ export function isActionConfigurationType(
 // We need to apply "Omit" to each member of the union separately rather than the whole union
 // because Omit<A | B, "k"> is different from Omit<A, "k"> | Omit<B, "k">.
 // The first form loses the discriminated union properties needed for type narrowing.
-type UnsavedConfiguration<T> = Omit<T, "id" | "sId">;
+type UnsavedConfiguration<T> = Omit<T, "id" | "sId" | "mcpServerName">;
 export type UnsavedAgentActionConfigurationType = {
   [K in AgentActionConfigurationType["type"]]: UnsavedConfiguration<
     Extract<AgentActionConfigurationType, { type: K }>

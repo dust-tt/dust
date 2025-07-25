@@ -34,10 +34,8 @@ import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
-import type {
-  ActionConfigurationType,
-  AgentActionSpecification,
-} from "@app/lib/actions/types/agent";
+import type { StepContext } from "@app/lib/actions/types";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
@@ -98,6 +96,8 @@ export type BaseMCPServerConfigurationType = {
   type: "mcp_server_configuration";
 
   name: string;
+  mcpServerName: string | null;
+
   description: string | null;
   icon?: CustomServerIconType | InternalAllowedIconType;
 };
@@ -491,9 +491,7 @@ export async function* runToolWithStreaming(
     functionCallId,
     step,
     stepContentId,
-    stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
+    stepContext,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
@@ -502,9 +500,7 @@ export async function* runToolWithStreaming(
     functionCallId: string;
     step: number;
     stepContentId: ModelId;
-    stepActionIndex: number;
-    stepActions: ActionConfigurationType[];
-    citationsRefsOffset: number;
+    stepContext: StepContext;
   }
 ): AsyncGenerator<
   | MCPParamsEvent
@@ -736,9 +732,7 @@ export async function* runToolWithStreaming(
     agentConfiguration,
     conversation,
     agentMessage,
-    stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
+    stepContext,
   };
 
   let toolCallResult: Result<

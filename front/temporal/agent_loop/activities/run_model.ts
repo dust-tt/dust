@@ -1,20 +1,22 @@
 import { removeNulls } from "@dust-tt/client";
 
+import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
   tryListMCPTools,
 } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   isDustAppChatBlockType,
   runActionStreamed,
 } from "@app/lib/actions/server";
+import type { StepContext } from "@app/lib/actions/types";
 import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
+import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
@@ -63,6 +65,7 @@ export async function runModelActivity({
   runIds,
   step,
   functionCallStepContentIds,
+  citationsRefsOffset,
   autoRetryCount = 0,
 }: {
   authType: AuthenticatorType;
@@ -70,11 +73,13 @@ export async function runModelActivity({
   runIds: string[];
   step: number;
   functionCallStepContentIds: Record<string, ModelId>;
+  citationsRefsOffset: number;
   autoRetryCount?: number;
 }): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
+  stepContexts: StepContext[];
 } | null> {
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
@@ -410,6 +415,7 @@ export async function runModelActivity({
         runIds,
         step,
         functionCallStepContentIds,
+        citationsRefsOffset,
         autoRetryCount: autoRetryCount + 1,
       });
     }
@@ -753,7 +759,6 @@ export async function runModelActivity({
     let action = availableActions.find((ac) =>
       actionNamesFromLLM.includes(ac.name)
     );
-    let args = a.arguments;
 
     if (!action) {
       if (!a.name) {
@@ -817,12 +822,10 @@ export async function runModelActivity({
         toolServerId: mcpServerView.sId,
         mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
       };
-      args = {};
     }
 
     actions.push({
       action,
-      inputs: args ?? {},
       functionCallId: a.functionCallId ?? null,
     });
   }
@@ -847,9 +850,17 @@ export async function runModelActivity({
     content,
   }));
   agentMessage.contents.push(...newContents);
+
+  const stepContexts = computeStepContexts({
+    agentConfiguration,
+    stepActions: actions.map((a) => a.action),
+    citationsRefsOffset,
+  });
+
   return {
     actions,
     runId: await dustRunId,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
+    stepContexts,
   };
 }

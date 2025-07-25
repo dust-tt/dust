@@ -73,7 +73,7 @@ import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
 
-const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
+const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
@@ -585,8 +585,9 @@ export async function tryListMCPTools(
             workspaceId: owner.sId,
             conversationId: agentLoopListToolsContext.conversation.sId,
             messageId: agentLoopListToolsContext.agentMessage.sId,
-            error: toolsAndInstructionsRes.error,
+            actionId: action.sId,
             mcpServerName: action.name,
+            error: toolsAndInstructionsRes.error,
           },
           `Error listing tools from MCP server: ${normalizeError(
             toolsAndInstructionsRes.error
