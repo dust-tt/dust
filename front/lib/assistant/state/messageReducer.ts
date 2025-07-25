@@ -72,11 +72,24 @@ function updateProgress(
   return newState;
 }
 
+export const CLEAR_CONTENT_EVENT = { type: "clear_content" as const };
+
+export type ClearContentEvent = typeof CLEAR_CONTENT_EVENT;
+
 export function messageReducer(
   state: MessageTemporaryState,
-  event: AgentMessageStateEventWithoutToolApproveExecution
+  event: AgentMessageStateEventWithoutToolApproveExecution | ClearContentEvent
 ): MessageTemporaryState {
   switch (event.type) {
+    case "clear_content":
+      return {
+        ...state,
+        message: {
+          ...state.message,
+          content: null,
+          chainOfThought: null,
+        },
+      };
     case "agent_action_success":
       return {
         ...state,
