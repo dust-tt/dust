@@ -585,8 +585,9 @@ export async function tryListMCPTools(
             workspaceId: owner.sId,
             conversationId: agentLoopListToolsContext.conversation.sId,
             messageId: agentLoopListToolsContext.agentMessage.sId,
-            error: toolsAndInstructionsRes.error,
+            actionId: action.sId,
             mcpServerName: action.name,
+            error: toolsAndInstructionsRes.error,
           },
           `Error listing tools from MCP server: ${normalizeError(
             toolsAndInstructionsRes.error
