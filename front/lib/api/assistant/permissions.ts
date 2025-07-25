@@ -130,10 +130,11 @@ export async function getAgentConfigurationGroupIdsFromActions(
   }
 
   // Collect Dust App permissions by space.
-  const dustAppIds = actions
-    .filter((action) => isServerSideMCPServerConfiguration(action))
-    .map((action) => action.dustAppConfiguration?.appId)
-    .filter((appId) => appId !== undefined);
+  const dustAppIds = removeNulls(
+    actions
+      .filter(isServerSideMCPServerConfiguration)
+      .map((action) => action.dustAppConfiguration?.appId)
+  );
 
   if (dustAppIds.length > 0) {
     const dustApps = await AppResource.fetchByIds(auth, dustAppIds);
