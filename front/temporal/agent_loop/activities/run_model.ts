@@ -10,12 +10,12 @@ import {
   isDustAppChatBlockType,
   runActionStreamed,
 } from "@app/lib/actions/server";
+import type { StepContext } from "@app/lib/actions/types";
 import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
-import type { StepContext } from "@app/lib/actions/utils";
 import { computeStepContext } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";

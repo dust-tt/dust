@@ -3,13 +3,18 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { StepContext } from "@app/lib/actions/utils";
 import type {
   AgentConfigurationType,
   AgentMessageType,
   AllSupportedFileContentType,
   ConversationType,
 } from "@app/types";
+
+export type StepContext = {
+  retrievalTopK: number;
+  citationsOffset: number;
+  websearchResultCount: number;
+};
 
 export type ActionGeneratedFileType = {
   fileId: string;

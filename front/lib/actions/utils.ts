@@ -9,6 +9,7 @@ import {
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { StepContext } from "@app/lib/actions/types";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isMCPInternalDataSourceFileSystem,
@@ -26,12 +27,6 @@ import { assertNever } from "@app/types";
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
-
-export type StepContext = {
-  retrievalTopK: number;
-  citationsOffset: number;
-  websearchResultCount: number;
-};
 
 export const MCP_SPECIFICATION: ActionSpecification = {
   label: "More...",

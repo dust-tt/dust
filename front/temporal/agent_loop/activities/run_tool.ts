@@ -1,6 +1,6 @@
 import { runToolWithStreaming } from "@app/lib/actions/mcp";
+import type { StepContext } from "@app/lib/actions/types";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import type { StepContext } from "@app/lib/actions/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
