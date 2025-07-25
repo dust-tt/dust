@@ -1,5 +1,5 @@
-import { debounce, isEqual } from "lodash";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isEqual } from "lodash";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -73,7 +73,7 @@ export function useDraftAgent() {
 
   useEffect(() => {
     setDebouncedAgentName(agentName);
-  }, [agentName, setDebouncedAgentName])
+  }, [agentName, setDebouncedAgentName]);
 
   const createDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
