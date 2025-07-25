@@ -16,8 +16,8 @@ import { useState } from "react";
 import type { FieldArrayWithId, UseFieldArrayAppend } from "react-hook-form";
 
 import type {
+  AgentBuilderAction,
   AgentBuilderFormData,
-  AgentBuilderMCPAction,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
@@ -35,7 +35,7 @@ interface AddToolsDropdownProps {
   tools: FieldArrayWithId<AgentBuilderFormData, "actions", "id">[];
   addTools: UseFieldArrayAppend<AgentBuilderFormData, "actions">;
   setSelectedAction: React.Dispatch<
-    React.SetStateAction<AgentBuilderMCPAction | null>
+    React.SetStateAction<AgentBuilderAction | null>
   >;
   defaultMCPServerViews: MCPServerViewTypeWithLabel[];
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];

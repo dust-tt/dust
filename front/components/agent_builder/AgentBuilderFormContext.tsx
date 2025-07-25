@@ -194,25 +194,17 @@ const agentSettingsSchema = z.object({
   tags: z.array(tagSchema),
 });
 
+// TODO: only have mcpActionSchema.
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
-  actions: z.array(actionSchema),
-});
-
-export const agentBuilderMCPFormSchema = z.object({
-  agentSettings: agentSettingsSchema,
-  instructions: z.string().min(1, "Instructions are required"),
-  generationSettings: generationSettingsSchema,
-  actions: z.array(mcpActionSchema),
+  actions: z.union([z.array(actionSchema), z.array(mcpActionSchema)]),
 });
 
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
-// TODO: have only one AgentBuilderAction.
 export type AgentBuilderAction = z.infer<typeof actionSchema>;
-export type AgentBuilderMCPAction = z.infer<typeof mcpActionSchema>;
 export type AgentBuilderDataVizAction = z.infer<
   typeof dataVisualizationActionSchema
 >;

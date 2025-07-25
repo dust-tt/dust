@@ -14,7 +14,6 @@ import { useFieldArray } from "react-hook-form";
 import type {
   AgentBuilderDataVizAction,
   AgentBuilderFormData,
-  AgentBuilderMCPAction,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
@@ -41,7 +40,7 @@ import logger from "@app/logger/logger";
 import { asDisplayName } from "@app/types";
 
 function actionIcon(
-  action: AgentBuilderMCPAction | AgentBuilderDataVizAction,
+  action: AgentBuilderAction | AgentBuilderDataVizAction,
   mcpServerView: MCPServerViewType | null
 ) {
   if (mcpServerView?.server) {
@@ -56,7 +55,7 @@ function actionIcon(
 }
 
 function actionDisplayName(
-  action: AgentBuilderMCPAction | AgentBuilderDataVizAction,
+  action: AgentBuilderAction | AgentBuilderDataVizAction,
   mcpServerView: MCPServerViewType | null
 ) {
   if (mcpServerView && action.type === "MCP") {
@@ -78,7 +77,7 @@ function MCPActionCard({
   onRemove,
   onEdit,
 }: {
-  action: AgentBuilderMCPAction | AgentBuilderDataVizAction;
+  action: AgentBuilderAction | AgentBuilderDataVizAction;
   onRemove: () => void;
   onEdit?: () => void;
 }) {
@@ -224,7 +223,7 @@ export function AgentBuilderCapabilitiesBlock() {
   // TODO: Open single sheet for selected MCP action.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedAction, setSelectedAction] =
-    useState<AgentBuilderMCPAction | null>(null);
+    useState<AgentBuilderAction | null>(null);
 
   // TODO: Add logic for reasoning.
   const selectableDefaultMCPServerViews = useMemo(

@@ -2,10 +2,7 @@ import type { Icon } from "@dust-tt/sparkle";
 import { uniqueId } from "lodash";
 import { z } from "zod";
 
-import type {
-  agentBuilderFormSchema,
-  agentBuilderMCPFormSchema,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -13,10 +10,8 @@ import type { SupportedModel, WhitelistableFeature } from "@app/types";
 import { ioTsEnum } from "@app/types";
 
 type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
-type AgentBuilderMCPFormData = z.infer<typeof agentBuilderMCPFormSchema>;
 
 export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
-export type AgentBuilderMCPAction = AgentBuilderMCPFormData["actions"][number];
 
 export type SearchAgentBuilderAction = Extract<
   AgentBuilderAction,
@@ -243,7 +238,7 @@ export const dataSourceConfigurationSchema = z.object({
 
 export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
-): AgentBuilderMCPAction {
+): AgentBuilderAction {
   const requirements = getMCPServerRequirements(mcpServerView);
 
   return {
