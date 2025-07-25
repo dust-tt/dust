@@ -19,9 +19,6 @@ export async function executeAgentLoop(
   runAgentArgs: RunAgentArgs,
   activities: AgentLoopActivities
 ): Promise<void> {
-  // Citations references offset kept up to date across steps.
-  let citationsRefsOffset = 0;
-
   const runIds: string[] = [];
 
   // Track step content IDs by function call ID for later use in actions.
@@ -34,7 +31,6 @@ export async function executeAgentLoop(
       runIds,
       step: i,
       functionCallStepContentIds,
-      citationsRefsOffset,
       autoRetryCount: 0,
     });
 
@@ -63,12 +59,6 @@ export async function executeAgentLoop(
           stepContentId: functionCallStepContentIds[functionCallId],
         })
       )
-    );
-
-    // Update citations offset with pre-computed increment
-    citationsRefsOffset += stepContexts.reduce(
-      (acc, context) => acc + context.citationsCount,
-      0
     );
   }
 }

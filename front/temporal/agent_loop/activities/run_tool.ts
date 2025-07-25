@@ -1,6 +1,7 @@
 import { runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import { computeGlobalCitationsOffset } from "@app/lib/actions/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -51,6 +52,18 @@ export async function runToolActivity(
   const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
     runAgentDataRes.value;
 
+  // Compute the global citations offset from past actions.
+  const globalCitationsOffset = computeGlobalCitationsOffset({
+    agentConfiguration,
+    agentMessage,
+    currentStep: step,
+  });
+
+  const adjustedStepContext = {
+    ...stepContext,
+    citationsOffset: stepContext.citationsOffset + globalCitationsOffset,
+  };
+
   const eventStream = runToolWithStreaming(auth, action, {
     agentConfiguration: agentConfiguration,
     conversation,
@@ -58,7 +71,7 @@ export async function runToolActivity(
     rawInputs: JSON.parse(stepContent.value.value.arguments),
     functionCallId: stepContent.value.value.id,
     step,
-    stepContext,
+    stepContext: adjustedStepContext,
     stepContentId,
   });
 

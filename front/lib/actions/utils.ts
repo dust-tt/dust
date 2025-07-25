@@ -21,7 +21,11 @@ import {
 } from "@app/lib/actions/types/guards";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentConfigurationType, AgentMessageType } from "@app/types";
+import {
+  AgentActionType,
+  AgentConfigurationType,
+  AgentMessageType,
+} from "@app/types";
 import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
@@ -196,14 +200,50 @@ export function getCitationsCount({
   });
 }
 
+/**
+ * Computes the global citations offset by adding up past actions in the agent message.
+ * Only counts actions from steps before the current step to avoid double-counting.
+ */
+export function computeGlobalCitationsOffset({
+  agentConfiguration,
+  agentMessage,
+  currentStep,
+}: {
+  agentConfiguration: AgentConfigurationType;
+  agentMessage: AgentMessageType;
+  currentStep: number;
+}): number {
+  let globalOffset = 0;
+
+  // Good old-fashioned loop to add up citations from all actions in steps before the current one.
+  for (const action of agentMessage.actions) {
+    if (action.step < currentStep) {
+      agentConfiguration.actions.find((a) => a.id === action.id);
+      globalOffset += getCitationCountFromAction(action, agentConfiguration);
+    }
+  }
+
+  return globalOffset;
+}
+
+/**
+ * Computes the citation count for a single action based on its function name.
+ * This directly maps function names to citation counts without reconstructing full configurations.
+ */
+function getCitationCountFromAction(
+  action: AgentActionType,
+  agentConfiguration: AgentConfigurationType
+): number {
+  // TODO
+  return 0;
+}
+
 export function computeStepContexts({
   agentConfiguration,
   stepActions,
-  citationsRefsOffset,
 }: {
   agentConfiguration: AgentConfigurationType;
   stepActions: ActionConfigurationType[];
-  citationsRefsOffset: number;
 }): StepContext[] {
   const retrievalTopK = getRetrievalTopK({
     agentConfiguration,
@@ -215,7 +255,7 @@ export function computeStepContexts({
   });
 
   const stepContexts: StepContext[] = [];
-  let currentOffset = citationsRefsOffset;
+  let currentOffset = 0;
 
   for (let i = 0; i < stepActions.length; i++) {
     const citationsCount = getCitationsCount({
