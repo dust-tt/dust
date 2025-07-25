@@ -115,7 +115,7 @@ export function AgentMemorySection({
       <div className="flex flex-col gap-4">
         <Page.SectionHeader
           title="Saved memories"
-          description="Personal details this assistant remembers from your conversations."
+          description="Personal details this agent remembers from your conversations."
         />
 
         {isMemoriesLoading ? (
