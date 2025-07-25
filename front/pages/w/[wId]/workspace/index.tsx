@@ -226,7 +226,7 @@ export default function WorkspaceAdmin({
                 Select the models you want available to your workspace.
               </Page.P>
             </div>
-            <ProviderManagementModal owner={owner} />
+            <ProviderManagementModal owner={owner} plan={subscription.plan} />
           </div>
         </Page.Vertical>
         {!isSlackDataSourceBotEnabled && (

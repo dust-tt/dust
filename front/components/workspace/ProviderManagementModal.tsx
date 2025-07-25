@@ -26,8 +26,10 @@ import {
 } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useWorkspace } from "@app/lib/swr/workspaces";
+import { canUseModel } from "@app/lib/assistant";
+import { useFeatureFlags, useWorkspace } from "@app/lib/swr/workspaces";
 import type { ModelProviderIdType, WorkspaceType } from "@app/types";
+import type { PlanType } from "@app/types";
 import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@app/types";
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;
@@ -43,26 +45,14 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   xai: "xAI",
 };
 
-const modelProviders: Record<ModelProviderIdType, string[]> = uniqBy(
-  [...USED_MODEL_CONFIGS, ...REASONING_MODEL_CONFIGS],
-  (m) => `${m.providerId}__${m.modelId}`
-).reduce(
-  (acc, model) => {
-    if (!model.isLegacy) {
-      acc[model.providerId] = acc[model.providerId] || [];
-      acc[model.providerId].push(model.displayName);
-    }
-    return acc;
-  },
-  {} as Record<ModelProviderIdType, string[]>
-);
-
 interface ProviderManagementModalProps {
   owner: WorkspaceType;
+  plan: PlanType;
 }
 
 export function ProviderManagementModal({
   owner,
+  plan,
 }: ProviderManagementModalProps) {
   const { isDark } = useTheme();
   const sendNotifications = useSendNotification();
@@ -78,6 +68,28 @@ export function ProviderManagementModal({
     owner,
     disabled: !open,
   });
+
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+    disabled: !open,
+  });
+
+  // Filter models based on feature flags and build modelProviders dynamically
+  const filteredModels = uniqBy(
+    [...USED_MODEL_CONFIGS, ...REASONING_MODEL_CONFIGS],
+    (m) => m.modelId
+  ).filter(
+    (model) => !model.isLegacy && canUseModel(model, featureFlags, plan, owner)
+  );
+
+  const modelProviders = filteredModels.reduce(
+    (acc, model) => {
+      acc[model.providerId] = acc[model.providerId] || [];
+      acc[model.providerId].push(model.displayName);
+      return acc;
+    },
+    {} as Record<ModelProviderIdType, string[]>
+  );
 
   // These two represent the local state
   const [providerStates, setProviderStates] = useState<ProviderStates>(
