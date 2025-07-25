@@ -24,7 +24,7 @@ export function InteractiveContentHeader({
           {/* Title - visible from xxxs container width. */}
           <span
             className={cn(
-              "@xxxs:inline hidden min-w-0 truncate text-sm font-normal",
+              "hidden min-w-0 truncate text-sm font-normal @xxxs:inline",
               "text-primary dark:text-primary-night"
             )}
           >
