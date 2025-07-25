@@ -114,7 +114,7 @@ export function ConversationTitle({
       />
       <AppLayoutTitle>
         <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
-          <div className="flex min-w-0 flex-row items-center gap-4 text-muted-foreground dark:text-muted-foreground-night">
+          <div className="flex min-w-0 flex-row items-center gap-4 text-primary dark:text-primary-night">
             {!isEditingTitle ? (
               <div className="min-w-0 overflow-hidden truncate text-sm font-semibold">
                 {conversation?.title || ""}
@@ -182,7 +182,7 @@ export function ConversationTitle({
                   setIsEditingTitle(true);
                 }}
                 size="mini"
-                variant="ghost-secondary"
+                variant="ghost-primary"
               />
             )}
           </div>

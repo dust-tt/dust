@@ -251,18 +251,11 @@ function ConversationInnerLayout({
           )}
         >
           {isContentOpen && (
-            // On mobile: adding a padding-top to account for the conversation title.
-            <div
-              className={cn(
-                "bg-structure-50 dark:bg-structure-950 h-full md:bg-transparent md:pt-0"
-              )}
-            >
-              <InteractiveContentContainer
-                conversation={conversation}
-                isOpen={isContentOpen}
-                owner={owner}
-              />
-            </div>
+            <InteractiveContentContainer
+              conversation={conversation}
+              isOpen={isContentOpen}
+              owner={owner}
+            />
           )}
         </ResizablePanel>
       </ResizablePanelGroup>
