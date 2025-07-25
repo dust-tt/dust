@@ -34,6 +34,7 @@ export async function executeAgentLoop(
       runIds,
       step: i,
       functionCallStepContentIds,
+      citationsRefsOffset,
       autoRetryCount: 0,
     });
 
@@ -42,8 +43,10 @@ export async function executeAgentLoop(
       return;
     }
 
+    const { runId, stepContexts } = result;
+
     // Update state with results from runMultiActionsAgent.
-    runIds.push(result.runId);
+    runIds.push(runId);
     functionCallStepContentIds = result.functionCallStepContentIds;
 
     // We received the actions to run, but will enforce a limit on the number of actions
@@ -51,23 +54,23 @@ export async function executeAgentLoop(
     // against the model outputting something unreasonable.
     const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
-    const citationsIncrements = await Promise.all(
-      actionsToRun.map(({ inputs, functionCallId }, index) =>
+    await Promise.all(
+      actionsToRun.map(({ inputs, functionCallId, action }, index) =>
         activities.runToolActivity(authType, {
           runAgentArgs,
           inputs,
           functionCallId,
           step: i,
-          stepActionIndex: index,
-          stepActions: actionsToRun.map((a) => a.action),
-          citationsRefsOffset,
+          action,
+          stepContext: stepContexts[index],
           stepContentId: functionCallStepContentIds[functionCallId],
         })
       )
     );
 
-    citationsRefsOffset += citationsIncrements.reduce(
-      (acc, curr) => acc + curr.citationsIncrement,
+    // Update citations offset with pre-computed increment
+    citationsRefsOffset += stepContexts.reduce(
+      (acc, context) => acc + context.citationsCount,
       0
     );
   }

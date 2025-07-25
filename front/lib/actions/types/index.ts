@@ -3,13 +3,19 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import type {
   AgentConfigurationType,
   AgentMessageType,
   AllSupportedFileContentType,
   ConversationType,
 } from "@app/types";
+
+export type StepContext = {
+  retrievalTopK: number;
+  citationsOffset: number;
+  citationsCount: number;
+  websearchResultCount: number;
+};
 
 export type ActionGeneratedFileType = {
   fileId: string;
@@ -24,9 +30,7 @@ export type AgentLoopRunContextType = {
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
-  stepActionIndex: number;
-  stepActions: ActionConfigurationType[];
-  citationsRefsOffset: number;
+  stepContext: StepContext;
 };
 
 export type AgentLoopListToolsContextType = {

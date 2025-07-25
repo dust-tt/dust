@@ -1,6 +1,6 @@
 import { runToolWithStreaming } from "@app/lib/actions/mcp";
+import type { StepContext } from "@app/lib/actions/types";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import { getCitationsCount } from "@app/lib/actions/utils";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
@@ -16,24 +16,21 @@ export async function runToolActivity(
     inputs,
     functionCallId,
     step,
-    stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
+    action,
+    stepContext,
     stepContentId,
   }: {
     runAgentArgs: RunAgentArgs;
     inputs: Record<string, string | boolean | number>;
     functionCallId: string;
     step: number;
-    stepActionIndex: number;
-    stepActions: ActionConfigurationType[];
-    citationsRefsOffset: number;
+    action: ActionConfigurationType;
+    stepContext: StepContext;
     stepContentId: ModelId;
   }
-): Promise<{ citationsIncrement: number }> {
+): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
 
-  const actionConfiguration = stepActions[stepActionIndex];
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
@@ -42,16 +39,14 @@ export async function runToolActivity(
   const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
     runAgentDataRes.value;
 
-  const eventStream = runToolWithStreaming(auth, actionConfiguration, {
+  const eventStream = runToolWithStreaming(auth, action, {
     agentConfiguration: agentConfiguration,
     conversation,
     agentMessage,
     rawInputs: inputs,
     functionCallId,
     step,
-    stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
+    stepContext,
     stepContentId,
   });
 
@@ -74,7 +69,7 @@ export async function runToolActivity(
           agentMessageRow,
           step
         );
-        return { citationsIncrement: 0 };
+        return;
 
       case "tool_success":
         await updateResourceAndPublishEvent(
@@ -110,12 +105,4 @@ export async function runToolActivity(
         assertNever(event);
     }
   }
-
-  return {
-    citationsIncrement: getCitationsCount({
-      agentConfiguration: agentConfiguration,
-      stepActions: stepActions,
-      stepActionIndex: stepActionIndex,
-    }),
-  };
 }
