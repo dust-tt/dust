@@ -5,6 +5,10 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import type { Readable, Writable } from "stream";
 
 import config from "@app/lib/api/config";
+import {
+  generateSignedToken,
+  verifySignedToken,
+} from "@app/lib/api/files/share_tokens";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getPrivateUploadBucket,
@@ -15,6 +19,8 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   FileType,
   FileTypeWithUploadUrl,
@@ -27,6 +33,7 @@ import type {
 import {
   ALL_FILE_FORMATS,
   Err,
+  isInteractiveContentType,
   normalizeError,
   Ok,
   removeNulls,
@@ -50,10 +57,11 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
+    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "isPublic">
   ) {
     const key = await FileResource.model.create({
       ...blob,
+      isPublic: false,
       status: "created",
     });
 
@@ -113,6 +121,51 @@ export class FileResource extends BaseResource<FileModel> {
     });
 
     return file ? new this(this.model, file.get()) : null;
+  }
+
+  static async fetchByPublicShareTokenWithContent(
+    token: string
+  ): Promise<{ file: FileResource; content: string } | null> {
+    const tokenRes = verifySignedToken(token, config.getFileShareSecret());
+    if (tokenRes.isErr()) {
+      return null;
+    }
+
+    const workspace = await WorkspaceResource.fetchById(tokenRes.value.wId);
+    if (!workspace) {
+      return null;
+    }
+
+    const fileId = getResourceIdFromSId(tokenRes.value.fId);
+    if (!fileId) {
+      return null;
+    }
+
+    const blob = await this.model.findOne({
+      where: {
+        id: fileId,
+        workspaceId: workspace.id,
+      },
+    });
+
+    const file = blob ? new this(this.model, blob.get()) : null;
+    if (!file || !file.isPublic) {
+      return null;
+    }
+
+    const content = await file.getPublicFileContent(
+      renderLightWorkspaceType({ workspace }),
+      "original"
+    );
+
+    if (!content) {
+      return null;
+    }
+
+    return {
+      file,
+      content,
+    };
   }
 
   static async deleteAllForWorkspace(
@@ -332,6 +385,45 @@ export class FileResource extends BaseResource<FileModel> {
       .createReadStream();
   }
 
+  /**
+   * Get read stream for public access without authentication.
+   */
+  private async getPublicReadStream(
+    owner: LightWorkspaceType,
+    version: FileVersion
+  ): Promise<Readable> {
+    const cloudPath = FileResource.getCloudStoragePathForId({
+      fileId: this.sId,
+      workspaceId: owner.sId,
+      version,
+    });
+
+    return this.getBucketForVersion(version).file(cloudPath).createReadStream();
+  }
+
+  /**
+   * Get file content as string for public access without authentication.
+   */
+  private async getPublicFileContent(
+    owner: LightWorkspaceType,
+    version: FileVersion = "original"
+  ): Promise<string | null> {
+    try {
+      const readStream = await this.getPublicReadStream(owner, version);
+
+      // Convert stream to string.
+      const chunks: Buffer[] = [];
+      for await (const chunk of readStream) {
+        chunks.push(chunk);
+      }
+
+      const content = Buffer.concat(chunks).toString("utf-8");
+      return content || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   // Direct upload logic.
 
   async uploadContent(auth: Authenticator, content: string): Promise<void> {
@@ -358,9 +450,39 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ snippet });
   }
 
+  setIsPublic(isPublic: boolean) {
+    // Only interactive files can be public.
+    if (
+      this.useCase !== "conversation" ||
+      !isInteractiveContentType(this.contentType)
+    ) {
+      throw new Error("Only interactive files can be public");
+    }
+
+    return this.update({ isPublic });
+  }
+
+  // Public sharing logic.
+
+  private getPublicShareToken(auth: Authenticator): string {
+    return generateSignedToken(auth, this, {
+      secret: config.getFileShareSecret(),
+    });
+  }
+
+  getPublicShareUrl(auth: Authenticator): string | null {
+    if (!this.isPublic) {
+      return null;
+    }
+
+    return `${config.getClientFacingUrl()}/share/file/${this.getPublicShareToken(
+      auth
+    )}`;
+  }
+
   // Serialization logic.
 
-  toJSON(auth: Authenticator): FileType {
+  toJSON(auth?: Authenticator): FileType {
     const blob: FileType = {
       // TODO(spolu): move this to ModelId
       id: this.sId,
@@ -372,11 +494,11 @@ export class FileResource extends BaseResource<FileModel> {
       useCase: this.useCase,
     };
 
-    if (this.isReady && !this.isUpsertUseCase()) {
+    if (auth && this.isReady && !this.isUpsertUseCase()) {
       blob.downloadUrl = this.getPrivateUrl(auth);
     }
 
-    if (this.useCase === "avatar") {
+    if (auth && this.useCase === "avatar") {
       blob.publicUrl = this.getPublicUrlForDownload(auth);
     }
 
