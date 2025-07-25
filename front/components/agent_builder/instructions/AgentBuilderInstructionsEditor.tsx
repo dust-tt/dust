@@ -31,9 +31,10 @@ const extensions = [
     limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
   }),
 ];
+
 const editorVariants = cva(
   [
-    "overflow-auto min-h-60 h-full border rounded-xl p-2",
+    "overflow-auto border rounded-xl p-2 resize-y min-h-60",
     "transition-all duration-200",
     "bg-muted-background dark:bg-muted-background-night",
   ],
@@ -141,8 +142,8 @@ export function AgentBuilderInstructionsEditor({
 
   return (
     <div className="flex h-full flex-col gap-1">
-      <div className="relative h-full min-h-100 grow p-px">
-        <EditorContent editor={editor} className="absolute inset-0" />
+      <div className="relative p-px">
+        <EditorContent editor={editor} />
         <div className="absolute bottom-2 right-2">
           <InstructionTipsPopover owner={owner} />
         </div>
