@@ -209,13 +209,11 @@ export async function runModelActivity({
     );
   }
 
-  const isLastGenerationIteration = step === agentConfiguration.maxStepsPerRun;
+  const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
   // If we already executed the maximum number of actions, we don't run anymore.
   // This will force the agent to run the generation.
-  const availableActions = isLastGenerationIteration
-    ? mcpActions.flatMap((s) => s.tools)
-    : [];
+  const availableActions = isLastStep ? mcpActions.flatMap((s) => s.tools) : [];
 
   let fallbackPrompt = "You are a conversational agent";
   if (
@@ -719,7 +717,9 @@ export async function runModelActivity({
     "[ASSISTANT_TRACE] Action inputs generation"
   );
 
-  if (isLastGenerationIteration) {
+  // If we have actions and we are on the last step, we error since returning actions would require
+  // doing one more step.
+  if (isLastStep) {
     await publishAgentError({
       code: "max_step_reached",
       message:
