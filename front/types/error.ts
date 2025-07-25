@@ -124,6 +124,8 @@ const API_ERROR_TYPES = [
   "workos_server_error",
   "workos_multiple_sso_connections_not_supported",
   "workos_multiple_directories_not_supported",
+  "user_authentication_required",
+  "agent_memory_not_found",
 ] as const;
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];
