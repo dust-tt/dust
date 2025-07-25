@@ -2,7 +2,6 @@ import type {
   ActionConfigurationType,
   AgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
 import type {
   ReasoningContentType,
   TextContentType,
@@ -15,8 +14,6 @@ import type {
 import type {
   AgentActionType,
   AgentMessageType,
-  ConversationType,
-  UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
