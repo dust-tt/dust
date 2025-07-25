@@ -201,39 +201,6 @@ export function getCitationsCount({
   });
 }
 
-/**
- * This is shared across action runners and used to compute the local step refsOffset (the current
- * refsOffset for the agent actions up to the current step (`refsOffset`) to which we add the
- * actions that comes before the current action in the current step).
- *
- * @param agentConfiguration The agent configuration.
- * @param stepActionIndex The index of the current action in the current step.
- * @param stepActions The actions in the current step.
- * @param refsOffset The current refsOffset up to the current step.
- * @returns The updated refsOffset for the action at stepActionIndex.
- */
-export function actionRefsOffset({
-  agentConfiguration,
-  stepActionIndex,
-  stepActions,
-  refsOffset,
-}: {
-  agentConfiguration: AgentConfigurationType;
-  stepActionIndex: number;
-  stepActions: ActionConfigurationType[];
-  refsOffset: number;
-}): number {
-  for (let i = 0; i < stepActionIndex; i++) {
-    refsOffset += getCitationsCount({
-      agentConfiguration,
-      stepActions,
-      stepActionIndex: i,
-    });
-  }
-
-  return refsOffset;
-}
-
 export function computeStepContext({
   agentConfiguration,
   stepActions,
