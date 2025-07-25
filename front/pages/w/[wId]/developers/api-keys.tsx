@@ -1,6 +1,7 @@
 import {
   BookOpenIcon,
   Button,
+  Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
   Dialog,
@@ -16,6 +17,7 @@ import {
   DropdownMenuTrigger,
   IconButton,
   Input,
+  Label,
   Page,
   PlusIcon,
   ShapesIcon,
@@ -49,7 +51,11 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { prettifyGroupName } from "@app/types";
+import {
+  AGENT_GROUP_PREFIX,
+  GLOBAL_SPACE_NAME,
+  SPACE_GROUP_PREFIX,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -92,9 +98,8 @@ export function APIKeys({
   const [isCopiedDomain, copyDomain] = useCopyToClipboard();
   const [isCopiedApiKey, copyApiKey] = useCopyToClipboard();
   const [newApiKeyName, setNewApiKeyName] = useState("");
-  const [newApiKeyGroup, setNewApiKeyGroup] = useState<GroupType>(
-    _.find(groups, (g) => g.kind === "global") || groups[0]
-  );
+  const [newApiKeyRestrictedGroup, setNewApiKeyRestrictedGroup] =
+    useState<GroupType | null>(null);
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
 
   const { isValidating, keys } = useKeys(owner);
@@ -110,13 +115,17 @@ export function APIKeys({
 
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(
-      async ({ name, group }: { name: string; group?: GroupType }) => {
+      async ({ name, group }: { name: string; group: GroupType | null }) => {
+        const globalGroup = groups.find((g) => g.kind === "global");
         const response = await fetch(`/api/w/${owner.sId}/keys`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ name, group_id: group?.sId }),
+          body: JSON.stringify({
+            name,
+            group_id: group?.sId ? group.sId : globalGroup?.sId,
+          }),
         });
         await mutate(`/api/w/${owner.sId}/keys`);
         setNewApiKeyName("");
@@ -155,6 +164,26 @@ export function APIKeys({
   if (isValidating) {
     return <Spinner />;
   }
+
+  const prettifyGroupName = (group: GroupType) => {
+    if (group.kind === "global") {
+      return GLOBAL_SPACE_NAME;
+    }
+
+    return group.kind === "agent_editors"
+      ? group.name.replace(AGENT_GROUP_PREFIX, "")
+      : group.name.replace(SPACE_GROUP_PREFIX, "");
+  };
+
+  const getKeySpaces = (key: KeyType): string[] => {
+    const group = groupsById[key.groupId];
+
+    if (group.kind === "global" || key.scope == "restricted_group_only") {
+      return [prettifyGroupName(group)];
+    }
+
+    return [GLOBAL_SPACE_NAME, prettifyGroupName(group)];
+  };
 
   return (
     <>
@@ -273,49 +302,75 @@ export function APIKeys({
               <DialogTitle>New API Key</DialogTitle>
             </DialogHeader>
             <DialogContainer>
-              <Input
-                name="API Key"
-                placeholder="Type an API key name"
-                value={newApiKeyName}
-                onChange={(e) => setNewApiKeyName(e.target.value)}
-              />
-              <div className="align-center flex flex-row items-center gap-2 p-2">
-                <span className="mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-muted-foreground dark:text-muted-foreground-night">
-                  Assign permissions to space:{" "}
-                </span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+              <div className="space-y-4">
+                <div>
+                  <Label>API Key Name</Label>
+                  <Input
+                    name="API Key"
+                    placeholder="Type an API key name"
+                    value={newApiKeyName}
+                    onChange={(e) => setNewApiKeyName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label>Default Space</Label>
+                  <div>
                     <Button
-                      label={prettifyGroupName(newApiKeyGroup)}
+                      label={GLOBAL_SPACE_NAME}
                       size="sm"
                       variant="outline"
+                      disabled={true}
+                      tooltip={`${GLOBAL_SPACE_NAME} is mandatory.`}
                     />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {groups
-                      .sort((a, b) => {
-                        // Put global groups first
-                        if (a.kind === "global" && b.kind !== "global") {
-                          return -1;
-                        }
-                        if (a.kind !== "global" && b.kind === "global") {
-                          return 1;
-                        }
-
-                        // Then sort alphabetically case insensitive
-                        return prettifyGroupName(a)
-                          .toLowerCase()
-                          .localeCompare(prettifyGroupName(b).toLowerCase());
-                      })
-                      .map((group: GroupType) => (
-                        <DropdownMenuItem
-                          key={group.id}
-                          label={prettifyGroupName(group)}
-                          onClick={() => setNewApiKeyGroup(group)}
-                        />
-                      ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  </div>
+                </div>
+                <div>
+                  <Label>Add optional additional Space</Label>
+                  <div>
+                    {newApiKeyRestrictedGroup ? (
+                      <Chip
+                        label={prettifyGroupName(newApiKeyRestrictedGroup)}
+                        onRemove={() => setNewApiKeyRestrictedGroup(null)}
+                        size="sm"
+                      />
+                    ) : (
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            label={
+                              newApiKeyRestrictedGroup
+                                ? prettifyGroupName(newApiKeyRestrictedGroup)
+                                : "Add a space"
+                            }
+                            size="sm"
+                            variant="outline"
+                            isSelect={newApiKeyRestrictedGroup === null}
+                          />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {groups
+                            .filter((g) => g.kind !== "global")
+                            .sort((a, b) => {
+                              return prettifyGroupName(a)
+                                .toLowerCase()
+                                .localeCompare(
+                                  prettifyGroupName(b).toLowerCase()
+                                );
+                            })
+                            .map((group: GroupType) => (
+                              <DropdownMenuItem
+                                key={group.id}
+                                label={prettifyGroupName(group)}
+                                onClick={() =>
+                                  setNewApiKeyRestrictedGroup(group)
+                                }
+                              />
+                            ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                </div>
               </div>
             </DialogContainer>
             <DialogFooter
@@ -324,12 +379,12 @@ export function APIKeys({
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Ok",
+                label: "Create",
                 variant: "primary",
                 onClick: async () => {
                   await handleGenerate({
                     name: newApiKeyName,
-                    group: newApiKeyGroup,
+                    group: newApiKeyRestrictedGroup,
                   });
                 },
               }}
@@ -379,19 +434,15 @@ export function APIKeys({
                               {process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}
                             </strong>
                           </p>
-                          {key.groupId && (
-                            <p
-                              className={classNames(
-                                "truncate font-mono text-sm",
-                                "text-muted-foreground dark:text-muted-foreground-night"
-                              )}
-                            >
-                              Scoped to space:{" "}
-                              <strong>
-                                {prettifyGroupName(groupsById[key.groupId])}
-                              </strong>
-                            </p>
-                          )}
+                          <p
+                            className={classNames(
+                              "truncate font-mono text-sm",
+                              "text-muted-foreground dark:text-muted-foreground-night"
+                            )}
+                          >
+                            Scope:{" "}
+                            <strong>{getKeySpaces(key).join(", ")}</strong>
+                          </p>
                           <pre className="text-sm">{key.secret}</pre>
                           <p
                             className={classNames(
