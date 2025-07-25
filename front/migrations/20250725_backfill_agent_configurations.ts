@@ -68,7 +68,9 @@ async function updateAgentConfigurationGroupIds(
     const normalizedCurrentGroupIds = normalizeArrays(agent.requestedGroupIds);
 
     // Check if the group IDs have changed
-    if (isArrayEqual2DUnordered(normalizedNewGroupIds, normalizedCurrentGroupIds)) {
+    if (
+      isArrayEqual2DUnordered(normalizedNewGroupIds, normalizedCurrentGroupIds)
+    ) {
       logger.debug(
         { agentId: agent.sId },
         "Agent group IDs are already up to date"
@@ -96,7 +98,8 @@ async function updateAgentConfigurationGroupIds(
 
     return { updated: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     logger.error(
       { agentId: agent.sId, error: errorMessage },
       "Error updating agent configuration group IDs"
@@ -160,7 +163,8 @@ async function updateAgentsForWorkspace(
   for (const chunk of agentChunks) {
     const results = await concurrentExecutor(
       chunk,
-      async (agent) => updateAgentConfigurationGroupIds(auth, agent, execute, logger),
+      async (agent) =>
+        updateAgentConfigurationGroupIds(auth, agent, execute, logger),
       { concurrency: 5 }
     );
 
@@ -178,7 +182,7 @@ async function updateAgentsForWorkspace(
       workspaceId,
       workspaceName: workspace.name,
       stats,
-      execute
+      execute,
     },
     "Completed workspace processing"
   );
