@@ -47,7 +47,8 @@ async function handler(
   const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
   const hasAsyncLoopFeature = featureFlags.includes("async_loop");
   const forceAsynchronousLoop =
-    req.query.async === "true" || hasAsyncLoopFeature;
+    req.query.async === "true" ||
+    (req.query.async !== "false" && hasAsyncLoopFeature);
 
   switch (req.method) {
     case "GET":

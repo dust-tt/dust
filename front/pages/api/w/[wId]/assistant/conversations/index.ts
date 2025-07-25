@@ -80,7 +80,8 @@ async function handler(
       );
       const hasAsyncLoopFeature = featureFlags.includes("async_loop");
       const forceAsynchronousLoop =
-        req.query.async === "true" || hasAsyncLoopFeature;
+        req.query.async === "true" ||
+        (req.query.async !== "false" && hasAsyncLoopFeature);
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
