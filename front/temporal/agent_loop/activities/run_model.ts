@@ -191,6 +191,7 @@ export async function runModelActivity({
 
   for (const agentAction of agentActions) {
     if (isActionConfigurationType(agentAction)) {
+      logger.info("Found an available action on the agentConfiguration.");
       availableActions.push(agentAction);
     }
   }
