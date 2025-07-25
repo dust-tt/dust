@@ -6,9 +6,7 @@ import type {
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
-import type {
-  UnsavedAgentActionConfigurationType,
-} from "@app/lib/actions/types/agent";
+import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import type {
   AgentConfigurationType,
   DustAppRunConfigurationType,
@@ -38,7 +36,7 @@ export function isMCPServerConfiguration(
 }
 
 export function isServerSideMCPServerConfiguration(
-  arg: MCPServerConfigurationType | UnsavedAgentActionConfigurationType
+  arg: MCPServerConfigurationType | UnsavedMCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return isMCPServerConfiguration(arg) && "mcpServerViewId" in arg;
 }

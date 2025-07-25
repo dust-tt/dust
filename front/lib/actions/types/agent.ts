@@ -2,7 +2,7 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 
-export type UnsavedAgentActionConfigurationType = Omit<
+export type UnsavedMCPServerConfigurationType = Omit<
   MCPServerConfigurationType,
   "id" | "sId" | "mcpServerName"
 >;

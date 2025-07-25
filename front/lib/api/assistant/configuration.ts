@@ -10,7 +10,7 @@ import {
 
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { UnsavedAgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
@@ -1059,7 +1059,7 @@ export async function restoreAgentConfiguration(
  */
 export async function createAgentActionConfiguration(
   auth: Authenticator,
-  action: UnsavedAgentActionConfigurationType,
+  action: UnsavedMCPServerConfigurationType,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<Result<MCPServerConfigurationType, Error>> {
   const owner = auth.getNonNullableWorkspace();
