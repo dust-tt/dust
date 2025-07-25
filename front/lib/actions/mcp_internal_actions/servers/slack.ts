@@ -39,7 +39,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     supported_use_cases: ["personal_actions"] as const,
   },
   icon: "SlackLogo",
-  documentationUrl: "https://docs.dust.tt/docs/slack-tool-setup",
+  documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
 };
 
 const getSlackClient = async (accessToken?: string) => {
