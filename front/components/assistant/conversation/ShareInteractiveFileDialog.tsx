@@ -88,9 +88,10 @@ export function ShareInteractiveFileDialog({
               <div className="flex items-center gap-2">
                 <div className="grow">
                   <Input
-                    value={fileShare?.shareUrl ?? ""}
-                    readOnly
+                    disabled
                     onClick={(e) => e.currentTarget.select()}
+                    readOnly
+                    value={fileShare?.shareUrl ?? ""}
                   />
                 </div>
                 <IconButton
