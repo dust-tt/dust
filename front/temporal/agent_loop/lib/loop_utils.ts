@@ -5,6 +5,9 @@ import {
 } from "@app/types";
 import assert from "assert";
 
+// TODO(DURABLE-AGENTS 2025-07-25): Consider moving inside this function the "conversation has
+// already been prepared appropriately" part mentioned below, referring to
+// e.g. front/lib/api/assistant/conversation.ts#retryAgentMessageL1308
 /**
  * Cuts the conversation at the given step, exclusive, for the given agent
  * message. Conversation has already been prepared appropriately before for the
