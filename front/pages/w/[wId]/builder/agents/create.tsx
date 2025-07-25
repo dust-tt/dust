@@ -16,9 +16,8 @@ import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateM
 import type { BuilderFlow } from "@app/components/agent_builder/types";
 import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
-import AppContentLayout, {
-  appLayoutBack,
-} from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
+import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -148,13 +147,19 @@ export default function CreateAgent({
   };
 
   return (
-    <AppContentLayout subscription={subscription} hideSidebar owner={owner}>
-      <AppLayoutSimpleCloseTitle
-        title="Create an Agent"
-        onClose={async () => {
-          await appLayoutBack(owner, router);
-        }}
-      />
+    <AppCenteredLayout
+      subscription={subscription}
+      hideSidebar
+      owner={owner}
+      title={
+        <AppLayoutSimpleCloseTitle
+          title="Create an Agent"
+          onClose={async () => {
+            await appLayoutBack(owner, router);
+          }}
+        />
+      }
+    >
       <div id="pageContent">
         <Page variant="modal">
           <div className="flex flex-col gap-6">
@@ -232,7 +237,7 @@ export default function CreateAgent({
           onClose={closeTemplateModal}
         />
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 

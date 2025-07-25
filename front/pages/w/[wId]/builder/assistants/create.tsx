@@ -17,6 +17,7 @@ import { AssistantTemplateModal } from "@app/components/assistant_builder/Assist
 import { TemplateGrid } from "@app/components/assistant_builder/TemplateGrid";
 import type { BuilderFlow } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppContentLayout, {
   appLayoutBack,
 } from "@app/components/sparkle/AppContentLayout";
@@ -173,13 +174,19 @@ export default function CreateAssistant({
   };
 
   return (
-    <AppContentLayout subscription={subscription} hideSidebar owner={owner}>
-      <AppLayoutSimpleCloseTitle
-        title="Create an Agent"
-        onClose={async () => {
-          await appLayoutBack(owner, router);
-        }}
-      />
+    <AppCenteredLayout
+      subscription={subscription}
+      hideSidebar
+      owner={owner}
+      title={
+        <AppLayoutSimpleCloseTitle
+          title="Create an Agent"
+          onClose={async () => {
+            await appLayoutBack(owner, router);
+          }}
+        />
+      }
+    >
       <div id="pageContent">
         <Page variant="modal">
           <div className="flex flex-col gap-6 pt-9">
@@ -266,7 +273,7 @@ export default function CreateAssistant({
           onClose={() => closeTemplateModal()}
         />
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 
