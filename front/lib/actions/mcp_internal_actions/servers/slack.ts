@@ -13,6 +13,8 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
+  getMcpServerIdFromContext,
+  makeMCPToolJSONError,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
@@ -27,8 +29,11 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { removeDiacritics } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { OAuthProvider } from "@app/types";
 import type { TimeFrame } from "@app/types";
 import { parseTimeFrame, stripNullBytes, timeFrameFromNow } from "@app/types";
+
+const REQUIRED_REACTION_SCOPES = ["reactions:read", "reactions:write"] as const;
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "slack",
@@ -55,6 +60,40 @@ const getSlackClient = async (accessToken?: string) => {
       factor: 1,
     },
   });
+};
+
+export const assertAuthScope = async (
+  slackClient: WebClient,
+  requiredScopes: readonly string[],
+  mcpServerId: string | null,
+  provider: OAuthProvider
+): Promise<ReturnType<typeof makeMCPToolJSONSuccess> | null> => {
+  if (!mcpServerId) {
+    throw new Error("MCP server could not confirm authentication scope");
+  }
+
+  // Check scopes
+  const hasScopes = await (async () => {
+    try {
+      const response = await slackClient.auth.test();
+      if (!response.ok) {return false;}
+      const scopes: string[] = response.response_metadata?.scopes || [];
+      return requiredScopes.every((scope) => scopes.includes(scope));
+    } catch {
+      return false;
+    }
+  })();
+  if (!hasScopes) {
+    return makeMCPToolJSONError({
+      result: {
+        __dust_auth_required: {
+          mcpServerId,
+          provider,
+        },
+      },
+    });
+  }
+  return null;
 };
 
 function makeQueryResource(
@@ -580,70 +619,140 @@ const createServer = (
   );
 
   server.tool(
-    "list_public_channels",
-    "List all public channels in the workspace",
+    "add_reaction",
+    "Add a reaction (emoji) to a Slack message",
     {
-      nameFilter: z
+      channel: z
         .string()
-        .optional()
-        .describe("The name of the channel to filter by (optional)"),
+        .describe("The channel ID where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp of the message to react to"),
+      reaction: z
+        .string()
+        .describe(
+          "The emoji reaction to add (e.g., 'thumbsup', 'heart', 'rocket')"
+        ),
     },
-    async ({ nameFilter }, { authInfo }) => {
+    async ({ channel, timestamp, reaction }, { authInfo }) => {
       const accessToken = authInfo?.token;
       const slackClient = await getSlackClient(accessToken);
-
-      const channels: any[] = [];
-
-      let cursor: string | undefined = undefined;
-      do {
-        const response = await slackClient.conversations.list({
-          cursor,
-          limit: 100,
-          types: "public_channel",
+      const mcpServerId = getMcpServerIdFromContext(agentLoopContext);
+      const authResult = await assertAuthScope(
+        slackClient,
+        REQUIRED_REACTION_SCOPES,
+        mcpServerId,
+        "slack"
+      );
+      if (authResult) {return authResult;}
+      try {
+        const response = await slackClient.reactions.add({
+          channel,
+          timestamp,
+          name: reaction,
         });
         if (!response.ok) {
           return makeMCPToolTextError(
-            `Error listing channels: ${response.error}`
+            `Error adding reaction: ${response.error}`
           );
         }
-        channels.push(...(response.channels ?? []));
-        cursor = response.response_metadata?.next_cursor;
-
-        if (nameFilter) {
-          const normalizedNameFilter = removeDiacritics(
-            nameFilter.toLowerCase()
-          );
-          const filteredChannels = channels.filter(
-            (channel) =>
-              removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
-                normalizedNameFilter
-              ) ||
-              removeDiacritics(
-                channel.topic?.value?.toLowerCase() ?? ""
-              ).includes(normalizedNameFilter)
-          );
-
-          // Early return if we found a channel
-          if (filteredChannels.length > 0) {
-            return makeMCPToolJSONSuccess({
-              message: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
-              result: filteredChannels,
-            });
-          }
-        }
-      } while (cursor);
-
-      if (nameFilter) {
         return makeMCPToolJSONSuccess({
-          message: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
-          result: channels,
+          message: `Reaction ${reaction} added successfully`,
+          result: { channel, timestamp, reaction },
         });
+      } catch (error) {
+        return makeMCPToolTextError(`Error adding reaction: ${error}`);
       }
+    }
+  );
 
-      return makeMCPToolJSONSuccess({
-        message: `The workspace has ${channels.length} channels`,
-        result: channels,
-      });
+  server.tool(
+    "remove_reaction",
+    "Remove a reaction (emoji) from a Slack message",
+    {
+      channel: z
+        .string()
+        .describe("The channel ID where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp of the message to remove reaction from"),
+      reaction: z
+        .string()
+        .describe(
+          "The emoji reaction to remove (e.g., 'thumbsup', 'heart', 'rocket')"
+        ),
+    },
+    async ({ channel, timestamp, reaction }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      const slackClient = await getSlackClient(accessToken);
+      const mcpServerId = getMcpServerIdFromContext(agentLoopContext);
+      const authResult = await assertAuthScope(
+        slackClient,
+        REQUIRED_REACTION_SCOPES,
+        mcpServerId,
+        "slack"
+      );
+      if (authResult) {return authResult;}
+      try {
+        const response = await slackClient.reactions.remove({
+          channel,
+          timestamp,
+          name: reaction,
+        });
+        if (!response.ok) {
+          return makeMCPToolTextError(
+            `Error removing reaction: ${response.error}`
+          );
+        }
+        return makeMCPToolJSONSuccess({
+          message: `Reaction ${reaction} removed successfully`,
+          result: { channel, timestamp, reaction },
+        });
+      } catch (error) {
+        return makeMCPToolTextError(`Error removing reaction: ${error}`);
+      }
+    }
+  );
+
+  server.tool(
+    "get_reactions",
+    "Get all reactions for a specific message",
+    {
+      channel: z
+        .string()
+        .describe("The channel ID where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp of the message to get reactions for"),
+    },
+    async ({ channel, timestamp }, { authInfo }) => {
+      const accessToken = authInfo?.token;
+      const slackClient = await getSlackClient(accessToken);
+      const mcpServerId = getMcpServerIdFromContext(agentLoopContext);
+      const authResult = await assertAuthScope(
+        slackClient,
+        REQUIRED_REACTION_SCOPES,
+        mcpServerId,
+        "slack"
+      );
+      if (authResult) {return authResult;}
+      try {
+        const response = await slackClient.reactions.get({
+          channel,
+          timestamp,
+        });
+        if (!response.ok) {
+          return makeMCPToolTextError(
+            `Error getting reactions: ${response.error}`
+          );
+        }
+        return makeMCPToolJSONSuccess({
+          message: "Reactions retrieved successfully",
+          result: response.reactions || [],
+        });
+      } catch (error) {
+        return makeMCPToolTextError(`Error getting reactions: ${error}`);
+      }
     }
   );
 

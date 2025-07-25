@@ -257,6 +257,9 @@ export const INTERNAL_MCP_SERVERS: Record<
       list_public_channels: "never_ask",
       list_threads: "never_ask",
       post_message: "low",
+      add_reaction: "low",
+      remove_reaction: "low",
+      get_reactions: "never_ask",
     },
   },
   google_sheets: {
