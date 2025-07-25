@@ -3,6 +3,7 @@ import { Breadcrumbs, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import {
   DataSourceBuilderProvider,
   useDataSourceBuilderContext,
@@ -17,18 +18,13 @@ import { DataSourceCategoryBrowser } from "@app/components/data_source_view/Data
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
 import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
-import {
-  useSpaceDataSourceViewsWithDetails,
-  useSpaces,
-} from "@app/lib/swr/spaces";
+import { useSpaceDataSourceViewsWithDetails } from "@app/lib/swr/spaces";
 import type {
   ContentNodesViewType,
-  DataSourceViewType,
-  SpaceType,
-} from "@app/types";
-import type {
   DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
   LightWorkspaceType,
+  SpaceType,
 } from "@app/types";
 
 interface DataSourceBuilderSelectorProps {
@@ -45,9 +41,7 @@ interface DataSourceBuilderSelectorProps {
 export const DataSourceBuilderSelector = (
   props: DataSourceBuilderSelectorProps
 ) => {
-  const { spaces, isSpacesLoading } = useSpaces({
-    workspaceId: props.owner.sId,
-  });
+  const { spaces, isSpacesLoading } = useSpacesContext();
 
   if (isSpacesLoading) {
     return <Spinner />;
