@@ -176,14 +176,14 @@ export const Stories: CustomerStory[] = [
     content:
       "Alan's marketing team uses Dust to create customer stories that resonate with their audience, all while maintaining brand consistency.",
     href: "https://blog.dust.tt/alan-marketing-customer-story-production-dust/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan.png",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Alan-__-Dust-1.png",
   },
   {
     title: "How Qonto Achieved 70% Faster Localization with Dust",
     content:
       "Qonto's Tolki assistant serves as a virtual polyglot, helping the content team localize content while maintaining brand voice and regional standards.",
     href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Qonto-__-Dust.jpg",
   },
   {
     title: "Building a Marketing Engine from Scratch at Fleet",

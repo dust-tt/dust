@@ -293,6 +293,13 @@ interface QuoteProps {
 export const AllQuotes: QuoteProps[] = [
   {
     quote:
+      "It’s not just about retrieving information from one place. Our sales team needs information that’s often scattered across multiple internal applications. Dust brings it all together.",
+    name: "Caren Duane",
+    title: "Head of Business Operations at Clay",
+    logo: "/static/landing/logos/color/clay.png",
+  },
+  {
+    quote:
       "Thanks to what we’ve implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
     name: "Vincent Delagabbe",
     title: "Software Engineer at Alan",
