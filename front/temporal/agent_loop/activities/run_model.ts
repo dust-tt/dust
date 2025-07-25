@@ -65,7 +65,6 @@ export async function runModelActivity({
   runIds,
   step,
   functionCallStepContentIds,
-  citationsRefsOffset,
   autoRetryCount = 0,
 }: {
   authType: AuthenticatorType;
@@ -73,7 +72,6 @@ export async function runModelActivity({
   runIds: string[];
   step: number;
   functionCallStepContentIds: Record<string, ModelId>;
-  citationsRefsOffset: number;
   autoRetryCount?: number;
 }): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -415,7 +413,6 @@ export async function runModelActivity({
         runIds,
         step,
         functionCallStepContentIds,
-        citationsRefsOffset,
         autoRetryCount: autoRetryCount + 1,
       });
     }
@@ -854,7 +851,6 @@ export async function runModelActivity({
   const stepContexts = computeStepContexts({
     agentConfiguration,
     stepActions: actions.map((a) => a.action),
-    citationsRefsOffset,
   });
 
   return {
