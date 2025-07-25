@@ -11,10 +11,7 @@ import {
   runActionStreamed,
 } from "@app/lib/actions/server";
 import type { StepContext } from "@app/lib/actions/types";
-import type {
-  ActionConfigurationType,
-  AgentActionSpecification,
-} from "@app/lib/actions/types/agent";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
@@ -214,12 +211,11 @@ export async function runModelActivity({
 
   const isLastGenerationIteration = step === agentConfiguration.maxStepsPerRun;
 
-  const availableActions: ActionConfigurationType[] = [];
   // If we already executed the maximum number of actions, we don't run anymore.
   // This will force the agent to run the generation.
-  if (!isLastGenerationIteration) {
-    availableActions.push(...mcpActions.flatMap((s) => s.tools));
-  }
+  const availableActions = isLastGenerationIteration
+    ? mcpActions.flatMap((s) => s.tools)
+    : [];
 
   let fallbackPrompt = "You are a conversational agent";
   if (
