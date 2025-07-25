@@ -7,8 +7,6 @@ import type {
 } from "@app/lib/actions/mcp";
 import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
-  ActionConfigurationType,
-  AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
 import type {
@@ -46,7 +44,7 @@ export function isServerSideMCPServerConfiguration(
 }
 
 export function isMCPConfigurationWithDataSource(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -56,7 +54,7 @@ export function isMCPConfigurationWithDataSource(
 }
 
 export function isMCPConfigurationForInternalInteractiveContent(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -65,7 +63,7 @@ export function isMCPConfigurationForInternalInteractiveContent(
 }
 
 export function isMCPConfigurationForInternalWebsearch(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -74,7 +72,7 @@ export function isMCPConfigurationForInternalWebsearch(
 }
 
 export function isMCPConfigurationForInternalSlack(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -83,7 +81,7 @@ export function isMCPConfigurationForInternalSlack(
 }
 
 export function isMCPConfigurationForInternalNotion(
-  arg: AgentActionConfigurationType
+  arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
@@ -113,7 +111,7 @@ export function isMCPToolConfiguration(
 }
 
 export function isMCPInternalSearch(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -122,7 +120,7 @@ export function isMCPInternalSearch(
 }
 
 export function isMCPInternalInclude(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -131,7 +129,7 @@ export function isMCPInternalInclude(
 }
 
 export function isMCPInternalDataSourceFileSystem(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -143,7 +141,7 @@ export function isMCPInternalDataSourceFileSystem(
 }
 
 export function isMCPInternalWebsearch(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -152,7 +150,7 @@ export function isMCPInternalWebsearch(
 }
 
 export function isMCPInternalSlack(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -161,7 +159,7 @@ export function isMCPInternalSlack(
 }
 
 export function isMCPInternalNotion(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -170,7 +168,7 @@ export function isMCPInternalNotion(
 }
 
 export function isMCPInternalDustAppRun(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
@@ -179,13 +177,13 @@ export function isMCPInternalDustAppRun(
 }
 
 export function isServerSideMCPToolConfiguration(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "mcpServerViewId" in arg;
 }
 
 export function isClientSideMCPToolConfiguration(
-  arg: ActionConfigurationType
+  arg: MCPToolConfigurationType
 ): arg is ClientSideMCPToolConfigurationType {
   return isMCPToolConfiguration(arg) && "clientSideMcpServerId" in arg;
 }

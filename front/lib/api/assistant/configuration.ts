@@ -10,10 +10,7 @@ import {
 
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type {
-  AgentActionConfigurationType,
-  UnsavedAgentActionConfigurationType,
-} from "@app/lib/actions/types/agent";
+import type { UnsavedAgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents";
@@ -514,7 +511,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
-    const actions: AgentActionConfigurationType[] = [];
+    const actions: MCPServerConfigurationType[] = [];
 
     if (variant === "full") {
       // MCP server configurations
