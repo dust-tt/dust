@@ -15,7 +15,6 @@ import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
-import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
@@ -110,16 +109,6 @@ export async function runModelActivity({
     return null;
   }
 
-  const isLastGenerationIteration = step === agentConfiguration.maxStepsPerRun;
-
-  const agentActions =
-    // If we already executed the maximum number of actions, we don't run anymore.
-    // This will force the agent to run the generation.
-    isLastGenerationIteration
-      ? []
-      : // Otherwise, we let the agent decide which action to run (if any).
-        agentConfiguration.actions;
-
   const auth = await Authenticator.fromJSON(authType);
 
   const model = getSupportedModelConfig(agentConfiguration.model);
@@ -187,22 +176,13 @@ export async function runModelActivity({
     });
     return null;
   }
-  const availableActions: ActionConfigurationType[] = [];
-
-  for (const agentAction of agentActions) {
-    if (isActionConfigurationType(agentAction)) {
-      logger.info("Found an available action on the agentConfiguration.");
-      availableActions.push(agentAction);
-    }
-  }
 
   const attachments = listAttachments(conversation);
   const jitServers = await getJITServers(auth, {
     conversation,
     attachments,
   });
-
-  // Get client-side MCP server configurations from user message context.
+  // Get client-side MCP server configurations from the user message context.
   const clientSideMCPActionConfigurations =
     await createClientSideMCPServerConfigurations(
       auth,
@@ -232,6 +212,11 @@ export async function runModelActivity({
     );
   }
 
+  const isLastGenerationIteration = step === agentConfiguration.maxStepsPerRun;
+
+  const availableActions: ActionConfigurationType[] = [];
+  // If we already executed the maximum number of actions, we don't run anymore.
+  // This will force the agent to run the generation.
   if (!isLastGenerationIteration) {
     availableActions.push(...mcpActions.flatMap((s) => s.tools));
   }
@@ -739,6 +724,8 @@ export async function runModelActivity({
   );
 
   if (isLastGenerationIteration) {
+    // TODO(2025-07-25 aubin): fix this error, we reached the max step, we did not
+    //  reach the max tool use.
     await publishAgentError({
       code: "tool_use_limit_reached",
       message:
