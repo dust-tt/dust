@@ -51,7 +51,11 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { AGENT_GROUP_PREFIX, SPACE_GROUP_PREFIX } from "@app/types";
+import {
+  AGENT_GROUP_PREFIX,
+  GLOBAL_SPACE_NAME,
+  SPACE_GROUP_PREFIX,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -163,7 +167,7 @@ export function APIKeys({
 
   const prettifyGroupName = (group: GroupType) => {
     if (group.kind === "global") {
-      return "Company Data";
+      return GLOBAL_SPACE_NAME;
     }
 
     return group.kind === "agent_editors"
@@ -178,7 +182,7 @@ export function APIKeys({
       return [prettifyGroupName(group)];
     }
 
-    return ["Company Data", prettifyGroupName(group)];
+    return [GLOBAL_SPACE_NAME, prettifyGroupName(group)];
   };
 
   return (
@@ -298,65 +302,75 @@ export function APIKeys({
               <DialogTitle>New API Key</DialogTitle>
             </DialogHeader>
             <DialogContainer>
-              <Label>API Key Name</Label>
-              <Input
-                name="API Key"
-                placeholder="Type an API key name"
-                value={newApiKeyName}
-                onChange={(e) => setNewApiKeyName(e.target.value)}
-              />
-              <br />
-              <Label>Default Space</Label>
-              <div className="flex flex-row">
-                <Button
-                  label="Company Data"
-                  size="sm"
-                  variant="outline"
-                  disabled={true}
-                  tooltip="Company Data is mandatory."
-                />
-              </div>
-              <br />
-              <Label>Add optional additional Space</Label>
-              <div className="flex flex-row">
-                {newApiKeyRestrictedGroup ? (
-                  <Chip
-                    label={prettifyGroupName(newApiKeyRestrictedGroup)}
-                    onRemove={() => setNewApiKeyRestrictedGroup(null)}
-                    size="sm"
+              <div className="space-y-4">
+                <div>
+                  <Label>API Key Name</Label>
+                  <Input
+                    name="API Key"
+                    placeholder="Type an API key name"
+                    value={newApiKeyName}
+                    onChange={(e) => setNewApiKeyName(e.target.value)}
                   />
-                ) : (
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        label={
-                          newApiKeyRestrictedGroup
-                            ? prettifyGroupName(newApiKeyRestrictedGroup)
-                            : "Add a space"
-                        }
+                </div>
+                <div>
+                  <Label>Default Space</Label>
+                  <div>
+                    <Button
+                      label={GLOBAL_SPACE_NAME}
+                      size="sm"
+                      variant="outline"
+                      disabled={true}
+                      tooltip={`${GLOBAL_SPACE_NAME} is mandatory.`}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Add optional additional Space</Label>
+                  <div>
+                    {newApiKeyRestrictedGroup ? (
+                      <Chip
+                        label={prettifyGroupName(newApiKeyRestrictedGroup)}
+                        onRemove={() => setNewApiKeyRestrictedGroup(null)}
                         size="sm"
-                        variant="outline"
-                        isSelect={newApiKeyRestrictedGroup === null}
                       />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {groups
-                        .filter((g) => g.kind !== "global")
-                        .sort((a, b) => {
-                          return prettifyGroupName(a)
-                            .toLowerCase()
-                            .localeCompare(prettifyGroupName(b).toLowerCase());
-                        })
-                        .map((group: GroupType) => (
-                          <DropdownMenuItem
-                            key={group.id}
-                            label={prettifyGroupName(group)}
-                            onClick={() => setNewApiKeyRestrictedGroup(group)}
+                    ) : (
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            label={
+                              newApiKeyRestrictedGroup
+                                ? prettifyGroupName(newApiKeyRestrictedGroup)
+                                : "Add a space"
+                            }
+                            size="sm"
+                            variant="outline"
+                            isSelect={newApiKeyRestrictedGroup === null}
                           />
-                        ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          {groups
+                            .filter((g) => g.kind !== "global")
+                            .sort((a, b) => {
+                              return prettifyGroupName(a)
+                                .toLowerCase()
+                                .localeCompare(
+                                  prettifyGroupName(b).toLowerCase()
+                                );
+                            })
+                            .map((group: GroupType) => (
+                              <DropdownMenuItem
+                                key={group.id}
+                                label={prettifyGroupName(group)}
+                                onClick={() =>
+                                  setNewApiKeyRestrictedGroup(group)
+                                }
+                              />
+                            ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                </div>
               </div>
             </DialogContainer>
             <DialogFooter
