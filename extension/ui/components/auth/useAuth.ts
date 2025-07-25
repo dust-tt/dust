@@ -20,10 +20,15 @@ export const useAuthHook = () => {
   const [forcedConnection, setForcedConnection] = useState<
     string | undefined
   >();
-  const isAuthenticated = !!(
-    tokens?.accessToken &&
-    tokens.expiresAt > Date.now() &&
-    user?.dustDomain
+
+  const isAuthenticated = useMemo(
+    () =>
+      !!(
+        tokens?.accessToken &&
+        tokens.expiresAt > Date.now() &&
+        user?.dustDomain
+      ),
+    [tokens, user]
   );
 
   const isUserSetup = !!(user && user.sId && user.selectedWorkspace);
