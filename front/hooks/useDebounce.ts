@@ -1,5 +1,5 @@
 import { debounce } from "lodash";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseDebounceOptions {
   delay?: number;
@@ -25,18 +25,21 @@ export function useDebounce(
   ).current;
 
   // Update function
-  const setValue = (value: string) => {
-    setInputValue(value);
+  const setValue = useCallback(
+    (value: string) => {
+      setInputValue(value);
 
-    if (minLength > 0 && value.length < minLength) {
-      setDebouncedValue("");
-      setIsDebouncing(false);
-      debouncedUpdate.cancel();
-      return;
-    }
-    setIsDebouncing(true);
-    debouncedUpdate(value);
-  };
+      if (minLength > 0 && value.length < minLength) {
+        setDebouncedValue("");
+        setIsDebouncing(false);
+        debouncedUpdate.cancel();
+        return;
+      }
+      setIsDebouncing(true);
+      debouncedUpdate(value);
+    },
+    [debouncedUpdate, minLength]
+  );
 
   // Cleanup on unmount
   useEffect(() => {
