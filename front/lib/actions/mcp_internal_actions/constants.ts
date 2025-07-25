@@ -363,7 +363,7 @@ export const INTERNAL_MCP_SERVERS: Record<
   run_agent: {
     id: 1008,
     availability: "auto",
-    timeoutMs: 5 * 60 * 1000, // 5 minutes
+    timeoutMs: 10 * 60 * 1000, // 10 minutes
   },
   primitive_types_debugger: {
     id: 1004,
