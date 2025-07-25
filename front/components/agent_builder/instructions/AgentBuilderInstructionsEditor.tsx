@@ -134,17 +134,20 @@ export function AgentBuilderInstructionsEditor({
     return baseExtensions;
   }, [featureFlags, owner, agentName, agentDescription, actions]);
 
-  const editor = useEditor({
-    extensions,
-    content: tipTapContentFromPlainText(field.value),
-    onUpdate: ({ editor }) => {
-      if (!isInstructionDiffMode) {
-        const json = editor.getJSON();
-        const plainText = plainTextFromTipTapContent(json);
-        field.onChange(plainText);
-      }
+  const editor = useEditor(
+    {
+      extensions,
+      content: tipTapContentFromPlainText(field.value),
+      onUpdate: ({ editor }) => {
+        if (!isInstructionDiffMode) {
+          const json = editor.getJSON();
+          const plainText = plainTextFromTipTapContent(json);
+          field.onChange(plainText);
+        }
+      },
     },
-  });
+    [extensions]
+  );
 
   const currentCharacterCount =
     editor?.storage.characterCount.characters() || 0;
