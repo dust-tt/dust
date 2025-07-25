@@ -211,9 +211,9 @@ export async function runModelActivity({
 
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
-  // If we already executed the maximum number of actions, we don't run anymore.
+  // If we are on the last step, we don't show any action.
   // This will force the agent to run the generation.
-  const availableActions = isLastStep ? mcpActions.flatMap((s) => s.tools) : [];
+  const availableActions = isLastStep ? [] : mcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
   if (
