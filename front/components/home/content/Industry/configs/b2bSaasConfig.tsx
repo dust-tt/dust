@@ -295,7 +295,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
         content:
           "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
         href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Didomi-__-Dust.jpg",
       },
       {
         title:
@@ -303,14 +303,14 @@ export const b2bSaasConfig: IndustryPageConfig = {
         content:
           "Germi, Qonto's AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
         href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Qonto-__-Dust.jpg",
       },
       {
         title: "Kyriba's adoption of Dust across all functions",
         content:
           "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
         href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Kyriba-__-Dust.png",
       },
     ],
   },

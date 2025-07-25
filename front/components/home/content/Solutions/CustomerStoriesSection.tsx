@@ -32,25 +32,39 @@ interface CustomerStoriesSectionProps {
 
 export const defaultCustomerStories: CustomerStory[] = [
   {
+    title: "Doctolib uses Dust for AI adoption of 3,000 employees",
+    content:
+      "Doctolib achieved 70% weekly usage across 3,000 employees by treating AI transformation as a cultural imperative, not just tool deployment.",
+    href: "https://blog.dust.tt/why-doctolib-made-company-wide-enterprise-ai-a-national-cause/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Doctolib-__-Dust---Part-1.jpg",
+  },
+  {
+    title: "How Clay is powering 4x team growth with Dust",
+    content:
+      "Clay uses Dust AI agents to scale their GTM team 4x while maintaining sales velocity and achieving 100% adoption across their growing team.",
+    href: "https://blog.dust.tt/clay-scaling-gtme-team/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
+  },
+  {
     title: "Malt cuts support ticket closing time by 50% with Dust",
     content:
       "Malt streamlines customer support using Dust’s AI platform for rapid, consistent multilingual responses.",
     href: "https://blog.dust.tt/malt-customer-support/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/malt_dust.png",
   },
   {
     title: "Pennylane’s journey to deploy Dust for Customer Care teams",
     content:
       "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
     href: "https://blog.dust.tt/pennylane-dust-customer-support-journey/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Pennylane-__-Dust.jpg",
   },
   {
     title: "Lifen uses Dust AI agents to boost team productivity",
     content:
       "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
     href: "https://blog.dust.tt/customer-story-lifen/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Lifen-__-Dust.png",
   },
 ];
 
