@@ -16,7 +16,7 @@ import type {
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
-import { computeStepContext } from "@app/lib/actions/utils";
+import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
@@ -855,7 +855,7 @@ export async function runModelActivity({
   }));
   agentMessage.contents.push(...newContents);
 
-  const { stepContexts, totalCitationsIncrement } = computeStepContext({
+  const { stepContexts, totalCitationsIncrement } = computeStepContexts({
     agentConfiguration,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
