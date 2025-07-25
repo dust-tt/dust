@@ -64,6 +64,14 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
 
   const currentModelKey = modelField.value.modelId;
 
+  const selectedModel = models.find(
+    (model) => model.modelId === currentModelKey
+  );
+
+  const isSelectedModelNotInBest =
+    selectedModel &&
+    !bestGeneralModels.some((model) => model.modelId === selectedModel.modelId);
+
   const handleModelSelection = (modelConfig: ModelConfigurationType) => {
     modelField.onChange({
       modelId: modelConfig.modelId,
@@ -77,6 +85,20 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
     <DropdownMenuSub>
       <DropdownMenuSubTrigger label="Model selection" />
       <DropdownMenuSubContent className="w-80">
+        {isSelectedModelNotInBest && selectedModel && (
+          <>
+            <DropdownMenuLabel label="Selected model" />
+            <DropdownMenuRadioGroup value={currentModelKey}>
+              <ModelRadioItem
+                key={getModelKey(selectedModel)}
+                modelConfig={selectedModel}
+                isDark={isDark}
+                onModelSelection={handleModelSelection}
+              />
+            </DropdownMenuRadioGroup>
+          </>
+        )}
+
         <DropdownMenuLabel label="Best performing models by providers" />
         <DropdownMenuRadioGroup value={currentModelKey}>
           {bestGeneralModels.map((modelConfig) => (
