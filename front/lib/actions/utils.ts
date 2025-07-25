@@ -10,7 +10,6 @@ import type { ActionSpecification } from "@app/components/assistant_builder/type
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
-import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isMCPInternalDataSourceFileSystem,
   isMCPInternalInclude,
@@ -99,7 +98,7 @@ export function getRetrievalTopK({
   stepActions,
 }: {
   agentConfiguration: AgentConfigurationType;
-  stepActions: ActionConfigurationType[];
+  stepActions: MCPToolConfigurationType[];
 }): number {
   const model = getSupportedModelConfig(agentConfiguration.model);
 
@@ -144,7 +143,7 @@ export function getRetrievalTopK({
 export function getWebsearchNumResults({
   stepActions,
 }: {
-  stepActions: ActionConfigurationType[];
+  stepActions: MCPToolConfigurationType[];
 }): number {
   const websearchActions = stepActions.filter(isMCPInternalWebsearch);
   const totalActions = websearchActions.length;
@@ -171,7 +170,7 @@ export function getCitationsCount({
   stepActionIndex,
 }: {
   agentConfiguration: AgentConfigurationType;
-  stepActions: ActionConfigurationType[];
+  stepActions: MCPToolConfigurationType[];
   stepActionIndex: number;
 }): number {
   const action = stepActions[stepActionIndex];
@@ -202,7 +201,7 @@ export function computeStepContexts({
   citationsRefsOffset,
 }: {
   agentConfiguration: AgentConfigurationType;
-  stepActions: ActionConfigurationType[];
+  stepActions: MCPToolConfigurationType[];
   citationsRefsOffset: number;
 }): StepContext[] {
   const retrievalTopK = getRetrievalTopK({

@@ -8,7 +8,7 @@ import {
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { MCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isMCPServerConfiguration,
   isServerSideMCPServerConfiguration,
@@ -33,7 +33,7 @@ interface AssistantToolsSectionProps {
 // We use the `hidden_dust_search_` prefix to identify these additional searches.
 const isHiddenDustAction = (
   agentConfiguration: AgentConfigurationType,
-  action: AgentActionConfigurationType
+  action: MCPServerConfigurationType
 ) => {
   const isDustGlobalAgent = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
   return isDustGlobalAgent && action.name.startsWith("hidden_dust_search_");
@@ -118,7 +118,7 @@ export function AssistantToolsSection({
 }
 
 function renderOtherAction(
-  action: AgentActionConfigurationType,
+  action: MCPServerConfigurationType,
   mcpServers: MCPServerTypeWithViews[]
 ) {
   if (isServerSideMCPServerConfiguration(action)) {
