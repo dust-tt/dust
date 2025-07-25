@@ -52,7 +52,7 @@ function getDescriptionForContentType(
     return "Visualization";
   }
 
-  return "Interactive Content";
+  return null;
 }
 
 interface InteractiveAgentMessageGeneratedFilesProps {
@@ -76,6 +76,8 @@ export function InteractiveAgentMessageGeneratedFiles({
           openContent(file.fileId);
         };
 
+        const description = getDescriptionForContentType(file);
+
         return (
           <Citation
             key={file.fileId}
@@ -83,10 +85,15 @@ export function InteractiveAgentMessageGeneratedFiles({
             onClick={handleClick}
             className="bg-gray-50 dark:bg-gray-800"
           >
-            <CitationTitle>{file.title}</CitationTitle>
-            <CitationDescription>
-              {getDescriptionForContentType(file)}
-            </CitationDescription>
+            <div className="flex flex-row items-center gap-2">
+              <CitationTitle>{file.title}</CitationTitle>
+              {description && (
+                <CitationTitle className="text-muted-foreground dark:text-muted-foreground-night">
+                  {description}
+                </CitationTitle>
+              )}
+            </div>
+            <CitationDescription>Interactive Content</CitationDescription>
           </Citation>
         );
       })}

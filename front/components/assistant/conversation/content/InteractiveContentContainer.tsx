@@ -1,4 +1,4 @@
-import { cn, Spinner } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
 import { ClientExecutableRenderer } from "@app/components/assistant/conversation/content/ClientExecutableRenderer";
@@ -84,16 +84,9 @@ export function InteractiveContentContainer({
   };
 
   return (
-    <div className="h-full w-full p-3">
-      <div
-        className={cn(
-          "bg-structure-0/80 flex h-full w-full flex-col backdrop-blur-sm",
-          "rounded-3xl border border-border dark:border-border-night"
-        )}
-      >
-        <div className="flex-1 overflow-hidden rounded-3xl bg-gray-50 dark:bg-gray-900">
-          {renderContent()}
-        </div>
+    <div className="flex h-full w-full">
+      <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
+        {renderContent()}
       </div>
     </div>
   );

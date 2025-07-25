@@ -60,18 +60,18 @@ export function ClientExecutableRenderer({
         onClose={closeContent}
       >
         <Button
-          size="xs"
-          variant="outline"
           icon={showCode ? SparklesIcon : CommandLineIcon}
           onClick={() => setShowCode(!showCode)}
+          size="xs"
           tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
+          variant="outline"
         />
       </InteractiveContentHeader>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
         {showCode ? (
-          <div className="h-full overflow-auto p-4">
+          <div className="h-full overflow-auto px-4">
             <CodeBlock wrapLongLines className="language-tsx">
               {fileContent}
             </CodeBlock>

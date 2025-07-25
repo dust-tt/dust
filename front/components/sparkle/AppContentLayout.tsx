@@ -97,14 +97,13 @@ export default function AppContentLayout({
       >
         {/* Temporary measure to preserve title existence on smaller screens.
          * Page has no title, prepend empty AppLayoutTitle. */}
-        {loaded && !hasTitle ? (
+        {loaded && !hasTitle && (
           <>
             <AppLayoutTitle />
             {children}
           </>
-        ) : (
-          children
         )}
+        {loaded && hasTitle && children}
       </div>
     </div>
   );

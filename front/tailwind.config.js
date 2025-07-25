@@ -341,6 +341,7 @@ module.exports = {
         "4xl": "2rem",
       },
       containers: {
+        xxxs: "16rem",
         xxs: "24rem",
         xs: "32rem",
         sm: "40rem",
