@@ -720,12 +720,10 @@ export async function runModelActivity({
   );
 
   if (isLastGenerationIteration) {
-    // TODO(2025-07-25 aubin): fix this error, we reached the max step, we did not
-    //  reach the max tool use.
     await publishAgentError({
-      code: "tool_use_limit_reached",
+      code: "max_step_reached",
       message:
-        "The agent attempted to use too many tools. This model error can be safely retried.",
+        "The agent reached the maximum number of steps. This error can be safely retried.",
       metadata: null,
     });
     return null;
