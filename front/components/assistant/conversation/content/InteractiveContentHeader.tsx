@@ -1,11 +1,12 @@
-import { Button, cn, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, cn, LinkIcon, XMarkIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 
 interface InteractiveContentHeaderProps {
   children?: React.ReactNode;
-  onClose: () => void;
+  onClose?: () => void;
+  onShare?: () => void;
   subtitle?: string;
   title: string;
 }
@@ -13,6 +14,7 @@ interface InteractiveContentHeaderProps {
 export function InteractiveContentHeader({
   children,
   onClose,
+  onShare,
   subtitle,
   title,
 }: InteractiveContentHeaderProps) {
@@ -41,13 +43,25 @@ export function InteractiveContentHeader({
         {/* Actions - always visible and right-aligned. */}
         <div className="flex shrink-0 items-center gap-2">
           {children}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            icon={XMarkIcon}
-            className="text-element-600 hover:text-element-900"
-          />
+          {onShare && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onShare}
+              icon={LinkIcon}
+              tooltip="Share publicly"
+              className="text-element-600 hover:text-element-900"
+            />
+          )}
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              icon={XMarkIcon}
+              className="text-element-600 hover:text-element-900"
+            />
+          )}
         </div>
       </div>
     </AppLayoutTitle>

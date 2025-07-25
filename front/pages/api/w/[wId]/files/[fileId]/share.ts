@@ -4,6 +4,7 @@ import { z } from "zod";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { isFileUsingConversationFiles } from "@app/lib/files";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -14,15 +15,9 @@ const ShareFileRequestBodySchema = z.object({
   isPublic: z.boolean(),
 });
 
-interface ShareFileResponseBody {
+export interface ShareFileResponseBody {
   isPublic: boolean;
   shareUrl: string | null;
-}
-
-function hasUseFileHook(content: string): boolean {
-  // Simple regex to detect useFile hook usage
-  const useFileRegex = /useFile\s*\(/;
-  return useFileRegex.test(content);
 }
 
 async function handler(
@@ -101,9 +96,8 @@ async function handler(
 
       const { isPublic } = parseResult.data;
 
-      // For now, we only allow public sharing of interactive files that don't use the useFile hook.
-      // The `useFile` hook is a special hook that allows the user to use the file in the
-      // conversation. It is not supported in public sharing.
+      // For now, we only allow public sharing of interactive files that don't use conversation's
+      // files. Those should not be shared publicly.
       if (isPublic) {
         const fileContent = await getFileContent(auth, file, "original");
         if (!fileContent) {
@@ -116,7 +110,7 @@ async function handler(
           });
         }
 
-        if (hasUseFileHook(fileContent)) {
+        if (isFileUsingConversationFiles(fileContent)) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {

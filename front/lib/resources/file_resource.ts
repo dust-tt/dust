@@ -15,6 +15,10 @@ import {
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
+import {
+  fileHasUseFileHook,
+  isFileUsingConversationFiles,
+} from "@app/lib/files";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -159,6 +163,13 @@ export class FileResource extends BaseResource<FileModel> {
     );
 
     if (!content) {
+      return null;
+    }
+
+    if (isFileUsingConversationFiles(content)) {
+      // Set the file as not public.
+      await file.setIsPublic(false);
+
       return null;
     }
 
