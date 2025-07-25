@@ -759,7 +759,6 @@ export async function runModelActivity({
     let action = availableActions.find((ac) =>
       actionNamesFromLLM.includes(ac.name)
     );
-    let args = a.arguments;
 
     if (!action) {
       if (!a.name) {
@@ -823,12 +822,10 @@ export async function runModelActivity({
         toolServerId: mcpServerView.sId,
         mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
       };
-      args = {};
     }
 
     actions.push({
       action,
-      inputs: args ?? {},
       functionCallId: a.functionCallId ?? null,
     });
   }

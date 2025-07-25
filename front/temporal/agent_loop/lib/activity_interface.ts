@@ -25,9 +25,6 @@ export interface AgentLoopActivities {
     authType: AuthenticatorType,
     args: {
       runAgentArgs: RunAgentArgs;
-      inputs: Record<string, string | boolean | number>;
-      functionCallId: string;
-      step: number;
       action: ActionConfigurationType;
       stepContext: StepContext;
       stepContentId: ModelId;

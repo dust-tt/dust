@@ -55,12 +55,9 @@ export async function executeAgentLoop(
     const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
     await Promise.all(
-      actionsToRun.map(({ inputs, functionCallId, action }, index) =>
+      actionsToRun.map(({ functionCallId, action }, index) =>
         activities.runToolActivity(authType, {
           runAgentArgs,
-          inputs,
-          functionCallId,
-          step: i,
           action,
           stepContext: stepContexts[index],
           stepContentId: functionCallStepContentIds[functionCallId],

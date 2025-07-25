@@ -3,33 +3,46 @@ import type { StepContext } from "@app/lib/actions/types";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { assertNever } from "@app/types";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
+import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type { ModelId } from "@app/types/shared/model_id";
 
 export async function runToolActivity(
   authType: AuthenticatorType,
   {
     runAgentArgs,
-    inputs,
-    functionCallId,
-    step,
     action,
     stepContext,
     stepContentId,
   }: {
     runAgentArgs: RunAgentArgs;
-    inputs: Record<string, string | boolean | number>;
-    functionCallId: string;
-    step: number;
     action: ActionConfigurationType;
     stepContext: StepContext;
     stepContentId: ModelId;
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJSON(authType);
+
+  // Fetch step content to derive inputs, functionCallId, and step
+  const stepContent =
+    await AgentStepContentResource.fetchByModelId(stepContentId);
+  if (!stepContent) {
+    throw new Error(
+      `Step content not found for stepContentId: ${stepContentId}`
+    );
+  }
+  if (!isFunctionCallContent(stepContent.value)) {
+    throw new Error(
+      `Expected step content to be a function call, got: ${stepContent.value.type}`
+    );
+  }
+
+  const { step } = stepContent;
 
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
@@ -43,8 +56,8 @@ export async function runToolActivity(
     agentConfiguration: agentConfiguration,
     conversation,
     agentMessage,
-    rawInputs: inputs,
-    functionCallId,
+    rawInputs: JSON.parse(stepContent.value.value.arguments),
+    functionCallId: stepContent.value.value.id,
     step,
     stepContext,
     stepContentId,
