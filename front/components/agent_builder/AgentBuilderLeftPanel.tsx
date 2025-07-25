@@ -64,7 +64,9 @@ export function AgentBuilderLeftPanel({
           <Separator />
           <AgentBuilderCapabilitiesBlock />
           <Separator />
-          <AgentBuilderSettingsBlock />
+          <AgentBuilderSettingsBlock
+            isSettingBlocksOpen={!agentConfigurationId}
+          />
         </div>
       </div>
       <BarFooter
