@@ -587,7 +587,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_search"
   | "agent_builder_instructions_autocomplete"
   | "agent_builder_v2"
-  | "agent_memory_tools"
   | "anthropic_vertex_fallback"
   | "claude_4_opus_feature"
   | "co_edition"
