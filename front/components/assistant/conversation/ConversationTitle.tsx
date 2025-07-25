@@ -116,7 +116,7 @@ export function ConversationTitle({
         <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
           <div className="flex min-w-0 flex-row items-center gap-4 text-primary dark:text-primary-night">
             {!isEditingTitle ? (
-              <div className="min-w-0 overflow-hidden truncate text-sm font-semibold">
+              <div className="min-w-0 overflow-hidden truncate text-sm font-normal">
                 {conversation?.title || ""}
               </div>
             ) : (

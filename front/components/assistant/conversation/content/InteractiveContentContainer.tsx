@@ -1,4 +1,4 @@
-import { cn, Spinner } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
 import { ClientExecutableRenderer } from "@app/components/assistant/conversation/content/ClientExecutableRenderer";
