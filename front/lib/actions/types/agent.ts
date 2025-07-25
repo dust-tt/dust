@@ -15,20 +15,6 @@ export type AgentActionConfigurationType = MCPServerConfigurationType;
  */
 export type ActionConfigurationType = MCPToolConfigurationType;
 
-/**
- * Type guard to check if a value is of type ActionConfigurationType
- */
-export function isActionConfigurationType(
-  value: AgentActionConfigurationType | ActionConfigurationType
-): value is ActionConfigurationType {
-  switch (value.type) {
-    case "mcp_configuration":
-      return true;
-    case "mcp_server_configuration":
-      return false;
-  }
-}
-
 // We need to apply "Omit" to each member of the union separately rather than the whole union
 // because Omit<A | B, "k"> is different from Omit<A, "k"> | Omit<B, "k">.
 // The first form loses the discriminated union properties needed for type narrowing.
