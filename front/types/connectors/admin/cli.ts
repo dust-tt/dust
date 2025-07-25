@@ -49,15 +49,10 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("upsert-page"),
     t.literal("upsert-pages"),
   ]),
-  args: t.type({
-    connectorId: t.union([t.number, t.undefined]),
-    pageId: t.union([t.number, t.undefined]),
-    spaceId: t.union([t.number, t.undefined]),
-    file: t.union([t.string, t.undefined]),
-    keyInFile: t.union([t.string, t.undefined]),
-    url: t.union([t.string, t.undefined]),
-    forceUpsert: t.union([t.literal("true"), t.undefined]),
-  }),
+  args: t.record(
+    t.string,
+    t.union([t.string, NumberAsStringCodec, t.undefined])
+  ),
 });
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
 

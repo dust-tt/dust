@@ -115,12 +115,7 @@ async function checkConfluencePage({
     majorCommand: "confluence",
     command: "check-page-exists",
     args: {
-      connectorId: Number(connectorId),
-      file: undefined,
-      forceUpsert: undefined,
-      keyInFile: undefined,
-      pageId: undefined,
-      spaceId: undefined,
+      connectorId,
       url: pageUrl,
     },
   });
