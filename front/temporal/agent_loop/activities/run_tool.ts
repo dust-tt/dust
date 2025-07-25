@@ -6,10 +6,9 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { assertNever } from "@app/types";
+import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
-import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
-import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type { ModelId } from "@app/types/shared/model_id";
 
 export async function runToolActivity(

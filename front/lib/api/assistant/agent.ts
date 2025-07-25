@@ -6,7 +6,6 @@ import { wakeLock } from "@app/lib/wake_lock";
 import { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { AgentLoopActivities } from "@app/temporal/agent_loop/lib/activity_interface";
 import { executeAgentLoop } from "@app/temporal/agent_loop/lib/agent_loop_executor";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
@@ -27,14 +26,11 @@ async function runAgentSynchronousWithStreaming(
 
   const titlePromise = ensureConversationTitle(authType, runAgentArgs);
 
-  // Create direct activities for non-Temporal execution.
-  const directActivities: AgentLoopActivities = {
-    runModelActivity: (args) => runModelActivity(args),
-    runToolActivity: (authType, args) => runToolActivity(authType, args),
-  };
-
   await wakeLock(async () => {
-    await executeAgentLoop(authType, runAgentArgs, directActivities);
+    await executeAgentLoop(authType, runAgentArgs, {
+      runModelActivity,
+      runToolActivity,
+    });
   });
 
   await titlePromise;

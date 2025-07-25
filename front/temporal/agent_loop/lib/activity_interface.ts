@@ -1,33 +1,7 @@
-import type { StepContext } from "@app/lib/actions/types";
-import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import type { AuthenticatorType } from "@app/lib/auth";
-import type { ModelId } from "@app/types";
-import type { AgentActionsEvent } from "@app/types/assistant/agent";
-import type { RunAgentArgs } from "@app/types/assistant/agent_run";
+import type { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
+import type { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 
 export interface AgentLoopActivities {
-  runModelActivity(args: {
-    authType: AuthenticatorType;
-    runAgentArgs: RunAgentArgs;
-    runIds: string[];
-    step: number;
-    functionCallStepContentIds: Record<string, ModelId>;
-    citationsRefsOffset: number;
-    autoRetryCount?: number;
-  }): Promise<{
-    actions: AgentActionsEvent["actions"];
-    runId: string;
-    functionCallStepContentIds: Record<string, ModelId>;
-    stepContexts: StepContext[];
-  } | null>;
-
-  runToolActivity(
-    authType: AuthenticatorType,
-    args: {
-      runAgentArgs: RunAgentArgs;
-      action: ActionConfigurationType;
-      stepContext: StepContext;
-      stepContentId: ModelId;
-    }
-  ): Promise<void>;
+  runModelActivity: typeof runModelActivity;
+  runToolActivity: typeof runToolActivity;
 }
