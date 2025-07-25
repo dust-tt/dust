@@ -16,12 +16,10 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import { isFileUsingConversationFiles } from "@app/lib/files";
 import { useShareInteractiveFile } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types";
 
 interface ShareInteractiveFileDialogProps {
-  fileContent: string;
   fileId: string;
   isOpen: boolean;
   onClose: () => void;
@@ -29,7 +27,6 @@ interface ShareInteractiveFileDialogProps {
 }
 
 export function ShareInteractiveFileDialog({
-  fileContent,
   fileId,
   isOpen,
   onClose,
@@ -62,13 +59,6 @@ export function ShareInteractiveFileDialog({
   const isShared = !!fileShare?.shareUrl;
   const isLoading = isFileShareLoading || isUpdatingShare;
 
-  const isUsingConversationFiles = isFileUsingConversationFiles(fileContent);
-  const description = isFileUsingConversationFiles(fileContent)
-    ? "This interactive file uses conversation files. It cannot be shared publicly."
-    : isShared
-      ? "Anyone with this link can view your interactive file"
-      : "Create a public link to share your interactive file";
-
   return (
     <Dialog
       open={isOpen}
@@ -81,7 +71,11 @@ export function ShareInteractiveFileDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Share interactive file</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription>
+            {isShared
+              ? "Anyone with this link can view your interactive file"
+              : "Create a public link to share your interactive file"}
+          </DialogDescription>
         </DialogHeader>
 
         {isLoading ? (

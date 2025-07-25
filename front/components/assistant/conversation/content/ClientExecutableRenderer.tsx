@@ -10,6 +10,7 @@ import React from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
+import { isFileUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
 
@@ -35,6 +36,10 @@ export function ClientExecutableRenderer({
     fileId,
     owner,
   });
+  const isUsingConversationFiles = React.useMemo(
+    () => (fileContent ? isFileUsingConversationFiles(fileContent) : false),
+    [fileContent]
+  );
 
   const [showCode, setShowCode] = React.useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
@@ -60,7 +65,6 @@ export function ClientExecutableRenderer({
     <>
       <ShareInteractiveFileDialog
         fileId={fileId}
-        fileContent={fileContent}
         isOpen={isShareDialogOpen}
         onClose={() => setIsShareDialogOpen(false)}
         owner={owner}
@@ -83,7 +87,12 @@ export function ClientExecutableRenderer({
             onClick={() => setIsShareDialogOpen(true)}
             size="xs"
             variant="ghost"
-            tooltip="Share public link"
+            tooltip={
+              isUsingConversationFiles
+                ? "This interactive file uses conversation files. It cannot be shared publicly."
+                : "Share public link"
+            }
+            disabled={isUsingConversationFiles}
           />
         </InteractiveContentHeader>
 
