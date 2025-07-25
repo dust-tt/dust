@@ -43,7 +43,7 @@ export async function runToolActivity(
 
   const { step } = stepContent;
 
-  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs, step);
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
   }

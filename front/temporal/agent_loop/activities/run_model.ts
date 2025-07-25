@@ -49,7 +49,7 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
-import { sliceConversation } from "@app/temporal/agent_loop/lib/loop_utils";
+import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;
@@ -82,7 +82,7 @@ export async function runModelActivity({
   functionCallStepContentIds: Record<string, ModelId>;
   stepContexts: StepContext[];
 } | null> {
-  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs, step);
 
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
@@ -90,16 +90,11 @@ export async function runModelActivity({
 
   const {
     agentConfiguration,
-    conversation: fullConversation,
+    conversation,
     userMessage,
     agentMessage,
     agentMessageRow,
   } = runAgentDataRes.value;
-
-  const conversation = sliceConversation(fullConversation, {
-    agentMessage,
-    step,
-  });
 
   const now = Date.now();
 

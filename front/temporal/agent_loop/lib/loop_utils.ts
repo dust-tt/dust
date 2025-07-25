@@ -14,34 +14,41 @@ import assert from "assert";
  * @param param1
  * @returns
  */
-export function sliceConversation(
+export function sliceConversationForAgentMessage(
   conversation: ConversationType,
-  { agentMessage, step }: { agentMessage: AgentMessageType; step: number }
+  {
+    agentMessageId,
+    agentMessageVersion,
+    step,
+  }: {
+    agentMessageId: string;
+    agentMessageVersion: number;
+    step: number;
+  }
 ): ConversationType {
   const slicedConversation = { ...conversation };
-  const conversationAgentMessage = slicedConversation.content.findLast(
+  const slicedAgentMessage = slicedConversation.content.findLast(
     (messages) =>
-      messages.length > agentMessage.version &&
-      messages[agentMessage.version].sId === agentMessage.sId
-  )?.[agentMessage.version];
+      messages.length > agentMessageVersion &&
+      messages[agentMessageVersion].sId === agentMessageId
+  )?.[agentMessageVersion];
 
   assert(
-    conversationAgentMessage && isAgentMessageType(conversationAgentMessage),
+    slicedAgentMessage && isAgentMessageType(slicedAgentMessage),
     "Unreachable"
   );
 
   // Mutation remains local to this function since conversation was first copied
   // into `slicedConversation`.
-  conversationAgentMessage.contents = conversationAgentMessage.contents.filter(
+  slicedAgentMessage.contents = slicedAgentMessage.contents.filter(
     (content) => content.step < step
   );
 
-  conversationAgentMessage.rawContents =
-    conversationAgentMessage.rawContents.filter(
-      (content) => content.step < step
-    );
+  slicedAgentMessage.rawContents = slicedAgentMessage.rawContents.filter(
+    (content) => content.step < step
+  );
 
-  conversationAgentMessage.actions = conversationAgentMessage.actions.filter(
+  slicedAgentMessage.actions = slicedAgentMessage.actions.filter(
     (action) => action.step < step
   );
 
