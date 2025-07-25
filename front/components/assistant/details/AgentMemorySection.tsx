@@ -9,7 +9,7 @@ import {
   DialogTitle,
   Page,
   Spinner,
-  XMarkIcon,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -113,7 +113,10 @@ export function AgentMemorySection({
       )}
 
       <div className="flex flex-col gap-4">
-        <Page.P variant="secondary">Memories the agent has about you:</Page.P>
+        <Page.SectionHeader
+          title="Saved memories"
+          description="Personal details this assistant remembers from your conversations."
+        />
 
         {isMemoriesLoading ? (
           <div className="mt-6 flex h-full w-full items-center justify-center">
@@ -135,7 +138,7 @@ export function AgentMemorySection({
                     action={
                       <CardActionButton
                         size="mini"
-                        icon={XMarkIcon}
+                        icon={TrashIcon}
                         onClick={() => {
                           setMemoryToDelete(memory.sId);
                         }}
