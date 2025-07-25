@@ -24,7 +24,6 @@ import {
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import type {
   CommandResultMap,
-  LightWorkspaceType,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types";
@@ -76,7 +75,7 @@ function useVisualizationDataHandler({
   setErrorMessage: (v: SetStateAction<string | null>) => void;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
-  workspaceId: string;
+  workspaceId: string | null;
 }) {
   const code = visualization.code;
 
@@ -211,19 +210,49 @@ export function CodeDrawer({
   );
 }
 
-export function VisualizationActionIframe({
-  owner,
-  visualization,
-  conversationId,
-  agentConfigurationId,
-  isInDrawer = false,
-}: {
-  owner: LightWorkspaceType;
-  visualization: Visualization;
-  conversationId: string;
-  agentConfigurationId: string | null;
+// This interface represents the props for the VisualizationActionIframe component when it is used
+// in a public context.
+interface PublicVisualizationActionIframeProps {
+  agentConfigurationId: null;
+  conversationId: null;
   isInDrawer?: boolean;
-}) {
+  visualization: Visualization;
+  workspaceId: null;
+}
+
+// This interface represents the props for the VisualizationActionIframe component when it is used
+// in a private interactive context.
+interface InteractiveVisualizationActionIframeProps {
+  // TODO(INTERACTIVE_CONTENT 2025-07-25): Add support to retry the visualization.
+  agentConfigurationId: string | null;
+  conversationId: string;
+  isInDrawer?: boolean;
+  visualization: Visualization;
+  workspaceId: string;
+}
+
+// This interface represents the props for the VisualizationActionIframe component when it is used
+// in a legacy context.
+interface LegacyVisualizationActionIframeProps {
+  agentConfigurationId: string;
+  conversationId: string;
+  isInDrawer?: boolean;
+  visualization: Visualization;
+  workspaceId: string;
+}
+
+type VisualizationActionIframeProps =
+  | InteractiveVisualizationActionIframeProps
+  | LegacyVisualizationActionIframeProps
+  | PublicVisualizationActionIframeProps;
+
+export function VisualizationActionIframe({
+  agentConfigurationId,
+  conversationId,
+  isInDrawer = false,
+  visualization,
+  workspaceId,
+}: VisualizationActionIframeProps) {
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryClicked, setRetryClicked] = useState(false);
@@ -234,7 +263,7 @@ export function VisualizationActionIframe({
 
   useVisualizationDataHandler({
     visualization,
-    workspaceId: owner.sId,
+    workspaceId,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
@@ -250,7 +279,7 @@ export function VisualizationActionIframe({
   );
 
   const handleVisualizationRetry = useVisualizationRetry({
-    workspaceId: owner.sId,
+    workspaceId,
     conversationId,
     agentConfigurationId,
   });

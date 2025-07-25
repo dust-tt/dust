@@ -22,6 +22,7 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare useCase: FileUseCase;
   declare useCaseMetadata: FileUseCaseMetadata | null;
   declare snippet: string | null;
+  declare isPublic: boolean;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
 
@@ -68,6 +69,11 @@ FileModel.init(
       type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: null,
+    },
+    isPublic: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
