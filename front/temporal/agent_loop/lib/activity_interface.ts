@@ -19,7 +19,6 @@ export interface AgentLoopActivities {
     runId: string;
     functionCallStepContentIds: Record<string, ModelId>;
     stepContexts: StepContext[];
-    totalCitationsIncrement: number;
   } | null>;
 
   runToolActivity(

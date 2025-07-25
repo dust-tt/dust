@@ -80,7 +80,6 @@ export async function runModelActivity({
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
   stepContexts: StepContext[];
-  totalCitationsIncrement: number;
 } | null> {
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
@@ -855,7 +854,7 @@ export async function runModelActivity({
   }));
   agentMessage.contents.push(...newContents);
 
-  const { stepContexts, totalCitationsIncrement } = computeStepContexts({
+  const stepContexts = computeStepContexts({
     agentConfiguration,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
@@ -866,6 +865,5 @@ export async function runModelActivity({
     runId: await dustRunId,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
     stepContexts,
-    totalCitationsIncrement,
   };
 }

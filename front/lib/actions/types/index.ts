@@ -13,6 +13,7 @@ import type {
 export type StepContext = {
   retrievalTopK: number;
   citationsOffset: number;
+  citationsCount: number;
   websearchResultCount: number;
 };
 

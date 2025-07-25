@@ -43,7 +43,7 @@ export async function executeAgentLoop(
       return;
     }
 
-    const { runId, stepContexts, totalCitationsIncrement } = result;
+    const { runId, stepContexts } = result;
 
     // Update state with results from runMultiActionsAgent.
     runIds.push(runId);
@@ -69,6 +69,9 @@ export async function executeAgentLoop(
     );
 
     // Update citations offset with pre-computed increment
-    citationsRefsOffset += totalCitationsIncrement;
+    citationsRefsOffset += stepContexts.reduce(
+      (acc, context) => acc + context.citationsCount,
+      0
+    );
   }
 }

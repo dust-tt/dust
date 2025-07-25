@@ -204,7 +204,7 @@ export function computeStepContexts({
   agentConfiguration: AgentConfigurationType;
   stepActions: ActionConfigurationType[];
   citationsRefsOffset: number;
-}): { stepContexts: StepContext[]; totalCitationsIncrement: number } {
+}): StepContext[] {
   const retrievalTopK = getRetrievalTopK({
     agentConfiguration,
     stepActions,
@@ -218,7 +218,7 @@ export function computeStepContexts({
   let currentOffset = citationsRefsOffset;
 
   for (let i = 0; i < stepActions.length; i++) {
-    const citationCount = getCitationsCount({
+    const citationsCount = getCitationsCount({
       agentConfiguration,
       stepActions,
       stepActionIndex: i,
@@ -227,16 +227,14 @@ export function computeStepContexts({
     stepContexts.push({
       retrievalTopK,
       citationsOffset: currentOffset,
+      citationsCount,
       websearchResultCount: websearchResults,
     });
 
-    currentOffset += citationCount;
+    currentOffset += citationsCount;
   }
 
-  return {
-    stepContexts,
-    totalCitationsIncrement: currentOffset - citationsRefsOffset,
-  };
+  return stepContexts;
 }
 
 export function getMCPApprovalKey({
