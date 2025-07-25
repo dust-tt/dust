@@ -3,29 +3,28 @@ import { Breadcrumbs, SearchInput, Spinner } from "@dust-tt/sparkle";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
 
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import {
   DataSourceBuilderProvider,
   useDataSourceBuilderContext,
 } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
+import {
+  findCategoryFromNavigationHistory,
+  findSpaceFromNavigationHistory,
+  getLatestNodeFromNavigationHistory,
+} from "@app/components/data_source_view/context/utils";
 import { DataSourceCategoryBrowser } from "@app/components/data_source_view/DataSourceCategoryBrowser";
 import { DataSourceNodeTable } from "@app/components/data_source_view/DataSourceNodeTable";
 import { DataSourceSpaceSelector } from "@app/components/data_source_view/DataSourceSpaceSelector";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
-import {
-  useSpaceDataSourceViewsWithDetails,
-  useSpaces,
-} from "@app/lib/swr/spaces";
+import { useSpaceDataSourceViewsWithDetails } from "@app/lib/swr/spaces";
 import type {
   ContentNodesViewType,
-  DataSourceViewType,
-  SpaceType,
-} from "@app/types";
-import type {
-  DataSourceViewCategoryWithoutApps,
-  DataSourceViewContentNode,
   DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
   LightWorkspaceType,
+  SpaceType,
 } from "@app/types";
 
 interface DataSourceBuilderSelectorProps {
@@ -42,8 +41,14 @@ interface DataSourceBuilderSelectorProps {
 export const DataSourceBuilderSelector = (
   props: DataSourceBuilderSelectorProps
 ) => {
+  const { spaces, isSpacesLoading } = useSpacesContext();
+
+  if (isSpacesLoading) {
+    return <Spinner />;
+  }
+
   return (
-    <DataSourceBuilderProvider>
+    <DataSourceBuilderProvider spaces={spaces}>
       <DataSourceBuilderSelectorContent {...props} />
     </DataSourceBuilderProvider>
   );
@@ -55,9 +60,8 @@ export const DataSourceBuilderSelectorContent = ({
   owner,
   viewType,
 }: DataSourceBuilderSelectorProps) => {
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-
   const {
+    spaces,
     navigationHistory,
     navigateTo,
     setSpaceEntry,
@@ -100,10 +104,6 @@ export const DataSourceBuilderSelectorContent = ({
     const spaceIds = new Set(dataSourceViews.map((dsv) => dsv.spaceId));
     return spaces.filter((s) => spaceIds.has(s.sId));
   }, [spaces, dataSourceViews]);
-
-  if (isSpacesLoading) {
-    return <Spinner />;
-  }
 
   if (filteredSpaces.length === 0) {
     return <div>No spaces with data sources available.</div>;
@@ -173,38 +173,4 @@ function getBreadcrumbConfig(
         label: entry.node.title,
       };
   }
-}
-
-function findSpaceFromNavigationHistory(
-  navigationHistory: NavigationHistoryEntryType[]
-): SpaceType | null {
-  const entry = navigationHistory[1];
-  if (entry != null && entry.type === "space") {
-    return entry.space;
-  }
-
-  return null;
-}
-
-function findCategoryFromNavigationHistory(
-  navigationHistory: NavigationHistoryEntryType[]
-): DataSourceViewCategoryWithoutApps | null {
-  const entry = navigationHistory[2];
-  if (entry != null && entry.type === "category") {
-    return entry.category;
-  }
-
-  return null;
-}
-
-function getLatestNodeFromNavigationHistory(
-  navigationHistory: NavigationHistoryEntryType[]
-): DataSourceViewContentNode | null {
-  const latestEntry = navigationHistory[navigationHistory.length - 1];
-
-  if (latestEntry.type === "node") {
-    return latestEntry.node;
-  }
-
-  return null;
 }

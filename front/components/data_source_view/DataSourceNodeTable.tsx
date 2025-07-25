@@ -62,6 +62,7 @@ export function DataSourceNodeTable({
     removeNode,
     removeCurrentNavigationEntry,
     isRowSelected,
+    isRowSelectable,
     isCurrentNavigationEntrySelected,
   } = useDataSourceBuilderContext();
 
@@ -195,6 +196,7 @@ export function DataSourceNodeTable({
           <Checkbox
             size="xs"
             checked={isCurrentNavigationEntrySelected()}
+            disabled={!isRowSelectable()}
             onClick={(event) => event.stopPropagation()}
             onCheckedChange={(state) => {
               if (state === "indeterminate") {
@@ -215,7 +217,7 @@ export function DataSourceNodeTable({
             <Checkbox
               size="xs"
               checked={isRowSelected(row.original.id)}
-              disabled={!row.getCanSelect()}
+              disabled={!isRowSelectable(row.original.id)}
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
                 if (state === "indeterminate") {
@@ -255,6 +257,7 @@ export function DataSourceNodeTable({
     ],
     [
       isCurrentNavigationEntrySelected,
+      isRowSelectable,
       isRowSelected,
       removeCurrentNavigationEntry,
       removeNode,

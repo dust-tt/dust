@@ -2,6 +2,11 @@ import type {
   DataSourceBuilderTreeType,
   NavigationHistoryEntryType,
 } from "@app/components/data_source_view/context/types";
+import type {
+  DataSourceViewCategoryWithoutApps,
+  DataSourceViewContentNode,
+  SpaceType,
+} from "@app/types";
 
 function pathToString(path: string[]): string {
   return path.join(".");
@@ -198,4 +203,38 @@ export function computeNavigationPath(
         return entry.node.internalId;
     }
   });
+}
+
+export function findSpaceFromNavigationHistory(
+  navigationHistory: NavigationHistoryEntryType[]
+): SpaceType | null {
+  const entry = navigationHistory[1];
+  if (entry != null && entry.type === "space") {
+    return entry.space;
+  }
+
+  return null;
+}
+
+export function findCategoryFromNavigationHistory(
+  navigationHistory: NavigationHistoryEntryType[]
+): DataSourceViewCategoryWithoutApps | null {
+  const entry = navigationHistory[2];
+  if (entry != null && entry.type === "category") {
+    return entry.category;
+  }
+
+  return null;
+}
+
+export function getLatestNodeFromNavigationHistory(
+  navigationHistory: NavigationHistoryEntryType[]
+): DataSourceViewContentNode | null {
+  const latestEntry = navigationHistory[navigationHistory.length - 1];
+
+  if (latestEntry.type === "node") {
+    return latestEntry.node;
+  }
+
+  return null;
 }

@@ -8,10 +8,9 @@ import type { SpaceType } from "@app/types";
 
 type SpaceRowData = {
   id: string;
-  name: string;
   icon: React.ComponentType;
   onClick: () => void;
-};
+} & Pick<SpaceType, "name" | "kind">;
 
 export interface DataSourceSpaceSelectorProps {
   spaces: SpaceType[];
@@ -24,12 +23,13 @@ export function DataSourceSpaceSelector({
   allowedSpaces = [],
   onSelectSpace,
 }: DataSourceSpaceSelectorProps) {
-  const { selectNode, removeNode, isRowSelected } =
+  const { selectNode, removeNode, isRowSelected, isRowSelectable } =
     useDataSourceBuilderContext();
 
   const spaceRows: SpaceRowData[] = spaces.map((space) => ({
     id: space.sId,
     name: space.name,
+    kind: space.kind,
     icon: getSpaceIcon(space),
     onClick: () => onSelectSpace(space),
     disabled: allowedSpaces.find((s) => s.sId === space.sId) == null,
@@ -46,7 +46,10 @@ export function DataSourceSpaceSelector({
             <Checkbox
               size="xs"
               checked={isRowSelected(row.original.id)}
-              disabled={!row.getCanSelect()}
+              disabled={
+                row.original.kind !== "global" &&
+                !isRowSelectable(row.original.id)
+              }
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
                 if (state === "indeterminate") {
@@ -84,7 +87,7 @@ export function DataSourceSpaceSelector({
         },
       },
     ],
-    [isRowSelected, removeNode, selectNode]
+    [isRowSelectable, isRowSelected, removeNode, selectNode]
   );
 
   return (
