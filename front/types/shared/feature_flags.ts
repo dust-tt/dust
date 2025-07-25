@@ -108,6 +108,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   monday_tool: {
     description: "Monday MCP tool",
   },
+  async_loop: {
+    description: "Asynchronous loop for conversation processing",
+  },
 } as const;
 
 export const WHITELISTABLE_FEATURES = Object.keys(

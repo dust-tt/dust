@@ -588,6 +588,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_instructions_autocomplete"
   | "agent_builder_v2"
   | "anthropic_vertex_fallback"
+  | "async_loop"
   | "claude_4_opus_feature"
   | "co_edition"
   | "deepseek_feature"
