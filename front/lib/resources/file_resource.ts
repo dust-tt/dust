@@ -15,10 +15,7 @@ import {
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
-import {
-  fileHasUseFileHook,
-  isFileUsingConversationFiles,
-} from "@app/lib/files";
+import { isFileUsingConversationFiles } from "@app/lib/files";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
