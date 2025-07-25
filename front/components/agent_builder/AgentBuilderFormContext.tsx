@@ -111,13 +111,6 @@ const dataVisualizationActionSchema = baseActionSchema.extend({
   configuration: z.null(),
 });
 
-const reasoningModelConfigurationSchema = z.object({
-  providerId: z.string(),
-  modelId: z.string(),
-  temperature: z.number().nullable(),
-  reasoningEffort: z.string().nullable(),
-});
-
 const dustAppRunConfigurationSchema = z.object({
   appWorkspaceId: z.string(),
   appId: z.string(),
@@ -129,7 +122,7 @@ const mcpServerConfigurationSchema = z.object({
     dataSourceViewSelectionConfigurationSchema.nullable(),
   tablesConfigurations: dataSourceViewSelectionConfigurationSchema.nullable(),
   childAgentId: z.string().nullable(),
-  reasoningModel: reasoningModelConfigurationSchema.nullable(),
+  reasoningModel: generationSettingsSchema.nullable(),
   timeFrame: timeFrameSchema,
   additionalConfiguration: z.record(
     z.union([z.boolean(), z.number(), z.string()])
