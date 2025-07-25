@@ -201,7 +201,7 @@ export function getCitationsCount({
   });
 }
 
-export function computeStepContext({
+export function computeStepContexts({
   agentConfiguration,
   stepActions,
   citationsRefsOffset,
