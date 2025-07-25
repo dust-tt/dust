@@ -328,20 +328,6 @@ export const AllQuotes: QuoteProps[] = [
   },
   {
     quote:
-      "The Dust platform is more than just a tool for post-ideation; it’s a catalyst for innovation, stimulating idea generation as employees engage with it.",
-    name: "Boris Lipiainen",
-    title: "Chief Product and Technology Officer at Kyriba",
-    logo: "/static/landing/logos/color/kyriba.png",
-  },
-  {
-    quote:
-      "It’s really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
-    name: "Vincent Delagabbe",
-    title: "Software Engineer at Alan",
-    logo: "/static/landing/logos/color/alan.png",
-  },
-  {
-    quote:
       "We’re managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
     name: "Anaïs Ghelfi",
     title: "Head of Data Platform at Malt",
