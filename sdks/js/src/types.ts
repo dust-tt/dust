@@ -255,6 +255,16 @@ export function isSupportedImageContentType(
   return supportedImageContentTypes.includes(contentType as ImageContentType);
 }
 
+export const ActionGeneratedFileTypeSchema = z.object({
+  fileId: z.string(),
+  title: z.string(),
+  contentType: z.string(),
+});
+
+export type ActionGeneratedFileType = z.infer<
+  typeof ActionGeneratedFileTypeSchema
+>;
+
 const UserMessageOriginSchema = FlexibleEnumSchema<
   | "api"
   | "email"
@@ -903,6 +913,7 @@ const AgentMessageTypeSchema = z.object({
       metadata: z.record(z.any()).nullable(),
     })
     .nullable(),
+  generatedFiles: z.array(ActionGeneratedFileTypeSchema),
 });
 export type AgentMessagePublicType = z.infer<typeof AgentMessageTypeSchema>;
 
