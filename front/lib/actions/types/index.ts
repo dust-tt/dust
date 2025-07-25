@@ -24,7 +24,6 @@ export type AgentLoopRunContextType = {
   clientSideActionConfigurations?: ClientSideMCPServerConfigurationType[];
   conversation: ConversationType;
   agentMessage: AgentMessageType;
-  stepActionIndex: number;
   stepContext: StepContext;
 };
 

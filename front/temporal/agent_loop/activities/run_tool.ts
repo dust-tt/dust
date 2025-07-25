@@ -16,7 +16,6 @@ export async function runToolActivity(
     inputs,
     functionCallId,
     step,
-    stepActionIndex,
     action,
     stepContext,
     stepContentId,
@@ -25,7 +24,6 @@ export async function runToolActivity(
     inputs: Record<string, string | boolean | number>;
     functionCallId: string;
     step: number;
-    stepActionIndex: number;
     action: ActionConfigurationType;
     stepContext: StepContext;
     stepContentId: ModelId;
@@ -48,7 +46,6 @@ export async function runToolActivity(
     rawInputs: inputs,
     functionCallId,
     step,
-    stepActionIndex,
     stepContext,
     stepContentId,
   });

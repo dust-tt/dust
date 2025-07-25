@@ -29,7 +29,6 @@ export interface AgentLoopActivities {
       inputs: Record<string, string | boolean | number>;
       functionCallId: string;
       step: number;
-      stepActionIndex: number;
       action: ActionConfigurationType;
       stepContext: StepContext;
       stepContentId: ModelId;

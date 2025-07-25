@@ -61,7 +61,6 @@ export async function executeAgentLoop(
           inputs,
           functionCallId,
           step: i,
-          stepActionIndex: index,
           action,
           stepContext: stepContexts[index],
           stepContentId: functionCallStepContentIds[functionCallId],

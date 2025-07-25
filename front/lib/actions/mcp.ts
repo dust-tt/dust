@@ -489,7 +489,6 @@ export async function* runToolWithStreaming(
     functionCallId,
     step,
     stepContentId,
-    stepActionIndex,
     stepContext,
   }: {
     agentConfiguration: AgentConfigurationType;
@@ -499,7 +498,6 @@ export async function* runToolWithStreaming(
     functionCallId: string;
     step: number;
     stepContentId: ModelId;
-    stepActionIndex: number;
     stepContext: StepContext;
   }
 ): AsyncGenerator<
@@ -732,7 +730,6 @@ export async function* runToolWithStreaming(
     agentConfiguration,
     conversation,
     agentMessage,
-    stepActionIndex,
     stepContext,
   };
 
