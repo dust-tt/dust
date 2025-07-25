@@ -3,12 +3,12 @@ import _ from "lodash";
 
 import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getMcpServerDisplayName,
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { MCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isMCPServerConfiguration,
   isServerSideMCPServerConfiguration,
