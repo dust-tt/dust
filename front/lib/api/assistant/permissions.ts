@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { UnsavedAgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -41,7 +41,7 @@ export async function listAgentConfigurationsForGroups(
 }
 
 export function getDataSourceViewIdsFromActions(
-  actions: UnsavedAgentActionConfigurationType[]
+  actions: UnsavedMCPServerConfigurationType[]
 ): string[] {
   const relevantActions = actions.filter(
     (action): action is ServerSideMCPServerConfigurationType =>
@@ -78,7 +78,7 @@ export function groupsFromRequestedPermissions(
 export async function getAgentConfigurationGroupIdsFromActions(
   auth: Authenticator,
   params: {
-    actions: UnsavedAgentActionConfigurationType[];
+    actions: UnsavedMCPServerConfigurationType[];
     ignoreSpaces?: SpaceResource[];
   }
 ): Promise<ModelId[][]> {
