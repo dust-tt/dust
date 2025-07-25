@@ -84,16 +84,6 @@ function MCPActionCard({
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
 
-  const spec =
-    action.type === "DATA_VISUALIZATION"
-      ? DATA_VISUALIZATION_SPECIFICATION
-      : MCP_SPECIFICATION;
-
-  if (!spec) {
-    // Unreachable
-    return null;
-  }
-
   const mcpServerView =
     action.type === "MCP" && !isMCPServerViewsLoading
       ? mcpServerViews.find(
