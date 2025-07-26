@@ -13,9 +13,6 @@ import assert from "assert";
  * message. Conversation has already been prepared appropriately before for the
  * use case (post / edit / retry), this function only handles the step slicing
  * for a given agent message.
- * @param conversation
- * @param param1
- * @returns
  */
 export function sliceConversationForAgentMessage(
   conversation: ConversationType,
@@ -31,14 +28,16 @@ export function sliceConversationForAgentMessage(
 ): ConversationType {
   const slicedConversation = { ...conversation };
   const slicedAgentMessage = slicedConversation.content.findLast(
-    (messages) =>
-      messages.length > agentMessageVersion &&
-      messages[agentMessageVersion].sId === agentMessageId
+    (versions) =>
+      versions.length > agentMessageVersion &&
+      versions[agentMessageVersion].sId === agentMessageId
   )?.[agentMessageVersion];
 
   assert(
-    slicedAgentMessage && isAgentMessageType(slicedAgentMessage),
-    "Unreachable"
+    slicedAgentMessage &&
+      isAgentMessageType(slicedAgentMessage) &&
+      slicedAgentMessage.version === agentMessageVersion,
+    "Unreachable: Agent message not found or mismatched."
   );
 
   // Mutation remains local to this function since conversation was first copied
