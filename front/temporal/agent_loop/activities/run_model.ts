@@ -49,7 +49,6 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
-import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;
