@@ -20,7 +20,6 @@ import {
   isAgentMessageType,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
-import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 
 export type RunAgentAsynchronousArgs = {
   agentMessageId: string;
@@ -51,8 +50,7 @@ export type RunAgentArgs =
 
 export async function getRunAgentData(
   authType: AuthenticatorType,
-  runAgentArgs: RunAgentArgs,
-  step?: number
+  runAgentArgs: RunAgentArgs
 ): Promise<Result<RunAgentSynchronousArgs, Error>> {
   if (runAgentArgs.sync) {
     return new Ok(runAgentArgs.inMemoryData);
@@ -74,13 +72,7 @@ export async function getRunAgentData(
     );
   }
 
-  const conversation = step
-    ? sliceConversationForAgentMessage(conversationRes.value, {
-        agentMessageId,
-        agentMessageVersion,
-        step,
-      })
-    : conversationRes.value;
+  const conversation = conversationRes.value;
 
   // Find the agent message group by searching in reverse order.
   // All messages of the same group should be of the same type and of same sId.
