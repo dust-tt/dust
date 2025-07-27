@@ -11,9 +11,11 @@ import { agentLoopWorkflow } from "./workflows";
 export async function launchAgentLoopWorkflow({
   authType,
   runAsynchronousAgentArgs,
+  startStep,
 }: {
   authType: AuthenticatorType;
   runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
+  startStep: number;
 }): Promise<Result<undefined, Error>> {
   const client = await getTemporalClient();
 
@@ -23,7 +25,7 @@ export async function launchAgentLoopWorkflow({
   );
 
   await client.workflow.start(agentLoopWorkflow, {
-    args: [{ authType, runAsynchronousAgentArgs }],
+    args: [{ authType, runAsynchronousAgentArgs, startStep }],
     taskQueue: QUEUE_NAME,
     workflowId,
   });
