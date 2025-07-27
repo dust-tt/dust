@@ -61,7 +61,7 @@ struct Args {
  * Backfills the creation of csv files in GCS for each entry in the Tables table
  *
  * Usage:
- * cargo run --bin backfill_tables_gcs_files -- [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>] [--projects <project_ids>]
+ * cargo run --bin backfill_tables_gcs_files -- [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>] [--projects <project_ids>] [--verify] [--list-table-rows-timeout <timeout>] [--dump-queue] [--remove-queue-item <key>]
  *
  */
 #[tokio::main]
