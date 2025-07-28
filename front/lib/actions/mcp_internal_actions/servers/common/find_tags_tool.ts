@@ -7,6 +7,7 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -33,10 +34,13 @@ export const makeFindTagsDescription = (toolName: string) =>
   "Restricting or excluding content succeeds only with existing labels. " +
   "Searching without verifying labels first typically returns no results.";
 
-export function makeFindTagsTool(auth: Authenticator) {
+export function makeFindTagsTool(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+) {
   return withToolLogging(
     auth,
-    "find_tags",
+    { toolName: "find_tags", agentLoopContext },
     async ({
       query,
       dataSources,

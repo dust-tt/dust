@@ -1,8 +1,7 @@
 import type {
-  ActionConfigurationType,
-  AgentActionConfigurationType,
-} from "@app/lib/actions/types/agent";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+  MCPServerConfigurationType,
+  MCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 import type {
   ReasoningContentType,
   TextContentType,
@@ -15,8 +14,6 @@ import type {
 import type {
   AgentActionType,
   AgentMessageType,
-  ConversationType,
-  UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
@@ -158,7 +155,7 @@ export type LightAgentConfigurationType = {
 
 export type AgentConfigurationType = LightAgentConfigurationType & {
   // If empty, no actions are performed, otherwise the actions are performed.
-  actions: AgentActionConfigurationType[];
+  actions: MCPServerConfigurationType[];
 };
 
 export interface TemplateAgentConfigurationType {
@@ -168,7 +165,7 @@ export interface TemplateAgentConfigurationType {
   scope: AgentConfigurationScope;
   description: string;
   model: AgentModelConfigurationType;
-  actions: AgentActionConfigurationType[];
+  actions: MCPServerConfigurationType[];
   instructions: string | null;
   isTemplate: true;
   maxStepsPerRun?: number;
@@ -292,7 +289,7 @@ export type AgentActionsEvent = {
   created: number;
   runId: string;
   actions: Array<{
-    action: ActionConfigurationType;
+    action: MCPToolConfigurationType;
     functionCallId: string;
   }>;
 };
