@@ -11,6 +11,11 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types";
 
+/**
+ * Wraps a tool callback with logging and monitoring.
+ * The tool callback is expected to return a `Result<CallToolResult, Error>`,
+ * Errors are caught and logged, and the error is returned as a text content.
+ */
 export function withToolLogging<T>(
   auth: Authenticator,
   {
