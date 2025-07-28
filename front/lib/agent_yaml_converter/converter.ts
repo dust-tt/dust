@@ -2,6 +2,8 @@ import * as yaml from "js-yaml";
 import { z } from "zod";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { ACTION_TYPE_TO_MCP_SERVER_MAP } from "@app/components/agent_builder/types";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { Result } from "@app/types";
@@ -284,17 +286,38 @@ export class AgentYAMLConverter {
     };
   }
 
-  // Mapping from YAML action types to MCP server names
-  private static readonly YAML_ACTION_TO_MCP_SERVER_MAP = {
-    SEARCH: "search",
-    EXTRACT_DATA: "extract_data",
-    INCLUDE_DATA: "include_data",
-    QUERY_TABLES: "query_tables",
-  } as const;
+  private static getMCPServerName(
+    actionType: string
+  ): InternalMCPServerNameType | null {
+    return (
+      ACTION_TYPE_TO_MCP_SERVER_MAP[
+        actionType as keyof typeof ACTION_TYPE_TO_MCP_SERVER_MAP
+      ] || null
+    );
+  }
+
+  private static convertDataSources(
+    dataSources: Record<string, AgentYAMLDataSourceConfiguration>,
+    workspaceId: string
+  ) {
+    return Object.values(dataSources).map((config) => ({
+      dataSourceViewId: config.view_id,
+      workspaceId,
+      filter: {
+        parents:
+          config.selected_resources.length > 0
+            ? {
+                in: config.selected_resources,
+                not: [],
+              }
+            : null,
+        tags: config.tags_filter,
+      },
+    }));
+  }
 
   /**
    * Converts a single YAML action to MCP server configuration format.
-   * This utility handles the mapping between YAML action types and MCP server configurations.
    */
   static async convertYAMLActionToMCPConfiguration(
     auth: Authenticator,
@@ -306,23 +329,16 @@ export class AgentYAMLConverter {
       Error
     >
   > {
+    if (action.type === "DATA_VISUALIZATION") {
+      return new Ok(null);
+    }
+
+    const mcpServerName = this.getMCPServerName(action.type);
+    if (!mcpServerName) {
+      return new Err(new Error(`Unsupported action type: ${action.type}`));
+    }
+
     try {
-      // Handle DATA_VISUALIZATION separately as it doesn't map to an MCP server
-      if (action.type === "DATA_VISUALIZATION") {
-        // DATA_VISUALIZATION is handled as a flag on the agent itself, not as an MCP configuration
-        return new Ok(null);
-      }
-
-      const mcpServerName =
-        this.YAML_ACTION_TO_MCP_SERVER_MAP[
-          action.type as keyof typeof this.YAML_ACTION_TO_MCP_SERVER_MAP
-        ];
-
-      if (!mcpServerName) {
-        return new Err(new Error(`Unsupported action type: ${action.type}`));
-      }
-
-      // Get the MCP server view for this action type
       const mcpServerView =
         await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
@@ -335,54 +351,32 @@ export class AgentYAMLConverter {
         );
       }
 
-      // Convert data sources configuration
-      let dataSources = null;
-      if (
-        "data_sources" in action.configuration &&
-        action.configuration.data_sources
-      ) {
-        dataSources = Object.values(action.configuration.data_sources).map(
-          (config) => ({
-            dataSourceViewId: config.view_id,
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            filter: {
-              parents:
-                config.selected_resources.length > 0
-                  ? {
-                      in: config.selected_resources,
-                      not: [],
-                    }
-                  : null,
-              tags: config.tags_filter,
-            },
-          })
-        );
-      }
-
-      // Build the MCP configuration
-      const mcpConfiguration: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] =
-        {
-          type: "mcp_server_configuration" as const,
-          mcpServerViewId: mcpServerView.sId,
-          name: action.name,
-          description: action.description,
-          dataSources,
-          tables: null, // TODO: Handle table configurations if needed
-          childAgentId: null,
-          reasoningModel: null,
-          jsonSchema:
-            "json_schema" in action.configuration
-              ? action.configuration.json_schema
-              : null,
-          additionalConfiguration: {},
-          dustAppConfiguration: null,
-          timeFrame:
-            "time_frame" in action.configuration
-              ? action.configuration.time_frame
-              : null,
-        };
-
-      return new Ok(mcpConfiguration);
+      return new Ok({
+        type: "mcp_server_configuration",
+        mcpServerViewId: mcpServerView.sId,
+        name: action.name,
+        description: action.description,
+        dataSources:
+          "data_sources" in action.configuration
+            ? this.convertDataSources(
+                action.configuration.data_sources,
+                auth.getNonNullableWorkspace().sId
+              )
+            : null,
+        tables: null,
+        childAgentId: null,
+        reasoningModel: null,
+        jsonSchema:
+          "json_schema" in action.configuration
+            ? action.configuration.json_schema
+            : null,
+        additionalConfiguration: {},
+        dustAppConfiguration: null,
+        timeFrame:
+          "time_frame" in action.configuration
+            ? action.configuration.time_frame
+            : null,
+      });
     } catch (error) {
       return new Err(normalizeError(error));
     }
@@ -401,48 +395,49 @@ export class AgentYAMLConverter {
       Error
     >
   > {
-    try {
-      const mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][] =
-        [];
+    const mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][] =
+      [];
 
-      for (const action of yamlActions) {
-        const configResult = await this.convertYAMLActionToMCPConfiguration(
-          auth,
-          action
-        );
+    for (const action of yamlActions) {
+      const configResult = await this.convertYAMLActionToMCPConfiguration(
+        auth,
+        action
+      );
 
-        if (configResult.isErr()) {
-          return configResult;
-        }
-
-        // Only add non-null configurations (DATA_VISUALIZATION returns null)
-        if (configResult.value !== null) {
-          mcpConfigurations.push(configResult.value);
-        }
+      if (configResult.isErr()) {
+        return configResult;
       }
 
-      return new Ok(mcpConfigurations);
-    } catch (error) {
-      return new Err(normalizeError(error));
+      // Only add non-null configurations (DATA_VISUALIZATION returns null)
+      if (configResult.value) {
+        mcpConfigurations.push(configResult.value);
+      }
     }
+
+    return new Ok(mcpConfigurations);
   }
 
   /**
    * Parses YAML string and converts to AgentYAMLConfig
+   * Leverages Zod's built-in validation and error handling
    */
   static fromYAMLString(yamlString: string): Result<AgentYAMLConfig, Error> {
+    if (!yamlString?.trim()) {
+      return new Err(new Error("YAML string is empty"));
+    }
+
     try {
-      if (!yamlString || yamlString.trim() === "") {
-        return new Err(new Error("YAML string is empty"));
-      }
-
       const parsedYaml = yaml.load(yamlString);
-      if (typeof parsedYaml !== "object" || parsedYaml === null) {
-        return new Err(new Error("Invalid YAML format - expected object"));
+      const result = agentYAMLConfigSchema.safeParse(parsedYaml);
+
+      if (!result.success) {
+        const errorMessages = result.error.errors
+          .map((e) => `${e.path.join(".")}: ${e.message}`)
+          .join(", ");
+        return new Err(new Error(`YAML validation failed: ${errorMessages}`));
       }
 
-      const validatedConfig = agentYAMLConfigSchema.parse(parsedYaml);
-      return new Ok(validatedConfig);
+      return new Ok(result.data);
     } catch (error) {
       return new Err(normalizeError(error));
     }
