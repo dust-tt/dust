@@ -18,7 +18,11 @@ const getRand = rand("chawarma");
 export const getRefs = () => {
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789".split("");
   if (REFS === null) {
-    REFS = alphabet.flatMap((c) => alphabet.map((n) => `${c}${n}`));
+    REFS = alphabet.flatMap((c) =>
+      alphabet.flatMap((n) =>
+        alphabet.map((m) => `${c}${n}${m}`)
+      )
+    );
     // Randomize.
     REFS.sort(() => (getRand() > 0.5 ? 1 : -1));
   }
@@ -31,9 +35,9 @@ export const getRefs = () => {
 export function citationMetaPrompt() {
   return (
     "## CITING DOCUMENTS\n" +
-    "To cite documents or web pages retrieved with a 2-character REFERENCE, " +
+    "To cite documents or web pages retrieved with a 3-character REFERENCE, " +
     "use the markdown directive :cite[REFERENCE] " +
-    "(eg :cite[xx] or :cite[xx,xx] but not :cite[xx][xx]). " +
+    "(eg :cite[xxx] or :cite[xxx,xxx] but not :cite[xxx][xxx]). " +
     "Ensure citations are placed as close as possible to the related information."
   );
 }
