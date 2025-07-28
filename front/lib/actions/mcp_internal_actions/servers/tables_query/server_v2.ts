@@ -227,9 +227,7 @@ function createServer(
         if (queryResult.isErr()) {
           return new Ok({
             // Certain errors we don't track as they can occur in the context of a normal execution.
-            isError: !["too_many_result_rows", "table_not_found"].includes(
-              queryResult.error.code
-            ),
+            isError: true,
             content: [
               {
                 type: "resource",
