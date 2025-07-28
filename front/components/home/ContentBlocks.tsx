@@ -345,7 +345,7 @@ export const AllQuotes: QuoteProps[] = [
       "Dust has revolutionized our partner insights, condensing days of manual research into minutes of AI-powered conversation. It's not just about efficiency and time savings—it's about making smarter decisions and doing things we could not do before.",
     name: "Alexandre Morillon",
     title: "CEO at Wakam",
-    logo: "/static/landing/logos/color/wakam.png",
+    logo: "/static/landing/logos/color/wakam.svg",
   },
 ];
 
