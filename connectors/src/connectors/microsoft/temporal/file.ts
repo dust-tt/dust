@@ -36,7 +36,7 @@ import {
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { heartbeat } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import logger, { getActivityLogger } from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -45,8 +45,7 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
 
 const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
@@ -79,13 +78,10 @@ export async function syncOneFile({
   }
 
   const documentId = getDriveItemInternalId(file);
-
-  const localLogger = logger.child({
-    provider: "microsoft",
-    connectorId,
+  const localLogger = getActivityLogger(connector, {
     internalId: documentId,
-    originalId: file.id,
-    name: file.name,
+    originalId: file.id || null,
+    name: file.name || null,
   });
 
   // If the file is too big to be downloaded, we skip it.

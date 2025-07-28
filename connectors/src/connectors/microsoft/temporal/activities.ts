@@ -55,8 +55,7 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const FILES_SYNC_CONCURRENCY = 10;
@@ -662,19 +661,20 @@ export async function syncDeltaForRootNodesInDrive({
   });
   const uniqueChangedItems = removeAllButLastOccurences(results);
 
+  const sortedChangedItems: DriveItem[] = [];
+  const containsWholeDrive = rootNodeIds.some(
+    (nodeId) => typeAndPathFromInternalId(nodeId).nodeType === "drive"
+  );
+
   logger.info(
     {
       uniqueChangedItems: uniqueChangedItems.length,
+      containsWholeDrive,
     },
     "Changes to process"
   );
 
-  const sortedChangedItems: DriveItem[] = [];
-  const containWholeDrive = rootNodeIds.some(
-    (nodeId) => typeAndPathFromInternalId(nodeId).nodeType === "drive"
-  );
-
-  if (containWholeDrive) {
+  if (containsWholeDrive) {
     sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
   } else {
     const microsoftNodes = await concurrentExecutor(
@@ -717,7 +717,13 @@ export async function syncDeltaForRootNodesInDrive({
       sortedChangedItems,
     });
   }
+  let count = 0;
   for (const driveItem of sortedChangedItems) {
+    count++;
+    if (count % 1000 === 0) {
+      logger.info({ count }, "Processing delta changes");
+    }
+
     await heartbeat();
     if (!driveItem.parentReference) {
       throw new Error(`Unexpected: parent reference missing: ${driveItem}`);
@@ -754,12 +760,6 @@ export async function syncDeltaForRootNodesInDrive({
           deleteRootNode: true,
         });
       } else {
-        const isMoved = await isFolderMovedInSameRoot({
-          connectorId,
-          folder: driveItem,
-          internalId,
-        });
-
         const { item, type } = driveItem.root
           ? {
               item: await getItem(
@@ -777,14 +777,30 @@ export async function syncDeltaForRootNodesInDrive({
           blob.name = blob.name + ` (${extractPath(item)})`;
         }
 
+        const existingResource = await MicrosoftNodeResource.fetchByInternalId(
+          connectorId,
+          blob.internalId
+        );
+        if (
+          existingResource &&
+          isAlreadySeenItem({
+            driveItemResource: existingResource,
+            startSyncTs,
+          })
+        ) {
+          continue;
+        }
+
+        const isMoved = await isFolderMovedInSameRoot({
+          connectorId,
+          folder: driveItem,
+          internalId,
+        });
+
         const resource = await MicrosoftNodeResource.updateOrCreate(
           connectorId,
           blob
         );
-
-        if (isAlreadySeenItem({ driveItemResource: resource, startSyncTs })) {
-          continue;
-        }
 
         // add parent information to new node resource. for the toplevel folder,
         // parent is null
