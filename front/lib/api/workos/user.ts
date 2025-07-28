@@ -46,10 +46,10 @@ export function getDomainCookieClauseFromRequest(
     const [hostName] = host.split(":");
 
     if (hostName.endsWith("dust.tt")) {
-      return "Domain=dust.tt; ";
+      return "dust.tt";
     }
 
-    return `Domain=${hostName}; `;
+    return hostName;
   }
   return "";
 }
@@ -66,9 +66,11 @@ export async function getWorkOSSession(
       if (domain) {
         res.setHeader("Set-Cookie", [
           "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
-          `workos_session=; ${domain} Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          `workos_session=; Domain=.${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
           "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
-          `sessionType=; ${domain} Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          `sessionType=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          `sessionType=; Domain=.${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
         ]);
       } else {
         res.setHeader("Set-Cookie", [
