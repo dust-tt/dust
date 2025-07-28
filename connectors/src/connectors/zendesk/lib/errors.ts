@@ -30,7 +30,17 @@ export function isNodeZendeskForbiddenError(
 }
 
 export function isZendeskForbiddenError(err: unknown): err is ZendeskApiError {
-  return err instanceof ZendeskApiError && err.status === 403;
+  return (
+    err instanceof ZendeskApiError &&
+    (err.status === 403 ||
+      (err.status === 401 &&
+        typeof err.data === "object" &&
+        "response" in err.data &&
+        typeof err.data.response === "object" &&
+        err.data.response !== null &&
+        "error" in err.data.response &&
+        err.data?.response.error === "invalid_token"))
+  );
 }
 
 export function isZendeskExpiredCursorError(
