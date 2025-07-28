@@ -24,7 +24,10 @@ export function withToolLogging<T>(
     params: T,
     extra: RequestHandlerExtra<ServerRequest, ServerNotification>
   ) => Promise<Result<CallToolResult, Error>>
-) {
+): (
+  params: T,
+  extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+) => Promise<CallToolResult> {
   return async (
     params: T,
     extra: RequestHandlerExtra<ServerRequest, ServerNotification>
