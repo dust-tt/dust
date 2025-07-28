@@ -55,7 +55,7 @@ export function ShareInteractiveFilePopover({
   const isLoading = isFileShareLoading || isUpdatingShare;
 
   return (
-    <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
+    <PopoverRoot open={isOpen} onOpenChange={setIsOpen} modal={true}>
       <PopoverTrigger asChild>
         <Button
           icon={LinkIcon}
@@ -65,11 +65,7 @@ export function ShareInteractiveFilePopover({
           disabled={disabled}
         />
       </PopoverTrigger>
-      <PopoverContent
-        className="flex h-48 w-96 flex-col"
-        align="end"
-        onInteractOutside={() => setIsOpen(false)}
-      >
+      <PopoverContent className="flex h-48 w-96 flex-col" align="end">
         <div className="flex flex-1 flex-col">
           <div className="mb-4">
             <div className="text-base font-semibold text-primary dark:text-primary-night">
