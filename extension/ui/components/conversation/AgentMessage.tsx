@@ -101,21 +101,6 @@ export function visualizationDirective() {
   };
 }
 
-export function makeDocumentCitation(
-  document: RetrievalDocumentPublicType,
-  isDark?: boolean
-): MarkdownCitation {
-  const IconComponent = getCitationIcon(
-    getProviderFromRetrievedDocument(document),
-    isDark
-  );
-  return {
-    href: document.sourceUrl ?? undefined,
-    title: getTitleFromRetrievedDocument(document),
-    icon: <IconComponent />,
-  };
-}
-
 export function makeMCPActionCitation(
   result: SearchResultResourceType | WebsearchResultResourceType
 ): MarkdownCitation {
