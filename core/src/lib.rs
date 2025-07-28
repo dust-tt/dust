@@ -123,7 +123,6 @@ pub mod deno {
 pub mod databases_store {
     pub mod gcs;
     pub mod gcs_background;
-    pub mod postgres;
     pub mod store;
 }
 

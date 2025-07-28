@@ -9,7 +9,7 @@ use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer}
 
 use dust::{
     databases::table::{LocalTable, Table},
-    databases_store::{self},
+    databases_store::{self, gcs::GoogleCloudStorageDatabasesStore},
     open_telemetry::init_subscribers,
     sqlite_workers::{
         client::HEARTBEAT_INTERVAL_MS,
@@ -346,10 +346,7 @@ fn main() {
     let r = rt.block_on(async {
         let _guard = init_subscribers()?;
 
-        let s =
-            databases_store::postgres::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
-                .await?;
-        let databases_store = Box::new(s);
+        let databases_store = Box::new(GoogleCloudStorageDatabasesStore::new());
 
         let state = Arc::new(WorkerState::new(databases_store));
 

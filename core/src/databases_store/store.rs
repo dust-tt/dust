@@ -4,10 +4,6 @@ use async_trait::async_trait;
 use crate::databases::table::{Row, Table};
 use crate::databases::table_schema::TableSchema;
 
-// These flags are transitional while we migrate to GCS. Eventually, we will only use GCS.
-pub const SAVE_TABLES_TO_POSTGRES: bool = false;
-pub const SAVE_TABLES_TO_GCS: bool = true;
-
 #[async_trait]
 pub trait DatabasesStore {
     async fn load_table_row(&self, table: &Table, row_id: &str) -> Result<Option<Row>>;
