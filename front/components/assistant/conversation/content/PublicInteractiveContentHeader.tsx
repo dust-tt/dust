@@ -7,9 +7,10 @@ interface PublicInteractiveContentHeaderProps {
   title: string;
 }
 
-// Applying flex & justify-center to the title won't make it centered in the header since it has the logo on the left (and will soon have buttons on the right).
+// Applying flex & justify-center to the title won't make it centered in the header
+// since it has the logo on the left (and will soon have buttons on the right).
 // To make it perfectly centered, we need to set the same flex basis for both the right and left elements.
-// We can optimize more on mobile view once we have buttons and know what to show on mobile.
+// TODO: optimize the header for mobile views once we have buttons.
 export function PublicInteractiveContentHeader({
   title,
 }: PublicInteractiveContentHeaderProps) {
