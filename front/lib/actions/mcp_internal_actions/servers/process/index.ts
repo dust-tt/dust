@@ -509,11 +509,7 @@ function processToolError({
     },
     "Error running process"
   );
-  return makeMCPToolTextError(`${errorMessage}: ${errorDetails}`, {
-    created: Date.now(),
-    workspaceId: conversation.owner.sId,
-    conversationId: conversation.sId,
-  });
+  return makeMCPToolTextError(`${errorMessage}: ${errorDetails}`);
 }
 
 async function generateProcessToolOutput({
