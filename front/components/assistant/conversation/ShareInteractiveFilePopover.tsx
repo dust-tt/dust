@@ -39,10 +39,10 @@ export function ShareInteractiveFilePopover({
   });
 
   const handleChangeFileShare = React.useCallback(
-    async (isPublic: boolean) => {
+    async (isShared: boolean) => {
       setIsUpdatingShare(true);
       try {
-        await doShare(isPublic);
+        await doShare(isShared);
       } finally {
         setIsUpdatingShare(false);
       }
@@ -77,7 +77,7 @@ export function ShareInteractiveFilePopover({
             <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
               {isShared
                 ? "Anyone with this link can view your interactive content"
-                : "Create a public link to share your interactive content"}
+                : "Create a link to share your interactive content"}
             </p>
           </div>
 
@@ -123,7 +123,7 @@ export function ShareInteractiveFilePopover({
                 />
               ) : (
                 <Button
-                  label="Create public link"
+                  label="Create share link"
                   variant="primary"
                   size="sm"
                   onClick={() => handleChangeFileShare(true)}

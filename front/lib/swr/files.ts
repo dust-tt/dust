@@ -188,13 +188,13 @@ export function useShareInteractiveFile({
 
   const { data, error, mutate } = useSWRWithDefaults(swrKey, fileShareFetcher);
 
-  const doShare = async (isPublic: boolean) => {
+  const doShare = async (isShared: boolean) => {
     const res = await fetch(`/api/w/${owner.sId}/files/${fileId}/share`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ isPublic }),
+      body: JSON.stringify({ isShared }),
     });
 
     if (!res.ok) {

@@ -9,6 +9,7 @@ import { safeParseJSON } from "@app/types";
 
 const TokenDataSchema = z.object({
   fId: z.string(),
+  sAt: z.number(),
   wId: z.string(),
 });
 type TokenData = z.infer<typeof TokenDataSchema>;
@@ -23,9 +24,14 @@ export function generateSignedToken(
   auth: Authenticator,
   file: FileResource,
   { secret }: { secret: string }
-): string {
+): string | null {
+  if (file.sharedAt === null) {
+    return null;
+  }
+
   const data: TokenData = {
     fId: file.sId,
+    sAt: file.sharedAt.getTime(),
     wId: auth.getNonNullableWorkspace().sId,
   };
 

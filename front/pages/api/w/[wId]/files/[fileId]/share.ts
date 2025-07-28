@@ -12,11 +12,12 @@ import type { WithAPIErrorResponse } from "@app/types";
 import { isInteractiveContentType } from "@app/types";
 
 const ShareFileRequestBodySchema = z.object({
-  isPublic: z.boolean(),
+  isShared: z.boolean(),
 });
 
 export interface ShareFileResponseBody {
-  isPublic: boolean;
+  isShared: boolean;
+  sharedAt: number | null;
   shareUrl: string | null;
 }
 
@@ -94,11 +95,11 @@ async function handler(
         });
       }
 
-      const { isPublic } = parseResult.data;
+      const { isShared } = parseResult.data;
 
       // For now, we only allow public sharing of interactive files that don't use conversation's
       // files. Those should not be shared publicly.
-      if (isPublic) {
+      if (isShared) {
         const fileContent = await getFileContent(auth, file, "original");
         if (!fileContent) {
           return apiError(req, res, {
@@ -122,18 +123,24 @@ async function handler(
         }
       }
 
-      await file.setIsPublic(isPublic);
+      await file.setIsShared(isShared);
+
+      const shareUrl = file.getShareUrl(auth);
 
       return res.status(200).json({
-        isPublic,
-        shareUrl: file.getPublicShareUrl(auth),
+        isShared,
+        sharedAt: file.sharedAtMs,
+        shareUrl,
       });
     }
 
     case "GET": {
+      const shareUrl = file.getShareUrl(auth);
+
       return res.status(200).json({
-        isPublic: file.isPublic,
-        shareUrl: file.getPublicShareUrl(auth),
+        isShared: file.isShared,
+        sharedAt: file.sharedAtMs,
+        shareUrl,
       });
     }
 

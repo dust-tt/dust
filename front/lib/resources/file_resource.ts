@@ -58,11 +58,10 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "isPublic">
+    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "sharedAt">
   ) {
     const key = await FileResource.model.create({
       ...blob,
-      isPublic: false,
       status: "created",
     });
 
@@ -124,7 +123,7 @@ export class FileResource extends BaseResource<FileModel> {
     return file ? new this(this.model, file.get()) : null;
   }
 
-  static async fetchByPublicShareTokenWithContent(
+  static async fetchByShareTokenWithContent(
     token: string
   ): Promise<{ file: FileResource; content: string } | null> {
     const tokenRes = verifySignedToken(token, config.getFileShareSecret());
@@ -150,11 +149,16 @@ export class FileResource extends BaseResource<FileModel> {
     });
 
     const file = blob ? new this(this.model, blob.get()) : null;
-    if (!file || !file.isPublic) {
+    if (!file || !file.isShared) {
       return null;
     }
 
-    const content = await file.getPublicFileContent(
+    // Validate that the token's sharedAt timestamp matches the file's current sharedAt timestamp.
+    if (!file.sharedAt || tokenRes.value.sAt !== file.sharedAt.getTime()) {
+      return null;
+    }
+
+    const content = await file.getFileContent(
       renderLightWorkspaceType({ workspace }),
       "original"
     );
@@ -164,8 +168,8 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     if (isFileUsingConversationFiles(content)) {
-      // Set the file as not public.
-      await file.setIsPublic(false);
+      // Set the file as not shared.
+      await file.setIsShared(false);
 
       return null;
     }
@@ -281,6 +285,14 @@ export class FileResource extends BaseResource<FileModel> {
     return this.updatedAt.getTime();
   }
 
+  get isShared(): boolean {
+    return this.sharedAt !== null;
+  }
+
+  get sharedAtMs(): number | null {
+    return this.sharedAt?.getTime() ?? null;
+  }
+
   // Cloud storage logic.
 
   getPrivateUrl(auth: Authenticator): string {
@@ -394,9 +406,9 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
-   * Get read stream for public access without authentication.
+   * Get read stream for shared access without authentication.
    */
-  private async getPublicReadStream(
+  private async getSharedReadStream(
     owner: LightWorkspaceType,
     version: FileVersion
   ): Promise<Readable> {
@@ -410,14 +422,14 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
-   * Get file content as string for public access without authentication.
+   * Get file content as string for shared access without authentication.
    */
-  private async getPublicFileContent(
+  private async getFileContent(
     owner: LightWorkspaceType,
     version: FileVersion = "original"
   ): Promise<string | null> {
     try {
-      const readStream = await this.getPublicReadStream(owner, version);
+      const readStream = await this.getSharedReadStream(owner, version);
 
       // Convert stream to string.
       const chunks: Buffer[] = [];
@@ -458,34 +470,37 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ snippet });
   }
 
-  setIsPublic(isPublic: boolean) {
-    // Only interactive files can be public.
+  setIsShared(isShared: boolean) {
+    // Only interactive files can be shared.
     if (
       this.useCase !== "conversation" ||
       !isInteractiveContentType(this.contentType)
     ) {
-      throw new Error("Only interactive files can be public");
+      throw new Error("Only interactive files can be shared");
     }
 
-    return this.update({ isPublic });
+    return this.update({ sharedAt: isShared ? new Date() : null });
   }
 
-  // Public sharing logic.
+  // Sharing logic.
 
-  private getPublicShareToken(auth: Authenticator): string {
+  private getShareToken(auth: Authenticator): string | null {
     return generateSignedToken(auth, this, {
       secret: config.getFileShareSecret(),
     });
   }
 
-  getPublicShareUrl(auth: Authenticator): string | null {
-    if (!this.isPublic) {
+  getShareUrl(auth: Authenticator): string | null {
+    if (!this.isShared) {
       return null;
     }
 
-    return `${config.getClientFacingUrl()}/share/file/${this.getPublicShareToken(
-      auth
-    )}`;
+    const token = this.getShareToken(auth);
+    if (!token) {
+      return null;
+    }
+
+    return `${config.getClientFacingUrl()}/share/file/${token}`;
   }
 
   // Serialization logic.
