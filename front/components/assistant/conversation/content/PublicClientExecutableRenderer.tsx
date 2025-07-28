@@ -40,9 +40,7 @@ export function PublicClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <PublicInteractiveContentHeader
-        title={fileName || "Client Executable"}
-      />
+      <PublicInteractiveContentHeader title={fileName || "Client Executable"} />
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
@@ -50,7 +48,7 @@ export function PublicClientExecutableRenderer({
           <VisualizationActionIframe
             agentConfigurationId={null}
             conversationId={null}
-            workspaceId={null}
+            workspace={null}
             visualization={{
               code: fileContent ?? "",
               complete: true,

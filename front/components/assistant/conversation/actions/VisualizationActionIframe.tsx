@@ -24,6 +24,7 @@ import {
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import type {
   CommandResultMap,
+  LightWorkspaceType,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types";
@@ -217,7 +218,7 @@ interface PublicVisualizationActionIframeProps {
   conversationId: null;
   isInDrawer?: boolean;
   visualization: Visualization;
-  workspaceId: null;
+  workspace: null;
 }
 
 // This interface represents the props for the VisualizationActionIframe component when it is used
@@ -228,7 +229,7 @@ interface InteractiveVisualizationActionIframeProps {
   conversationId: string;
   isInDrawer?: boolean;
   visualization: Visualization;
-  workspaceId: string;
+  workspace: LightWorkspaceType;
 }
 
 // This interface represents the props for the VisualizationActionIframe component when it is used
@@ -238,7 +239,7 @@ interface LegacyVisualizationActionIframeProps {
   conversationId: string;
   isInDrawer?: boolean;
   visualization: Visualization;
-  workspaceId: string;
+  workspace: LightWorkspaceType;
 }
 
 type VisualizationActionIframeProps =
@@ -251,7 +252,7 @@ export function VisualizationActionIframe({
   conversationId,
   isInDrawer = false,
   visualization,
-  workspaceId,
+  workspace,
 }: VisualizationActionIframeProps) {
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -263,7 +264,7 @@ export function VisualizationActionIframe({
 
   useVisualizationDataHandler({
     visualization,
-    workspaceId,
+    workspaceId: workspace?.sId ?? null,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
@@ -279,7 +280,7 @@ export function VisualizationActionIframe({
   );
 
   const handleVisualizationRetry = useVisualizationRetry({
-    workspaceId,
+    workspaceId: workspace?.sId ?? null,
     conversationId,
     agentConfigurationId,
   });

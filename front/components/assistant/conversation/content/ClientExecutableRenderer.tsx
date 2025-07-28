@@ -97,7 +97,7 @@ export function ClientExecutableRenderer({
           <div className="h-full">
             <VisualizationActionIframe
               agentConfigurationId={null}
-              workspaceId={owner.sId}
+              workspace={owner}
               visualization={{
                 code: fileContent ?? "",
                 complete: true,

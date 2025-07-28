@@ -60,7 +60,7 @@ export function getVisualizationPlugin(
     visualization: (code: string, complete: boolean, lineStart: number) => {
       return (
         <VisualizationActionIframe
-          workspaceId={owner.sId}
+          workspace={owner}
           visualization={{
             code,
             complete,
