@@ -11,11 +11,7 @@ import {
   runActionStreamed,
 } from "@app/lib/actions/server";
 import type { StepContext } from "@app/lib/actions/types";
-import type {
-  ActionConfigurationType,
-  AgentActionSpecification,
-} from "@app/lib/actions/types/agent";
-import { isActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
@@ -119,16 +115,6 @@ export async function runModelActivity({
     return null;
   }
 
-  const isLastGenerationIteration = step === agentConfiguration.maxStepsPerRun;
-
-  const agentActions =
-    // If we already executed the maximum number of actions, we don't run anymore.
-    // This will force the agent to run the generation.
-    isLastGenerationIteration
-      ? []
-      : // Otherwise, we let the agent decide which action to run (if any).
-        agentConfiguration.actions;
-
   const auth = await Authenticator.fromJSON(authType);
 
   const model = getSupportedModelConfig(agentConfiguration.model);
@@ -196,22 +182,13 @@ export async function runModelActivity({
     });
     return null;
   }
-  const availableActions: ActionConfigurationType[] = [];
-
-  for (const agentAction of agentActions) {
-    if (isActionConfigurationType(agentAction)) {
-      logger.info("Found an available action on the agentConfiguration.");
-      availableActions.push(agentAction);
-    }
-  }
 
   const attachments = listAttachments(conversation);
   const jitServers = await getJITServers(auth, {
     conversation,
     attachments,
   });
-
-  // Get client-side MCP server configurations from user message context.
+  // Get client-side MCP server configurations from the user message context.
   const clientSideMCPActionConfigurations =
     await createClientSideMCPServerConfigurations(
       auth,
@@ -241,9 +218,11 @@ export async function runModelActivity({
     );
   }
 
-  if (!isLastGenerationIteration) {
-    availableActions.push(...mcpActions.flatMap((s) => s.tools));
-  }
+  const isLastStep = step === agentConfiguration.maxStepsPerRun;
+
+  // If we are on the last step, we don't show any action.
+  // This will force the agent to run the generation.
+  const availableActions = isLastStep ? [] : mcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
   if (
@@ -747,11 +726,13 @@ export async function runModelActivity({
     "[ASSISTANT_TRACE] Action inputs generation"
   );
 
-  if (isLastGenerationIteration) {
+  // If we have actions and we are on the last step, we error since returning actions would require
+  // doing one more step.
+  if (isLastStep) {
     await publishAgentError({
-      code: "tool_use_limit_reached",
+      code: "max_step_reached",
       message:
-        "The agent attempted to use too many tools. This model error can be safely retried.",
+        "The agent reached the maximum number of steps. This error can be safely retried.",
       metadata: null,
     });
     return null;
