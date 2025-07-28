@@ -587,7 +587,6 @@ export const createNote = async ({
     companyIds?: string[];
     dealIds?: string[];
     ownerIds?: string[];
-    ticketIds?: string[];
   };
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
@@ -615,7 +614,6 @@ export const createNote = async ({
       { ids: associations.contactIds, toObjectType: "contacts" },
       { ids: associations.companyIds, toObjectType: "companies" },
       { ids: associations.dealIds, toObjectType: "deals" },
-      { ids: associations.ticketIds, toObjectType: "tickets" },
       { ids: associations.ownerIds, toObjectType: "owners" },
     ];
 
@@ -757,49 +755,6 @@ export const createTask = async ({
   return hubspotClient.crm.objects.basicApi.create("tasks", taskData);
 };
 
-export const createTicket = async ({
-  accessToken,
-  properties,
-  associations,
-}: {
-  accessToken: string;
-  properties: Record<string, string>;
-  associations?: Array<{
-    toObjectId: string;
-    toObjectType: string;
-  }>;
-}): Promise<SimplePublicObject> => {
-  const hubspotClient = new Client({ accessToken });
-  const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
-    [];
-  if (associations && associations.length > 0) {
-    for (const assoc of associations) {
-      const associationTypeId = await getAssociationTypeId(
-        accessToken,
-        "tickets",
-        assoc.toObjectType
-      );
-      if (builtAssociations) {
-        builtAssociations.push({
-          to: { id: assoc.toObjectId },
-          types: [
-            {
-              associationCategory:
-                AssociationSpecAssociationCategoryEnum.HubspotDefined,
-              associationTypeId,
-            },
-          ],
-        });
-      }
-    }
-  }
-  const ticketData: SimplePublicObjectInputForCreate = {
-    properties,
-    associations: builtAssociations,
-  };
-  return hubspotClient.crm.objects.basicApi.create("tickets", ticketData);
-};
-
 export const createCommunication = async ({
   accessToken,
   properties, // Must include hs_engagement_type (e.g. 'COMMUNICATION'), hs_communication_channel_type, hs_communication_body
@@ -811,7 +766,6 @@ export const createCommunication = async ({
     contactIds?: string[];
     companyIds?: string[];
     dealIds?: string[];
-    ticketIds?: string[];
   };
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
@@ -836,7 +790,6 @@ export const createCommunication = async ({
       { ids: associations.contactIds, toObjectType: "contacts" },
       { ids: associations.companyIds, toObjectType: "companies" },
       { ids: associations.dealIds, toObjectType: "deals" },
-      { ids: associations.ticketIds, toObjectType: "tickets" },
     ];
     for (const mapping of associationMappings) {
       if (mapping.ids && mapping.ids.length > 0) {
@@ -894,7 +847,6 @@ export const createMeeting = async ({
     contactIds?: string[];
     companyIds?: string[];
     dealIds?: string[];
-    ticketIds?: string[];
   };
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
@@ -914,7 +866,6 @@ export const createMeeting = async ({
       { ids: associations.contactIds, toObjectType: "contacts" },
       { ids: associations.companyIds, toObjectType: "companies" },
       { ids: associations.dealIds, toObjectType: "deals" },
-      { ids: associations.ticketIds, toObjectType: "tickets" },
     ];
     for (const mapping of associationMappings) {
       if (mapping.ids && mapping.ids.length > 0) {
@@ -1215,7 +1166,6 @@ export const searchCrmObjects = async ({
   accessToken: string;
   objectType:
     | SimpleObjectType
-    | "tickets"
     | "tasks"
     | "notes"
     | "meetings"
@@ -1288,10 +1238,7 @@ export const searchCrmObjects = async ({
         searchResponse =
           await hubspotClient.crm.deals.searchApi.doSearch(searchRequest);
         break;
-      case "tickets":
-        searchResponse =
-          await hubspotClient.crm.tickets.searchApi.doSearch(searchRequest);
-        break;
+
       case "tasks":
         searchResponse =
           await hubspotClient.crm.objects.tasks.searchApi.doSearch(
@@ -1717,7 +1664,6 @@ export const listAssociations = async ({
         "contacts",
         "companies",
         "deals",
-        "tickets",
         "tasks",
         "notes",
       ];

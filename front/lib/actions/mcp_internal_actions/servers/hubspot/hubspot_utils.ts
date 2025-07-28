@@ -34,7 +34,6 @@ export const HUBSPOT_OBJECT_TYPE_TO_ID = {
   services: "0-162",
   subscriptions: "0-69",
   tasks: "0-27",
-  tickets: "0-5",
   users: "0-115",
 };
 

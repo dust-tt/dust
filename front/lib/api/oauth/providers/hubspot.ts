@@ -27,7 +27,6 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
       "crm.objects.deals.read",
       "crm.objects.deals.write",
       "crm.schemas.deals.read",
-      // "tickets",
       "crm.objects.owners.read",
       "crm.schemas.custom.read",
       "crm.objects.custom.read",
@@ -36,7 +35,6 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
       "timeline",
       "crm.lists.read",
       "crm.lists.write",
-      // "automation",
     ];
     return (
       `https://app.hubspot.com/oauth/authorize` +

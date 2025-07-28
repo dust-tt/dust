@@ -24,7 +24,6 @@ const IMPORTANT_DATE_FIELDS: Record<string, string[]> = {
   contacts: ["createdate", "lastmodifieddate"],
   companies: ["createdate", "lastmodifieddate"],
   deals: ["closedate", "createdate", "lastmodifieddate"],
-  tickets: ["createdate", "lastmodifieddate", "closedate"],
 };
 
 export function formatHubSpotObject(
@@ -49,8 +48,7 @@ export function formatHubSpotObject(
         );
       case "deals":
         return object.properties.dealname || "Unnamed Deal";
-      case "tickets":
-        return object.properties.subject || `Ticket #${object.id}`;
+
       default:
         return (
           object.properties.name ||
