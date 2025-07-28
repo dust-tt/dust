@@ -34,6 +34,7 @@ export const OAUTH_PROVIDERS = [
   "slack",
   "gong",
   "microsoft",
+  "outlook",
   "zendesk",
   "salesforce",
   "hubspot",
@@ -53,6 +54,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   slack: "Slack",
   gong: "Gong",
   microsoft: "Microsoft",
+  outlook: "Outlook",
   zendesk: "Zendesk",
   salesforce: "Salesforce",
   hubspot: "Hubspot",
@@ -152,6 +154,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     case "slack":
     case "gong":
     case "microsoft":
+    case "outlook":
     case "monday":
     case "notion":
     case "confluence":
