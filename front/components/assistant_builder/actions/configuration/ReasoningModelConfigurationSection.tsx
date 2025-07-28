@@ -29,7 +29,7 @@ import type {
   ReasoningModelConfigurationType,
 } from "@app/types";
 import {
-  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
   getProviderDisplayName,
   O3_MODEL_ID,
   O4_MINI_MODEL_ID,
@@ -44,7 +44,7 @@ interface ReasoningModelConfigurationSectionProps {
 const BEST_PERFORMING_REASONING_MODELS_ID = [
   O4_MINI_MODEL_ID,
   O3_MODEL_ID,
-  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
 ];
 
 function groupReasoningModelsByPerformance(
