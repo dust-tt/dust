@@ -11,6 +11,7 @@ import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
+import type { HTMLAttributeAnchorTarget } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
@@ -345,6 +346,7 @@ const Header = () => {
 
 interface PublicWebsiteLogoProps {
   size?: "default" | "small";
+  target?: HTMLAttributeAnchorTarget;
 }
 
 const logoVariants = cva("", {
@@ -361,11 +363,12 @@ const logoVariants = cva("", {
 
 export const PublicWebsiteLogo = ({
   size = "default",
+  target = "_self",
 }: PublicWebsiteLogoProps) => {
   const className = logoVariants({ size });
 
   return (
-    <Link href="/home">
+    <Link href="/home" target={target}>
       <Hover3D className={`relative ${className}`}>
         <Div3D depth={0} className={className}>
           <DustLogoLayer1 className={className} />

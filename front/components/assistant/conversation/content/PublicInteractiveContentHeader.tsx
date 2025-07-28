@@ -18,7 +18,7 @@ export function PublicInteractiveContentHeader({
     <AppLayoutTitle className="h-12 bg-gray-50 @container dark:bg-gray-900">
       <div className="flex h-full min-w-0 max-w-full items-center">
         <div className="grow-1 flex shrink-0 items-center md:basis-60">
-          <PublicWebsiteLogo size="small" />
+          <PublicWebsiteLogo size="small" target="_blank" />
         </div>
 
         <div className="flex flex-1 justify-center">
