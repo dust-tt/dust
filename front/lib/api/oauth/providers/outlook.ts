@@ -173,7 +173,8 @@ export class OutlookOAuthProvider implements BaseOAuthStrategyProvider {
         const connection = connectionRes.value.connection;
 
         return {
-          client_id: connection.metadata.client_id || config.getOAuthMicrosoftClientId(),
+          client_id:
+            connection.metadata.client_id || config.getOAuthMicrosoftClientId(),
           ...restConfig,
         };
       }

@@ -359,6 +359,18 @@ export const INTERNAL_MCP_SERVERS: Record<
     },
     isPreview: true,
   },
+  outlook: {
+    id: 24,
+    availability: "manual",
+    isPreview: true,
+    tools_stakes: {
+      get_messages: "never_ask",
+      get_drafts: "never_ask",
+      create_draft: "low",
+      delete_draft: "low",
+      create_reply_draft: "low",
+    },
+  },
   search: {
     id: 1006,
     availability: "auto",
@@ -394,17 +406,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     // This server is hidden for everyone, it is only available through the search tool
     // when the advanced_search mode is enabled.
     isRestricted: () => true,
-  },
-  outlook: {
-    id: 24,
-    availability: "manual",
-    tools_stakes: {
-      get_messages: "never_ask",
-      get_drafts: "never_ask",
-      create_draft: "low",
-      delete_draft: "low",
-      create_reply_draft: "low",
-    },
   },
 };
 
