@@ -170,34 +170,30 @@ function makeExtractInformationFromDocumentsTool(
         }
       );
       if (res.isErr()) {
-        return processToolError({
-          conversation,
-          errorMessage: "Error running extract data action",
-          errorDetails: res.error.message,
-        });
+        return new Err(
+          new Error(`Error running extract data action: ${res.error.message}`)
+        );
       }
 
       // Event stream loop
       let outputs: ProcessActionOutputsType | null = null;
       for await (const event of res.value.eventStream) {
         if (event.type === "error") {
-          return processToolError({
-            conversation,
-            errorMessage: "Error running extract data action",
-            errorDetails:
-              event.content.message ?? "Unknown error from event stream.",
-          });
+          return new Err(
+            new Error(
+              `"Error running extract data action": ${event.content.message ?? "Unknown error from event stream."}`
+            )
+          );
         }
 
         if (event.type === "block_execution") {
           const e = event.content.execution[0][0];
           if (e.error) {
-            return processToolError({
-              conversation,
-              errorMessage: "Error running extract data action",
-              errorDetails:
-                e.error ?? "An unknown error occurred during block execution.",
-            });
+            return new Err(
+              new Error(
+                `"Error running extract data action": ${e.error ?? "An unknown error occurred during block execution."}`
+              )
+            );
           }
 
           if (event.content.block_name === "OUTPUT" && e.value) {
@@ -490,26 +486,6 @@ async function getPromptForProcessDustApp({
     hasAvailableActions: false,
     agentsList: null,
   });
-}
-
-function processToolError({
-  conversation,
-  errorMessage,
-  errorDetails,
-}: {
-  conversation: ConversationType;
-  errorMessage: string;
-  errorDetails: string;
-}) {
-  logger.error(
-    {
-      workspaceId: conversation.owner.sId,
-      conversationId: conversation.sId,
-      error: errorDetails,
-    },
-    "Error running process"
-  );
-  return new Err(new Error(`${errorMessage}: ${errorDetails}`));
 }
 
 async function generateProcessToolOutput({
