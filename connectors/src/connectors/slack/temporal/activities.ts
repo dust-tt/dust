@@ -9,7 +9,6 @@ import type {
   ConversationsHistoryResponse,
   MessageElement,
 } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
-import PQueue from "p-queue";
 import { Op, Sequelize } from "sequelize";
 
 import {
@@ -60,12 +59,12 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "slack" });
 
 // This controls the maximum number of concurrent calls to syncThread and syncNonThreaded.
-const MAX_CONCURRENCY_LEVEL = 2;
+const MAX_CONCURRENCY_LEVEL = 8;
 
 const CONVERSATION_HISTORY_LIMIT = 100;
 
@@ -662,27 +661,22 @@ async function syncMultipleNonThreaded(
   timestampsMs: number[],
   connectorId: ModelId
 ) {
-  const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
+  await concurrentExecutor(
+    timestampsMs,
+    async (startTsMs) => {
+      const weekEndTsMs = getWeekEnd(new Date(startTsMs)).getTime();
 
-  const promises = [];
-
-  for (const startTsMs of timestampsMs) {
-    const weekEndTsMs = getWeekEnd(new Date(startTsMs)).getTime();
-
-    const p = queue.add(() =>
-      syncNonThreaded({
+      return syncNonThreaded({
         channelId,
         channelName,
         startTsMs,
         endTsMs: weekEndTsMs,
         connectorId,
         isBatchSync: true,
-      })
-    );
-    promises.push(p);
-  }
-
-  return Promise.all(promises);
+      });
+    },
+    { concurrency: MAX_CONCURRENCY_LEVEL }
+  );
 }
 
 async function syncThreads(
@@ -691,11 +685,9 @@ async function syncThreads(
   threadsTs: string[],
   connectorId: ModelId
 ) {
-  const queue = new PQueue({ concurrency: MAX_CONCURRENCY_LEVEL });
-
-  const promises = [];
-  for (const threadTs of threadsTs) {
-    const p = queue.add(async () => {
+  await concurrentExecutor(
+    threadsTs,
+    async (threadTs) => {
       // we first check if the bot still has read permissions on the channel
       // there could be a race condition if we are in the middle of syncing a channel but
       // the user revokes the bot's permissions
@@ -737,8 +729,6 @@ async function syncThreads(
         return;
       }
 
-      await heartbeat();
-
       return syncThread(
         channelId,
         channelName,
@@ -746,10 +736,14 @@ async function syncThreads(
         connectorId,
         true // isBatchSync
       );
-    });
-    promises.push(p);
-  }
-  return Promise.all(promises);
+    },
+    {
+      concurrency: MAX_CONCURRENCY_LEVEL,
+      onBatchComplete: async () => {
+        await heartbeat();
+      },
+    }
+  );
 }
 
 export async function syncThread(
