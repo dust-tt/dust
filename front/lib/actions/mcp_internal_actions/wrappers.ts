@@ -10,6 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 
 export function withToolLogging<T>(
   auth: Authenticator,
@@ -88,7 +89,7 @@ export function withToolLogging<T>(
         },
         "Tool execution error"
       );
-      return { isError: true, content: [{ type: "text", value: result }] };
+      return makeMCPToolTextError(error);
     }
 
     const elapsed = performance.now() - startTime;

@@ -3,8 +3,9 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeMCPToolTextErrorResult } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import { Ok } from "@app/types/shared/result";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   createClientExecutableFile,
@@ -89,7 +90,7 @@ const createServer = (
       ) => {
         const { conversation } = agentLoopContext?.runContext ?? {};
         if (!conversation) {
-          return makeMCPToolTextError(
+          return makeMCPToolTextErrorResult(
             "Conversation ID is required to create a client executable file."
           );
         }
@@ -102,7 +103,7 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return makeMCPToolTextError(result.error.message);
+          return makeMCPToolTextErrorResult(result.error.message);
         }
 
         const { value: fileResource } = result;
@@ -135,7 +136,7 @@ const createServer = (
           await sendNotification(notification);
         }
 
-        return {
+        return new Ok({
           isError: false,
           content: [
             {
@@ -151,7 +152,7 @@ const createServer = (
               },
             },
           ],
-        };
+        });
       }
     )
   );
@@ -217,15 +218,7 @@ const createServer = (
         // case when the model makes imprecise edits. The error message will help the model
         // understand what went wrong and retry with corrected parameters.
         if (result.isErr()) {
-          return {
-            isError: false,
-            content: [
-              {
-                type: "text",
-                text: result.error.message,
-              },
-            ],
-          };
+          return makeMCPToolTextErrorResult(result.error.message);
         }
 
         const { fileResource, replacementCount } = result.value;
@@ -259,7 +252,7 @@ const createServer = (
           await sendNotification(notification);
         }
 
-        return {
+        return new Ok({
           isError: false,
           content: [
             {
@@ -267,7 +260,7 @@ const createServer = (
               text: responseText,
             },
           ],
-        };
+        });
       }
     )
   );
@@ -292,12 +285,12 @@ const createServer = (
         const result = await getClientExecutableFileContent(auth, file_id);
 
         if (result.isErr()) {
-          return makeMCPToolTextError(result.error.message);
+          return makeMCPToolTextErrorResult(result.error.message);
         }
 
         const { fileResource, content } = result.value;
 
-        return {
+        return new Ok({
           isError: false,
           content: [
             {
@@ -307,7 +300,7 @@ const createServer = (
                 `successfully. Content:\n\n${content}`,
             },
           ],
-        };
+        });
       }
     )
   );

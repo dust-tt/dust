@@ -22,8 +22,9 @@ import {
   getCoreSearchArgs,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeMCPToolTextError, makeMCPToolTextErrorResult } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import { Ok, Result } from "@app/types/shared/result";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -101,18 +102,7 @@ function createServer(
     dataSources: DataSourcesToolConfigurationType;
     tagsIn?: string[];
     tagsNot?: string[];
-  }): Promise<{
-    isError: boolean;
-    content:
-      | TextContent[]
-      | {
-          type: "resource";
-          resource:
-            | IncludeResultResourceType
-            | IncludeQueryResourceType
-            | WarningResourceType;
-        }[];
-  }> => {
+  }): Promise<Result<CallToolResult, Error>> => {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const credentials = dustManagedCredentials();
 
@@ -135,7 +125,7 @@ function createServer(
 
     // If any of the data sources are invalid, return an error message.
     if (coreSearchArgsResults.some((res) => res.isErr())) {
-      return {
+      return new Ok({
         isError: false,
         content: removeNulls(
           coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
@@ -143,7 +133,7 @@ function createServer(
           type: "text",
           text: error.message,
         })),
-      };
+      });
     }
 
     const coreSearchArgs = removeNulls(
@@ -155,10 +145,10 @@ function createServer(
       tagsNot,
     });
     if (conflictingTagsError) {
-      return {
+      return new Ok({
         isError: false,
         content: [{ type: "text", text: conflictingTagsError }],
-      };
+      });
     }
 
     const searchResults = await coreAPI.searchDataSources(
@@ -198,11 +188,11 @@ function createServer(
     );
 
     if (searchResults.isErr()) {
-      return makeMCPToolTextError(searchResults.error.message);
+      return makeMCPToolTextErrorResult(searchResults.error.message);
     }
 
     if (citationsOffset + retrievalTopK > getRefs().length) {
-      return makeMCPToolTextError(
+      return makeMCPToolTextErrorResult(
         "The inclusion exhausted the total number of references available for citations"
       );
     }
@@ -244,7 +234,7 @@ function createServer(
       timeFrame ?? null
     );
 
-    return {
+    return new Ok({
       isError: false,
       content: [
         ...results.map((result) => ({
@@ -264,7 +254,7 @@ function createServer(
             ]
           : []),
       ],
-    };
+    });
   };
 
   if (!areTagsDynamic) {

@@ -19,8 +19,9 @@ import {
   getCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeMCPToolTextErrorResult } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import { Ok, Result } from "@app/types/shared/result";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -63,7 +64,7 @@ export async function searchFunction({
   tagsNot?: string[];
   auth: Authenticator;
   agentLoopContext?: AgentLoopContextType;
-}): Promise<CallToolResult> {
+}): Promise<Result<CallToolResult, Error>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -87,7 +88,7 @@ export async function searchFunction({
 
   // If any of the data sources are invalid, return an error message.
   if (coreSearchArgsResults.some((res) => res.isErr())) {
-    return {
+    return new Ok({
       isError: false,
       content: removeNulls(
         coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
@@ -95,7 +96,7 @@ export async function searchFunction({
         type: "text",
         text: error.message,
       })),
-    };
+    });
   }
 
   const coreSearchArgs = removeNulls(
@@ -103,7 +104,7 @@ export async function searchFunction({
   );
 
   if (coreSearchArgs.length === 0) {
-    return makeMCPToolTextError(
+    return makeMCPToolTextErrorResult(
       "Search action must have at least one data source configured."
     );
   }
@@ -113,10 +114,10 @@ export async function searchFunction({
     tagsNot,
   });
   if (conflictingTagsError) {
-    return {
+    return new Ok({
       isError: false,
       content: [{ type: "text", text: conflictingTagsError }],
-    };
+    });
   }
 
   // Now we can search each data source.
@@ -154,11 +155,11 @@ export async function searchFunction({
   );
 
   if (searchResults.isErr()) {
-    return makeMCPToolTextError(searchResults.error.message);
+    return makeMCPToolTextErrorResult(searchResults.error.message);
   }
 
   if (citationsOffset + retrievalTopK > getRefs().length) {
-    return makeMCPToolTextError(
+    return makeMCPToolTextErrorResult(
       "The search exhausted the total number of references available for citations"
     );
   }
@@ -194,7 +195,7 @@ export async function searchFunction({
     }
   );
 
-  return {
+  return Ok({
     isError: false,
     content: [
       ...results.map((result) => ({
@@ -211,7 +212,7 @@ export async function searchFunction({
         }),
       },
     ],
-  };
+  });
 }
 
 function createServer(

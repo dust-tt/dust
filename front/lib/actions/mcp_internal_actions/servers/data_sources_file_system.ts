@@ -33,10 +33,11 @@ import {
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import {
-  makeMCPToolRecoverableErrorSuccess,
-  makeMCPToolTextError,
+  makeMCPToolRecoverableErrorSuccessResult,
+  makeMCPToolTextErrorResult,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import { Ok } from "@app/types/shared/result";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -144,7 +145,7 @@ async function searchCallback(
     relativeTimeFrame,
   }: z.infer<typeof SearchToolInputSchema>,
   { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
-): Promise<CallToolResult> {
+): Promise<Result<CallToolResult, Error>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -162,7 +163,7 @@ async function searchCallback(
     await getAgentDataSourceConfigurations(auth, dataSources);
 
   if (agentDataSourceConfigurationsResult.isErr()) {
-    return makeMCPToolTextError(
+    return makeMCPToolTextErrorResult(
       agentDataSourceConfigurationsResult.error.message
     );
   }
@@ -218,7 +219,7 @@ async function searchCallback(
   );
 
   if (coreSearchArgs.length === 0) {
-    return makeMCPToolTextError(
+    return makeMCPToolTextErrorResult(
       "Search action must have at least one data source configured."
     );
   }
@@ -228,10 +229,10 @@ async function searchCallback(
     tagsNot,
   });
   if (conflictingTags) {
-    return {
+    return new Ok({
       isError: false,
       content: [{ type: "text", text: conflictingTags }],
-    };
+    });
   }
 
   const searchResults = await coreAPI.searchDataSources(
@@ -267,13 +268,13 @@ async function searchCallback(
   );
 
   if (searchResults.isErr()) {
-    return makeMCPToolTextError(
+    return makeMCPToolTextErrorResult(
       `Failed to search content: ${searchResults.error.message}`
     );
   }
 
   if (citationsOffset + retrievalTopK > getRefs().length) {
-    return makeMCPToolTextError(
+    return makeMCPToolTextErrorResult(
       "The search exhausted the total number of references available for citations"
     );
   }
@@ -329,7 +330,7 @@ async function searchCallback(
     });
 
     if (searchResult.isErr()) {
-      return makeMCPToolTextError(
+      return makeMCPToolTextErrorResult(
         `Failed to search content: ${searchResult.error.message}`
       );
     }
@@ -339,7 +340,7 @@ async function searchCallback(
     );
   }
 
-  return {
+  return new Ok({
     isError: false,
     content: [
       {
@@ -360,7 +361,7 @@ async function searchCallback(
         resource: result,
       })),
     ],
-  };
+  });
 }
 
 const createServer = (
@@ -413,7 +414,7 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return makeMCPToolTextError(fetchResult.error.message);
+          return makeMCPToolTextErrorResult(fetchResult.error.message);
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
@@ -428,7 +429,7 @@ const createServer = (
         });
 
         if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
-          return makeMCPToolRecoverableErrorSuccess(
+          return makeMCPToolRecoverableErrorSuccessResult(
             `Could not find node: ${nodeId} (error: ${
               searchResult.isErr() ? searchResult.error : "No nodes found"
             })`
@@ -438,7 +439,7 @@ const createServer = (
         const node = searchResult.value.nodes[0];
 
         if (node.node_type !== "document") {
-          return makeMCPToolRecoverableErrorSuccess(
+          return makeMCPToolRecoverableErrorSuccessResult(
             `Node is of type ${node.node_type}, not a document.`
           );
         }
@@ -450,7 +451,7 @@ const createServer = (
         )?.dataSource;
 
         if (!dataSource) {
-          return makeMCPToolTextError(
+          return makeMCPToolTextErrorResult(
             `Could not find dataSource for node: ${nodeId}`
           );
         }
@@ -472,12 +473,12 @@ const createServer = (
         });
 
         if (readResult.isErr()) {
-          return makeMCPToolTextError(
+          return makeMCPToolTextErrorResult(
             `Could not read node: ${nodeId} (error: ${readResult.error})`
           );
         }
 
-        return {
+        return new Ok({
           isError: false,
           content: [
             {
@@ -491,7 +492,7 @@ const createServer = (
               },
             },
           ],
-        };
+        });
       }
     )
   );
@@ -555,7 +556,7 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return makeMCPToolTextError(fetchResult.error.message);
+          return makeMCPToolTextErrorResult(fetchResult.error.message);
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
@@ -600,12 +601,12 @@ const createServer = (
         });
 
         if (searchResult.isErr()) {
-          return makeMCPToolTextError(
+          return makeMCPToolTextErrorResult(
             `Failed to search content: ${searchResult.error.message}`
           );
         }
 
-        return {
+        return new Ok({
           isError: false,
           content: [
             {
@@ -625,7 +626,7 @@ const createServer = (
               ),
             },
           ],
-        };
+        });
       }
     )
   );
@@ -678,7 +679,7 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return makeMCPToolTextError(fetchResult.error.message);
+          return makeMCPToolTextErrorResult(fetchResult.error.message);
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
@@ -712,7 +713,7 @@ const createServer = (
           // If it's a data source node ID, extract the data source ID and list its root contents
           const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
           if (!dataSourceId) {
-            return makeMCPToolTextError("Invalid data source node ID format");
+            return makeMCPToolTextErrorResult("Invalid data source node ID format");
           }
 
           const dataSourceConfig = agentDataSourceConfigurations.find(
@@ -720,7 +721,7 @@ const createServer = (
           );
 
           if (!dataSourceConfig) {
-            return makeMCPToolTextError(
+            return makeMCPToolTextErrorResult(
               `Data source not found for ID: ${dataSourceId}`
             );
           }
@@ -753,10 +754,10 @@ const createServer = (
         }
 
         if (searchResult.isErr()) {
-          return makeMCPToolTextError("Failed to list folder contents");
+          return makeMCPToolTextErrorResult("Failed to list folder contents");
         }
 
-        return {
+        return new Ok({
           isError: false,
           content: [
             {
@@ -775,7 +776,7 @@ const createServer = (
               ),
             },
           ],
-        };
+        });
       }
     )
   );
@@ -868,14 +869,14 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return makeMCPToolTextError(fetchResult.error.message);
+          return makeMCPToolTextErrorResult(fetchResult.error.message);
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
         if (isDataSourceNodeId(nodeId)) {
           const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
           if (!dataSourceId) {
-            return makeMCPToolTextError("Invalid data source node ID format");
+            return makeMCPToolTextErrorResult("Invalid data source node ID format");
           }
 
           const dataSourceConfig = agentDataSourceConfigurations.find(
@@ -883,12 +884,12 @@ const createServer = (
           );
 
           if (!dataSourceConfig) {
-            return makeMCPToolTextError(
+            return makeMCPToolTextErrorResult(
               `Data source not found for ID: ${dataSourceId}`
             );
           }
 
-          return {
+          return new Ok({
             isError: false,
             content: [
               {
@@ -907,7 +908,7 @@ const createServer = (
                 },
               },
             ],
-          };
+          });
         }
 
         // Search for the target node.
@@ -921,7 +922,7 @@ const createServer = (
         });
 
         if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
-          return makeMCPToolRecoverableErrorSuccess(
+          return makeMCPToolRecoverableErrorSuccessResult(
             `Could not find node: ${nodeId}`
           );
         }
@@ -948,7 +949,7 @@ const createServer = (
           });
 
           if (pathSearchResult.isErr()) {
-            return makeMCPToolTextError("Failed to fetch nodes in the path");
+            return makeMCPToolTextErrorResult("Failed to fetch nodes in the path");
           }
 
           for (const node of pathSearchResult.value.nodes) {
@@ -962,7 +963,7 @@ const createServer = (
         );
 
         if (!dataSourceConfig) {
-          return makeMCPToolTextError(
+          return makeMCPToolTextErrorResult(
             "Could not find data source configuration"
           );
         }
@@ -1001,7 +1002,7 @@ const createServer = (
           },
         ]);
 
-        return {
+        return new Ok({
           isError: false,
           content: [
             {
@@ -1014,7 +1015,7 @@ const createServer = (
               },
             },
           ],
-        };
+        });
       }
     )
   );

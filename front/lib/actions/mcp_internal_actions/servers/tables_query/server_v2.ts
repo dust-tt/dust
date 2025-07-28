@@ -28,8 +28,9 @@ import {
   TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeMCPToolTextError, makeMCPToolTextErrorResult } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import { Ok } from "@app/types/shared/result";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
@@ -177,13 +178,13 @@ function createServer(
           tables
         );
         if (tableConfigurationsRes.isErr()) {
-          return makeMCPToolTextError(
+          return makeMCPToolTextErrorResult(
             `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
           );
         }
         const tableConfigurations = tableConfigurationsRes.value;
         if (tableConfigurations.length === 0) {
-          return {
+          return new Ok({
             isError: false,
             content: [
               {
@@ -191,7 +192,7 @@ function createServer(
                 text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
               },
             ],
-          };
+          });
         }
         const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
           ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
@@ -222,7 +223,7 @@ function createServer(
           query,
         });
         if (queryResult.isErr()) {
-          return {
+          return new Ok({
             // Certain errors we don't track as they can occur in the context of a normal execution.
             isError: !["too_many_result_rows", "table_not_found"].includes(
               queryResult.error.code
@@ -248,7 +249,7 @@ function createServer(
                 },
               },
             ],
-          };
+          });
         }
 
         const content: {
@@ -361,10 +362,10 @@ function createServer(
           }
         }
 
-        return {
+        return new Ok({
           isError: false,
           content,
-        };
+        });
       }
     )
   );

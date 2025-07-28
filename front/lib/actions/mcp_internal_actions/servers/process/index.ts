@@ -24,8 +24,9 @@ import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeMCPToolTextErrorResult } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import { Ok } from "@app/types/shared/result";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionGeneratedFileType,
@@ -222,7 +223,7 @@ function makeExtractInformationFromDocumentsTool(
         file: jsonFile,
       });
 
-      return processToolOutput;
+      return new Ok(processToolOutput);
     }
   );
 }
@@ -509,7 +510,7 @@ function processToolError({
     },
     "Error running process"
   );
-  return makeMCPToolTextError(`${errorMessage}: ${errorDetails}`);
+  return makeMCPToolTextErrorResult(`${errorMessage}: ${errorDetails}`);
 }
 
 async function generateProcessToolOutput({

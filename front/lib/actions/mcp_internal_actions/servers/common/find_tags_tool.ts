@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeMCPToolTextErrorResult } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
@@ -56,7 +56,7 @@ export function makeFindTagsTool(
       );
 
       if (coreSearchArgsResults.some((res) => res.isErr())) {
-        return makeMCPToolTextError("Invalid data sources");
+        return makeMCPToolTextErrorResult("Invalid data sources");
       }
 
       const coreSearchArgs = removeNulls(
@@ -64,7 +64,7 @@ export function makeFindTagsTool(
       );
 
       if (coreSearchArgs.length === 0) {
-        return makeMCPToolTextError(
+        return makeMCPToolTextErrorResult(
           "Search action must have at least one data source configured."
         );
       }
@@ -78,10 +78,10 @@ export function makeFindTagsTool(
       });
 
       if (result.isErr()) {
-        return makeMCPToolTextError("Error searching for labels");
+        return makeMCPToolTextErrorResult("Error searching for labels");
       }
 
-      return {
+      return new Ok({
         isError: false,
         content: [
           {
@@ -97,7 +97,7 @@ export function makeFindTagsTool(
               ).join("\n"),
           },
         ],
-      };
+      });
     }
   );
 }
