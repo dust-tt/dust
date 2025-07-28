@@ -342,15 +342,26 @@ const Header = () => {
   );
 };
 
-export const PublicWebsiteLogo = () => {
+interface PublicWebsiteLogo {
+  size?: "default" | "small";
+}
+
+export const PublicWebsiteLogo = ({ size = "default" }: PublicWebsiteLogo) => {
+  const dimensions =
+    size === "small"
+      ? { height: "h-[20px]", width: "w-[80px]" }
+      : { height: "h-[24px]", width: "w-[96px]" };
+
+  const className = `${dimensions.height} ${dimensions.width}`;
+
   return (
     <Link href="/home">
-      <Hover3D className="relative h-[24px] w-[96px]">
-        <Div3D depth={0} className="h-[24px] w-[96px]">
-          <DustLogoLayer1 className="h-[24px] w-[96px]" />
+      <Hover3D className={`relative ${className}`}>
+        <Div3D depth={0} className={className}>
+          <DustLogoLayer1 className={className} />
         </Div3D>
         <Div3D depth={25} className="absolute top-0">
-          <DustLogoLayer2 className="h-[24px] w-[96px]" />
+          <DustLogoLayer2 className={className} />
         </Div3D>
       </Hover3D>
     </Link>
