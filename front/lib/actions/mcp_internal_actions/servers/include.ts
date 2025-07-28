@@ -34,7 +34,7 @@ import {
 } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { CoreAPIDocument, Result,TimeFrame } from "@app/types";
+import type { CoreAPIDocument, Result, TimeFrame } from "@app/types";
 import { Err, Ok } from "@app/types";
 import {
   CoreAPI,
@@ -91,7 +91,7 @@ function createServer(
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
 
-  const includeFunction = async ({
+  async function includeFunction({
     timeFrame,
     dataSources,
     tagsIn,
@@ -101,7 +101,7 @@ function createServer(
     dataSources: DataSourcesToolConfigurationType;
     tagsIn?: string[];
     tagsNot?: string[];
-  }): Promise<Result<CallToolResult, Error>> => {
+  }): Promise<Result<CallToolResult, Error>> {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const credentials = dustManagedCredentials();
 
@@ -256,7 +256,7 @@ function createServer(
           : []),
       ],
     });
-  };
+  }
 
   if (!areTagsDynamic) {
     server.tool(
