@@ -49,7 +49,7 @@ import type {
   CoreAPISearchNodesResponse,
   Result,
 } from "@app/types";
-import { Err,Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 import {
   CoreAPI,
   DATA_SOURCE_NODE_ID,
