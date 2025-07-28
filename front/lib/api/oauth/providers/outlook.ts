@@ -28,16 +28,14 @@ export class OutlookOAuthProvider implements BaseOAuthStrategyProvider {
     clientId?: string;
     extraConfig?: ExtraConfigType;
   }) {
-    if (!extraConfig || !extraConfig.scope) {
-      throw new Error("Missing authorization scope");
-    }
+    const scope = extraConfig?.scope || "Mail.ReadWrite Mail.ReadWrite.Shared User.Read";
 
     const qs = querystring.stringify({
       response_type: "code",
       client_id: clientId || config.getOAuthMicrosoftClientId(),
       state: connection.connection_id,
       redirect_uri: finalizeUriForProvider("outlook"),
-      scope: extraConfig.scope,
+      scope,
       prompt: "consent",
     });
     return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
