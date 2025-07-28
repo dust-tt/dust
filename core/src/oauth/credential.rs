@@ -214,7 +214,7 @@ impl Credential {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Mcp => {
-                vec!["client_id", "client_secret"]
+                vec!["client_id"]
             }
             CredentialProvider::Notion => {
                 vec!["integration_token"]
