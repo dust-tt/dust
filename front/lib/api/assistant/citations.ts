@@ -18,11 +18,14 @@ const getRand = rand("chawarma");
 export const getRefs = () => {
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789".split("");
   if (REFS === null) {
-    REFS = alphabet.flatMap((c) =>
-      alphabet.flatMap((n) =>
-        alphabet.map((m) => `${c}${n}${m}`)
-      )
-    );
+    REFS = [];
+    for (const c1 of alphabet) {
+      for (const c2 of alphabet) {
+        for (const c3 of alphabet) {
+          REFS.push(`${c1}${c2}${c3}`);
+        }
+      }
+    }
     // Randomize.
     REFS.sort(() => (getRand() > 0.5 ? 1 : -1));
   }
