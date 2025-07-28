@@ -407,6 +407,17 @@ export const INTERNAL_MCP_SERVERS: Record<
     // when the advanced_search mode is enabled.
     isRestricted: () => true,
   },
+  outlook: {
+    id: 24,
+    availability: "manual",
+    tools_stakes: {
+      get_messages: "never_ask",
+      get_drafts: "never_ask",
+      create_draft: "low",
+      delete_draft: "low",
+      create_reply_draft: "low",
+    },
+  },
 };
 
 export type InternalMCPServerNameType =
