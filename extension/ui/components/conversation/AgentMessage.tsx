@@ -17,7 +17,6 @@ import {
   getCiteDirective,
 } from "@app/ui/components/markdown/CiteBlock";
 import type { MarkdownCitation } from "@app/ui/components/markdown/MarkdownCitation";
-import { getCitationIcon } from "@app/ui/components/markdown/MarkdownCitation";
 import {
   MentionBlock,
   mentionDirective,
@@ -27,14 +26,11 @@ import { useEventSource } from "@app/ui/hooks/useEventSource";
 import type {
   AgentMessagePublicType,
   LightWorkspaceType,
-  RetrievalDocumentPublicType,
   SearchResultResourceType,
   WebsearchResultResourceType,
 } from "@dust-tt/client";
 import {
   assertNever,
-  getProviderFromRetrievedDocument,
-  getTitleFromRetrievedDocument,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
   removeNulls,
