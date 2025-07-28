@@ -213,9 +213,6 @@ const createServer = (
           expectedReplacements: expected_replacements,
         });
 
-        // Return a non-error response even when file editing fails, since this is an expected
-        // case when the model makes imprecise edits. The error message will help the model
-        // understand what went wrong and retry with corrected parameters.
         if (result.isErr()) {
           return new Err(new Error(result.error.message));
         }
