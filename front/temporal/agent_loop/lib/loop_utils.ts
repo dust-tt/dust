@@ -1,8 +1,8 @@
-import {
-  isAgentMessageType,
-  type AgentMessageType,
-  type ConversationType,
-} from "@app/types";
+import type {
+  ConversationType,
+  AgentMessageType,
+} from "@app/types/assistant/conversation";
+import { isAgentMessageType } from "@app/types";
 import assert from "assert";
 
 // TODO(DURABLE-AGENTS 2025-07-25): Consider moving inside this function the "conversation has
@@ -25,7 +25,10 @@ export function sliceConversationForAgentMessage(
     agentMessageVersion: number;
     step: number;
   }
-): ConversationType {
+): {
+  slicedConversation: ConversationType;
+  slicedAgentMessage: AgentMessageType;
+} {
   const slicedConversation = { ...conversation };
   const slicedAgentMessage = slicedConversation.content.findLast(
     (versions) =>
@@ -54,5 +57,8 @@ export function sliceConversationForAgentMessage(
     (action) => action.step < step
   );
 
-  return slicedConversation;
+  return {
+    slicedConversation,
+    slicedAgentMessage,
+  };
 }
