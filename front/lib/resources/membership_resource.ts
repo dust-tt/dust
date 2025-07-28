@@ -455,22 +455,32 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     transaction?: Transaction
   ) {
     if (workspace.workOSOrganizationId) {
-      const workos = getWorkOS();
+      try {
+        const workos = getWorkOS();
 
-      const memberships =
-        await workos.userManagement.listOrganizationMemberships({
-          organizationId: workspace.workOSOrganizationId,
-        });
+        const memberships =
+          await workos.userManagement.listOrganizationMemberships({
+            organizationId: workspace.workOSOrganizationId,
+          });
 
-      await concurrentExecutor(
-        memberships.data,
-        async (membership) => {
-          await workos.userManagement.deleteOrganizationMembership(
-            membership.id
-          );
-        },
-        { concurrency: 10 }
-      );
+        await concurrentExecutor(
+          memberships.data,
+          async (membership) => {
+            await workos.userManagement.deleteOrganizationMembership(
+              membership.id
+            );
+          },
+          { concurrency: 10 }
+        );
+      } catch (error) {
+        logger.error(
+          {
+            workspaceId: workspace.id,
+            error,
+          },
+          "Failed to delete WorkOS memberships for workspace"
+        );
+      }
     }
 
     return this.model.destroy({
