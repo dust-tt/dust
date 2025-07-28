@@ -73,6 +73,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       plan: PlanType;
       featureFlags: WhitelistableFeature[];
     }) => boolean;
+    isPreview?: boolean;
     tools_stakes?: Record<string, MCPToolStakeLevelType>;
     timeoutMs?: number;
   }
@@ -114,6 +115,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("dev_mcp_actions");
     },
+    isPreview: true,
   },
   hubspot: {
     id: 7,
@@ -264,6 +266,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("google_sheets_tool");
     },
+    isPreview: true,
     tools_stakes: {
       list_spreadsheets: "never_ask",
       get_spreadsheet: "never_ask",
@@ -283,6 +286,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("monday_tool");
     },
+    isPreview: true,
     tools_stakes: {
       // Read operations
       get_boards: "never_ask",
@@ -324,6 +328,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("jira_tool");
     },
+    isPreview: true,
     tools_stakes: {
       // Read operations - never ask (no side effects)
       get_issue: "never_ask",
@@ -351,6 +356,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("interactive_content_server");
     },
+    isPreview: true,
   },
   search: {
     id: 1006,
@@ -379,6 +385,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("exploded_tables_query");
     },
+    isPreview: true,
   },
   data_sources_file_system: {
     id: 1010,
