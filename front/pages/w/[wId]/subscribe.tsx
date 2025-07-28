@@ -92,37 +92,35 @@ export default function Subscribe({
 
   return (
     <>
-      <div className="mb-10">
-        <BarHeader
-          title="Joining Dust"
-          className="ml-10 lg:ml-0"
-          rightActions={
-            <>
-              <div className="flex flex-row items-center">
-                {user && user.workspaces.length > 1 && (
-                  <WorkspacePicker
-                    user={user}
-                    workspace={owner}
-                    onWorkspaceUpdate={(workspace) => {
-                      const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-                      if (workspace.id !== owner.id) {
-                        void router
-                          .push(assistantRoute)
-                          .then(() => router.reload());
-                      }
-                    }}
-                  />
+      <BarHeader
+        title="Joining Dust"
+        className="ml-10 lg:ml-0"
+        rightActions={
+          <>
+            <div className="flex flex-row items-center">
+              {user && user.workspaces.length > 1 && (
+                <WorkspacePicker
+                  user={user}
+                  workspace={owner}
+                  onWorkspaceUpdate={(workspace) => {
+                    const assistantRoute = `/w/${workspace.sId}/assistant/new`;
+                    if (workspace.id !== owner.id) {
+                      void router
+                        .push(assistantRoute)
+                        .then(() => router.reload());
+                    }
+                  }}
+                />
+              )}
+              <div>
+                {user && (
+                  <UserMenu user={user} owner={owner} subscription={null} />
                 )}
-                <div>
-                  {user && (
-                    <UserMenu user={user} owner={owner} subscription={null} />
-                  )}
-                </div>
               </div>
-            </>
-          }
-        />
-      </div>
+            </div>
+          </>
+        }
+      />
       <Page>
         <div className="flex h-full flex-col justify-center">
           {isAdmin ? (
