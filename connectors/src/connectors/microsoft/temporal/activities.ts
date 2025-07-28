@@ -10,7 +10,6 @@ import {
   extractPath,
   getAllPaginatedEntities,
   getDeltaResults,
-  getDriveInternalId,
   getDriveInternalIdFromItem,
   getDriveItemInternalId,
   getDrives,
@@ -56,8 +55,7 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const FILES_SYNC_CONCURRENCY = 10;
@@ -721,10 +719,11 @@ export async function syncDeltaForRootNodesInDrive({
   }
   let count = 0;
   for (const driveItem of sortedChangedItems) {
+    count++;
     if (count % 1000 === 0) {
       logger.info({ count }, "Processing delta changes");
     }
-    count++;
+
     await heartbeat();
     if (!driveItem.parentReference) {
       throw new Error(`Unexpected: parent reference missing: ${driveItem}`);
