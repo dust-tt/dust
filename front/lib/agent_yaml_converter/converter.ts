@@ -2,8 +2,11 @@ import * as yaml from "js-yaml";
 import { z } from "zod";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { Authenticator } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import type {
@@ -279,6 +282,170 @@ export class AgentYAMLConverter {
         channel_name: channel.slackChannelName,
       })),
     };
+  }
+
+  // Mapping from YAML action types to MCP server names
+  private static readonly YAML_ACTION_TO_MCP_SERVER_MAP = {
+    SEARCH: "search",
+    EXTRACT_DATA: "extract_data",
+    INCLUDE_DATA: "include_data",
+    QUERY_TABLES: "query_tables",
+  } as const;
+
+  /**
+   * Converts a single YAML action to MCP server configuration format.
+   * This utility handles the mapping between YAML action types and MCP server configurations.
+   */
+  static async convertYAMLActionToMCPConfiguration(
+    auth: Authenticator,
+    action: AgentYAMLAction
+  ): Promise<
+    Result<
+      | PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number]
+      | null,
+      Error
+    >
+  > {
+    try {
+      // Handle DATA_VISUALIZATION separately as it doesn't map to an MCP server
+      if (action.type === "DATA_VISUALIZATION") {
+        // DATA_VISUALIZATION is handled as a flag on the agent itself, not as an MCP configuration
+        return new Ok(null);
+      }
+
+      const mcpServerName =
+        this.YAML_ACTION_TO_MCP_SERVER_MAP[
+          action.type as keyof typeof this.YAML_ACTION_TO_MCP_SERVER_MAP
+        ];
+
+      if (!mcpServerName) {
+        return new Err(new Error(`Unsupported action type: ${action.type}`));
+      }
+
+      // Get the MCP server view for this action type
+      const mcpServerView =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          auth,
+          mcpServerName
+        );
+
+      if (!mcpServerView) {
+        return new Err(
+          new Error(`MCP server view not found for: ${mcpServerName}`)
+        );
+      }
+
+      // Convert data sources configuration
+      let dataSources = null;
+      if (
+        "data_sources" in action.configuration &&
+        action.configuration.data_sources
+      ) {
+        dataSources = Object.values(action.configuration.data_sources).map(
+          (config) => ({
+            dataSourceViewId: config.view_id,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            filter: {
+              parents:
+                config.selected_resources.length > 0
+                  ? {
+                      in: config.selected_resources,
+                      not: [],
+                    }
+                  : null,
+              tags: config.tags_filter,
+            },
+          })
+        );
+      }
+
+      // Build the MCP configuration
+      const mcpConfiguration: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number] =
+        {
+          type: "mcp_server_configuration" as const,
+          mcpServerViewId: mcpServerView.sId,
+          name: action.name,
+          description: action.description,
+          dataSources,
+          tables: null, // TODO: Handle table configurations if needed
+          childAgentId: null,
+          reasoningModel: null,
+          jsonSchema:
+            "json_schema" in action.configuration
+              ? action.configuration.json_schema
+              : null,
+          additionalConfiguration: {},
+          dustAppConfiguration: null,
+          timeFrame:
+            "time_frame" in action.configuration
+              ? action.configuration.time_frame
+              : null,
+        };
+
+      return new Ok(mcpConfiguration);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  }
+
+  /**
+   * Converts an array of YAML actions to MCP server configurations.
+   * Filters out DATA_VISUALIZATION actions which are handled differently.
+   */
+  static async convertYAMLActionsToMCPConfigurations(
+    auth: Authenticator,
+    yamlActions: AgentYAMLAction[]
+  ): Promise<
+    Result<
+      PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][],
+      Error
+    >
+  > {
+    try {
+      const mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][] =
+        [];
+
+      for (const action of yamlActions) {
+        const configResult = await this.convertYAMLActionToMCPConfiguration(
+          auth,
+          action
+        );
+
+        if (configResult.isErr()) {
+          return configResult;
+        }
+
+        // Only add non-null configurations (DATA_VISUALIZATION returns null)
+        if (configResult.value !== null) {
+          mcpConfigurations.push(configResult.value);
+        }
+      }
+
+      return new Ok(mcpConfigurations);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  }
+
+  /**
+   * Parses YAML string and converts to AgentYAMLConfig
+   */
+  static fromYAMLString(yamlString: string): Result<AgentYAMLConfig, Error> {
+    try {
+      if (!yamlString || yamlString.trim() === "") {
+        return new Err(new Error("YAML string is empty"));
+      }
+
+      const parsedYaml = yaml.load(yamlString);
+      if (typeof parsedYaml !== "object" || parsedYaml === null) {
+        return new Err(new Error("Invalid YAML format - expected object"));
+      }
+
+      const validatedConfig = agentYAMLConfigSchema.parse(parsedYaml);
+      return new Ok(validatedConfig);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
   }
 
   /**
