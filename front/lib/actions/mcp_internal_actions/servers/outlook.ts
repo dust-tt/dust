@@ -41,12 +41,19 @@ interface OutlookMessage {
   internetMessageId?: string;
 }
 
+interface MessageDetail {
+  success: boolean;
+  data?: OutlookMessage;
+  messageId?: string;
+  error?: string;
+}
+
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "outlook",
   version: "1.0.0",
   description: "Outlook tools for reading emails and managing email drafts.",
   authorization: {
-    provider: "microsoft_tools" as const,
+    provider: "microsoft" as const,
     supported_use_cases: ["personal_actions"] as const,
     scope: "Mail.ReadWrite Mail.ReadWrite.Shared User.Read" as const,
   },
@@ -91,18 +98,15 @@ const createServer = (): McpServer => {
       const params = new URLSearchParams();
       params.append("$top", Math.min(top, 100).toString());
       params.append("$skip", skip.toString());
-
+      
       if (search) {
         params.append("$search", `"${search}"`);
       }
-
+      
       if (select && select.length > 0) {
         params.append("$select", select.join(","));
       } else {
-        params.append(
-          "$select",
-          "id,conversationId,subject,bodyPreview,importance,receivedDateTime,sentDateTime,hasAttachments,isDraft,isRead,from,toRecipients,ccRecipients,parentFolderId"
-        );
+        params.append("$select", "id,conversationId,subject,bodyPreview,importance,receivedDateTime,sentDateTime,hasAttachments,isDraft,isRead,from,toRecipients,ccRecipients,parentFolderId");
       }
 
       const response = await fetchFromOutlook(
@@ -156,7 +160,7 @@ const createServer = (): McpServer => {
       params.append("$filter", "isDraft eq true");
       params.append("$top", "50");
       params.append("$skip", skip.toString());
-
+      
       if (search) {
         params.append("$search", `"${search}"`);
       }
@@ -224,10 +228,7 @@ const createServer = (): McpServer => {
         .optional()
         .describe("The importance level of the email"),
     },
-    async (
-      { to, cc, bcc, subject, contentType, body, importance = "normal" },
-      { authInfo }
-    ) => {
+    async ({ to, cc, bcc, subject, contentType, body, importance = "normal" }, { authInfo }) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return makeMCPToolTextError("Authentication required");
@@ -241,32 +242,36 @@ const createServer = (): McpServer => {
           contentType,
           content: body,
         },
-        toRecipients: to.map((email) => ({
-          emailAddress: { address: email },
+        toRecipients: to.map(email => ({
+          emailAddress: { address: email }
         })),
         isDraft: true,
       };
 
       if (cc && cc.length > 0) {
-        message.ccRecipients = cc.map((email) => ({
-          emailAddress: { address: email },
+        message.ccRecipients = cc.map(email => ({
+          emailAddress: { address: email }
         }));
       }
 
       if (bcc && bcc.length > 0) {
-        message.bccRecipients = bcc.map((email) => ({
-          emailAddress: { address: email },
+        message.bccRecipients = bcc.map(email => ({
+          emailAddress: { address: email }
         }));
       }
 
       // Make the API call to create the draft in Outlook
-      const response = await fetchFromOutlook("/me/messages", accessToken, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(message),
-      });
+      const response = await fetchFromOutlook(
+        "/me/messages",
+        accessToken,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(message),
+        }
+      );
 
       if (!response.ok) {
         const errorText = await getErrorText(response);
@@ -301,9 +306,7 @@ const createServer = (): McpServer => {
 
       // Subject and to are required for user display/confirmation
       if (!subject || to.length === 0) {
-        return makeMCPToolTextError(
-          "Subject and recipients are required for confirmation"
-        );
+        return makeMCPToolTextError("Subject and recipients are required for confirmation");
       }
 
       const response = await fetchFromOutlook(
@@ -365,7 +368,7 @@ const createServer = (): McpServer => {
       }
 
       // Create the reply draft
-      const endpoint = replyAll
+      const endpoint = replyAll 
         ? `/me/messages/${messageId}/createReplyAll`
         : `/me/messages/${messageId}/createReply`;
 
@@ -380,30 +383,34 @@ const createServer = (): McpServer => {
 
       // Add recipients if overriding
       if (to && to.length > 0) {
-        replyMessage.message.toRecipients = to.map((email) => ({
-          emailAddress: { address: email },
+        replyMessage.message.toRecipients = to.map(email => ({
+          emailAddress: { address: email }
         }));
       }
 
       if (cc && cc.length > 0) {
-        replyMessage.message.ccRecipients = cc.map((email) => ({
-          emailAddress: { address: email },
+        replyMessage.message.ccRecipients = cc.map(email => ({
+          emailAddress: { address: email }
         }));
       }
 
       if (bcc && bcc.length > 0) {
-        replyMessage.message.bccRecipients = bcc.map((email) => ({
-          emailAddress: { address: email },
+        replyMessage.message.bccRecipients = bcc.map(email => ({
+          emailAddress: { address: email }
         }));
       }
 
-      const response = await fetchFromOutlook(endpoint, accessToken, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(replyMessage),
-      });
+      const response = await fetchFromOutlook(
+        endpoint,
+        accessToken,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(replyMessage),
+        }
+      );
 
       if (!response.ok) {
         const errorText = await getErrorText(response);
