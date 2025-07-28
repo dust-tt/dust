@@ -662,19 +662,19 @@ export async function syncDeltaForRootNodesInDrive({
   const uniqueChangedItems = removeAllButLastOccurences(results);
 
   const sortedChangedItems: DriveItem[] = [];
-  const containWholeDrive = rootNodeIds.some(
+  const containsWholeDrive = rootNodeIds.some(
     (nodeId) => typeAndPathFromInternalId(nodeId).nodeType === "drive"
   );
 
   logger.info(
     {
       uniqueChangedItems: uniqueChangedItems.length,
-      containWholeDrive,
+      containsWholeDrive,
     },
     "Changes to process"
   );
 
-  if (containWholeDrive) {
+  if (containsWholeDrive) {
     sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
   } else {
     const microsoftNodes = await concurrentExecutor(
