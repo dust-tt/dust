@@ -16,20 +16,11 @@ let REFS: string[] | null = null;
 const getRand = rand("chawarma");
 
 export const getRefs = () => {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789".split("");
   if (REFS === null) {
-    REFS = "abcdefghijklmnopqrstuvwxyz0123456789"
-      .split("")
-      .map((c) => {
-        return "abcdefghijklmnopqrstuvwxyz0123456789".split("").map((n) => {
-          return `${c}${n}`;
-        });
-      })
-      .flat();
-    // randomize
-    REFS.sort(() => {
-      const r = getRand();
-      return r > 0.5 ? 1 : -1;
-    });
+    REFS = alphabet.flatMap((c) => alphabet.map((n) => `${c}${n}`));
+    // Randomize.
+    REFS.sort(() => (getRand() > 0.5 ? 1 : -1));
   }
   return REFS;
 };
