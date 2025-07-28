@@ -1,6 +1,9 @@
 use crate::info;
 use tikv_jemalloc_ctl::{epoch, stats};
 
+// Methods to help debug memory usage
+// Probably should be called in production code, but more meant to be used in test branches
+
 fn get_memory_usage() -> Result<(usize, usize), Box<dyn std::error::Error>> {
     // advance epoch to get fresh stats
     epoch::advance().map_err(|e| Box::<dyn std::error::Error>::from(e.to_string()))?;
@@ -18,8 +21,10 @@ pub fn log_mem(message: &str) {
         info!(
             allocated = allocated,
             resident = resident,
-            "MEMORY STATUS: {}",
+            "MEMORY USE: {}",
             message
         );
+    } else {
+        info!("Failed to get memory usage: {}", message);
     }
 }
