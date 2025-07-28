@@ -12,7 +12,10 @@ import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
-import { setRegionForUser } from "@app/lib/api/workos/user";
+import {
+  getDomainCookieClauseFromRequest,
+  setRegionForUser,
+} from "@app/lib/api/workos/user";
 import { getSession } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import logger from "@app/logger/logger";
@@ -300,10 +303,14 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
     }
   }
 
+  const domain = getDomainCookieClauseFromRequest(req);
   res.setHeader("Set-Cookie", [
     "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
+    `workos_session=; ${domain} Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`,
     "appSession=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax",
+    `appSession=; ${domain} Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`,
     "sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax",
+    `sessionType=; ${domain} Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
   ]);
 
   res.redirect(returnTo as string);
