@@ -106,8 +106,6 @@ pub struct Table {
     schema: Option<TableSchema>,
     schema_stale_at: Option<u64>,
 
-    migrated_to_csv: bool,
-
     remote_database_table_id: Option<String>,
     remote_database_secret_id: Option<String>,
 }
@@ -131,7 +129,6 @@ impl Table {
         source_url: Option<String>,
         schema: Option<TableSchema>,
         schema_stale_at: Option<u64>,
-        migrated_to_csv: bool,
         remote_database_table_id: Option<String>,
         remote_database_secret_id: Option<String>,
     ) -> Self {
@@ -153,7 +150,6 @@ impl Table {
             source_url,
             schema,
             schema_stale_at,
-            migrated_to_csv,
             remote_database_table_id,
             remote_database_secret_id,
         }
@@ -206,9 +202,6 @@ impl Table {
     }
     pub fn unique_id(&self) -> String {
         get_table_unique_id(&self.project, &self.data_source_id, &self.table_id)
-    }
-    pub fn migrated_to_csv(&self) -> bool {
-        self.migrated_to_csv
     }
     pub fn remote_database_table_id(&self) -> Option<&str> {
         self.remote_database_table_id.as_deref()
@@ -475,17 +468,8 @@ impl LocalTable {
 
             result
         } else {
-            // We can only handle non-truncate upserts if the table is already migrated.
-            // Otherwise, we have no base data to make the incremental updates against.
-            if self.table.migrated_to_csv() {
-                // For non-truncate, use the background worker
-                self.schedule_background_upsert_or_delete(rows).await
-            } else {
-                info!(
-                    table_id = self.table.table_id(),
-                    "upsert_rows_to_gcs_or_queue_work: table not migrated to CSV, skipping GCS upsert for non-truncate");
-                Ok(())
-            }
+            // For non-truncate, use the background worker
+            self.schedule_background_upsert_or_delete(rows).await
         }
     }
 
@@ -566,16 +550,6 @@ impl LocalTable {
 
         databases_store
             .batch_upsert_table_rows(&self.table, &new_table_schema, &rows, truncate)
-            .await?;
-
-        store
-            .set_data_source_table_migrated_to_csv(
-                &self.table.project,
-                &self.table.data_source_id,
-                &self.table.table_id,
-                true,
-                None,
-            )
             .await?;
 
         info!(
@@ -1079,7 +1053,6 @@ mod tests {
             None,
             Some(schema),
             None,
-            false,
             None,
             None,
         );

@@ -220,16 +220,6 @@ async fn create_in_memory_sqlite_db_with_csv(
     tables: Vec<LocalTable>,
     unique_table_names: HashMap<String, String>,
 ) -> Result<Option<Vec<NamedTempFile>>> {
-    let tables_with_csv = tables
-        .iter()
-        .filter(|lt| lt.table.migrated_to_csv())
-        .map(|lt| lt.clone())
-        .collect::<Vec<_>>();
-
-    if tables_with_csv.is_empty() {
-        return Ok(None);
-    }
-
     // Load the csvtab module early but don't hold the lock
     {
         let conn_guard = conn.lock();
@@ -239,7 +229,7 @@ async fn create_in_memory_sqlite_db_with_csv(
     let now = utils::now();
 
     // Process CSV files and create tables in parallel
-    let csv_tasks: Vec<_> = tables_with_csv
+    let csv_tasks: Vec<_> = tables
         .into_iter()
         .map(|table| {
             let table_name = unique_table_names

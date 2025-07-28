@@ -298,14 +298,6 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
     ) -> Result<()>;
-    async fn set_data_source_table_migrated_to_csv(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-        migrated_to_csv: bool,
-        timestamp: Option<i64>,
-    ) -> Result<()>;
     async fn load_data_source_table(
         &self,
         project: &Project,
@@ -598,7 +590,6 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        schema                       TEXT, -- json, kept up-to-date automatically with the last insert
        schema_stale_at              BIGINT, -- timestamp when the schema was last invalidated
        data_source                  BIGINT NOT NULL,
-       migrated_to_csv              BOOLEAN DEFAULT FALSE,
        remote_database_table_id     TEXT,
        remote_database_secret_id    TEXT,
        FOREIGN KEY(data_source)     REFERENCES data_sources(id)
