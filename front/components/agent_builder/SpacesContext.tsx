@@ -11,11 +11,7 @@ interface SpacesContextType {
   isSpacesError: boolean;
 }
 
-const SpacesContext = createContext<SpacesContextType>({
-  spaces: [],
-  isSpacesLoading: false,
-  isSpacesError: false,
-});
+const SpacesContext = createContext<SpacesContextType | undefined>(undefined);
 
 export const useSpacesContext = () => {
   const context = useContext(SpacesContext);
