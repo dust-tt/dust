@@ -538,12 +538,23 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
 
     if (workspace.workOSOrganizationId && user.workOSUserId) {
-      const workos = getWorkOS();
+      try {
+        const workos = getWorkOS();
 
-      await workos.userManagement.createOrganizationMembership({
-        userId: user.workOSUserId,
-        organizationId: workspace.workOSOrganizationId,
-      });
+        await workos.userManagement.createOrganizationMembership({
+          userId: user.workOSUserId,
+          organizationId: workspace.workOSOrganizationId,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            workspaceId: workspace.id,
+            userId: user.id,
+            error,
+          },
+          "Failed to create WorkOS membership"
+        );
+      }
     }
 
     return new MembershipResource(MembershipModel, newMembership.get());
