@@ -115,19 +115,9 @@ export function getRetrievalTopK({
   }
 
   const topKs = searchActions
-    .map(() => {
-      return model.recommendedTopK;
-    })
-    .concat(
-      includeActions.map(() => {
-        return model.recommendedExhaustiveTopK;
-      })
-    )
-    .concat(
-      dsFsActions.map(() => {
-        return model.recommendedTopK;
-      })
-    );
+    .map(() => model.recommendedTopK)
+    .concat(includeActions.map(() => model.recommendedExhaustiveTopK))
+    .concat(dsFsActions.map(() => model.recommendedTopK));
 
   return Math.ceil(Math.max(...topKs) / actionsCount);
 }
