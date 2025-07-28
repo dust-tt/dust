@@ -6,7 +6,8 @@ const SvgOutlook = (props: SVGProps<SVGSVGElement>) => (
     width="1em"
     height="1em"
     fill="none"
-    viewBox="0 0 24 24"
+    viewBox="0 0 1831.085 1703.335"
+    enable-background="new 0 0 1831.085 1703.335"
     {...props}
   >
     <path
