@@ -41,8 +41,7 @@ async function handler(
     });
   }
 
-  const result =
-    await FileResource.fetchByShareTokenWithContent(shortToken);
+  const result = await FileResource.fetchByShareTokenWithContent(shortToken);
   if (!result) {
     return apiError(req, res, {
       status_code: 404,
