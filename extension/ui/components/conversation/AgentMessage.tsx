@@ -37,6 +37,7 @@ import {
   getTitleFromRetrievedDocument,
   isMCPActionType,
   isSearchResultResourceType,
+  isSupportedImageContentType,
   isWebsearchResultResourceType,
   removeNulls,
 } from "@dust-tt/client";
@@ -51,6 +52,7 @@ import {
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
+  DocumentIcon,
   DocumentPileIcon,
   DocumentTextIcon,
   EyeIcon,
@@ -535,6 +537,10 @@ export function AgentMessage({
       );
     }
 
+    const generatedFiles = agentMessage.generatedFiles.filter(
+      (file) => !isSupportedImageContentType(file.contentType)
+    );
+
     return (
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-col gap-2">
@@ -575,6 +581,20 @@ export function AgentMessage({
                 />
               </CitationsContext.Provider>
             )}
+          </div>
+        )}
+        {generatedFiles.length > 0 && (
+          <div className="mt-2 grid grid-cols-5 gap-1">
+            {getCitations({
+              activeReferences: generatedFiles.map((file) => ({
+                index: -1,
+                document: {
+                  href: `/api/w/${owner.sId}/files/${file.fileId}`,
+                  title: file.title,
+                  icon: <DocumentIcon />,
+                },
+              })),
+            })}
           </div>
         )}
         {agentMessage.status === "cancelled" && (
