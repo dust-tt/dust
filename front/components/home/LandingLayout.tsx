@@ -342,14 +342,16 @@ const Header = () => {
   );
 };
 
-interface PublicWebsiteLogo {
+interface PublicWebsiteLogoProps {
   size?: "default" | "small";
 }
 
 const SMALL_SIZE = { height: "h-[20px]", width: "w-[80px]" };
 const DEFAULT_SIZE = { height: "h-[24px]", width: "w-[96px]" };
 
-export const PublicWebsiteLogo = ({ size = "default" }: PublicWebsiteLogo) => {
+export const PublicWebsiteLogo = ({
+  size = "default",
+}: PublicWebsiteLogoProps) => {
   const dimensions = size === "small" ? SMALL_SIZE : DEFAULT_SIZE;
 
   const className = `${dimensions.height} ${dimensions.width}`;
