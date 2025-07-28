@@ -14,9 +14,13 @@
 export async function concurrentExecutor<T, V>(
   items: T[],
   iterator: (item: T, idx: number) => Promise<V>,
-  { concurrency = 8 }: { concurrency: number }
+  {
+    concurrency = 8,
+    onBatchComplete,
+  }: { concurrency: number; onBatchComplete?: () => Promise<void> }
 ) {
   const results: V[] = new Array(items.length);
+  let completedCount = 0;
 
   // Initialize queue with work items, preserving original index.
   // This queue is shared between all workers.
@@ -38,6 +42,15 @@ export async function concurrentExecutor<T, V>(
     while ((work = queue.shift())) {
       const result = await iterator(work.item, work.index);
       results[work.index] = result;
+
+      // Check if we should call onBatchComplete.
+      if (onBatchComplete) {
+        completedCount++;
+        // Call onBatchComplete every `concurrency` completed items.
+        if (completedCount % concurrency === 0) {
+          await onBatchComplete();
+        }
+      }
     }
   }
 
@@ -47,6 +60,11 @@ export async function concurrentExecutor<T, V>(
   await Promise.all(
     Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
   );
+
+  // Call onBatchComplete for any remaining items if callback is provided.
+  if (onBatchComplete && completedCount % concurrency !== 0) {
+    await onBatchComplete();
+  }
 
   return results;
 }
