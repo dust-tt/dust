@@ -42,15 +42,14 @@ import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import {
+import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
   ConversationType,
-  Err,
   TimeFrame,
   UserMessageType,
 } from "@app/types";
-import { Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 import { isUserMessageType, timeFrameFromNow } from "@app/types";
 
 import { applyDataSourceFilters, getExtractFileTitle } from "./utils";
