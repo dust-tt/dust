@@ -270,8 +270,10 @@ function createServer(
         " The search is based on semantic similarity between the query and chunks of information" +
         " from the data sources.",
       commonInputsSchema,
-      withToolLogging(auth, SEARCH_TOOL_NAME, async (args) =>
-        searchFunction({ ...args, auth, agentLoopContext })
+      withToolLogging(
+        auth,
+        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        async (args) => searchFunction({ ...args, auth, agentLoopContext })
       )
     );
   } else {
@@ -284,8 +286,10 @@ function createServer(
         ...commonInputsSchema,
         ...tagsInputSchema,
       },
-      withToolLogging(auth, SEARCH_TOOL_NAME, async (args) =>
-        searchFunction({ ...args, auth, agentLoopContext })
+      withToolLogging(
+        auth,
+        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        async (args) => searchFunction({ ...args, auth, agentLoopContext })
       )
     );
 

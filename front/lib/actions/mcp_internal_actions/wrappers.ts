@@ -7,6 +7,7 @@ import type {
 } from "@modelcontextprotocol/sdk/types.js";
 
 import { isExecuteTablesQueryErrorResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -23,7 +24,13 @@ function isKnownErrorResource(
 
 export function withToolLogging<T>(
   auth: Authenticator,
-  toolName: string,
+  {
+    toolName,
+    agentLoopContext,
+  }: {
+    toolName: string;
+    agentLoopContext?: AgentLoopContextType;
+  },
   toolCallback: (
     params: T,
     extra: RequestHandlerExtra<ServerRequest, ServerNotification>
@@ -41,6 +48,23 @@ export function withToolLogging<T>(
         plan_code: auth.plan()?.code || null,
       },
       toolName,
+      ...(agentLoopContext?.runContext
+        ? (() => {
+            const {
+              agentConfiguration,
+              actionConfiguration,
+              conversation,
+              agentMessage,
+            } = agentLoopContext.runContext;
+            return {
+              agentConfigurationId: agentConfiguration.sId,
+              agentConfigurationVersion: agentConfiguration.version,
+              conversationId: conversation.sId,
+              agentMessageId: agentMessage.sId,
+              actionConfigurationId: actionConfiguration.sId,
+            };
+          })()
+        : {}),
     };
 
     logger.info(loggerArgs, "Tool execution start");

@@ -402,7 +402,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      FILESYSTEM_TOOL_NAME,
+      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({ dataSources, nodeId, offset, limit, grep }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
@@ -537,7 +537,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      FILESYSTEM_TOOL_NAME,
+      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({
         query,
         dataSources,
@@ -662,7 +662,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      FILESYSTEM_TOOL_NAME,
+      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({
         nodeId,
         dataSources,
@@ -791,8 +791,10 @@ const createServer = (
       "Perform a semantic search within the folders and files designated by `nodeIds`. All " +
         "children of the designated nodes will be searched.",
       SearchToolInputSchema.shape,
-      withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
-        searchCallback(auth, agentLoopContext, params)
+      withToolLogging(
+        auth,
+        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        async (params) => searchCallback(auth, agentLoopContext, params)
       )
     );
   } else {
@@ -830,11 +832,14 @@ const createServer = (
               "will be excluded from the search."
           ),
       },
-      withToolLogging(auth, SEARCH_TOOL_NAME, async (params) =>
-        searchCallback(auth, agentLoopContext, params, {
-          tagsIn: params.tagsIn,
-          tagsNot: params.tagsNot,
-        })
+      withToolLogging(
+        auth,
+        { toolName: SEARCH_TOOL_NAME, agentLoopContext },
+        async (params) =>
+          searchCallback(auth, agentLoopContext, params, {
+            tagsIn: params.tagsIn,
+            tagsNot: params.tagsNot,
+          })
       )
     );
   }
@@ -854,7 +859,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      FILESYSTEM_TOOL_NAME,
+      { toolName: FILESYSTEM_TOOL_NAME, agentLoopContext },
       async ({ nodeId, dataSources }) => {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const fetchResult = await getAgentDataSourceConfigurations(

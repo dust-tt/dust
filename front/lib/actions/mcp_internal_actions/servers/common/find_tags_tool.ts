@@ -12,6 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { CoreAPI, removeNulls } from "@app/types";
+import { AgentLoopContextType } from "@app/lib/actions/types";
 
 const DEFAULT_SEARCH_LABELS_LIMIT = 10;
 
@@ -33,10 +34,13 @@ export const makeFindTagsDescription = (toolName: string) =>
   "Restricting or excluding content succeeds only with existing labels. " +
   "Searching without verifying labels first typically returns no results.";
 
-export function makeFindTagsTool(auth: Authenticator) {
+export function makeFindTagsTool(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+) {
   return withToolLogging(
     auth,
-    "find_tags",
+    { toolName: "find_tags", agentLoopContext },
     async ({
       query,
       dataSources,

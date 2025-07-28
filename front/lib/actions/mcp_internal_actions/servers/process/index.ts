@@ -98,7 +98,7 @@ function makeExtractInformationFromDocumentsTool(
 ) {
   return withToolLogging(
     auth,
-    "extract_information_from_documents",
+    { toolName: "extract_information_from_documents", agentLoopContext },
     async ({
       dataSources,
       objective,
