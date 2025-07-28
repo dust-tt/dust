@@ -283,11 +283,8 @@ impl Table {
             }
 
             if SAVE_TABLES_TO_GCS {
-                // For now, we don't propagate failures since it's just a shadow operation
                 let gcs_store = GoogleCloudStorageDatabasesStore::new();
-                if let Err(e) = gcs_store.delete_table_data(&self).await {
-                    crate::error!("Failed to delete table data from GCS: {:?}", e);
-                }
+                gcs_store.delete_table_data(&self).await?;
             }
         }
 
@@ -424,6 +421,7 @@ impl LocalTable {
             duration = utils::now() - now,
             table_id = self.table.table_id(),
             row_count = rows.len(),
+            truncate,
             "DSSTRUCTSTAT [upsert_rows] validation"
         );
 
@@ -433,18 +431,13 @@ impl LocalTable {
         }
 
         if SAVE_TABLES_TO_GCS {
-            // For now, we don't propagate failures since it's just a shadow operation
-            if let Err(e) = self
-                .upsert_rows_to_gcs_or_queue_work(
-                    &store,
-                    &databases_store,
-                    rows.as_ref().clone(),
-                    truncate,
-                )
-                .await
-            {
-                crate::error!("Failed to upsert rows to GCS or queue work: {:?}", e);
-            }
+            self.upsert_rows_to_gcs_or_queue_work(
+                &store,
+                &databases_store,
+                rows.as_ref().clone(),
+                truncate,
+            )
+            .await?;
         }
 
         Ok(())
@@ -847,6 +840,8 @@ impl LocalTable {
         info!(
             csv_parse_duration = csv_parse_duration,
             upsert_duration = upsert_duration,
+            bucket,
+            bucket_csv_path,
             "CSV upsert"
         );
 
@@ -879,11 +874,8 @@ impl LocalTable {
             // We can only handle non-truncate deletes if the table is already migrated.
             // Otherwise, we have no base data to make the incremental changes against.
             if self.table.migrated_to_csv() {
-                // For now, we don't propagate failures since it's just a shadow operation
                 let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
-                if let Err(e) = self.schedule_background_upsert_or_delete(rows).await {
-                    crate::error!("delete_row: failed to schedule background work: {:?}", e);
-                }
+                self.schedule_background_upsert_or_delete(rows).await?;
             } else {
                 info!("delete_row: table not migrated to CSV, skipping GCS delete non-truncate");
             }
