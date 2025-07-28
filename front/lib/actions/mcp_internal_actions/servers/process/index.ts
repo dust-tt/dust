@@ -24,9 +24,7 @@ import {
   getDataSourceConfiguration,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextErrorResult } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import { Ok } from "@app/types/shared/result";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionGeneratedFileType,
@@ -44,13 +42,15 @@ import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type {
+import {
   AgentConfigurationType,
   AgentModelConfigurationType,
   ConversationType,
+  Err,
   TimeFrame,
   UserMessageType,
 } from "@app/types";
+import { Ok } from "@app/types";
 import { isUserMessageType, timeFrameFromNow } from "@app/types";
 
 import { applyDataSourceFilters, getExtractFileTitle } from "./utils";
@@ -510,7 +510,7 @@ function processToolError({
     },
     "Error running process"
   );
-  return makeMCPToolTextErrorResult(`${errorMessage}: ${errorDetails}`);
+  return new Err(new Error(`${errorMessage}: ${errorDetails}`));
 }
 
 async function generateProcessToolOutput({

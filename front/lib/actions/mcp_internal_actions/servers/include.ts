@@ -1,6 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
@@ -22,9 +22,7 @@ import {
   getCoreSearchArgs,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError, makeMCPToolTextErrorResult } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import { Ok, Result } from "@app/types/shared/result";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -36,7 +34,8 @@ import {
 } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { CoreAPIDocument, TimeFrame } from "@app/types";
+import type { CoreAPIDocument, Result,TimeFrame } from "@app/types";
+import { Err, Ok } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
@@ -188,12 +187,14 @@ function createServer(
     );
 
     if (searchResults.isErr()) {
-      return makeMCPToolTextErrorResult(searchResults.error.message);
+      return new Err(new Error(searchResults.error.message));
     }
 
     if (citationsOffset + retrievalTopK > getRefs().length) {
-      return makeMCPToolTextErrorResult(
-        "The inclusion exhausted the total number of references available for citations"
+      return new Err(
+        new Error(
+          "The inclusion exhausted the total number of references available for citations"
+        )
       );
     }
 

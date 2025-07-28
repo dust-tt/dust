@@ -3,9 +3,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { makeMCPToolTextErrorResult } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import { Ok } from "@app/types/shared/result";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   createClientExecutableFile,
@@ -15,6 +13,7 @@ import {
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { InteractiveFileContentType } from "@app/types";
+import { Err, Ok } from "@app/types";
 import { INTERACTIVE_FILE_FORMATS } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -90,9 +89,9 @@ const createServer = (
       ) => {
         const { conversation } = agentLoopContext?.runContext ?? {};
         if (!conversation) {
-          return makeMCPToolTextErrorResult(
+          return new Err(new Error(
             "Conversation ID is required to create a client executable file."
-          );
+          ));
         }
 
         const result = await createClientExecutableFile(auth, {
@@ -103,7 +102,7 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return makeMCPToolTextErrorResult(result.error.message);
+          return new Err(new Error(result.error.message));
         }
 
         const { value: fileResource } = result;
@@ -218,7 +217,7 @@ const createServer = (
         // case when the model makes imprecise edits. The error message will help the model
         // understand what went wrong and retry with corrected parameters.
         if (result.isErr()) {
-          return makeMCPToolTextErrorResult(result.error.message);
+          return new Err(new Error(result.error.message));
         }
 
         const { fileResource, replacementCount } = result.value;
@@ -285,7 +284,7 @@ const createServer = (
         const result = await getClientExecutableFileContent(auth, file_id);
 
         if (result.isErr()) {
-          return makeMCPToolTextErrorResult(result.error.message);
+          return new Err(new Error(result.error.message));
         }
 
         const { fileResource, content } = result.value;

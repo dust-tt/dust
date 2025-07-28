@@ -5,8 +5,6 @@ import type {
 
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import { Err, Ok } from "@app/types/shared/result";
-import type { Result } from "@app/types";
 
 /**
  * Error tool result. Does not fail the agent loop (the text is shown to the model) but is logged.
@@ -31,41 +29,6 @@ export function makeMCPToolTextError(text: string): {
   };
 }
 
-/**
- * Error tool result for use with withToolLogging wrapper.
- * Returns an Err result for use with withToolLogging wrapper.
- */
-export function makeMCPToolTextErrorResult(text: string): Result<CallToolResult, Error> {
-  return new Err(new Error(text));
-}
-
-/**
- * Success tool result.
- *
- * Use this if the intent is to show an issue to the agent that does not need logging
- * and is part of a normal tool execution.
- */
-export function makeMCPToolRecoverableErrorSuccess(errorText: string): {
-  isError: false;
-  content: [TextContent];
-} {
-  return {
-    isError: false,
-    content: [{ type: "text", text: errorText }],
-  };
-}
-
-/**
- * Success tool result for use with withToolLogging wrapper.
- * Returns an Ok result for use with withToolLogging wrapper.
- */
-export function makeMCPToolRecoverableErrorSuccessResult(errorText: string): Result<CallToolResult, Error> {
-  return new Ok({
-    isError: false,
-    content: [{ type: "text", text: errorText }],
-  });
-}
-
 export const makeMCPToolTextSuccess = ({
   message,
   result,
@@ -88,28 +51,6 @@ export const makeMCPToolTextSuccess = ({
   };
 };
 
-export const makeMCPToolTextSuccessResult = ({
-  message,
-  result,
-}: {
-  message: string;
-  result?: string;
-}): Result<CallToolResult, Error> => {
-  if (!result) {
-    return new Ok({
-      isError: false,
-      content: [{ type: "text", text: message }],
-    });
-  }
-  return new Ok({
-    isError: false,
-    content: [
-      { type: "text", text: message },
-      { type: "text", text: result },
-    ],
-  });
-};
-
 export const makeMCPToolJSONSuccess = ({
   message,
   result,
@@ -124,22 +65,6 @@ export const makeMCPToolJSONSuccess = ({
       { type: "text" as const, text: JSON.stringify(result, null, 2) },
     ],
   };
-};
-
-export const makeMCPToolJSONSuccessResult = ({
-  message,
-  result,
-}: {
-  message?: string;
-  result: object | string;
-}): Result<CallToolResult, Error> => {
-  return new Ok({
-    isError: false,
-    content: [
-      ...(message ? [{ type: "text" as const, text: message }] : []),
-      { type: "text" as const, text: JSON.stringify(result, null, 2) },
-    ],
-  });
 };
 
 /**

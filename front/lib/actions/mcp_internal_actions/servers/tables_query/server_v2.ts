@@ -28,9 +28,8 @@ import {
   TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH,
 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query/server";
 import { fetchTableDataSourceConfigurations } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError, makeMCPToolTextErrorResult } from "@app/lib/actions/mcp_internal_actions/utils";
+import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import { Ok } from "@app/types/shared/result";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
@@ -38,6 +37,7 @@ import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
+import { Err, Ok } from "@app/types";
 import { CoreAPI } from "@app/types/core/core_api";
 
 // Types for the resources that are output by the tools of this server.
@@ -178,8 +178,10 @@ function createServer(
           tables
         );
         if (tableConfigurationsRes.isErr()) {
-          return makeMCPToolTextErrorResult(
-            `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
+          return new Err(
+            new Error(
+              `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
+            )
           );
         }
         const tableConfigurations = tableConfigurationsRes.value;

@@ -19,9 +19,7 @@ import {
   getCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextErrorResult } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import { Ok, Result } from "@app/types/shared/result";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
@@ -30,6 +28,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
@@ -104,8 +104,8 @@ export async function searchFunction({
   );
 
   if (coreSearchArgs.length === 0) {
-    return makeMCPToolTextErrorResult(
-      "Search action must have at least one data source configured."
+    return new Err(
+      new Error("Search action must have at least one data source configured.")
     );
   }
 
@@ -155,12 +155,14 @@ export async function searchFunction({
   );
 
   if (searchResults.isErr()) {
-    return makeMCPToolTextErrorResult(searchResults.error.message);
+    return new Err(new Error(searchResults.error.message));
   }
 
   if (citationsOffset + retrievalTopK > getRefs().length) {
-    return makeMCPToolTextErrorResult(
-      "The search exhausted the total number of references available for citations"
+    return new Err(
+      new Error(
+        "The search exhausted the total number of references available for citations"
+      )
     );
   }
 
@@ -195,7 +197,7 @@ export async function searchFunction({
     }
   );
 
-  return Ok({
+  return new Ok({
     isError: false,
     content: [
       ...results.map((result) => ({
