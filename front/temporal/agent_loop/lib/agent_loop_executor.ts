@@ -17,7 +17,8 @@ import type { AgentLoopActivities } from "./activity_interface";
 export async function executeAgentLoop(
   authType: AuthenticatorType,
   runAgentArgs: RunAgentArgs,
-  activities: AgentLoopActivities
+  activities: AgentLoopActivities,
+  startStep: number
 ): Promise<void> {
   // Citations references offset kept up to date across steps.
   let citationsRefsOffset = 0;
@@ -27,7 +28,7 @@ export async function executeAgentLoop(
   // Track step content IDs by function call ID for later use in actions.
   let functionCallStepContentIds: Record<string, ModelId> = {};
 
-  for (let i = 0; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
+  for (let i = startStep; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
     const result = await activities.runModelActivity({
       authType,
       runAgentArgs,

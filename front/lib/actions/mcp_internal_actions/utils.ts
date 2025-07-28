@@ -3,6 +3,9 @@ import type {
   TextContent,
 } from "@modelcontextprotocol/sdk/types.js";
 
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+
 /**
  * Error tool result. Does not fail the agent loop (the text is shown to the model) but is logged.
  * If the tool callback is wrapped by `withToolLogging`, the error will be tracked and the error
@@ -82,4 +85,17 @@ export const makeMCPToolJSONSuccess = ({
       { type: "text" as const, text: JSON.stringify(result, null, 2) },
     ],
   };
+};
+
+/**
+ * Helper to get MCP server ID from agent loop context
+ */
+export const getMcpServerIdFromContext = (
+  agentLoopContext?: AgentLoopContextType
+): string | null => {
+  const actionConfig = agentLoopContext?.runContext?.actionConfiguration;
+  if (actionConfig && isServerSideMCPToolConfiguration(actionConfig)) {
+    return actionConfig.internalMCPServerId || null;
+  }
+  return null;
 };

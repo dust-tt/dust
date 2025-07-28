@@ -5,7 +5,7 @@ use crate::databases::table::{Row, Table};
 use crate::databases::table_schema::TableSchema;
 
 // These flags are transitional while we migrate to GCS. Eventually, we will only use GCS.
-pub const SAVE_TABLES_TO_POSTGRES: bool = true;
+pub const SAVE_TABLES_TO_POSTGRES: bool = false;
 pub const SAVE_TABLES_TO_GCS: bool = true;
 
 #[async_trait]

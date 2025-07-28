@@ -1,2 +1,2 @@
--- Migration created on Jul 25, 2025
-ALTER TABLE "public"."files" ADD COLUMN "sharedAt" TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+- Migration created on Jul 28, 2025
+CREATE INDEX CONCURRENTLY "user_messages_user_context_origin" ON "user_messages" ("userContextOrigin");

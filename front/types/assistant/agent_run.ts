@@ -75,29 +75,27 @@ export async function getRunAgentData(
   const conversation = conversationRes.value;
 
   // Find the agent message group by searching in reverse order.
-  const agentMessageGroup = conversation.content.findLast((messageGroup) => {
-    return messageGroup.some((message) => {
-      if (isAgentMessageType(message)) {
-        return message.sId === agentMessageId;
-      }
+  // All messages of the same group should be of the same type and of same sId.
+  // For safety, this is asserted below.
+  const agentMessageGroup = conversation.content.findLast(
+    (messageGroup) => messageGroup[0]?.sId === agentMessageId
+  );
 
-      return false;
-    });
-  });
-
-  // We assume that the message group is ordered by version ASC. Message version starts from 0.
   const agentMessage = agentMessageGroup?.[agentMessageVersion];
 
-  // Find the user message group by searching in reverse order.
-  const userMessageGroup = conversation.content.findLast((messageGroup) => {
-    return messageGroup.some((message) => {
-      if (isUserMessageType(message)) {
-        return message.sId === userMessageId;
-      }
+  if (
+    !agentMessage ||
+    !isAgentMessageType(agentMessage) ||
+    agentMessage.sId !== agentMessageId ||
+    agentMessage.version !== agentMessageVersion
+  ) {
+    return new Err(new Error("Agent message not found"));
+  }
 
-      return false;
-    });
-  });
+  // Find the user message group by searching in reverse order.
+  const userMessageGroup = conversation.content.findLast(
+    (messageGroup) => messageGroup[0]?.sId === userMessageId
+  );
 
   // We assume that the message group is ordered by version ASC. Message version starts from 0.
   const userMessage = userMessageGroup?.[userMessageVersion];
@@ -105,17 +103,10 @@ export async function getRunAgentData(
   if (
     !userMessage ||
     !isUserMessageType(userMessage) ||
+    userMessage.sId !== userMessageId ||
     userMessage.version !== userMessageVersion
   ) {
-    return new Err(new Error("User message not found"));
-  }
-
-  if (
-    !agentMessage ||
-    !isAgentMessageType(agentMessage) ||
-    agentMessage.version !== agentMessageVersion
-  ) {
-    return new Err(new Error("Agent message not found"));
+    return new Err(new Error("Unexpected: User message not found"));
   }
 
   // Get the AgentMessage database row by querying through Message model.

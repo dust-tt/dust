@@ -51,9 +51,11 @@ export async function agentLoopConversationTitleWorkflow({
 export async function agentLoopWorkflow({
   authType,
   runAsynchronousAgentArgs,
+  startStep,
 }: {
   authType: AuthenticatorType;
   runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
+  startStep: number;
 }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
@@ -92,7 +94,7 @@ export async function agentLoopWorkflow({
     }
   }
 
-  await executeAgentLoop(authType, runAgentArgs, activities);
+  await executeAgentLoop(authType, runAgentArgs, activities, startStep);
 
   if (childWorkflowHandle) {
     await childWorkflowHandle.result();

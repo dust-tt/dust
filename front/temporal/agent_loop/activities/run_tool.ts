@@ -5,6 +5,7 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import { assertNever } from "@app/types";
 import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
@@ -44,12 +45,30 @@ export async function runToolActivity(
   const { step } = stepContent;
 
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
   }
 
-  const { agentConfiguration, conversation, agentMessage, agentMessageRow } =
-    runAgentDataRes.value;
+  const {
+    agentConfiguration,
+    conversation: originalConversation,
+    agentMessage: originalAgentMessage,
+    agentMessageRow,
+  } = runAgentDataRes.value;
+
+  const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
+    sliceConversationForAgentMessage(originalConversation, {
+      agentMessageId: originalAgentMessage.sId,
+      agentMessageVersion: originalAgentMessage.version,
+      // Include the current step output.
+      //
+      // TODO(DURABLE-AGENTS 2025-07-27): Change this as part of the
+      // retryOnlyBlockedTools effort (the whole step should not be included,
+      // tools successfully ran should be removed, this should be an arg to
+      // sliceConversationForAgentMessage)
+      step: step + 1,
+    });
 
   const eventStream = runToolWithStreaming(auth, action, {
     agentConfiguration: agentConfiguration,

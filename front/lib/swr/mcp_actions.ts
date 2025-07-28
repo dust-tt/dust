@@ -1,11 +1,8 @@
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 
-import type {
-  AnalyticsMCPAction,
-  GetMCPActionsResult,
-} from "@app/lib/api/actions/agent_mcp_action_analytics";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { LightWorkspaceType } from "@app/types";
 
 interface UseMCPActionsProps {
@@ -15,7 +12,7 @@ interface UseMCPActionsProps {
 }
 
 interface UseMCPActionsReturn {
-  actions: AnalyticsMCPAction[];
+  actions: GetMCPActionsResult["actions"];
   totalCount: number;
   currentPage: number;
   totalPages: number;
