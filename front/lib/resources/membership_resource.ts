@@ -8,6 +8,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import { getWorkOS } from "@app/lib/api/workos/client";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
@@ -15,6 +16,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger, { auditLog } from "@app/logger/logger";
 import type {
   LightWorkspaceType,
@@ -452,6 +454,25 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace: LightWorkspaceType,
     transaction?: Transaction
   ) {
+    if (workspace.workOSOrganizationId) {
+      const workos = getWorkOS();
+
+      const memberships =
+        await workos.userManagement.listOrganizationMemberships({
+          organizationId: workspace.workOSOrganizationId,
+        });
+
+      await concurrentExecutor(
+        memberships.data,
+        async (membership) => {
+          await workos.userManagement.deleteOrganizationMembership(
+            membership.id
+          );
+        },
+        { concurrency: 10 }
+      );
+    }
+
     return this.model.destroy({
       where: { workspaceId: workspace.id },
       transaction,
@@ -505,6 +526,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       { transaction }
     );
+
+    if (workspace.workOSOrganizationId && user.workOSUserId) {
+      const workos = getWorkOS();
+
+      await workos.userManagement.createOrganizationMembership({
+        userId: user.workOSUserId,
+        organizationId: workspace.workOSOrganizationId,
+      });
+    }
 
     return new MembershipResource(MembershipModel, newMembership.get());
   }
@@ -562,6 +592,33 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       { endAt },
       { where: { id: membership.id }, transaction }
     );
+
+    if (workspace.workOSOrganizationId && user.workOSUserId) {
+      try {
+        const workos = getWorkOS();
+
+        const workOSMemberships =
+          await workos.userManagement.listOrganizationMemberships({
+            organizationId: workspace.workOSOrganizationId,
+            userId: user.workOSUserId,
+          });
+
+        if (workOSMemberships.data.length > 0) {
+          await workos.userManagement.deactivateOrganizationMembership(
+            workOSMemberships.data[0].id
+          );
+        }
+      } catch (error) {
+        logger.error(
+          {
+            workspaceId: workspace.id,
+            userId: user.id,
+            error,
+          },
+          "Failed to deactivate WorkOS membership"
+        );
+      }
+    }
 
     return new Ok({
       role: membership.role,
@@ -715,6 +772,35 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
     try {
+      const w = auth.workspace();
+      const u = auth.user();
+      if (w && w.workOSOrganizationId && u && u.workOSUserId) {
+        try {
+          const workos = getWorkOS();
+
+          const workOSMemberships =
+            await workos.userManagement.listOrganizationMemberships({
+              organizationId: w.workOSOrganizationId,
+              userId: u.workOSUserId,
+            });
+
+          if (workOSMemberships.data.length > 0) {
+            await workos.userManagement.deleteOrganizationMembership(
+              workOSMemberships.data[0].id
+            );
+          }
+        } catch (error) {
+          logger.error(
+            {
+              workspaceId: w.id,
+              userId: u.id,
+              error,
+            },
+            "Failed to delete WorkOS membership"
+          );
+        }
+      }
+
       await this.model.destroy({
         where: {
           id: this.id,
