@@ -57,11 +57,11 @@ export function withToolLogging<T>(
               agentMessage,
             } = agentLoopContext.runContext;
             return {
+              actionConfigurationId: actionConfiguration.sId,
               agentConfigurationId: agentConfiguration.sId,
               agentConfigurationVersion: agentConfiguration.version,
-              conversationId: conversation.sId,
               agentMessageId: agentMessage.sId,
-              actionConfigurationId: actionConfiguration.sId,
+              conversationId: conversation.sId,
             };
           })()
         : {}),
