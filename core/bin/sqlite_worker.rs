@@ -52,8 +52,6 @@ lazy_static! {
     };
     static ref CORE_API: String = std::env::var("CORE_API").unwrap();
     static ref CORE_API_KEY: String = std::env::var("CORE_API_KEY").unwrap();
-    static ref DATABASES_STORE_DATABASE_URI: String =
-        std::env::var("DATABASES_STORE_DATABASE_URI").unwrap();
 }
 
 // Duration after which a database is considered inactive and can be removed from the registry.
