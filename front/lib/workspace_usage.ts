@@ -373,6 +373,9 @@ export async function getUserUsageData(
               userId: {
                 [Op.not]: null,
               },
+              userContextOrigin: {
+                [Op.not]: "run_agent",
+              },
             },
           },
           {
