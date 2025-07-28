@@ -9,9 +9,11 @@ import React from "react";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
+import { isFileUsingConversationFiles } from "@app/lib/files";
 import { useFileContent } from "@app/lib/swr/files";
 import type { ConversationType, LightWorkspaceType } from "@app/types";
 
+import { ShareInteractiveFilePopover } from "../ShareInteractiveFilePopover";
 import { useInteractiveContentContext } from "./InteractiveContentContext";
 import { InteractiveContentHeader } from "./InteractiveContentHeader";
 
@@ -33,6 +35,11 @@ export function ClientExecutableRenderer({
     fileId,
     owner,
   });
+  const isUsingConversationFiles = React.useMemo(
+    () => (fileContent ? isFileUsingConversationFiles(fileContent) : false),
+    [fileContent]
+  );
+
   const [showCode, setShowCode] = React.useState(false);
 
   if (isFileContentLoading) {
@@ -64,7 +71,17 @@ export function ClientExecutableRenderer({
           onClick={() => setShowCode(!showCode)}
           size="xs"
           tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
-          variant="outline"
+          variant="ghost"
+        />
+        <ShareInteractiveFilePopover
+          fileId={fileId}
+          owner={owner}
+          disabled={isUsingConversationFiles}
+          tooltip={
+            isUsingConversationFiles
+              ? "This interactive file uses conversation files. It cannot be shared publicly."
+              : "Share public link"
+          }
         />
       </InteractiveContentHeader>
 
@@ -79,9 +96,8 @@ export function ClientExecutableRenderer({
         ) : (
           <div className="h-full">
             <VisualizationActionIframe
-              // TODO(INTERACTIVE_CONTENT 2025-07-18): Add agent configuration ID.
               agentConfigurationId={null}
-              owner={owner}
+              workspace={owner}
               visualization={{
                 code: fileContent ?? "",
                 complete: true,

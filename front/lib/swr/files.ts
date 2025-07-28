@@ -8,10 +8,12 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { PublicFileResponseBody } from "@app/pages/api/v1/public/files/[shortToken]";
 import type {
   UpsertFileToDataSourceRequestBody,
   UpsertFileToDataSourceResponseBody,
 } from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
+import type { ShareFileResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]/share";
 import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
 
 export const getFileProcessedUrl = (
@@ -168,5 +170,86 @@ export function useFileContent({
     fileContent: data,
     isFileContentLoading: !error && !data,
     mutateFileContent: mutate,
+  };
+}
+
+export function useShareInteractiveFile({
+  fileId,
+  owner,
+}: {
+  fileId: string;
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const fileShareFetcher: Fetcher<ShareFileResponseBody> = fetcher;
+
+  const swrKey = `/api/w/${owner.sId}/files/${fileId}/share`;
+
+  const { data, error, mutate } = useSWRWithDefaults(swrKey, fileShareFetcher);
+
+  const doShare = async (isShared: boolean) => {
+    const res = await fetch(`/api/w/${owner.sId}/files/${fileId}/share`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ isShared }),
+    });
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Failed to share the interactive file.",
+        description: `Error: ${errorData.message}`,
+      });
+      return null;
+    } else {
+      await mutate();
+
+      const response: ShareFileResponseBody = await res.json();
+
+      return response;
+    }
+  };
+
+  return {
+    doShare,
+    fileShare: data,
+    isFileShareLoading: !error && !data,
+    isFileShareError: error,
+    mutateFileShare: mutate,
+  };
+}
+
+/**
+ * Public file access hook (no authentication required). We exceptionaly use the v1 API here.
+ */
+
+export function usePublicFile({
+  includeContent,
+  shareToken,
+}: {
+  includeContent?: boolean;
+  shareToken: string | null;
+}) {
+  const fileMetadataFetcher: Fetcher<PublicFileResponseBody> = fetcher;
+
+  const swrKey = shareToken
+    ? `/api/v1/public/files/${shareToken}?includeContent=${includeContent}`
+    : null;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    swrKey,
+    fileMetadataFetcher
+  );
+
+  return {
+    fileMetadata: data?.file,
+    fileContent: data?.content,
+    isFileLoading: !error && !data,
+    isFileError: error,
+    mutateFile: mutate,
   };
 }

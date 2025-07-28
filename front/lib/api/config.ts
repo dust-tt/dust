@@ -250,6 +250,9 @@ const config = {
       "UNTRUSTED_EGRESS_PROXY_PORT"
     );
   },
+  getFileShareSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_FILE_SHARE_SECRET");
+  },
 };
 
 export default config;
