@@ -1,6 +1,6 @@
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { runToolWithStreaming } from "@app/lib/actions/mcp";
 import type { StepContext } from "@app/lib/actions/types";
-import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -21,7 +21,7 @@ export async function runToolActivity(
     stepContentId,
   }: {
     runAgentArgs: RunAgentArgs;
-    action: ActionConfigurationType;
+    action: MCPToolConfigurationType;
     stepContext: StepContext;
     stepContentId: ModelId;
   }
