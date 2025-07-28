@@ -162,7 +162,7 @@ function createServer(
     },
     withToolLogging(
       auth,
-      "tables_query",
+      { toolName: "tables_query", agentLoopContext },
       async ({ tables, query, fileName }) => {
         // TODO(mcp): @fontanierh: we should not have a strict dependency on the agentLoopRunContext.
         if (!agentLoopContext?.runContext) {

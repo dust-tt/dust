@@ -82,7 +82,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      CREATE_INTERACTIVE_FILE_TOOL_NAME,
+      { toolName: CREATE_INTERACTIVE_FILE_TOOL_NAME, agentLoopContext },
       async (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
@@ -201,7 +201,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      EDIT_INTERACTIVE_FILE_TOOL_NAME,
+      { toolName: EDIT_INTERACTIVE_FILE_TOOL_NAME, agentLoopContext },
       async (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
@@ -287,7 +287,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      RETRIEVE_INTERACTIVE_FILE_TOOL_NAME,
+      { toolName: RETRIEVE_INTERACTIVE_FILE_TOOL_NAME, agentLoopContext },
       async ({ file_id }) => {
         const result = await getClientExecutableFileContent(auth, file_id);
 

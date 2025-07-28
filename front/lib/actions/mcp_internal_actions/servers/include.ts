@@ -272,7 +272,11 @@ function createServer(
       INCLUDE_TOOL_NAME,
       "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
       commonInputsSchema,
-      withToolLogging(auth, "include", includeFunction)
+      withToolLogging(
+        auth,
+        { toolName: "include", agentLoopContext },
+        includeFunction
+      )
     );
   } else {
     server.tool(
@@ -282,7 +286,11 @@ function createServer(
         ...commonInputsSchema,
         ...tagsInputSchema,
       },
-      withToolLogging(auth, "include", includeFunction)
+      withToolLogging(
+        auth,
+        { toolName: "include", agentLoopContext },
+        includeFunction
+      )
     );
 
     server.tool(
