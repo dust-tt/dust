@@ -7,12 +7,12 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { CoreAPI, removeNulls } from "@app/types";
-import { AgentLoopContextType } from "@app/lib/actions/types";
 
 const DEFAULT_SEARCH_LABELS_LIMIT = 10;
 
