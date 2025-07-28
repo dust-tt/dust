@@ -31,7 +31,6 @@ import type {
 } from "@dust-tt/client";
 import {
   assertNever,
-  isMCPActionType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
   removeNulls,
@@ -337,7 +336,6 @@ export function AgentMessage({
   useEffect(() => {
     // MCP search actions
     const allMCPSearchResources = agentMessageToRender.actions
-      .filter((a) => isMCPActionType(a))
       .map((a) =>
         a.output?.filter(isSearchResultResourceType).map((o) => o.resource)
       )
@@ -352,7 +350,6 @@ export function AgentMessage({
 
     // MCP websearch actions
     const allMCPWebSearchResources = agentMessageToRender.actions
-      .filter((a) => isMCPActionType(a))
       .map((a) =>
         a.output?.filter(isWebsearchResultResourceType).map((o) => o.resource)
       )
