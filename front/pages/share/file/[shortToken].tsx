@@ -33,6 +33,7 @@ export default function SharedFilePage({ shortToken }: SharedFilePageProps) {
         <title>Interactive Content - Dust</title>
         <meta name="description" content="Shared interactive content" />
         <meta name="robots" content="noindex, nofollow" />
+        <link rel="shortcut icon" href="/static/favicon.png" />
       </Head>
       <div className="flex h-screen w-full">
         <PublicInteractiveContentContainer shareToken={shortToken} />
