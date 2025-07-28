@@ -10,8 +10,7 @@ import {
 import { Breadcrumbs, DocumentIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import type { MCPActionType } from "@app/lib/actions/mcp";
+import type { MCPActionDetailsProps } from "@app/components/actions/mcp/details/MCPActionDetails";
 import { isDataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isFilesystemPathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDocumentIcon } from "@app/lib/content_nodes";
@@ -21,7 +20,7 @@ import { formatDataSourceDisplayName } from "@app/types";
 export function DataSourceNodeContentDetails({
   action,
   defaultOpen,
-}: ActionDetailsComponentBaseProps<MCPActionType>) {
+}: MCPActionDetailsProps) {
   const dataSourceNodeContent = action.output
     ?.filter(isDataSourceNodeContentType)
     .map((o) => o.resource)?.[0];
@@ -68,7 +67,7 @@ export function DataSourceNodeContentDetails({
 export function FilesystemPathDetails({
   action,
   defaultOpen,
-}: ActionDetailsComponentBaseProps<MCPActionType>) {
+}: MCPActionDetailsProps) {
   const filesystemPath = action.output
     ?.filter(isFilesystemPathType)
     .map((o) => o.resource)?.[0];

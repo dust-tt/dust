@@ -125,19 +125,27 @@ async function handler(
       const flags = await getFeatureFlags(owner);
       const storeBlocksResults = !flags.includes("disable_run_logs");
 
-      const dustRun = await coreAPI.createRun(owner, auth.groups(), {
-        projectId: app.dustAPIProjectId,
-        runType: "local",
-        specification: dumpSpecification(
-          JSON.parse(req.body.specification),
-          latestDatasets
-        ),
-        datasetId: inputDataset,
-        config: { blocks: config },
-        credentials: credentialsFromProviders(providers),
-        secrets,
-        storeBlocksResults,
-      });
+      // Fetch the feature flags of the app's workspace.
+      const keyWorkspaceFlags = await getFeatureFlags(owner);
+
+      const dustRun = await coreAPI.createRun(
+        owner,
+        keyWorkspaceFlags,
+        auth.groups(),
+        {
+          projectId: app.dustAPIProjectId,
+          runType: "local",
+          specification: dumpSpecification(
+            JSON.parse(req.body.specification),
+            latestDatasets
+          ),
+          datasetId: inputDataset,
+          config: { blocks: config },
+          credentials: credentialsFromProviders(providers),
+          secrets,
+          storeBlocksResults,
+        }
+      );
 
       if (dustRun.isErr()) {
         return apiError(req, res, {

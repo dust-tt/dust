@@ -23,7 +23,7 @@ import type {
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
+import { MCPServerPersonalAuthenticationRequiredError } from "@app/lib/actions/mcp_authentication";
 import { CallToolResultSchemaWithoutBase64Validation } from "@app/lib/actions/mcp_call_tool_result_schema";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
@@ -73,7 +73,7 @@ import { assertNever, Err, normalizeError, Ok, slugify } from "@app/types";
 
 const MAX_OUTPUT_ITEMS = 128;
 
-const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
+const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
 
 const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
@@ -320,6 +320,34 @@ export async function* tryCallMCPTool(
     // Do not raise an error here as it will break the conversation.
     // Let the model decide what to do.
     if (toolCallResult.isError) {
+      // Check if MCP tool called for personal re-authentication
+      if (
+        Array.isArray(toolCallResult.content) &&
+        toolCallResult.content.length > 0
+      ) {
+        const jsonContent = toolCallResult.content[0];
+        if (jsonContent?.type === "text") {
+          try {
+            const parsed = JSON.parse(jsonContent.text);
+            if (parsed?.__dust_auth_required) {
+              const authReq = parsed.__dust_auth_required;
+              yield {
+                type: "result",
+                result: new Err(
+                  new MCPServerPersonalAuthenticationRequiredError(
+                    authReq.mcpServerId,
+                    authReq.provider
+                  )
+                ),
+              };
+              return;
+            }
+          } catch {
+            // Not valid JSON, continue with normal processing
+          }
+        }
+      }
+
       logger.error(
         {
           conversationId,
@@ -585,8 +613,9 @@ export async function tryListMCPTools(
             workspaceId: owner.sId,
             conversationId: agentLoopListToolsContext.conversation.sId,
             messageId: agentLoopListToolsContext.agentMessage.sId,
-            error: toolsAndInstructionsRes.error,
+            actionId: action.sId,
             mcpServerName: action.name,
+            error: toolsAndInstructionsRes.error,
           },
           `Error listing tools from MCP server: ${normalizeError(
             toolsAndInstructionsRes.error

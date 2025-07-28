@@ -16,7 +16,7 @@ import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
 import { subNavigationApp } from "@app/components/navigation/config";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { extractConfig } from "@app/lib/config";
@@ -328,11 +328,11 @@ export default function AppView({
   const router = useRouter();
 
   return (
-    <AppContentLayout
+    <AppCenteredLayout
       subscription={subscription}
       hideSidebar
       owner={owner}
-      titleChildren={
+      title={
         <AppLayoutSimpleCloseTitle
           title={app.name}
           onClose={() => {
@@ -510,7 +510,7 @@ export default function AppView({
         </div>
         <div ref={bottomRef} className="mt-4"></div>
       </div>
-    </AppContentLayout>
+    </AppCenteredLayout>
   );
 }
 

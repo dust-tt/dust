@@ -1,5 +1,6 @@
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { WebClient } from "@slack/web-api";
 import type { Match } from "@slack/web-api/dist/response/SearchMessagesResponse";
 import type { Member } from "@slack/web-api/dist/response/UsersListResponse";
@@ -13,14 +14,12 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
 import {
+  getMcpServerIdFromContext,
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import {
-  actionRefsOffset,
-  SLACK_SEARCH_ACTION_NUM_RESULTS,
-} from "@app/lib/actions/utils";
+import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -39,7 +38,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
     supported_use_cases: ["personal_actions"] as const,
   },
   icon: "SlackLogo",
-  documentationUrl: "https://docs.dust.tt/docs/slack-tool-setup",
+  documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
 };
 
 const getSlackClient = async (accessToken?: string) => {
@@ -88,6 +87,35 @@ function makeQueryResource(
     mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_QUERY,
     text,
     uri: "",
+  };
+}
+
+function isSlackTokenRevoked(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as any).message &&
+    (error as any).message.toString().includes("token_revoked")
+  );
+}
+
+function makeSlackTokenRevokedError(
+  agentLoopContext?: AgentLoopContextType
+): CallToolResult {
+  const mcpServerId = getMcpServerIdFromContext(agentLoopContext);
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text" as const,
+        text: JSON.stringify({
+          __dust_auth_required: {
+            mcpServerId,
+            provider: "slack",
+          },
+        }),
+      },
+    ],
   };
 }
 
@@ -269,16 +297,11 @@ const createServer = (
             ],
           };
         } else {
-          const refsOffset = actionRefsOffset({
-            agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-            stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-            stepActions: agentLoopContext.runContext.stepActions,
-            refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-          });
+          const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
           const refs = getRefs().slice(
-            refsOffset,
-            refsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+            citationsOffset,
+            citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
           );
 
           const results: SearchResultResourceType[] = matches.map(
@@ -322,6 +345,9 @@ const createServer = (
           };
         }
       } catch (error) {
+        if (isSlackTokenRevoked(error)) {
+          return makeSlackTokenRevokedError(agentLoopContext);
+        }
         return makeMCPToolTextError(`Error searching messages: ${error}`);
       }
     }
@@ -401,16 +427,11 @@ const createServer = (
             ],
           };
         } else {
-          const refsOffset = actionRefsOffset({
-            agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-            stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-            stepActions: agentLoopContext.runContext.stepActions,
-            refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-          });
+          const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
           const refs = getRefs().slice(
-            refsOffset,
-            refsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
+            citationsOffset,
+            citationsOffset + SLACK_SEARCH_ACTION_NUM_RESULTS
           );
 
           const results: SearchResultResourceType[] = matches.map(
@@ -454,6 +475,9 @@ const createServer = (
           };
         }
       } catch (error) {
+        if (isSlackTokenRevoked(error)) {
+          return makeSlackTokenRevokedError(agentLoopContext);
+        }
         return makeMCPToolTextError(`Error listing threads: ${error}`);
       }
     }
@@ -491,24 +515,33 @@ const createServer = (
         throw new Error("Unreachable: missing agentLoopRunContext.");
       }
 
-      const agentUrl = `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/new?assistantDetails=${agentLoopContext.runContext.agentConfiguration.sId}`;
-      message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext.agentConfiguration.name} Agent> on Dust_`;
+      try {
+        const agentUrl = `${config.getClientFacingUrl()}/w/${auth.getNonNullableWorkspace().sId}/assistant/new?assistantDetails=${agentLoopContext.runContext.agentConfiguration.sId}`;
+        message = `${slackifyMarkdown(originalMessage)}\n_Sent via <${agentUrl}|${agentLoopContext.runContext.agentConfiguration.name} Agent> on Dust_`;
 
-      const response = await slackClient.chat.postMessage({
-        channel: to,
-        text: message,
-        mrkdwn: true,
-        thread_ts: threadTs,
-      });
+        const response = await slackClient.chat.postMessage({
+          channel: to,
+          text: message,
+          mrkdwn: true,
+          thread_ts: threadTs,
+        });
 
-      if (!response.ok) {
-        return makeMCPToolTextError(`Error posting message: ${response.error}`);
+        if (!response.ok) {
+          return makeMCPToolTextError(
+            `Error posting message: ${response.error}`
+          );
+        }
+
+        return makeMCPToolJSONSuccess({
+          message: `Message posted to ${to}`,
+          result: response,
+        });
+      } catch (error) {
+        if (isSlackTokenRevoked(error)) {
+          return makeSlackTokenRevokedError(agentLoopContext);
+        }
+        return makeMCPToolTextError(`Error posting message: ${error}`);
       }
-
-      return makeMCPToolJSONSuccess({
-        message: `Message posted to ${to}`,
-        result: response,
-      });
     }
   );
 
@@ -525,57 +558,66 @@ const createServer = (
       const accessToken = authInfo?.token;
       const slackClient = await getSlackClient(accessToken);
 
-      const users: Member[] = [];
+      try {
+        const users: Member[] = [];
 
-      let cursor: string | undefined = undefined;
-      do {
-        const response = await slackClient.users.list({
-          cursor,
-          limit: 100,
-        });
-        if (!response.ok) {
-          return makeMCPToolTextError(`Error listing users: ${response.error}`);
-        }
-        users.push(
-          ...(response.members ?? []).filter((member) => !member.is_bot)
-        );
-        cursor = response.response_metadata?.next_cursor;
+        let cursor: string | undefined = undefined;
+        do {
+          const response = await slackClient.users.list({
+            cursor,
+            limit: 100,
+          });
+          if (!response.ok) {
+            return makeMCPToolTextError(
+              `Error listing users: ${response.error}`
+            );
+          }
+          users.push(
+            ...(response.members ?? []).filter((member) => !member.is_bot)
+          );
+          cursor = response.response_metadata?.next_cursor;
+
+          if (nameFilter) {
+            const normalizedNameFilter = removeDiacritics(
+              nameFilter.toLowerCase()
+            );
+            const filteredUsers = users.filter(
+              (user) =>
+                removeDiacritics(user.name?.toLowerCase() ?? "").includes(
+                  normalizedNameFilter
+                ) ||
+                removeDiacritics(user.real_name?.toLowerCase() ?? "").includes(
+                  normalizedNameFilter
+                )
+            );
+
+            // Early return if we found a user
+            if (filteredUsers.length > 0) {
+              return makeMCPToolJSONSuccess({
+                message: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"`,
+                result: filteredUsers,
+              });
+            }
+          }
+        } while (cursor);
 
         if (nameFilter) {
-          const normalizedNameFilter = removeDiacritics(
-            nameFilter.toLowerCase()
-          );
-          const filteredUsers = users.filter(
-            (user) =>
-              removeDiacritics(user.name?.toLowerCase() ?? "").includes(
-                normalizedNameFilter
-              ) ||
-              removeDiacritics(user.real_name?.toLowerCase() ?? "").includes(
-                normalizedNameFilter
-              )
-          );
-
-          // Early return if we found a user
-          if (filteredUsers.length > 0) {
-            return makeMCPToolJSONSuccess({
-              message: `The workspace has ${filteredUsers.length} users containing "${nameFilter}"`,
-              result: filteredUsers,
-            });
-          }
+          return makeMCPToolJSONSuccess({
+            message: `The workspace has ${users.length} users but none containing "${nameFilter}"`,
+            result: users,
+          });
         }
-      } while (cursor);
 
-      if (nameFilter) {
         return makeMCPToolJSONSuccess({
-          message: `The workspace has ${users.length} users but none containing "${nameFilter}"`,
+          message: `The workspace has ${users.length} users`,
           result: users,
         });
+      } catch (error) {
+        if (isSlackTokenRevoked(error)) {
+          return makeSlackTokenRevokedError(agentLoopContext);
+        }
+        return makeMCPToolTextError(`Error listing users: ${error}`);
       }
-
-      return makeMCPToolJSONSuccess({
-        message: `The workspace has ${users.length} users`,
-        result: users,
-      });
     }
   );
 
@@ -592,58 +634,65 @@ const createServer = (
       const accessToken = authInfo?.token;
       const slackClient = await getSlackClient(accessToken);
 
-      const channels: any[] = [];
+      try {
+        const channels: any[] = [];
 
-      let cursor: string | undefined = undefined;
-      do {
-        const response = await slackClient.conversations.list({
-          cursor,
-          limit: 100,
-          types: "public_channel",
-        });
-        if (!response.ok) {
-          return makeMCPToolTextError(
-            `Error listing channels: ${response.error}`
-          );
-        }
-        channels.push(...(response.channels ?? []));
-        cursor = response.response_metadata?.next_cursor;
+        let cursor: string | undefined = undefined;
+        do {
+          const response = await slackClient.conversations.list({
+            cursor,
+            limit: 100,
+            types: "public_channel",
+          });
+          if (!response.ok) {
+            return makeMCPToolTextError(
+              `Error listing channels: ${response.error}`
+            );
+          }
+          channels.push(...(response.channels ?? []));
+          cursor = response.response_metadata?.next_cursor;
+
+          if (nameFilter) {
+            const normalizedNameFilter = removeDiacritics(
+              nameFilter.toLowerCase()
+            );
+            const filteredChannels = channels.filter(
+              (channel) =>
+                removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
+                  normalizedNameFilter
+                ) ||
+                removeDiacritics(
+                  channel.topic?.value?.toLowerCase() ?? ""
+                ).includes(normalizedNameFilter)
+            );
+
+            // Early return if we found a channel
+            if (filteredChannels.length > 0) {
+              return makeMCPToolJSONSuccess({
+                message: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
+                result: filteredChannels,
+              });
+            }
+          }
+        } while (cursor);
 
         if (nameFilter) {
-          const normalizedNameFilter = removeDiacritics(
-            nameFilter.toLowerCase()
-          );
-          const filteredChannels = channels.filter(
-            (channel) =>
-              removeDiacritics(channel.name?.toLowerCase() ?? "").includes(
-                normalizedNameFilter
-              ) ||
-              removeDiacritics(
-                channel.topic?.value?.toLowerCase() ?? ""
-              ).includes(normalizedNameFilter)
-          );
-
-          // Early return if we found a channel
-          if (filteredChannels.length > 0) {
-            return makeMCPToolJSONSuccess({
-              message: `The workspace has ${filteredChannels.length} channels containing "${nameFilter}"`,
-              result: filteredChannels,
-            });
-          }
+          return makeMCPToolJSONSuccess({
+            message: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
+            result: channels,
+          });
         }
-      } while (cursor);
 
-      if (nameFilter) {
         return makeMCPToolJSONSuccess({
-          message: `The workspace has ${channels.length} channels but none containing "${nameFilter}"`,
+          message: `The workspace has ${channels.length} channels`,
           result: channels,
         });
+      } catch (error) {
+        if (isSlackTokenRevoked(error)) {
+          return makeSlackTokenRevokedError(agentLoopContext);
+        }
+        return makeMCPToolTextError(`Error listing channels: ${error}`);
       }
-
-      return makeMCPToolJSONSuccess({
-        message: `The workspace has ${channels.length} channels`,
-        result: channels,
-      });
     }
   );
 

@@ -164,6 +164,7 @@ export async function fetchMCPServerActionConfigurations(
         icon: serverIcon,
         mcpServerViewId: mcpServerView?.sId ?? "",
         internalMCPServerId: config.internalMCPServerId,
+        mcpServerName: serverName,
         dataSources: dataSourceConfigurations.map(
           renderDataSourceConfiguration
         ),

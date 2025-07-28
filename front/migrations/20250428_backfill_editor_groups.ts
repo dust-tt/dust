@@ -16,6 +16,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
+import { AGENT_GROUP_PREFIX } from "@app/types";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
@@ -82,7 +83,7 @@ async function backfillAgentEditorsGroup(
       // Create an editor group for the agent without author
       editorGroup = await GroupResource.makeNew({
         workspaceId: workspace.id,
-        name: `Group for Agent ${agentConfigs[0].name} (${agentConfigs[0].sId})`,
+        name: `${AGENT_GROUP_PREFIX} ${agentConfigs[0].name} (${agentConfigs[0].sId})`,
         kind: "agent_editors",
       });
     }

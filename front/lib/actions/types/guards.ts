@@ -1,6 +1,5 @@
 import type {
   ClientSideMCPToolConfigurationType,
-  MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
@@ -13,7 +12,6 @@ import type {
   UnsavedAgentActionConfigurationType,
 } from "@app/lib/actions/types/agent";
 import type {
-  AgentActionType,
   AgentConfigurationType,
   DustAppRunConfigurationType,
   TemplateAgentConfigurationType,
@@ -28,10 +26,6 @@ export function isDustAppRunConfiguration(
     "type" in arg &&
     arg.type === "dust_app_run_configuration"
   );
-}
-
-export function isMCPActionType(arg: AgentActionType): arg is MCPActionType {
-  return arg.type === "tool_action";
 }
 
 export function isMCPServerConfiguration(

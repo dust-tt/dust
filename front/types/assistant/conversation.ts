@@ -1,8 +1,5 @@
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import type {
-  ActionGeneratedFileType,
-  BaseAgentActionType,
-} from "@app/lib/actions/types";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
@@ -178,7 +175,11 @@ export type LightAgentMessageType = BaseAgentMessageType & {
     canRead: boolean;
     requestedGroupIds: string[][];
   };
-  actions: BaseAgentActionType[];
+  actions: {
+    // TODO(2025-07-24 aubin): remove the type here.
+    type: "tool_action";
+    id: ModelId;
+  }[];
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
 };

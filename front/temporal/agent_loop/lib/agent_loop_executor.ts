@@ -17,7 +17,8 @@ import type { AgentLoopActivities } from "./activity_interface";
 export async function executeAgentLoop(
   authType: AuthenticatorType,
   runAgentArgs: RunAgentArgs,
-  activities: AgentLoopActivities
+  activities: AgentLoopActivities,
+  startStep: number
 ): Promise<void> {
   // Citations references offset kept up to date across steps.
   let citationsRefsOffset = 0;
@@ -27,13 +28,14 @@ export async function executeAgentLoop(
   // Track step content IDs by function call ID for later use in actions.
   let functionCallStepContentIds: Record<string, ModelId> = {};
 
-  for (let i = 0; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
+  for (let i = startStep; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
     const result = await activities.runModelActivity({
       authType,
       runAgentArgs,
       runIds,
       step: i,
       functionCallStepContentIds,
+      citationsRefsOffset,
       autoRetryCount: 0,
     });
 
@@ -42,8 +44,10 @@ export async function executeAgentLoop(
       return;
     }
 
+    const { runId, stepContexts } = result;
+
     // Update state with results from runMultiActionsAgent.
-    runIds.push(result.runId);
+    runIds.push(runId);
     functionCallStepContentIds = result.functionCallStepContentIds;
 
     // We received the actions to run, but will enforce a limit on the number of actions
@@ -51,23 +55,20 @@ export async function executeAgentLoop(
     // against the model outputting something unreasonable.
     const actionsToRun = result.actions.slice(0, MAX_ACTIONS_PER_STEP);
 
-    const citationsIncrements = await Promise.all(
-      actionsToRun.map(({ inputs, functionCallId }, index) =>
+    await Promise.all(
+      actionsToRun.map(({ functionCallId, action }, index) =>
         activities.runToolActivity(authType, {
           runAgentArgs,
-          inputs,
-          functionCallId,
-          step: i,
-          stepActionIndex: index,
-          stepActions: actionsToRun.map((a) => a.action),
-          citationsRefsOffset,
+          action,
+          stepContext: stepContexts[index],
           stepContentId: functionCallStepContentIds[functionCallId],
         })
       )
     );
 
-    citationsRefsOffset += citationsIncrements.reduce(
-      (acc, curr) => acc + curr.citationsIncrement,
+    // Update citations offset with pre-computed increment
+    citationsRefsOffset += stepContexts.reduce(
+      (acc, context) => acc + context.citationsCount,
       0
     );
   }

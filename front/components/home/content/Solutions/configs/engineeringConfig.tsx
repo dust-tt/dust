@@ -176,7 +176,7 @@ export const Stories: CustomerStory[] = [
     content:
       "Alan uses Dust to improve efficiency in the context of an expanding codebase and documentation.",
     href: "https://blog.dust.tt/integrating-ai-workflows-alan/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan-1.png",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Alan-__-Dust-1--1--1.png",
   },
   // {
   //   title: "November Five's journey to minimizing routine tasks with Dust",

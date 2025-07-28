@@ -51,10 +51,6 @@ const searchActionConfigurationSchema = z.object({
   ),
 });
 
-const dataVisualizationActionConfigurationSchema = z.object({
-  type: z.literal("DATA_VISUALIZATION"),
-});
-
 const timeFrameSchema = z
   .object({
     duration: z.number().min(1),
@@ -80,6 +76,7 @@ const extractDataActionConfigurationSchema = z.object({
   timeFrame: timeFrameSchema,
   jsonSchema: z.custom<JSONSchema>().nullable(),
 });
+
 const queryTablesActionConfigurationSchema = z.object({
   type: z.literal("QUERY_TABLES"),
   dataSourceConfigurations: z.record(
@@ -111,7 +108,33 @@ const searchActionSchema = baseActionSchema.extend({
 
 const dataVisualizationActionSchema = baseActionSchema.extend({
   type: z.literal("DATA_VISUALIZATION"),
-  configuration: dataVisualizationActionConfigurationSchema,
+  configuration: z.null(),
+});
+
+const dustAppRunConfigurationSchema = z.object({
+  appWorkspaceId: z.string(),
+  appId: z.string(),
+});
+
+const mcpServerConfigurationSchema = z.object({
+  mcpServerViewId: z.string(),
+  dataSourceConfigurations:
+    dataSourceViewSelectionConfigurationSchema.nullable(),
+  tablesConfigurations: dataSourceViewSelectionConfigurationSchema.nullable(),
+  childAgentId: z.string().nullable(),
+  reasoningModel: generationSettingsSchema.nullable(),
+  timeFrame: timeFrameSchema,
+  additionalConfiguration: z.record(
+    z.union([z.boolean(), z.number(), z.string()])
+  ),
+  dustAppConfiguration: dustAppRunConfigurationSchema.nullable(),
+  jsonSchema: z.custom<JSONSchema>().nullable(),
+  _jsonSchemaString: z.string().nullable(),
+});
+
+const mcpActionSchema = baseActionSchema.extend({
+  type: z.literal("MCP"),
+  configuration: mcpServerConfigurationSchema,
 });
 
 const includeDataActionSchema = baseActionSchema.extend({
@@ -129,12 +152,14 @@ const queryTablesActionSchema = baseActionSchema.extend({
   configuration: queryTablesActionConfigurationSchema,
 });
 
+// TODO: the goal is to have only two schema: mcpActionSchema and dataVizSchema.
 const actionSchema = z.discriminatedUnion("type", [
   searchActionSchema,
   dataVisualizationActionSchema,
   includeDataActionSchema,
   extractDataActionSchema,
   queryTablesActionSchema,
+  mcpActionSchema,
 ]);
 
 const userSchema = z.object({
@@ -169,11 +194,12 @@ const agentSettingsSchema = z.object({
   tags: z.array(tagSchema),
 });
 
+// TODO: only have mcpActionSchema.
 export const agentBuilderFormSchema = z.object({
   agentSettings: agentSettingsSchema,
   instructions: z.string().min(1, "Instructions are required"),
   generationSettings: generationSettingsSchema,
-  actions: z.array(actionSchema),
+  actions: z.union([z.array(actionSchema), z.array(mcpActionSchema)]),
   maxStepsPerRun: z
     .number()
     .min(1, "Max steps per run must be at least 1")
@@ -183,5 +209,8 @@ export const agentBuilderFormSchema = z.object({
 export type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderAction = z.infer<typeof actionSchema>;
+export type AgentBuilderDataVizAction = z.infer<
+  typeof dataVisualizationActionSchema
+>;
 
 export type BaseActionData = z.infer<typeof baseActionSchema>;

@@ -20,9 +20,9 @@ import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/M
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
-import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isBrowseResultResourceType,
   isDataSourceNodeContentType,
@@ -40,11 +40,17 @@ import {
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
+import type { LightWorkspaceType } from "@app/types";
 import { isSupportedImageContentType } from "@app/types";
 
-export function MCPActionDetails(
-  props: ActionDetailsComponentBaseProps<MCPActionType>
-) {
+export interface MCPActionDetailsProps {
+  action: MCPActionType;
+  owner: LightWorkspaceType;
+  lastNotification: ProgressNotificationContentType | null;
+  defaultOpen: boolean;
+}
+
+export function MCPActionDetails(props: MCPActionDetailsProps) {
   const isSearch = props.action.output?.some(isSearchResultResourceType);
   const isInclude = props.action.output?.some(isIncludeResultResourceType);
   const isWebsearch = props.action.output?.some(isWebsearchResultResourceType);
@@ -138,7 +144,7 @@ export function GenericActionDetails({
   owner,
   action,
   defaultOpen,
-}: ActionDetailsComponentBaseProps<MCPActionType>) {
+}: MCPActionDetailsProps) {
   return (
     <ActionDetailsWrapper
       actionName={action.functionCallName ?? "Calling MCP Server"}

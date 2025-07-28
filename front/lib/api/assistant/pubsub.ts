@@ -1,4 +1,4 @@
-import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
+import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -149,7 +149,7 @@ export async function* getMessagesEvents(
     eventId: string;
     data:
       | AgentErrorEvent
-      | AgentActionSpecificEvent
+      | AgentActionRunningEvents
       | AgentActionSuccessEvent
       | AgentGenerationCancelledEvent
       | GenerationTokensEvent;

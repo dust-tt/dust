@@ -1,16 +1,15 @@
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { BaseAction } from "@app/lib/actions/types";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import type { AgentActionType } from "@app/types";
+import type { AgentActionType, ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 
 export type AgentStateClassification = "thinking" | "acting" | "done";
 
 export type ActionProgressState = Map<
-  BaseAction["id"],
+  ModelId,
   {
     action: AgentActionType;
     progress?: ProgressNotificationContentType;
@@ -73,11 +72,24 @@ function updateProgress(
   return newState;
 }
 
+export const CLEAR_CONTENT_EVENT = { type: "clear_content" as const };
+
+export type ClearContentEvent = typeof CLEAR_CONTENT_EVENT;
+
 export function messageReducer(
   state: MessageTemporaryState,
-  event: AgentMessageStateEventWithoutToolApproveExecution
+  event: AgentMessageStateEventWithoutToolApproveExecution | ClearContentEvent
 ): MessageTemporaryState {
   switch (event.type) {
+    case "clear_content":
+      return {
+        ...state,
+        message: {
+          ...state.message,
+          content: null,
+          chainOfThought: null,
+        },
+      };
     case "agent_action_success":
       return {
         ...state,

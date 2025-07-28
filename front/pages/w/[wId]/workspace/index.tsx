@@ -22,7 +22,7 @@ import { useCallback, useEffect, useState } from "react";
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
-import AppContentLayout from "@app/components/sparkle/AppContentLayout";
+import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ProviderManagementModal } from "@app/components/workspace/ProviderManagementModal";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -161,88 +161,86 @@ export default function WorkspaceAdmin({
   };
 
   return (
-    <>
-      <AppContentLayout
-        subscription={subscription}
-        owner={owner}
-        subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
-      >
-        <Page.Vertical align="stretch" gap="xl">
-          <Page.Header title="Workspace Settings" icon={PlanetIcon} />
-          <Page.Vertical align="stretch" gap="md">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <Page.H variant="h4">Workspace Name</Page.H>
-                <Page.P variant="secondary">{owner.name}</Page.P>
-              </div>
-              <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                <SheetTrigger asChild>
+    <AppCenteredLayout
+      subscription={subscription}
+      owner={owner}
+      subNavigation={subNavigationAdmin({ owner, current: "workspace" })}
+    >
+      <Page.Vertical align="stretch" gap="xl">
+        <Page.Header title="Workspace Settings" icon={PlanetIcon} />
+        <Page.Vertical align="stretch" gap="md">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <Page.H variant="h4">Workspace Name</Page.H>
+              <Page.P variant="secondary">{owner.name}</Page.P>
+            </div>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  label="Edit"
+                  icon={PencilSquareIcon}
+                />
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Edit Workspace Name</SheetTitle>
+                </SheetHeader>
+                <SheetContainer>
+                  <div className="mt-6 flex flex-col gap-4">
+                    <Page.P>
+                      Think GitHub repository names, short and memorable.
+                    </Page.P>
+                    <Input
+                      name="name"
+                      placeholder="Workspace name"
+                      value={workspaceName}
+                      onChange={(e) => setWorkspaceName(e.target.value)}
+                      message={workspaceNameError}
+                      messageStatus="error"
+                    />
+                  </div>
+                </SheetContainer>
+                <SheetFooter>
                   <Button
-                    variant="outline"
-                    label="Edit"
-                    icon={PencilSquareIcon}
+                    variant="tertiary"
+                    label="Cancel"
+                    onClick={handleCancel}
                   />
-                </SheetTrigger>
-                <SheetContent>
-                  <SheetHeader>
-                    <SheetTitle>Edit Workspace Name</SheetTitle>
-                  </SheetHeader>
-                  <SheetContainer>
-                    <div className="mt-6 flex flex-col gap-4">
-                      <Page.P>
-                        Think GitHub repository names, short and memorable.
-                      </Page.P>
-                      <Input
-                        name="name"
-                        placeholder="Workspace name"
-                        value={workspaceName}
-                        onChange={(e) => setWorkspaceName(e.target.value)}
-                        message={workspaceNameError}
-                        messageStatus="error"
-                      />
-                    </div>
-                  </SheetContainer>
-                  <SheetFooter>
-                    <Button
-                      variant="tertiary"
-                      label="Cancel"
-                      onClick={handleCancel}
-                    />
-                    <Button
-                      variant="primary"
-                      label={updating ? "Saving..." : "Save"}
-                      disabled={disable || updating}
-                      onClick={handleUpdateWorkspace}
-                    />
-                  </SheetFooter>
-                </SheetContent>
-              </Sheet>
-            </div>
-          </Page.Vertical>
-          <Page.Vertical align="stretch" gap="md">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <Page.H variant="h4">Model Selection</Page.H>
-                <Page.P variant="secondary">
-                  Select the models you want available to your workspace.
-                </Page.P>
-              </div>
-              <ProviderManagementModal owner={owner} />
-            </div>
-          </Page.Vertical>
-          {!isSlackDataSourceBotEnabled && (
-            <Page.Vertical align="stretch" gap="md">
-              <Page.H variant="h4">Integrations</Page.H>
-              <SlackBotToggle
-                owner={owner}
-                slackBotDataSource={slackBotDataSource}
-                systemSpace={systemSpace}
-              />
-            </Page.Vertical>
-          )}
+                  <Button
+                    variant="primary"
+                    label={updating ? "Saving..." : "Save"}
+                    disabled={disable || updating}
+                    onClick={handleUpdateWorkspace}
+                  />
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          </div>
         </Page.Vertical>
-      </AppContentLayout>
-    </>
+        <Page.Vertical align="stretch" gap="md">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <Page.H variant="h4">Model Selection</Page.H>
+              <Page.P variant="secondary">
+                Select the models you want available to your workspace.
+              </Page.P>
+            </div>
+            <ProviderManagementModal owner={owner} plan={subscription.plan} />
+          </div>
+        </Page.Vertical>
+        {!isSlackDataSourceBotEnabled && (
+          <Page.Vertical align="stretch" gap="md">
+            <Page.H variant="h4">Integrations</Page.H>
+            <SlackBotToggle
+              owner={owner}
+              slackBotDataSource={slackBotDataSource}
+              systemSpace={systemSpace}
+            />
+          </Page.Vertical>
+        )}
+      </Page.Vertical>
+    </AppCenteredLayout>
   );
 }
 

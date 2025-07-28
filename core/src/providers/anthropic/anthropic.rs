@@ -1,3 +1,6 @@
+use crate::providers::anthropic::backend::{
+    should_use_vertex_for_model, AnthropicBackend, DirectAnthropicBackend, VertexAnthropicBackend,
+};
 use crate::providers::anthropic::helpers::get_anthropic_chat_messages;
 use crate::providers::anthropic::streaming::handle_streaming_response;
 use crate::providers::anthropic::types::{
@@ -16,7 +19,7 @@ use crate::utils;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use eventsource_client as es;
-use hyper::{body::Buf, Uri};
+use hyper::body::Buf;
 use serde_json::{json, Value};
 use std::io::prelude::*;
 use std::str::FromStr;
@@ -26,6 +29,7 @@ use tokio::sync::mpsc::UnboundedSender;
 pub struct AnthropicLLM {
     id: String,
     api_key: Option<String>,
+    backend: Box<dyn AnthropicBackend + Send + Sync>,
     user_id: Option<String>,
 }
 
@@ -47,13 +51,8 @@ impl AnthropicLLM {
             id,
             api_key: None,
             user_id: None,
+            backend: Box::new(DirectAnthropicBackend::new()),
         }
-    }
-
-    fn messages_uri(&self) -> Result<Uri> {
-        Ok("https://api.anthropic.com/v1/messages"
-            .to_string()
-            .parse::<Uri>()?)
     }
 
     fn placehodler_tool(&self) -> AnthropicTool {
@@ -69,22 +68,21 @@ impl AnthropicLLM {
         }
     }
 
-    async fn chat_completion(
+    fn build_base_request_body(
         &self,
-        system: Option<String>,
         messages: &Vec<AnthropicChatMessage>,
+        system: Option<String>,
         tools: Vec<AnthropicTool>,
         tool_choice: Option<AnthropicToolChoice>,
         temperature: f32,
         top_p: f32,
         stop_sequences: &Vec<String>,
         max_tokens: i32,
+        stream: bool,
+        thinking: Option<(String, u64)>,
         beta_flags: &Vec<&str>,
-    ) -> Result<(ChatResponse, Option<String>)> {
-        assert!(self.api_key.is_some());
-
+    ) -> Value {
         let mut body = json!({
-            "model": self.id.clone(),
             "messages": messages,
             "max_tokens": max_tokens,
             "temperature": temperature,
@@ -95,6 +93,10 @@ impl AnthropicLLM {
             },
         });
 
+        if stream {
+            body["stream"] = json!(true);
+        }
+
         if let Some(user_id) = self.user_id.as_ref() {
             body["metadata"] = json!({
                 "user_id": user_id,
@@ -103,6 +105,16 @@ impl AnthropicLLM {
 
         if system.is_some() {
             body["system"] = json!(system);
+        }
+
+        if let Some((thinking_type, thinking_budget_tokens)) = thinking {
+            body["thinking"] = json!({
+                "type": thinking_type,
+                "budget_tokens": thinking_budget_tokens,
+            });
+            // We can't pass a temperature different from 1.0 in thinking mode: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
+            body["temperature"] = 1.0f32.into();
+            body.as_object_mut().unwrap().remove("top_p");
         }
 
         if !tools.is_empty() {
@@ -128,21 +140,43 @@ impl AnthropicLLM {
             }
         }
 
-        let api_key = match self.api_key.clone() {
-            Some(key) => key,
-            None => Err(anyhow!("ANTHROPIC_API_KEY is not set."))?,
-        };
-        let mut headers = reqwest::header::HeaderMap::new();
-        headers.insert("Content-Type", "application/json".parse()?);
-        headers.insert("X-API-Key", api_key.parse()?);
-        headers.insert("anthropic-version", "2023-06-01".parse()?);
+        body
+    }
 
-        for flag in beta_flags {
-            headers.insert("anthropic-beta", flag.parse()?);
-        }
+    async fn chat_completion(
+        &self,
+        system: Option<String>,
+        messages: &Vec<AnthropicChatMessage>,
+        tools: Vec<AnthropicTool>,
+        tool_choice: Option<AnthropicToolChoice>,
+        temperature: f32,
+        top_p: f32,
+        stop_sequences: &Vec<String>,
+        max_tokens: i32,
+        beta_flags: &Vec<&str>,
+    ) -> Result<(ChatResponse, Option<String>)> {
+        assert!(self.api_key.is_some());
+
+        let base_body = self.build_base_request_body(
+            messages,
+            system,
+            tools,
+            tool_choice,
+            temperature,
+            top_p,
+            stop_sequences,
+            max_tokens,
+            false,
+            None,
+            beta_flags,
+        );
+
+        let body = self.backend.build_request_body(base_body, &self.id);
+
+        let headers = self.backend.build_headers(beta_flags)?;
 
         let res = reqwest::Client::new()
-            .post(self.messages_uri()?.to_string())
+            .post(self.backend.messages_uri(&self.id)?.to_string())
             .headers(headers)
             .json(&body)
             .send()
@@ -201,70 +235,23 @@ impl AnthropicLLM {
         event_sender: UnboundedSender<Value>,
         thinking: Option<(String, u64)>,
     ) -> Result<(ChatResponse, Option<String>)> {
-        assert!(self.api_key.is_some());
+        let base_body = self.build_base_request_body(
+            messages,
+            system,
+            tools,
+            tool_choice,
+            temperature,
+            top_p,
+            stop_sequences,
+            max_tokens,
+            true,
+            thinking,
+            beta_flags,
+        );
 
-        let mut body = json!({
-            "model": self.id.clone(),
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-            "top_p": top_p,
-            "stop_sequences": match stop_sequences.len() {
-                0 => None,
-                _ => Some(stop_sequences),
-            },
-            "stream": true,
-        });
+        let body = self.backend.build_request_body(base_body, &self.id);
 
-        if let Some(user_id) = self.user_id.as_ref() {
-            body["metadata"] = json!({
-                "user_id": user_id,
-            });
-        }
-
-        if system.is_some() {
-            body["system"] = json!(system);
-        }
-
-        if !tools.is_empty() {
-            body["tools"] = json!(tools);
-            if tool_choice.is_some() {
-                body["tool_choice"] = json!(tool_choice);
-            }
-        } else {
-            let has_tool_choice_none_flag = beta_flags
-                .iter()
-                .any(|flag| flag.starts_with("tool-choice-none"));
-
-            if !has_tool_choice_none_flag
-                && messages.iter().any(|m| {
-                    m.content
-                        .iter()
-                        .any(|c| c.tool_use.is_some() || c.tool_result.is_some())
-                })
-            {
-                // Add only if we have tool_use or tool_result in the messages and we are
-                //not using the tool-choice-none beta flag
-                body["tools"] = json!(vec![self.placehodler_tool()]);
-            }
-        }
-
-        if let Some((thinking_type, thinking_budget_tokens)) = thinking {
-            body["thinking"] = json!({
-                "type": thinking_type,
-                "budget_tokens": thinking_budget_tokens,
-            });
-            // We can't pass a temperature different from 1.0 in thinking mode: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
-            body["temperature"] = 1.0f32.into();
-            body.as_object_mut().unwrap().remove("top_p");
-        }
-
-        let api_key = match self.api_key.clone() {
-            Some(key) => key,
-            None => Err(anyhow!("ANTHROPIC_API_KEY is not set."))?,
-        };
-
-        let url = self.messages_uri()?.to_string();
+        let url = self.backend.messages_uri(&self.id)?.to_string();
 
         let mut builder = match es::ClientBuilder::for_url(url.as_str()) {
             Ok(builder) => builder,
@@ -277,24 +264,10 @@ impl AnthropicLLM {
         };
 
         builder = builder.method(String::from("POST"));
-        builder = match builder.header("Content-Type", "application/json") {
-            Ok(builder) => builder,
-            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
-        };
-        builder = match builder.header("X-API-Key", api_key.as_str()) {
-            Ok(builder) => builder,
-            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
-        };
-        builder = match builder.header("anthropic-version", "2023-06-01") {
-            Ok(builder) => builder,
-            Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
-        };
 
-        for flag in beta_flags {
-            builder = match builder.header("anthropic-beta", flag) {
-                Ok(builder) => builder,
-                Err(e) => return Err(anyhow!("Error setting header: {:?}", e)),
-            }
+        let headers = self.backend.build_headers(beta_flags)?;
+        for (name, value) in headers.iter() {
+            builder = builder.header(name.as_str(), value.to_str()?)?;
         }
 
         let client = builder.body(body.to_string()).build();
@@ -310,20 +283,24 @@ impl LLM for AnthropicLLM {
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
-        match credentials.get("ANTHROPIC_API_KEY") {
-            Some(api_key) => {
-                self.api_key = Some(api_key.clone());
-            }
-            None => match tokio::task::spawn_blocking(|| std::env::var("ANTHROPIC_API_KEY")).await?
-            {
-                Ok(key) => {
-                    self.api_key = Some(key);
-                }
-                Err(_) => Err(anyhow!(
-                    "Credentials or environment variable `ANTHROPIC_API_KEY` is not set."
-                ))?,
-            },
+        let feature_flags = credentials
+            .get("DUST_FEATURE_FLAGS")
+            .map(|s| s.split(',').collect::<Vec<_>>())
+            .unwrap_or_default();
+
+        let use_vertex = feature_flags.contains(&"anthropic_vertex_fallback")
+            && should_use_vertex_for_model(&self.id);
+
+        if use_vertex {
+            self.backend = Box::new(VertexAnthropicBackend::new());
+        } else {
+            self.backend = Box::new(DirectAnthropicBackend::new());
         }
+
+        // Initialize the backend.
+        let api_key = self.backend.initialize(&credentials).await?;
+        self.api_key = Some(api_key);
+
         match credentials.get("DUST_WORKSPACE_ID") {
             Some(workspace_id) => {
                 self.user_id = Some(workspace_id.clone());

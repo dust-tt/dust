@@ -418,8 +418,14 @@ function AgentAccessAndPublication() {
   );
 }
 
-export function AgentBuilderSettingsBlock() {
-  const [isOpen, setIsOpen] = useState(false);
+interface AgentBuilderSettingsBlockProps {
+  isSettingBlocksOpen: boolean;
+}
+
+export function AgentBuilderSettingsBlock({
+  isSettingBlocksOpen,
+}: AgentBuilderSettingsBlockProps) {
+  const [isOpen, setIsOpen] = useState(isSettingBlocksOpen);
 
   return (
     <div className="flex h-full flex-col gap-4">

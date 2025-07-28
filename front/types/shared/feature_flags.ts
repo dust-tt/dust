@@ -3,6 +3,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Advanced features for Notion workspace management shown to admins",
   },
+  anthropic_vertex_fallback: {
+    description: "Fallback to Vertex Anthropic for some Anthropic models",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
   },
@@ -105,8 +108,8 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   monday_tool: {
     description: "Monday MCP tool",
   },
-  agent_memory_tools: {
-    description: "Agent memory tools",
+  async_loop: {
+    description: "Asynchronous loop for conversation processing",
   },
 } as const;
 

@@ -1,20 +1,22 @@
 import { removeNulls } from "@dust-tt/client";
 
+import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
   tryListMCPTools,
 } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import {
   isDustAppChatBlockType,
   runActionStreamed,
 } from "@app/lib/actions/server";
+import type { StepContext } from "@app/lib/actions/types";
 import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
 import { isActionConfigurationType } from "@app/lib/actions/types/agent";
+import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
@@ -47,6 +49,7 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
+import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;
@@ -63,6 +66,7 @@ export async function runModelActivity({
   runIds,
   step,
   functionCallStepContentIds,
+  citationsRefsOffset,
   autoRetryCount = 0,
 }: {
   authType: AuthenticatorType;
@@ -70,24 +74,34 @@ export async function runModelActivity({
   runIds: string[];
   step: number;
   functionCallStepContentIds: Record<string, ModelId>;
+  citationsRefsOffset: number;
   autoRetryCount?: number;
 }): Promise<{
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
+  stepContexts: StepContext[];
 } | null> {
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
   }
 
   const {
     agentConfiguration,
-    conversation,
+    conversation: originalConversation,
     userMessage,
-    agentMessage,
+    agentMessage: originalAgentMessage,
     agentMessageRow,
   } = runAgentDataRes.value;
+
+  const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
+    sliceConversationForAgentMessage(originalConversation, {
+      agentMessageId: originalAgentMessage.sId,
+      agentMessageVersion: originalAgentMessage.version,
+      step,
+    });
 
   const now = Date.now();
 
@@ -186,6 +200,7 @@ export async function runModelActivity({
 
   for (const agentAction of agentActions) {
     if (isActionConfigurationType(agentAction)) {
+      logger.info("Found an available action on the agentConfiguration.");
       availableActions.push(agentAction);
     }
   }
@@ -265,8 +280,7 @@ export async function runModelActivity({
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
-    const specRes =
-      await getRunnerForActionConfiguration(a).buildSpecification(auth);
+    const specRes = await buildToolSpecification(auth, a);
 
     if (specRes.isErr()) {
       await publishAgentError({
@@ -411,6 +425,7 @@ export async function runModelActivity({
         runIds,
         step,
         functionCallStepContentIds,
+        citationsRefsOffset,
         autoRetryCount: autoRetryCount + 1,
       });
     }
@@ -754,7 +769,6 @@ export async function runModelActivity({
     let action = availableActions.find((ac) =>
       actionNamesFromLLM.includes(ac.name)
     );
-    let args = a.arguments;
 
     if (!action) {
       if (!a.name) {
@@ -818,12 +832,10 @@ export async function runModelActivity({
         toolServerId: mcpServerView.sId,
         mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
       };
-      args = {};
     }
 
     actions.push({
       action,
-      inputs: args ?? {},
       functionCallId: a.functionCallId ?? null,
     });
   }
@@ -848,9 +860,17 @@ export async function runModelActivity({
     content,
   }));
   agentMessage.contents.push(...newContents);
+
+  const stepContexts = computeStepContexts({
+    agentConfiguration,
+    stepActions: actions.map((a) => a.action),
+    citationsRefsOffset,
+  });
+
   return {
     actions,
     runId: await dustRunId,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
+    stepContexts,
   };
 }

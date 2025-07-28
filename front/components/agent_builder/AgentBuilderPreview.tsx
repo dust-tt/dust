@@ -1,12 +1,11 @@
 import { Spinner } from "@dust-tt/sparkle";
 import React from "react";
-import { useWatch } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import {
-  usePreviewAgent,
-  useTryAgentCore,
+  useDraftAgent,
+  useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
 import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { InteractiveContentProvider } from "@app/components/assistant/conversation/content/InteractiveContentContext";
@@ -15,6 +14,8 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useMCPServerViewsContext } from "@app/components/assistant_builder/contexts/MCPServerViewsContext";
 import { useUser } from "@app/lib/swr/user";
+
+import type { AgentBuilderFormData } from "./AgentBuilderFormContext";
 
 interface EmptyStateProps {
   message: string;
@@ -52,33 +53,33 @@ function LoadingState({ message }: LoadingStateProps) {
 export function AgentBuilderPreview() {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
+  const { getValues } = useFormContext<AgentBuilderFormData>();
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
 
-  const instructions = useWatch<AgentBuilderFormData, "instructions">({
-    name: "instructions",
-  });
-  const name = useWatch<AgentBuilderFormData, "agentSettings.name">({
-    name: "agentSettings.name",
-  });
+  const hasContent =
+    !!getValues("instructions").trim() || getValues("actions").length > 0;
 
   const {
     draftAgent,
+    getDraftAgent,
     isSavingDraftAgent,
     draftCreationFailed,
-    createDraftAgent,
-  } = usePreviewAgent();
-  const { conversation, stickyMentions, setStickyMentions, handleSubmit } =
-    useTryAgentCore({
-      owner,
-      user,
-      agent: draftAgent,
-      createDraftAgent,
-    });
+    stickyMentions,
+    setStickyMentions,
+  } = useDraftAgent();
 
-  const hasContent = instructions.trim();
+  const { conversation, handleSubmit } = useDraftConversation({
+    draftAgent,
+    getDraftAgent,
+  });
+
+  // Show loading spinner only when the first time we create a draft agent. After that the spinner is shown
+  // inside the button in the input bar. This way we don't have to unmount the conversation viewer every time.
+  const showLoader =
+    !draftAgent && (isMCPServerViewsLoading || isSavingDraftAgent);
 
   const renderContent = () => {
-    if (!hasContent || !name) {
+    if (!hasContent) {
       return (
         <EmptyState
           message="Ready to test your agent?"
@@ -87,21 +88,17 @@ export function AgentBuilderPreview() {
       );
     }
 
-    if (
-      isMCPServerViewsLoading ||
-      isSavingDraftAgent ||
-      (!draftAgent && !draftCreationFailed)
-    ) {
-      return <LoadingState message="Preparing your agent..." />;
-    }
-
-    if (!draftAgent && draftCreationFailed) {
+    if (draftCreationFailed) {
       return (
         <EmptyState
           message="Unable to create preview"
           description="There was an issue creating a preview of your agent. Try making a small change to refresh."
         />
       );
+    }
+
+    if (showLoader) {
+      return <LoadingState message="Preparing your agent..." />;
     }
 
     return (

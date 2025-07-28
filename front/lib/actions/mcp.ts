@@ -31,18 +31,11 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type {
+  ActionGeneratedFileType,
   AgentLoopRunContextType,
-  BaseActionRunParams,
-  ExtractActionBlob,
 } from "@app/lib/actions/types";
-import {
-  BaseAction,
-  BaseActionConfigurationServerRunner,
-} from "@app/lib/actions/types";
-import type {
-  ActionConfigurationType,
-  AgentActionSpecification,
-} from "@app/lib/actions/types/agent";
+import type { StepContext } from "@app/lib/actions/types";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
@@ -68,6 +61,7 @@ import { statsDClient } from "@app/logger/statsDClient";
 import type {
   AgentConfigurationType,
   AgentMessageType,
+  ConversationType,
   DustAppRunConfigurationType,
   FileUseCase,
   FileUseCaseMetadata,
@@ -102,6 +96,8 @@ export type BaseMCPServerConfigurationType = {
   type: "mcp_server_configuration";
 
   name: string;
+  mcpServerName: string | null;
+
   description: string | null;
   icon?: CustomServerIconType | InternalAllowedIconType;
 };
@@ -185,7 +181,7 @@ export type MCPApproveExecutionEvent = {
 };
 
 export function isMCPApproveExecutionEvent(
-  event: MCPActionRunningEvents
+  event: AgentActionRunningEvents
 ): event is MCPApproveExecutionEvent {
   return event.type === "tool_approve_execution";
 }
@@ -303,15 +299,25 @@ function rewriteContentForModel(
   return content;
 }
 
-export type MCPActionRunningEvents =
+export type AgentActionRunningEvents =
   | MCPParamsEvent
   | MCPApproveExecutionEvent
   | ToolNotificationEvent;
 
-type MCPActionBlob = ExtractActionBlob<MCPActionType>;
+type RemoveFunctionFields<T> = Pick<
+  T,
+  {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    [K in keyof T]: T[K] extends Function ? never : K;
+  }[keyof T]
+>;
+
+type MCPActionBlob = RemoveFunctionFields<MCPActionType>;
 
 // This action uses the MCP protocol to communicate
-export class MCPActionType extends BaseAction {
+export class MCPActionType {
+  readonly id: ModelId;
+  readonly generatedFiles: ActionGeneratedFileType[];
   readonly agentMessageId: ModelId;
   readonly executionState:
     | "pending"
@@ -328,10 +334,13 @@ export class MCPActionType extends BaseAction {
   readonly functionCallName: string | null;
   readonly step: number = -1;
   readonly isError: boolean = false;
+  // TODO(2025-07-24 aubin): remove the type here.
   readonly type = "tool_action" as const;
 
   constructor(blob: MCPActionBlob) {
-    super(blob.id, blob.type, blob.generatedFiles);
+    this.id = blob.id;
+    this.type = blob.type;
+    this.generatedFiles = blob.generatedFiles;
 
     this.agentMessageId = blob.agentMessageId;
     this.mcpServerConfigurationId = blob.mcpServerConfigurationId;
@@ -342,6 +351,10 @@ export class MCPActionType extends BaseAction {
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
+  }
+
+  getGeneratedFiles(): ActionGeneratedFileType[] {
+    return this.generatedFiles;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -438,590 +451,586 @@ export class MCPActionType extends BaseAction {
 }
 
 /**
- * Params generation.
+ * Builds a tool specification for the given MCP action configuration.
  */
-export class MCPConfigurationServerRunner extends BaseActionConfigurationServerRunner<MCPToolConfigurationType> {
-  // Generates the action specification for generation of rawInputs passed to `run`.
-  async buildSpecification(
-    auth: Authenticator
-  ): Promise<Result<AgentActionSpecification, Error>> {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error(
-        "Unexpected unauthenticated call to `runMCPConfiguration`"
-      );
-    }
-
-    // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.TOOL_INPUT
-    const filteredInputSchema = hideInternalConfiguration(
-      this.actionConfiguration.inputSchema
+export async function buildToolSpecification(
+  auth: Authenticator,
+  actionConfiguration: MCPToolConfigurationType
+): Promise<Result<AgentActionSpecification, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error(
+      "Unexpected unauthenticated call to `buildToolSpecification`"
     );
-
-    return new Ok({
-      name: this.actionConfiguration.name,
-      description: this.actionConfiguration.description ?? "",
-      inputs: [],
-      inputSchema: filteredInputSchema,
-    });
   }
 
-  async *run(
-    auth: Authenticator,
-    {
-      agentConfiguration,
-      conversation,
-      agentMessage,
-      rawInputs,
-      functionCallId,
-      step,
-      stepContentId,
-      stepActionIndex,
-      stepActions,
-      citationsRefsOffset,
-    }: BaseActionRunParams & {
-      stepActionIndex: number;
-      stepActions: ActionConfigurationType[];
-      citationsRefsOffset: number;
-    }
-  ): AsyncGenerator<
-    | MCPParamsEvent
-    | MCPSuccessEvent
-    | MCPErrorEvent
-    | MCPApproveExecutionEvent
-    | ToolNotificationEvent,
-    void
-  > {
-    const owner = auth.getNonNullableWorkspace();
-    const { actionConfiguration } = this;
+  // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.TOOL_INPUT
+  const filteredInputSchema = hideInternalConfiguration(
+    actionConfiguration.inputSchema
+  );
 
-    const localLogger = logger.child({
-      actionConfigurationId: actionConfiguration.sId,
-      conversationId: conversation.sId,
-      messageId: agentMessage.sId,
-      workspaceId: conversation.owner.sId,
-    });
+  return new Ok({
+    name: actionConfiguration.name,
+    description: actionConfiguration.description ?? "",
+    inputs: [],
+    inputSchema: filteredInputSchema,
+  });
+}
 
-    const actionBaseParams: ActionBaseParams = {
-      agentMessageId: agentMessage.agentMessageId,
-      functionCallId,
-      functionCallName: actionConfiguration.name,
-      generatedFiles: [],
-      mcpServerConfigurationId: `${actionConfiguration.id}`,
-      params: rawInputs,
-      step,
-    };
+/**
+ * Runs a tool with streaming for the given MCP action configuration.
+ */
+export async function* runToolWithStreaming(
+  auth: Authenticator,
+  actionConfiguration: MCPToolConfigurationType,
+  {
+    agentConfiguration,
+    conversation,
+    agentMessage,
+    rawInputs,
+    functionCallId,
+    step,
+    stepContentId,
+    stepContext,
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationType;
+    agentMessage: AgentMessageType;
+    rawInputs: Record<string, unknown>;
+    functionCallId: string;
+    step: number;
+    stepContentId: ModelId;
+    stepContext: StepContext;
+  }
+): AsyncGenerator<
+  | MCPParamsEvent
+  | MCPSuccessEvent
+  | MCPErrorEvent
+  | MCPApproveExecutionEvent
+  | ToolNotificationEvent,
+  void
+> {
+  const owner = auth.getNonNullableWorkspace();
 
-    for (const value of Object.values(rawInputs)) {
-      if (typeof value === "string" && hasNullUnicodeCharacter(value)) {
-        yield {
-          type: "tool_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "tool_error",
-            message: "Invalid Unicode character in inputs, please retry.",
-            metadata: null,
-          },
-        };
-        return;
-      }
-    }
+  const localLogger = logger.child({
+    actionConfigurationId: actionConfiguration.sId,
+    conversationId: conversation.sId,
+    messageId: agentMessage.sId,
+    workspaceId: conversation.owner.sId,
+  });
 
-    // Create the action object in the database and yield an event for
-    // the generation of the params. We store the action here as the params have been generated, if
-    // an error occurs later on, the error will be stored on the parent agent message.
-    const action = await AgentMCPAction.create({
-      ...actionBaseParams,
-      workspaceId: owner.id,
-      isError: false,
-      executionState: "pending",
-      version: 0,
-      stepContentId,
-    });
+  const actionBaseParams: ActionBaseParams = {
+    agentMessageId: agentMessage.agentMessageId,
+    functionCallId,
+    functionCallName: actionConfiguration.name,
+    generatedFiles: [],
+    mcpServerConfigurationId: `${actionConfiguration.id}`,
+    params: rawInputs,
+    step,
+  };
 
-    const mcpAction = new MCPActionType({
-      ...actionBaseParams,
-      executionState: "pending",
-      id: action.id,
-      isError: false,
-      output: null,
-      type: "tool_action",
-    });
-
-    yield {
-      type: "tool_params",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      action: mcpAction,
-    };
-
-    const { status: s } = await getExecutionStatusFromConfig(
-      auth,
-      actionConfiguration,
-      agentMessage
-    );
-    let status:
-      | "allowed_implicitly"
-      | "allowed_explicitly"
-      | "pending"
-      | "timeout"
-      | "denied" = s;
-
-    if (status === "pending") {
+  for (const value of Object.values(rawInputs)) {
+    if (typeof value === "string" && hasNullUnicodeCharacter(value)) {
       yield {
-        type: "tool_approve_execution",
+        type: "tool_error",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        conversationId: conversation.sId,
-        actionId: mcpAction.getSId(owner),
-        action: mcpAction,
-        inputs: rawInputs,
-        stake: actionConfiguration.permission,
-        metadata: {
-          toolName: actionConfiguration.originalName,
-          mcpServerName: actionConfiguration.mcpServerName,
-          agentName: agentConfiguration.name,
-          icon: actionConfiguration.icon,
+        error: {
+          code: "tool_error",
+          message: "Invalid Unicode character in inputs, please retry.",
+          metadata: null,
         },
       };
-
-      try {
-        const actionEventGenerator = getMCPEvents({
-          actionId: mcpAction.getSId(owner),
-        });
-
-        localLogger.info(
-          {
-            workspaceId: owner.sId,
-            actionName: actionConfiguration.name,
-          },
-          "Waiting for action validation"
-        );
-
-        // Start listening for action events
-        for await (const event of actionEventGenerator) {
-          const { data } = event;
-
-          // Check that the event is indeed for this action.
-          if (getResourceIdFromSId(data.actionId) !== mcpAction.id) {
-            status = "denied";
-            break;
-          }
-
-          if (data.type === "always_approved") {
-            const user = auth.getNonNullableUser();
-            await user.appendToMetadata(
-              `toolsValidations:${actionConfiguration.toolServerId}`,
-              `${actionConfiguration.name}`
-            );
-          }
-
-          if (data.type === "approved" || data.type === "always_approved") {
-            status = "allowed_explicitly";
-            break;
-          } else if (data.type === "rejected") {
-            status = "denied";
-            break;
-          }
-        }
-      } catch (error) {
-        localLogger.error({ error }, "Error checking action validation status");
-        yield {
-          type: "tool_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "tool_error",
-            message: `Error checking action validation status: ${JSON.stringify(error)}`,
-            metadata: null,
-          },
-        };
-        return;
-      }
-    }
-
-    // The status was not updated by the event, or no event was received.
-    // In this case, we set the status to timeout.
-    if (status === "pending") {
-      status = "timeout";
-    }
-
-    await action.update({
-      executionState: status,
-    });
-
-    const tags = [
-      `action:${actionConfiguration.name}`,
-      `mcp_server:${actionConfiguration.mcpServerName}`,
-      `workspace:${owner.sId}`,
-      `workspace_name:${owner.name}`,
-    ];
-
-    if (status === "timeout") {
-      statsDClient.increment("mcp_actions_timeout.count", 1, tags);
-      localLogger.info(
-        {
-          workspaceId: owner.sId,
-          actionName: actionConfiguration.name,
-        },
-        "Tool validation timed out"
-      );
-      yield updateResourceAndBuildErrorEvent(
-        action,
-        agentConfiguration,
-        agentMessage,
-        actionBaseParams,
-        "denied",
-        "The action validation timed out. Using this action is hence forbidden for this message."
-      );
       return;
     }
+  }
 
-    if (status === "denied") {
-      statsDClient.increment("mcp_actions_denied.count", 1, tags);
-      localLogger.info(
-        {
-          workspaceId: owner.sId,
-          actionName: actionConfiguration.name,
-        },
-        "Action execution rejected by user"
-      );
-      yield updateResourceAndBuildErrorEvent(
-        action,
-        agentConfiguration,
-        agentMessage,
-        actionBaseParams,
-        "denied",
-        "The user rejected this specific action execution. Using this action is hence forbidden for this message."
-      );
-      return;
-    }
+  // Create the action object in the database and yield an event for
+  // the generation of the params. We store the action here as the params have been generated, if
+  // an error occurs later on, the error will be stored on the parent agent message.
+  const action = await AgentMCPAction.create({
+    agentMessageId: agentMessage.agentMessageId,
+    mcpServerConfigurationId: `${actionConfiguration.id}`,
+    workspaceId: owner.id,
+    isError: false,
+    executionState: "pending",
+    version: 0,
+    stepContentId,
+  });
 
-    // We put back the preconfigured inputs (data sources for instance) from the agent configuration if any.
-    const inputs = augmentInputsWithConfiguration({
-      owner: auth.getNonNullableWorkspace(),
-      rawInputs,
-      actionConfiguration,
-    });
+  const mcpAction = new MCPActionType({
+    ...actionBaseParams,
+    executionState: "pending",
+    id: action.id,
+    isError: false,
+    output: null,
+    type: "tool_action",
+  });
 
-    const agentLoopRunContext: AgentLoopRunContextType = {
-      actionConfiguration,
-      agentConfiguration,
-      conversation,
-      agentMessage,
-      stepActionIndex,
-      stepActions,
-      citationsRefsOffset,
+  yield {
+    type: "tool_params",
+    created: Date.now(),
+    configurationId: agentConfiguration.sId,
+    messageId: agentMessage.sId,
+    action: mcpAction,
+  };
+
+  const { status: s } = await getExecutionStatusFromConfig(
+    auth,
+    actionConfiguration,
+    agentMessage
+  );
+  let status:
+    | "allowed_implicitly"
+    | "allowed_explicitly"
+    | "pending"
+    | "timeout"
+    | "denied" = s;
+
+  if (status === "pending") {
+    yield {
+      type: "tool_approve_execution",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      conversationId: conversation.sId,
+      actionId: mcpAction.getSId(owner),
+      action: mcpAction,
+      inputs: rawInputs,
+      stake: actionConfiguration.permission,
+      metadata: {
+        toolName: actionConfiguration.originalName,
+        mcpServerName: actionConfiguration.mcpServerName,
+        agentName: agentConfiguration.name,
+        icon: actionConfiguration.icon,
+      },
     };
 
-    let toolCallResult: Result<
-      CallToolResult["content"],
-      Error | McpError | MCPServerPersonalAuthenticationRequiredError
-    > | null = null;
-    for await (const event of tryCallMCPTool(
-      auth,
-      inputs,
-      agentLoopRunContext,
-      {
-        progressToken: action.id,
-      }
-    )) {
-      if (event.type === "result") {
-        toolCallResult = event.result;
-      } else if (event.type === "notification") {
-        const { notification } = event;
-        if (isMCPProgressNotificationType(notification)) {
-          const { output: notificationOutput } = notification.params.data;
-          // Tool approval notifications have a specific handling:
-          // they are not yielded as regular notifications but are bubbled up as
-          // `tool_approval_bubble_up` events instead. We attach the messageId from the
-          // main conversation as `pubsubMessageId` to route the event to the main conversation channel.
-          if (isToolApproveBubbleUpNotificationType(notificationOutput)) {
-            const {
-              conversationId,
-              messageId,
-              configurationId,
-              actionId,
-              inputs,
-              stake,
-              metadata,
-            } = notificationOutput;
-
-            yield {
-              created: Date.now(),
-              type: "tool_approve_execution",
-              // Added to make it backwards compatible, this is not the action of sub agent but it won't be used.
-              // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
-              action: mcpAction,
-              configurationId,
-              conversationId,
-              messageId,
-              actionId,
-              inputs,
-              stake,
-              metadata: {
-                ...metadata,
-                pubsubMessageId: agentMessage.sId,
-              },
-            };
-          } else {
-            // Regular notifications, we yield them as is with the type "tool_notification".
-            yield {
-              type: "tool_notification",
-              created: Date.now(),
-              configurationId: agentConfiguration.sId,
-              conversationId: conversation.sId,
-              messageId: agentMessage.sId,
-              action: mcpAction,
-              notification: notification.params,
-            };
-          }
-        }
-      }
-    }
-
-    if (!toolCallResult || toolCallResult.isErr()) {
-      statsDClient.increment("mcp_actions_error.count", 1, tags);
-      localLogger.error(
-        {
-          workspaceId: owner.sId,
-          actionName: actionConfiguration.name,
-          error: toolCallResult
-            ? toolCallResult.error.message
-            : "No tool call result",
-        },
-        "Error calling MCP tool on run."
-      );
-      await action.update({
-        isError: true,
+    try {
+      const actionEventGenerator = getMCPEvents({
+        actionId: mcpAction.getSId(owner),
       });
 
-      // If we got a personal authentication error, we emit a `tool_error` which will get turned
-      // into an `agent_error` with metadata set such that we can display an invitation to connect
-      // to the user.
-      if (
-        MCPServerPersonalAuthenticationRequiredError.is(toolCallResult?.error)
-      ) {
-        yield {
-          type: "tool_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "mcp_server_personal_authentication_required",
-            message:
-              `The tool ${actionConfiguration.originalName} requires personal ` +
-              `authentication, please authenticate to use it.`,
-            metadata: {
-              mcp_server_id: toolCallResult.error.mcpServerId,
-              provider: toolCallResult.error.provider,
-              ...(toolCallResult.error.scope && {
-                scope: toolCallResult.error.scope,
-              }),
-            },
-          },
-        };
-        return;
-      }
-
-      const { error: toolErr } = toolCallResult ?? {};
-      let errorMessage: string;
-
-      // We don't want to expose the MCP full error message to the user.
-      if (toolErr && toolErr instanceof McpError && toolErr.code === -32001) {
-        // MCP Error -32001: Request timed out.
-        errorMessage = `The tool ${actionConfiguration.originalName} timed out. `;
-      } else {
-        errorMessage = `The tool ${actionConfiguration.originalName} returned an error. `;
-      }
-      errorMessage +=
-        "An error occurred while executing the tool. You can inform the user of this issue.";
-
-      yield updateResourceAndBuildErrorEvent(
-        action,
-        agentConfiguration,
-        agentMessage,
-        actionBaseParams,
-        status,
-        errorMessage
+      localLogger.info(
+        {
+          workspaceId: owner.sId,
+          actionName: actionConfiguration.name,
+        },
+        "Waiting for action validation"
       );
+
+      // Start listening for action events
+      for await (const event of actionEventGenerator) {
+        const { data } = event;
+
+        // Check that the event is indeed for this action.
+        if (getResourceIdFromSId(data.actionId) !== mcpAction.id) {
+          status = "denied";
+          break;
+        }
+
+        if (data.type === "always_approved") {
+          const user = auth.getNonNullableUser();
+          await user.appendToMetadata(
+            `toolsValidations:${actionConfiguration.toolServerId}`,
+            `${actionConfiguration.name}`
+          );
+        }
+
+        if (data.type === "approved" || data.type === "always_approved") {
+          status = "allowed_explicitly";
+          break;
+        } else if (data.type === "rejected") {
+          status = "denied";
+          break;
+        }
+      }
+    } catch (error) {
+      localLogger.error({ error }, "Error checking action validation status");
+      yield {
+        type: "tool_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "tool_error",
+          message: `Error checking action validation status: ${JSON.stringify(error)}`,
+          metadata: null,
+        },
+      };
+      return;
+    }
+  }
+
+  // The status was not updated by the event, or no event was received.
+  // In this case, we set the status to timeout.
+  if (status === "pending") {
+    status = "timeout";
+  }
+
+  await action.update({
+    executionState: status,
+  });
+
+  const tags = [
+    `action:${actionConfiguration.name}`,
+    `mcp_server:${actionConfiguration.mcpServerName}`,
+    `workspace:${owner.sId}`,
+    `workspace_name:${owner.name}`,
+  ];
+
+  if (status === "timeout") {
+    statsDClient.increment("mcp_actions_timeout.count", 1, tags);
+    localLogger.info(
+      {
+        workspaceId: owner.sId,
+        actionName: actionConfiguration.name,
+      },
+      "Tool validation timed out"
+    );
+    yield updateResourceAndBuildErrorEvent(
+      action,
+      agentConfiguration,
+      agentMessage,
+      actionBaseParams,
+      "denied",
+      "The action validation timed out. Using this action is hence forbidden for this message."
+    );
+    return;
+  }
+
+  if (status === "denied") {
+    statsDClient.increment("mcp_actions_denied.count", 1, tags);
+    localLogger.info(
+      {
+        workspaceId: owner.sId,
+        actionName: actionConfiguration.name,
+      },
+      "Action execution rejected by user"
+    );
+    yield updateResourceAndBuildErrorEvent(
+      action,
+      agentConfiguration,
+      agentMessage,
+      actionBaseParams,
+      "denied",
+      "The user rejected this specific action execution. Using this action is hence forbidden for this message."
+    );
+    return;
+  }
+
+  // We put back the preconfigured inputs (data sources for instance) from the agent configuration if any.
+  const inputs = augmentInputsWithConfiguration({
+    owner: auth.getNonNullableWorkspace(),
+    rawInputs,
+    actionConfiguration,
+  });
+
+  const agentLoopRunContext: AgentLoopRunContextType = {
+    actionConfiguration,
+    agentConfiguration,
+    conversation,
+    agentMessage,
+    stepContext,
+  };
+
+  let toolCallResult: Result<
+    CallToolResult["content"],
+    Error | McpError | MCPServerPersonalAuthenticationRequiredError
+  > | null = null;
+  for await (const event of tryCallMCPTool(auth, inputs, agentLoopRunContext, {
+    progressToken: action.id,
+  })) {
+    if (event.type === "result") {
+      toolCallResult = event.result;
+    } else if (event.type === "notification") {
+      const { notification } = event;
+      if (isMCPProgressNotificationType(notification)) {
+        const { output: notificationOutput } = notification.params.data;
+        // Tool approval notifications have a specific handling:
+        // they are not yielded as regular notifications but are bubbled up as
+        // `tool_approval_bubble_up` events instead. We attach the messageId from the
+        // main conversation as `pubsubMessageId` to route the event to the main conversation channel.
+        if (isToolApproveBubbleUpNotificationType(notificationOutput)) {
+          const {
+            conversationId,
+            messageId,
+            configurationId,
+            actionId,
+            inputs,
+            stake,
+            metadata,
+          } = notificationOutput;
+
+          yield {
+            created: Date.now(),
+            type: "tool_approve_execution",
+            // Added to make it backwards compatible, this is not the action of sub agent but it won't be used.
+            // TODO(MCP 2025-06-09): Remove this once all extensions are updated.
+            action: mcpAction,
+            configurationId,
+            conversationId,
+            messageId,
+            actionId,
+            inputs,
+            stake,
+            metadata: {
+              ...metadata,
+              pubsubMessageId: agentMessage.sId,
+            },
+          };
+        } else {
+          // Regular notifications, we yield them as is with the type "tool_notification".
+          yield {
+            type: "tool_notification",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            conversationId: conversation.sId,
+            messageId: agentMessage.sId,
+            action: mcpAction,
+            notification: notification.params,
+          };
+        }
+      }
+    }
+  }
+
+  if (!toolCallResult || toolCallResult.isErr()) {
+    statsDClient.increment("mcp_actions_error.count", 1, tags);
+    localLogger.error(
+      {
+        workspaceId: owner.sId,
+        actionName: actionConfiguration.name,
+        error: toolCallResult
+          ? toolCallResult.error.message
+          : "No tool call result",
+      },
+      "Error calling MCP tool on run."
+    );
+    await action.update({
+      isError: true,
+    });
+
+    // If we got a personal authentication error, we emit a `tool_error` which will get turned
+    // into an `agent_error` with metadata set such that we can display an invitation to connect
+    // to the user.
+    if (
+      MCPServerPersonalAuthenticationRequiredError.is(toolCallResult?.error)
+    ) {
+      yield {
+        type: "tool_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "mcp_server_personal_authentication_required",
+          message:
+            `The tool ${actionConfiguration.originalName} requires personal ` +
+            `authentication, please authenticate to use it.`,
+          metadata: {
+            mcp_server_id: toolCallResult.error.mcpServerId,
+            provider: toolCallResult.error.provider,
+            ...(toolCallResult.error.scope && {
+              scope: toolCallResult.error.scope,
+            }),
+          },
+        },
+      };
       return;
     }
 
-    const fileUseCase: FileUseCase = "conversation";
-    const fileUseCaseMetadata: FileUseCaseMetadata = {
-      conversationId: conversation.sId,
-    };
+    const { error: toolErr } = toolCallResult ?? {};
+    let errorMessage: string;
 
-    const cleanContent: {
-      content: CallToolResult["content"][number];
-      file: FileResource | null;
-    }[] = await concurrentExecutor(
-      toolCallResult.value,
-      async (block) => {
-        switch (block.type) {
-          case "text": {
+    // We don't want to expose the MCP full error message to the user.
+    if (toolErr && toolErr instanceof McpError && toolErr.code === -32001) {
+      // MCP Error -32001: Request timed out.
+      errorMessage = `The tool ${actionConfiguration.originalName} timed out. `;
+    } else {
+      errorMessage = `The tool ${actionConfiguration.originalName} returned an error. `;
+    }
+    errorMessage +=
+      "An error occurred while executing the tool. You can inform the user of this issue.";
+
+    yield updateResourceAndBuildErrorEvent(
+      action,
+      agentConfiguration,
+      agentMessage,
+      actionBaseParams,
+      status,
+      errorMessage
+    );
+    return;
+  }
+
+  const fileUseCase: FileUseCase = "conversation";
+  const fileUseCaseMetadata: FileUseCaseMetadata = {
+    conversationId: conversation.sId,
+  };
+
+  const cleanContent: {
+    content: CallToolResult["content"][number];
+    file: FileResource | null;
+  }[] = await concurrentExecutor(
+    toolCallResult.value,
+    async (block) => {
+      switch (block.type) {
+        case "text": {
+          return {
+            content: {
+              type: block.type,
+              text: stripNullBytes(block.text),
+            },
+            file: null,
+          };
+        }
+        case "image": {
+          const fileName = isResourceWithName(block)
+            ? block.name
+            : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType as SupportedImageContentType)[0]}`;
+
+          return handleBase64Upload(auth, {
+            base64Data: block.data,
+            mimeType: block.mimeType,
+            fileName,
+            block,
+            fileUseCase,
+            fileUseCaseMetadata,
+          });
+        }
+        case "audio": {
+          return {
+            content: block,
+            file: null,
+          };
+        }
+        case "resource": {
+          // File generated by the tool, already upserted.
+          if (isToolGeneratedFile(block)) {
+            // Retrieve the file for the FK in the AgentMCPActionOutputItem.
+            const file = await FileResource.fetchById(
+              auth,
+              block.resource.fileId
+            );
+
             return {
               content: {
                 type: block.type,
-                text: stripNullBytes(block.text),
-              },
-              file: null,
-            };
-          }
-          case "image": {
-            const fileName = isResourceWithName(block)
-              ? block.name
-              : `generated-image-${Date.now()}.${extensionsForContentType(block.mimeType as SupportedImageContentType)[0]}`;
-
-            return handleBase64Upload(auth, {
-              base64Data: block.data,
-              mimeType: block.mimeType,
-              fileName,
-              block,
-              fileUseCase,
-              fileUseCaseMetadata,
-            });
-          }
-          case "audio": {
-            return {
-              content: block,
-              file: null,
-            };
-          }
-          case "resource": {
-            // File generated by the tool, already upserted.
-            if (isToolGeneratedFile(block)) {
-              // Retrieve the file for the FK in the AgentMCPActionOutputItem.
-              const file = await FileResource.fetchById(
-                auth,
-                block.resource.fileId
-              );
-
-              return {
-                content: {
-                  type: block.type,
-                  resource: {
-                    ...block.resource,
-                    text: stripNullBytes(block.resource.text),
-                  },
+                resource: {
+                  ...block.resource,
+                  text: stripNullBytes(block.resource.text),
                 },
-                file,
-              };
-            } else if (
-              block.resource.mimeType &&
-              // File generated by the tool, not upserted yet.
-              isSupportedFileContentType(block.resource.mimeType)
-            ) {
-              if (isBlobResource(block)) {
-                const fileName = isResourceWithName(block)
-                  ? block.name
-                  : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
+              },
+              file,
+            };
+          } else if (
+            block.resource.mimeType &&
+            // File generated by the tool, not upserted yet.
+            isSupportedFileContentType(block.resource.mimeType)
+          ) {
+            if (isBlobResource(block)) {
+              const fileName = isResourceWithName(block)
+                ? block.name
+                : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
 
-                return handleBase64Upload(auth, {
-                  base64Data: block.resource.blob,
-                  mimeType: block.resource.mimeType,
-                  fileName,
-                  block,
-                  fileUseCase,
-                  fileUseCaseMetadata,
-                });
-              }
-
-              const fileName = isResourceWithName(block.resource)
-                ? block.resource.name
-                : block.resource.uri.split("/").pop() ?? "generated-file";
-
-              const fileUpsertResult = await processAndStoreFromUrl(auth, {
-                url: block.resource.uri,
-                useCase: fileUseCase,
-                useCaseMetadata: fileUseCaseMetadata,
+              return handleBase64Upload(auth, {
+                base64Data: block.resource.blob,
+                mimeType: block.resource.mimeType,
                 fileName,
-                contentType: block.resource.mimeType,
+                block,
+                fileUseCase,
+                fileUseCaseMetadata,
               });
+            }
 
-              if (fileUpsertResult.isErr()) {
-                localLogger.error(
-                  { error: fileUpsertResult.error },
-                  "Error upserting file"
-                );
-                return {
-                  content: {
-                    type: "text",
-                    text: "Failed to upsert the generated file.",
-                  },
-                  file: null,
-                };
-              }
+            const fileName = isResourceWithName(block.resource)
+              ? block.resource.name
+              : block.resource.uri.split("/").pop() ?? "generated-file";
 
-              return {
-                content: block,
-                file: fileUpsertResult.value,
-              };
-            } else {
-              // Generic case for other kinds of resources.
+            const fileUpsertResult = await processAndStoreFromUrl(auth, {
+              url: block.resource.uri,
+              useCase: fileUseCase,
+              useCaseMetadata: fileUseCaseMetadata,
+              fileName,
+              contentType: block.resource.mimeType,
+            });
+
+            if (fileUpsertResult.isErr()) {
+              localLogger.error(
+                { error: fileUpsertResult.error },
+                "Error upserting file"
+              );
               return {
                 content: {
-                  type: block.type,
-                  resource: {
-                    ...block.resource,
-                    ...("text" in block.resource &&
-                    typeof block.resource.text === "string"
-                      ? { text: stripNullBytes(block.resource.text) }
-                      : {}),
-                  },
+                  type: "text",
+                  text: "Failed to upsert the generated file.",
                 },
                 file: null,
               };
             }
+
+            return {
+              content: block,
+              file: fileUpsertResult.value,
+            };
+          } else {
+            // Generic case for other kinds of resources.
+            return {
+              content: {
+                type: block.type,
+                resource: {
+                  ...block.resource,
+                  ...("text" in block.resource &&
+                  typeof block.resource.text === "string"
+                    ? { text: stripNullBytes(block.resource.text) }
+                    : {}),
+                },
+              },
+              file: null,
+            };
           }
-          default:
-            assertNever(block);
         }
-      },
-      {
-        concurrency: 10,
+        default:
+          assertNever(block);
       }
-    );
+    },
+    {
+      concurrency: 10,
+    }
+  );
 
-    const outputItems = await AgentMCPActionOutputItem.bulkCreate(
-      cleanContent.map((c) => ({
-        workspaceId: owner.id,
-        agentMCPActionId: action.id,
-        content: c.content,
-        fileId: c.file?.id,
-      }))
-    );
+  const outputItems = await AgentMCPActionOutputItem.bulkCreate(
+    cleanContent.map((c) => ({
+      workspaceId: owner.id,
+      agentMCPActionId: action.id,
+      content: c.content,
+      fileId: c.file?.id,
+    }))
+  );
 
-    statsDClient.increment("mcp_actions_success.count", 1, tags);
+  statsDClient.increment("mcp_actions_success.count", 1, tags);
 
-    yield {
-      type: "tool_success",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      action: new MCPActionType({
-        ...actionBaseParams,
-        generatedFiles: removeNulls(cleanContent.map((c) => c.file)).map(
-          (f) => ({
-            contentType: f.contentType,
-            fileId: f.sId,
-            snippet: f.snippet,
-            title: f.fileName,
-          })
-        ),
-        executionState: status,
-        id: action.id,
-        isError: false,
-        output: removeNulls(outputItems.map(hideFileFromActionOutput)),
-        type: "tool_action",
-      }),
-    };
-  }
+  yield {
+    type: "tool_success",
+    created: Date.now(),
+    configurationId: agentConfiguration.sId,
+    messageId: agentMessage.sId,
+    action: new MCPActionType({
+      ...actionBaseParams,
+      generatedFiles: removeNulls(cleanContent.map((c) => c.file)).map((f) => ({
+        contentType: f.contentType,
+        fileId: f.sId,
+        snippet: f.snippet,
+        title: f.fileName,
+      })),
+      executionState: status,
+      id: action.id,
+      isError: false,
+      output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+      type: "tool_action",
+    }),
+  };
 }
 
 // Build a tool success event with an error message.
