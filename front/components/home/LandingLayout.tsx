@@ -7,6 +7,7 @@ import {
   Hover3D,
   LoginIcon,
 } from "@dust-tt/sparkle";
+import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
@@ -346,15 +347,22 @@ interface PublicWebsiteLogoProps {
   size?: "default" | "small";
 }
 
-const SMALL_SIZE = { height: "h-[20px]", width: "w-[80px]" };
-const DEFAULT_SIZE = { height: "h-[24px]", width: "w-[96px]" };
+const logoVariants = cva("", {
+  variants: {
+    size: {
+      default: "h-[24px] w-[96px]",
+      small: "h-[20px] w-[80px]",
+    },
+  },
+  defaultVariants: {
+    size: "default",
+  },
+});
 
 export const PublicWebsiteLogo = ({
   size = "default",
 }: PublicWebsiteLogoProps) => {
-  const dimensions = size === "small" ? SMALL_SIZE : DEFAULT_SIZE;
-
-  const className = `${dimensions.height} ${dimensions.width}`;
+  const className = logoVariants({ size });
 
   return (
     <Link href="/home">
