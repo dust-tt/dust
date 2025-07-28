@@ -35,7 +35,7 @@ export default function Analytics({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [isDownloadingData, setIsDownloadingData] = useState(false);
+  const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
 
   const { subscriptions } = useWorkspaceSubscriptions({
     owner,
@@ -48,7 +48,7 @@ export default function Analytics({
 
     const queryString = `mode=month&start=${selectedMonth}&table=all`;
 
-    setIsDownloadingData(true);
+    setDownloadingMonth(selectedMonth);
     try {
       const response = await fetch(
         `/api/w/${owner.sId}/workspace-usage?${queryString}`
@@ -98,7 +98,7 @@ export default function Analytics({
     } catch (error) {
       alert("Failed to download activity data.");
     } finally {
-      setIsDownloadingData(false);
+      setDownloadingMonth(null);
     }
   };
 
@@ -153,7 +153,7 @@ export default function Analytics({
           <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
             <QuickInsights owner={owner} />
             <ActivityReport
-              isDownloading={isDownloadingData}
+              downloadingMonth={downloadingMonth}
               monthOptions={monthOptions}
               handleDownload={handleDownload}
             />
