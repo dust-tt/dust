@@ -32,6 +32,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "missing_action_catcher",
   "monday",
   "notion",
+  "outlook",
   "primitive_types_debugger",
   "query_tables",
   "query_tables_v2",
@@ -393,6 +394,17 @@ export const INTERNAL_MCP_SERVERS: Record<
     // This server is hidden for everyone, it is only available through the search tool
     // when the advanced_search mode is enabled.
     isRestricted: () => true,
+  },
+  outlook: {
+    id: 24,
+    availability: "manual",
+    tools_stakes: {
+      get_messages: "never_ask",
+      get_drafts: "never_ask",
+      create_draft: "low",
+      delete_draft: "low",
+      create_reply_draft: "low",
+    },
   },
 };
 
