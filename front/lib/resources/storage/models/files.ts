@@ -18,11 +18,11 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare contentType: AllSupportedFileContentType;
   declare fileName: string;
   declare fileSize: number;
+  declare sharedAt: Date | null;
+  declare snippet: string | null;
   declare status: FileStatus;
   declare useCase: FileUseCase;
   declare useCaseMetadata: FileUseCaseMetadata | null;
-  declare snippet: string | null;
-  declare isPublic: boolean;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
 
@@ -70,10 +70,10 @@ FileModel.init(
       allowNull: true,
       defaultValue: null,
     },
-    isPublic: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
+    sharedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
