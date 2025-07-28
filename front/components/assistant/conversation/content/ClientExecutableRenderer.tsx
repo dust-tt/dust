@@ -71,7 +71,7 @@ export function ClientExecutableRenderer({
           onClick={() => setShowCode(!showCode)}
           size="xs"
           tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
-          variant="outline"
+          variant="ghost"
         />
         <ShareInteractiveFilePopover
           fileId={fileId}

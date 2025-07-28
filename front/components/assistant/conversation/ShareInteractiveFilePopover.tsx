@@ -38,21 +38,18 @@ export function ShareInteractiveFilePopover({
     owner,
   });
 
-  const handleChangeFileShare = React.useCallback(
-    async (isShared: boolean) => {
-      setIsUpdatingShare(true);
-      try {
-        await doShare(isShared);
-      } finally {
-        setIsUpdatingShare(false);
-      }
-    },
-    [doShare]
-  );
+  const handleChangeFileShare = async (isShared: boolean) => {
+    setIsUpdatingShare(true);
+    try {
+      await doShare(isShared);
+    } finally {
+      setIsUpdatingShare(false);
+    }
+  };
 
-  const handleCopyLink = React.useCallback(async () => {
+  const handleCopyLink = async () => {
     await copyToClipboard(fileShare?.shareUrl ?? "");
-  }, [copyToClipboard, fileShare?.shareUrl]);
+  };
 
   const isShared = !!fileShare?.shareUrl;
   const isLoading = isFileShareLoading || isUpdatingShare;
@@ -68,7 +65,11 @@ export function ShareInteractiveFilePopover({
           disabled={disabled}
         />
       </PopoverTrigger>
-      <PopoverContent className="flex h-48 w-96 flex-col" align="end">
+      <PopoverContent
+        className="flex h-48 w-96 flex-col"
+        align="end"
+        onInteractOutside={() => setIsOpen(false)}
+      >
         <div className="flex flex-1 flex-col">
           <div className="mb-4">
             <div className="text-base font-semibold text-primary dark:text-primary-night">

@@ -2,9 +2,8 @@ import { Spinner } from "@dust-tt/sparkle";
 
 import { VisualizationActionIframe } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import { CenteredState } from "@app/components/assistant/conversation/content/CenteredState";
+import { PublicInteractiveContentHeader } from "@app/components/assistant/conversation/content/PublicInteractiveContentHeader";
 import { usePublicFile } from "@app/lib/swr/files";
-
-import { InteractiveContentHeader } from "./InteractiveContentHeader";
 
 interface PublicClientExecutableRendererProps {
   fileId: string;
@@ -41,9 +40,8 @@ export function PublicClientExecutableRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <InteractiveContentHeader
+      <PublicInteractiveContentHeader
         title={fileName || "Client Executable"}
-        subtitle={fileId}
       />
 
       {/* Content */}

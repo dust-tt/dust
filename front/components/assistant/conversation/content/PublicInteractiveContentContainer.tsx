@@ -62,33 +62,8 @@ export function PublicInteractiveContentContainer({
 
   return (
     <div className="flex w-full flex-col">
-      <PublicInteractiveContentHeader />
       <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
         {renderContent()}
-      </div>
-    </div>
-  );
-}
-
-function PublicInteractiveContentHeader() {
-  return (
-    <div className="flex w-full items-center p-6">
-      <PublicWebsiteLogo />
-      <div className="flex flex-grow justify-end gap-4">
-        <Button
-          variant="highlight"
-          size="sm"
-          label="Sign in"
-          icon={LoginIcon}
-          href={"/api/workos/login"}
-        />
-        <UTMButton
-          href="/home/contact"
-          className="hidden xs:inline-flex"
-          variant="outline"
-          size="sm"
-          label="Request a demo"
-        />
       </div>
     </div>
   );
