@@ -1,7 +1,5 @@
-import { Button, LoginIcon, Spinner } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 
-import { PublicWebsiteLogo } from "@app/components/home/LandingLayout";
-import UTMButton from "@app/components/UTMButton";
 import { usePublicFile } from "@app/lib/swr/files";
 import Custom404 from "@app/pages/404";
 import { clientExecutableContentType } from "@app/types";
