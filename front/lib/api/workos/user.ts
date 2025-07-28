@@ -63,10 +63,19 @@ export async function getWorkOSSession(
     const result = await getWorkOSSessionFromCookie(workOSSessionCookie);
     const domain = getDomainCookieClauseFromRequest(req);
     if (result.cookie === "") {
-      res.setHeader("Set-Cookie", [
-        `workos_session=; ${domain} Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
-        `sessionType=; ${domain} Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
-      ]);
+      if (domain) {
+        res.setHeader("Set-Cookie", [
+          `workos_session=; ${domain} Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          `sessionType=; ${domain} Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          `sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+        ]);
+      } else {
+        res.setHeader("Set-Cookie", [
+          `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+          `sessionType=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+        ]);
+      }
     } else if (result.cookie) {
       res.setHeader("Set-Cookie", [
         `workos_session=${result.cookie}; ${domain} Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
