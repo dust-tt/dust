@@ -7,18 +7,19 @@ interface PublicInteractiveContentHeaderProps {
   title: string;
 }
 
+// Applying flex & justify-center to the title won't make it centered in the header since it has the logo on the left (and will soon have buttons on the right).
+// To make it perfectly centered, we need to set the same flex basis for both the right and left elements.
+// We can optimize more on mobile view once we have buttons and know what to show on mobile.
 export function PublicInteractiveContentHeader({
   title,
 }: PublicInteractiveContentHeaderProps) {
   return (
-    <AppLayoutTitle className="bg-gray-50 @container dark:bg-gray-900">
+    <AppLayoutTitle className="h-12 bg-gray-50 @container dark:bg-gray-900">
       <div className="flex h-full min-w-0 max-w-full items-center">
-        {/* Logo - left side */}
-        <div className="flex shrink-0 items-center">
-          <PublicWebsiteLogo />
+        <div className="grow-1 flex shrink-0 items-center md:basis-60">
+          <PublicWebsiteLogo size="small" />
         </div>
 
-        {/* Title - centered */}
         <div className="flex flex-1 justify-center">
           <span
             className={cn(
@@ -29,6 +30,8 @@ export function PublicInteractiveContentHeader({
             {title}
           </span>
         </div>
+
+        <div className="md:grow-1 md:basis-60"></div>
       </div>
     </AppLayoutTitle>
   );
