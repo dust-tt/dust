@@ -42,30 +42,34 @@ export function withToolLogging<T>(
   ) => {
     const owner = auth.getNonNullableWorkspace();
 
-    const loggerArgs = {
+    let loggerArgs: Record<
+      string,
+      string | number | Record<string, string | null>
+    > = {
       workspace: {
         sId: owner.sId,
         plan_code: auth.plan()?.code || null,
       },
       toolName,
-      ...(agentLoopContext?.runContext
-        ? (() => {
-            const {
-              agentConfiguration,
-              actionConfiguration,
-              conversation,
-              agentMessage,
-            } = agentLoopContext.runContext;
-            return {
-              actionConfigurationId: actionConfiguration.sId,
-              agentConfigurationId: agentConfiguration.sId,
-              agentConfigurationVersion: agentConfiguration.version,
-              agentMessageId: agentMessage.sId,
-              conversationId: conversation.sId,
-            };
-          })()
-        : {}),
     };
+
+    // Adding agent loop context if available.
+    if (agentLoopContext?.runContext) {
+      const {
+        agentConfiguration,
+        actionConfiguration,
+        conversation,
+        agentMessage,
+      } = agentLoopContext.runContext;
+      loggerArgs = {
+        ...loggerArgs,
+        actionConfigurationId: actionConfiguration.sId,
+        agentConfigurationId: agentConfiguration.sId,
+        agentConfigurationVersion: agentConfiguration.version,
+        agentMessageId: agentMessage.sId,
+        conversationId: conversation.sId,
+      };
+    }
 
     logger.info(loggerArgs, "Tool execution start");
 
