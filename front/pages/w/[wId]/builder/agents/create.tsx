@@ -1,12 +1,12 @@
 import {
   Button,
   DocumentIcon,
+  FolderOpenIcon,
   Icon,
   MagicIcon,
   Page,
   PencilSquareIcon,
   SearchInput,
-  FolderOpenIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -26,7 +26,12 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
-import type { SubscriptionType, TemplateTagCodeType, TemplateTagsType, WorkspaceType } from "@app/types";
+import type {
+  SubscriptionType,
+  TemplateTagCodeType,
+  TemplateTagsType,
+  WorkspaceType,
+} from "@app/types";
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -145,10 +150,9 @@ export default function CreateAgent({
     );
   };
 
-  const handleYAMLUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
+  const handleYAMLUpload = async (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
     if (!file) {
       return;
     }
@@ -198,7 +202,7 @@ export default function CreateAgent({
       );
 
       // Clear the file input
-      event.target.value = "";
+      target.value = "";
     } catch (error) {
       sendNotification({
         title: "Error creating agent",
@@ -259,7 +263,7 @@ export default function CreateAgent({
                     const input = document.createElement("input");
                     input.type = "file";
                     input.accept = ".yaml,.yml";
-                    input.onchange = (e) => handleYAMLUpload(e);
+                    input.onchange = handleYAMLUpload;
                     input.click();
                   }}
                 />
