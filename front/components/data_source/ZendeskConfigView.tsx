@@ -113,11 +113,11 @@ export function ZendeskConfigView({
 
     if (value !== "") {
       const numValue = parseInt(value, 10);
-      if (isNaN(numValue) || numValue < 0) {
+      if (isNaN(numValue) || numValue <= 0) {
         sendNotification({
           type: "info",
           title: "Invalid retention period",
-          description: "Retention period must be a non-negative integer.",
+          description: "Retention period must be a positive integer.",
         });
         return;
       }
