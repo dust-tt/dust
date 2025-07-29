@@ -153,6 +153,7 @@ pub mod oauth {
         pub mod mock;
         pub mod monday;
         pub mod notion;
+        pub mod outlook;
         pub mod salesforce;
         pub mod slack;
         pub mod utils;
