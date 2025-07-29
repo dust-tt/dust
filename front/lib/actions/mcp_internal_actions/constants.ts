@@ -362,6 +362,9 @@ export const INTERNAL_MCP_SERVERS: Record<
   outlook: {
     id: 24,
     availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("mcp_outlook");
+    },
     isPreview: true,
     tools_stakes: {
       get_messages: "never_ask",
@@ -406,17 +409,6 @@ export const INTERNAL_MCP_SERVERS: Record<
     // This server is hidden for everyone, it is only available through the search tool
     // when the advanced_search mode is enabled.
     isRestricted: () => true,
-  },
-  outlook: {
-    id: 24,
-    availability: "manual",
-    tools_stakes: {
-      get_messages: "never_ask",
-      get_drafts: "never_ask",
-      create_draft: "low",
-      delete_draft: "low",
-      create_reply_draft: "low",
-    },
   },
 };
 
