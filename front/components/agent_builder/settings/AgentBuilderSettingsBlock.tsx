@@ -138,7 +138,7 @@ function AgentNameInput() {
 
   return (
     <div className="max-w-md space-y-2">
-      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Name
       </label>
       <div className="relative">
@@ -264,7 +264,7 @@ function AgentDescriptionInput() {
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-foreground dark:text-foreground-night">
+      <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Description
       </label>
       <div className="relative">
