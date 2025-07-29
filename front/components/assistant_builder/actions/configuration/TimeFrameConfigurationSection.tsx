@@ -17,11 +17,13 @@ import type { TimeFrame, TimeframeUnit } from "@app/types";
 interface TimeFrameConfigurationSectionProps {
   timeFrame: TimeFrame | null;
   onConfigUpdate: (timeFrame: TimeFrame | null) => void;
+  error?: string;
 }
 
 export function TimeFrameConfigurationSection({
   timeFrame,
   onConfigUpdate,
+  error,
 }: TimeFrameConfigurationSectionProps) {
   const defaultTimeFrame: TimeFrame = {
     duration: 1,
@@ -37,6 +39,7 @@ export function TimeFrameConfigurationSection({
       description="By default, the time frame is determined automatically based on the
         conversation context. Enable manual time frame selection when you need
         to specify an exact range for data extraction."
+      error={error}
     >
       <div className="flex flex-row items-center gap-4 pb-4">
         <Checkbox
