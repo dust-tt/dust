@@ -62,6 +62,7 @@ async function getZendeskTicketNodeBatch({
     `SELECT id, node_id
      FROM data_sources_nodes
      WHERE data_source = :coreDataSourceId
+       AND node_id LIKE 'zendesk-ticket-%-%'
        AND node_id NOT LIKE 'zendesk-ticket-%-%-%'
        AND id > :nextId
      ORDER BY id
