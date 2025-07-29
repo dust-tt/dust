@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::info;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use cloud_storage::Object;
+use cloud_storage::{ErrorList, GoogleErrorResponse, Object};
 use csv::Writer;
 
 use crate::{
@@ -207,11 +207,24 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
     }
 
     async fn delete_table_data(&self, table: &Table) -> Result<()> {
-        Object::delete(
+        match Object::delete(
             &Self::get_bucket()?,
             &Self::get_csv_storage_file_path(table),
         )
-        .await?;
+        .await
+        {
+            Ok(_) => {}
+            Err(e) => match e {
+                cloud_storage::Error::Google(GoogleErrorResponse {
+                    error: ErrorList { code: 404, .. },
+                    ..
+                }) => {
+                    // Silently ignore 404 errors which means the object does not exist
+                    // anymore.
+                }
+                e => Err(e)?,
+            },
+        }
         Ok(())
     }
 
