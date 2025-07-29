@@ -187,12 +187,12 @@ function createServer(
         }
         const tableConfigurations = tableConfigurationsRes.value;
         if (tableConfigurations.length === 0) {
-          return new Ok([
-            {
-              type: "text",
-              text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
-            },
-          ]);
+          return new Err(
+            new MCPError(
+              "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
+              { tracked: false }
+            )
+          );
         }
         const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
           ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
