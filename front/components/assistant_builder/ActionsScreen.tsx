@@ -345,7 +345,9 @@ export default function ActionsScreen({
                 mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
                 isLoading={isMCPServerViewsLoading}
               />
+
               <AddToolsDropdown
+                spacesUsedInActions={spaceIdToActions}
                 setBuilderState={setBuilderState}
                 setEdited={setEdited}
                 setAction={setAction}
