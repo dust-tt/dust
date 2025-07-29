@@ -103,16 +103,20 @@ export function ZendeskConfigView({
 
   const handleRetentionPeriodSave = async () => {
     const value = retentionInput.trim();
-    const numValue = parseInt(value, 10);
+    let numValue: number;
 
-    if (value !== "" && (isNaN(numValue) || numValue < 0)) {
-      sendNotification({
-        type: "error",
-        title: "Invalid retention period",
-        description:
-          "Retention period must be a non-negative integer or empty to use default.",
-      });
-      return;
+    if (value === "") {
+      numValue = DEFAULT_RETENTION_PERIOD_DAYS;
+    } else {
+      numValue = parseInt(value, 10);
+      if (isNaN(numValue) || numValue < 0) {
+        sendNotification({
+          type: "error",
+          title: "Invalid retention period",
+          description: "Retention period must be a non-negative integer.",
+        });
+        return;
+      }
     }
 
     if (numValue > MAX_RETENTION_DAYS) {
@@ -125,6 +129,11 @@ export function ZendeskConfigView({
     }
 
     await handleSetNewConfig(retentionPeriodConfigKey, numValue);
+    sendNotification({
+      type: "success",
+      title: "Retention period updated",
+      description: `Data retention period set to ${numValue} days.`,
+    });
   };
 
   return (
