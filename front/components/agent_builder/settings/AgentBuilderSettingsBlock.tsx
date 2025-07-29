@@ -141,18 +141,17 @@ function AgentNameInput() {
       <label className="text-sm font-medium text-foreground dark:text-foreground-night">
         Name
       </label>
-      <div className="flex items-center gap-2">
-        <div className="flex-grow">
-          <Input placeholder="Enter agent name" {...field} />
-        </div>
+      <div className="relative">
+        <Input placeholder="Enter agent name" {...field} className="pr-10" />
         <DropdownMenu
           onOpenChange={(open) => open && handleGenerateNameSuggestions()}
         >
           <DropdownMenuTrigger asChild>
             <Button
               icon={SparklesIcon}
-              variant="outline"
-              isSelect
+              variant="ghost"
+              size="xs"
+              className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-none border-0 bg-transparent p-0 text-gray-400 hover:rounded-lg hover:bg-gray-100 hover:text-gray-600"
               disabled={
                 !instructions ||
                 instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
@@ -161,7 +160,7 @@ function AgentNameInput() {
                 !instructions ||
                 instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
                   ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to instructions to get suggestions`
-                  : undefined
+                  : "Get name suggestions"
               }
             />
           </DropdownMenuTrigger>
