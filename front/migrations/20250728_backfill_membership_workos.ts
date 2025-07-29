@@ -4,6 +4,7 @@ import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
+import { OrganizationMembership } from "@workos-inc/node";
 
 async function updateMembershipOriginsForWorkspace(
   workspace: LightWorkspaceType,
@@ -24,10 +25,33 @@ async function updateMembershipOriginsForWorkspace(
     includeUser: true,
   });
 
-  const m = await getWorkOS().userManagement.listOrganizationMemberships({
-    organizationId: workspace.workOSOrganizationId,
-    statuses: ["active"],
-  });
+  let m: OrganizationMembership[] = [];
+  while (true) {
+    const curr = await getWorkOS().userManagement.listOrganizationMemberships({
+      organizationId: workspace.workOSOrganizationId,
+      statuses: ["active"],
+      limit: 100,
+      after: m.length > 0 ? m[m.length - 1].id : undefined,
+    });
+
+    logger.info(
+      "Fetched %d active WorkOS memberships for workspace %s",
+      curr.data.length,
+      workspace.sId
+    );
+
+    m = m.concat(curr.data);
+    if (curr.data.length < 100) {
+      break;
+    }
+  }
+
+  logger.info(
+    "Found %d active WorkOS memberships for workspace %s",
+    m.length,
+    workspace.sId
+  );
+
   const workspaceWorkOSId = workspace.workOSOrganizationId;
 
   for (const membership of memberships) {
@@ -36,7 +60,7 @@ async function updateMembershipOriginsForWorkspace(
       continue;
     }
 
-    if (m.data.some((mem) => mem.userId === user.workOSUserId)) {
+    if (m.some((mem) => mem.userId === user.workOSUserId)) {
       workspaceLogger.info(
         `User ${user.email} already has WorkOS membership for workspace ${workspace.sId} - ${workspace.name}`
       );
@@ -81,6 +105,7 @@ async function updateMembershipOriginsForWorkspace(
               `SKIPPING - Error creating WorkOS membership for user ${user.email}:`,
               error
             );
+            break;
           }
         }
       }
