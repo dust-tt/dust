@@ -9,8 +9,10 @@ import { uniqueId } from "lodash";
 
 import { config } from "@app/lib/api/regions/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -71,6 +73,28 @@ export async function getOrCreateWorkOSOrganization(
             ]
           : undefined,
       });
+
+      const { memberships } =
+        await MembershipResource.getMembershipsForWorkspace({
+          workspace,
+          includeUser: true,
+        });
+
+      await concurrentExecutor(
+        memberships,
+        async (membership) => {
+          const user = membership.user;
+          if (!user || !user.workOSUserId || !organization) {
+            return;
+          }
+
+          await getWorkOS().userManagement.createOrganizationMembership({
+            userId: user.workOSUserId,
+            organizationId: organization.id,
+          });
+        },
+        { concurrency: 10 }
+      );
     }
 
     await WorkspaceResource.updateWorkOSOrganizationId(
