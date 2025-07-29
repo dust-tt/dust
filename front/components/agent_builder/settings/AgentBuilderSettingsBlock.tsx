@@ -451,13 +451,9 @@ export function AgentBuilderSettingsBlock({
                 </div>
                 <AgentPictureInput />
               </div>
-              <div className="flex gap-8">
-                <div className="flex-1">
-                  <TagsSection />
-                </div>
-                <div className="flex-1">
-                  <AgentAccessAndPublication />
-                </div>
+              <div className="space-y-4">
+                <TagsSection />
+                <AgentAccessAndPublication />
               </div>
             </div>
           </div>
