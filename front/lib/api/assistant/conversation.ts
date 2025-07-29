@@ -401,11 +401,10 @@ export async function postUserMessage(
   const results = await Promise.all([
     getAgentConfigurations({
       auth,
-      agentsGetView: {
-        agentIds: mentions
-          .filter(isAgentMention)
-          .map((mention) => mention.configurationId),
-      },
+      agentsGetView: mentions
+        .filter(isAgentMention)
+        .map((mention) => mention.configurationId)
+        .map((id) => ({ agentId: id })),
       variant: "light",
     }),
     (() => {

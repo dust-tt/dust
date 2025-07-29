@@ -33,11 +33,10 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const agent = await getAgentConfiguration(
-    auth,
-    req.query.aId as string,
-    "full"
-  );
+  const agent = await getAgentConfiguration(auth, {
+    agentId: req.query.aId as string,
+    variant: "full",
+  });
   if (!agent || (!agent.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,

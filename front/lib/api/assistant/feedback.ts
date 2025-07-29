@@ -200,11 +200,10 @@ export async function getAgentFeedbacks({
   const owner = auth.getNonNullableWorkspace();
 
   // Make sure the user has access to the agent
-  const agentConfiguration = await getAgentConfiguration(
-    auth,
-    agentConfigurationId,
-    "light"
-  );
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
   if (!agentConfiguration) {
     return new Err(new Error("agent_configuration_not_found"));
   }

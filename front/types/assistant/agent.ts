@@ -70,7 +70,8 @@ export type AgentConfigurationScope =
  */
 // TODO(agent-discovery) remove workspace, published, global
 export type AgentsGetViewType =
-  | { agentIds: string[]; allVersions?: boolean }
+  | { agentIds: string[]; allVersions: true }
+  | { agentId: string; agentVersion?: number }[]
   | "current_user"
   | "list"
   | "all"

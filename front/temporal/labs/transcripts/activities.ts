@@ -560,11 +560,10 @@ export async function processTranscriptActivity(
       return;
     }
 
-    const agent = await getAgentConfiguration(
-      auth,
-      agentConfigurationId,
-      "light"
-    );
+    const agent = await getAgentConfiguration(auth, {
+      agentId: agentConfigurationId,
+      variant: "light",
+    });
 
     if (!agent) {
       await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);

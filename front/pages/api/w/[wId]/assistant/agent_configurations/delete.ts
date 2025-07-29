@@ -46,10 +46,7 @@ async function handler(
 
       const agentConfigurations = await getAgentConfigurations({
         auth,
-        agentsGetView: {
-          agentIds: agentConfigurationIds,
-          allVersions: false,
-        },
+        agentsGetView: agentConfigurationIds.map((id) => ({ agentId: id })),
 
         variant: "light",
       });

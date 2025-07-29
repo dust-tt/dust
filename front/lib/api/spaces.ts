@@ -145,7 +145,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
         async (agentId) => {
           const [agentConfig] = await getAgentConfigurations({
             auth,
-            agentsGetView: { agentIds: [agentId] },
+            agentsGetView: [{ agentId: agentId }],
             variant: "full",
             dangerouslySkipPermissionFiltering: true,
           });

@@ -67,9 +67,7 @@ export async function updateSpacePermissions({
   for (const acId of agentConfigurationIds) {
     const [ac] = await getAgentConfigurations({
       auth,
-      agentsGetView: {
-        agentIds: [acId],
-      },
+      agentsGetView: [{ agentId: acId }],
       variant: "full",
       dangerouslySkipPermissionFiltering: true,
     });

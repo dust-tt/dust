@@ -69,7 +69,7 @@ const migrateWorkspace = async (
     if (previousScope === "workspace" && agent.status === "active") {
       const agentConfigs = await getAgentConfigurations({
         auth,
-        agentsGetView: { agentIds: [agent.sId] },
+        agentsGetView: [{ agentId: agent.sId }],
         variant: "light",
       });
       const agentConfig = agentConfigs[0];

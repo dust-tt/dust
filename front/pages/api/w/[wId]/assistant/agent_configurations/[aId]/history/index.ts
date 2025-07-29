@@ -38,7 +38,10 @@ async function handler(
   }
 
   // Check that user has access to this agent
-  const assistant = await getAgentConfiguration(auth, aId, "light");
+  const assistant = await getAgentConfiguration(auth, {
+    agentId: aId,
+    variant: "light",
+  });
   if (!assistant || (!assistant.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,

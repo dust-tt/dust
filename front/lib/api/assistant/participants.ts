@@ -45,7 +45,7 @@ async function fetchAllAgentsById(
 ): Promise<AgentParticipantType[]> {
   const agents = await getAgentConfigurations({
     auth,
-    agentsGetView: { agentIds: agentConfigurationIds },
+    agentsGetView: agentConfigurationIds.map((id) => ({ agentId: id })),
     variant: "light",
   });
 

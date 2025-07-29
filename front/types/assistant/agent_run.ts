@@ -133,11 +133,10 @@ export async function getRunAgentData(
   }
 
   // Fetch the agent configuration as we need the full version of the agent configuration.
-  const agentConfiguration = await getAgentConfiguration(
-    auth,
-    agentMessage.configuration.sId,
-    "full"
-  );
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: agentMessage.configuration.sId,
+    variant: "full",
+  });
   if (!agentConfiguration) {
     return new Err(new Error("Agent configuration not found"));
   }

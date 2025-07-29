@@ -30,7 +30,7 @@ async function updateAgentConfigurationGroupIds(
     // Get the full agent configuration with actions
     const agentConfiguration = await getAgentConfigurations({
       auth,
-      agentsGetView: { agentIds: [agent.sId] },
+      agentsGetView: [{ agentId: agent.sId }],
       variant: "full",
       dangerouslySkipPermissionFiltering: true,
     });

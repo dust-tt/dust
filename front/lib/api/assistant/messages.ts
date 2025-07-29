@@ -155,7 +155,9 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       );
       const agents = await getAgentConfigurations({
         auth,
-        agentsGetView: { agentIds: [...agentConfigurationIds] },
+        agentsGetView: [...agentConfigurationIds].map((id) => ({
+          agentId: id,
+        })),
         variant: "extra_light",
       });
       if (agents.some((a) => !a)) {
