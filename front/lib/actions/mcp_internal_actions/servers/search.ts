@@ -4,7 +4,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
-import { McpError } from "@app/lib/actions/mcp_errors";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -65,7 +65,7 @@ export async function searchFunction({
   tagsNot?: string[];
   auth: Authenticator;
   agentLoopContext?: AgentLoopContextType;
-}): Promise<Result<CallToolResult["content"], McpError>> {
+}): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -105,7 +105,7 @@ export async function searchFunction({
 
   if (coreSearchArgs.length === 0) {
     return new Err(
-      new McpError(
+      new MCPError(
         "Search action must have at least one data source configured."
       )
     );
@@ -154,12 +154,12 @@ export async function searchFunction({
   );
 
   if (searchResults.isErr()) {
-    return new Err(new McpError(searchResults.error.message));
+    return new Err(new MCPError(searchResults.error.message));
   }
 
   if (citationsOffset + retrievalTopK > getRefs().length) {
     return new Err(
-      new McpError(
+      new MCPError(
         "The search exhausted the total number of references available for citations"
       )
     );

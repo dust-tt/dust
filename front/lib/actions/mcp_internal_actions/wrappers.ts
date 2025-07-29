@@ -5,7 +5,7 @@ import type {
   ServerRequest,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import type { McpError } from "@app/lib/actions/mcp_errors";
+import type { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -29,7 +29,7 @@ export function withToolLogging<T>(
   toolCallback: (
     params: T,
     extra: RequestHandlerExtra<ServerRequest, ServerNotification>
-  ) => Promise<Result<CallToolResult["content"], McpError>>
+  ) => Promise<Result<CallToolResult["content"], MCPError>>
 ): (
   params: T,
   extra: RequestHandlerExtra<ServerRequest, ServerNotification>

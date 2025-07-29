@@ -4,7 +4,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
-import { McpError } from "@app/lib/actions/mcp_errors";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -142,13 +142,13 @@ async function searchCallback(
     relativeTimeFrame,
   }: z.infer<typeof SearchToolInputSchema>,
   { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] } = {}
-): Promise<Result<CallToolResult["content"], McpError>> {
+): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
 
   if (!agentLoopContext?.runContext) {
-    throw new McpError(
+    throw new MCPError(
       "agentLoopRunContext is required where the tool is called."
     );
   }
@@ -161,7 +161,7 @@ async function searchCallback(
 
   if (agentDataSourceConfigurationsResult.isErr()) {
     return new Err(
-      new McpError(agentDataSourceConfigurationsResult.error.message)
+      new MCPError(agentDataSourceConfigurationsResult.error.message)
     );
   }
   const agentDataSourceConfigurations =
@@ -217,7 +217,7 @@ async function searchCallback(
 
   if (coreSearchArgs.length === 0) {
     return new Err(
-      new McpError(
+      new MCPError(
         "Search action must have at least one data source configured."
       )
     );
@@ -265,13 +265,13 @@ async function searchCallback(
 
   if (searchResults.isErr()) {
     return new Err(
-      new McpError(`Failed to search content: ${searchResults.error.message}`)
+      new MCPError(`Failed to search content: ${searchResults.error.message}`)
     );
   }
 
   if (citationsOffset + retrievalTopK > getRefs().length) {
     return new Err(
-      new McpError(
+      new MCPError(
         "The search exhausted the total number of references available for citations"
       )
     );
@@ -329,7 +329,7 @@ async function searchCallback(
 
     if (searchResult.isErr()) {
       return new Err(
-        new McpError(`Failed to search content: ${searchResult.error.message}`)
+        new MCPError(`Failed to search content: ${searchResult.error.message}`)
       );
     }
     renderedNodes = renderSearchResults(
@@ -409,7 +409,7 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return new Err(new McpError(fetchResult.error.message));
+          return new Err(new MCPError(fetchResult.error.message));
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
@@ -453,7 +453,7 @@ const createServer = (
 
         if (!dataSource) {
           return new Err(
-            new McpError(`Could not find dataSource for node: ${nodeId}`)
+            new MCPError(`Could not find dataSource for node: ${nodeId}`)
           );
         }
 
@@ -475,7 +475,7 @@ const createServer = (
 
         if (readResult.isErr()) {
           return new Err(
-            new McpError(
+            new MCPError(
               `Could not read node: ${nodeId} (error: ${readResult.error})`
             )
           );
@@ -556,7 +556,7 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return new Err(new McpError(fetchResult.error.message));
+          return new Err(new MCPError(fetchResult.error.message));
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
@@ -602,7 +602,7 @@ const createServer = (
 
         if (searchResult.isErr()) {
           return new Err(
-            new McpError(
+            new MCPError(
               `Failed to search content: ${searchResult.error.message}`
             )
           );
@@ -678,7 +678,7 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return new Err(new McpError(fetchResult.error.message));
+          return new Err(new MCPError(fetchResult.error.message));
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
@@ -712,7 +712,7 @@ const createServer = (
           // If it's a data source node ID, extract the data source ID and list its root contents
           const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
           if (!dataSourceId) {
-            return new Err(new McpError("Invalid data source node ID format"));
+            return new Err(new MCPError("Invalid data source node ID format"));
           }
 
           const dataSourceConfig = agentDataSourceConfigurations.find(
@@ -721,7 +721,7 @@ const createServer = (
 
           if (!dataSourceConfig) {
             return new Err(
-              new McpError(`Data source not found for ID: ${dataSourceId}`)
+              new MCPError(`Data source not found for ID: ${dataSourceId}`)
             );
           }
 
@@ -753,7 +753,7 @@ const createServer = (
         }
 
         if (searchResult.isErr()) {
-          return new Err(new McpError("Failed to list folder contents"));
+          return new Err(new MCPError("Failed to list folder contents"));
         }
 
         return new Ok([
@@ -865,14 +865,14 @@ const createServer = (
         );
 
         if (fetchResult.isErr()) {
-          return new Err(new McpError(fetchResult.error.message));
+          return new Err(new MCPError(fetchResult.error.message));
         }
         const agentDataSourceConfigurations = fetchResult.value;
 
         if (isDataSourceNodeId(nodeId)) {
           const dataSourceId = extractDataSourceIdFromNodeId(nodeId);
           if (!dataSourceId) {
-            return new Err(new McpError("Invalid data source node ID format"));
+            return new Err(new MCPError("Invalid data source node ID format"));
           }
 
           const dataSourceConfig = agentDataSourceConfigurations.find(
@@ -881,7 +881,7 @@ const createServer = (
 
           if (!dataSourceConfig) {
             return new Err(
-              new McpError(`Data source not found for ID: ${dataSourceId}`)
+              new MCPError(`Data source not found for ID: ${dataSourceId}`)
             );
           }
 
@@ -942,7 +942,7 @@ const createServer = (
           });
 
           if (pathSearchResult.isErr()) {
-            return new Err(new McpError("Failed to fetch nodes in the path"));
+            return new Err(new MCPError("Failed to fetch nodes in the path"));
           }
 
           for (const node of pathSearchResult.value.nodes) {
@@ -957,7 +957,7 @@ const createServer = (
 
         if (!dataSourceConfig) {
           return new Err(
-            new McpError("Could not find data source configuration")
+            new MCPError("Could not find data source configuration")
           );
         }
 

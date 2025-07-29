@@ -7,7 +7,7 @@ import {
   generateSectionFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
-import { McpError } from "@app/lib/actions/mcp_errors";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   SqlQueryOutputType,
@@ -180,7 +180,7 @@ function createServer(
         );
         if (tableConfigurationsRes.isErr()) {
           return new Err(
-            new McpError(
+            new MCPError(
               `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
             )
           );
@@ -225,7 +225,7 @@ function createServer(
         if (queryResult.isErr()) {
           return new Err(
             // Certain errors we don't track as they can occur in the context of a normal execution.
-            new McpError(
+            new MCPError(
               "Error executing database query: " + queryResult.error.message,
               { tracked: false }
             )

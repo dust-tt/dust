@@ -4,7 +4,7 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
-import { McpError } from "@app/lib/actions/mcp_errors";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -114,7 +114,7 @@ function createServer(
               | WarningResourceType;
           }
       )[],
-      McpError
+      MCPError
     >
   > {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -198,12 +198,12 @@ function createServer(
     );
 
     if (searchResults.isErr()) {
-      return new Err(new McpError(searchResults.error.message));
+      return new Err(new MCPError(searchResults.error.message));
     }
 
     if (citationsOffset + retrievalTopK > getRefs().length) {
       return new Err(
-        new McpError(
+        new MCPError(
           "The inclusion exhausted the total number of references available for citations"
         )
       );

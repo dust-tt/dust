@@ -3,7 +3,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { McpError } from "@app/lib/actions/mcp_errors";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -91,7 +91,7 @@ const createServer = (
         const { conversation } = agentLoopContext?.runContext ?? {};
         if (!conversation) {
           return new Err(
-            new McpError(
+            new MCPError(
               "Conversation ID is required to create a client executable file."
             )
           );
@@ -105,7 +105,7 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return new Err(new McpError(result.error.message));
+          return new Err(new MCPError(result.error.message));
         }
 
         const { value: fileResource } = result;
@@ -214,7 +214,7 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return new Err(new McpError(result.error.message));
+          return new Err(new MCPError(result.error.message));
         }
 
         const { fileResource, replacementCount } = result.value;
@@ -278,7 +278,7 @@ const createServer = (
         const result = await getClientExecutableFileContent(auth, file_id);
 
         if (result.isErr()) {
-          return new Err(new McpError(result.error.message));
+          return new Err(new MCPError(result.error.message));
         }
 
         const { fileResource, content } = result.value;

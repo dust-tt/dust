@@ -10,6 +10,7 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   ConfigurableToolInputSchemas,
@@ -26,7 +27,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
-import { McpError } from "@app/lib/actions/mcp_errors";
 import type {
   ActionGeneratedFileType,
   AgentLoopContextType,
@@ -171,7 +171,7 @@ function makeExtractInformationFromDocumentsTool(
       );
       if (res.isErr()) {
         return new Err(
-          new McpError(
+          new MCPError(
             `Error running extract data action: ${res.error.message}`
           )
         );
@@ -182,7 +182,7 @@ function makeExtractInformationFromDocumentsTool(
       for await (const event of res.value.eventStream) {
         if (event.type === "error") {
           return new Err(
-            new McpError(
+            new MCPError(
               `"Error running extract data action": ${event.content.message ?? "Unknown error from event stream."}`
             )
           );
@@ -192,7 +192,7 @@ function makeExtractInformationFromDocumentsTool(
           const e = event.content.execution[0][0];
           if (e.error) {
             return new Err(
-              new McpError(
+              new MCPError(
                 `"Error running extract data action": ${e.error ?? "An unknown error occurred during block execution."}`
               )
             );
