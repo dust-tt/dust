@@ -6,6 +6,7 @@ import { ACTION_TYPE_TO_MCP_SERVER_MAP } from "@app/components/agent_builder/typ
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/internal/agent_configuration";
@@ -385,6 +386,7 @@ export class AgentYAMLConverter {
   /**
    * Converts an array of YAML actions to MCP server configurations.
    * Filters out DATA_VISUALIZATION actions which are handled differently.
+   * Uses concurrent execution for better performance with bounds checking.
    */
   static async convertYAMLActionsToMCPConfigurations(
     auth: Authenticator,
@@ -395,26 +397,30 @@ export class AgentYAMLConverter {
       Error
     >
   > {
-    const mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][] =
-      [];
-
-    for (const action of yamlActions) {
-      const configResult = await this.convertYAMLActionToMCPConfiguration(
-        auth,
-        action
+    try {
+      const results = await concurrentExecutor(
+        yamlActions,
+        (action) => this.convertYAMLActionToMCPConfiguration(auth, action),
+        { concurrency: 5 }
       );
 
-      if (configResult.isErr()) {
-        return configResult;
+      const mcpConfigurations: PostOrPatchAgentConfigurationRequestBody["assistant"]["actions"][number][] =
+        [];
+
+      for (const result of results) {
+        if (result.isErr()) {
+          return result;
+        }
+
+        if (result.value) {
+          mcpConfigurations.push(result.value);
+        }
       }
 
-      // Only add non-null configurations (DATA_VISUALIZATION returns null)
-      if (configResult.value) {
-        mcpConfigurations.push(configResult.value);
-      }
+      return new Ok(mcpConfigurations);
+    } catch (error) {
+      return new Err(normalizeError(error));
     }
-
-    return new Ok(mcpConfigurations);
   }
 
   /**
