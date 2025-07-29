@@ -120,8 +120,11 @@ const sortStrategies: Record<SortStrategyType, SortStrategy> = {
  */
 export async function getAgentConfiguration<V extends AgentFetchVariant>(
   auth: Authenticator,
-  agentId: string,
-  variant: V
+  {
+    agentId,
+    variant,
+    agentVersion,
+  }: { agentId: string; variant: V; agentVersion?: number }
 ): Promise<
   | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
   | null
@@ -129,7 +132,12 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   return tracer.trace("getAgentConfiguration", async () => {
     const res = await getAgentConfigurations({
       auth,
-      agentsGetView: { agentIds: [agentId] },
+      agentsGetView: [
+        {
+          agentId,
+          agentVersion,
+        },
+      ],
       variant,
     });
     // `as` is required here because the type collapses to `LightAgentConfigurationType |
@@ -164,7 +172,7 @@ export async function searchAgentConfigurationsByName(
   const r = removeNulls(
     await getAgentConfigurations({
       auth,
-      agentsGetView: { agentIds: agentConfigurations.map((c) => c.sId) },
+      agentsGetView: agentConfigurations.map((c) => ({ agentId: c.sId })),
       variant: "light",
     })
   );
@@ -188,12 +196,7 @@ export async function getLightAgentConfiguration(
   auth: Authenticator,
   agentId: string
 ): Promise<LightAgentConfigurationType | null> {
-  const res = await getAgentConfigurations({
-    auth,
-    agentsGetView: { agentIds: [agentId] },
-    variant: "light",
-  });
-  return res[0] || null;
+  return getAgentConfiguration(auth, { agentId, variant: "light" });
 }
 
 // Global agent configurations.
@@ -216,6 +219,9 @@ function determineGlobalAgentIdsToFetch(
     default:
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
         return agentsGetView.agentIds.filter(isGlobalAgentId);
+      }
+      if (Array.isArray(agentsGetView)) {
+        return agentsGetView.map((a) => a.agentId).filter(isGlobalAgentId);
       }
       assertNever(agentsGetView);
   }
@@ -442,6 +448,70 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
               sId: v.sId,
               version: v.max_version,
             })),
+          },
+          order: [["version", "DESC"]],
+        });
+      }
+      if (Array.isArray(agentsGetView)) {
+        const workspaceAgents = agentsGetView.filter(
+          (a) => !isGlobalAgentId(a.agentId)
+        );
+
+        if (workspaceAgents.length === 0) {
+          return [];
+        }
+
+        // Handle agents with specific versions vs latest versions
+        const specificVersionConditions: {
+          sId: string;
+          version: number;
+        }[] = [];
+        const latestVersionAgentIds: string[] = [];
+
+        for (const agent of workspaceAgents) {
+          if (agent.agentVersion !== undefined) {
+            specificVersionConditions.push({
+              sId: agent.agentId,
+              version: agent.agentVersion,
+            });
+          } else {
+            latestVersionAgentIds.push(agent.agentId);
+          }
+        }
+
+        const conditions: any[] = [...specificVersionConditions];
+
+        // Get latest versions for agents without specific version
+        if (latestVersionAgentIds.length > 0) {
+          const latestVersions = (await AgentConfiguration.findAll({
+            attributes: [
+              "sId",
+              [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
+            ],
+            where: {
+              workspaceId: owner.id,
+              sId: latestVersionAgentIds,
+            },
+            group: ["sId"],
+            raw: true,
+          })) as unknown as { sId: string; max_version: number }[];
+
+          conditions.push(
+            ...latestVersions.map((v) => ({
+              sId: v.sId,
+              version: v.max_version,
+            }))
+          );
+        }
+
+        if (conditions.length === 0) {
+          return [];
+        }
+
+        return AgentConfiguration.findAll({
+          where: {
+            workspaceId: owner.id,
+            [Op.or]: conditions,
           },
           order: [["version", "DESC"]],
         });
@@ -1582,11 +1652,10 @@ export async function getFullAgentConfiguration(
   auth: Authenticator,
   configuration: LightAgentConfigurationType
 ): Promise<AgentConfigurationType> {
-  const fullConfiguration = await getAgentConfiguration(
-    auth,
-    configuration.sId,
-    "full"
-  );
+  const fullConfiguration = await getAgentConfiguration(auth, {
+    agentId: configuration.sId,
+    variant: "full",
+  });
 
   assert(
     fullConfiguration,
