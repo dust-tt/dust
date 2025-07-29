@@ -27,12 +27,14 @@ pub enum CredentialProvider {
     Monday,
     Mcp,
     Notion,
+    Outlook,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
     fn from(provider: ConnectionProvider) -> Self {
         match provider {
             ConnectionProvider::Microsoft => CredentialProvider::Microsoft,
+            ConnectionProvider::Outlook => CredentialProvider::Outlook,
             ConnectionProvider::Salesforce => CredentialProvider::Salesforce,
             ConnectionProvider::Gmail => CredentialProvider::Gmail,
             ConnectionProvider::Jira => CredentialProvider::Jira,
@@ -202,6 +204,9 @@ impl Credential {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Microsoft => {
+                vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::Outlook => {
                 vec!["client_id", "client_secret"]
             }
             CredentialProvider::Gmail => {

@@ -176,6 +176,9 @@ const config = {
   getOAuthMicrosoftClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MICROSOFT_CLIENT_ID");
   },
+  getOAuthMicrosoftOutlookClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_MICROSOFT_OUTLOOK_CLIENT_ID");
+  },
   getOAuthZendeskClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
   },
