@@ -128,7 +128,7 @@ function actionDisplayName(
   }`;
 }
 
-type SpaceIdToActions = Record<string, AssistantBuilderMCPOrVizState[]>;
+export type SpaceIdToActions = Record<string, AssistantBuilderMCPOrVizState[]>;
 
 interface ActionScreenProps {
   owner: WorkspaceType;
