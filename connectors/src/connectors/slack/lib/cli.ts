@@ -1,6 +1,7 @@
 import {
   getChannelById,
   joinChannel,
+  migrateChannelsFromLegacyBotToNewBot,
   updateSlackChannelInConnectorsDb,
 } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
@@ -18,6 +19,7 @@ import { throwOnError } from "@connectors/lib/cli";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
 import { default as topLogger } from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
@@ -590,6 +592,72 @@ export const slack = async ({
           );
         }
       }
+
+      return { success: true };
+    }
+
+    case "cutover-legacy-bot": {
+      if (!args.wId) {
+        throw new Error("Missing --wId argument");
+      }
+      if (!args.botId) {
+        throw new Error("Missing --botId argument");
+      }
+
+      const legacyConnector = await ConnectorResource.findByWorkspaceIdAndType(
+        args.wId,
+        "slack"
+      );
+      if (!legacyConnector) {
+        throw new Error(
+          `Could not find Slack connector for workspace ${args.wId}`
+        );
+      }
+
+      const slackConfiguration =
+        await SlackConfigurationResource.fetchByConnectorId(legacyConnector.id);
+
+      // Ensure that the legacy bot is not enabled anymore.
+      if (!slackConfiguration || slackConfiguration.botEnabled) {
+        throw new Error("Legacy bot is enabled");
+      }
+
+      const slackBotConnector =
+        await ConnectorResource.findByWorkspaceIdAndType(args.wId, "slack_bot");
+      if (!slackBotConnector) {
+        throw new Error(
+          `Could not find Slack bot connector for workspace ${args.wId}`
+        );
+      }
+
+      const slackBotConfiguration =
+        await SlackConfigurationResource.fetchByConnectorId(
+          slackBotConnector.id
+        );
+
+      // Ensure that the new bot is enabled.
+      if (!slackBotConfiguration?.botEnabled) {
+        throw new Error("Slack bot is not enabled");
+      }
+
+      const migrateRes = await migrateChannelsFromLegacyBotToNewBot(
+        legacyConnector,
+        slackBotConnector
+      );
+      if (migrateRes.isErr()) {
+        throw new Error(
+          `Could not migrate channels from legacy bot to new bot: ${migrateRes.error}`
+        );
+      }
+
+      logger.info(
+        {
+          legacyConnectorId: legacyConnector.id,
+          migratedChannelsCount: migrateRes.value.migratedChannelsCount,
+          slackBotConnectorId: slackBotConnector.id,
+        },
+        "Migrated channels from legacy bot to new bot"
+      );
 
       return { success: true };
     }

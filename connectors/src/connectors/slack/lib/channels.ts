@@ -2,6 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse";
+import assert from "assert";
 import { Op } from "sequelize";
 
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
@@ -405,4 +406,53 @@ export async function getChannelById(
   }
 
   return res.channel;
+}
+
+export async function migrateChannelsFromLegacyBotToNewBot(
+  slackConnector: ConnectorResource,
+  slackBotConnector: ConnectorResource
+): Promise<Result<{ migratedChannelsCount: number }, Error>> {
+  assert(
+    slackConnector.type === "slack",
+    "Connector must be a Slack connector"
+  );
+  assert(
+    slackBotConnector.type === "slack_bot",
+    "Connector must be a Slack bot connector"
+  );
+
+  const slackClient = await getSlackClient(slackConnector.id);
+
+  // Fetch all channels that the deprecated bot is a member of.
+  const channels = await getChannels(slackClient, slackConnector.id, true);
+  logger.info(
+    {
+      channelsCount: channels.length,
+      slackBotConnectorId: slackBotConnector.id,
+      slackConnectorId: slackConnector.id,
+    },
+    "Found channels to migrate"
+  );
+
+  for (const channel of channels) {
+    if (!channel.id) {
+      continue;
+    }
+
+    // Leave the channel but keep it in the database as it's still use to be indexed.
+    await slackClient.conversations.leave({ channel: channel.id });
+
+    // Join the new bot to the channel.
+    const joinRes = await joinChannel(slackBotConnector.id, channel.id);
+    if (joinRes.isErr()) {
+      logger.error(
+        { error: joinRes.error, channelId: channel.id },
+        "Could not join channel"
+      );
+
+      return joinRes;
+    }
+  }
+
+  return new Ok({ migratedChannelsCount: channels.length });
 }
