@@ -28,7 +28,7 @@ export function withToolLogging<T>(
   toolCallback: (
     params: T,
     extra: RequestHandlerExtra<ServerRequest, ServerNotification>
-  ) => Promise<Result<CallToolResult, Error>>
+  ) => Promise<Result<CallToolResult["content"], McpError>>
 ): (
   params: T,
   extra: RequestHandlerExtra<ServerRequest, ServerNotification>
@@ -83,19 +83,21 @@ export function withToolLogging<T>(
 
     // When we get an Err, we monitor it and return it as a text content.
     if (result.isErr()) {
-      statsDClient.increment("use_tools_error.count", 1, [
-        "error_type:run_error",
-        ...tags,
-      ]);
+      if (result.error.tracked) {
+        statsDClient.increment("use_tools_error.count", 1, [
+          "error_type:run_error",
+          ...tags,
+        ]);
 
-      const error = result.error.message;
-      logger.error(
-        {
-          error,
-          ...loggerArgs,
-        },
-        "Tool execution error"
-      );
+        const error = result.error.message;
+        logger.error(
+          {
+            error,
+            ...loggerArgs,
+          },
+          "Tool execution error"
+        );
+      }
       return {
         isError: true,
         content: [
@@ -110,6 +112,6 @@ export function withToolLogging<T>(
     const elapsed = performance.now() - startTime;
     statsDClient.distribution("run_tool.duration.distribution", elapsed, tags);
 
-    return result.value;
+    return { isError: false, content: result.value };
   };
 }
