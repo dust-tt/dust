@@ -164,7 +164,7 @@ function AgentNameInput() {
               }
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-64">
+          <DropdownMenuContent className="w-64" sideOffset={8}>
             {isGenerating ? (
               <div className="flex items-center justify-center p-4">
                 <Spinner size="sm" />
@@ -294,7 +294,7 @@ function AgentDescriptionInput() {
               }
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-80">
+          <DropdownMenuContent className="w-80" sideOffset={8}>
             {isGenerating ? (
               <div className="flex items-center justify-center p-4">
                 <Spinner size="sm" />
