@@ -28,6 +28,12 @@ async function updateMembershipOriginsForWorkspace(
     includeUser: true,
   });
 
+  const m = await getWorkOS().userManagement.listOrganizationMemberships({
+    organizationId: workspace.workOSOrganizationId,
+    statuses: ["active"],
+  });
+  const workspaceWorkOSId = workspace.workOSOrganizationId;
+
   await concurrentExecutor(
     memberships,
     async (membership) => {
@@ -36,27 +42,17 @@ async function updateMembershipOriginsForWorkspace(
         return;
       }
 
+      if (m.data.some((mem) => mem.userId === user.workOSUserId)) {
+        workspaceLogger.info(
+          `User ${user.email} already has WorkOS membership for workspace ${workspace.sId} - ${workspace.name}`
+        );
+        return;
+      }
+
       if (execute) {
-        if (!workspace.workOSOrganizationId) {
-          return;
-        }
-
-        const m = await getWorkOS().userManagement.listOrganizationMemberships({
-          organizationId: workspace.workOSOrganizationId,
-          userId: user.workOSUserId,
-          statuses: ["active"],
-        });
-
-        if (m.data.length > 0) {
-          workspaceLogger.info(
-            `User ${user.email} already has WorkOS membership for workspace ${workspace.sId} - ${workspace.name}`
-          );
-          return;
-        }
-
         await getWorkOS().userManagement.createOrganizationMembership({
           userId: user.workOSUserId,
-          organizationId: workspace.workOSOrganizationId,
+          organizationId: workspaceWorkOSId,
         });
         workspaceLogger.info(
           `Set WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name}`

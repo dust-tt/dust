@@ -794,7 +794,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   ): Promise<Result<undefined, Error>> {
     try {
       const w = auth.workspace();
-      const u = auth.user();
+      const u = this.user;
       if (w && w.workOSOrganizationId && u && u.workOSUserId) {
         try {
           const workos = getWorkOS();
