@@ -600,9 +600,6 @@ export const slack = async ({
       if (!args.wId) {
         throw new Error("Missing --wId argument");
       }
-      if (!args.botId) {
-        throw new Error("Missing --botId argument");
-      }
 
       const legacyConnector = await ConnectorResource.findByWorkspaceIdAndType(
         args.wId,
