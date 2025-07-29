@@ -14,7 +14,6 @@ import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
 const DEFAULT_RETENTION_PERIOD_DAYS = 180;
-const MAX_RETENTION_PERIOD_DAYS = 365;
 
 export function ZendeskConfigView({
   owner,
@@ -89,13 +88,24 @@ export function ZendeskConfigView({
       await mutateHideCustomerDetailsConfig();
       await mutateRetentionPeriodConfig();
       setLoading(false);
+
+      // Show a notif only for the retention period (the others are toggles).
+      if (configKey === retentionPeriodConfigKey) {
+        sendNotification({
+          type: "success",
+          title: "Retention period updated",
+          description: `The retention period has been updated to ${configValue} days.`,
+        });
+      }
     } else {
       setLoading(false);
       const err = await res.json();
+
       sendNotification({
-        type: "error",
+        type: "info",
         title: "Failed to edit Zendesk configuration",
-        description: err.error?.message || "An unknown error occurred",
+        description:
+          err.error?.connectors_error.message || "An unknown error occurred",
       });
     }
     return true;
@@ -119,21 +129,7 @@ export function ZendeskConfigView({
       }
     }
 
-    if (numValue > MAX_RETENTION_PERIOD_DAYS) {
-      sendNotification({
-        type: "error",
-        title: "Invalid retention period",
-        description: `Retention period cannot exceed ${MAX_RETENTION_PERIOD_DAYS} days.`,
-      });
-      return;
-    }
-
     await handleSetNewConfig(retentionPeriodConfigKey, numValue);
-    sendNotification({
-      type: "success",
-      title: "Retention period updated",
-      description: `Data retention period set to ${numValue} days.`,
-    });
   };
 
   return (
@@ -213,6 +209,7 @@ export function ZendeskConfigView({
           <div className="flex items-center gap-2">
             <Input
               value={retentionInput}
+              type="number"
               onChange={(e) => setRetentionInput(e.target.value)}
               placeholder={DEFAULT_RETENTION_PERIOD_DAYS.toString()}
               disabled={readOnly || !isAdmin || loading}
@@ -235,9 +232,8 @@ export function ZendeskConfigView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground dark:text-muted-foreground-night">
-            Set how long Zendesk data should be retained in days (0-
-            {MAX_RETENTION_PERIOD_DAYS}). Leave empty or set to{" "}
-            {DEFAULT_RETENTION_PERIOD_DAYS} for default. Increasing the
+            Set how long Zendesk data should be retained in days. Leave empty or
+            set to {DEFAULT_RETENTION_PERIOD_DAYS} for default. Increasing the
             retention period will trigger a sync to fetch older data.
           </div>
         </ContextItem.Description>
