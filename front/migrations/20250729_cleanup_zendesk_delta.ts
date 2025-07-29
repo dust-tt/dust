@@ -52,10 +52,13 @@ async function getCoreDataSourceId(
   return row.id;
 }
 
-async function getZendeskTicketNodeBatch(
-  { coreDataSourceId, nextId }: { coreDataSourceId: number; nextId: number },
-  logger: Logger
-): Promise<{ hasMore: boolean; nextId: number; nodes: ZendeskTicketNode[] }> {
+async function getZendeskTicketNodeBatch({
+  coreDataSourceId,
+  nextId,
+}: {
+  coreDataSourceId: number;
+  nextId: number;
+}): Promise<{ hasMore: boolean; nextId: number; nodes: ZendeskTicketNode[] }> {
   const coreSequelize = getCorePrimaryDbConnection();
 
   // eslint-disable-next-line dust/no-raw-sql
@@ -78,7 +81,6 @@ async function getZendeskTicketNodeBatch(
   );
 
   nextId = nodes[nodes.length - 1].id;
-  logger.info(`Found ${nodes.length} ticket nodes (total: ${nodes.length})`);
   return { nodes, nextId, hasMore: nodes.length === BATCH_SIZE };
 }
 
@@ -286,10 +288,10 @@ makeScript(
     let hasMore = false;
 
     do {
-      const nodesResult = await getZendeskTicketNodeBatch(
-        { coreDataSourceId, nextId },
-        logger
-      );
+      const nodesResult = await getZendeskTicketNodeBatch({
+        coreDataSourceId,
+        nextId,
+      });
       nextId = nodesResult.nextId;
       hasMore = nodesResult.hasMore;
 
