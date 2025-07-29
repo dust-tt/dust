@@ -3,10 +3,10 @@ import { QueryTypes } from "sequelize";
 
 import config from "@app/lib/api/config";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { CoreAPI } from "@app/types";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 
 const BATCH_SIZE = 512;
 const CONCURRENCY = 8;
