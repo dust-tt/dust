@@ -150,7 +150,6 @@ function AgentNameInput() {
         >
           <DropdownMenuTrigger asChild>
             <Button
-              label="Suggest"
               icon={SparklesIcon}
               variant="outline"
               isSelect
@@ -278,7 +277,6 @@ function AgentDescriptionInput() {
         >
           <DropdownMenuTrigger asChild>
             <Button
-              label="Suggest"
               icon={SparklesIcon}
               variant="outline"
               isSelect
