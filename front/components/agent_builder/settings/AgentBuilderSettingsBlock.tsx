@@ -151,7 +151,7 @@ function AgentNameInput() {
               icon={SparklesIcon}
               variant="ghost"
               size="xs"
-              className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-none border-0 bg-transparent p-0 text-gray-400 hover:rounded-lg hover:bg-gray-100 hover:text-gray-600"
+              className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg border-0 bg-transparent p-0 text-gray-400 hover:rounded-lg hover:bg-gray-100 hover:text-gray-600"
               disabled={
                 !instructions ||
                 instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
@@ -267,18 +267,21 @@ function AgentDescriptionInput() {
       <label className="text-sm font-medium text-foreground dark:text-foreground-night">
         Description
       </label>
-      <div className="flex items-center gap-2">
-        <div className="flex-grow">
-          <Input placeholder="Enter agent description" {...field} />
-        </div>
+      <div className="relative">
+        <Input
+          placeholder="Enter agent description"
+          {...field}
+          className="pr-10"
+        />
         <DropdownMenu
           onOpenChange={(open) => open && handleGenerateDescription()}
         >
           <DropdownMenuTrigger asChild>
             <Button
               icon={SparklesIcon}
-              variant="outline"
-              isSelect
+              variant="ghost"
+              size="xs"
+              className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg border-0 bg-transparent p-0 text-gray-400 hover:rounded-lg hover:bg-gray-100 hover:text-gray-600"
               disabled={
                 !instructions ||
                 instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
@@ -287,7 +290,7 @@ function AgentDescriptionInput() {
                 !instructions ||
                 instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
                   ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} to the instructions to get suggestions`
-                  : undefined
+                  : "Get description suggestions"
               }
             />
           </DropdownMenuTrigger>
