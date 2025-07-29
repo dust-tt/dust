@@ -10,11 +10,11 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import assert from "assert";
 import { uniqueId } from "lodash";
 import { useState } from "react";
 import type { FieldArrayWithId, UseFieldArrayAppend } from "react-hook-form";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type {
   AgentBuilderAction,
   AgentBuilderFormData,
@@ -22,14 +22,20 @@ import type {
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   DEFAULT_DATA_VISUALIZATION_DESCRIPTION,
   DEFAULT_DATA_VISUALIZATION_NAME,
 } from "@app/lib/actions/constants";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useModels } from "@app/lib/swr/models";
+import { O4_MINI_MODEL_ID } from "@app/types";
+
+const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
 
 interface AddToolsDropdownProps {
   tools: FieldArrayWithId<AgentBuilderFormData, "actions", "id">[];
@@ -51,6 +57,10 @@ export function AddToolsDropdown({
   dataVisualization,
   isMCPServerViewsLoading,
 }: AddToolsDropdownProps) {
+  const { owner } = useAgentBuilderContext();
+  const sendNotification = useSendNotification();
+  const { reasoningModels } = useModels({ owner });
+
   const [searchText, setSearchText] = useState("");
   const [filteredServerViews, setFilteredServerViews] = useState([
     ...defaultMCPServerViews,
@@ -75,12 +85,50 @@ export function AddToolsDropdown({
     });
   };
 
-  // TODO: Add Reasoning logic here (see how it's done in Assistant Builder).
   function onClickMCPServer(mcpServerView: MCPServerViewType) {
+    const requirement = getMCPServerRequirements(mcpServerView);
     const action = getDefaultMCPAction(mcpServerView);
-    assert(action);
 
-    if (action.noConfigurationRequired) {
+    const isReasoning = requirement.requiresReasoningConfiguration;
+
+    // Reasoning is configurable but we select the reasoning model by default.
+    if (action.type === "MCP" && isReasoning) {
+      // You should not be able to select reasoning tools if you don't have any reasoning models,
+      // but in case you do for some reasons, we show an error notification.
+      if (reasoningModels.length === 0) {
+        sendNotification({
+          title: "No reasoning model available",
+          description:
+            "Please add a reasoning model to your workspace to be able to use this tool",
+          type: "error",
+        });
+        return;
+      }
+
+      // Use o4-mini as default reasoning model, if it's not available use the first one in the list.
+      const defaultReasoningModel =
+        reasoningModels.find(
+          (model) => model.modelId === DEFAULT_REASONING_MODEL_ID
+        ) ?? reasoningModels[0];
+
+      setSelectedAction({
+        ...action,
+        configuration: {
+          ...action.configuration,
+          reasoningModel: {
+            modelId: defaultReasoningModel.modelId,
+            providerId: defaultReasoningModel.providerId,
+            temperature: null,
+            reasoningEffort: null,
+          },
+        },
+      });
+      return;
+    }
+
+    // If no configuration is required, add it immediately.
+    // If configuration is required, we will open a configuration panel.
+    if (requirement.noRequirement) {
       addTools(action);
     } else {
       setSelectedAction(action);

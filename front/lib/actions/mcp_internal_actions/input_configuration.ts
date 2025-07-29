@@ -357,9 +357,7 @@ export function augmentInputsWithConfiguration({
   return inputs;
 }
 
-export function getMCPServerRequirements(
-  mcpServerView: MCPServerViewType | null | undefined
-): {
+export interface MCPServerRequirements {
   requiresDataSourceConfiguration: boolean;
   requiresTableConfiguration: boolean;
   requiresChildAgentConfiguration: boolean;
@@ -372,7 +370,11 @@ export function getMCPServerRequirements(
   requiredEnums: Record<string, string[]>;
   requiresDustAppConfiguration: boolean;
   noRequirement: boolean;
-} {
+}
+
+export function getMCPServerRequirements(
+  mcpServerView: MCPServerViewType | null | undefined
+): MCPServerRequirements {
   if (!mcpServerView) {
     return {
       requiresDataSourceConfiguration: false,
