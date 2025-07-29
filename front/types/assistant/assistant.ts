@@ -301,8 +301,9 @@ export type ModelConfigurationType = {
   shortDescription: string;
   isLegacy: boolean;
   isLatest: boolean;
-  // This meta-prompt is injected into the agent's system instructions if the agent is in a tool-use context.
-  toolUseMetaPrompt?: string;
+
+  // This meta-prompt is injected into the agent's system instructions if the agent is in a native reasoning context (reasoning effort >= medium).
+  nativeReasoningMetaPrompt?: string;
 
   // Adjust the token count estimation by a ratio. Only needed for anthropic models, where the token count is higher than our estimate
   tokenCountAdjustment?: number;
@@ -324,11 +325,6 @@ export type ModelConfigurationType = {
   customAssistantFeatureFlag?: WhitelistableFeature;
 };
 
-// Should be used for all Open AI models older than gpt-4o-2024-08-06 to prevent issues
-// with invalid JSON.
-const LEGACY_OPEN_AI_TOOL_USE_META_PROMPT =
-  "When using tools, generate valid and properly escaped JSON arguments.";
-
 export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_3_5_TURBO_MODEL_ID,
@@ -342,7 +338,6 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's fast model.",
   isLegacy: false,
   isLatest: false,
-  toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   generationTokensCount: 2048,
   supportsVision: false,
   minimumReasoningEffort: "none",
@@ -363,7 +358,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's second best model.",
   isLegacy: false,
   isLatest: false,
-  toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
+
   generationTokensCount: 2048,
   supportsVision: true,
   minimumReasoningEffort: "none",
@@ -459,7 +454,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's fast model.",
   isLegacy: false,
   isLatest: false,
-  toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
+
   generationTokensCount: 16_384,
   supportsVision: true,
   minimumReasoningEffort: "none",
@@ -657,6 +652,10 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 
+const CLAUDE_4_NATIVE_REASONING_META_PROMPT =
+  `Never output any text between tool calls, or between tool calls and tool results. ` +
+  `Only start outputting text after the last tool call and tool result, once you are ready to provide your final answer.\n`;
+
 export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_4_OPUS_20250514_MODEL_ID,
@@ -673,8 +672,9 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 32_000,
   supportsVision: true,
   minimumReasoningEffort: "light",
-  maximumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
+  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   featureFlag: "claude_4_opus_feature",
 };
@@ -695,8 +695,9 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 64_000,
   supportsVision: true,
   minimumReasoningEffort: "light",
-  maximumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
+  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
