@@ -39,7 +39,6 @@ async fn main() -> Result<(), anyhow::Error> {
                 None,
                 None,
                 None,
-                false,
                 None,
                 None,
             )],

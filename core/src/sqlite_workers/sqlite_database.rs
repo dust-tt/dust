@@ -1,8 +1,7 @@
 use crate::info;
 use crate::{
     databases::{
-        database::QueryResult,
-        table::{LocalTable, Row, Table},
+        database::QueryResult, table::LocalTable,
         transient_database::get_transient_database_unique_table_names,
     },
     databases_store::{gcs::GoogleCloudStorageDatabasesStore, store::DatabasesStore},
@@ -13,7 +12,7 @@ use cloud_storage::Object;
 use futures::future::try_join_all;
 use parking_lot::Mutex;
 use rayon::prelude::*;
-use rusqlite::{params_from_iter, Connection, InterruptHandle};
+use rusqlite::{Connection, InterruptHandle};
 use std::{collections::HashMap, io::Write, sync::Arc};
 use tempfile::NamedTempFile;
 use thiserror::Error;
@@ -49,9 +48,6 @@ impl From<anyhow::Error> for SqliteDatabaseError {
 }
 
 const MAX_ROWS: usize = 2048;
-
-// Switch to false to use the in-memory database without CSV files.
-const ALLOW_USAGE_OF_CSV_FILES: bool = true;
 
 impl SqliteDatabase {
     pub fn new() -> Self {
@@ -201,7 +197,7 @@ impl SqliteDatabase {
 }
 
 async fn create_in_memory_sqlite_db(
-    databases_store: Box<dyn DatabasesStore + Sync + Send>,
+    _: Box<dyn DatabasesStore + Sync + Send>,
     tables: Vec<LocalTable>,
 ) -> Result<(Arc<Mutex<Connection>>, Option<Vec<NamedTempFile>>)> {
     let conn = Connection::open_in_memory()?;
@@ -215,13 +211,6 @@ async fn create_in_memory_sqlite_db(
         unique_table_names.clone(),
     )
     .await?;
-    create_in_memory_sqlite_db_without_csv(
-        conn.clone(),
-        databases_store.clone(),
-        tables.clone(),
-        unique_table_names.clone(),
-    )
-    .await?;
 
     Ok((conn, temporary_files))
 }
@@ -231,20 +220,6 @@ async fn create_in_memory_sqlite_db_with_csv(
     tables: Vec<LocalTable>,
     unique_table_names: HashMap<String, String>,
 ) -> Result<Option<Vec<NamedTempFile>>> {
-    if !ALLOW_USAGE_OF_CSV_FILES {
-        return Ok(None);
-    }
-
-    let tables_with_csv = tables
-        .iter()
-        .filter(|lt| lt.table.migrated_to_csv())
-        .map(|lt| lt.clone())
-        .collect::<Vec<_>>();
-
-    if tables_with_csv.is_empty() {
-        return Ok(None);
-    }
-
     // Load the csvtab module early but don't hold the lock
     {
         let conn_guard = conn.lock();
@@ -253,8 +228,13 @@ async fn create_in_memory_sqlite_db_with_csv(
 
     let now = utils::now();
 
+    info!(
+        table_count = tables.len(),
+        "DSSTRUCTSTAT - WORKER downloading CSV files"
+    );
+
     // Process CSV files and create tables in parallel
-    let csv_tasks: Vec<_> = tables_with_csv
+    let csv_tasks: Vec<_> = tables
         .into_iter()
         .map(|table| {
             let table_name = unique_table_names
@@ -319,130 +299,4 @@ async fn create_in_memory_sqlite_db_with_csv(
     );
 
     Ok(Some(temporary_files))
-}
-
-async fn create_in_memory_sqlite_db_without_csv(
-    conn: Arc<Mutex<Connection>>,
-    databases_store: Box<dyn DatabasesStore + Sync + Send>,
-    tables: Vec<LocalTable>,
-    unique_table_names: HashMap<String, String>,
-) -> Result<()> {
-    let tables_without_csv = match ALLOW_USAGE_OF_CSV_FILES {
-        true => tables
-            .iter()
-            .filter(|lt| !lt.table.migrated_to_csv())
-            .map(|lt| lt.clone())
-            .collect::<Vec<_>>(),
-        false => tables.clone(),
-    };
-
-    if tables_without_csv.is_empty() {
-        return Ok(());
-    }
-
-    let time_get_rows_start = utils::now();
-    let tables_with_rows: Vec<(Table, Vec<Row>)> = try_join_all(tables.iter().map(|lt| {
-        let databases_store = databases_store.clone();
-        async move {
-            let (rows, _) = databases_store.list_table_rows(&lt.table, None).await?;
-            Ok::<_, anyhow::Error>((lt.table.clone(), rows))
-        }
-    }))
-    .await?;
-
-    let total_rows: usize = tables_with_rows.iter().map(|(_, rows)| rows.len()).sum();
-
-    // Log table details including IDs and row counts
-    for (table, rows) in &tables_with_rows {
-        info!(
-            project_id = table.project().project_id(),
-            datasource_id = table.data_source_id(),
-            table_id = table.unique_id(),
-            row_count = rows.len(),
-            "DSSTRUCTSTAT - WORKER Table statistics"
-        );
-    }
-
-    info!(
-        duration = utils::now() - time_get_rows_start,
-        total_row_count = total_rows,
-        table_count = tables_with_rows.len(),
-        "DSSTRUCTSTAT - WORKER Finished retrieving rows"
-    );
-
-    // Create the in-memory database in a blocking thread (in-memory rusqlite is CPU).
-    task::spawn_blocking(move || {
-        let generate_create_table_sql_start = utils::now();
-        let create_tables_sql: String = tables
-            .into_iter()
-            .filter_map(|lt| match lt.table.schema_cached() {
-                Some(s) => {
-                    if s.is_empty() {
-                        None
-                    } else {
-                        let table_name = unique_table_names
-                            .get(&lt.table.unique_id())
-                            .expect("Unreachable: table name not found in unique_table_names");
-                        Some(s.get_create_table_sql_string(table_name))
-                    }
-                }
-                None => None,
-            })
-            .collect::<Vec<_>>()
-            .join(";\n");
-
-        info!(
-            duration = utils::now() - generate_create_table_sql_start,
-            "DSSTRUCTSTAT - WORKER Finished generating create table SQL"
-        );
-
-        let create_tables_execute_start = utils::now();
-        let conn = conn.lock();
-        conn.execute_batch(&create_tables_sql)?;
-        info!(
-            duration = utils::now() - create_tables_execute_start,
-            "DSSTRUCTSTAT - WORKER Finished creating tables"
-        );
-
-        let insert_execute_start = utils::now();
-        tables_with_rows
-            .iter()
-            .filter(|(_, rows)| !rows.is_empty())
-            .map(|(table, rows)| {
-                let table_name = unique_table_names
-                    .get(&table.unique_id())
-                    .expect("Unreachable: table name not found in unique_table_names");
-                if table.schema_cached().is_none() {
-                    Err(anyhow!("No cached schema found for table {}", table_name))?;
-                }
-                let table_schema = table.schema_cached().unwrap();
-                let (sql, field_names) = table_schema.get_insert_sql(table_name);
-                let mut stmt = conn.prepare(&sql)?;
-
-                rows.par_iter()
-                    .map(|r| match table_schema.get_insert_params(&field_names, r) {
-                        Ok(params) => Ok(params_from_iter(params)),
-                        Err(e) => Err(anyhow!(
-                            "Error getting insert params for row {}: {}",
-                            r.row_id(),
-                            e
-                        )),
-                    })
-                    .collect::<Result<Vec<_>>>()?
-                    .into_iter()
-                    .map(|params| match stmt.execute(params) {
-                        Ok(_) => Ok(()),
-                        Err(e) => Err(anyhow!("Error inserting row: {}", e)),
-                    })
-                    .collect::<Result<Vec<_>>>()
-            })
-            .collect::<Result<Vec<_>>>()?;
-        info!(
-            duration = utils::now() - insert_execute_start,
-            "DSSTRUCTSTAT - WORKER Finished inserting rows"
-        );
-
-        Result::<_>::Ok(())
-    })
-    .await?
 }

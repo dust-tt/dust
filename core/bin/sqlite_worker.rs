@@ -9,7 +9,7 @@ use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer}
 
 use dust::{
     databases::table::{LocalTable, Table},
-    databases_store::{self},
+    databases_store::{self, gcs::GoogleCloudStorageDatabasesStore},
     open_telemetry::init_subscribers,
     sqlite_workers::{
         client::HEARTBEAT_INTERVAL_MS,
@@ -52,8 +52,6 @@ lazy_static! {
     };
     static ref CORE_API: String = std::env::var("CORE_API").unwrap();
     static ref CORE_API_KEY: String = std::env::var("CORE_API_KEY").unwrap();
-    static ref DATABASES_STORE_DATABASE_URI: String =
-        std::env::var("DATABASES_STORE_DATABASE_URI").unwrap();
 }
 
 // Duration after which a database is considered inactive and can be removed from the registry.
@@ -346,10 +344,7 @@ fn main() {
     let r = rt.block_on(async {
         let _guard = init_subscribers()?;
 
-        let s =
-            databases_store::postgres::PostgresDatabasesStore::new(&DATABASES_STORE_DATABASE_URI)
-                .await?;
-        let databases_store = Box::new(s);
+        let databases_store = Box::new(GoogleCloudStorageDatabasesStore::new());
 
         let state = Arc::new(WorkerState::new(databases_store));
 
