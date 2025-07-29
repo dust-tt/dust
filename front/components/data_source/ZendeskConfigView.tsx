@@ -13,8 +13,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
-const DEFAULT_RETENTION_PERIOD_DAYS = 180;
-
 export function ZendeskConfigView({
   owner,
   readOnly,
@@ -206,7 +204,6 @@ export function ZendeskConfigView({
               value={retentionInput}
               type="number"
               onChange={(e) => setRetentionInput(e.target.value)}
-              placeholder={DEFAULT_RETENTION_PERIOD_DAYS.toString()}
               disabled={readOnly || !isAdmin || loading}
               className="w-20"
             />
@@ -218,7 +215,7 @@ export function ZendeskConfigView({
                 readOnly ||
                 !isAdmin ||
                 loading ||
-                retentionInput === retentionPeriodDays.toString()
+                retentionInput === retentionPeriodDays?.toString()
               }
               label="Save"
             />
@@ -227,9 +224,8 @@ export function ZendeskConfigView({
       >
         <ContextItem.Description>
           <div className="text-muted-foreground dark:text-muted-foreground-night">
-            Set how long Zendesk data should be retained in days. Leave empty or
-            set to {DEFAULT_RETENTION_PERIOD_DAYS} for default. Increasing the
-            retention period will trigger a sync to fetch older data.
+            Set the duration of the retention period: tickets older than the
+            retention period will be cleaned on a daily basis.
           </div>
         </ContextItem.Description>
       </ContextItem>
