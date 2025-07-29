@@ -4,6 +4,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
+import { McpError } from "@app/lib/actions/mcp_errors";
 import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -26,7 +27,6 @@ import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
-import { McpError } from "@app/lib/actions/mcp_errors";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";

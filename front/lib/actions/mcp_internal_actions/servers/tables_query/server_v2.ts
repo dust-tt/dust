@@ -7,6 +7,7 @@ import {
   generateSectionFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
+import { McpError } from "@app/lib/actions/mcp_errors";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   SqlQueryOutputType,
@@ -35,7 +36,6 @@ import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { McpError } from "@app/lib/actions/mcp_errors";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
