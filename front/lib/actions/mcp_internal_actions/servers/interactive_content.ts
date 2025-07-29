@@ -214,7 +214,9 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return new Err(new MCPError(result.error.message));
+          return new Err(
+            new MCPError(result.error.message, { tracked: false })
+          );
         }
 
         const { fileResource, replacementCount } = result.value;
