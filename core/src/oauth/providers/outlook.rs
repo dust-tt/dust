@@ -19,7 +19,8 @@ use std::env;
 use super::utils::ProviderHttpRequestError;
 
 lazy_static! {
-    static ref OAUTH_MICROSOFT_OUTLOOK_CLIENT_ID: String = env::var("OAUTH_MICROSOFT_OUTLOOK_CLIENT_ID").unwrap();
+    static ref OAUTH_MICROSOFT_OUTLOOK_CLIENT_ID: String =
+        env::var("OAUTH_MICROSOFT_OUTLOOK_CLIENT_ID").unwrap();
     static ref OAUTH_MICROSOFT_OUTLOOK_CLIENT_SECRET: String =
         env::var("OAUTH_MICROSOFT_OUTLOOK_CLIENT_SECRET").unwrap();
 }
