@@ -259,7 +259,7 @@ export default function CreateAgent({
                     const input = document.createElement("input");
                     input.type = "file";
                     input.accept = ".yaml,.yml";
-                    input.onchange = (e) => handleYAMLUpload(e as any);
+                    input.onchange = (e) => handleYAMLUpload(e);
                     input.click();
                   }}
                 />
