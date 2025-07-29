@@ -73,34 +73,33 @@ export async function getOrCreateWorkOSOrganization(
             ]
           : undefined,
       });
+
+      const { memberships } =
+        await MembershipResource.getMembershipsForWorkspace({
+          workspace,
+          includeUser: true,
+        });
+
+      await concurrentExecutor(
+        memberships,
+        async (membership) => {
+          const user = membership.user;
+          if (!user || !user.workOSUserId || !organization) {
+            return;
+          }
+
+          await getWorkOS().userManagement.createOrganizationMembership({
+            userId: user.workOSUserId,
+            organizationId: organization.id,
+          });
+        },
+        { concurrency: 10 }
+      );
     }
 
     await WorkspaceResource.updateWorkOSOrganizationId(
       workspace.id,
       organization.id
-    );
-
-    const { memberships } = await MembershipResource.getMembershipsForWorkspace(
-      {
-        workspace,
-        includeUser: true,
-      }
-    );
-
-    await concurrentExecutor(
-      memberships,
-      async (membership) => {
-        const user = membership.user;
-        if (!user || !user.workOSUserId || !workspace.workOSOrganizationId) {
-          return;
-        }
-
-        await getWorkOS().userManagement.createOrganizationMembership({
-          userId: user.workOSUserId,
-          organizationId: workspace.workOSOrganizationId,
-        });
-      },
-      { concurrency: 10 }
     );
 
     return new Ok(organization);
