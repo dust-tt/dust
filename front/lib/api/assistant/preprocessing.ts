@@ -348,6 +348,12 @@ export async function renderConversationForModel(
     selected.shift();
   }
 
+  if (selected.length === 0) {
+    return new Err(
+      new Error("Context window exceeded: at least one message is required")
+    );
+  }
+
   logger.info(
     {
       workspaceId: conversation.owner.sId,
