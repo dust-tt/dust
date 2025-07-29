@@ -415,6 +415,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         },
       });
     default:
+      // Variant where we have agent IDs and either fetch all versions or only the latest.
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
         if (agentsGetView.allVersions) {
           return AgentConfiguration.findAll({
@@ -449,6 +450,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
           order: [["version", "DESC"]],
         });
       }
+      // Variant where we have agent with specific versions.
       if (Array.isArray(agentsGetView)) {
         const workspaceAgents = agentsGetView.filter(
           (a) => !isGlobalAgentId(a.agentId)
