@@ -228,6 +228,11 @@ async fn create_in_memory_sqlite_db_with_csv(
 
     let now = utils::now();
 
+    info!(
+        table_count = tables.len(),
+        "DSSTRUCTSTAT - WORKER downloading CSV files"
+    );
+
     // Process CSV files and create tables in parallel
     let csv_tasks: Vec<_> = tables
         .into_iter()
