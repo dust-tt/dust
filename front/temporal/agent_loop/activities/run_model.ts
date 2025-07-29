@@ -62,7 +62,6 @@ export async function runModelActivity({
   runIds,
   step,
   functionCallStepContentIds,
-  citationsRefsOffset,
   autoRetryCount = 0,
 }: {
   authType: AuthenticatorType;
@@ -70,7 +69,6 @@ export async function runModelActivity({
   runIds: string[];
   step: number;
   functionCallStepContentIds: Record<string, ModelId>;
-  citationsRefsOffset: number;
   autoRetryCount?: number;
 }): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -98,6 +96,12 @@ export async function runModelActivity({
       agentMessageVersion: originalAgentMessage.version,
       step,
     });
+
+  // Compute the citations offset by summing citations allocated to all past actions for this message.
+  const citationsRefsOffset = originalAgentMessage.actions.reduce(
+    (total, action) => total + (action.citationsAllocated || 0),
+    0
+  );
 
   const now = Date.now();
 
@@ -404,7 +408,6 @@ export async function runModelActivity({
         runIds,
         step,
         functionCallStepContentIds,
-        citationsRefsOffset,
         autoRetryCount: autoRetryCount + 1,
       });
     }
