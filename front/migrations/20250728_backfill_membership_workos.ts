@@ -1,13 +1,9 @@
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
-
-const WORKSPACE_CONCURRENCY = 5;
-const MEMBERSHIP_CONCURRENCY = 10;
 
 async function updateMembershipOriginsForWorkspace(
   workspace: LightWorkspaceType,
@@ -34,37 +30,67 @@ async function updateMembershipOriginsForWorkspace(
   });
   const workspaceWorkOSId = workspace.workOSOrganizationId;
 
-  await concurrentExecutor(
-    memberships,
-    async (membership) => {
-      const user = membership.user;
-      if (!user || !user.workOSUserId) {
-        return;
-      }
+  for (const membership of memberships) {
+    const user = membership.user;
+    if (!user || !user.workOSUserId) {
+      continue;
+    }
 
-      if (m.data.some((mem) => mem.userId === user.workOSUserId)) {
-        workspaceLogger.info(
-          `User ${user.email} already has WorkOS membership for workspace ${workspace.sId} - ${workspace.name}`
-        );
-        return;
-      }
+    if (m.data.some((mem) => mem.userId === user.workOSUserId)) {
+      workspaceLogger.info(
+        `User ${user.email} already has WorkOS membership for workspace ${workspace.sId} - ${workspace.name}`
+      );
+      continue;
+    }
 
-      if (execute) {
-        await getWorkOS().userManagement.createOrganizationMembership({
-          userId: user.workOSUserId,
-          organizationId: workspaceWorkOSId,
-        });
-        workspaceLogger.info(
-          `Set WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name}`
-        );
-      } else {
-        workspaceLogger.info(
-          `Would set WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name}`
-        );
+    if (execute) {
+      let retryCount = 0;
+      const maxRetries = 3;
+
+      while (retryCount < maxRetries) {
+        try {
+          await getWorkOS().userManagement.createOrganizationMembership({
+            userId: user.workOSUserId,
+            organizationId: workspaceWorkOSId,
+          });
+
+          workspaceLogger.info(
+            `Set WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name}`
+          );
+          break;
+        } catch (error: any) {
+          if (error?.status === 429) {
+            retryCount++;
+            const retryAfterSeconds = error.retryAfter || 10;
+            const retryAfterMs = retryAfterSeconds * 1000;
+
+            workspaceLogger.warn(
+              `Rate limited (429) creating WorkOS membership for user ${user.email}, waiting ${retryAfterSeconds}s before retry ${retryCount}/${maxRetries}`
+            );
+
+            if (retryCount < maxRetries) {
+              await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
+            } else {
+              workspaceLogger.error(
+                `Failed to create WorkOS membership for user ${user.email} after ${maxRetries} retries due to rate limiting`
+              );
+              throw error;
+            }
+          } else {
+            workspaceLogger.error(
+              `Error creating WorkOS membership for user ${user.email}:`,
+              error
+            );
+            throw error;
+          }
+        }
       }
-    },
-    { concurrency: MEMBERSHIP_CONCURRENCY }
-  );
+    } else {
+      workspaceLogger.info(
+        `Would set WorkOS membership for user ${user.email} for workspace ${workspace.sId} - ${workspace.name}`
+      );
+    }
+  }
 }
 
 makeScript({}, async ({ execute }, logger) => {
@@ -73,7 +99,7 @@ makeScript({}, async ({ execute }, logger) => {
   await runOnAllWorkspaces(
     async (workspace) =>
       updateMembershipOriginsForWorkspace(workspace, logger, execute),
-    { concurrency: WORKSPACE_CONCURRENCY }
+    { concurrency: 1 }
   );
 
   logger.info("Completed WorkOS membership backfill");
