@@ -208,18 +208,11 @@ function AgentDescriptionInput() {
   const sendNotification = useSendNotification();
 
   const [isGenerating, setIsGenerating] = useState(false);
-  const [descriptionSuggestions, setDescriptionSuggestions] = useState<
-    string[]
-  >([]);
 
   const { field, fieldState } = useController<
     AgentBuilderFormData,
     "agentSettings.description"
   >({ name: "agentSettings.description" });
-
-  const handleSelectDescriptionSuggestion = (suggestion: string) => {
-    field.onChange(suggestion);
-  };
 
   const handleGenerateDescription = async () => {
     if (
@@ -231,7 +224,6 @@ function AgentDescriptionInput() {
     }
 
     setIsGenerating(true);
-    setDescriptionSuggestions([]);
 
     const result = await getDescriptionSuggestion({
       owner,
@@ -255,7 +247,8 @@ function AgentDescriptionInput() {
       result.value.suggestions &&
       result.value.suggestions.length > 0
     ) {
-      setDescriptionSuggestions(result.value.suggestions);
+      // Apply the first suggestion directly
+      field.onChange(result.value.suggestions[0]);
     } else {
       sendNotification({
         type: "info",
@@ -278,53 +271,34 @@ function AgentDescriptionInput() {
           {...field}
           className="pr-10"
         />
-        <DropdownMenu
-          onOpenChange={(open) => open && handleGenerateDescription()}
-        >
-          <DropdownMenuTrigger asChild>
-            <Button
-              icon={SparklesIcon}
-              variant={
-                !instructions ||
-                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-                  ? "ghost"
-                  : "outline"
-              }
-              size="xs"
-              className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
-              disabled={
-                !instructions ||
-                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-              }
-              tooltip={
-                !instructions ||
-                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-                  ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} to the instructions to get suggestions`
-                  : "Get description suggestions"
-              }
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-80" sideOffset={8}>
-            {isGenerating ? (
-              <div className="flex items-center justify-center p-4">
-                <Spinner size="sm" />
-              </div>
-            ) : descriptionSuggestions.length > 0 ? (
-              descriptionSuggestions.map((suggestion, index) => (
-                <DropdownMenuItem
-                  key={`description-suggestion-${index}`}
-                  label={suggestion}
-                  onClick={() => handleSelectDescriptionSuggestion(suggestion)}
-                  truncateText={false}
-                />
-              ))
-            ) : (
-              <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
-                No suggestions available
-              </div>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+          icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
+          variant={
+            isGenerating ||
+            !instructions ||
+            instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+              ? "ghost"
+              : "outline"
+          }
+          size="xs"
+          className={`absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0 ${
+            isGenerating ? "bg-transparent" : ""
+          }`}
+          disabled={
+            isGenerating ||
+            !instructions ||
+            instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+          }
+          onClick={handleGenerateDescription}
+          tooltip={
+            isGenerating
+              ? "Generating description..."
+              : !instructions ||
+                  instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+                ? `Add at least ${MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to the instructions to get suggestions`
+                : "Generate description"
+          }
+        />
       </div>
       {fieldState.error && (
         <p className="text-sm text-warning-500">{fieldState.error.message}</p>
