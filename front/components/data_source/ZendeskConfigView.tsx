@@ -14,7 +14,7 @@ import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
 const DEFAULT_RETENTION_PERIOD_DAYS = 180;
-const MAX_RETENTION_DAYS = 365;
+const MAX_RETENTION_PERIOD_DAYS = 365;
 
 export function ZendeskConfigView({
   owner,
@@ -119,11 +119,11 @@ export function ZendeskConfigView({
       }
     }
 
-    if (numValue > MAX_RETENTION_DAYS) {
+    if (numValue > MAX_RETENTION_PERIOD_DAYS) {
       sendNotification({
         type: "error",
         title: "Invalid retention period",
-        description: `Retention period cannot exceed ${MAX_RETENTION_DAYS} days.`,
+        description: `Retention period cannot exceed ${MAX_RETENTION_PERIOD_DAYS} days.`,
       });
       return;
     }
@@ -236,7 +236,7 @@ export function ZendeskConfigView({
         <ContextItem.Description>
           <div className="text-muted-foreground dark:text-muted-foreground-night">
             Set how long Zendesk data should be retained in days (0-
-            {MAX_RETENTION_DAYS}). Leave empty or set to{" "}
+            {MAX_RETENTION_PERIOD_DAYS}). Leave empty or set to{" "}
             {DEFAULT_RETENTION_PERIOD_DAYS} for default. Increasing the
             retention period will trigger a sync to fetch older data.
           </div>
