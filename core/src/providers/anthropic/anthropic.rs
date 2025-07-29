@@ -449,7 +449,7 @@ impl LLM for AnthropicLLM {
         let thinking = match (reasoning_effort, is_claude_4, is_auto_tool) {
             (Some(effort), true, true) => match effort.as_str() {
                 "medium" => Some(("enabled".to_string(), 1024)),
-                "high" => Some(("enabled".to_string(), 16_000)),
+                "high" => Some(("enabled".to_string(), 16_384)),
                 _ => None,
             },
             _ => None,
