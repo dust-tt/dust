@@ -1,12 +1,12 @@
 import { removeNulls } from "@dust-tt/client";
 
+import type { MCPActionType } from "@app/lib/actions/mcp";
 import {
   isSearchResultResourceType,
   isWebsearchResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rand } from "@app/lib/utils/seeded_random";
 import type {
-  AgentActionType,
   AgentMessageType,
   CitationType,
   LightAgentMessageType,
@@ -48,7 +48,7 @@ export function citationMetaPrompt() {
 }
 
 export const getCitationsFromActions = (
-  actions: AgentActionType[]
+  actions: MCPActionType[]
 ): Record<string, CitationType> => {
   // MCP actions with search results.
   const searchResultsWithDocs = removeNulls(
