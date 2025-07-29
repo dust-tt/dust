@@ -10,7 +10,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 import { CoreAPI } from "@app/types";
 
-const BATCH_SIZE = 256;
+const BATCH_SIZE = 512;
 const CONCURRENCY = 8;
 
 interface ZendeskTicketNode {
