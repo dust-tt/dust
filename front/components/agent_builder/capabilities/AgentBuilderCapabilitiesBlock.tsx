@@ -18,6 +18,7 @@ import type {
 import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { AddToolsDropdown } from "@app/components/agent_builder/capabilities/AddToolsDropdown";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
+import { MCPConfigurationSheet } from "@app/components/agent_builder/capabilities/mcp/MCPConfigurationSheet";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
@@ -209,9 +210,6 @@ export function AgentBuilderCapabilitiesBlock() {
   } | null>(null);
 
   const [openSheet, setOpenSheet] = useState<KnowledgeServerName | null>(null);
-
-  // TODO: Open single sheet for selected MCP action.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedAction, setSelectedAction] =
     useState<AgentBuilderAction | null>(null);
 
@@ -253,6 +251,9 @@ export function AgentBuilderCapabilitiesBlock() {
         break;
       case "EXTRACT_DATA":
         setOpenSheet("extract_data");
+        break;
+      case "MCP":
+        setSelectedAction(action);
         break;
     }
   };
@@ -342,6 +343,24 @@ export function AgentBuilderCapabilitiesBlock() {
         onClose={handleCloseSheet}
         onSave={handleEditSave}
         action={editingAction?.action}
+      />
+
+      <MCPConfigurationSheet
+        selectedAction={selectedAction}
+        isOpen={selectedAction !== null}
+        onClose={() => {
+          setSelectedAction(null);
+          setEditingAction(null);
+        }}
+        onSave={(action) => {
+          if (editingAction && selectedAction) {
+            update(editingAction.index, action);
+          } else {
+            append(action);
+          }
+          setSelectedAction(null);
+          setEditingAction(null);
+        }}
       />
     </div>
   );

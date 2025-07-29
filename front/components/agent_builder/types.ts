@@ -3,6 +3,7 @@ import { uniqueId } from "lodash";
 import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/formValidation";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -195,7 +196,14 @@ export const mcpFormSchema = z.object({
     jsonSchema: z.any().nullable().default(null),
     _jsonSchemaString: z.string().nullable().default(null),
   }),
-  name: z.string().default(""),
+  name: z
+    .string()
+    .min(1, "The name cannot be empty.")
+    .regex(
+      /^[a-z0-9_]+$/,
+      "The name can only contain lowercase letters, numbers, and underscores (no spaces)."
+    )
+    .default(""),
   description: z
     .string()
     .min(1, "Description is required")
@@ -240,22 +248,12 @@ export function getDefaultMCPAction(
   mcpServerView?: MCPServerViewType
 ): AgentBuilderAction {
   const requirements = getMCPServerRequirements(mcpServerView);
+  const configuration = getDefaultConfiguration(mcpServerView);
 
   return {
     id: uniqueId(),
     type: "MCP",
-    configuration: {
-      mcpServerViewId: mcpServerView?.sId ?? "not-a-valid-sId",
-      dataSourceConfigurations: null,
-      tablesConfigurations: null,
-      childAgentId: null,
-      reasoningModel: null,
-      timeFrame: null,
-      additionalConfiguration: {},
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      _jsonSchemaString: null,
-    },
+    configuration,
     name: mcpServerView?.server.name ?? "",
     description:
       requirements.requiresDataSourceConfiguration ||
