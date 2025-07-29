@@ -149,9 +149,14 @@ function AgentNameInput() {
           <DropdownMenuTrigger asChild>
             <Button
               icon={SparklesIcon}
-              variant="ghost"
+              variant={
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+                  ? "ghost"
+                  : "outline"
+              }
               size="xs"
-              className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg border-0 bg-transparent p-0 text-gray-400 hover:rounded-lg hover:bg-gray-100 hover:text-gray-600"
+              className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
               disabled={
                 !instructions ||
                 instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
@@ -279,9 +284,14 @@ function AgentDescriptionInput() {
           <DropdownMenuTrigger asChild>
             <Button
               icon={SparklesIcon}
-              variant="ghost"
+              variant={
+                !instructions ||
+                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
+                  ? "ghost"
+                  : "outline"
+              }
               size="xs"
-              className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg border-0 bg-transparent p-0 text-gray-400 hover:rounded-lg hover:bg-gray-100 hover:text-gray-600"
+              className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
               disabled={
                 !instructions ||
                 instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
