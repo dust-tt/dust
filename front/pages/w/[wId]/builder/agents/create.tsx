@@ -26,12 +26,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
-import type {
-  SubscriptionType,
-  TemplateTagCodeType,
-  TemplateTagsType,
-  WorkspaceType,
-} from "@app/types";
+import type { SubscriptionType, TemplateTagCodeType, TemplateTagsType, WorkspaceType } from "@app/types";
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -205,7 +200,6 @@ export default function CreateAgent({
       // Clear the file input
       event.target.value = "";
     } catch (error) {
-      console.error("Error uploading YAML:", error);
       sendNotification({
         title: "Error creating agent",
         description:
