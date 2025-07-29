@@ -109,7 +109,7 @@ export const slackWhitelistBotPlugin = createPlugin({
     }
 
     // Combine the selected group with the Workspace group (avoid duplicates)
-    const groupIds = [groupId];
+    const groupIds: string[] = [groupId];
     if (workspaceGroupRes.value.sId !== groupId) {
       groupIds.push(workspaceGroupRes.value.sId);
     }
