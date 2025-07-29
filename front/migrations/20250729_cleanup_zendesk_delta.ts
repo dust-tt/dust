@@ -52,45 +52,34 @@ async function getCoreDataSourceId(
   return row.id;
 }
 
-async function getZendeskTicketNodes(
-  { coreDataSourceId }: { coreDataSourceId: number },
+async function getZendeskTicketNodeBatch(
+  { coreDataSourceId, nextId }: { coreDataSourceId: number; nextId: number },
   logger: Logger
-): Promise<ZendeskTicketNode[]> {
+): Promise<{ hasMore: boolean; nextId: number; nodes: ZendeskTicketNode[] }> {
   const coreSequelize = getCorePrimaryDbConnection();
-  const nodes: ZendeskTicketNode[] = [];
-  let nextId = 0;
 
-  do {
-    // eslint-disable-next-line dust/no-raw-sql
-    const batch = await coreSequelize.query<ZendeskTicketNode>(
-      `SELECT id, node_id
+  // eslint-disable-next-line dust/no-raw-sql
+  const nodes = await coreSequelize.query<ZendeskTicketNode>(
+    `SELECT id, node_id
        FROM data_sources_nodes
        WHERE data_source = :coreDataSourceId
          AND node_id LIKE 'zendesk-ticket-%'
          AND id > :nextId
        ORDER BY id
        LIMIT :batchSize`,
-      {
-        replacements: {
-          coreDataSourceId,
-          nextId,
-          batchSize: BATCH_SIZE,
-        },
-        type: QueryTypes.SELECT,
-      }
-    );
-
-    nodes.push(...batch);
-
-    if (batch.length === 0) {
-      break;
+    {
+      replacements: {
+        coreDataSourceId,
+        nextId,
+        batchSize: BATCH_SIZE,
+      },
+      type: QueryTypes.SELECT,
     }
+  );
 
-    nextId = batch[batch.length - 1].id;
-    logger.info(`Found ${batch.length} ticket nodes (total: ${nodes.length})`);
-  } while (nodes.length % BATCH_SIZE === 0);
-
-  return nodes;
+  nextId = nodes[nodes.length - 1].id;
+  logger.info(`Found ${nodes.length} ticket nodes (total: ${nodes.length})`);
+  return { nodes, nextId, hasMore: nodes.length === BATCH_SIZE };
 }
 
 function parseZendeskTicketNodeId(nodeId: string): {
@@ -293,26 +282,23 @@ makeScript(
 
     logger.info({ coreDataSourceId }, "Found core data source");
 
-    const ticketNodes = await getZendeskTicketNodes(
-      { coreDataSourceId },
-      logger
-    );
-    logger.info(`Found ${ticketNodes.length} zendesk ticket nodes in core`);
+    let nextId = 0;
+    let hasMore = false;
 
-    if (ticketNodes.length === 0) {
-      logger.info("No zendesk ticket nodes found");
-      return;
-    }
+    do {
+      const nodesResult = await getZendeskTicketNodeBatch(
+        { coreDataSourceId, nextId },
+        logger
+      );
+      nextId = nodesResult.nextId;
+      hasMore = nodesResult.hasMore;
 
-    const batches = [];
-    for (let i = 0; i < ticketNodes.length; i += BATCH_SIZE) {
-      batches.push(ticketNodes.slice(i, i + BATCH_SIZE));
-    }
+      logger.info(
+        `Found ${nodesResult.nodes.length} zendesk ticket nodes in core`
+      );
 
-    for (const [index, batch] of batches.entries()) {
-      logger.info(`Processing batch ${index + 1}/${batches.length}`);
       await processTicketNodes(
-        batch,
+        nodesResult.nodes,
         {
           connectorId,
           projectId,
@@ -321,7 +307,7 @@ makeScript(
         },
         logger
       );
-    }
+    } while (hasMore);
 
     logger.info("Cleanup completed");
   }
