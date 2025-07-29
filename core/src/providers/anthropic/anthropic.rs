@@ -407,7 +407,7 @@ impl LLM for AnthropicLLM {
             None => None,
         };
 
-        let beta_flags = match &extras {
+        let mut beta_flags = match &extras {
             None => vec![],
             Some(v) => match v.get("anthropic_beta_flags") {
                 Some(Value::Array(a)) => a
@@ -423,22 +423,40 @@ impl LLM for AnthropicLLM {
             },
         };
 
-        let thinking = match &extras {
+        let is_claude_4 = self.id.starts_with("claude-4-");
+
+        let is_auto_tool = match tool_choice {
+            Some(AnthropicToolChoice {
+                r#type: AnthropicToolChoiceType::Auto,
+                name: _,
+            })
+            | None => true,
+            _ => false,
+        };
+
+        let reasoning_effort = match &extras {
             None => None,
-            // We don't pass the thinking parameters in tool use.
-            Some(v) => match tool_choice.is_some() {
-                true => None,
-                false => match v.get("anthropic_thinking") {
-                    Some(Value::Object(s)) => match (s.get("type"), s.get("budget_tokens")) {
-                        (Some(Value::String(t)), Some(Value::Number(b))) => {
-                            Some((t.clone(), b.as_u64().unwrap_or(1024)))
-                        }
-                        _ => None,
-                    },
-                    _ => None,
-                },
+            Some(v) => match v.get("reasoning_effort") {
+                Some(Value::String(s)) => Some(s.clone()),
+                _ => None,
             },
         };
+
+        // Only use thinking if:
+        // - reasoning effort is medium or high
+        // - we are using a Claude 4 model
+        // - we are using auto tool choice
+        let thinking = match (reasoning_effort, is_claude_4, is_auto_tool) {
+            (Some(effort), true, true) => match effort.as_str() {
+                "medium" => Some(("enabled".to_string(), 1024)),
+                "high" => Some(("enabled".to_string(), 16_000)),
+                _ => None,
+            },
+            _ => None,
+        };
+        if thinking.is_some() && !beta_flags.contains(&"interleaved-thinking-2025-05-14") {
+            beta_flags.push("interleaved-thinking-2025-05-14")
+        }
 
         // Error if toolchoice is of type AnthropicToolChoiceType::None and we aren't using the tool-choice-none beta flag
         if let Some(AnthropicToolChoice {
@@ -456,6 +474,9 @@ impl LLM for AnthropicLLM {
                 ))?,
             }
         }
+
+        // Store thinking budget to report as reasoning tokens.
+        let thinking_budget = thinking.as_ref().map(|(_, budget)| *budget);
 
         let (c, request_id) = match event_sender {
             Some(es) => {
@@ -509,7 +530,9 @@ impl LLM for AnthropicLLM {
             usage: Some(LLMTokenUsage {
                 prompt_tokens: c.usage.input_tokens,
                 completion_tokens: c.usage.output_tokens,
-                reasoning_tokens: None,
+                // Note: the model can actually use less than that, but best we can do is report
+                // the full budget.
+                reasoning_tokens: thinking_budget,
             }),
             completions: AssistantChatMessage::try_from(c).into_iter().collect(),
             provider_request_id: request_id,
