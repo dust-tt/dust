@@ -179,10 +179,17 @@ async function deleteNodeFromCore(
 
 async function processTicketNodes(
   nodes: ZendeskTicketNode[],
-  connectorId: number,
-  projectId: string,
-  dataSourceId: string,
-  execute: boolean,
+  {
+    connectorId,
+    projectId,
+    dataSourceId,
+    execute,
+  }: {
+    connectorId: number;
+    projectId: string;
+    dataSourceId: string;
+    execute: boolean;
+  },
   logger: Logger
 ): Promise<void> {
   // Parse all ticket IDs and validate their format.
@@ -306,10 +313,12 @@ makeScript(
       logger.info(`Processing batch ${index + 1}/${batches.length}`);
       await processTicketNodes(
         batch,
-        connectorId,
-        projectId,
-        dataSourceId,
-        execute,
+        {
+          connectorId,
+          projectId,
+          dataSourceId,
+          execute,
+        },
         logger
       );
     }
