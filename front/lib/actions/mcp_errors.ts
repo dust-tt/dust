@@ -5,6 +5,7 @@ export class MCPServerNotFoundError extends Error {
 }
 
 export class McpError extends Error {
+  // Whether the error should be tracked and reported on our observability stack.
   public readonly tracked: boolean;
   public readonly code?: number;
 
