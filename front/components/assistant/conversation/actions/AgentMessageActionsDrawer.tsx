@@ -11,10 +11,7 @@ import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionD
 import type { MCPActionType } from "@app/lib/actions/mcp";
 import type { ActionProgressState } from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
-import type {
-  LightAgentMessageType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
 
 interface AgentMessageActionsDrawerProps {
   conversationId: string;
