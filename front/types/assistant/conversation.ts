@@ -116,9 +116,7 @@ export function isUserMessageType(
 /**
  * Agent messages
  */
-export type ConfigurableAgentActionType = MCPActionType;
-
-export type AgentActionType = ConfigurableAgentActionType;
+export type AgentActionType = MCPActionType;
 
 export type AgentMessageStatus =
   | "created"
