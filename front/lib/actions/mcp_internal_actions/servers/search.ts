@@ -26,6 +26,7 @@ import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
+import { McpError } from "@app/lib/actions/mcp_errors";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -64,7 +65,7 @@ export async function searchFunction({
   tagsNot?: string[];
   auth: Authenticator;
   agentLoopContext?: AgentLoopContextType;
-}): Promise<Result<CallToolResult, Error>> {
+}): Promise<Result<CallToolResult["content"], McpError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const credentials = dustManagedCredentials();
   const timeFrame = parseTimeFrame(relativeTimeFrame);
@@ -88,15 +89,14 @@ export async function searchFunction({
 
   // If any of the data sources are invalid, return an error message.
   if (coreSearchArgsResults.some((res) => res.isErr())) {
-    return new Ok({
-      isError: false,
-      content: removeNulls(
+    return new Ok(
+      removeNulls(
         coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
       ).map((error) => ({
         type: "text",
         text: error.message,
-      })),
-    });
+      }))
+    );
   }
 
   const coreSearchArgs = removeNulls(
@@ -105,7 +105,9 @@ export async function searchFunction({
 
   if (coreSearchArgs.length === 0) {
     return new Err(
-      new Error("Search action must have at least one data source configured.")
+      new McpError(
+        "Search action must have at least one data source configured."
+      )
     );
   }
 
@@ -114,10 +116,7 @@ export async function searchFunction({
     tagsNot,
   });
   if (conflictingTagsError) {
-    return new Ok({
-      isError: false,
-      content: [{ type: "text", text: conflictingTagsError }],
-    });
+    return new Ok([{ type: "text", text: conflictingTagsError }]);
   }
 
   // Now we can search each data source.
@@ -155,12 +154,12 @@ export async function searchFunction({
   );
 
   if (searchResults.isErr()) {
-    return new Err(new Error(searchResults.error.message));
+    return new Err(new McpError(searchResults.error.message));
   }
 
   if (citationsOffset + retrievalTopK > getRefs().length) {
     return new Err(
-      new Error(
+      new McpError(
         "The search exhausted the total number of references available for citations"
       )
     );
@@ -197,24 +196,21 @@ export async function searchFunction({
     }
   );
 
-  return new Ok({
-    isError: false,
-    content: [
-      ...results.map((result) => ({
-        type: "resource" as const,
-        resource: result,
-      })),
-      {
-        type: "resource" as const,
-        resource: makeQueryResource({
-          query,
-          timeFrame,
-          tagsIn,
-          tagsNot,
-        }),
-      },
-    ],
-  });
+  return new Ok([
+    ...results.map((result) => ({
+      type: "resource" as const,
+      resource: result,
+    })),
+    {
+      type: "resource" as const,
+      resource: makeQueryResource({
+        query,
+        timeFrame,
+        tagsIn,
+        tagsNot,
+      }),
+    },
+  ]);
 }
 
 function createServer(

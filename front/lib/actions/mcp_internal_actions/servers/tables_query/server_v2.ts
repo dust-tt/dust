@@ -35,6 +35,7 @@ import config from "@app/lib/api/config";
 import type { CSVRecord } from "@app/lib/api/csv";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { McpError } from "@app/lib/actions/mcp_errors";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types";
@@ -179,22 +180,19 @@ function createServer(
         );
         if (tableConfigurationsRes.isErr()) {
           return new Err(
-            new Error(
+            new McpError(
               `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
             )
           );
         }
         const tableConfigurations = tableConfigurationsRes.value;
         if (tableConfigurations.length === 0) {
-          return new Ok({
-            isError: false,
-            content: [
-              {
-                type: "text",
-                text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
-              },
-            ],
-          });
+          return new Ok([
+            {
+              type: "text",
+              text: "The agent does not have access to any tables. Please edit the agent's Query Tables tool to add tables, or remove the tool.",
+            },
+          ]);
         }
         const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
           ...new Set(tableConfigurations.map((t) => t.dataSourceViewId)),
@@ -225,31 +223,13 @@ function createServer(
           query,
         });
         if (queryResult.isErr()) {
-          return new Ok({
+          return new Err(
             // Certain errors we don't track as they can occur in the context of a normal execution.
-            isError: true,
-            content: [
-              {
-                type: "resource",
-                resource: {
-                  text: EXECUTE_TABLES_QUERY_MARKER,
-                  mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.TOOL_MARKER,
-                  uri: "",
-                },
-              },
-              {
-                type: "resource",
-                resource: {
-                  text:
-                    "Error executing database query: " +
-                    queryResult.error.message,
-                  mimeType:
-                    INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXECUTE_TABLES_QUERY_ERROR,
-                  uri: "",
-                },
-              },
-            ],
-          });
+            new McpError(
+              "Error executing database query: " + queryResult.error.message,
+              { tracked: false }
+            )
+          );
         }
 
         const content: {
@@ -362,10 +342,7 @@ function createServer(
           }
         }
 
-        return new Ok({
-          isError: false,
-          content,
-        });
+        return new Ok(content);
       }
     )
   );

@@ -26,6 +26,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import { runActionStreamed } from "@app/lib/actions/server";
+import { McpError } from "@app/lib/actions/mcp_errors";
 import type {
   ActionGeneratedFileType,
   AgentLoopContextType,
@@ -170,7 +171,9 @@ function makeExtractInformationFromDocumentsTool(
       );
       if (res.isErr()) {
         return new Err(
-          new Error(`Error running extract data action: ${res.error.message}`)
+          new McpError(
+            `Error running extract data action: ${res.error.message}`
+          )
         );
       }
 
@@ -179,7 +182,7 @@ function makeExtractInformationFromDocumentsTool(
       for await (const event of res.value.eventStream) {
         if (event.type === "error") {
           return new Err(
-            new Error(
+            new McpError(
               `"Error running extract data action": ${event.content.message ?? "Unknown error from event stream."}`
             )
           );
@@ -189,7 +192,7 @@ function makeExtractInformationFromDocumentsTool(
           const e = event.content.execution[0][0];
           if (e.error) {
             return new Err(
-              new Error(
+              new McpError(
                 `"Error running extract data action": ${e.error ?? "An unknown error occurred during block execution."}`
               )
             );
@@ -531,30 +534,27 @@ async function generateProcessToolOutput({
 
   return {
     jsonFile,
-    processToolOutput: {
-      isError: false,
-      content: [
-        {
-          type: "resource" as const,
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY,
-            text: `Extracted from ${outputs?.total_documents} documents over ${timeFrameAsString}.\nObjective: ${objective}`,
-            uri: "",
-          },
+    processToolOutput: [
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY,
+          text: `Extracted from ${outputs?.total_documents} documents over ${timeFrameAsString}.\nObjective: ${objective}`,
+          uri: "",
         },
-        {
-          type: "resource" as const,
-          resource: {
-            mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
-            text: extractResult,
-            uri: jsonFile.getPublicUrl(auth),
-            fileId: generatedFile.fileId,
-            title: generatedFile.title,
-            contentType: generatedFile.contentType,
-            snippet: generatedFile.snippet,
-          },
+      },
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
+          text: extractResult,
+          uri: jsonFile.getPublicUrl(auth),
+          fileId: generatedFile.fileId,
+          title: generatedFile.title,
+          contentType: generatedFile.contentType,
+          snippet: generatedFile.snippet,
         },
-      ],
-    },
+      },
+    ],
   };
 }

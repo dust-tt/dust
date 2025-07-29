@@ -6,11 +6,11 @@ export class MCPServerNotFoundError extends Error {
 
 export class McpError extends Error {
   public readonly tracked: boolean;
-  public readonly code: number;
+  public readonly code?: number;
 
   constructor(
     message: string,
-    { tracked = true, code }: { tracked?: boolean; code?: number }
+    { tracked = true, code }: { tracked?: boolean; code?: number } = {}
   ) {
     super(message);
     this.tracked = tracked;

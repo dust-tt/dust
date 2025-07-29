@@ -4,6 +4,7 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
+import { McpError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -103,19 +104,17 @@ function createServer(
     tagsNot?: string[];
   }): Promise<
     Result<
-      {
-        isError: boolean;
-        content:
-          | TextContent[]
-          | {
-              type: "resource";
-              resource:
-                | IncludeResultResourceType
-                | IncludeQueryResourceType
-                | WarningResourceType;
-            }[];
-      },
-      Error
+      (
+        | TextContent
+        | {
+            type: "resource";
+            resource:
+              | IncludeResultResourceType
+              | IncludeQueryResourceType
+              | WarningResourceType;
+          }
+      )[],
+      McpError
     >
   > {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -140,15 +139,14 @@ function createServer(
 
     // If any of the data sources are invalid, return an error message.
     if (coreSearchArgsResults.some((res) => res.isErr())) {
-      return new Ok({
-        isError: false,
-        content: removeNulls(
+      return new Ok(
+        removeNulls(
           coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
         ).map((error) => ({
           type: "text",
           text: error.message,
-        })),
-      });
+        }))
+      );
     }
 
     const coreSearchArgs = removeNulls(
@@ -160,10 +158,7 @@ function createServer(
       tagsNot,
     });
     if (conflictingTagsError) {
-      return new Ok({
-        isError: false,
-        content: [{ type: "text", text: conflictingTagsError }],
-      });
+      return new Ok([{ type: "text", text: conflictingTagsError }]);
     }
 
     const searchResults = await coreAPI.searchDataSources(
@@ -203,12 +198,12 @@ function createServer(
     );
 
     if (searchResults.isErr()) {
-      return new Err(new Error(searchResults.error.message));
+      return new Err(new McpError(searchResults.error.message));
     }
 
     if (citationsOffset + retrievalTopK > getRefs().length) {
       return new Err(
-        new Error(
+        new McpError(
           "The inclusion exhausted the total number of references available for citations"
         )
       );
@@ -251,27 +246,24 @@ function createServer(
       timeFrame ?? null
     );
 
-    return new Ok({
-      isError: false,
-      content: [
-        ...results.map((result) => ({
-          type: "resource" as const,
-          resource: result,
-        })),
-        {
-          type: "resource" as const,
-          resource: makeQueryResource(timeFrame ?? null),
-        },
-        ...(warningResource
-          ? [
-              {
-                type: "resource" as const,
-                resource: warningResource,
-              },
-            ]
-          : []),
-      ],
-    });
+    return new Ok([
+      ...results.map((result) => ({
+        type: "resource" as const,
+        resource: result,
+      })),
+      {
+        type: "resource" as const,
+        resource: makeQueryResource(timeFrame ?? null),
+      },
+      ...(warningResource
+        ? [
+            {
+              type: "resource" as const,
+              resource: warningResource,
+            },
+          ]
+        : []),
+    ]);
   }
 
   if (!areTagsDynamic) {

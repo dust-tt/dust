@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/files/client_executable";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { McpError } from "@app/lib/actions/mcp_errors";
 import type { InteractiveFileContentType } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { INTERACTIVE_FILE_FORMATS } from "@app/types";
@@ -90,7 +91,7 @@ const createServer = (
         const { conversation } = agentLoopContext?.runContext ?? {};
         if (!conversation) {
           return new Err(
-            new Error(
+            new McpError(
               "Conversation ID is required to create a client executable file."
             )
           );
@@ -104,7 +105,7 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return new Err(new Error(result.error.message));
+          return new Err(new McpError(result.error.message));
         }
 
         const { value: fileResource } = result;
@@ -137,23 +138,20 @@ const createServer = (
           await sendNotification(notification);
         }
 
-        return new Ok({
-          isError: false,
-          content: [
-            {
-              type: "resource",
-              resource: {
-                contentType: fileResource.contentType,
-                fileId: fileResource.sId,
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-                snippet: fileResource.snippet,
-                text: responseText,
-                title: fileResource.fileName,
-                uri: fileResource.getPublicUrl(auth),
-              },
+        return new Ok([
+          {
+            type: "resource",
+            resource: {
+              contentType: fileResource.contentType,
+              fileId: fileResource.sId,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              snippet: fileResource.snippet,
+              text: responseText,
+              title: fileResource.fileName,
+              uri: fileResource.getPublicUrl(auth),
             },
-          ],
-        });
+          },
+        ]);
       }
     )
   );
@@ -216,7 +214,7 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return new Err(new Error(result.error.message));
+          return new Err(new McpError(result.error.message));
         }
 
         const { fileResource, replacementCount } = result.value;
@@ -250,15 +248,12 @@ const createServer = (
           await sendNotification(notification);
         }
 
-        return new Ok({
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text: responseText,
-            },
-          ],
-        });
+        return new Ok([
+          {
+            type: "text",
+            text: responseText,
+          },
+        ]);
       }
     )
   );
@@ -283,22 +278,19 @@ const createServer = (
         const result = await getClientExecutableFileContent(auth, file_id);
 
         if (result.isErr()) {
-          return new Err(new Error(result.error.message));
+          return new Err(new McpError(result.error.message));
         }
 
         const { fileResource, content } = result.value;
 
-        return new Ok({
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text:
-                `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
-                `successfully. Content:\n\n${content}`,
-            },
-          ],
-        });
+        return new Ok([
+          {
+            type: "text",
+            text:
+              `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
+              `successfully. Content:\n\n${content}`,
+          },
+        ]);
       }
     )
   );
