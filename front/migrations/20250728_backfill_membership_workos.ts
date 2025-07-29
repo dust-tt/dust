@@ -78,10 +78,9 @@ async function updateMembershipOriginsForWorkspace(
             }
           } else {
             workspaceLogger.error(
-              `Error creating WorkOS membership for user ${user.email}:`,
+              `SKIPPING - Error creating WorkOS membership for user ${user.email}:`,
               error
             );
-            throw error;
           }
         }
       }
