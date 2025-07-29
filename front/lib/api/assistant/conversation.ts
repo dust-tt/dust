@@ -1323,7 +1323,6 @@ export async function retryAgentMessage(
   const agentMessageArray = conversation.content.find((messages) => {
     return messages.some((m) => m.sId === message.sId && isAgentMessageType(m));
   }) as AgentMessageType[];
-  agentMessageArray.push(agentMessage);
 
   // Finally, stitch the conversation.
   const newContent = [
