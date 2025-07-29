@@ -101,6 +101,19 @@ export const slackWhitelistBotPlugin = createPlugin({
       );
     }
 
+    // Always include the Workspace (global) group
+    const workspaceGroupRes =
+      await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    if (workspaceGroupRes.isErr()) {
+      return new Err(new Error("Failed to fetch workspace global group"));
+    }
+
+    // Combine the selected group with the Workspace group (avoid duplicates)
+    const groupIds: string[] = [groupId];
+    if (workspaceGroupRes.value.sId !== groupId) {
+      groupIds.push(workspaceGroupRes.value.sId);
+    }
+
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
       logger
@@ -112,7 +125,7 @@ export const slackWhitelistBotPlugin = createPlugin({
       args: {
         botName,
         wId: owner.sId,
-        groupId,
+        groupId: groupIds.join(","),
         whitelistType,
         providerType: resource.connectorProvider,
       },
@@ -134,7 +147,7 @@ export const slackWhitelistBotPlugin = createPlugin({
       display: "textWithLink",
       value:
         `Successfully whitelisted Slack bot "${botName}" for ${whitelistType} in the ` +
-        "selected group.",
+        "selected group and the Workspace group.",
       link: metabaseUrl,
       linkText: "View all whitelisted bots for this workspace",
     });
