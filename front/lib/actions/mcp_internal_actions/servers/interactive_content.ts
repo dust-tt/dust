@@ -89,9 +89,11 @@ const createServer = (
       ) => {
         const { conversation } = agentLoopContext?.runContext ?? {};
         if (!conversation) {
-          return new Err(new Error(
-            "Conversation ID is required to create a client executable file."
-          ));
+          return new Err(
+            new Error(
+              "Conversation ID is required to create a client executable file."
+            )
+          );
         }
 
         const result = await createClientExecutableFile(auth, {
