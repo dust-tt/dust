@@ -228,7 +228,7 @@ async function searchCallback(
     tagsNot,
   });
   if (conflictingTags) {
-    return new Ok([{ type: "text", text: conflictingTags }]);
+    return new Err(new MCPError(conflictingTags, { tracked: false }));
   }
 
   const searchResults = await coreAPI.searchDataSources(
@@ -424,25 +424,24 @@ const createServer = (
         });
 
         if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
-          return new Ok([
-            {
-              type: "text",
-              text: `Could not find node: ${nodeId} (error: ${
+          return new Err(
+            new MCPError(
+              `Could not find node: ${nodeId} (error: ${
                 searchResult.isErr() ? searchResult.error : "No nodes found"
               })`,
-            },
-          ]);
+              { tracked: false }
+            )
+          );
         }
 
         const node = searchResult.value.nodes[0];
 
         if (node.node_type !== "document") {
-          return new Ok([
-            {
-              type: "text",
-              text: `Node is of type ${node.node_type}, not a document.`,
-            },
-          ]);
+          return new Err(
+            new MCPError(`Node is of type ${node.node_type}, not a document.`, {
+              tracked: false,
+            })
+          );
         }
 
         // Get dataSource from the data source configuration.
@@ -915,9 +914,9 @@ const createServer = (
         });
 
         if (searchResult.isErr() || searchResult.value.nodes.length === 0) {
-          return new Ok([
-            { type: "text", text: `Could not find node: ${nodeId}` },
-          ]);
+          return new Err(
+            new MCPError(`Could not find node: ${nodeId}`, { tracked: false })
+          );
         }
 
         const targetNode = searchResult.value.nodes[0];

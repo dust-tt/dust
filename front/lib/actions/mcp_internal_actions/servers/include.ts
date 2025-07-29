@@ -139,13 +139,15 @@ function createServer(
 
     // If any of the data sources are invalid, return an error message.
     if (coreSearchArgsResults.some((res) => res.isErr())) {
-      return new Ok(
-        removeNulls(
-          coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
-        ).map((error) => ({
-          type: "text",
-          text: error.message,
-        }))
+      return new Err(
+        new MCPError(
+          removeNulls(
+            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
+          )
+            .map((error) => error.message)
+            .join("\n"),
+          { tracked: false }
+        )
       );
     }
 
@@ -158,7 +160,7 @@ function createServer(
       tagsNot,
     });
     if (conflictingTagsError) {
-      return new Ok([{ type: "text", text: conflictingTagsError }]);
+      return new Err(new MCPError(conflictingTagsError, { tracked: false }));
     }
 
     const searchResults = await coreAPI.searchDataSources(
