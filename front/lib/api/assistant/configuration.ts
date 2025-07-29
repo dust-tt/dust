@@ -132,12 +132,9 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   return tracer.trace("getAgentConfiguration", async () => {
     const res = await getAgentConfigurations({
       auth,
-      agentsGetView: [
-        {
-          agentId,
-          agentVersion,
-        },
-      ],
+      agentsGetView: agentVersion
+        ? [{ agentId, agentVersion }]
+        : { agentIds: [agentId] },
       variant,
     });
     // `as` is required here because the type collapses to `LightAgentConfigurationType |
@@ -172,7 +169,7 @@ export async function searchAgentConfigurationsByName(
   const r = removeNulls(
     await getAgentConfigurations({
       auth,
-      agentsGetView: agentConfigurations.map((c) => ({ agentId: c.sId })),
+      agentsGetView: { agentIds: agentConfigurations.map(({ sId }) => sId) },
       variant: "light",
     })
   );
@@ -461,57 +458,10 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
           return [];
         }
 
-        // Handle agents with specific versions vs latest versions
-        const specificVersionConditions: {
-          sId: string;
-          version: number;
-        }[] = [];
-        const latestVersionAgentIds: string[] = [];
-
-        for (const agent of workspaceAgents) {
-          if (agent.agentVersion !== undefined) {
-            specificVersionConditions.push({
-              sId: agent.agentId,
-              version: agent.agentVersion,
-            });
-          } else {
-            latestVersionAgentIds.push(agent.agentId);
-          }
-        }
-
-        const conditions: any[] = [...specificVersionConditions];
-
-        // Get latest versions for agents without specific version
-        if (latestVersionAgentIds.length > 0) {
-          const latestVersions = (await AgentConfiguration.findAll({
-            attributes: [
-              "sId",
-              [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
-            ],
-            where: {
-              workspaceId: owner.id,
-              sId: latestVersionAgentIds,
-            },
-            group: ["sId"],
-            raw: true,
-          })) as unknown as { sId: string; max_version: number }[];
-
-          conditions.push(
-            ...latestVersions.map((v) => ({
-              sId: v.sId,
-              version: v.max_version,
-            }))
-          );
-        }
-
-        if (conditions.length === 0) {
-          return [];
-        }
-
         return AgentConfiguration.findAll({
           where: {
             workspaceId: owner.id,
-            [Op.or]: conditions,
+            [Op.or]: workspaceAgents,
           },
           order: [["version", "DESC"]],
         });

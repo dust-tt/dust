@@ -46,8 +46,7 @@ async function handler(
 
       const agentConfigurations = await getAgentConfigurations({
         auth,
-        agentsGetView: agentConfigurationIds.map((id) => ({ agentId: id })),
-
+        agentsGetView: { agentIds: agentConfigurationIds },
         variant: "light",
       });
       const toDelete = agentConfigurations.filter((a) => a.status === "active");

@@ -79,7 +79,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     // Fetch agent configuration to check permissions
     const agentConfigurations = await getAgentConfigurations({
       auth,
-      agentsGetView: uniqueAgentIds.map((id) => ({ agentId: id })),
+      agentsGetView: { agentIds: uniqueAgentIds },
       variant: "light",
     });
 
