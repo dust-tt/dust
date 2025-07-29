@@ -390,6 +390,7 @@ export function CodeBlockWithExtendedSupport({
             }
           />
         }
+        displayActions="hover"
       >
         {showPrettyJson ? (
           <PrettyJsonViewer data={parsedJson} />
