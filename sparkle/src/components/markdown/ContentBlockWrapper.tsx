@@ -36,6 +36,7 @@ interface ContentBlockWrapperProps {
   content?: ClipboardContent | string;
   getContentToDownload?: GetContentToDownloadFunction;
   actions?: React.ReactNode[] | React.ReactNode;
+  displayActions?: "hover" | "always";
 }
 
 export function ContentBlockWrapper({
@@ -44,6 +45,7 @@ export function ContentBlockWrapper({
   innerClassName,
   content,
   actions,
+  displayActions = "always",
   getContentToDownload,
 }: ContentBlockWrapperProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
@@ -91,14 +93,18 @@ export function ContentBlockWrapper({
     <div
       id="BlockWrapper"
       className={cn(
-        "s-relative s-mt-11 s-w-full !s-overflow-visible",
+        "s-group s-relative s-mt-11 s-w-full !s-overflow-visible",
         className
       )}
     >
       <div className="s-sticky s-top-11 s-z-[1] s-h-0">
         <div
           id="BlockActions"
-          className="s-absolute s-bottom-0 s-right-2 s-flex s-h-11 s-items-center s-gap-1 s-py-2"
+          className={cn(
+            "s-absolute s-bottom-0 s-right-2 s-flex s-h-11 s-items-center s-gap-1 s-py-2",
+            displayActions === "hover" &&
+              "s-opacity-0 s-transition-opacity s-duration-200 group-hover:s-opacity-100"
+          )}
         >
           {actions && actions}
           {getContentToDownload && (
