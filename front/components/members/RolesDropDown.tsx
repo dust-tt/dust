@@ -15,9 +15,22 @@ import { ACTIVE_ROLES } from "@app/types";
 interface RoleDropDownProps {
   onChange: (role: ActiveRoleType) => void;
   selectedRole: ActiveRoleType;
+  disabled?: boolean;
 }
 
-export function RoleDropDown({ onChange, selectedRole }: RoleDropDownProps) {
+export function RoleDropDown({ onChange, selectedRole, disabled = false }: RoleDropDownProps) {
+  if (disabled) {
+    return (
+      <Chip
+        color={ROLES_DATA[selectedRole]["color"]}
+        size="sm"
+        className="capitalize"
+      >
+        {displayRole(selectedRole)}
+      </Chip>
+    );
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

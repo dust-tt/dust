@@ -1342,6 +1342,45 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
+   * Checks if dust-builders and dust-admins groups exist and are actively provisioned
+   * in the workspace. This indicates that role management should be restricted in the UI.
+   */
+  static async hasActiveRoleProvisioningGroups(
+    auth: Authenticator
+  ): Promise<boolean> {
+    const owner = auth.getNonNullableWorkspace();
+    
+    // Check if workspace has WorkOS organization ID (required for provisioning)
+    if (!owner.workOSOrganizationId) {
+      return false;
+    }
+
+    const ADMIN_GROUP_NAME = "dust-admins";
+    const BUILDER_GROUP_NAME = "dust-builders";
+
+    try {
+      const provisionedGroups = await GroupModel.findAll({
+        where: {
+          workspaceId: owner.id,
+          kind: "provisioned",
+          name: {
+            [Op.in]: [ADMIN_GROUP_NAME, BUILDER_GROUP_NAME],
+          },
+        },
+      });
+
+      // Return true if both dust-admins and dust-builders groups exist and are provisioned
+      const hasAdminGroup = provisionedGroups.some(g => g.name === ADMIN_GROUP_NAME);
+      const hasBuilderGroup = provisionedGroups.some(g => g.name === BUILDER_GROUP_NAME);
+      
+      return hasAdminGroup && hasBuilderGroup;
+    } catch (error) {
+      // If there's an error checking, err on the side of caution and don't restrict
+      return false;
+    }
+  }
+
+  /**
    * Associates a group with an agent configuration.
    */
   async addGroupToAgentConfiguration({

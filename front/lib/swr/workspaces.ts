@@ -4,6 +4,7 @@ import type { Fetcher } from "swr";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
+import type { GetProvisioningStatusResponseBody } from "@app/pages/api/w/[wId]/provisioning-status";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { LightWorkspaceType, WhitelistableFeature } from "@app/types";
@@ -144,5 +145,30 @@ export function useFeatureFlags({
     isFeatureFlagsLoading: !error && !data,
     isFeatureFlagsError: error,
     hasFeature,
+  };
+}
+
+export function useProvisioningStatus({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const provisioningStatusFetcher: Fetcher<GetProvisioningStatusResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/provisioning-status`,
+    provisioningStatusFetcher,
+    {
+      disabled,
+    }
+  );
+
+  return {
+    hasActiveRoleProvisioningGroups: data?.hasActiveRoleProvisioningGroups ?? false,
+    isProvisioningStatusLoading: !error && !data && !disabled,
+    isProvisioningStatusError: error,
   };
 }
