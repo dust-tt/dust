@@ -102,16 +102,13 @@ function parseZendeskTicketNodeId(nodeId: string): {
   };
 }
 
-async function checkTicketsExistInConnectors(
-  {
-    connectorId,
-    ticketIds,
-  }: {
-    connectorId: number;
-    ticketIds: { brandId: number; ticketId: number }[];
-  },
-  logger: Logger
-): Promise<Set<string>> {
+async function checkTicketsExistInConnectors({
+  connectorId,
+  ticketIds,
+}: {
+  connectorId: number;
+  ticketIds: { brandId: number; ticketId: number }[];
+}): Promise<Set<string>> {
   const connectorsSequelize = getConnectorsPrimaryDbConnection();
 
   if (ticketIds.length === 0) {
@@ -134,10 +131,6 @@ async function checkTicketsExistInConnectors(
       },
       type: QueryTypes.SELECT,
     }
-  );
-
-  logger.info(
-    `Found ${existingTickets.length} existing tickets out of ${ticketIds.length} checked`
   );
 
   return new Set(existingTickets.map((t) => `${t.brandId}-${t.ticketId}`));
@@ -214,13 +207,10 @@ async function processTicketNodes(
   }));
 
   // Check which tickets exist in connectors db.
-  const existingTickets = await checkTicketsExistInConnectors(
-    {
-      connectorId,
-      ticketIds,
-    },
-    logger
-  );
+  const existingTickets = await checkTicketsExistInConnectors({
+    connectorId,
+    ticketIds,
+  });
 
   const nodesToDelete = parsedNodes.filter(({ parsed }) => {
     const ticketKey = `${parsed!.brandId}-${parsed!.ticketId}`;
