@@ -228,7 +228,8 @@ async function processTicketNodes(
   });
 
   logger.info(
-    `Found ${nodesToDelete.length} nodes to delete out of ${parsedNodes.length}.`
+    { nodesToDelete: nodesToDelete.length, nodesChecked: parsedNodes.length },
+    `Found nodes to delete.`
   );
 
   if (nodesToDelete.length === 0) {
@@ -296,7 +297,8 @@ makeScript(
       hasMore = nodesResult.hasMore;
 
       logger.info(
-        `Found ${nodesResult.nodes.length} Zendesk ticket nodes in core.`
+        { nodeCount: nodesResult.nodes.length },
+        `Found ticket nodes in core.`
       );
 
       await processTicketNodes(
