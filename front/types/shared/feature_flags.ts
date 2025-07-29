@@ -108,7 +108,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   monday_tool: {
     description: "Monday MCP tool",
   },
-  mcp_outlook: {
+  outlook_tool: {
     description: "Outlook MCP tool",
   },
   async_loop: {

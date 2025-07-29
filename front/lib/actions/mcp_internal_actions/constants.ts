@@ -363,7 +363,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     id: 24,
     availability: "manual",
     isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("mcp_outlook");
+      return !featureFlags.includes("outlook_tool");
     },
     isPreview: true,
     tools_stakes: {
