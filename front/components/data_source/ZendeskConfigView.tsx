@@ -60,14 +60,13 @@ export function ZendeskConfigView({
   const syncUnresolvedTicketsEnabled =
     syncUnresolvedTicketsConfigValue === "true";
   const hideCustomerDetailsEnabled = hideCustomerDetailsConfigValue === "true";
-  const retentionPeriodDays = retentionPeriodConfigValue
-    ? parseInt(retentionPeriodConfigValue, 10)
-    : DEFAULT_RETENTION_PERIOD_DAYS;
+
+  const retentionPeriodDays = retentionPeriodConfigValue;
 
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
   const [retentionInput, setRetentionInput] = useState(
-    retentionPeriodDays.toString()
+    retentionPeriodDays?.toString() || ""
   );
 
   const handleSetNewConfig = async (
@@ -113,23 +112,19 @@ export function ZendeskConfigView({
 
   const handleRetentionPeriodSave = async () => {
     const value = retentionInput.trim();
-    let numValue: number;
 
-    if (value === "") {
-      numValue = DEFAULT_RETENTION_PERIOD_DAYS;
-    } else {
-      numValue = parseInt(value, 10);
+    if (value !== "") {
+      const numValue = parseInt(value, 10);
       if (isNaN(numValue) || numValue < 0) {
         sendNotification({
-          type: "error",
+          type: "info",
           title: "Invalid retention period",
           description: "Retention period must be a non-negative integer.",
         });
         return;
       }
+      await handleSetNewConfig(retentionPeriodConfigKey, numValue);
     }
-
-    await handleSetNewConfig(retentionPeriodConfigKey, numValue);
   };
 
   return (
