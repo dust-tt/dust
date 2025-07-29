@@ -61,7 +61,7 @@ async function updateMembershipOriginsForWorkspace(
         } catch (error: any) {
           if (error?.status === 429) {
             retryCount++;
-            const retryAfterSeconds = error.retryAfter || 60;
+            const retryAfterSeconds = error.retryAfter || 10;
             const retryAfterMs = retryAfterSeconds * 1000;
 
             workspaceLogger.warn(
