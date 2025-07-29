@@ -50,7 +50,6 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   jira: "Jira",
   monday: "Monday",
   notion: "Notion",
-  outlook: "Outlook",
   slack: "Slack",
   gong: "Gong",
   microsoft: "Microsoft",

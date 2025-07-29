@@ -606,6 +606,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_trackers"
   | "labs_transcripts"
   | "monday_tool"
+  | "outlook_tool"
   | "notion_private_integration"
   | "okta_enterprise_connection"
   | "openai_o1_custom_assistants_feature"
