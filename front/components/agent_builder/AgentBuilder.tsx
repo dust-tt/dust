@@ -40,8 +40,7 @@ export default function AgentBuilder({
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
     owner.sId,
-    agentConfiguration?.sId ?? null,
-    mcpServerViews
+    agentConfiguration?.sId ?? null
   );
 
   const { editors } = useEditors({
@@ -155,7 +154,7 @@ export default function AgentBuilder({
   const { isDirty, isSubmitting } = form.formState;
 
   return (
-    <FormProvider form={form} onSubmit={handleSubmit}>
+    <FormProvider form={form}>
       <AgentBuilderLayout
         leftPanel={
           <AgentBuilderLeftPanel

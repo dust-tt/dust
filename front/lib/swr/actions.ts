@@ -1,8 +1,7 @@
+import { uniqueId } from "lodash";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import type { AgentBuilderAction } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { transformAssistantBuilderActionsToFormData } from "@app/components/agent_builder/transformAgentConfiguration";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetActionsResponseBody } from "@app/pages/api/w/[wId]/builder/assistants/[aId]/actions";
 
@@ -31,8 +30,7 @@ export function useAssistantConfigurationActions(
 
 export function useAgentConfigurationActions(
   ownerId: string,
-  agentConfigurationId: string | null,
-  mcpServerViews?: Array<{ sId: string; server: { name: string } }>
+  agentConfigurationId: string | null
 ) {
   const disabled = agentConfigurationId === null;
   const actionsFetcher: Fetcher<GetActionsResponseBody> = fetcher;
@@ -46,21 +44,17 @@ export function useAgentConfigurationActions(
     }
   );
 
-  // Transform assistant builder actions to agent builder form actions
-  const actions = useMemo((): AgentBuilderAction[] => {
-    if (!data?.actions) {
-      return [];
-    }
-
-    const transformResult = transformAssistantBuilderActionsToFormData(
-      data.actions,
-      mcpServerViews || []
-    );
-    return transformResult.isOk() ? transformResult.value : [];
-  }, [data, mcpServerViews]);
+  const actionsWithIds = useMemo(
+    () =>
+      data?.actions.map((action) => ({
+        ...action,
+        id: uniqueId(),
+      })),
+    [data?.actions]
+  );
 
   return {
-    actions,
+    actions: actionsWithIds,
     isActionsLoading: !error && !data && !disabled,
     error,
   };
