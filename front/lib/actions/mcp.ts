@@ -557,6 +557,7 @@ export async function* runToolWithStreaming(
     executionState: "pending",
     version: 0,
     stepContentId,
+    citationsAllocated: stepContext.citationsCount,
   });
 
   const mcpAction = new MCPActionType({

@@ -195,6 +195,8 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "allowed_implicitly"
     | "denied";
 
+  declare citationsAllocated: number;
+
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
   declare agentMessage?: NonAttribute<AgentMessage>;
 }
@@ -239,6 +241,11 @@ AgentMCPAction.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    citationsAllocated: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
   },
   {
