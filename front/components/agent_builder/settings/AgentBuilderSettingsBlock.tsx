@@ -149,12 +149,7 @@ function AgentNameInput() {
           <DropdownMenuTrigger asChild>
             <Button
               icon={SparklesIcon}
-              variant={
-                !instructions ||
-                instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-                  ? "ghost"
-                  : "outline"
-              }
+              variant="outline"
               size="xs"
               className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
               disabled={
@@ -273,17 +268,9 @@ function AgentDescriptionInput() {
         />
         <Button
           icon={isGenerating ? () => <Spinner size="xs" /> : SparklesIcon}
-          variant={
-            isGenerating ||
-            !instructions ||
-            instructions.length < MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS
-              ? "ghost"
-              : "outline"
-          }
+          variant="outline"
           size="xs"
-          className={`absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0 ${
-            isGenerating ? "bg-transparent" : ""
-          }`}
+          className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
           disabled={
             isGenerating ||
             !instructions ||
