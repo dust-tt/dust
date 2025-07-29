@@ -180,11 +180,7 @@ export function UserMenu({
           icon={LogoutIcon}
           onClick={() => {
             datadogLogs.clearUser();
-            if (document.cookie.includes("sessionType=workos")) {
-              window.location.href = "/api/workos/logout";
-            } else {
-              window.location.href = "/api/auth/logout";
-            }
+            window.location.href = "/api/workos/logout";
           }}
         />
 

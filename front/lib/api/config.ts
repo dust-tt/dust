@@ -234,6 +234,11 @@ const config = {
   getWorkOSActionSigningSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_ACTION_SIGNING_SECRET");
   },
+  getWorkOSSessionCookieDomain: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "WORKOS_SESSION_COOKIE_DOMAIN"
+    );
+  },
 
   // Profiler.
   getProfilerSecret: (): string | undefined => {
