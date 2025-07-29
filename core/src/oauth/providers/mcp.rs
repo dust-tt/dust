@@ -33,8 +33,9 @@ impl MCPConnectionProvider {
         MCPConnectionProvider {}
     }
 
-    /// Gets the MCP credentials (client_id and client_secret) from the related credential
-    pub async fn get_credentials(credentials: Option<Credential>) -> Result<(String, String)> {
+    pub async fn get_credentials(
+        credentials: Option<Credential>,
+    ) -> Result<(String, Option<String>)> {
         let credentials =
             credentials.ok_or_else(|| anyhow!("Missing credentials for MCP connection"))?;
 
@@ -49,7 +50,6 @@ impl MCPConnectionProvider {
             ));
         }
 
-        // Extract client ID and secret
         let client_id = content
             .get("client_id")
             .and_then(|v| v.as_str())
@@ -58,9 +58,9 @@ impl MCPConnectionProvider {
         let client_secret = content
             .get("client_secret")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing client_secret in MCP credential"))?;
+            .map(|s| s.to_string());
 
-        Ok((client_id.to_string(), client_secret.to_string()))
+        Ok((client_id.to_string(), client_secret))
     }
 }
 
@@ -95,14 +95,18 @@ impl Provider for MCPConnectionProvider {
 
         let grant_type = "authorization_code";
 
-        let form_data = [
+        let mut form_data = vec![
             ("grant_type", grant_type),
             ("client_id", &client_id),
-            ("client_secret", &client_secret),
             ("code", code),
             ("code_verifier", &metadata.code_verifier),
             ("redirect_uri", redirect_uri),
         ];
+
+        // Only include client_secret if it's provided
+        if let Some(ref secret) = client_secret {
+            form_data.push(("client_secret", secret));
+        }
 
         let req = self
             .reqwest_client()
@@ -161,12 +165,16 @@ impl Provider for MCPConnectionProvider {
 
         let grant_type = "refresh_token";
 
-        let form_data = [
+        let mut form_data = vec![
             ("grant_type", grant_type),
             ("client_id", &client_id),
-            ("client_secret", &client_secret),
             ("refresh_token", &refresh_token),
         ];
+
+        // Only include client_secret if it's provided
+        if let Some(ref secret) = client_secret {
+            form_data.push(("client_secret", secret));
+        }
 
         let req = self
             .reqwest_client()

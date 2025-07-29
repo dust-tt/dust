@@ -28,7 +28,7 @@ const BaseMCPMetadataSchema = z.object({
 });
 
 const MCPOAuthConnectionMetadataSchema = BaseMCPMetadataSchema.extend({
-  client_secret: z.string(),
+  client_secret: z.string().optional(),
 });
 
 const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
@@ -156,11 +156,17 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
     } else if (useCase === "platform_actions") {
       const { client_secret } = extraConfig;
 
+      const content: { client_id: string; client_secret?: string } = {
+        client_id: extraConfig.client_id,
+      };
+
+      // Only include client_secret if it's provided
+      if (client_secret) {
+        content.client_secret = client_secret;
+      }
+
       return {
-        content: {
-          client_secret,
-          client_id: extraConfig.client_id,
-        },
+        content,
         metadata: { workspace_id: workspaceId, user_id: userId },
       };
     }

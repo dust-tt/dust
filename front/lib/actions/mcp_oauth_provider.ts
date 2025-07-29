@@ -58,12 +58,6 @@ export class MCPOAuthProvider implements OAuthClientProvider {
       throw new Error("Metadata not found, unable to create an oauth flow.");
     }
 
-    if (!clientInformation.client_secret) {
-      throw new Error(
-        "Client secret not found, unable to create an oauth flow."
-      );
-    }
-
     const responseType = "code";
     const codeChallengeMethod = "S256";
 
@@ -88,7 +82,7 @@ export class MCPOAuthProvider implements OAuthClientProvider {
     // We pass the metadata to the client to allow them to handle the oauth flow.
     throw new MCPOAuthRequiredError({
       client_id: clientInformation.client_id,
-      client_secret: clientInformation.client_secret,
+      client_secret: clientInformation.client_secret || "",
       token_endpoint: this.metadata.token_endpoint,
       authorization_endpoint: this.metadata.authorization_endpoint,
     });
