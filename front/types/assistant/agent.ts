@@ -1,4 +1,5 @@
 import type {
+  MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
@@ -11,10 +12,7 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/assistant";
-import type {
-  AgentActionType,
-  AgentMessageType,
-} from "@app/types/assistant/conversation";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
@@ -263,7 +261,7 @@ export type AgentActionSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: AgentActionType;
+  action: MCPActionType;
 };
 
 // Event sent to stop the generation.
