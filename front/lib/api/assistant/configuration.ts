@@ -419,35 +419,10 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
     default:
       if (typeof agentsGetView === "object" && "agentIds" in agentsGetView) {
-        if (agentsGetView.allVersions) {
-          return AgentConfiguration.findAll({
-            where: {
-              workspaceId: owner.id,
-              sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
-            },
-            order: [["version", "DESC"]],
-          });
-        }
-        const latestVersions = (await AgentConfiguration.findAll({
-          attributes: [
-            "sId",
-            [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
-          ],
-          where: {
-            workspaceId: owner.id,
-            sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
-          },
-          group: ["sId"],
-          raw: true,
-        })) as unknown as { sId: string; max_version: number }[];
-
         return AgentConfiguration.findAll({
           where: {
             workspaceId: owner.id,
-            [Op.or]: latestVersions.map((v) => ({
-              sId: v.sId,
-              version: v.max_version,
-            })),
+            sId: agentsGetView.agentIds.filter((id) => !isGlobalAgentId(id)),
           },
           order: [["version", "DESC"]],
         });
