@@ -30,7 +30,6 @@ export const OAUTH_PROVIDERS = [
   "jira",
   "monday",
   "notion",
-  "outlook",
   "slack",
   "gong",
   "microsoft",
