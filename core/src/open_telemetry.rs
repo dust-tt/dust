@@ -190,17 +190,16 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
     let _guard = tracing::subscriber::set_default(subscriber);
     info!("init logging & tracing");
 
-    let (layer, guard) = build_otel_layer()?;
+    if std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_ok() {
+        let (layer, guard) = build_otel_layer()?;
 
-    let exporter = LogExporter::builder()
-        .with_tonic()
-        .build()
-        .expect("failed to install logging");
-    let provider: SdkLoggerProvider = opentelemetry_sdk::logs::SdkLoggerProvider::builder()
-        .with_batch_exporter(exporter)
-        .build();
-
-    let otel_layer_option = if std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT").is_ok() {
+        let exporter = LogExporter::builder()
+            .with_tonic()
+            .build()
+            .expect("failed to install logging");
+        let provider: SdkLoggerProvider = opentelemetry_sdk::logs::SdkLoggerProvider::builder()
+            .with_batch_exporter(exporter)
+            .build();
         // To prevent a telemetry-induced-telemetry loop, OpenTelemetry's own internal
         // logging is properly suppressed. However, logs emitted by external components
         // (such as reqwest, tonic, etc.) are not suppressed as they do not propagate
@@ -220,23 +219,29 @@ pub fn init_subscribers_and_loglevel(log_directives: &str) -> Result<TracingGuar
             .add_directive("h2=off".parse().unwrap())
             .add_directive("reqwest=off".parse().unwrap());
         let otel_layer = layer::OpenTelemetryTracingBridge::new(&provider).with_filter(filter_otel);
-        Some(otel_layer)
+
+        let subscriber = tracing_subscriber::registry()
+            .with(JsonStorageLayer)
+            .with(
+                BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
+                    .skip_fields(vec!["file", "line", "target"].into_iter())
+                    .unwrap(),
+            )
+            .with(otel_layer)
+            .with(layer)
+            .with(build_level_filter_layer(log_directives)?)
+            .with(build_logger_text());
+        tracing::subscriber::set_global_default(subscriber)?;
+        Ok(guard)
     } else {
-        None
-    };
-
-    let subscriber = tracing_subscriber::registry()
-        .with(JsonStorageLayer)
-        .with(
-            BunyanFormattingLayer::new("dust_api".into(), std::io::stdout)
-                .skip_fields(vec!["file", "line", "target"].into_iter())
-                .unwrap(),
-        )
-        .with(otel_layer_option)
-        .with(layer)
-        .with(build_level_filter_layer(log_directives)?)
-        .with(build_logger_text());
-    tracing::subscriber::set_global_default(subscriber)?;
-
-    Ok(guard)
+        let subscriber = tracing_subscriber::registry()
+            .with(build_level_filter_layer(log_directives)?)
+            .with(build_logger_text());
+        tracing::subscriber::set_global_default(subscriber)?;
+        // Create a dummy guard since OTEL layer is disabled
+        let dummy_tracer_provider = opentelemetry_sdk::trace::SdkTracerProvider::builder().build();
+        Ok(TracingGuard {
+            tracer_provider: dummy_tracer_provider,
+        })
+    }
 }
