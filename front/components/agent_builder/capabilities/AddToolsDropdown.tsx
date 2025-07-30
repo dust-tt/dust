@@ -91,9 +91,9 @@ export function AddToolsDropdown({
 
     const isReasoning = requirement.requiresReasoningConfiguration;
 
-    // Reasoning is configurable but we select the reasoning model by default.
+    // We pre-select the default reasoning model.
     if (action.type === "MCP" && isReasoning) {
-      // You should not be able to select reasoning tools if you don't have any reasoning models,
+      // You should not be able to select reasoning option if you don't have any reasoning models,
       // but in case you do for some reasons, we show an error notification.
       if (reasoningModels.length === 0) {
         sendNotification({
@@ -126,8 +126,8 @@ export function AddToolsDropdown({
       return;
     }
 
-    // If no configuration is required, add it immediately.
-    // If configuration is required, we will open a configuration panel.
+    // If no configuration is required, add it immediately to the agent builder main form.
+    // If configuration is required, we will open a configuration panel and open a sub-form.
     if (requirement.noRequirement) {
       addTools(action);
     } else {
@@ -154,6 +154,7 @@ export function AddToolsDropdown({
   function onOpenChange(open: boolean) {
     if (!open) {
       // Delay slightly to avoid flickering when the dropdown is closed.
+      // TODO: use onAnimationEnd to avoid this hack.
       setTimeout(() => {
         setSearchText("");
         setFilteredServerViews([]);

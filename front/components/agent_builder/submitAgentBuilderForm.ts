@@ -9,6 +9,8 @@ import {
   isIncludeDataAction,
   isSearchAction,
 } from "@app/components/agent_builder/types";
+import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   AgentConfigurationType,
@@ -44,6 +46,30 @@ function convertDataSourceConfigurations(
         : null,
     },
   }));
+}
+
+function processTableSelection(
+  tablesConfigurations:
+    | DataSourceViewSelectionConfigurations
+    | null
+    | undefined,
+  owner: WorkspaceType
+): TableDataSourceConfiguration[] | null {
+  if (!tablesConfigurations || Object.keys(tablesConfigurations).length === 0) {
+    return null;
+  }
+
+  const tables = Object.values(tablesConfigurations).flatMap(
+    ({ dataSourceView, selectedResources }) => {
+      return selectedResources.map((resource) => ({
+        dataSourceViewId: dataSourceView.sId,
+        workspaceId: owner.sId,
+        tableId: getTableIdForContentNode(dataSourceView.dataSource, resource),
+      }));
+    }
+  );
+
+  return tables.length > 0 ? tables : null;
 }
 
 function convertSearchActionToMCPConfiguration(
@@ -194,6 +220,34 @@ export async function submitAgentBuilderForm({
       actions: formData.actions.flatMap((action) => {
         if (action.type === "DATA_VISUALIZATION") {
           return [];
+        }
+
+        if (action.type === "MCP") {
+          return [
+            {
+              type: "mcp_server_configuration" as const,
+              mcpServerViewId: action.configuration.mcpServerViewId,
+              name: action.name,
+              description: action.description,
+              dataSources: action.configuration.dataSourceConfigurations
+                ? convertDataSourceConfigurations(
+                    action.configuration.dataSourceConfigurations,
+                    owner
+                  )
+                : null,
+              tables: processTableSelection(
+                action.configuration.tablesConfigurations,
+                owner
+              ),
+              childAgentId: action.configuration.childAgentId,
+              reasoningModel: action.configuration.reasoningModel,
+              timeFrame: action.configuration.timeFrame,
+              jsonSchema: action.configuration.jsonSchema,
+              additionalConfiguration:
+                action.configuration.additionalConfiguration,
+              dustAppConfiguration: action.configuration.dustAppConfiguration,
+            },
+          ];
         }
 
         if (isSearchAction(action)) {

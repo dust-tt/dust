@@ -28,6 +28,34 @@ export type AgentBuilderGenerationSettings = z.infer<
   typeof generationSettingsSchema
 >;
 
+export const mcpServerViewIdSchema = z.string();
+
+export const childAgentIdSchema = z.string().nullable();
+
+export const additionalConfigurationSchema = z.record(
+  z.union([z.boolean(), z.number(), z.string()])
+);
+
+export const dustAppConfigurationSchema = z
+  .object({
+    id: z.number(),
+    sId: z.string(),
+    type: z.literal("dust_app_run_configuration"),
+    appWorkspaceId: z.string(),
+    appId: z.string(),
+    name: z.string(),
+    description: z.string().nullable(),
+  })
+  .nullable();
+
+export const jsonSchemaFieldSchema = z.custom<JSONSchema>().nullable();
+
+export const jsonSchemaStringSchema = z.string().nullable();
+
+export const dataSourceConfigurationsSchema = z.any().nullable();
+
+export const tablesConfigurationsSchema = z.any().nullable();
+
 const tagsFilterSchema = z
   .object({
     in: z.array(z.string()),
@@ -51,12 +79,14 @@ const searchActionConfigurationSchema = z.object({
   ),
 });
 
-const timeFrameSchema = z
+export const timeFrameSchema = z
   .object({
     duration: z.number().min(1),
     unit: z.enum(["hour", "day", "week", "month", "year"]),
   })
   .nullable();
+
+export const mcpTimeFrameSchema = timeFrameSchema;
 
 const includeDataActionConfigurationSchema = z.object({
   type: z.literal("INCLUDE_DATA"),
@@ -90,7 +120,7 @@ const baseActionSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string(),
-  noConfigurationRequired: z.boolean(),
+  noConfigurationRequired: z.boolean().optional(),
 });
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);
@@ -111,26 +141,31 @@ const dataVisualizationActionSchema = baseActionSchema.extend({
   configuration: z.null(),
 });
 
-const dustAppRunConfigurationSchema = z.object({
-  appWorkspaceId: z.string(),
-  appId: z.string(),
-});
+export const reasoningModelSchema = z
+  .object({
+    modelId: modelIdSchema,
+    providerId: providerIdSchema,
+    temperature: z.number().min(0).max(1).nullable(),
+    reasoningEffort: reasoningEffortSchema.nullable(),
+  })
+  .nullable();
 
 const mcpServerConfigurationSchema = z.object({
-  mcpServerViewId: z.string(),
-  dataSourceConfigurations:
-    dataSourceViewSelectionConfigurationSchema.nullable(),
-  tablesConfigurations: dataSourceViewSelectionConfigurationSchema.nullable(),
-  childAgentId: z.string().nullable(),
-  reasoningModel: generationSettingsSchema.nullable(),
-  timeFrame: timeFrameSchema,
-  additionalConfiguration: z.record(
-    z.union([z.boolean(), z.number(), z.string()])
-  ),
-  dustAppConfiguration: dustAppRunConfigurationSchema.nullable(),
-  jsonSchema: z.custom<JSONSchema>().nullable(),
-  _jsonSchemaString: z.string().nullable(),
+  mcpServerViewId: mcpServerViewIdSchema,
+  dataSourceConfigurations: dataSourceConfigurationsSchema,
+  tablesConfigurations: tablesConfigurationsSchema,
+  childAgentId: childAgentIdSchema,
+  reasoningModel: reasoningModelSchema,
+  timeFrame: mcpTimeFrameSchema,
+  additionalConfiguration: additionalConfigurationSchema,
+  dustAppConfiguration: dustAppConfigurationSchema,
+  jsonSchema: jsonSchemaFieldSchema,
+  _jsonSchemaString: jsonSchemaStringSchema,
 });
+
+export type MCPServerConfigurationType = z.infer<
+  typeof mcpServerConfigurationSchema
+>;
 
 const mcpActionSchema = baseActionSchema.extend({
   type: z.literal("MCP"),
@@ -213,4 +248,35 @@ export type AgentBuilderDataVizAction = z.infer<
   typeof dataVisualizationActionSchema
 >;
 
+export const mcpFormConfigurationSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  configuration: mcpServerConfigurationSchema,
+});
+
+export type MCPFormConfigurationData = z.infer<
+  typeof mcpFormConfigurationSchema
+>;
+
 export type BaseActionData = z.infer<typeof baseActionSchema>;
+
+// TODO: create types from schema
+export interface MCPFormData {
+  name: string;
+  description: string;
+  configuration: {
+    mcpServerViewId: string;
+    dataSourceConfigurations: any;
+    tablesConfigurations: any;
+    childAgentId: string | null;
+    reasoningModel: any;
+    timeFrame: {
+      duration: number;
+      unit: "hour" | "day" | "week" | "month" | "year";
+    } | null;
+    additionalConfiguration: Record<string, boolean | number | string>;
+    dustAppConfiguration: any;
+    jsonSchema: any;
+    _jsonSchemaString: string | null;
+  };
+}
