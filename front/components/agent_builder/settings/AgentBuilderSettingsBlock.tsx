@@ -359,7 +359,7 @@ function AgentPictureInput() {
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
         avatarUrl={field.value || null}
       />
-      <div className="group relative h-fit w-fit py-2">
+      <div className="group relative py-2">
         <Avatar size="xl" visual={field.value || null} />
         <Button
           variant="outline"
