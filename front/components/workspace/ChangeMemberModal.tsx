@@ -56,10 +56,6 @@ export function ChangeMemberModal({
     workspaceId: workspace.sId,
   });
 
-  // Check if this user's role would be managed by provisioning groups
-  const isRoleManagedByProvisioning =
-    hasActiveRoleProvisioningGroups && (role === "admin" || role === "builder");
-
   const handleSave = async () => {
     if (!selectedRole) {
       return;
@@ -115,12 +111,12 @@ export function ChangeMemberModal({
                     <RoleDropDown
                       selectedRole={selectedRole || role}
                       onChange={setSelectedRole}
-                      disabled={isRoleManagedByProvisioning}
+                      disabled={hasActiveRoleProvisioningGroups}
                     />
                   </div>
                   <Page.P>
-                    {isRoleManagedByProvisioning ? (
-                      "This user's role is managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
+                    {hasActiveRoleProvisioningGroups ? (
+                      "The roles are managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
                     ) : (
                       <>
                         The role defines the rights of a member of the
@@ -206,7 +202,7 @@ export function ChangeMemberModal({
                 disabled:
                   selectedRole === member.workspace.role ||
                   isSaving ||
-                  isRoleManagedByProvisioning,
+                  hasActiveRoleProvisioningGroups,
                 loading: isSaving,
               }}
             />

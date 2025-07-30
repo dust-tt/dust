@@ -17,23 +17,12 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      try {
-        const hasActiveRoleProvisioningGroups =
-          await GroupResource.hasActiveRoleProvisioningGroups(auth);
+      const hasActiveRoleProvisioningGroups =
+        await GroupResource.hasActiveRoleProvisioningGroups(auth);
 
-        return res.status(200).json({
-          hasActiveRoleProvisioningGroups,
-        });
-      } catch (error) {
-        console.error("Error checking provisioning status:", error);
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to check group provisioning status",
-          },
-        });
-      }
+      return res.status(200).json({
+        hasActiveRoleProvisioningGroups,
+      });
 
     default:
       return apiError(req, res, {
