@@ -15,23 +15,22 @@ import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_action
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
-const createConfigSchema = (requirements: MCPServerRequirements | null) => {
+const getConfigurationSchema = (requirements: MCPServerRequirements | null) => {
   const baseFields = {
     mcpServerViewId: mcpServerViewIdSchema,
+    dataSourceConfigurations: z.any().nullable().default(null), // TODO: fixme
+    tablesConfigurations: tablesConfigurationsSchema,
+    childAgentId: childAgentIdSchema,
+    reasoningModel: reasoningModelSchema,
     timeFrame: mcpTimeFrameSchema,
+    additionalConfiguration: additionalConfigurationSchema,
+    dustAppConfiguration: dustAppConfigurationSchema,
     jsonSchema: jsonSchemaFieldSchema,
     _jsonSchemaString: jsonSchemaStringSchema,
   };
 
   if (!requirements) {
-    return z.object({
-      ...baseFields,
-      dataSourceConfigurations: z.any().nullable().default(null), // TODO: fixme
-      tablesConfigurations: tablesConfigurationsSchema,
-      childAgentId: childAgentIdSchema,
-      reasoningModel: reasoningModelSchema,
-      dustAppConfiguration: dustAppConfigurationSchema,
-    });
+    return z.object(baseFields);
   }
 
   const dynamicFields: Record<string, z.ZodSchema> = {};
@@ -75,30 +74,41 @@ const createConfigSchema = (requirements: MCPServerRequirements | null) => {
     requirements.requiredBooleans.length > 0 ||
     Object.keys(requirements.requiredEnums).length > 0
   ) {
+    // We just check if the key exists and don't check the value type.
     dynamicFields.additionalConfiguration = additionalConfigurationSchema
       .default({})
       .refine(
         (additionalConfig) => {
           for (const key of requirements.requiredStrings) {
-            if (!additionalConfig[key]) {
+            if (
+              !additionalConfig[key] 
+            ) {
               return false;
             }
           }
 
           for (const key of requirements.requiredNumbers) {
-            if (additionalConfig[key] === undefined) {
+            if (
+              additionalConfig[key] === undefined
+            ) {
               return false;
             }
           }
 
           for (const key of requirements.requiredBooleans) {
-            if (additionalConfig[key] === undefined) {
+            if (
+              additionalConfig[key] === undefined
+            ) {
               return false;
             }
           }
 
-          for (const key of Object.keys(requirements.requiredEnums)) {
-            if (!additionalConfig[key]) {
+          for (const [key] of Object.entries(
+            requirements.requiredEnums
+          )) {
+            if (
+              !additionalConfig[key]
+            ) {
               return false;
             }
           }
@@ -143,7 +153,7 @@ export function getMCPConfigurationFormSchema(
       .string()
       .min(1, "Description is required")
       .max(800, "Description too long"),
-    configuration: createConfigSchema(requirements),
+    configuration: getConfigurationSchema(requirements),
   });
 }
 
@@ -173,6 +183,7 @@ export function getDefaultConfiguration(
 
   const additionalConfig: Record<string, boolean | number | string> = {};
 
+  // We set default values only for boolean and enums.
   for (const key of requirements.requiredBooleans) {
     additionalConfig[key] = false;
   }
