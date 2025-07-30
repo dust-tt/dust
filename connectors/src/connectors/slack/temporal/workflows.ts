@@ -37,10 +37,11 @@ function getSlackActivities() {
     startToCloseTimeout: "90 minutes",
   });
 
-  const { syncNonThreaded } = proxyActivities<typeof activities>({
-    heartbeatTimeout: "5 minutes",
-    startToCloseTimeout: "60 minutes",
-  });
+  const { syncNonThreaded, migrateChannelsFromLegacyBotToNewBotActivity } =
+    proxyActivities<typeof activities>({
+      heartbeatTimeout: "5 minutes",
+      startToCloseTimeout: "60 minutes",
+    });
 
   return {
     attemptChannelJoinActivity,
@@ -49,6 +50,7 @@ function getSlackActivities() {
     fetchUsers,
     getChannel,
     getChannelsToGarbageCollect,
+    migrateChannelsFromLegacyBotToNewBotActivity,
     reportInitialSyncProgressActivity,
     saveSuccessSyncActivity,
     syncChannel,
@@ -312,6 +314,24 @@ export async function slackGarbageCollectorWorkflow(
     channelsToDeleteFromConnectorsDb,
     connectorId
   );
+}
+
+// TODO(slack 2025-07-30): Temporary workflow to migrate channels from legacy bot to new bot.
+export async function migrateChannelsFromLegacyBotToNewBotWorkflow(
+  slackConnectorId: ModelId,
+  slackBotConnectorId: ModelId
+) {
+  await getSlackActivities().migrateChannelsFromLegacyBotToNewBotActivity(
+    slackConnectorId,
+    slackBotConnectorId
+  );
+}
+
+export function migrateChannelsFromLegacyBotToNewBotWorkflowId(
+  slackConnectorId: ModelId,
+  slackBotConnectorId: ModelId
+) {
+  return `slack-migrateChannelsFromLegacyBotToNewBot-${slackConnectorId}-${slackBotConnectorId}`;
 }
 
 export function workspaceFullSyncWorkflowId(
