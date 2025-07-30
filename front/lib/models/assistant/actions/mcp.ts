@@ -192,7 +192,10 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "pending"
     | "allowed_explicitly"
     | "allowed_implicitly"
-    | "denied";
+    | "denied"
+    | "running"
+    | "completed"
+    | "failed";
 
   declare citationsAllocated: number;
 
@@ -232,6 +235,9 @@ AgentMCPAction.init(
             "allowed_explicitly",
             "allowed_implicitly",
             "denied",
+            "running",
+            "completed",
+            "failed",
           ],
         ],
       },

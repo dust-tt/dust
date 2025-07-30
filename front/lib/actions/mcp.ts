@@ -323,7 +323,10 @@ export class MCPActionType {
     | "timeout"
     | "allowed_explicitly"
     | "allowed_implicitly"
-    | "denied" = "pending";
+    | "denied"
+    | "running"
+    | "completed"
+    | "failed" = "pending";
 
   readonly mcpServerConfigurationId: string;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
@@ -984,7 +987,10 @@ async function updateResourceAndBuildErrorEvent(
     | "timeout"
     | "allowed_explicitly"
     | "allowed_implicitly"
-    | "denied",
+    | "denied"
+    | "running"
+    | "completed"
+    | "failed",
   errorMessage: string
 ) {
   const outputContent: CallToolResult["content"][number] = {
