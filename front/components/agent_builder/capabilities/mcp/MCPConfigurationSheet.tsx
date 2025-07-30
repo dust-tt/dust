@@ -141,13 +141,6 @@ function MCPConfigurationSheetContent({
     }
   };
 
-  const handleNameChange = (newName: string) => {
-    form.setValue("name", newName, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-  };
-
   if (!mcpServerView || !requirements) {
     return null;
   }
@@ -161,9 +154,7 @@ function MCPConfigurationSheetContent({
           <div className="w-full">
             <MCPActionHeader
               mcpServerView={mcpServerView}
-              action={{ ...action, name: form.watch("name") }}
-              onNameChange={handleNameChange}
-              nameError={form.formState.errors.name?.message}
+              action={action}
               allowNameEdit={allowNameEdit}
             />
             <div className="mt-6">
