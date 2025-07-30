@@ -200,6 +200,7 @@ export async function syncOneThreadDebounced(
       debounceCount++;
       continue;
     }
+
     const channel = await getSlackActivities().getChannel(
       connectorId,
       channelId
