@@ -58,7 +58,13 @@ interface OutlookEvent {
   isCancelled?: boolean;
   importance?: "low" | "normal" | "high";
   sensitivity?: "normal" | "personal" | "private" | "confidential";
-  showAs?: "free" | "tentative" | "busy" | "oof" | "workingElsewhere" | "unknown";
+  showAs?:
+    | "free"
+    | "tentative"
+    | "busy"
+    | "oof"
+    | "workingElsewhere"
+    | "unknown";
   recurrence?: any;
 }
 
@@ -133,11 +139,15 @@ const createServer = (): McpServer => {
       calendarId: z
         .string()
         .optional()
-        .describe("The calendar ID. If not provided, uses the user's default calendar."),
+        .describe(
+          "The calendar ID. If not provided, uses the user's default calendar."
+        ),
       search: z
         .string()
         .optional()
-        .describe('Search query to filter events. Examples: "meeting", "lunch"'),
+        .describe(
+          'Search query to filter events. Examples: "meeting", "lunch"'
+        ),
       startTime: z
         .string()
         .optional()
@@ -186,7 +196,7 @@ const createServer = (): McpServer => {
         }
       }
 
-      const endpoint = calendarId 
+      const endpoint = calendarId
         ? `/me/calendars/${calendarId}/events`
         : `/me/events`;
 
@@ -222,7 +232,9 @@ const createServer = (): McpServer => {
       calendarId: z
         .string()
         .optional()
-        .describe("The calendar ID. If not provided, uses the user's default calendar."),
+        .describe(
+          "The calendar ID. If not provided, uses the user's default calendar."
+        ),
       eventId: z.string().describe("The ID of the event to retrieve."),
     },
     async ({ calendarId, eventId }, { authInfo }) => {
@@ -231,7 +243,7 @@ const createServer = (): McpServer => {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const endpoint = calendarId 
+      const endpoint = calendarId
         ? `/me/calendars/${calendarId}/events/${eventId}`
         : `/me/events/${eventId}`;
 
@@ -265,25 +277,36 @@ const createServer = (): McpServer => {
       calendarId: z
         .string()
         .optional()
-        .describe("The calendar ID. If not provided, uses the user's default calendar."),
+        .describe(
+          "The calendar ID. If not provided, uses the user's default calendar."
+        ),
       subject: z.string().describe("Title of the event."),
       body: z.string().optional().describe("Description of the event."),
       contentType: z
         .enum(["text", "html"])
         .optional()
         .describe("Content type of the event body (default: text)."),
-      startDateTime: z.string().describe("ISO 8601 start time (e.g., 2024-03-20T10:00:00)"),
-      endDateTime: z.string().describe("ISO 8601 end time (e.g., 2024-03-20T11:00:00)"),
+      startDateTime: z
+        .string()
+        .describe("ISO 8601 start time (e.g., 2024-03-20T10:00:00)"),
+      endDateTime: z
+        .string()
+        .describe("ISO 8601 end time (e.g., 2024-03-20T11:00:00)"),
       timeZone: z
         .string()
         .optional()
-        .describe("Time zone for the event (e.g., 'America/New_York'). Defaults to UTC."),
+        .describe(
+          "Time zone for the event (e.g., 'America/New_York'). Defaults to UTC."
+        ),
       attendees: z
         .array(z.string())
         .optional()
         .describe("List of attendee email addresses."),
       location: z.string().optional().describe("Location of the event."),
-      isAllDay: z.boolean().optional().describe("Whether the event is all day."),
+      isAllDay: z
+        .boolean()
+        .optional()
+        .describe("Whether the event is all day."),
       importance: z
         .enum(["low", "normal", "high"])
         .optional()
@@ -348,7 +371,7 @@ const createServer = (): McpServer => {
         event.location = { displayName: location };
       }
 
-      const endpoint = calendarId 
+      const endpoint = calendarId
         ? `/me/calendars/${calendarId}/events`
         : `/me/events`;
 
@@ -383,7 +406,9 @@ const createServer = (): McpServer => {
       calendarId: z
         .string()
         .optional()
-        .describe("The calendar ID. If not provided, uses the user's default calendar."),
+        .describe(
+          "The calendar ID. If not provided, uses the user's default calendar."
+        ),
       eventId: z.string().describe("The ID of the event to update."),
       subject: z.string().optional().describe("Title of the event."),
       body: z.string().optional().describe("Description of the event."),
@@ -399,7 +424,10 @@ const createServer = (): McpServer => {
         .optional()
         .describe("List of attendee email addresses."),
       location: z.string().optional().describe("Location of the event."),
-      isAllDay: z.boolean().optional().describe("Whether the event is all day."),
+      isAllDay: z
+        .boolean()
+        .optional()
+        .describe("Whether the event is all day."),
       importance: z
         .enum(["low", "normal", "high"])
         .optional()
@@ -474,7 +502,7 @@ const createServer = (): McpServer => {
         event.showAs = showAs;
       }
 
-      const endpoint = calendarId 
+      const endpoint = calendarId
         ? `/me/calendars/${calendarId}/events/${eventId}`
         : `/me/events/${eventId}`;
 
@@ -512,7 +540,9 @@ const createServer = (): McpServer => {
       calendarId: z
         .string()
         .optional()
-        .describe("The calendar ID. If not provided, uses the user's default calendar."),
+        .describe(
+          "The calendar ID. If not provided, uses the user's default calendar."
+        ),
       eventId: z.string().describe("The ID of the event to delete."),
     },
     async ({ calendarId, eventId }, { authInfo }) => {
@@ -521,7 +551,7 @@ const createServer = (): McpServer => {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const endpoint = calendarId 
+      const endpoint = calendarId
         ? `/me/calendars/${calendarId}/events/${eventId}`
         : `/me/events/${eventId}`;
 
@@ -552,7 +582,9 @@ const createServer = (): McpServer => {
     {
       emails: z
         .array(z.string())
-        .describe("The email addresses of the people to check availability for"),
+        .describe(
+          "The email addresses of the people to check availability for"
+        ),
       startTime: z
         .string()
         .describe("The start time in ISO format (e.g., 2024-03-20T10:00:00Z)"),
@@ -562,9 +594,14 @@ const createServer = (): McpServer => {
       intervalInMinutes: z
         .number()
         .optional()
-        .describe("Interval in minutes for availability slots (default: 60, max: 1440)"),
+        .describe(
+          "Interval in minutes for availability slots (default: 60, max: 1440)"
+        ),
     },
-    async ({ emails, startTime, endTime, intervalInMinutes = 60 }, { authInfo }) => {
+    async (
+      { emails, startTime, endTime, intervalInMinutes = 60 },
+      { authInfo }
+    ) => {
       const accessToken = authInfo?.token;
       if (!accessToken) {
         return makeMCPToolTextError("Authentication required");
@@ -580,16 +617,23 @@ const createServer = (): McpServer => {
           dateTime: endTime,
           timeZone: "UTC",
         },
-        availabilityViewInterval: Math.min(Math.max(intervalInMinutes, 5), 1440),
+        availabilityViewInterval: Math.min(
+          Math.max(intervalInMinutes, 5),
+          1440
+        ),
       };
 
-      const response = await fetchFromOutlook("/me/calendar/getSchedule", accessToken, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await fetchFromOutlook(
+        "/me/calendar/getSchedule",
+        accessToken,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
 
       if (!response.ok) {
         const errorText = await getErrorText(response);
@@ -601,13 +645,16 @@ const createServer = (): McpServer => {
       const result = await response.json();
 
       // Transform the result to match Google Calendar format for consistency
-      const availability = result.value?.map((schedule: any) => ({
-        email: schedule.scheduleId,
-        available: schedule.busyViewType === "free",
-        busySlots: schedule.freeBusyViewType === "busy" ? 
-          [{ start: startTime, end: endTime }] : [],
-        availabilityView: schedule.availabilityView,
-      })) || [];
+      const availability =
+        result.value?.map((schedule: any) => ({
+          email: schedule.scheduleId,
+          available: schedule.busyViewType === "free",
+          busySlots:
+            schedule.freeBusyViewType === "busy"
+              ? [{ start: startTime, end: endTime }]
+              : [],
+          availabilityView: schedule.availabilityView,
+        })) || [];
 
       return makeMCPToolJSONSuccess({
         message: "Availability checked successfully",
