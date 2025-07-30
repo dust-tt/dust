@@ -290,95 +290,93 @@ export async function getAllVersionsForAgentConfiguration<
 ): Promise<
   V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
 > {
-  return tracer.trace("getAllVersionsForOneAgent", async () => {
-    const owner = auth.workspace();
-    if (!owner || !auth.isUser()) {
-      throw new Error("Unexpected `auth` without `workspace`.");
-    }
+  const owner = auth.workspace();
+  if (!owner || !auth.isUser()) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
 
-    const [globalAgents, workspaceAgents] = await Promise.all([
-      isGlobalAgentId(agentId)
-        ? getGlobalAgents(auth, [agentId], variant)
-        : Promise.resolve([]),
-      fetchWorkspaceAgentsWithVersionConstraints(auth, owner, [agentId], "all"),
-    ]);
+  const [globalAgents, workspaceAgents] = await Promise.all([
+    isGlobalAgentId(agentId)
+      ? getGlobalAgents(auth, [agentId], variant)
+      : Promise.resolve([]),
+    fetchWorkspaceAgentsWithVersionConstraints(auth, owner, [agentId], "all"),
+  ]);
 
-    let allAgents: AgentConfigurationType[];
-    if (isGlobalAgentId(agentId)) {
-      allAgents = globalAgents;
-    } else {
-      allAgents = await enrichAgentConfigurations(
-        auth,
-        owner,
-        workspaceAgents,
-        variant
-      );
-    }
-
-    // Filter by permissions
-    const allowedAgents = allAgents.filter((a) =>
-      auth.canRead(
-        Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
-      )
+  let allAgents: AgentConfigurationType[];
+  if (isGlobalAgentId(agentId)) {
+    allAgents = globalAgents;
+  } else {
+    allAgents = await enrichAgentConfigurations(
+      auth,
+      owner,
+      workspaceAgents,
+      variant
     );
+  }
 
-    return allowedAgents as V extends "full"
-      ? AgentConfigurationType[]
-      : LightAgentConfigurationType[];
-  });
+  // Filter by permissions
+  const allowedAgents = allAgents.filter((a) =>
+    auth.canRead(
+      Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
+    )
+  );
+
+  return allowedAgents as V extends "full"
+    ? AgentConfigurationType[]
+    : LightAgentConfigurationType[];
 }
 
 /**
  * Get one specific version of a single agent
  */
-export async function getOneVersionForOneAgent<V extends AgentFetchVariant>(
+async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
   auth: Authenticator,
-  agentId: string,
-  agentVersion: number,
-  variant: V
+  {
+    agentId,
+    agentVersion,
+    variant,
+  }: { agentId: string; agentVersion: number; variant: V }
 ): Promise<
   | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
   | null
 > {
-  return tracer.trace("getOneVersionForOneAgent", async () => {
-    const owner = auth.workspace();
-    if (!owner || !auth.isUser()) {
-      throw new Error("Unexpected `auth` without `workspace`.");
-    }
+  const owner = auth.workspace();
+  if (!owner || !auth.isUser()) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
 
-    let agents: AgentConfigurationType[];
+  let agents: AgentConfigurationType[];
 
-    if (isGlobalAgentId(agentId)) {
-      // For global agents, we need to get all versions and filter
-      const globalAgents = await getGlobalAgents(auth, [agentId], variant);
-      agents = globalAgents.filter((a) => a.version === agentVersion);
-    } else {
-      const workspaceAgents = await fetchWorkspaceAgentsWithVersionConstraints(
-        auth,
-        owner,
-        [agentId],
-        [{ agentId, agentVersion }]
-      );
-      agents = await enrichAgentConfigurations(
-        auth,
-        owner,
-        workspaceAgents,
-        variant
-      );
-    }
-
-    const allowedAgents = agents.filter((a) =>
-      auth.canRead(
-        Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
-      )
+  if (isGlobalAgentId(agentId)) {
+    // For global agents, we need to get all versions and filter
+    const globalAgents = await getGlobalAgents(auth, [agentId], variant);
+    agents = globalAgents.filter((a) => a.version === agentVersion);
+  } else {
+    const workspaceAgents = await fetchWorkspaceAgentsWithVersionConstraints(
+      auth,
+      owner,
+      [agentId],
+      [{ agentId, agentVersion }]
     );
-
-    return (
-      (allowedAgents[0] as V extends "light"
-        ? LightAgentConfigurationType
-        : AgentConfigurationType) || null
+    agents = await enrichAgentConfigurations(
+      auth,
+      owner,
+      workspaceAgents,
+      variant
     );
-  });
+  }
+
+  const allowedAgents = agents.filter((a) =>
+    auth.canRead(
+      Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
+    )
+  );
+
+  return (
+    (allowedAgents[0] as V extends "light"
+      ? LightAgentConfigurationType
+      : AgentConfigurationType) || null
+  );
 }
 
 /**
@@ -455,18 +453,21 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
 > {
   return tracer.trace("getAgentConfiguration", async () => {
     if (agentVersion !== undefined) {
-      return getOneVersionForOneAgent(auth, agentId, agentVersion, variant);
-    } else {
-      const agents = await getAgentConfigurationsLatestVersion(auth, {
-        agentIds: [agentId],
+      return getAgentConfigurationWithVersion(auth, {
+        agentId,
+        agentVersion,
         variant,
       });
-      return (
-        (agents[0] as V extends "light"
-          ? LightAgentConfigurationType
-          : AgentConfigurationType) || null
-      );
     }
+    const [agent] = await getAgentConfigurationsLatestVersion(auth, {
+      agentIds: [agentId],
+      variant,
+    });
+    return (
+      (agent as V extends "light"
+        ? LightAgentConfigurationType
+        : AgentConfigurationType) || null
+    );
   });
 }
 
