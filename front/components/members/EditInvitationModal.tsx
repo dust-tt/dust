@@ -17,6 +17,7 @@ import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
+import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type {
   ActiveRoleType,
   MembershipInvitationType,
@@ -38,6 +39,15 @@ export function EditInvitationModal({
 
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
+
+  const { roleProvisioningStatus } = useProvisioningStatus({
+    workspaceId: owner.sId,
+  });
+
+  // Check if this invitation's role would be managed by provisioning groups
+  const isRoleManagedByProvisioning =
+    (roleProvisioningStatus.hasAdminGroup && selectedRole === "admin") ||
+    (roleProvisioningStatus.hasBuilderGroup && selectedRole === "builder");
 
   useEffect(() => {
     if (invitation) {
@@ -92,11 +102,18 @@ export function EditInvitationModal({
                   <RoleDropDown
                     selectedRole={selectedRole}
                     onChange={setSelectedRole}
+                    disabled={isRoleManagedByProvisioning}
                   />
                 </div>
                 <div className="text-muted-foreground dark:text-muted-foreground-night">
-                  The role defines the rights of a member fo the workspace.{" "}
-                  {ROLES_DATA[invitation.initialRole].description}
+                  {isRoleManagedByProvisioning ? (
+                    "This invitation's role is managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
+                  ) : (
+                    <>
+                      The role defines the rights of a member for the workspace.{" "}
+                      {ROLES_DATA[invitation.initialRole].description}
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -137,7 +154,9 @@ export function EditInvitationModal({
           rightButtonProps={{
             label: "Update role",
             onClick: handleSave,
-            disabled: selectedRole === invitation?.initialRole,
+            disabled:
+              selectedRole === invitation?.initialRole ||
+              isRoleManagedByProvisioning,
           }}
         />
       </SheetContent>
