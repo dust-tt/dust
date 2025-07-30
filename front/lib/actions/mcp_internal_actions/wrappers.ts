@@ -82,7 +82,7 @@ export function withToolLogging<T>(
 
     const result = await toolCallback(params, extra);
 
-    // When we get an Err, we monitor it and return it as a text content.
+    // When we get an Err, we monitor it if tracked and return it as a text content.
     if (result.isErr()) {
       if (result.error.tracked) {
         statsDClient.increment("use_tools_error.count", 1, [
