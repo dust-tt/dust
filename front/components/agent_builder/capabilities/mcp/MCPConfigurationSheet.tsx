@@ -10,6 +10,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { FormEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
+import type { UseFormReturn } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -29,7 +30,7 @@ import { useSpacesContext } from "@app/components/assistant_builder/contexts/Spa
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { TimeFrame } from "@app/types";
+import type { TimeFrame, WorkspaceType } from "@app/types";
 
 import { ChildAgentSection } from "./sections/ChildAgentSection";
 import { DustAppSection } from "./sections/DustAppSection";
@@ -188,8 +189,8 @@ function MCPConfigurationSheetContent({
 interface MCPConfigurationFormProps {
   mcpServerView: MCPServerViewType;
   requirements: ReturnType<typeof getMCPServerRequirements>;
-  owner: any;
-  form: any;
+  owner: WorkspaceType;
+  form: UseFormReturn<MCPFormData>;
 }
 
 function MCPConfigurationForm({
