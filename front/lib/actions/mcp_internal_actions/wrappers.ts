@@ -90,10 +90,9 @@ export function withToolLogging<T>(
           ...tags,
         ]);
 
-        const error = result.error.message;
         logger.error(
           {
-            error,
+            error: result.error.message,
             ...loggerArgs,
           },
           "Tool execution error"
