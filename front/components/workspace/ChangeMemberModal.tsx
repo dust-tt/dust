@@ -126,7 +126,7 @@ export function ChangeMemberModal({
                   </div>
                   <Page.P>
                     {hasActiveRoleProvisioningGroupsForRole(role) ? (
-                      "The roles are managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
+                      "This role is managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
                     ) : (
                       <>
                         The role defines the rights of a member of the
