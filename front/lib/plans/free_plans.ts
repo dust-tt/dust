@@ -98,7 +98,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
     isManagedIntercomAllowed: true,
     isManagedWebCrawlerAllowed: true,
     isManagedSalesforceAllowed: true,
-    isSSOAllowed: false,
+    isSSOAllowed: true,
     maxDataSourcesCount: -1,
     maxDataSourcesDocumentsCount: -1,
     maxDataSourcesDocumentsSizeMb: 2,
