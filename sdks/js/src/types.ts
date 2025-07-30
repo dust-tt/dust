@@ -608,7 +608,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "monday_tool"
   | "outlook_tool"
   | "notion_private_integration"
-  | "okta_enterprise_connection"
   | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_custom_assistants_feature"
@@ -619,8 +618,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "show_debug_tools"
   | "usage_data_api"
-  | "workos"
-  | "workos_user_provisioning"
   | "xai_feature"
 >();
 

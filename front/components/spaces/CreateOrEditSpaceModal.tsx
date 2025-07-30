@@ -45,10 +45,10 @@ import {
   useSpaceInfo,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   GroupType,
   LightWorkspaceType,
+  PlanType,
   SpaceType,
   UserType,
 } from "@app/types";
@@ -69,6 +69,7 @@ interface CreateOrEditSpaceModalProps {
   onCreated?: (space: SpaceType) => void;
   owner: LightWorkspaceType;
   space?: SpaceType;
+  plan: PlanType;
 }
 
 export function CreateOrEditSpaceModal({
@@ -79,6 +80,7 @@ export function CreateOrEditSpaceModal({
   onCreated,
   owner,
   space,
+  plan,
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
@@ -96,17 +98,13 @@ export function CreateOrEditSpaceModal({
     useState<MembersManagementType>("manual");
   const [isDirty, setIsDirty] = useState(false);
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
-  const isWorkOSFeatureEnabled = hasFeature("workos_user_provisioning");
+  const planAllowsSCIM = plan.limits.users.isSCIMAllowed;
 
   useEffect(() => {
-    if (!isWorkOSFeatureEnabled) {
+    if (!planAllowsSCIM) {
       setManagementType("manual");
     }
-  }, [isWorkOSFeatureEnabled]);
+  }, [planAllowsSCIM]);
 
   const doCreate = useCreateSpace({ owner });
   const doUpdate = useUpdateSpace({ owner });
@@ -122,7 +120,7 @@ export function CreateOrEditSpaceModal({
   const { groups } = useGroups({
     owner,
     kinds: ["provisioned"],
-    disabled: !isWorkOSFeatureEnabled,
+    disabled: !planAllowsSCIM,
   });
 
   useEffect(() => {
@@ -144,7 +142,7 @@ export function CreateOrEditSpaceModal({
 
       // Initialize selected groups based on space's groupIds (only if workos feature is enabled)
       if (
-        isWorkOSFeatureEnabled &&
+        planAllowsSCIM &&
         spaceInfo?.groupIds &&
         spaceInfo.groupIds.length > 0 &&
         groups
@@ -163,7 +161,7 @@ export function CreateOrEditSpaceModal({
         spaceInfo ? spaceInfo.isRestricted : defaultRestricted ?? false
       );
     }
-  }, [defaultRestricted, groups, isOpen, isWorkOSFeatureEnabled, spaceInfo]);
+  }, [defaultRestricted, groups, isOpen, planAllowsSCIM, spaceInfo]);
 
   const handleClose = useCallback(() => {
     // Call the original onClose function.
@@ -188,7 +186,7 @@ export function CreateOrEditSpaceModal({
 
     if (space) {
       if (isRestricted) {
-        if (isWorkOSFeatureEnabled && managementType === "group") {
+        if (planAllowsSCIM && managementType === "group") {
           await doUpdate(space, {
             isRestricted: true,
             groupIds: selectedGroups.map((group) => group.sId),
@@ -216,7 +214,7 @@ export function CreateOrEditSpaceModal({
       let createdSpace;
 
       if (isRestricted) {
-        if (isWorkOSFeatureEnabled && managementType === "group") {
+        if (planAllowsSCIM && managementType === "group") {
           createdSpace = await doCreate({
             name: spaceName,
             isRestricted: true,
@@ -257,7 +255,7 @@ export function CreateOrEditSpaceModal({
     spaceName,
     managementType,
     selectedGroups,
-    isWorkOSFeatureEnabled,
+    planAllowsSCIM,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -298,7 +296,7 @@ export function CreateOrEditSpaceModal({
 
   const handleManagementTypeChange = useCallback(
     async (value: string) => {
-      if (!isMembersManagementType(value) || !isWorkOSFeatureEnabled) {
+      if (!isMembersManagementType(value) || !planAllowsSCIM) {
         return;
       }
 
@@ -352,7 +350,7 @@ export function CreateOrEditSpaceModal({
       managementType,
       selectedMembers.length,
       selectedGroups.length,
-      isWorkOSFeatureEnabled,
+      planAllowsSCIM,
     ]
   );
 
@@ -375,7 +373,7 @@ export function CreateOrEditSpaceModal({
     spaceInfo,
     isDirty,
   ]);
-  const isManual = !isWorkOSFeatureEnabled || managementType === "manual";
+  const isManual = !planAllowsSCIM || managementType === "manual";
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent trapFocusScope={false} size="lg">
@@ -468,7 +466,7 @@ export function CreateOrEditSpaceModal({
 
             {isRestricted && (
               <>
-                {isWorkOSFeatureEnabled ? (
+                {planAllowsSCIM ? (
                   <div className="flex flex-row items-center justify-between">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
