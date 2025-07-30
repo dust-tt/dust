@@ -190,7 +190,6 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare isError: boolean;
   declare executionState:
     | "pending"
-    | "timeout"
     | "allowed_explicitly"
     | "allowed_implicitly"
     | "denied";
