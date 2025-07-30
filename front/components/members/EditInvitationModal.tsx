@@ -110,7 +110,7 @@ export function EditInvitationModal({
                     "This invitation's role is managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
                   ) : (
                     <>
-                      The role defines the rights of a member fo the workspace.{" "}
+                      The role defines the rights of a member for the workspace.{" "}
                       {ROLES_DATA[invitation.initialRole].description}
                     </>
                   )}
