@@ -19,3 +19,5 @@ export type NavigationHistoryEntryType =
   | { type: "space"; space: SpaceType }
   | { type: "category"; category: DataSourceViewCategoryWithoutApps }
   | { type: "node"; node: DataSourceViewContentNode };
+
+export type NodeSelectionState = boolean | "partial";

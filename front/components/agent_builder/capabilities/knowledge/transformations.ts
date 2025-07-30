@@ -1,8 +1,5 @@
 import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
-import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
-import { computeNavigationPath } from "@app/components/data_source_view/context/utils";
 import type {
-  DataSourceViewContentNode,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
 } from "@app/types";
@@ -20,26 +17,33 @@ export function transformTreeToSelectionConfigurations(
 ): DataSourceViewSelectionConfigurations {
   const configurations: DataSourceViewSelectionConfigurations = {};
 
+  // Create a map for efficient lookup
+  const dataSourceViewMap = new Map(
+    dataSourceViews.map((dsv) => [dsv.sId, dsv])
+  );
+
   // Parse the tree paths to extract data source configurations
   for (const path of tree.in) {
     const parts = path.split(".");
-    if (parts.length < 2) continue;
+    if (parts.length < 2 || parts[0] !== "root") {
+      continue;
+    }
 
-    // Expected format: root.spaceId.category.dataSourceId.nodeId...
-    // or root.spaceId.dataSourceId.nodeId...
-    const spaceId = parts[1];
+    // Find the data source view ID in the path
+    const dsvIdIndex = parts.findIndex(isDataSourceViewId);
+    if (dsvIdIndex === -1) {
+      continue;
+    }
 
-    // Find the data source view that matches this path
-    const dataSourceView = dataSourceViews.find((dsv) => {
-      // Check if the path includes this data source
-      return path.includes(dsv.sId) && dsv.spaceId === spaceId;
-    });
+    const dsvId = parts[dsvIdIndex];
+    const dataSourceView = dataSourceViewMap.get(dsvId);
 
-    if (!dataSourceView) continue;
+    if (!dataSourceView || dataSourceView.spaceId !== parts[1]) {
+      continue;
+    }
 
     // Check if this is a full data source selection or specific nodes
-    const dsIndex = parts.indexOf(dataSourceView.sId);
-    const isFullDataSource = dsIndex === parts.length - 1;
+    const isFullDataSource = dsvIdIndex === parts.length - 1;
 
     if (!configurations[dataSourceView.sId]) {
       configurations[dataSourceView.sId] = {
@@ -50,11 +54,8 @@ export function transformTreeToSelectionConfigurations(
       };
     }
 
-    // If it's not a full data source selection, we need to handle individual nodes
-    // For now, we'll mark it as having selected resources even though we don't have the full node data
+    // If it's not a full data source selection, mark as partial
     if (!isFullDataSource && !configurations[dataSourceView.sId].isSelectAll) {
-      // We'll need the backend to resolve the actual nodes from paths
-      // For now, just ensure it's not marked as select all
       configurations[dataSourceView.sId].isSelectAll = false;
     }
   }
@@ -76,68 +77,43 @@ export function transformSelectionConfigurationsToTree(
   const inPaths: string[] = [];
   const notInPaths: string[] = [];
 
-  for (const [dsId, config] of Object.entries(configurations)) {
+  for (const config of Object.values(configurations)) {
     const { dataSourceView } = config;
-
-    // Build the base path components exactly matching navigation structure
-    const baseParts = ["root", dataSourceView.spaceId];
-
-    // Add category - this is critical for proper path reconstruction
-    if (dataSourceView.category) {
-      baseParts.push(dataSourceView.category);
-    }
-
-    // Add data source ID (dsv_...)
-    baseParts.push(dataSourceView.sId);
+    const baseParts = buildDataSourcePath(dataSourceView);
 
     if (config.isSelectAll) {
       // If all nodes are selected, just add the data source path
       inPaths.push(baseParts.join("."));
     } else if (config.selectedResources.length > 0) {
-      // Group selected resources by parent to understand folder structure
+      // Group selected resources by parent for efficient processing
       const resourcesByParent = new Map<
         string | null,
         typeof config.selectedResources
       >();
 
-      config.selectedResources.forEach((node) => {
+      for (const node of config.selectedResources) {
         const parentId = node.parentInternalId || null;
-        if (!resourcesByParent.has(parentId)) {
-          resourcesByParent.set(parentId, []);
-        }
-        resourcesByParent.get(parentId)!.push(node);
-      });
+        const nodes = resourcesByParent.get(parentId) || [];
+        nodes.push(node);
+        resourcesByParent.set(parentId, nodes);
+      }
 
-      // For each parent folder that has selected children, we need to:
-      // 1. Add paths for the individual files
-      // 2. Store metadata about parent folders for partial selection detection
+      // Add paths for selected resources
       for (const [parentId, nodes] of resourcesByParent) {
-        if (parentId) {
-          // There's a parent folder - add it to a special tracking system
-          // Add individual file paths
-          nodes.forEach((node) => {
-            const filePath = [...baseParts, parentId, node.internalId].join(
-              "."
-            );
-            inPaths.push(filePath);
-          });
-        } else {
-          // Files directly under data source
-          nodes.forEach((node) => {
-            const filePath = [...baseParts, node.internalId].join(".");
-            inPaths.push(filePath);
-          });
+        for (const node of nodes) {
+          const pathParts = parentId
+            ? [...baseParts, parentId, node.internalId]
+            : [...baseParts, node.internalId];
+          inPaths.push(pathParts.join("."));
         }
       }
     }
   }
 
-  const result = {
+  return {
     in: deduplicatePaths(inPaths),
     notIn: deduplicatePaths(notInPaths),
   };
-
-  return result;
 }
 
 /**
@@ -152,4 +128,25 @@ function deduplicatePaths(paths: string[]): string[] {
       (otherPath) => otherPath !== path && path.startsWith(otherPath + ".")
     );
   });
+}
+
+/**
+ * Type guard to check if a path segment is a valid data source view ID
+ */
+function isDataSourceViewId(segment: string): boolean {
+  return segment.startsWith("dsv_");
+}
+
+/**
+ * Builds a navigation path for a data source view
+ */
+function buildDataSourcePath(dataSourceView: DataSourceViewType): string[] {
+  const parts = ["root", dataSourceView.spaceId];
+
+  if (dataSourceView.category) {
+    parts.push(dataSourceView.category);
+  }
+
+  parts.push(dataSourceView.sId);
+  return parts;
 }

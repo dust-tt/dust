@@ -44,6 +44,7 @@ import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type {
   DataSourceBuilderTreeType,
   NavigationHistoryEntryType,
+  NodeSelectionState,
 } from "@app/components/data_source_view/context/types";
 import {
   addNodeToTree,
@@ -99,7 +100,7 @@ type DataSourceBuilderState = StateType & {
    * Check selection status for the specific row.
    * Total path is deduced from the current navigationHistory state.
    */
-  isRowSelected: (rowId: string) => boolean | "partial";
+  isRowSelected: (rowId: string) => NodeSelectionState;
 
   /**
    * Check if the row is selectable.
@@ -112,7 +113,7 @@ type DataSourceBuilderState = StateType & {
   /**
    * Use the current navigationHistory entry and check its selection status
    */
-  isCurrentNavigationEntrySelected: () => boolean | "partial";
+  isCurrentNavigationEntrySelected: () => NodeSelectionState;
 
   /**
    * Add the current selected space
