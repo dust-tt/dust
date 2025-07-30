@@ -4,6 +4,7 @@ import tracer from "dd-trace";
 import type { sheets_v4 } from "googleapis";
 import { google } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
+import { GaxiosError } from "googleapis-common";
 
 import {
   getSourceUrlForGoogleDriveFiles,
@@ -283,6 +284,9 @@ async function batchGetSheets(
     } catch (err) {
       if (isStringTooLongError(err)) {
         // Ignore when the string is too long.
+        continue;
+      } else if (isUnableToParseError(err)) {
+        // Ignore when unable to parse the range.
         continue;
       } else {
         throw err;
@@ -668,5 +672,18 @@ function isStringTooLongError(
 ): err is Error & { code: "ERR_STRING_TOO_LONG" } {
   return (
     err instanceof Error && "code" in err && err.code === "ERR_STRING_TOO_LONG"
+  );
+}
+
+function isUnableToParseError(err: unknown): err is GaxiosError {
+  return (
+    err instanceof GaxiosError &&
+    err.response?.status === 400 &&
+    err.response?.data &&
+    typeof err.response.data === "object" &&
+    "error" in err.response.data &&
+    "message" in err.response.data.error &&
+    typeof err.response.data.error.message === "string" &&
+    err.response.data.error.message.includes("Unable to parse range")
   );
 }
