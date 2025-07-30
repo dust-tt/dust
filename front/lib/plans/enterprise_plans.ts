@@ -35,6 +35,8 @@ export const ENT_PLAN_FAKE_DATA: PlanAttributes = {
   isManagedIntercomAllowed: true,
   isManagedWebCrawlerAllowed: true,
   isManagedSalesforceAllowed: true,
+  isSSOAllowed: true,
+  isSCIMAllowed: true,
   maxDataSourcesCount: -1,
   maxDataSourcesDocumentsCount: -1,
   maxDataSourcesDocumentsSizeMb: 2,

@@ -179,6 +179,15 @@ export function ActiveSubscriptionTable({
                   </PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>
+                  <PokeTableCell>SSO/SCIM features</PokeTableCell>
+                  <PokeTableCell>
+                    {activePlan.limits.users.isSSOAllowed ? "SSO ✅" : "SSO ❌"}
+                    {activePlan.limits.users.isSCIMAllowed
+                      ? " SCIM ✅"
+                      : " SCIM ❌"}
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
                   <PokeTableCell>Connections allowed</PokeTableCell>
                   <PokeTableCell>
                     <div className="flex gap-2">
