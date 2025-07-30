@@ -185,6 +185,19 @@ async function searchCallback(
   const regularNodeIds =
     nodeIds?.filter((nodeId: string) => !isDataSourceNodeId(nodeId)) ?? [];
 
+  if (coreSearchArgsResults.some((res) => res.isErr())) {
+    return new Err(
+      new MCPError(
+        "Invalid data sources: " +
+          removeNulls(
+            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
+          )
+            .map((error) => error.message)
+            .join("\n")
+      )
+    );
+  }
+
   const coreSearchArgs = removeNulls(
     coreSearchArgsResults.map((res) => {
       if (!res.isOk() || res.value === null) {

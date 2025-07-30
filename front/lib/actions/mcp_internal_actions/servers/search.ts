@@ -91,11 +91,12 @@ export async function searchFunction({
   if (coreSearchArgsResults.some((res) => res.isErr())) {
     return new Err(
       new MCPError(
-        removeNulls(
-          coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
-        )
-          .map((error) => error.message)
-          .join("\n"),
+        "Invalid data sources: " +
+          removeNulls(
+            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
+          )
+            .map((error) => error.message)
+            .join("\n"),
         { tracked: false }
       )
     );
