@@ -5,7 +5,7 @@ import type { Transaction } from "sequelize";
 import { runAgentLoop } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import {
-  getAgentConfigurationsLatestVersion,
+  getAgentConfigurations,
   getFullAgentConfiguration,
   getLightAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
@@ -399,7 +399,7 @@ export async function postUserMessage(
   }
 
   const results = await Promise.all([
-    getAgentConfigurationsLatestVersion(auth, {
+    getAgentConfigurations(auth, {
       agentIds: mentions
         .filter(isAgentMention)
         .map((mention) => mention.configurationId),

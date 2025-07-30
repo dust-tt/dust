@@ -2,7 +2,7 @@ import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration";
 import {
   createConversation,
   postNewContentFragment,
@@ -199,7 +199,7 @@ export async function emailAssistantMatcher({
     EmailTriggerError
   >
 > {
-  const agentConfigurations = await getAgentConfigurations({
+  const agentConfigurations = await getAgentConfigurationsForView({
     auth,
     agentsGetView: "list",
     variant: "light",

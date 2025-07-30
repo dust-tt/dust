@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 
-import { getAgentConfigurationsLatestVersion } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessage,
@@ -43,7 +43,7 @@ async function fetchAllAgentsById(
   auth: Authenticator,
   agentConfigurationIds: string[]
 ): Promise<AgentParticipantType[]> {
-  const agents = await getAgentConfigurationsLatestVersion(auth, {
+  const agents = await getAgentConfigurations(auth, {
     agentIds: agentConfigurationIds,
     variant: "light",
   });

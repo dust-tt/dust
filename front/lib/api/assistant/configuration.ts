@@ -380,11 +380,9 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
 }
 
 /**
- * Get latest versions of multiple agents
+ * Get the latest versions of multiple agents.
  */
-export async function getAgentConfigurationsLatestVersion<
-  V extends AgentFetchVariant,
->(
+export async function getAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
   {
     agentIds,
@@ -396,7 +394,7 @@ export async function getAgentConfigurationsLatestVersion<
 ): Promise<
   V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
 > {
-  return tracer.trace("getLatestVersionsForMultipleAgents", async () => {
+  return tracer.trace("getAgentConfigurations", async () => {
     const owner = auth.workspace();
     if (!owner || !auth.isUser()) {
       throw new Error("Unexpected `auth` without `workspace`.");
@@ -437,9 +435,6 @@ export async function getAgentConfigurationsLatestVersion<
   });
 }
 
-/**
- * Get an agent configuration (legacy function - now uses new functions)
- */
 export async function getAgentConfiguration<V extends AgentFetchVariant>(
   auth: Authenticator,
   {
@@ -459,7 +454,7 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
         variant,
       });
     }
-    const [agent] = await getAgentConfigurationsLatestVersion(auth, {
+    const [agent] = await getAgentConfigurations(auth, {
       agentIds: [agentId],
       variant,
     });
@@ -491,7 +486,7 @@ export async function searchAgentConfigurationsByName(
     },
   });
   const r = removeNulls(
-    await getAgentConfigurationsLatestVersion(auth, {
+    await getAgentConfigurations(auth, {
       agentIds: agentConfigurations.map(({ sId }) => sId),
       variant: "light",
     })
@@ -870,7 +865,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
   return agentConfigurationTypes;
 }
 
-export async function getAgentConfigurations<V extends AgentFetchVariant>({
+export async function getAgentConfigurationsForView<
+  V extends AgentFetchVariant,
+>({
   auth,
   agentsGetView,
   agentPrefix,

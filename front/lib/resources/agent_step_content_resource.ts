@@ -11,7 +11,7 @@ import type {
 import { Op } from "sequelize";
 
 import { hideFileFromActionOutput, MCPActionType } from "@app/lib/actions/mcp";
-import { getAgentConfigurationsLatestVersion } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,
@@ -77,13 +77,10 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       ...new Set(agentMessages.map((a) => a.agentConfigurationId)),
     ];
     // Fetch agent configuration to check permissions
-    const agentConfigurations = await getAgentConfigurationsLatestVersion(
-      auth,
-      {
-        agentIds: uniqueAgentIds,
-        variant: "light",
-      }
-    );
+    const agentConfigurations = await getAgentConfigurations(auth, {
+      agentIds: uniqueAgentIds,
+      variant: "light",
+    });
 
     if (agentConfigurations.length !== uniqueAgentIds.length) {
       logger.error(

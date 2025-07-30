@@ -4,7 +4,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -127,7 +127,7 @@ async function handler(
       const agentsGetView = queryValidation.right.view ?? defaultAgentGetView;
       const withAuthors = queryValidation.right.withAuthors === "true";
 
-      let agentConfigurations = await getAgentConfigurations({
+      let agentConfigurations = await getAgentConfigurationsForView({
         auth,
         agentsGetView:
           agentsGetView === "workspace"
