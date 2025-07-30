@@ -173,7 +173,7 @@ const SheetFooter = ({
   <div
     className={cn(
       "s-flex s-flex-none s-flex-col s-gap-2",
-      "s-border-t s-border-border dark:s-border-border-night",
+      "s-border-border dark:s-border-border-night",
       className
     )}
     {...props}
