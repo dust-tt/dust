@@ -12,7 +12,7 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 
-const COLLAPSED_RIGHT_PANEL_SIZE = 3;
+const COLLAPSED_RIGHT_PANEL_SIZE = 5;
 const MIN_EXPANDED_RIGHT_PANEL_SIZE = 20;
 const DEFAULT_RIGHT_PANEL_SIZE = 30;
 

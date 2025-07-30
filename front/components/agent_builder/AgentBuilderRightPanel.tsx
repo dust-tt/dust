@@ -61,9 +61,10 @@ function PanelHeader({
           </ScrollArea>
         </div>
       ) : (
-        <div className="flex h-full w-full items-end justify-center">
+        <div className="flex h-full w-full items-center justify-center">
           <Button
             icon={SidebarRightOpenIcon}
+            className="h-9 w-9"
             size="sm"
             variant="ghost-secondary"
             tooltip="Open preview"
@@ -84,6 +85,7 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       <Button
         icon={TestTubeIcon}
+        className="h-9 w-9"
         variant="ghost"
         size="sm"
         tooltip="Testing"
@@ -91,6 +93,7 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
       />
       <Button
         icon={BarChartIcon}
+        className="h-9 w-9"
         variant="ghost"
         size="sm"
         tooltip="Performance"
