@@ -472,6 +472,36 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
   }
 }
 
+function getModelForAgentConfiguration(
+  agent: AgentConfiguration
+): AgentModelConfigurationType {
+  const model: AgentModelConfigurationType = {
+    providerId: agent.providerId,
+    modelId: agent.modelId,
+    temperature: agent.temperature,
+  };
+
+  if (agent.responseFormat) {
+    model.responseFormat = agent.responseFormat;
+  }
+
+  // Always set reasoning effort, using model default if null/undefined
+  if (agent.reasoningEffort) {
+    model.reasoningEffort = agent.reasoningEffort;
+  } else {
+    // Get the model configuration to use default reasoning effort
+    const modelConfig = getSupportedModelConfig({
+      providerId: agent.providerId,
+      modelId: agent.modelId,
+    });
+    if (modelConfig) {
+      model.reasoningEffort = modelConfig.defaultReasoningEffort;
+    }
+  }
+
+  return model;
+}
+
 async function fetchWorkspaceAgentConfigurationsForView(
   auth: Authenticator,
   owner: WorkspaceType,
@@ -533,39 +563,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
   for (const agent of agentConfigurations) {
-    const actions: MCPServerConfigurationType[] = [];
+    const actions =
+      variant === "full"
+        ? mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? []
+        : [];
 
-    if (variant === "full") {
-      // MCP server configurations
-      const mcpServerActionsConfigurations =
-        mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? [];
-      actions.push(...mcpServerActionsConfigurations);
-    }
-
-    const model: (typeof agentConfigurationType)["model"] = {
-      providerId: agent.providerId,
-      modelId: agent.modelId,
-      temperature: agent.temperature,
-    };
-
-    if (agent.responseFormat) {
-      model.responseFormat = agent.responseFormat;
-    }
-
-    // Always set reasoning effort, using model default if null/undefined
-    if (agent.reasoningEffort) {
-      model.reasoningEffort = agent.reasoningEffort;
-    } else {
-      // Get the model configuration to use default reasoning effort
-      const modelConfig = getSupportedModelConfig({
-        providerId: agent.providerId,
-        modelId: agent.modelId,
-      });
-      if (modelConfig) {
-        model.reasoningEffort = modelConfig.defaultReasoningEffort;
-      }
-    }
-
+    const model = getModelForAgentConfiguration(agent);
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
     const isAuthor = agent.authorId === auth.user()?.id;
