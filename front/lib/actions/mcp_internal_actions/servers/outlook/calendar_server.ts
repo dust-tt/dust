@@ -1,11 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
+import * as OutlookApi from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
 import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import * as OutlookApi from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -44,7 +44,7 @@ const createServer = (): McpServer => {
       }
 
       const result = await OutlookApi.listCalendars(accessToken, { top, skip });
-      
+
       if ("error" in result) {
         return makeMCPToolTextError(result.error);
       }
@@ -106,13 +106,13 @@ const createServer = (): McpServer => {
         top,
         skip,
       });
-      
+
       if ("error" in result) {
         return makeMCPToolTextError(result.error);
       }
 
       return makeMCPToolJSONSuccess({
-        message: "Events listed successfully",
+        message: "Events searched successfully",
         result,
       });
     }
@@ -136,8 +136,11 @@ const createServer = (): McpServer => {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const result = await OutlookApi.getEvent(accessToken, { calendarId, eventId });
-      
+      const result = await OutlookApi.getEvent(accessToken, {
+        calendarId,
+        eventId,
+      });
+
       if ("error" in result) {
         return makeMCPToolTextError(result.error);
       }
@@ -231,7 +234,7 @@ const createServer = (): McpServer => {
         importance,
         showAs,
       });
-      
+
       if ("error" in result) {
         return makeMCPToolTextError(result.error);
       }
@@ -319,7 +322,7 @@ const createServer = (): McpServer => {
         importance,
         showAs,
       });
-      
+
       if ("error" in result) {
         return makeMCPToolTextError(result.error);
       }
@@ -349,8 +352,11 @@ const createServer = (): McpServer => {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const result = await OutlookApi.deleteEvent(accessToken, { calendarId, eventId });
-      
+      const result = await OutlookApi.deleteEvent(accessToken, {
+        calendarId,
+        eventId,
+      });
+
       if ("error" in result) {
         return makeMCPToolTextError(result.error);
       }
@@ -399,7 +405,7 @@ const createServer = (): McpServer => {
         endTime,
         intervalInMinutes,
       });
-      
+
       if ("error" in result) {
         return makeMCPToolTextError(result.error);
       }
@@ -413,6 +419,5 @@ const createServer = (): McpServer => {
 
   return server;
 };
-
 
 export default createServer;

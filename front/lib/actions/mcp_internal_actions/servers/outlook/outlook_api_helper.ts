@@ -11,19 +11,23 @@ export const OutlookCalendarSchema = z.object({
   canEdit: z.boolean().optional(),
   canShare: z.boolean().optional(),
   canViewPrivateItems: z.boolean().optional(),
-  owner: z.object({
-    name: z.string().optional(),
-    address: z.string().optional(),
-  }).optional(),
+  owner: z
+    .object({
+      name: z.string().optional(),
+      address: z.string().optional(),
+    })
+    .optional(),
 });
 
 export const OutlookEventSchema = z.object({
   id: z.string(),
   subject: z.string().optional(),
-  body: z.object({
-    contentType: z.enum(["text", "html"]),
-    content: z.string(),
-  }).optional(),
+  body: z
+    .object({
+      contentType: z.enum(["text", "html"]),
+      content: z.string(),
+    })
+    .optional(),
   start: z.object({
     dateTime: z.string(),
     timeZone: z.string().optional(),
@@ -32,30 +36,47 @@ export const OutlookEventSchema = z.object({
     dateTime: z.string(),
     timeZone: z.string().optional(),
   }),
-  location: z.object({
-    displayName: z.string().optional(),
-  }).optional(),
-  attendees: z.array(z.object({
-    emailAddress: z.object({
-      address: z.string(),
-      name: z.string().optional(),
-    }),
-    status: z.object({
-      response: z.enum(["none", "accepted", "declined", "tentativelyAccepted"]),
-      time: z.string().optional(),
-    }),
-  })).optional(),
-  organizer: z.object({
-    emailAddress: z.object({
-      address: z.string(),
-      name: z.string().optional(),
-    }),
-  }).optional(),
+  location: z
+    .object({
+      displayName: z.string().optional(),
+    })
+    .optional(),
+  attendees: z
+    .array(
+      z.object({
+        emailAddress: z.object({
+          address: z.string(),
+          name: z.string().optional(),
+        }),
+        status: z.object({
+          response: z.enum([
+            "none",
+            "accepted",
+            "declined",
+            "tentativelyAccepted",
+          ]),
+          time: z.string().optional(),
+        }),
+      })
+    )
+    .optional(),
+  organizer: z
+    .object({
+      emailAddress: z.object({
+        address: z.string(),
+        name: z.string().optional(),
+      }),
+    })
+    .optional(),
   isAllDay: z.boolean().optional(),
   isCancelled: z.boolean().optional(),
   importance: z.enum(["low", "normal", "high"]).optional(),
-  sensitivity: z.enum(["normal", "personal", "private", "confidential"]).optional(),
-  showAs: z.enum(["free", "tentative", "busy", "oof", "workingElsewhere", "unknown"]).optional(),
+  sensitivity: z
+    .enum(["normal", "personal", "private", "confidential"])
+    .optional(),
+  showAs: z
+    .enum(["free", "tentative", "busy", "oof", "workingElsewhere", "unknown"])
+    .optional(),
   recurrence: z.any().optional(),
 });
 
@@ -150,7 +171,9 @@ const getErrorText = async (response: Response): Promise<string> => {
 export async function listCalendars(
   accessToken: string,
   params: ListCalendarsParams
-): Promise<{ calendars: OutlookCalendar[]; nextLink?: string } | { error: string }> {
+): Promise<
+  { calendars: OutlookCalendar[]; nextLink?: string } | { error: string }
+> {
   const { top = 250, skip = 0 } = params;
 
   const urlParams = new URLSearchParams();
@@ -172,11 +195,18 @@ export async function listCalendars(
     }
 
     const result = await response.json();
-    const calendarsResult = z.array(OutlookCalendarSchema).safeParse(result.value || []);
-    
+    const calendarsResult = z
+      .array(OutlookCalendarSchema)
+      .safeParse(result.value || []);
+
     if (!calendarsResult.success) {
-      localLogger.error({ error: calendarsResult.error }, "Invalid calendar data format");
-      return { error: `Invalid calendar data format: ${calendarsResult.error.message}` };
+      localLogger.error(
+        { error: calendarsResult.error },
+        "Invalid calendar data format"
+      );
+      return {
+        error: `Invalid calendar data format: ${calendarsResult.error.message}`,
+      };
     }
 
     return {
@@ -236,11 +266,18 @@ export async function listEvents(
     }
 
     const result = await response.json();
-    const eventsResult = z.array(OutlookEventSchema).safeParse(result.value || []);
-    
+    const eventsResult = z
+      .array(OutlookEventSchema)
+      .safeParse(result.value || []);
+
     if (!eventsResult.success) {
-      localLogger.error({ error: eventsResult.error }, "Invalid events data format");
-      return { error: `Invalid events data format: ${eventsResult.error.message}` };
+      localLogger.error(
+        { error: eventsResult.error },
+        "Invalid events data format"
+      );
+      return {
+        error: `Invalid events data format: ${eventsResult.error.message}`,
+      };
     }
 
     return {
@@ -280,10 +317,15 @@ export async function getEvent(
 
     const result = await response.json();
     const eventResult = OutlookEventSchema.safeParse(result);
-    
+
     if (!eventResult.success) {
-      localLogger.error({ error: eventResult.error }, "Invalid event data format");
-      return { error: `Invalid event data format: ${eventResult.error.message}` };
+      localLogger.error(
+        { error: eventResult.error },
+        "Invalid event data format"
+      );
+      return {
+        error: `Invalid event data format: ${eventResult.error.message}`,
+      };
     }
 
     return eventResult.data;
@@ -367,10 +409,15 @@ export async function createEvent(
 
     const result = await response.json();
     const eventResult = OutlookEventSchema.safeParse(result);
-    
+
     if (!eventResult.success) {
-      localLogger.error({ error: eventResult.error }, "Invalid event data format");
-      return { error: `Invalid event data format: ${eventResult.error.message}` };
+      localLogger.error(
+        { error: eventResult.error },
+        "Invalid event data format"
+      );
+      return {
+        error: `Invalid event data format: ${eventResult.error.message}`,
+      };
     }
 
     return eventResult.data;
@@ -467,10 +514,15 @@ export async function updateEvent(
 
     const result = await response.json();
     const eventResult = OutlookEventSchema.safeParse(result);
-    
+
     if (!eventResult.success) {
-      localLogger.error({ error: eventResult.error }, "Invalid event data format");
-      return { error: `Invalid event data format: ${eventResult.error.message}` };
+      localLogger.error(
+        { error: eventResult.error },
+        "Invalid event data format"
+      );
+      return {
+        error: `Invalid event data format: ${eventResult.error.message}`,
+      };
     }
 
     return eventResult.data;
@@ -515,7 +567,10 @@ export async function deleteEvent(
 export async function checkAvailability(
   accessToken: string,
   params: CheckAvailabilityParams
-): Promise<{ availability: any[]; timeSlot: { start: string; end: string } } | { error: string }> {
+): Promise<
+  | { availability: any[]; timeSlot: { start: string; end: string } }
+  | { error: string }
+> {
   const { emails, startTime, endTime, intervalInMinutes = 60 } = params;
 
   const requestBody = {
@@ -528,10 +583,7 @@ export async function checkAvailability(
       dateTime: endTime,
       timeZone: "UTC",
     },
-    availabilityViewInterval: Math.min(
-      Math.max(intervalInMinutes, 5),
-      1440
-    ),
+    availabilityViewInterval: Math.min(Math.max(intervalInMinutes, 5), 1440),
   };
 
   try {
