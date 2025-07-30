@@ -20,9 +20,11 @@ use super::utils::ProviderHttpRequestError;
 
 lazy_static! {
     static ref OAUTH_MICROSOFT_TOOLS_CLIENT_ID: String =
-        env::var("OAUTH_MICROSOFT_TOOLS_CLIENT_ID").expect("OAUTH_MICROSOFT_TOOLS_CLIENT_ID environment variable must be set");
+        env::var("OAUTH_MICROSOFT_TOOLS_CLIENT_ID")
+            .expect("OAUTH_MICROSOFT_TOOLS_CLIENT_ID environment variable must be set");
     static ref OAUTH_MICROSOFT_TOOLS_CLIENT_SECRET: String =
-        env::var("OAUTH_MICROSOFT_TOOLS_CLIENT_SECRET").expect("OAUTH_MICROSOFT_TOOLS_CLIENT_SECRET environment variable must be set");
+        env::var("OAUTH_MICROSOFT_TOOLS_CLIENT_SECRET")
+            .expect("OAUTH_MICROSOFT_TOOLS_CLIENT_SECRET environment variable must be set");
 }
 
 pub struct MicrosoftToolsConnectionProvider {}
