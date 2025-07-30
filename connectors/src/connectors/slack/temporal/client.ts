@@ -99,7 +99,7 @@ export async function launchSlackSyncOneThreadWorkflow(
       {
         connectorId: connector.id,
       },
-      "Skipping webhook for Slack connector because it is paused (thread sync)."
+      "Skipping Slack connector because it is paused (thread sync)."
     );
 
     return new Ok(undefined);
