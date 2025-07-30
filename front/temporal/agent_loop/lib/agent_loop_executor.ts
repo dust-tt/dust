@@ -18,7 +18,10 @@ export async function executeAgentLoop(
   authType: AuthenticatorType,
   runAgentArgs: RunAgentArgs,
   activities: AgentLoopActivities,
-  startStep: number
+  {
+    startStep,
+    resumeFromBlockedTools,
+  }: { startStep: number; resumeFromBlockedTools: boolean }
 ): Promise<void> {
   const runIds: string[] = [];
 

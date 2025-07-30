@@ -52,10 +52,12 @@ export async function agentLoopWorkflow({
   authType,
   runAsynchronousAgentArgs,
   startStep,
+  resumeFromBlockedTools,
 }: {
   authType: AuthenticatorType;
   runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
   startStep: number;
+  resumeFromBlockedTools: boolean;
 }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
@@ -94,7 +96,10 @@ export async function agentLoopWorkflow({
     }
   }
 
-  await executeAgentLoop(authType, runAgentArgs, activities, startStep);
+  await executeAgentLoop(authType, runAgentArgs, activities, {
+    startStep,
+    resumeFromBlockedTools,
+  });
 
   if (childWorkflowHandle) {
     await childWorkflowHandle.result();
