@@ -30,7 +30,6 @@ import {
   AgentConfiguration,
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
-import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -65,7 +64,6 @@ import {
   isGlobalAgentId,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   normalizeAsInternalDustError,
-  normalizeError,
   Ok,
   removeNulls,
 } from "@app/types";
@@ -427,14 +425,12 @@ export async function searchAgentConfigurationsByName(
       },
     },
   });
-  const r = removeNulls(
+  return removeNulls(
     await getAgentConfigurations(auth, {
       agentIds: agentConfigurations.map(({ sId }) => sId),
       variant: "light",
     })
   );
-
-  return r;
 }
 
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
@@ -900,29 +896,6 @@ export async function getAgentConfigurationsForView<
         );
 
   return applySortAndLimit(allowedAgentConfigurations.flat());
-}
-
-/**
- *  Return names of all agents in the workspace, to avoid name collisions.
- */
-export async function getAgentNames(auth: Authenticator): Promise<string[]> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-  if (!auth.isUser()) {
-    throw new Error("Unexpected `auth` from outside workspace.");
-  }
-
-  const agents = await AgentConfiguration.findAll({
-    where: {
-      workspaceId: owner.id,
-      status: "active",
-    },
-    attributes: ["name"],
-  });
-
-  return agents.map((a) => a.name);
 }
 
 async function isSelfHostedImageWithValidContentType(pictureUrl: string) {
@@ -1643,7 +1616,7 @@ export async function updateAgentPermissions(
   // The canWrite check for agent_editors groups (allowing members and admins)
   // is implicitly handled by addMembers and removeMembers.
   try {
-    const result = await frontSequelize.transaction(async (t) => {
+    return await frontSequelize.transaction(async (t) => {
       if (usersToAdd.length > 0) {
         const addRes = await editorGroupRes.value.addMembers(auth, usersToAdd, {
           transaction: t,
@@ -1667,7 +1640,6 @@ export async function updateAgentPermissions(
       }
       return new Ok(undefined);
     });
-    return result;
   } catch (error) {
     // Catch errors thrown from within the transaction
     return new Err(normalizeAsInternalDustError(error));
