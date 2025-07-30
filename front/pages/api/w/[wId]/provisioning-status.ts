@@ -2,7 +2,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import {
+  ADMIN_GROUP_NAME,
+  BUILDER_GROUP_NAME,
+  GroupResource,
+} from "@app/lib/resources/group_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -18,8 +22,12 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const r = await GroupResource.hasActiveRoleProvisioningGroups(auth);
-      return res.status(200).json(r);
+      const r =
+        await GroupResource.listRoleProvisioningGroupsForWorkspace(auth);
+      return res.status(200).json({
+        hasAdminGroup: r.some((g) => g.name === ADMIN_GROUP_NAME),
+        hasBuilderGroup: r.some((g) => g.name === BUILDER_GROUP_NAME),
+      });
 
     default:
       return apiError(req, res, {

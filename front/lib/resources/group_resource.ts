@@ -49,6 +49,9 @@ import {
   removeNulls,
 } from "@app/types";
 
+export const ADMIN_GROUP_NAME = "dust-admins";
+export const BUILDER_GROUP_NAME = "dust-builders";
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -1345,23 +1348,19 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Checks if dust-builders and dust-admins groups exist and are actively provisioned
    * in the workspace. This indicates that role management should be restricted in the UI.
    */
-  static async hasActiveRoleProvisioningGroups(
+  static async listRoleProvisioningGroupsForWorkspace(
     auth: Authenticator
-  ): Promise<{ hasAdminGroup: boolean; hasBuilderGroup: boolean }> {
+  ): Promise<GroupResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
     // Check if workspace has WorkOS organization ID (required for provisioning)
     if (!owner.workOSOrganizationId) {
-      return { hasAdminGroup: false, hasBuilderGroup: false };
+      return [];
     }
 
-    const ADMIN_GROUP_NAME = "dust-admins";
-    const BUILDER_GROUP_NAME = "dust-builders";
-
     try {
-      const provisionedGroups = await GroupModel.findAll({
+      const provisionedGroups = await this.baseFetch(auth, {
         where: {
-          workspaceId: owner.id,
           kind: "provisioned",
           name: {
             [Op.in]: [ADMIN_GROUP_NAME, BUILDER_GROUP_NAME],
@@ -1369,18 +1368,10 @@ export class GroupResource extends BaseResource<GroupModel> {
         },
       });
 
-      // Return true if both dust-admins and dust-builders groups exist and are provisioned
-      const hasAdminGroup = provisionedGroups.some(
-        (g) => g.name === ADMIN_GROUP_NAME
-      );
-      const hasBuilderGroup = provisionedGroups.some(
-        (g) => g.name === BUILDER_GROUP_NAME
-      );
-
-      return { hasAdminGroup, hasBuilderGroup };
+      return provisionedGroups;
     } catch (error) {
       // If there's an error checking, err on the side of caution and don't restrict
-      return { hasAdminGroup: false, hasBuilderGroup: false };
+      return [];
     }
   }
 

@@ -166,11 +166,21 @@ export function useProvisioningStatus({
     }
   );
 
+  const roleProvisioningStatus = useMemo(() => {
+    if (!data) {
+      return {
+        hasAdminGroup: false,
+        hasBuilderGroup: false,
+      };
+    }
+    return {
+      hasAdminGroup: data.hasAdminGroup,
+      hasBuilderGroup: data.hasBuilderGroup,
+    };
+  }, [data]);
+
   return {
-    roleProvisioningStatus: data ?? {
-      hasAdminGroup: false,
-      hasBuilderGroup: false,
-    },
+    roleProvisioningStatus,
     isProvisioningStatusLoading: !error && !data && !disabled,
     isProvisioningStatusError: error,
   };
