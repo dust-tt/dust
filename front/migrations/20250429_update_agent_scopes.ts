@@ -1,6 +1,6 @@
 import type { Logger } from "pino";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsLatestVersion } from "@app/lib/api/assistant/configuration";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -67,9 +67,8 @@ const migrateWorkspace = async (
     }
     // @ts-ignore
     if (previousScope === "workspace" && agent.status === "active") {
-      const agentConfigs = await getAgentConfigurations({
-        auth,
-        agentsGetView: { agentIds: [agent.sId] },
+      const agentConfigs = await getAgentConfigurationsLatestVersion(auth, {
+        agentIds: [agent.sId],
         variant: "light",
       });
       const agentConfig = agentConfigs[0];

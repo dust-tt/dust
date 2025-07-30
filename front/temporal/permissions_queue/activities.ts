@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsLatestVersion } from "@app/lib/api/assistant/configuration";
 import {
   getAgentConfigurationGroupIdsFromActions,
   listAgentConfigurationsForGroups,
@@ -65,12 +65,11 @@ export async function updateSpacePermissions({
 
   // Update the permissions of all the agent configurations.
   for (const acId of agentConfigurationIds) {
-    const [ac] = await getAgentConfigurations({
-      auth,
-      agentsGetView: { agentIds: [acId] },
+    const acList = await getAgentConfigurationsLatestVersion(auth, {
+      agentIds: [acId],
       variant: "full",
-      dangerouslySkipPermissionFiltering: true,
     });
+    const [ac] = acList;
     if (!ac) {
       logger.warn(
         {

@@ -3,7 +3,7 @@ import { uniq } from "lodash";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
 import {
-  getAgentConfigurations,
+  getAgentConfigurationsLatestVersion,
   updateAgentRequestedGroupIds,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
@@ -143,12 +143,11 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       await concurrentExecutor(
         agentIds,
         async (agentId) => {
-          const [agentConfig] = await getAgentConfigurations({
-            auth,
-            agentsGetView: { agentIds: [agentId] },
+          const agentConfigs = await getAgentConfigurationsLatestVersion(auth, {
+            agentIds: [agentId],
             variant: "full",
-            dangerouslySkipPermissionFiltering: true,
           });
+          const [agentConfig] = agentConfigs;
 
           // Get the required group IDs from the agent's actions
           const requestedGroupIds =

@@ -6,7 +6,7 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsLatestVersion } from "@app/lib/api/assistant/configuration";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
@@ -153,9 +153,8 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         },
         new Set<string>()
       );
-      const agents = await getAgentConfigurations({
-        auth,
-        agentsGetView: { agentIds: [...agentConfigurationIds] },
+      const agents = await getAgentConfigurationsLatestVersion(auth, {
+        agentIds: [...agentConfigurationIds],
         variant: "extra_light",
       });
       if (agents.some((a) => !a)) {

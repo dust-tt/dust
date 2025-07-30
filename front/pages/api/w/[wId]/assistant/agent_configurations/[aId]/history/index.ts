@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   getAgentConfiguration,
-  getAgentConfigurations,
+  getAllVersionsForAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -75,17 +75,16 @@ async function handler(
 
       const { limit } = queryValidation.right;
 
-      const agentConfigurations = await getAgentConfigurations({
+      let agentConfigurations = await getAllVersionsForAgentConfiguration(
         auth,
-        agentsGetView: {
-          agentIds: [aId],
-          allVersions: true,
-        },
-        variant: "light",
-        // Return the latest versions first
-        sort: "updatedAt",
-        limit,
-      });
+        aId,
+        "light"
+      );
+
+      // Return the latest versions first (sort by version DESC, which is already done in getAllVersionsForOneAgent)
+      if (limit) {
+        agentConfigurations = agentConfigurations.slice(0, limit);
+      }
 
       if (!agentConfigurations || !agentConfigurations[0].canRead) {
         return apiError(req, res, {

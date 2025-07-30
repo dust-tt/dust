@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   archiveAgentConfiguration,
-  getAgentConfigurations,
+  getAgentConfigurationsLatestVersion,
 } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -44,11 +44,13 @@ async function handler(
 
       const { agentConfigurationIds } = bodyValidation.right;
 
-      const agentConfigurations = await getAgentConfigurations({
+      const agentConfigurations = await getAgentConfigurationsLatestVersion(
         auth,
-        agentsGetView: { agentIds: agentConfigurationIds },
-        variant: "light",
-      });
+        {
+          agentIds: agentConfigurationIds,
+          variant: "light",
+        }
+      );
       const toDelete = agentConfigurations.filter((a) => a.status === "active");
       if (toDelete.length !== agentConfigurationIds.length) {
         return apiError(req, res, {

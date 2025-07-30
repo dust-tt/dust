@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import { Op } from "sequelize";
 
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsLatestVersion } from "@app/lib/api/assistant/configuration";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -28,12 +28,14 @@ async function updateAgentConfigurationGroupIds(
 ): Promise<{ updated: boolean; error?: string }> {
   try {
     // Get the full agent configuration with actions
-    const agentConfiguration = await getAgentConfigurations({
+    const agentConfigurationList = await getAgentConfigurationsLatestVersion(
       auth,
-      agentsGetView: { agentIds: [agent.sId] },
-      variant: "full",
-      dangerouslySkipPermissionFiltering: true,
-    });
+      {
+        agentIds: [agent.sId],
+        variant: "full",
+      }
+    );
+    const agentConfiguration = agentConfigurationList;
 
     if (!agentConfiguration[0]) {
       return { updated: false, error: "Agent configuration not found" };
