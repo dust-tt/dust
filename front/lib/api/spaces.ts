@@ -143,12 +143,11 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       await concurrentExecutor(
         agentIds,
         async (agentId) => {
-          const [agentConfig] = await getAgentConfigurations({
-            auth,
-            agentsGetView: { agentIds: [agentId] },
+          const agentConfigs = await getAgentConfigurations(auth, {
+            agentIds: [agentId],
             variant: "full",
-            dangerouslySkipPermissionFiltering: true,
           });
+          const [agentConfig] = agentConfigs;
 
           // Get the required group IDs from the agent's actions
           const requestedGroupIds =

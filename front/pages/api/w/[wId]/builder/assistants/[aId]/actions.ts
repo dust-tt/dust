@@ -42,7 +42,10 @@ async function handler(
   }
 
   try {
-    const agentConfiguration = await getAgentConfiguration(auth, aId, "full");
+    const agentConfiguration = await getAgentConfiguration(auth, {
+      agentId: aId,
+      variant: "full",
+    });
     if (!agentConfiguration) {
       return apiError(req, res, {
         status_code: 404,

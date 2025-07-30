@@ -3,7 +3,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -14,6 +14,7 @@ import {
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { InteractiveFileContentType } from "@app/types";
+import { Err, Ok } from "@app/types";
 import { INTERACTIVE_FILE_FORMATS } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -89,8 +90,10 @@ const createServer = (
       ) => {
         const { conversation } = agentLoopContext?.runContext ?? {};
         if (!conversation) {
-          return makeMCPToolTextError(
-            "Conversation ID is required to create a client executable file."
+          return new Err(
+            new MCPError(
+              "Conversation ID is required to create a client executable file."
+            )
           );
         }
 
@@ -102,7 +105,7 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return makeMCPToolTextError(result.error.message);
+          return new Err(new MCPError(result.error.message));
         }
 
         const { value: fileResource } = result;
@@ -135,23 +138,20 @@ const createServer = (
           await sendNotification(notification);
         }
 
-        return {
-          isError: false,
-          content: [
-            {
-              type: "resource",
-              resource: {
-                contentType: fileResource.contentType,
-                fileId: fileResource.sId,
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-                snippet: fileResource.snippet,
-                text: responseText,
-                title: fileResource.fileName,
-                uri: fileResource.getPublicUrl(auth),
-              },
+        return new Ok([
+          {
+            type: "resource",
+            resource: {
+              contentType: fileResource.contentType,
+              fileId: fileResource.sId,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              snippet: fileResource.snippet,
+              text: responseText,
+              title: fileResource.fileName,
+              uri: fileResource.getPublicUrl(auth),
             },
-          ],
-        };
+          },
+        ]);
       }
     )
   );
@@ -213,19 +213,10 @@ const createServer = (
           expectedReplacements: expected_replacements,
         });
 
-        // Return a non-error response even when file editing fails, since this is an expected
-        // case when the model makes imprecise edits. The error message will help the model
-        // understand what went wrong and retry with corrected parameters.
         if (result.isErr()) {
-          return {
-            isError: false,
-            content: [
-              {
-                type: "text",
-                text: result.error.message,
-              },
-            ],
-          };
+          return new Err(
+            new MCPError(result.error.message, { tracked: false })
+          );
         }
 
         const { fileResource, replacementCount } = result.value;
@@ -259,15 +250,12 @@ const createServer = (
           await sendNotification(notification);
         }
 
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text: responseText,
-            },
-          ],
-        };
+        return new Ok([
+          {
+            type: "text",
+            text: responseText,
+          },
+        ]);
       }
     )
   );
@@ -292,22 +280,19 @@ const createServer = (
         const result = await getClientExecutableFileContent(auth, file_id);
 
         if (result.isErr()) {
-          return makeMCPToolTextError(result.error.message);
+          return new Err(new MCPError(result.error.message));
         }
 
         const { fileResource, content } = result.value;
 
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text:
-                `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
-                `successfully. Content:\n\n${content}`,
-            },
-          ],
-        };
+        return new Ok([
+          {
+            type: "text",
+            text:
+              `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
+              `successfully. Content:\n\n${content}`,
+          },
+        ]);
       }
     )
   );

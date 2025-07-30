@@ -56,6 +56,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                 tool_use: None,
                 tool_result: None,
                 source: None,
+                thinking: None,
+                signature: None,
+                data: None,
             }],
             role: AnthropicChatMessageRole::User,
         }),
@@ -67,6 +70,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                     tool_use: None,
                     tool_result: None,
                     source: None,
+                    thinking: None,
+                    signature: None,
+                    data: None,
                 }],
                 role: AnthropicChatMessageRole::User,
             }),
@@ -80,6 +86,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                             tool_use: None,
                             tool_result: None,
                             source: None,
+                            thinking: None,
+                            signature: None,
+                            data: None,
                         }),
                         MixedContent::ImageContent(ic) => {
                             let base64_data = base64_map
@@ -92,6 +101,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                                 text: None,
                                 tool_use: None,
                                 tool_result: None,
+                                thinking: None,
+                                signature: None,
+                                data: None,
                             })
                         }
                     })
@@ -118,6 +130,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                             tool_use: None,
                             tool_result: None,
                             source: None,
+                            thinking: None,
+                            signature: None,
+                            data: None,
                         })),
                         AssistantContentItem::FunctionCall { value } => {
                             Some(serde_json::from_str(&value.arguments).map(|input| {
@@ -131,12 +146,47 @@ fn convert_chat_message_to_anthropic_chat_message(
                                     }),
                                     tool_result: None,
                                     source: None,
+                                    thinking: None,
+                                    signature: None,
+                                    data: None,
                                 }
                             }))
                         }
-                        AssistantContentItem::Reasoning { value: _ } => {
-                            // TODO(reasoning_v2): use the reasoning content.
-                            None
+                        AssistantContentItem::Reasoning { value } => {
+                            // Parse the metadata to extract thinking content
+                            let metadata: serde_json::Value =
+                                serde_json::from_str(&value.metadata).ok()?;
+                            let encrypted_content = metadata.get("encrypted_content")?.as_str()?;
+
+                            // Determine if this is regular thinking or redacted thinking
+                            let is_redacted = metadata
+                                .get("id")?
+                                .as_str()?
+                                .starts_with("redacted_thinking_");
+
+                            if is_redacted {
+                                Some(Ok(AnthropicContent {
+                                    r#type: AnthropicContentType::RedactedThinking,
+                                    text: None,
+                                    tool_use: None,
+                                    tool_result: None,
+                                    source: None,
+                                    thinking: None,
+                                    signature: None,
+                                    data: Some(encrypted_content.to_string()),
+                                }))
+                            } else {
+                                Some(Ok(AnthropicContent {
+                                    r#type: AnthropicContentType::Thinking,
+                                    text: None,
+                                    tool_use: None,
+                                    tool_result: None,
+                                    source: None,
+                                    thinking: value.reasoning.clone(),
+                                    signature: Some(encrypted_content.to_string()),
+                                    data: None,
+                                }))
+                            }
                         }
                     })
                     .collect::<Result<Vec<_>, _>>()?,
@@ -157,6 +207,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                         }],
                     }),
                     source: None,
+                    thinking: None,
+                    signature: None,
+                    data: None,
                 }],
                 role: AnthropicChatMessageRole::User,
             }),
@@ -192,6 +245,9 @@ fn convert_chat_message_to_anthropic_chat_message(
                             content,
                         }),
                         source: None,
+                        thinking: None,
+                        signature: None,
+                        data: None,
                     }],
                     role: AnthropicChatMessageRole::User,
                 })

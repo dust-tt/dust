@@ -1,4 +1,5 @@
 import type {
+  MCPActionType,
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
@@ -11,10 +12,7 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/assistant";
-import type {
-  AgentActionType,
-  AgentMessageType,
-} from "@app/types/assistant/conversation";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
@@ -59,7 +57,6 @@ export type AgentConfigurationScope =
  * 'views':
  * - 'current_user': Retrieves agents created or edited by the current user.
  * - 'list': Retrieves all active agents accessible to the user
- * - {agentIds: string}: Retrieves specific agents by their sIds.
  * - 'all': All non-private agents (so combines workspace, published and global
  *   agents); used e.g. for non-user calls such as API
  * - 'published': Retrieves all published agents.
@@ -69,10 +66,10 @@ export type AgentConfigurationScope =
  * - 'archived': Retrieves all agents that are archived. Only available to super
  *   users. Intended strictly for internal use with necessary superuser or admin
  *   authorization.
+ * - 'favorites': Retrieves all agents marked as favorites by the current user.
  */
 // TODO(agent-discovery) remove workspace, published, global
 export type AgentsGetViewType =
-  | { agentIds: string[]; allVersions?: boolean }
   | "current_user"
   | "list"
   | "all"
@@ -263,7 +260,7 @@ export type AgentActionSuccessEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  action: AgentActionType;
+  action: MCPActionType;
 };
 
 // Event sent to stop the generation.

@@ -4,6 +4,7 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -22,7 +23,6 @@ import {
   getCoreSearchArgs,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { getRefs } from "@app/lib/api/assistant/citations";
@@ -35,7 +35,8 @@ import {
 } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { CoreAPIDocument, TimeFrame } from "@app/types";
+import type { CoreAPIDocument, Result, TimeFrame } from "@app/types";
+import { Err, Ok } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
@@ -91,7 +92,7 @@ function createServer(
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
 
-  const includeFunction = async ({
+  async function includeFunction({
     timeFrame,
     dataSources,
     tagsIn,
@@ -101,18 +102,21 @@ function createServer(
     dataSources: DataSourcesToolConfigurationType;
     tagsIn?: string[];
     tagsNot?: string[];
-  }): Promise<{
-    isError: boolean;
-    content:
-      | TextContent[]
-      | {
-          type: "resource";
-          resource:
-            | IncludeResultResourceType
-            | IncludeQueryResourceType
-            | WarningResourceType;
-        }[];
-  }> => {
+  }): Promise<
+    Result<
+      (
+        | TextContent
+        | {
+            type: "resource";
+            resource:
+              | IncludeResultResourceType
+              | IncludeQueryResourceType
+              | WarningResourceType;
+          }
+      )[],
+      MCPError
+    >
+  > {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const credentials = dustManagedCredentials();
 
@@ -135,15 +139,16 @@ function createServer(
 
     // If any of the data sources are invalid, return an error message.
     if (coreSearchArgsResults.some((res) => res.isErr())) {
-      return {
-        isError: false,
-        content: removeNulls(
-          coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
-        ).map((error) => ({
-          type: "text",
-          text: error.message,
-        })),
-      };
+      return new Err(
+        new MCPError(
+          removeNulls(
+            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
+          )
+            .map((error) => error.message)
+            .join("\n"),
+          { tracked: false }
+        )
+      );
     }
 
     const coreSearchArgs = removeNulls(
@@ -155,10 +160,7 @@ function createServer(
       tagsNot,
     });
     if (conflictingTagsError) {
-      return {
-        isError: false,
-        content: [{ type: "text", text: conflictingTagsError }],
-      };
+      return new Err(new MCPError(conflictingTagsError, { tracked: false }));
     }
 
     const searchResults = await coreAPI.searchDataSources(
@@ -198,12 +200,14 @@ function createServer(
     );
 
     if (searchResults.isErr()) {
-      return makeMCPToolTextError(searchResults.error.message);
+      return new Err(new MCPError(searchResults.error.message));
     }
 
     if (citationsOffset + retrievalTopK > getRefs().length) {
-      return makeMCPToolTextError(
-        "The inclusion exhausted the total number of references available for citations"
+      return new Err(
+        new MCPError(
+          "The inclusion exhausted the total number of references available for citations"
+        )
       );
     }
 
@@ -244,28 +248,25 @@ function createServer(
       timeFrame ?? null
     );
 
-    return {
-      isError: false,
-      content: [
-        ...results.map((result) => ({
-          type: "resource" as const,
-          resource: result,
-        })),
-        {
-          type: "resource" as const,
-          resource: makeQueryResource(timeFrame ?? null),
-        },
-        ...(warningResource
-          ? [
-              {
-                type: "resource" as const,
-                resource: warningResource,
-              },
-            ]
-          : []),
-      ],
-    };
-  };
+    return new Ok([
+      ...results.map((result) => ({
+        type: "resource" as const,
+        resource: result,
+      })),
+      {
+        type: "resource" as const,
+        resource: makeQueryResource(timeFrame ?? null),
+      },
+      ...(warningResource
+        ? [
+            {
+              type: "resource" as const,
+              resource: warningResource,
+            },
+          ]
+        : []),
+    ]);
+  }
 
   if (!areTagsDynamic) {
     server.tool(

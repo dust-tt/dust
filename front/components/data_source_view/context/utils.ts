@@ -1,6 +1,7 @@
 import type {
   DataSourceBuilderTreeType,
   NavigationHistoryEntryType,
+  NodeSelectionState,
 } from "@app/components/data_source_view/context/types";
 import type {
   DataSourceViewCategoryWithoutApps,
@@ -152,7 +153,7 @@ export function removeNodeFromTree(
 export function isNodeSelected(
   tree: DataSourceBuilderTreeType,
   path: string[]
-): boolean | "partial" {
+): NodeSelectionState {
   const pathStr = pathToString(path);
   const pathPrefix = getPathPrefix(pathStr);
 
@@ -181,11 +182,13 @@ export function isNodeSelected(
     }
   }
 
-  if (isIncluded) {
-    return hasChildExclusions ? "partial" : true;
-  }
-
-  return hasChildInclusions ? "partial" : false;
+  return isIncluded
+    ? hasChildExclusions
+      ? "partial"
+      : true
+    : hasChildInclusions
+      ? "partial"
+      : false;
 }
 
 export function computeNavigationPath(

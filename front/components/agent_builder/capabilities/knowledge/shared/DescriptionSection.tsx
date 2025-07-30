@@ -1,5 +1,6 @@
 import { TextArea } from "@dust-tt/sparkle";
-import { useController, useFormContext } from "react-hook-form";
+import type { Control } from "react-hook-form";
+import { useController } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 
@@ -10,9 +11,8 @@ interface DescriptionSectionProps {
   placeholder: string;
   helpText?: string;
   maxLength?: number;
+  control: Control<CapabilityFormData>;
 }
-
-const FIELD_NAME = "description";
 
 export function DescriptionSection({
   title,
@@ -20,10 +20,11 @@ export function DescriptionSection({
   label,
   placeholder,
   helpText,
+  control,
 }: DescriptionSectionProps) {
-  const { register } = useFormContext();
-  const { fieldState } = useController<CapabilityFormData, typeof FIELD_NAME>({
-    name: FIELD_NAME,
+  const { field, fieldState } = useController({
+    control,
+    name: "description",
   });
 
   return (
@@ -37,7 +38,7 @@ export function DescriptionSection({
         {label && <label className="text-sm font-medium">{label}</label>}
         <TextArea
           placeholder={placeholder}
-          {...register(FIELD_NAME)}
+          {...field}
           rows={4}
           showErrorLabel={true}
           error={fieldState.error?.message}

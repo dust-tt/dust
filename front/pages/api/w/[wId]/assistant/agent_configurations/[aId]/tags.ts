@@ -45,11 +45,10 @@ async function handler(
 ): Promise<void> {
   const agentConfigurationId = req.query.aId as string;
 
-  const agent = await getAgentConfiguration(
-    auth,
-    agentConfigurationId,
-    "light"
-  );
+  const agent = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
   if (!agent) {
     return apiError(req, res, {
       status_code: 404,

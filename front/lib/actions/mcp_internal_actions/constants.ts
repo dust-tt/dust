@@ -32,6 +32,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "missing_action_catcher",
   "monday",
   "notion",
+  "outlook",
   "primitive_types_debugger",
   "query_tables",
   "query_tables_v2",
@@ -357,6 +358,21 @@ export const INTERNAL_MCP_SERVERS: Record<
       return !featureFlags.includes("interactive_content_server");
     },
     isPreview: true,
+  },
+  outlook: {
+    id: 24,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("outlook_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      get_messages: "never_ask",
+      get_drafts: "never_ask",
+      create_draft: "low",
+      delete_draft: "low",
+      create_reply_draft: "low",
+    },
   },
   search: {
     id: 1006,

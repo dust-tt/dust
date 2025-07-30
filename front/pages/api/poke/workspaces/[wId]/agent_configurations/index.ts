@@ -3,7 +3,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
@@ -56,7 +56,7 @@ async function handler(
       const { view } = queryValidation.right;
       const viewParam = view;
 
-      const agentConfigurations = await getAgentConfigurations({
+      const agentConfigurations = await getAgentConfigurationsForView({
         auth,
         agentsGetView: viewParam,
         variant: "light",

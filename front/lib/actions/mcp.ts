@@ -334,6 +334,7 @@ export class MCPActionType {
   readonly functionCallName: string | null;
   readonly step: number = -1;
   readonly isError: boolean = false;
+  readonly citationsAllocated: number = 0;
   // TODO(2025-07-24 aubin): remove the type here.
   readonly type = "tool_action" as const;
 
@@ -351,6 +352,7 @@ export class MCPActionType {
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
+    this.citationsAllocated = blob.citationsAllocated;
   }
 
   getGeneratedFiles(): ActionGeneratedFileType[] {
@@ -527,6 +529,7 @@ export async function* runToolWithStreaming(
     mcpServerConfigurationId: `${actionConfiguration.id}`,
     params: rawInputs,
     step,
+    citationsAllocated: stepContext.citationsCount,
   };
 
   for (const value of Object.values(rawInputs)) {
@@ -557,6 +560,7 @@ export async function* runToolWithStreaming(
     executionState: "pending",
     version: 0,
     stepContentId,
+    citationsAllocated: stepContext.citationsCount,
   });
 
   const mcpAction = new MCPActionType({

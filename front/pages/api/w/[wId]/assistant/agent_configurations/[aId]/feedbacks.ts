@@ -32,7 +32,10 @@ async function handler(
   }
 
   // IMPORTANT: make sure the agent configuration is accessible by the user.
-  const agentConfiguration = await getAgentConfiguration(auth, aId, "light");
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: aId,
+    variant: "light",
+  });
   if (!agentConfiguration) {
     return apiError(req, res, {
       status_code: 404,

@@ -19,7 +19,7 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
@@ -37,6 +37,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, ModelId } from "@app/types";
 import type {
   FunctionCallContentType,
@@ -45,7 +46,6 @@ import type {
 } from "@app/types/assistant/agent_message_content";
 import type { RunAgentArgs } from "@app/types/assistant/agent_run";
 import { getRunAgentData } from "@app/types/assistant/agent_run";
-import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_AUTO_RETRY = 3;
@@ -62,7 +62,6 @@ export async function runModelActivity({
   runIds,
   step,
   functionCallStepContentIds,
-  citationsRefsOffset,
   autoRetryCount = 0,
 }: {
   authType: AuthenticatorType;
@@ -70,7 +69,6 @@ export async function runModelActivity({
   runIds: string[];
   step: number;
   functionCallStepContentIds: Record<string, ModelId>;
-  citationsRefsOffset: number;
   autoRetryCount?: number;
 }): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -98,6 +96,12 @@ export async function runModelActivity({
       agentMessageVersion: originalAgentMessage.version,
       step,
     });
+
+  // Compute the citations offset by summing citations allocated to all past actions for this message.
+  const citationsRefsOffset = originalAgentMessage.actions.reduce(
+    (total, action) => total + (action.citationsAllocated || 0),
+    0
+  );
 
   const now = Date.now();
 
@@ -238,7 +242,7 @@ export async function runModelActivity({
   const agentsList = agentConfiguration.instructions?.includes(
     "{ASSISTANTS_LIST}"
   )
-    ? await getAgentConfigurations({
+    ? await getAgentConfigurationsForView({
         auth,
         agentsGetView: auth.user() ? "list" : "all",
         variant: "light",
@@ -340,6 +344,7 @@ export async function runModelActivity({
 
   const reasoningEffort =
     agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
+
   if (reasoningEffort !== "none" && reasoningEffort !== "light") {
     runConfig.MODEL.reasoning_effort = reasoningEffort;
   }
@@ -404,7 +409,6 @@ export async function runModelActivity({
         runIds,
         step,
         functionCallStepContentIds,
-        citationsRefsOffset,
         autoRetryCount: autoRetryCount + 1,
       });
     }

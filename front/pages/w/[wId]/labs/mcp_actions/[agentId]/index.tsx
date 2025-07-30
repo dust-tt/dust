@@ -58,7 +58,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const agent = await getAgentConfiguration(auth, agentId, "light");
+  const agent = await getAgentConfiguration(auth, {
+    agentId,
+    variant: "light",
+  });
   if (!agent) {
     return {
       notFound: true,

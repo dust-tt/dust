@@ -4,11 +4,17 @@ export class MCPServerNotFoundError extends Error {
   }
 }
 
-export class McpError extends Error {
+export class MCPError extends Error {
+  // Whether the error should be tracked and reported on our observability stack.
+  public readonly tracked: boolean;
+  public readonly code?: number;
+
   constructor(
     message: string,
-    public readonly code: number
+    { tracked = true, code }: { tracked?: boolean; code?: number } = {}
   ) {
     super(message);
+    this.tracked = tracked;
+    this.code = code;
   }
 }

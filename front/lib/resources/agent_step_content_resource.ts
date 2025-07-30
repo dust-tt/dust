@@ -77,11 +77,8 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       ...new Set(agentMessages.map((a) => a.agentConfigurationId)),
     ];
     // Fetch agent configuration to check permissions
-    const agentConfigurations = await getAgentConfigurations({
-      auth,
-      agentsGetView: {
-        agentIds: uniqueAgentIds,
-      },
+    const agentConfigurations = await getAgentConfigurations(auth, {
+      agentIds: uniqueAgentIds,
       variant: "light",
     });
 
@@ -402,6 +399,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
               executionState: action.executionState,
               isError: action.isError,
               type: "tool_action",
+              citationsAllocated: action.citationsAllocated,
               generatedFiles: removeNulls(
                 action.outputItems.map((o) => {
                   if (!o.file) {

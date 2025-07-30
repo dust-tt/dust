@@ -24,18 +24,25 @@ import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { handleMembersRoleChange } from "@app/lib/client/members";
+import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
-import type { ActiveRoleType, UserTypeWithWorkspace } from "@app/types";
+import type {
+  ActiveRoleType,
+  LightWorkspaceType,
+  UserTypeWithWorkspace,
+} from "@app/types";
 import { isActiveRoleType } from "@app/types";
 
 export function ChangeMemberModal({
   onClose,
   member,
   mutateMembers,
+  workspace,
 }: {
   onClose: () => void;
   member: UserTypeWithWorkspace | null;
   mutateMembers: KeyedMutator<SearchMembersResponseBody>;
+  workspace: LightWorkspaceType;
 }) {
   const { role = null } = member?.workspace ?? {};
 
@@ -44,6 +51,20 @@ export function ChangeMemberModal({
     role !== "none" ? role : null
   );
   const [isSaving, setIsSaving] = useState(false);
+
+  const { roleProvisioningStatus } = useProvisioningStatus({
+    workspaceId: workspace.sId,
+  });
+
+  const hasActiveRoleProvisioningGroupsForRole = (role: ActiveRoleType) => {
+    if (role === "admin") {
+      return roleProvisioningStatus.hasAdminGroup;
+    }
+    if (role === "builder") {
+      return roleProvisioningStatus.hasBuilderGroup;
+    }
+    return false;
+  };
 
   const handleSave = async () => {
     if (!selectedRole) {
@@ -100,11 +121,18 @@ export function ChangeMemberModal({
                     <RoleDropDown
                       selectedRole={selectedRole || role}
                       onChange={setSelectedRole}
+                      disabled={hasActiveRoleProvisioningGroupsForRole(role)}
                     />
                   </div>
                   <Page.P>
-                    The role defines the rights of a member of the workspace.{" "}
-                    {ROLES_DATA[role]["description"]}
+                    {hasActiveRoleProvisioningGroupsForRole(role) ? (
+                      "This role is managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
+                    ) : (
+                      <>
+                        The role defines the rights of a member of the
+                        workspace. {ROLES_DATA[role]["description"]}
+                      </>
+                    )}
                   </Page.P>
                 </div>
 
@@ -181,7 +209,10 @@ export function ChangeMemberModal({
               rightButtonProps={{
                 label: "Update role",
                 onClick: handleSave,
-                disabled: selectedRole === member.workspace.role || isSaving,
+                disabled:
+                  selectedRole === member.workspace.role ||
+                  isSaving ||
+                  hasActiveRoleProvisioningGroupsForRole(role),
                 loading: isSaving,
               }}
             />

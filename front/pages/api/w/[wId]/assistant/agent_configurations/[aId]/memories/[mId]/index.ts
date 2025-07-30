@@ -36,11 +36,10 @@ async function handler(
   const agentConfigurationId = req.query.aId as string;
   const memoryId = req.query.mId as string;
 
-  const agentConfiguration = await getAgentConfiguration(
-    auth,
-    agentConfigurationId,
-    "light"
-  );
+  const agentConfiguration = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
   if (!agentConfiguration || !agentConfiguration.canRead) {
     return apiError(req, res, {
       status_code: 404,

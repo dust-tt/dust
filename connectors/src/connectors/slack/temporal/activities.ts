@@ -1010,7 +1010,9 @@ export async function getChannel(
 ): Promise<Channel> {
   const slackClient = await getSlackClient(connectorId);
 
-  return getChannelById(slackClient, connectorId, channelId);
+  return withSlackErrorHandling(() =>
+    getChannelById(slackClient, connectorId, channelId)
+  );
 }
 
 function getTagsForPage({

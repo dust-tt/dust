@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   getAgentConfiguration,
-  getAgentConfigurations,
+  listsAgentConfigurationVersions,
 } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -38,7 +38,10 @@ async function handler(
   }
 
   // Check that user has access to this agent
-  const assistant = await getAgentConfiguration(auth, aId, "light");
+  const assistant = await getAgentConfiguration(auth, {
+    agentId: aId,
+    variant: "light",
+  });
   if (!assistant || (!assistant.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,
@@ -72,17 +75,15 @@ async function handler(
 
       const { limit } = queryValidation.right;
 
-      const agentConfigurations = await getAgentConfigurations({
-        auth,
-        agentsGetView: {
-          agentIds: [aId],
-          allVersions: true,
-        },
+      let agentConfigurations = await listsAgentConfigurationVersions(auth, {
+        agentId: aId,
         variant: "light",
-        // Return the latest versions first
-        sort: "updatedAt",
-        limit,
       });
+
+      // Return the latest versions first (sort by version DESC, which is already done in getAllVersionsForOneAgent)
+      if (limit) {
+        agentConfigurations = agentConfigurations.slice(0, limit);
+      }
 
       if (!agentConfigurations || !agentConfigurations[0].canRead) {
         return apiError(req, res, {

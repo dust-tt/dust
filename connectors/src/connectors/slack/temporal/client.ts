@@ -99,7 +99,7 @@ export async function launchSlackSyncOneThreadWorkflow(
       {
         connectorId: connector.id,
       },
-      "Skipping webhook for Slack connector because it is paused (thread sync)."
+      "Skipping Slack connector because it is paused (thread sync)."
     );
 
     return new Ok(undefined);
@@ -243,6 +243,17 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
   if (!connector) {
     return new Err(new Error(`Connector ${connectorId} not found`));
   }
+
+  if (connector.isPaused()) {
+    logger.info(
+      {
+        connectorId: connector.id,
+      },
+      "Skipping webhook for Slack connector because it is paused (garbage collect)."
+    );
+    return new Ok(undefined);
+  }
+
   const client = await getTemporalClient();
 
   const workflowId = slackGarbageCollectorWorkflowId(connectorId);

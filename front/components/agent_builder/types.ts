@@ -9,6 +9,8 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SupportedModel, WhitelistableFeature } from "@app/types";
 import { ioTsEnum } from "@app/types";
 
+import { dataSourceBuilderTreeType } from "../data_source_view/context/types";
+
 type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
 export type AgentBuilderAction = AgentBuilderFormData["actions"][number];
@@ -105,6 +107,16 @@ export const MCP_SERVER_TO_ACTION_TYPE_MAP: Record<
   query_tables: "QUERY_TABLES",
 } as const;
 
+export const ACTION_TYPE_TO_MCP_SERVER_MAP: Record<
+  SupportedAgentBuilderActionType,
+  AgentBuilderMCPServerName
+> = {
+  EXTRACT_DATA: "extract_data",
+  SEARCH: "search",
+  INCLUDE_DATA: "include_data",
+  QUERY_TABLES: "query_tables",
+} as const;
+
 // Legacy alias for backward compatibility
 export const KNOWLEDGE_SERVER_NAMES = AGENT_BUILDER_MCP_SERVERS;
 export type KnowledgeServerName = AgentBuilderMCPServerName;
@@ -160,6 +172,12 @@ export const DESCRIPTION_MAX_LENGTH = 800;
 
 // TODO: use mcpFormSchema for all tools.
 export const capabilityFormSchema = z.object({
+  sources: dataSourceBuilderTreeType.refine(
+    (val) => {
+      return val.in.length > 0;
+    },
+    { message: "You must select at least on data sources" }
+  ),
   description: z
     .string()
     .min(1, "Description is required")

@@ -1,6 +1,7 @@
 import {
   Button,
   DocumentIcon,
+  FolderOpenIcon,
   Icon,
   MagicIcon,
   Page,
@@ -20,6 +21,7 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getFeatureFlags } from "@app/lib/auth";
 import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -86,6 +88,8 @@ export default function CreateAgent({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     (router.query.templateId as string) ?? null
   );
+  const [isUploadingYAML, setIsUploadingYAML] = useState(false);
+  const sendNotification = useSendNotification();
 
   const { assistantTemplates } = useAssistantTemplates();
 
@@ -146,6 +150,71 @@ export default function CreateAgent({
     );
   };
 
+  const handleYAMLUpload = async (event: Event) => {
+    const target = event.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.name.endsWith(".yaml") && !file.name.endsWith(".yml")) {
+      sendNotification({
+        title: "Invalid file type",
+        description: "Please select a YAML file (.yaml or .yml)",
+        type: "error",
+      });
+      return;
+    }
+
+    setIsUploadingYAML(true);
+    try {
+      const yamlContent = await file.text();
+
+      const response = await fetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/new/yaml`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ yamlContent }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error?.message || "Failed to create agent from YAML"
+        );
+      }
+
+      const result = await response.json();
+
+      sendNotification({
+        title: "Agent created successfully",
+        description: `Agent "${result.agentConfiguration.name}" was created from YAML`,
+        type: "success",
+      });
+
+      // Redirect to the newly created agent
+      await router.push(
+        `/w/${owner.sId}/builder/agents/${result.agentConfiguration.sId}`
+      );
+
+      // Clear the file input
+      target.value = "";
+    } catch (error) {
+      sendNotification({
+        title: "Error creating agent",
+        description:
+          error instanceof Error ? error.message : "Unknown error occurred",
+        type: "error",
+      });
+    } finally {
+      setIsUploadingYAML(false);
+    }
+  };
+
   return (
     <AppCenteredLayout
       subscription={subscription}
@@ -172,15 +241,33 @@ export default function CreateAgent({
                 />
                 <Page.Header title="Start new" />
               </div>
-              <Button
-                icon={DocumentIcon}
-                label="New Agent"
-                data-gtm-label="assistantCreationButton"
-                data-gtm-location="assistantCreationPage"
-                size="md"
-                variant="highlight"
-                href={`/w/${owner.sId}/builder/agents/new`}
-              />
+              <div className="flex flex-row gap-3">
+                <Button
+                  icon={DocumentIcon}
+                  label="New Agent"
+                  data-gtm-label="assistantCreationButton"
+                  data-gtm-location="assistantCreationPage"
+                  size="md"
+                  variant="highlight"
+                  href={`/w/${owner.sId}/builder/agents/new`}
+                />
+                <Button
+                  icon={FolderOpenIcon}
+                  label={isUploadingYAML ? "Uploading..." : "Upload from YAML"}
+                  data-gtm-label="yamlUploadButton"
+                  data-gtm-location="assistantCreationPage"
+                  size="md"
+                  variant="outline"
+                  disabled={isUploadingYAML}
+                  onClick={() => {
+                    const input = document.createElement("input");
+                    input.type = "file";
+                    input.accept = ".yaml,.yml";
+                    input.onchange = handleYAMLUpload;
+                    input.click();
+                  }}
+                />
+              </div>
             </div>
 
             <Page.Separator />

@@ -1,5 +1,7 @@
 import {
+  Button,
   ContextItem,
+  Input,
   SliderToggle,
   ZendeskLogo,
   ZendeskWhiteLogo,
@@ -26,6 +28,7 @@ export function ZendeskConfigView({
 
   const unresolvedTicketsConfigKey = "zendeskSyncUnresolvedTicketsEnabled";
   const hideCustomerDetailsConfigKey = "zendeskHideCustomerDetails";
+  const retentionPeriodConfigKey = "zendeskRetentionPeriodDays";
 
   const {
     configValue: syncUnresolvedTicketsConfigValue,
@@ -43,6 +46,14 @@ export function ZendeskConfigView({
     dataSource,
     configKey: hideCustomerDetailsConfigKey,
   });
+  const {
+    configValue: retentionPeriodDays,
+    mutateConfig: mutateRetentionPeriodConfig,
+  } = useConnectorConfig({
+    owner,
+    dataSource,
+    configKey: retentionPeriodConfigKey,
+  });
 
   const syncUnresolvedTicketsEnabled =
     syncUnresolvedTicketsConfigValue === "true";
@@ -50,10 +61,13 @@ export function ZendeskConfigView({
 
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
+  const [retentionInput, setRetentionInput] = useState(
+    retentionPeriodDays?.toString() || ""
+  );
 
   const handleSetNewConfig = async (
     configKey: string,
-    configValue: boolean
+    configValue: boolean | number
   ) => {
     setLoading(true);
     const res = await fetch(
@@ -67,17 +81,46 @@ export function ZendeskConfigView({
     if (res.ok) {
       await mutateSyncUnresolvedTicketsConfig();
       await mutateHideCustomerDetailsConfig();
+      await mutateRetentionPeriodConfig();
       setLoading(false);
+
+      // Show a notif only for the retention period (the others are toggles).
+      if (configKey === retentionPeriodConfigKey) {
+        sendNotification({
+          type: "success",
+          title: "Retention period updated",
+          description: `The retention period has been updated to ${configValue} days.`,
+        });
+      }
     } else {
       setLoading(false);
       const err = await res.json();
+
       sendNotification({
-        type: "error",
+        type: "info",
         title: "Failed to edit Zendesk configuration",
-        description: err.error?.message || "An unknown error occurred",
+        description:
+          err.error?.connectors_error.message || "An unknown error occurred",
       });
     }
     return true;
+  };
+
+  const handleRetentionPeriodSave = async () => {
+    const value = retentionInput.trim();
+
+    if (value !== "") {
+      const numValue = parseInt(value, 10);
+      if (isNaN(numValue) || numValue <= 0) {
+        sendNotification({
+          type: "info",
+          title: "Invalid retention period",
+          description: "Retention period must be a positive integer.",
+        });
+        return;
+      }
+      await handleSetNewConfig(retentionPeriodConfigKey, numValue);
+    }
   };
 
   return (
@@ -142,6 +185,46 @@ export function ZendeskConfigView({
             Enable this option to prevent customer names and email addresses
             from being synced with Dust. This does not impact data within
             tickets, only the metadata attached to tickets.
+          </div>
+        </ContextItem.Description>
+      </ContextItem>
+
+      <ContextItem
+        title="Data Retention Period"
+        visual={
+          <ContextItem.Visual
+            visual={isDark ? ZendeskWhiteLogo : ZendeskLogo}
+          />
+        }
+        action={
+          <div className="flex items-center gap-2">
+            <Input
+              value={retentionInput}
+              type="number"
+              onChange={(e) => setRetentionInput(e.target.value)}
+              disabled={readOnly || !isAdmin || loading}
+              placeholder={retentionPeriodDays ?? undefined}
+              className="w-20"
+            />
+            <span className="text-sm text-muted-foreground">days</span>
+            <Button
+              size="sm"
+              onClick={handleRetentionPeriodSave}
+              disabled={
+                readOnly ||
+                !isAdmin ||
+                loading ||
+                retentionInput === retentionPeriodDays?.toString()
+              }
+              label="Save"
+            />
+          </div>
+        }
+      >
+        <ContextItem.Description>
+          <div className="text-muted-foreground dark:text-muted-foreground-night">
+            Set the duration of the retention period: tickets older than the
+            retention period will be cleaned on a daily basis.
           </div>
         </ContextItem.Description>
       </ContextItem>

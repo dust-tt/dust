@@ -22,11 +22,10 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "POST":
-      const agentConfiguration = await getAgentConfiguration(
-        auth,
-        req.query.aId as string,
-        "light"
-      );
+      const agentConfiguration = await getAgentConfiguration(auth, {
+        agentId: req.query.aId as string,
+        variant: "light",
+      });
       if (
         !agentConfiguration ||
         (!agentConfiguration.canEdit && !auth.isAdmin())

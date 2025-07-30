@@ -1,11 +1,13 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
+import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
   isExtractDataAction,
   isIncludeDataAction,
   isSearchAction,
 } from "@app/components/agent_builder/types";
+import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import type {
   DataSourceViewSelectionConfigurations,
   TimeFrame,
@@ -41,12 +43,6 @@ export function getTimeFrame(action?: AgentBuilderAction): TimeFrame | null {
   return null;
 }
 
-export function hasDataSourceSelections(
-  dataSourceConfigurations: DataSourceViewSelectionConfigurations
-): boolean {
-  return Object.keys(dataSourceConfigurations).length > 0;
-}
-
 export function getJsonSchema(action?: AgentBuilderAction): JSONSchema | null {
   if (!action) {
     return null;
@@ -64,4 +60,11 @@ export function isValidPage<T extends Record<string, string>>(
   pageIds: T
 ): pageId is T[keyof T] {
   return Object.values(pageIds).includes(pageId);
+}
+
+export function getDataSourceTree(
+  action?: AgentBuilderAction
+): DataSourceBuilderTreeType {
+  const configurations = getDataSourceConfigurations(action);
+  return transformSelectionConfigurationsToTree(configurations);
 }

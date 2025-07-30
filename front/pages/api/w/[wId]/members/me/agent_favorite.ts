@@ -48,11 +48,10 @@ async function handler(
 
       const { agentId, userFavorite } = bodyValidation.right;
 
-      const agentConfiguration = await getAgentConfiguration(
-        auth,
+      const agentConfiguration = await getAgentConfiguration(auth, {
         agentId,
-        "light"
-      );
+        variant: "light",
+      });
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,

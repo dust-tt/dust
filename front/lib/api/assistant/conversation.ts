@@ -399,13 +399,10 @@ export async function postUserMessage(
   }
 
   const results = await Promise.all([
-    getAgentConfigurations({
-      auth,
-      agentsGetView: {
-        agentIds: mentions
-          .filter(isAgentMention)
-          .map((mention) => mention.configurationId),
-      },
+    getAgentConfigurations(auth, {
+      agentIds: mentions
+        .filter(isAgentMention)
+        .map((mention) => mention.configurationId),
       variant: "light",
     }),
     (() => {
@@ -1323,7 +1320,6 @@ export async function retryAgentMessage(
   const agentMessageArray = conversation.content.find((messages) => {
     return messages.some((m) => m.sId === message.sId && isAgentMessageType(m));
   }) as AgentMessageType[];
-  agentMessageArray.push(agentMessage);
 
   // Finally, stitch the conversation.
   const newContent = [
