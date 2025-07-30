@@ -1,7 +1,9 @@
 import {
+  Button,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
+  TestTubeIcon,
 } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
 import Head from "next/head";
@@ -99,17 +101,32 @@ export function AgentBuilderLayout({
                   collapsible={true}
                   onCollapse={handlePanelCollapse}
                   onExpand={handlePanelExpand}
-                  className={
+                  className={cn(
                     !isResizing
                       ? "overflow-hidden transition-all duration-300 ease-in-out"
-                      : "overflow-hidden"
-                  }
+                      : "overflow-hidden",
+                    // Mobile: overlay full screen when open, hidden when closed
+                    !isPreviewPanelOpen && "hidden md:block",
+                    isPreviewPanelOpen && "md:relative",
+                    isPreviewPanelOpen &&
+                      "absolute inset-0 z-50 bg-background md:relative md:inset-auto md:z-auto"
+                  )}
                 >
                   <div className="h-full w-full overflow-y-auto">
                     {rightPanel}
                   </div>
                 </ResizablePanel>
               </ResizablePanelGroup>
+
+              {/* Mobile floating Testing button */}
+              {!isPreviewPanelOpen && (
+                <Button
+                  icon={TestTubeIcon}
+                  onClick={handlePanelExpand}
+                  className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full border border-border bg-white text-foreground shadow-sm hover:bg-muted hover:shadow-md md:hidden"
+                  aria-label="Open testing panel"
+                />
+              )}
             </div>
           )}
         </main>

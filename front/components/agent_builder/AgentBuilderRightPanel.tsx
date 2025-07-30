@@ -8,6 +8,7 @@ import {
   TabsList,
   TabsTrigger,
   TestTubeIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
@@ -33,7 +34,7 @@ function PanelHeader({
   return (
     <div className="flex h-16 items-end">
       {isPreviewPanelOpen ? (
-        <div className="flex w-full items-center px-6">
+        <div className="flex w-full items-center px-0 md:px-6">
           <ScrollArea aria-orientation="horizontal" className="flex-1">
             <Tabs value={selectedTab} className="w-full">
               <TabsList>
@@ -42,6 +43,7 @@ function PanelHeader({
                   size="sm"
                   variant="ghost-secondary"
                   tooltip="Hide preview"
+                  className="hidden md:flex"
                   onClick={onTogglePanel}
                 />
                 <TabsTrigger
@@ -64,7 +66,7 @@ function PanelHeader({
         <div className="flex h-full w-full items-center justify-center">
           <Button
             icon={SidebarRightOpenIcon}
-            className="h-9 w-9"
+            className="h-9 w-9 hidden md:flex"
             size="sm"
             variant="ghost-secondary"
             tooltip="Open preview"
@@ -157,12 +159,45 @@ export function AgentBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <PanelHeader
-        isPreviewPanelOpen={isPreviewPanelOpen}
-        selectedTab={selectedTab}
-        onTogglePanel={handleTogglePanel}
-        onTabChange={handleTabChange}
-      />
+      {/* Mobile header with tabs */}
+      {isPreviewPanelOpen && (
+        <div className="flex items-center justify-between bg-background pl-2 pr-4 py-2 md:hidden">
+          <div className="flex-1">
+            <Tabs value={selectedTab} className="w-full">
+              <TabsList>
+                <TabsTrigger
+                  value="testing"
+                  label="Testing"
+                  icon={TestTubeIcon}
+                  onClick={() => handleTabChange("testing")}
+                />
+                <TabsTrigger
+                  value="performance"
+                  label="Performance"
+                  icon={BarChartIcon}
+                  onClick={() => handleTabChange("performance")}
+                />
+              </TabsList>
+            </Tabs>
+          </div>
+          <Button
+            size="sm"
+            icon={XMarkIcon}
+            variant="ghost"
+            tooltip="Close"
+            onClick={handleTogglePanel}
+          />
+        </div>
+      )}
+      
+      <div className="hidden md:block">
+        <PanelHeader
+          isPreviewPanelOpen={isPreviewPanelOpen}
+          selectedTab={selectedTab}
+          onTogglePanel={handleTogglePanel}
+          onTabChange={handleTabChange}
+        />
+      </div>
       {isPreviewPanelOpen ? (
         <ExpandedContent
           selectedTab={selectedTab}
