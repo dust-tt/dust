@@ -461,8 +461,9 @@ export async function migrateChannelsFromLegacyBotToNewBot(
       "Migrating channel"
     );
 
+    // TODO(slack 2025-07-30): Uncomment this when we have the new scope available.
     // Leave the channel but keep it in the database as it's still use to be indexed.
-    await slackClient.conversations.leave({ channel: channel.id });
+    // await slackClient.conversations.leave({ channel: channel.id });
 
     // Join the new bot to the channel.
     const joinRes = await joinChannel(slackBotConnector.id, channel.id);
