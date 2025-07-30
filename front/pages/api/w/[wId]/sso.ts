@@ -40,8 +40,8 @@ async function handler(
     });
   }
 
-  const flags = await getFeatureFlags(workspace);
-  if (!flags.includes("okta_enterprise_connection")) {
+  const plan = auth.getNonNullablePlan();
+  if (!plan.limits.users.isSSOAllowed) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {

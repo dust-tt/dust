@@ -70,9 +70,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   labs_transcripts: {
     description: "Transcript feature (Labs)",
   },
-  okta_enterprise_connection: {
-    description: "Okta SSO enterprise connection",
-  },
   openai_o1_custom_assistants_feature: {
     description: "OpenAI o1 model for custom assistants",
   },

@@ -35,6 +35,7 @@ export type EditingPlanType = {
   isSlackAllowed: boolean;
   isSlackBotAllowed: boolean;
   isWebCrawlerAllowed: boolean;
+  isSSOAllowed: boolean;
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
@@ -57,6 +58,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isIntercomAllowed: plan.limits.connections.isIntercomAllowed,
     isWebCrawlerAllowed: plan.limits.connections.isWebCrawlerAllowed,
     isSalesforceAllowed: plan.limits.connections.isSalesforceAllowed,
+    isSSOAllowed: plan.limits.users.isSSOAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
     dataSourcesCount: plan.limits.dataSources.count,
@@ -113,6 +115,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       },
       users: {
         maxUsers: parseMaybeNumber(editingPlan.maxUsers),
+        isSSOAllowed: editingPlan.isSSOAllowed,
       },
       vaults: {
         maxVaults: parseMaybeNumber(editingPlan.maxVaults),
@@ -138,6 +141,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   isSlackAllowed: false,
   isSlackBotAllowed: false,
   isWebCrawlerAllowed: false,
+  isSSOAllowed: false,
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
@@ -236,6 +240,13 @@ export const PLAN_FIELDS = {
     width: "tiny",
     title: "Salesforce",
     IconComponent: () => <SalesforceLogo className="h-4 w-4" />,
+  },
+  isSSOAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "SSO",
+    error: (plan: EditingPlanType) =>
+      plan.isNewPlan ? "SSO cannot be enabled for new plans" : null,
   },
   maxMessages: {
     type: "number",
