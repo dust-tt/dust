@@ -453,13 +453,6 @@ function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
   };
 }
 
-export async function getLightAgentConfiguration(
-  auth: Authenticator,
-  agentId: string
-): Promise<LightAgentConfigurationType | null> {
-  return getAgentConfiguration(auth, { agentId, variant: "light" });
-}
-
 // Global agent configurations.
 
 function determineGlobalAgentIdsToFetch(
@@ -1638,6 +1631,13 @@ export async function updateAgentRequestedGroupIds(
   );
 
   return new Ok(updated[0] > 0);
+}
+
+export async function getLightAgentConfiguration(
+  auth: Authenticator,
+  agentId: string
+): Promise<LightAgentConfigurationType | null> {
+  return getAgentConfiguration(auth, { agentId, variant: "light" });
 }
 
 export async function getFullAgentConfiguration(
