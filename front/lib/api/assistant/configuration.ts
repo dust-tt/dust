@@ -1591,42 +1591,6 @@ export async function agentNameIsAvailable(
   return !sId;
 }
 
-export async function setAgentScope(
-  auth: Authenticator,
-  agentId: string,
-  scope: AgentConfigurationScope
-): Promise<Result<{ agentId: string; scope: AgentConfigurationScope }, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  if (scope === "global") {
-    return new Err(new Error("Cannot set scope to global"));
-  }
-
-  const agent = await AgentConfiguration.findOne({
-    where: {
-      workspaceId: owner.id,
-      sId: agentId,
-      status: "active",
-    },
-  });
-
-  if (!agent) {
-    return new Err(new Error(`Could not find agent ${agentId}`));
-  }
-
-  if (agent.scope === scope) {
-    return new Ok({ agentId, scope });
-  }
-
-  agent.scope = scope;
-  await agent.save();
-
-  return new Ok({ agentId, scope });
-}
-
 // Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
@@ -1637,52 +1601,6 @@ export async function unsafeHardDeleteAgentConfiguration(
       id: agentConfiguration.id,
     },
   });
-}
-
-/**
- * Removes the association between a group and an agent configuration.
- */
-export async function removeGroupFromAgentConfiguration({
-  auth,
-  group,
-  agentConfiguration,
-  transaction,
-}: {
-  auth: Authenticator;
-  group: GroupResource;
-  agentConfiguration: AgentConfiguration;
-  transaction?: Transaction;
-}): Promise<Result<void, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-  if (
-    owner.id !== group.workspaceId ||
-    owner.id !== agentConfiguration.workspaceId
-  ) {
-    return new Err(
-      new Error(
-        "Group and agent configuration must belong to the same workspace."
-      )
-    );
-  }
-
-  try {
-    const deletedCount = await GroupAgentModel.destroy({
-      where: {
-        groupId: group.id,
-        agentConfigurationId: agentConfiguration.id,
-      },
-      transaction,
-    });
-
-    if (deletedCount === 0) {
-      // Association did not exist, which is fine.
-      return new Ok(undefined);
-    }
-
-    return new Ok(undefined);
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
 }
 
 /**
