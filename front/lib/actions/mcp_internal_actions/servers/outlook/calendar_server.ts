@@ -5,68 +5,8 @@ import {
   makeMCPToolJSONSuccess,
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import * as OutlookApi from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
-
-interface OutlookCalendar {
-  id: string;
-  name: string;
-  color: string;
-  canEdit?: boolean;
-  canShare?: boolean;
-  canViewPrivateItems?: boolean;
-  owner?: {
-    name?: string;
-    address?: string;
-  };
-}
-
-interface OutlookEvent {
-  id: string;
-  subject?: string;
-  body?: {
-    contentType: "text" | "html";
-    content: string;
-  };
-  start: {
-    dateTime: string;
-    timeZone?: string;
-  };
-  end: {
-    dateTime: string;
-    timeZone?: string;
-  };
-  location?: {
-    displayName?: string;
-  };
-  attendees?: Array<{
-    emailAddress: {
-      address: string;
-      name?: string;
-    };
-    status: {
-      response: "none" | "accepted" | "declined" | "tentativelyAccepted";
-      time?: string;
-    };
-  }>;
-  organizer?: {
-    emailAddress: {
-      address: string;
-      name?: string;
-    };
-  };
-  isAllDay?: boolean;
-  isCancelled?: boolean;
-  importance?: "low" | "normal" | "high";
-  sensitivity?: "normal" | "personal" | "private" | "confidential";
-  showAs?:
-    | "free"
-    | "tentative"
-    | "busy"
-    | "oof"
-    | "workingElsewhere"
-    | "unknown";
-  recurrence?: any;
-}
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "outlook_calendar",
@@ -103,31 +43,15 @@ const createServer = (): McpServer => {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const params = new URLSearchParams();
-      params.append("$top", Math.min(top, 999).toString());
-      params.append("$skip", skip.toString());
-
-      const response = await fetchFromOutlook(
-        `/me/calendars?${params.toString()}`,
-        accessToken,
-        { method: "GET" }
-      );
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        return makeMCPToolTextError(
-          `Failed to list calendars: ${response.status} ${response.statusText} - ${errorText}`
-        );
+      const result = await OutlookApi.listCalendars(accessToken, { top, skip });
+      
+      if ("error" in result) {
+        return makeMCPToolTextError(result.error);
       }
-
-      const result = await response.json();
 
       return makeMCPToolJSONSuccess({
         message: "Calendars listed successfully",
-        result: {
-          calendars: (result.value || []) as OutlookCalendar[],
-          nextLink: result["@odata.nextLink"],
-        },
+        result,
       });
     }
   );
@@ -174,53 +98,22 @@ const createServer = (): McpServer => {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const params = new URLSearchParams();
-      params.append("$top", Math.min(top, 999).toString());
-      params.append("$skip", skip.toString());
-      params.append("$orderby", "start/dateTime");
-
-      if (search) {
-        params.append("$search", `"${search}"`);
+      const result = await OutlookApi.listEvents(accessToken, {
+        calendarId,
+        search,
+        startTime,
+        endTime,
+        top,
+        skip,
+      });
+      
+      if ("error" in result) {
+        return makeMCPToolTextError(result.error);
       }
-
-      if (startTime || endTime) {
-        const filters = [];
-        if (startTime) {
-          filters.push(`start/dateTime ge '${startTime}'`);
-        }
-        if (endTime) {
-          filters.push(`end/dateTime le '${endTime}'`);
-        }
-        if (filters.length > 0) {
-          params.append("$filter", filters.join(" and "));
-        }
-      }
-
-      const endpoint = calendarId
-        ? `/me/calendars/${calendarId}/events`
-        : `/me/events`;
-
-      const response = await fetchFromOutlook(
-        `${endpoint}?${params.toString()}`,
-        accessToken,
-        { method: "GET" }
-      );
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        return makeMCPToolTextError(
-          `Failed to list events: ${response.status} ${response.statusText} - ${errorText}`
-        );
-      }
-
-      const result = await response.json();
 
       return makeMCPToolJSONSuccess({
         message: "Events listed successfully",
-        result: {
-          events: (result.value || []) as OutlookEvent[],
-          nextLink: result["@odata.nextLink"],
-        },
+        result,
       });
     }
   );
@@ -243,29 +136,15 @@ const createServer = (): McpServer => {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const endpoint = calendarId
-        ? `/me/calendars/${calendarId}/events/${eventId}`
-        : `/me/events/${eventId}`;
-
-      const response = await fetchFromOutlook(endpoint, accessToken, {
-        method: "GET",
-      });
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        if (response.status === 404) {
-          return makeMCPToolTextError(`Event not found: ${eventId}`);
-        }
-        return makeMCPToolTextError(
-          `Failed to get event: ${response.status} ${response.statusText} - ${errorText}`
-        );
+      const result = await OutlookApi.getEvent(accessToken, { calendarId, eventId });
+      
+      if ("error" in result) {
+        return makeMCPToolTextError(result.error);
       }
-
-      const result = await response.json();
 
       return makeMCPToolJSONSuccess({
         message: "Event fetched successfully",
-        result: result as OutlookEvent,
+        result,
       });
     }
   );
@@ -338,63 +217,28 @@ const createServer = (): McpServer => {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const event: any = {
+      const result = await OutlookApi.createEvent(accessToken, {
+        calendarId,
         subject,
-        start: {
-          dateTime: startDateTime,
-          timeZone,
-        },
-        end: {
-          dateTime: endDateTime,
-          timeZone,
-        },
+        body,
+        contentType,
+        startDateTime,
+        endDateTime,
+        timeZone,
+        attendees,
+        location,
         isAllDay,
         importance,
         showAs,
-      };
-
-      if (body) {
-        event.body = {
-          contentType,
-          content: body,
-        };
-      }
-
-      if (attendees && attendees.length > 0) {
-        event.attendees = attendees.map((email) => ({
-          emailAddress: { address: email },
-          type: "required",
-        }));
-      }
-
-      if (location) {
-        event.location = { displayName: location };
-      }
-
-      const endpoint = calendarId
-        ? `/me/calendars/${calendarId}/events`
-        : `/me/events`;
-
-      const response = await fetchFromOutlook(endpoint, accessToken, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(event),
       });
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        return makeMCPToolTextError(
-          `Failed to create event: ${response.status} ${response.statusText} - ${errorText}`
-        );
+      
+      if ("error" in result) {
+        return makeMCPToolTextError(result.error);
       }
-
-      const result = await response.json();
 
       return makeMCPToolJSONSuccess({
         message: "Event created successfully",
-        result: result as OutlookEvent,
+        result,
       });
     }
   );
@@ -460,75 +304,29 @@ const createServer = (): McpServer => {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const event: any = {};
-
-      if (subject !== undefined) {
-        event.subject = subject;
-      }
-      if (body !== undefined) {
-        event.body = {
-          contentType: contentType || "text",
-          content: body,
-        };
-      }
-      if (startDateTime !== undefined) {
-        event.start = {
-          dateTime: startDateTime,
-          timeZone: timeZone || "UTC",
-        };
-      }
-      if (endDateTime !== undefined) {
-        event.end = {
-          dateTime: endDateTime,
-          timeZone: timeZone || "UTC",
-        };
-      }
-      if (attendees !== undefined) {
-        event.attendees = attendees.map((email) => ({
-          emailAddress: { address: email },
-          type: "required",
-        }));
-      }
-      if (location !== undefined) {
-        event.location = { displayName: location };
-      }
-      if (isAllDay !== undefined) {
-        event.isAllDay = isAllDay;
-      }
-      if (importance !== undefined) {
-        event.importance = importance;
-      }
-      if (showAs !== undefined) {
-        event.showAs = showAs;
-      }
-
-      const endpoint = calendarId
-        ? `/me/calendars/${calendarId}/events/${eventId}`
-        : `/me/events/${eventId}`;
-
-      const response = await fetchFromOutlook(endpoint, accessToken, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(event),
+      const result = await OutlookApi.updateEvent(accessToken, {
+        calendarId,
+        eventId,
+        subject,
+        body,
+        contentType,
+        startDateTime,
+        endDateTime,
+        timeZone,
+        attendees,
+        location,
+        isAllDay,
+        importance,
+        showAs,
       });
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        if (response.status === 404) {
-          return makeMCPToolTextError(`Event not found: ${eventId}`);
-        }
-        return makeMCPToolTextError(
-          `Failed to update event: ${response.status} ${response.statusText} - ${errorText}`
-        );
+      
+      if ("error" in result) {
+        return makeMCPToolTextError(result.error);
       }
-
-      const result = await response.json();
 
       return makeMCPToolJSONSuccess({
         message: "Event updated successfully",
-        result: result as OutlookEvent,
+        result,
       });
     }
   );
@@ -551,22 +349,10 @@ const createServer = (): McpServer => {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const endpoint = calendarId
-        ? `/me/calendars/${calendarId}/events/${eventId}`
-        : `/me/events/${eventId}`;
-
-      const response = await fetchFromOutlook(endpoint, accessToken, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        if (response.status === 404) {
-          return makeMCPToolTextError(`Event not found: ${eventId}`);
-        }
-        return makeMCPToolTextError(
-          `Failed to delete event: ${response.status} ${response.statusText} - ${errorText}`
-        );
+      const result = await OutlookApi.deleteEvent(accessToken, { calendarId, eventId });
+      
+      if ("error" in result) {
+        return makeMCPToolTextError(result.error);
       }
 
       return makeMCPToolJSONSuccess({
@@ -607,61 +393,20 @@ const createServer = (): McpServer => {
         return makeMCPToolTextError("Authentication required");
       }
 
-      const requestBody = {
-        schedules: emails,
-        startTime: {
-          dateTime: startTime,
-          timeZone: "UTC",
-        },
-        endTime: {
-          dateTime: endTime,
-          timeZone: "UTC",
-        },
-        availabilityViewInterval: Math.min(
-          Math.max(intervalInMinutes, 5),
-          1440
-        ),
-      };
-
-      const response = await fetchFromOutlook(
-        "/me/calendar/getSchedule",
-        accessToken,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        return makeMCPToolTextError(
-          `Failed to check availability: ${response.status} ${response.statusText} - ${errorText}`
-        );
+      const result = await OutlookApi.checkAvailability(accessToken, {
+        emails,
+        startTime,
+        endTime,
+        intervalInMinutes,
+      });
+      
+      if ("error" in result) {
+        return makeMCPToolTextError(result.error);
       }
-
-      const result = await response.json();
-
-      // Transform the result to match Google Calendar format for consistency
-      const availability =
-        result.value?.map((schedule: any) => ({
-          email: schedule.scheduleId,
-          available: schedule.busyViewType === "free",
-          busySlots:
-            schedule.freeBusyViewType === "busy"
-              ? [{ start: startTime, end: endTime }]
-              : [],
-          availabilityView: schedule.availabilityView,
-        })) || [];
 
       return makeMCPToolJSONSuccess({
         message: "Availability checked successfully",
-        result: {
-          availability,
-          timeSlot: { start: startTime, end: endTime },
-        },
+        result,
       });
     }
   );
@@ -669,27 +414,5 @@ const createServer = (): McpServer => {
   return server;
 };
 
-const fetchFromOutlook = async (
-  endpoint: string,
-  accessToken: string,
-  options?: RequestInit
-): Promise<Response> => {
-  return fetch(`https://graph.microsoft.com/v1.0${endpoint}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...options?.headers,
-    },
-  });
-};
-
-const getErrorText = async (response: Response): Promise<string> => {
-  try {
-    const errorData = await response.json();
-    return errorData.error?.message || errorData.error?.code || "Unknown error";
-  } catch {
-    return "Unknown error";
-  }
-};
 
 export default createServer;

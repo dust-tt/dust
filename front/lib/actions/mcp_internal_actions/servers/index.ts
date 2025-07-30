@@ -19,8 +19,8 @@ import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/ser
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday/server";
 import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
-import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
-import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook_calendar";
+import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/server";
+import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
 import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
 import { default as reasoningServer } from "@app/lib/actions/mcp_internal_actions/servers/reasoning";
