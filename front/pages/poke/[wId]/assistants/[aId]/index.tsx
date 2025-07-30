@@ -38,11 +38,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const agentConfigurations = await getAllVersionsForAgentConfiguration(
-    auth,
-    aId,
-    "full"
-  );
+  const agentConfigurations = await getAllVersionsForAgentConfiguration(auth, {
+    agentId: aId,
+    variant: "full",
+  });
 
   const lastVersionEditors = await getEditors(auth, agentConfigurations[0]);
 

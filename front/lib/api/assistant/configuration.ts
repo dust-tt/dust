@@ -118,11 +118,10 @@ const sortStrategies: Record<SortStrategyType, SortStrategy> = {
 // Helper functions for agent fetching
 
 /**
- * Enrich agent configurations with additional data (actions, tags, favorites)
+ * Enrich agent configurations with additional data (actions, tags, favorites).
  */
 async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
-  owner: WorkspaceType,
   agentConfigurations: AgentConfiguration[],
   variant: V
 ): Promise<AgentConfigurationType[]> {
@@ -192,7 +191,10 @@ async function enrichAgentConfigurations<V extends AgentFetchVariant>(
         : null,
       requestedGroupIds: agent.requestedGroupIds.map((groups) =>
         groups.map((id) =>
-          GroupResource.modelIdToSId({ id, workspaceId: owner.id })
+          GroupResource.modelIdToSId({
+            id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+          })
         )
       ),
       tags: tags.map((t) => t.toJSON()).sort(tagsSorter),
@@ -207,14 +209,13 @@ async function enrichAgentConfigurations<V extends AgentFetchVariant>(
 }
 
 /**
- * Get all versions of a single agent
+ * Get all versions of a single agent.
  */
 export async function getAllVersionsForAgentConfiguration<
   V extends AgentFetchVariant,
 >(
   auth: Authenticator,
-  agentId: string,
-  variant: V
+  { agentId, variant }: { agentId: string; variant: V }
 ): Promise<
   V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
 > {
@@ -223,31 +224,18 @@ export async function getAllVersionsForAgentConfiguration<
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const [globalAgents, workspaceAgents] = await Promise.all([
-    isGlobalAgentId(agentId)
-      ? getGlobalAgents(auth, [agentId], variant)
-      : Promise.resolve([]),
-    isGlobalAgentId(agentId)
-      ? Promise.resolve([])
-      : AgentConfiguration.findAll({
-          where: {
-            workspaceId: owner.id,
-            sId: agentId,
-          },
-          order: [["version", "DESC"]],
-        }),
-  ]);
-
   let allAgents: AgentConfigurationType[];
   if (isGlobalAgentId(agentId)) {
-    allAgents = globalAgents;
+    allAgents = await getGlobalAgents(auth, [agentId], variant);
   } else {
-    allAgents = await enrichAgentConfigurations(
-      auth,
-      owner,
-      workspaceAgents,
-      variant
-    );
+    const workspaceAgents = await AgentConfiguration.findAll({
+      where: {
+        workspaceId: owner.id,
+        sId: agentId,
+      },
+      order: [["version", "DESC"]],
+    });
+    allAgents = await enrichAgentConfigurations(auth, workspaceAgents, variant);
   }
 
   // Filter by permissions
@@ -281,28 +269,23 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  let agents: AgentConfigurationType[];
+  assert(!isGlobalAgentId(agentId), "Global agents are not versioned.");
 
-  if (isGlobalAgentId(agentId)) {
-    // For global agents, we need to get all versions and filter
-    const globalAgents = await getGlobalAgents(auth, [agentId], variant);
-    agents = globalAgents.filter((a) => a.version === agentVersion);
-  } else {
-    const workspaceAgents = await AgentConfiguration.findAll({
-      where: {
-        workspaceId: owner.id,
-        sId: agentId,
-        version: agentVersion,
-      },
-      order: [["version", "DESC"]],
-    });
-    agents = await enrichAgentConfigurations(
-      auth,
-      owner,
-      workspaceAgents,
-      variant
-    );
-  }
+  const workspaceAgents = await AgentConfiguration.findAll({
+    where: {
+      // Relies on the indexes (workspaceId), (sId, version).
+      workspaceId: owner.id,
+      sId: agentId,
+      version: agentVersion,
+    },
+    order: [["version", "DESC"]],
+  });
+
+  const agents = await enrichAgentConfigurations(
+    auth,
+    workspaceAgents,
+    variant
+  );
 
   const allowedAgents = agents.filter((a) =>
     auth.canRead(
@@ -340,47 +323,46 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     const globalAgentIds = agentIds.filter(isGlobalAgentId);
 
+    let globalAgents: AgentConfigurationType[] = [];
+    if (globalAgentIds.length > 0) {
+      globalAgents = await getGlobalAgents(auth, globalAgentIds, variant);
+    }
+
     const workspaceAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
-    const [globalAgents, workspaceAgents] = await Promise.all([
-      globalAgentIds.length > 0
-        ? getGlobalAgents(auth, globalAgentIds, variant)
-        : Promise.resolve([]),
-      workspaceAgentIds.length === 0
-        ? Promise.resolve([])
-        : (async () => {
-            const latestVersions = (await AgentConfiguration.findAll({
-              attributes: [
-                "sId",
-                [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
-              ],
-              where: {
-                workspaceId: owner.id,
-                sId: workspaceAgentIds,
-              },
-              group: ["sId"],
-              raw: true,
-            })) as unknown as { sId: string; max_version: number }[];
 
-            return AgentConfiguration.findAll({
-              where: {
-                workspaceId: owner.id,
-                [Op.or]: latestVersions.map((v) => ({
-                  sId: v.sId,
-                  version: v.max_version,
-                })),
-              },
-              order: [["version", "DESC"]],
-            });
-          })(),
-    ]);
+    let workspaceAgents: AgentConfigurationType[] = [];
+    if (workspaceAgentIds.length > 0) {
+      const latestVersions = (await AgentConfiguration.findAll({
+        attributes: [
+          "sId",
+          [Sequelize.fn("MAX", Sequelize.col("version")), "max_version"],
+        ],
+        where: {
+          workspaceId: owner.id,
+          sId: workspaceAgentIds,
+        },
+        group: ["sId"],
+        raw: true,
+      })) as unknown as { sId: string; max_version: number }[];
 
-    const workspaceAgentTypes = await enrichAgentConfigurations(
-      auth,
-      owner,
-      workspaceAgents,
-      variant
-    );
-    const allAgents = [...globalAgents, ...workspaceAgentTypes];
+      const workspaceAgentConfigurations = await AgentConfiguration.findAll({
+        where: {
+          workspaceId: owner.id,
+          [Op.or]: latestVersions.map((v) => ({
+            sId: v.sId,
+            version: v.max_version,
+          })),
+        },
+        order: [["version", "DESC"]],
+      });
+      workspaceAgents = await enrichAgentConfigurations(
+        auth,
+        workspaceAgentConfigurations,
+        variant
+      );
+    }
+
+    const allAgents = [...globalAgents, ...workspaceAgents];
 
     // Filter by permissions
     const allowedAgents = allAgents.filter((a) =>
@@ -399,9 +381,9 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   auth: Authenticator,
   {
     agentId,
-    variant,
     agentVersion,
-  }: { agentId: string; variant: V; agentVersion?: number }
+    variant,
+  }: { agentId: string; agentVersion?: number; variant: V }
 ): Promise<
   | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
   | null

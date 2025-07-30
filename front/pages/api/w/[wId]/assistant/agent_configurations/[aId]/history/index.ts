@@ -77,8 +77,10 @@ async function handler(
 
       let agentConfigurations = await getAllVersionsForAgentConfiguration(
         auth,
-        aId,
-        "light"
+        {
+          agentId: aId,
+          variant: "light",
+        }
       );
 
       // Return the latest versions first (sort by version DESC, which is already done in getAllVersionsForOneAgent)
