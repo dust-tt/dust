@@ -137,7 +137,7 @@ function AgentNameInput() {
   };
 
   return (
-    <div className="max-w-md space-y-2">
+    <div className="space-y-2">
       <label className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Name
       </label>
@@ -359,15 +359,15 @@ function AgentPictureInput() {
         spiritAvatarUrls={SPIRIT_AVATAR_URLS}
         avatarUrl={field.value || null}
       />
-      <div className="flex flex-col items-center space-y-2">
+      <div className="group relative h-fit w-fit py-2">
         <Avatar size="xl" visual={field.value || null} />
         <Button
-          label="Change"
           variant="outline"
-          size="xs"
+          size="sm"
           icon={PencilSquareIcon}
           type="button"
           onClick={() => setIsAvatarModalOpen(true)}
+          className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
         />
       </div>
     </>
@@ -411,21 +411,19 @@ export function AgentBuilderSettingsBlock({
           <div className="flex flex-col gap-4 pt-4">
             <Page.P>
               <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Configure the basic settings for your agent.
+                Configure tags and access settings for your agent.
               </span>
             </Page.P>
             <div className="space-y-4">
-              <div className="flex gap-8">
-                <div className="flex flex-grow flex-col gap-4">
+              <div className="flex items-start gap-8">
+                <div className="flex-grow">
                   <AgentNameInput />
-                  <AgentDescriptionInput />
                 </div>
                 <AgentPictureInput />
               </div>
-              <div className="space-y-4">
-                <TagsSection />
-                <AgentAccessAndPublication />
-              </div>
+              <AgentDescriptionInput />
+              <TagsSection />
+              <AgentAccessAndPublication />
             </div>
           </div>
         </CollapsibleContent>
