@@ -38,8 +38,12 @@ export async function getOAuthConnectionAccessTokenWithThrow({
     if (
       tokRes.error.code === "token_revoked_error" ||
       tokRes.error.code === "connection_not_found" ||
+      // Happens with confluence
       (tokRes.error.code === "provider_access_token_refresh_error" &&
-        tokRes.error.message.includes("Token was globally revoked"))
+        tokRes.error.message.includes("Token was globally revoked")) ||
+      // Happens with microsoft
+      (tokRes.error.code === "provider_access_token_refresh_error" &&
+        tokRes.error.message.includes("invalid_grant"))
     ) {
       throw new ExternalOAuthTokenError(new Error(tokRes.error.message));
     } else {
