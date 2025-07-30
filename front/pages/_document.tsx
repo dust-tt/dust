@@ -1,5 +1,4 @@
 import Document, { Head, Html, Main, NextScript } from "next/document";
-import Script from "next/script";
 
 const { NODE_ENV, REACT_SCAN } = process.env;
 
@@ -34,33 +33,6 @@ class MyDocument extends Document {
           </noscript>
           <Main />
           <NextScript />
-          {/* Datadog RUM (Real User Monitoring) - Must be in _document.tsx with beforeInteractive
-              strategy to ensure it loads before page becomes interactive and captures all user
-              interactions from the beginning. This is the recommended setup for Pages Router. */}
-          {process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN && (
-            <Script id="datadog-rum" strategy="beforeInteractive">
-              {`
-             (function(h,o,u,n,d) {
-               h=h[d]=h[d]||{q:[],onReady:function(c){h.q.push(c)}}
-               d=o.createElement(u);d.async=1;d.src=n
-               n=o.getElementsByTagName(u)[0];n.parentNode.insertBefore(d,n)
-             })(window,document,'script','https://www.datadoghq-browser-agent.com/eu1/v6/datadog-rum.js','DD_RUM')
-             window.DD_RUM.onReady(function() {
-               window.DD_RUM.init({
-                 clientToken: '${process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN}',
-                 applicationId: '5e9735e7-87c8-4093-b09f-49d708816bfd',
-                 site: 'datadoghq.eu',
-                 service: 'front',
-                 env: '${process.env.NODE_ENV === "production" ? "prod" : "dev"}',
-                 version: '${process.env.NEXT_PUBLIC_COMMIT_HASH || ""}',
-                 sessionSampleRate: 100,
-                 sessionReplaySampleRate: 1,
-                 defaultPrivacyLevel: 'mask',
-               });
-             })
-           `}
-            </Script>
-          )}
         </body>
       </Html>
     );
