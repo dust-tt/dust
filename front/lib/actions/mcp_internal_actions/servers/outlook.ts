@@ -17,6 +17,30 @@ interface OutlookRecipient {
   emailAddress: OutlookEmailAddress;
 }
 
+interface OutlookMessage {
+  id: string;
+  conversationId?: string;
+  subject?: string;
+  bodyPreview?: string;
+  importance?: string;
+  receivedDateTime?: string;
+  sentDateTime?: string;
+  hasAttachments?: boolean;
+  isDraft?: boolean;
+  isRead?: boolean;
+  from?: OutlookRecipient;
+  toRecipients?: OutlookRecipient[];
+  ccRecipients?: OutlookRecipient[];
+  bccRecipients?: OutlookRecipient[];
+  body?: {
+    contentType: "text" | "html";
+    content: string;
+  };
+  parentFolderId?: string;
+  conversationIndex?: string;
+  internetMessageId?: string;
+}
+
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "outlook",
   version: "1.0.0",
@@ -99,7 +123,7 @@ const createServer = (): McpServer => {
       return makeMCPToolJSONSuccess({
         message: "Messages fetched successfully",
         result: {
-          messages: result.value || [],
+          messages: (result.value || []) as OutlookMessage[],
           nextLink: result["@odata.nextLink"],
           totalCount: result["@odata.count"],
         },
@@ -152,7 +176,7 @@ const createServer = (): McpServer => {
       // Get detailed information for each draft
       const draftDetails = await concurrentExecutor(
         result.value || [],
-        async (draft: { id: string }) => {
+        async (draft: { id: string }): Promise<OutlookMessage | null> => {
           const draftResponse = await fetchFromOutlook(
             `/me/messages/${draft.id}`,
             accessToken,
@@ -171,7 +195,7 @@ const createServer = (): McpServer => {
       return makeMCPToolJSONSuccess({
         message: "Drafts fetched successfully",
         result: {
-          drafts: draftDetails.filter(Boolean),
+          drafts: draftDetails.filter(Boolean) as OutlookMessage[],
           nextLink: result["@odata.nextLink"],
         },
       });
