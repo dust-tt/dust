@@ -179,9 +179,12 @@ export function ActiveSubscriptionTable({
                   </PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>
-                  <PokeTableCell>SSO allowed</PokeTableCell>
+                  <PokeTableCell>SSO/SCIM features</PokeTableCell>
                   <PokeTableCell>
-                    {activePlan.limits.users.isSSOAllowed ? "✅" : "❌"}
+                    {activePlan.limits.users.isSSOAllowed ? "SSO ✅" : "SSO ❌"}
+                    {activePlan.limits.users.isSCIMAllowed
+                      ? " SCIM ✅"
+                      : " SCIM ❌"}
                   </PokeTableCell>
                 </PokeTableRow>
                 <PokeTableRow>

@@ -36,6 +36,7 @@ export type EditingPlanType = {
   isSlackBotAllowed: boolean;
   isWebCrawlerAllowed: boolean;
   isSSOAllowed: boolean;
+  isSCIMAllowed: boolean;
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
@@ -59,6 +60,7 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isWebCrawlerAllowed: plan.limits.connections.isWebCrawlerAllowed,
     isSalesforceAllowed: plan.limits.connections.isSalesforceAllowed,
     isSSOAllowed: plan.limits.users.isSSOAllowed,
+    isSCIMAllowed: plan.limits.users.isSCIMAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
     dataSourcesCount: plan.limits.dataSources.count,
@@ -116,6 +118,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       users: {
         maxUsers: parseMaybeNumber(editingPlan.maxUsers),
         isSSOAllowed: editingPlan.isSSOAllowed,
+        isSCIMAllowed: editingPlan.isSCIMAllowed,
       },
       vaults: {
         maxVaults: parseMaybeNumber(editingPlan.maxVaults),
@@ -142,6 +145,7 @@ const getEmptyPlan = (): EditingPlanType => ({
   isSlackBotAllowed: false,
   isWebCrawlerAllowed: false,
   isSSOAllowed: false,
+  isSCIMAllowed: false,
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
@@ -241,13 +245,6 @@ export const PLAN_FIELDS = {
     title: "Salesforce",
     IconComponent: () => <SalesforceLogo className="h-4 w-4" />,
   },
-  isSSOAllowed: {
-    type: "boolean",
-    width: "tiny",
-    title: "SSO",
-    error: (plan: EditingPlanType) =>
-      plan.isNewPlan ? "SSO cannot be enabled for new plans" : null,
-  },
   maxMessages: {
     type: "number",
     width: "small",
@@ -286,6 +283,16 @@ export const PLAN_FIELDS = {
     width: "small",
     title: "# Users",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxUsers),
+  },
+  isSSOAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "SSO",
+  },
+  isSCIMAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "SCIM",
   },
   maxVaults: {
     type: "number",

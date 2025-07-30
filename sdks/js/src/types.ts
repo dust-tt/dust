@@ -617,8 +617,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool"
   | "show_debug_tools"
   | "usage_data_api"
-  | "workos"
-  | "workos_user_provisioning"
   | "xai_feature"
 >();
 

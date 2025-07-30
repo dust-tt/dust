@@ -93,16 +93,9 @@ export default function WorkspaceAdmin({
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-
   const hasVerifiedDomains = workspaceVerifiedDomains.length > 0;
-
-  const hasWorkOSProvisioningFlag = useMemo(
-    () => featureFlags.includes("workos_user_provisioning"),
-    [featureFlags]
-  );
-
-  const isProvisioningEnabled = hasWorkOSProvisioningFlag && hasVerifiedDomains;
+  const isProvisioningEnabled =
+    plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
 
   const onInviteClick = useCallback(
     (event: MouseEvent) => {

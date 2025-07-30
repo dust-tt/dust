@@ -40,6 +40,7 @@ export class Plan extends BaseModel<Plan> {
   declare isManagedWebCrawlerAllowed: boolean;
   declare isManagedSalesforceAllowed: boolean;
   declare isSSOAllowed: boolean;
+  declare isSCIMAllowed: boolean;
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
@@ -133,6 +134,10 @@ Plan.init(
       defaultValue: false,
     },
     isSSOAllowed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isSCIMAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
