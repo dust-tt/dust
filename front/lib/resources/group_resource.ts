@@ -1358,21 +1358,16 @@ export class GroupResource extends BaseResource<GroupModel> {
       return [];
     }
 
-    try {
-      const provisionedGroups = await this.baseFetch(auth, {
-        where: {
-          kind: "provisioned",
-          name: {
-            [Op.in]: [ADMIN_GROUP_NAME, BUILDER_GROUP_NAME],
-          },
+    const provisionedGroups = await this.baseFetch(auth, {
+      where: {
+        kind: "provisioned",
+        name: {
+          [Op.in]: [ADMIN_GROUP_NAME, BUILDER_GROUP_NAME],
         },
-      });
+      },
+    });
 
-      return provisionedGroups;
-    } catch (error) {
-      // If there's an error checking, err on the side of caution and don't restrict
-      return [];
-    }
+    return provisionedGroups;
   }
 
   /**

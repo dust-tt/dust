@@ -17,7 +17,7 @@ import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
-import { useProvisioningStatus } from "@app/lib/swr/workspaces";
+import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type {
   ActiveRoleType,
   MembershipInvitationType,

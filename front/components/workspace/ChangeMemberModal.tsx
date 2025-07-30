@@ -24,7 +24,7 @@ import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { handleMembersRoleChange } from "@app/lib/client/members";
-import { useProvisioningStatus } from "@app/lib/swr/workspaces";
+import { useProvisioningStatus } from "@app/lib/swr/workos";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type {
   ActiveRoleType,
