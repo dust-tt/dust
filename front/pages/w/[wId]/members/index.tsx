@@ -10,7 +10,7 @@ import {
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { PaginationState } from "@tanstack/react-table";
 import type { InferGetServerSidePropsType } from "next";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
@@ -28,6 +28,7 @@ import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
@@ -92,9 +93,16 @@ export default function WorkspaceAdmin({
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+
   const hasVerifiedDomains = workspaceVerifiedDomains.length > 0;
-  const isProvisioningEnabled =
-    plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
+
+  const hasWorkOSProvisioningFlag = useMemo(
+    () => featureFlags.includes("workos_user_provisioning"),
+    [featureFlags]
+  );
+
+  const isProvisioningEnabled = hasWorkOSProvisioningFlag && hasVerifiedDomains;
 
   const onInviteClick = useCallback(
     (event: MouseEvent) => {

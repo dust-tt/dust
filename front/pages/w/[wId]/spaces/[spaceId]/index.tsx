@@ -74,7 +74,6 @@ export default function Space({
   owner,
   userId,
   space,
-  plan,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showSpaceEditionModal, setShowSpaceEditionModal] =
     React.useState(false);
@@ -123,7 +122,6 @@ export default function Space({
         onClose={() => setShowSpaceEditionModal(false)}
         space={space}
         isAdmin={isAdmin}
-        plan={plan}
       />
     </Page.Vertical>
   );
