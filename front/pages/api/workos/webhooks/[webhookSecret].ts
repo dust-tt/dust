@@ -110,9 +110,19 @@ async function handler(
     });
   }
 
-  await launchWorkOSEventsWorkflow({
+  const workflowId = await launchWorkOSEventsWorkflow({
     eventPayload: result.value,
   });
+
+  if (workflowId.isErr()) {
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: workflowId.error.message,
+      },
+    });
+  }
 
   res.status(200).send();
 }
