@@ -105,6 +105,16 @@ export const MCP_SERVER_TO_ACTION_TYPE_MAP: Record<
   query_tables: "QUERY_TABLES",
 } as const;
 
+export const ACTION_TYPE_TO_MCP_SERVER_MAP: Record<
+  SupportedAgentBuilderActionType,
+  AgentBuilderMCPServerName
+> = {
+  EXTRACT_DATA: "extract_data",
+  SEARCH: "search",
+  INCLUDE_DATA: "include_data",
+  QUERY_TABLES: "query_tables",
+} as const;
+
 // Legacy alias for backward compatibility
 export const KNOWLEDGE_SERVER_NAMES = AGENT_BUILDER_MCP_SERVERS;
 export type KnowledgeServerName = AgentBuilderMCPServerName;
