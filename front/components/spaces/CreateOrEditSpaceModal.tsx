@@ -45,10 +45,10 @@ import {
   useSpaceInfo,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   GroupType,
   LightWorkspaceType,
+  PlanType,
   SpaceType,
   UserType,
 } from "@app/types";
@@ -69,6 +69,7 @@ interface CreateOrEditSpaceModalProps {
   onCreated?: (space: SpaceType) => void;
   owner: LightWorkspaceType;
   space?: SpaceType;
+  plan: PlanType;
 }
 
 export function CreateOrEditSpaceModal({
@@ -79,6 +80,7 @@ export function CreateOrEditSpaceModal({
   onCreated,
   owner,
   space,
+  plan,
 }: CreateOrEditSpaceModalProps) {
   const confirm = React.useContext(ConfirmContext);
   const [spaceName, setSpaceName] = useState<string>(space?.name ?? "");
@@ -96,11 +98,7 @@ export function CreateOrEditSpaceModal({
     useState<MembersManagementType>("manual");
   const [isDirty, setIsDirty] = useState(false);
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-
-  const isWorkOSFeatureEnabled = hasFeature("workos_user_provisioning");
+  const isWorkOSFeatureEnabled = plan.limits.users.isSCIMAllowed;
 
   useEffect(() => {
     if (!isWorkOSFeatureEnabled) {

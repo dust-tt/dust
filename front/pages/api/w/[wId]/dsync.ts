@@ -7,7 +7,6 @@ import {
   getWorkOSOrganizationDSyncDirectories,
 } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { apiError } from "@app/logger/withlogging";
@@ -40,8 +39,8 @@ async function handler(
     });
   }
 
-  const flags = await getFeatureFlags(workspace);
-  if (!flags.includes("workos_user_provisioning")) {
+  const plan = auth.getNonNullablePlan();
+  if (!plan.limits.users.isSCIMAllowed) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {

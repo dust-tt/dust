@@ -23,7 +23,6 @@ import {
   useRemoveWorkspaceDomain,
   useWorkspaceDomains,
 } from "@app/lib/swr/workos";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType, PlanType, WorkspaceDomain } from "@app/types";
 
 import { WorkspaceSection } from "./WorkspaceSection";
@@ -43,12 +42,6 @@ export default function WorkspaceAccessPanel({
     owner,
   });
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  // Both workos and workos_user_provisioning are required to enable user provisioning.
-  const hasWorkOSUserProvisioningFeature = hasFeature(
-    "workos_user_provisioning"
-  );
-
   return (
     <div className="flex flex-col gap-6">
       <DomainVerification
@@ -66,8 +59,8 @@ export default function WorkspaceAccessPanel({
         owner={owner}
         plan={plan}
       />
-      {hasWorkOSUserProvisioningFeature && <Separator />}
-      {hasWorkOSUserProvisioningFeature && (
+      {plan.limits.users.isSCIMAllowed && <Separator />}
+      {plan.limits.users.isSCIMAllowed && (
         <UserProvisioning owner={owner} plan={plan} />
       )}
     </div>

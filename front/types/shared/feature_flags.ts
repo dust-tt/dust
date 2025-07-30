@@ -70,9 +70,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   labs_transcripts: {
     description: "Transcript feature (Labs)",
   },
-  okta_enterprise_connection: {
-    description: "Okta SSO enterprise connection",
-  },
   openai_o1_custom_assistants_feature: {
     description: "OpenAI o1 model for custom assistants",
   },
@@ -98,9 +95,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   usage_data_api: {
     description:
       "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",
-  },
-  workos_user_provisioning: {
-    description: "WorkOS user provisioning features",
   },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
