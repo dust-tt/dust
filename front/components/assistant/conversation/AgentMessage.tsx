@@ -1,3 +1,4 @@
+import { datadogLogs } from "@datadog/browser-logs";
 import {
   ArrowPathIcon,
   Button,
@@ -555,6 +556,9 @@ export function AgentMessage({
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
     if (agentMessage.status === "failed") {
+      datadogLogs.logger.info("Failed agent message rendered", {
+        agentMessage,
+      });
       if (
         agentMessage.error &&
         agentMessage.error.code ===
