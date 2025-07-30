@@ -164,7 +164,7 @@ function AgentNameInput() {
               }
             />
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-64" sideOffset={8}>
+          <DropdownMenuContent className="w-64">
             {isGenerating ? (
               <div className="flex items-center justify-center p-4">
                 <Spinner size="sm" />
