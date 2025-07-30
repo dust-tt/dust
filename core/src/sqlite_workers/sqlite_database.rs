@@ -255,8 +255,25 @@ async fn create_in_memory_sqlite_db_with_csv(
                 )
                 .await?;
                 let mut temp_file = NamedTempFile::new()?;
-                while let Some(byte) = stream.next().await {
-                    temp_file.write_all(&[byte.unwrap()]).unwrap();
+
+                // Buffer bytes to avoid writing one byte at a time
+                const BUFFER_SIZE: usize = 64 * 1024; // 64KB buffer
+                let mut buffer = Vec::with_capacity(BUFFER_SIZE);
+
+                while let Some(byte_result) = stream.next().await {
+                    let byte = byte_result?;
+                    buffer.push(byte);
+
+                    // Write buffer when it's full
+                    if buffer.len() >= BUFFER_SIZE {
+                        temp_file.write_all(&buffer)?;
+                        buffer.clear();
+                    }
+                }
+
+                // Write any remaining bytes in the buffer
+                if !buffer.is_empty() {
+                    temp_file.write_all(&buffer)?;
                 }
 
                 Ok::<_, anyhow::Error>((table_name, temp_file, create_sql))
