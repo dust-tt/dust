@@ -8,7 +8,7 @@ const CONTENT_SECURITY_POLICIES = [
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' *.googletagmanager.com *.google-analytics.com *.hsforms.net *.hs-scripts.com *.hs-analytics.net *.hubspot.com *.hs-banner.com *.hscollectedforms.net *.usercentrics.eu *.cr-relay.com *.licdn.com *.datadoghq-browser-agent.com ${showReactScan ? "unpkg.com" : ""};`,
   `style-src 'self' 'unsafe-inline';`,
   `img-src 'self' data: https:;`,
-  `connect-src 'self' blob: browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com *.usercentrics.eu *.linkedin.com;`,
+  `connect-src 'self' blob: browser-intake-datadoghq.eu *.google-analytics.com *.googlesyndication.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com *.usercentrics.eu *.linkedin.com *.google.com;`,
   `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.googletagmanager.com;`,
   `font-src 'self' data: dust.tt *.dust.tt;`,
   `object-src 'none';`,
