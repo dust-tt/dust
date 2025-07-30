@@ -132,16 +132,13 @@ const createServer = (
   });
 
   server.tool(
-    "search_messages",
-    "Search messages accross all channels and dms for the current user",
+    "semantic_search_messages",
+    "Use semantic search to find messages across all channels and DMs for the current user",
     {
-      keywords: z
+      query: z
         .string()
-        .array()
-        .min(1)
         .describe(
-          "Between 1 and 3 keywords to retrieve relevant messages " +
-            "based on the user request and conversation context."
+          "A query to retrieve relevant messages based on the user request and conversation context. For it to be treated as semantic search, make sure it begins with a question word such as what, where, how, etc, and ends with a question mark. If the user asks to limit to certain channels, don't make them part of this query. Instead, use the `channels` parameter to limit the search to specific channels."
         ),
       channels: z
         .string()
@@ -160,7 +157,7 @@ const createServer = (
         .array()
         .optional()
         .describe(
-          "Narrow the search to direct messages sent to specific users ids (optional)"
+          "Narrow the search to direct messages sent to specific user IDs (optional)"
         ),
       usersMentioned: z
         .string()
@@ -181,7 +178,7 @@ const createServer = (
     },
     async (
       {
-        keywords,
+        query,
         usersFrom,
         usersTo,
         usersMentioned,
@@ -194,74 +191,55 @@ const createServer = (
         throw new Error("Unreachable: missing agentLoopRunContext.");
       }
 
-      if (keywords.length > 5) {
-        return makeMCPToolTextError(
-          "The search query is too broad. Please reduce the number of keywords to 5 or less."
-        );
-      }
-
       const accessToken = authInfo?.token;
       const slackClient = await getSlackClient(accessToken);
 
       const timeFrame = parseTimeFrame(relativeTimeFrame);
 
       try {
-        // Search in slack only support AND queries which can easily return 0 hits.
-        // To avoid this, we'll simulate an OR query by searching for each keyword separately.
-        // Then we will aggregate the results.
-        const results: Match[][] = await concurrentExecutor(
-          keywords,
-          async (keyword) => {
-            let query = keyword;
+        let searchQuery = query;
 
-            if (timeFrame) {
-              const timestampInMs = timeFrameFromNow(timeFrame);
-              const date = new Date(timestampInMs);
-              query = `${query} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
-            }
+        if (timeFrame) {
+          const timestampInMs = timeFrameFromNow(timeFrame);
+          const date = new Date(timestampInMs);
+          searchQuery = `${searchQuery} after:${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+        }
 
-            if (channels && channels.length > 0) {
-              query = `${query} ${channels
-                .map((channel) =>
-                  channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`
-                )
-                .join(" ")}`;
-            }
+        if (channels && channels.length > 0) {
+          searchQuery = `${searchQuery} ${channels
+            .map((channel) =>
+              channel.charAt(0) === "#" ? `in:${channel}` : `in:#${channel}`
+            )
+            .join(" ")}`;
+        }
 
-            if (usersFrom && usersFrom.length > 0) {
-              query = `${query} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
-            }
+        if (usersFrom && usersFrom.length > 0) {
+          searchQuery = `${searchQuery} ${usersFrom.map((user) => `from:${user}`).join(" ")}`;
+        }
 
-            if (usersTo && usersTo.length > 0) {
-              query = `${query} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
-            }
+        if (usersTo && usersTo.length > 0) {
+          searchQuery = `${searchQuery} ${usersTo.map((user) => `to:${user}`).join(" ")}`;
+        }
 
-            if (usersMentioned && usersMentioned.length > 0) {
-              query = `${query} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
-            }
+        if (usersMentioned && usersMentioned.length > 0) {
+          searchQuery = `${searchQuery} ${usersMentioned.map((user) => `${user}`).join(" ")}`;
+        }
 
-            const messages = await slackClient.search.messages({
-              query,
-              sort: "score",
-              sort_dir: "desc",
-              highlight: false,
-              count: SLACK_SEARCH_ACTION_NUM_RESULTS,
-              page: 1,
-            });
+        console.log(`Searching Slack with query: ${searchQuery}`);
+        const messages = await slackClient.search.messages({
+          query: searchQuery,
+          sort: "score",
+          sort_dir: "desc",
+          highlight: false,
+          count: SLACK_SEARCH_ACTION_NUM_RESULTS,
+          page: 1,
+        });
 
-            if (!messages.ok) {
-              throw new Error(messages.error);
-            }
+        if (!messages.ok) {
+          throw new Error(messages.error);
+        }
 
-            return messages.messages?.matches ?? [];
-          },
-          { concurrency: 3 }
-        );
-
-        // Flatten the results, order by score descending.
-        const rawMatches = results
-          .flat()
-          .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+        const rawMatches = messages.messages?.matches ?? [];
 
         // Filter out matches that don't have a text.
         const matchesWithText = rawMatches.filter((match) => !!match.text);
@@ -286,7 +264,7 @@ const createServer = (
               {
                 type: "resource" as const,
                 resource: makeQueryResource(
-                  keywords,
+                  [query],
                   timeFrame,
                   channels,
                   usersFrom,
@@ -333,7 +311,7 @@ const createServer = (
               {
                 type: "resource" as const,
                 resource: makeQueryResource(
-                  keywords,
+                  [query],
                   timeFrame,
                   channels,
                   usersFrom,
