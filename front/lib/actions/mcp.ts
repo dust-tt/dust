@@ -29,7 +29,6 @@ import {
   isToolGeneratedFile,
   isToolMarkerResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
@@ -54,7 +53,7 @@ import {
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
@@ -532,6 +531,13 @@ export async function* runToolWithStreaming(
     citationsAllocated: stepContext.citationsCount,
   };
 
+  const tags = [
+    `action:${actionConfiguration.name}`,
+    `mcp_server:${actionConfiguration.mcpServerName}`,
+    `workspace:${owner.sId}`,
+    `workspace_name:${owner.name}`,
+  ];
+
   for (const value of Object.values(rawInputs)) {
     if (typeof value === "string" && hasNullUnicodeCharacter(value)) {
       yield {
@@ -549,162 +555,82 @@ export async function* runToolWithStreaming(
     }
   }
 
-  // Create the action object in the database and yield an event for
-  // the generation of the params. We store the action here as the params have been generated, if
-  // an error occurs later on, the error will be stored on the parent agent message.
-  const action = await AgentMCPAction.create({
-    agentMessageId: agentMessage.agentMessageId,
-    mcpServerConfigurationId: `${actionConfiguration.id}`,
-    workspaceId: owner.id,
-    isError: false,
-    executionState: "pending",
-    version: 0,
-    stepContentId,
-    citationsAllocated: stepContext.citationsCount,
+  let action = await AgentMCPAction.findOne({
+    where: {
+      agentMessageId: agentMessage.agentMessageId,
+      workspaceId: owner.id,
+      stepContentId,
+    },
   });
 
-  const mcpAction = new MCPActionType({
-    ...actionBaseParams,
-    executionState: "pending",
-    id: action.id,
-    isError: false,
-    output: null,
-    type: "tool_action",
-  });
+  // The first time we see this action: create the action object in the database, emit a tool_params
+  // event and then either go on if the action is allowed or emit a tool_approve_execution event
+  // and return.
+  if (!action) {
+    action = await AgentMCPAction.create({
+      agentMessageId: agentMessage.agentMessageId,
+      mcpServerConfigurationId: `${actionConfiguration.id}`,
+      workspaceId: owner.id,
+      isError: false,
+      executionState: "pending",
+      version: 0,
+      stepContentId,
+      citationsAllocated: stepContext.citationsCount,
+    });
 
-  yield {
-    type: "tool_params",
-    created: Date.now(),
-    configurationId: agentConfiguration.sId,
-    messageId: agentMessage.sId,
-    action: mcpAction,
-  };
+    const mcpAction = new MCPActionType({
+      ...actionBaseParams,
+      executionState: "pending",
+      id: action.id,
+      isError: false,
+      output: null,
+      type: "tool_action",
+    });
 
-  const { status: s } = await getExecutionStatusFromConfig(
-    auth,
-    actionConfiguration,
-    agentMessage
-  );
-  let status:
-    | "allowed_implicitly"
-    | "allowed_explicitly"
-    | "pending"
-    | "timeout"
-    | "denied" = s;
-
-  if (status === "pending") {
     yield {
-      type: "tool_approve_execution",
+      type: "tool_params",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      conversationId: conversation.sId,
-      actionId: mcpAction.getSId(owner),
       action: mcpAction,
-      inputs: rawInputs,
-      stake: actionConfiguration.permission,
-      metadata: {
-        toolName: actionConfiguration.originalName,
-        mcpServerName: actionConfiguration.mcpServerName,
-        agentName: agentConfiguration.name,
-        icon: actionConfiguration.icon,
-      },
     };
 
-    try {
-      const actionEventGenerator = getMCPEvents({
-        actionId: mcpAction.getSId(owner),
-      });
+    // If we're not allowed, we yield a tool_approve_execution event and return.
+    // The action will eventually be run when the user validates (happens in a new workflow).
+    const { status } = await getExecutionStatusFromConfig(
+      auth,
+      actionConfiguration,
+      agentMessage
+    );
 
-      localLogger.info(
-        {
-          workspaceId: owner.sId,
-          actionName: actionConfiguration.name,
-        },
-        "Waiting for action validation"
-      );
-
-      // Start listening for action events
-      for await (const event of actionEventGenerator) {
-        const { data } = event;
-
-        // Check that the event is indeed for this action.
-        if (getResourceIdFromSId(data.actionId) !== mcpAction.id) {
-          status = "denied";
-          break;
-        }
-
-        if (data.type === "always_approved") {
-          const user = auth.getNonNullableUser();
-          await user.appendToMetadata(
-            `toolsValidations:${actionConfiguration.toolServerId}`,
-            `${actionConfiguration.name}`
-          );
-        }
-
-        if (data.type === "approved" || data.type === "always_approved") {
-          status = "allowed_explicitly";
-          break;
-        } else if (data.type === "rejected") {
-          status = "denied";
-          break;
-        }
-      }
-    } catch (error) {
-      localLogger.error({ error }, "Error checking action validation status");
+    if (status === "pending") {
       yield {
-        type: "tool_error",
+        type: "tool_approve_execution",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        error: {
-          code: "tool_error",
-          message: `Error checking action validation status: ${JSON.stringify(error)}`,
-          metadata: null,
+        conversationId: conversation.sId,
+        actionId: mcpAction.getSId(owner),
+        action: mcpAction,
+        inputs: rawInputs,
+        stake: actionConfiguration.permission,
+        metadata: {
+          toolName: actionConfiguration.originalName,
+          mcpServerName: actionConfiguration.mcpServerName,
+          agentName: agentConfiguration.name,
+          icon: actionConfiguration.icon,
         },
       };
       return;
     }
+
+    // If we're allowed implicitly, we update the state and run the action.
+    action = await action.update({
+      executionState: status,
+    });
   }
 
-  // The status was not updated by the event, or no event was received.
-  // In this case, we set the status to timeout.
-  if (status === "pending") {
-    status = "timeout";
-  }
-
-  await action.update({
-    executionState: status,
-  });
-
-  const tags = [
-    `action:${actionConfiguration.name}`,
-    `mcp_server:${actionConfiguration.mcpServerName}`,
-    `workspace:${owner.sId}`,
-    `workspace_name:${owner.name}`,
-  ];
-
-  if (status === "timeout") {
-    statsDClient.increment("mcp_actions_timeout.count", 1, tags);
-    localLogger.info(
-      {
-        workspaceId: owner.sId,
-        actionName: actionConfiguration.name,
-      },
-      "Tool validation timed out"
-    );
-    yield updateResourceAndBuildErrorEvent(
-      action,
-      agentConfiguration,
-      agentMessage,
-      actionBaseParams,
-      "denied",
-      "The action validation timed out. Using this action is hence forbidden for this message."
-    );
-    return;
-  }
-
-  if (status === "denied") {
+  if (action.executionState === "denied") {
     statsDClient.increment("mcp_actions_denied.count", 1, tags);
     localLogger.info(
       {
@@ -723,6 +649,15 @@ export async function* runToolWithStreaming(
     );
     return;
   }
+
+  const mcpAction = new MCPActionType({
+    ...actionBaseParams,
+    executionState: action.executionState,
+    id: action.id,
+    isError: false,
+    output: null,
+    type: "tool_action",
+  });
 
   // We put back the preconfigured inputs (data sources for instance) from the agent configuration if any.
   const inputs = augmentInputsWithConfiguration({
@@ -862,7 +797,7 @@ export async function* runToolWithStreaming(
       agentConfiguration,
       agentMessage,
       actionBaseParams,
-      status,
+      action.executionState,
       errorMessage
     );
     return;
@@ -1028,7 +963,7 @@ export async function* runToolWithStreaming(
         snippet: f.snippet,
         title: f.fileName,
       })),
-      executionState: status,
+      executionState: action.executionState,
       id: action.id,
       isError: false,
       output: removeNulls(outputItems.map(hideFileFromActionOutput)),
