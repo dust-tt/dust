@@ -15,6 +15,7 @@ import { DescriptionSection } from "@app/components/agent_builder/capabilities/k
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
 import {
   getDataSourceConfigurations,
+  getDataSourceTree,
   getJsonSchema,
   getTimeFrame,
   isValidPage,
@@ -25,6 +26,7 @@ import {
   CAPABILITY_CONFIGS,
   generateActionFromFormData,
 } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/utils/transformations";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import type {
   CapabilityFormData,
@@ -68,7 +70,10 @@ export function KnowledgeConfigurationSheet({
     }, 200);
   };
 
-  const handleSave = (formData: CapabilityFormData) => {
+  const handleSave = (
+    formData: CapabilityFormData,
+    dataSourceConfigurations: DataSourceViewSelectionConfigurations
+  ) => {
     if (!config) {
       // never going here
       return;
@@ -77,7 +82,7 @@ export function KnowledgeConfigurationSheet({
     const newAction = generateActionFromFormData({
       config,
       formData,
-      dataSourceConfigurations: getDataSourceConfigurations(action),
+      dataSourceConfigurations,
       actionId: action?.id,
     });
 
@@ -97,10 +102,12 @@ export function KnowledgeConfigurationSheet({
   const { control, handleSubmit } = createFormControl<CapabilityFormData>({
     resolver: zodResolver(capabilityFormSchema),
     defaultValues: {
-      sources: {
-        in: [],
-        notIn: [],
-      },
+      sources: action
+        ? getDataSourceTree(action)
+        : {
+            in: [],
+            notIn: [],
+          },
       description: action?.description ?? "",
       timeFrame: getTimeFrame(action),
       jsonSchema: getJsonSchema(action),
@@ -120,8 +127,9 @@ export function KnowledgeConfigurationSheet({
           config={config}
           onClose={handleClose}
           action={action}
-          onSave={handleSubmit(handleSave)}
+          onSave={handleSave}
           control={control}
+          handleSubmit={handleSubmit}
         />
       )}
     </MultiPageSheet>
@@ -131,9 +139,15 @@ export function KnowledgeConfigurationSheet({
 interface KnowledgeConfigurationSheetContentProps {
   config: CapabilityConfig;
   action?: AgentBuilderAction;
-  onSave: () => void;
+  onSave: (
+    formData: CapabilityFormData,
+    dataSourceConfigurations: DataSourceViewSelectionConfigurations
+  ) => void;
   onClose: () => void;
   control: Control<CapabilityFormData>;
+  handleSubmit: (
+    fn: (data: CapabilityFormData) => void
+  ) => (e?: React.BaseSyntheticEvent) => Promise<void>;
 }
 
 // This component gets unmounted when config is null so no need to reset the state.
@@ -142,6 +156,7 @@ function KnowledgeConfigurationSheetContent({
   config,
   onSave,
   control,
+  handleSubmit,
 }: KnowledgeConfigurationSheetContentProps) {
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
@@ -154,10 +169,6 @@ function KnowledgeConfigurationSheetContent({
   const [currentPageId, setCurrentPageId] = useState<ConfigurationSheetPageId>(
     CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION
   );
-  const [dataSourceConfigurations, setDataSourceConfigurations] =
-    useState<DataSourceViewSelectionConfigurations>(() =>
-      getDataSourceConfigurations(action)
-    );
 
   const handlePageChange = (pageId: string) => {
     if (isValidPage(pageId, CONFIGURATION_SHEET_PAGE_IDS)) {
@@ -179,8 +190,6 @@ function KnowledgeConfigurationSheetContent({
               dataSourceViews={supportedDataSourceViews}
               allowedSpaces={spaces}
               owner={owner}
-              selectionConfigurations={dataSourceConfigurations}
-              setSelectionConfigurations={setDataSourceConfigurations}
               viewType="document"
             />
           </ScrollArea>
@@ -228,20 +237,24 @@ function KnowledgeConfigurationSheetContent({
   });
   const disableNext = useMemo(() => {
     if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION) {
-      return sources.in.length <= 0 && sources.notIn.length <= 0;
+      return sources.in.length === 0;
     }
     return false;
-  }, [currentPageId, sources.in.length, sources.notIn.length]);
+  }, [currentPageId, sources.in.length]);
 
   return (
     <MultiPageSheetContent
       pages={pages}
       currentPageId={currentPageId}
       onPageChange={handlePageChange}
-      onSave={async (e) => {
-        e.preventDefault();
-        onSave();
-      }}
+      onSave={handleSubmit((formData) => {
+        // Transform the tree structure to selection configurations
+        const dataSourceConfigurations = transformTreeToSelectionConfigurations(
+          formData.sources,
+          supportedDataSourceViews
+        );
+        onSave(formData, dataSourceConfigurations);
+      })}
       size="lg"
       showNavigation
       disableNext={disableNext}

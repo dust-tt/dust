@@ -181,11 +181,13 @@ export function isNodeSelected(
     }
   }
 
-  if (isIncluded) {
-    return hasChildExclusions ? "partial" : true;
-  }
-
-  return hasChildInclusions ? "partial" : false;
+  return isIncluded
+    ? hasChildExclusions
+      ? "partial"
+      : true
+    : hasChildInclusions
+      ? "partial"
+      : false;
 }
 
 export function computeNavigationPath(

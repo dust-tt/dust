@@ -192,48 +192,59 @@ export function DataSourceNodeTable({
         id: "select",
         enableSorting: false,
         enableHiding: false,
-        header: () => (
-          <Checkbox
-            size="xs"
-            checked={isCurrentNavigationEntrySelected()}
-            disabled={!isRowSelectable()}
-            onClick={(event) => event.stopPropagation()}
-            onCheckedChange={(state) => {
-              if (state === "indeterminate") {
-                removeCurrentNavigationEntry();
-                return;
-              }
-
-              if (state) {
-                selectCurrentNavigationEntry();
-              } else {
-                removeCurrentNavigationEntry();
-              }
-            }}
-          />
-        ),
-        cell: ({ row }) => (
-          <div className="flex h-full w-full items-center">
+        header: () => {
+          const selectionState = isCurrentNavigationEntrySelected();
+          return (
             <Checkbox
+              key={`header-${selectionState}`}
               size="xs"
-              checked={isRowSelected(row.original.id)}
-              disabled={!isRowSelectable(row.original.id)}
+              checked={selectionState}
+              disabled={!isRowSelectable()}
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={(state) => {
-                if (state === "indeterminate") {
-                  removeNode(row.original.id);
+                // When clicking a partial checkbox, select all
+                if (selectionState === "partial") {
+                  selectCurrentNavigationEntry();
                   return;
                 }
 
                 if (state) {
-                  selectNode(row.original.id);
+                  selectCurrentNavigationEntry();
                 } else {
-                  removeNode(row.original.id);
+                  removeCurrentNavigationEntry();
                 }
               }}
             />
-          </div>
-        ),
+          );
+        },
+        cell: ({ row }) => {
+          const selectionState = isRowSelected(row.original.id);
+
+          return (
+            <div className="flex h-full w-full items-center">
+              <Checkbox
+                key={`${row.original.id}-${selectionState}`}
+                size="xs"
+                checked={selectionState}
+                disabled={!isRowSelectable(row.original.id)}
+                onClick={(event) => event.stopPropagation()}
+                onCheckedChange={(state) => {
+                  // When clicking a partial checkbox, select all
+                  if (selectionState === "partial") {
+                    selectNode(row.original.id);
+                    return;
+                  }
+
+                  if (state) {
+                    selectNode(row.original.id);
+                  } else {
+                    removeNode(row.original.id);
+                  }
+                }}
+              />
+            </div>
+          );
+        },
         meta: {
           sizeRatio: 5,
         },
