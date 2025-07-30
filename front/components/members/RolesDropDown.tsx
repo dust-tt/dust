@@ -18,7 +18,11 @@ interface RoleDropDownProps {
   disabled?: boolean;
 }
 
-export function RoleDropDown({ onChange, selectedRole, disabled = false }: RoleDropDownProps) {
+export function RoleDropDown({
+  onChange,
+  selectedRole,
+  disabled = false,
+}: RoleDropDownProps) {
   if (disabled) {
     return (
       <Chip

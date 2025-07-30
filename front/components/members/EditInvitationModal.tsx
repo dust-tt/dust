@@ -45,7 +45,8 @@ export function EditInvitationModal({
   });
 
   // Check if this invitation's role would be managed by provisioning groups
-  const isRoleManagedByProvisioning = hasActiveRoleProvisioningGroups && 
+  const isRoleManagedByProvisioning =
+    hasActiveRoleProvisioningGroups &&
     (selectedRole === "admin" || selectedRole === "builder");
 
   useEffect(() => {
@@ -153,7 +154,9 @@ export function EditInvitationModal({
           rightButtonProps={{
             label: "Update role",
             onClick: handleSave,
-            disabled: selectedRole === invitation?.initialRole || isRoleManagedByProvisioning,
+            disabled:
+              selectedRole === invitation?.initialRole ||
+              isRoleManagedByProvisioning,
           }}
         />
       </SheetContent>

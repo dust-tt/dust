@@ -1349,7 +1349,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator
   ): Promise<boolean> {
     const owner = auth.getNonNullableWorkspace();
-    
+
     // Check if workspace has WorkOS organization ID (required for provisioning)
     if (!owner.workOSOrganizationId) {
       return false;
@@ -1370,9 +1370,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
 
       // Return true if both dust-admins and dust-builders groups exist and are provisioned
-      const hasAdminGroup = provisionedGroups.some(g => g.name === ADMIN_GROUP_NAME);
-      const hasBuilderGroup = provisionedGroups.some(g => g.name === BUILDER_GROUP_NAME);
-      
+      const hasAdminGroup = provisionedGroups.some(
+        (g) => g.name === ADMIN_GROUP_NAME
+      );
+      const hasBuilderGroup = provisionedGroups.some(
+        (g) => g.name === BUILDER_GROUP_NAME
+      );
+
       return hasAdminGroup && hasBuilderGroup;
     } catch (error) {
       // If there's an error checking, err on the side of caution and don't restrict

@@ -12,15 +12,13 @@ export type GetProvisioningStatusResponseBody = {
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<
-    WithAPIErrorResponse<GetProvisioningStatusResponseBody>
-  >,
+  res: NextApiResponse<WithAPIErrorResponse<GetProvisioningStatusResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   switch (req.method) {
     case "GET":
       try {
-        const hasActiveRoleProvisioningGroups = 
+        const hasActiveRoleProvisioningGroups =
           await GroupResource.hasActiveRoleProvisioningGroups(auth);
 
         return res.status(200).json({

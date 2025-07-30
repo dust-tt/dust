@@ -167,7 +167,8 @@ export function useProvisioningStatus({
   );
 
   return {
-    hasActiveRoleProvisioningGroups: data?.hasActiveRoleProvisioningGroups ?? false,
+    hasActiveRoleProvisioningGroups:
+      data?.hasActiveRoleProvisioningGroups ?? false,
     isProvisioningStatusLoading: !error && !data && !disabled,
     isProvisioningStatusError: error,
   };
