@@ -1,9 +1,10 @@
 import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import { Breadcrumbs, SearchInput, Spinner } from "@dust-tt/sparkle";
-import type { Dispatch, SetStateAction } from "react";
 import { useMemo, useState } from "react";
+import type { Control } from "react-hook-form";
 
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import {
   DataSourceBuilderProvider,
   useDataSourceBuilderContext,
@@ -21,26 +22,23 @@ import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceDataSourceViewsWithDetails } from "@app/lib/swr/spaces";
 import type {
   ContentNodesViewType,
-  DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
 
-interface DataSourceBuilderSelectorProps {
+type DataSourceBuilderSelectorProps = {
   allowedSpaces?: SpaceType[];
   owner: LightWorkspaceType;
   dataSourceViews: DataSourceViewType[];
-  selectionConfigurations: DataSourceViewSelectionConfigurations;
-  setSelectionConfigurations: Dispatch<
-    SetStateAction<DataSourceViewSelectionConfigurations>
-  >;
   viewType: ContentNodesViewType;
-}
+  control: Control<CapabilityFormData>;
+};
 
-export const DataSourceBuilderSelector = (
-  props: DataSourceBuilderSelectorProps
-) => {
+export const DataSourceBuilderSelector = ({
+  control,
+  ...props
+}: DataSourceBuilderSelectorProps) => {
   const { spaces, isSpacesLoading } = useSpacesContext();
 
   if (isSpacesLoading) {
@@ -48,7 +46,7 @@ export const DataSourceBuilderSelector = (
   }
 
   return (
-    <DataSourceBuilderProvider spaces={spaces}>
+    <DataSourceBuilderProvider control={control} spaces={spaces}>
       <DataSourceBuilderSelectorContent {...props} />
     </DataSourceBuilderProvider>
   );
@@ -59,7 +57,7 @@ export const DataSourceBuilderSelectorContent = ({
   dataSourceViews,
   owner,
   viewType,
-}: DataSourceBuilderSelectorProps) => {
+}: Omit<DataSourceBuilderSelectorProps, "control">) => {
   const {
     spaces,
     navigationHistory,
