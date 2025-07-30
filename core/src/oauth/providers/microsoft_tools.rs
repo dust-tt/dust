@@ -104,7 +104,6 @@ impl Provider for MicrosoftToolsConnectionProvider {
                     "client_secret": *OAUTH_MICROSOFT_TOOLS_CLIENT_SECRET,
                     "code": code,
                     "redirect_uri": redirect_uri,
-                    "scope": "Mail.ReadWrite Mail.ReadWrite.Shared User.Read",
                 }),
             ),
         };
@@ -163,7 +162,6 @@ impl Provider for MicrosoftToolsConnectionProvider {
                         "client_id": *OAUTH_MICROSOFT_TOOLS_CLIENT_ID,
                         "client_secret": *OAUTH_MICROSOFT_TOOLS_CLIENT_SECRET,
                         "refresh_token": refresh_token,
-                        "scope": "Mail.ReadWrite Mail.ReadWrite.Shared User.Read",
                     }),
                 )
             }

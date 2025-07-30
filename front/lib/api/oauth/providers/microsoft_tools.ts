@@ -21,14 +21,16 @@ export class MicrosoftToolsOAuthProvider implements BaseOAuthStrategyProvider {
     clientId?: string;
     extraConfig?: ExtraConfigType;
   }) {
-    const scope = extraConfig?.scope;
+    if (!extraConfig || !extraConfig.scope) {
+      throw new Error("Missing authorization scope");
+    }
 
     const qs = querystring.stringify({
       response_type: "code",
       client_id: clientId || config.getOAuthMicrosoftToolsClientId(),
       state: connection.connection_id,
       redirect_uri: finalizeUriForProvider("microsoft_tools"),
-      scope,
+      scope: extraConfig.scope,
       prompt: "consent",
     });
     return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
@@ -44,8 +46,8 @@ export class MicrosoftToolsOAuthProvider implements BaseOAuthStrategyProvider {
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
-      // Allow scope to be specified for Microsoft Tools
-      return true;
+      // Require scope to be specified for Microsoft Tools
+      return !!extraConfig.scope;
     }
     return Object.keys(extraConfig).length === 0;
   }
