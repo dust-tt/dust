@@ -16,20 +16,18 @@ let REFS: string[] | null = null;
 const getRand = rand("chawarma");
 
 export const getRefs = () => {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789".split("");
   if (REFS === null) {
-    REFS = "abcdefghijklmnopqrstuvwxyz0123456789"
-      .split("")
-      .map((c) => {
-        return "abcdefghijklmnopqrstuvwxyz0123456789".split("").map((n) => {
-          return `${c}${n}`;
-        });
-      })
-      .flat();
-    // randomize
-    REFS.sort(() => {
-      const r = getRand();
-      return r > 0.5 ? 1 : -1;
-    });
+    REFS = [];
+    for (const c1 of alphabet) {
+      for (const c2 of alphabet) {
+        for (const c3 of alphabet) {
+          REFS.push(`${c1}${c2}${c3}`);
+        }
+      }
+    }
+    // Randomize.
+    REFS.sort(() => (getRand() > 0.5 ? 1 : -1));
   }
   return REFS;
 };
@@ -40,9 +38,9 @@ export const getRefs = () => {
 export function citationMetaPrompt() {
   return (
     "## CITING DOCUMENTS\n" +
-    "To cite documents or web pages retrieved with a 2-character REFERENCE, " +
+    "To cite documents or web pages retrieved with a 3-character REFERENCE, " +
     "use the markdown directive :cite[REFERENCE] " +
-    "(eg :cite[xx] or :cite[xx,xx] but not :cite[xx][xx]). " +
+    "(eg :cite[xxx] or :cite[xxx,xxx] but not :cite[xxx][xxx]). " +
     "Ensure citations are placed as close as possible to the related information."
   );
 }
