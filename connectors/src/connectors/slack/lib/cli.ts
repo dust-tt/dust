@@ -1,7 +1,6 @@
 import {
   getChannelById,
   joinChannel,
-  migrateChannelsFromLegacyBotToNewBot,
   updateSlackChannelInConnectorsDb,
 } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";

@@ -111,7 +111,10 @@ export async function getAgentConfigurationGroupIdsFromActions(
     auth,
     actions
       .filter((action) => isServerSideMCPServerConfiguration(action))
-      .map((action) => action.mcpServerViewId)
+      .map(
+        (action) =>
+          (action as ServerSideMCPServerConfigurationType).mcpServerViewId
+      )
   );
 
   for (const view of mcpServerViews) {
