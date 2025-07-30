@@ -1,6 +1,7 @@
 import TurndownService from "turndown";
 
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
+import { convertCustomFieldsToLabels } from "@connectors/connectors/zendesk/lib/custom_fields";
 import { getTicketInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import type {
   ZendeskFetchedTicket,
@@ -106,6 +107,8 @@ export async function syncTicket({
   forceResync,
   comments,
   users,
+  accessToken,
+  brandSubdomain,
 }: {
   ticket: ZendeskFetchedTicket;
   connector: ConnectorResource;
@@ -117,6 +120,8 @@ export async function syncTicket({
   forceResync: boolean;
   comments: ZendeskFetchedTicketComment[];
   users: ZendeskFetchedUser[];
+  accessToken: string;
+  brandSubdomain: string;
 }) {
   const connectorId = connector.id;
 
@@ -254,6 +259,13 @@ export async function syncTicket({
       ticketId: ticket.id,
     });
 
+    // Convert custom fields to labels
+    const customFieldLabels = await convertCustomFieldsToLabels({
+      ticket,
+      accessToken,
+      brandSubdomain,
+    });
+
     const parents = ticketInDb.getParentInternalIds(connectorId);
     await upsertDataSourceDocument({
       dataSourceConfig,
@@ -266,6 +278,7 @@ export async function syncTicket({
         `createdAt:${createdAtDate.getTime()}`,
         ...metadata,
         ...filterCustomTags(ticket.tags, logger),
+        ...customFieldLabels,
       ],
       parents,
       parentId: parents[1],

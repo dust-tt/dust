@@ -11,6 +11,7 @@ import type {
   ZendeskFetchedSection,
   ZendeskFetchedTicket,
   ZendeskFetchedTicketComment,
+  ZendeskFetchedTicketField,
   ZendeskFetchedUser,
 } from "@connectors/connectors/zendesk/lib/types";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
@@ -640,6 +641,28 @@ export async function listZendeskCategories({
   try {
     const response = await fetchFromZendeskWithRetries({ url, accessToken });
     return response?.categories ?? [];
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return [];
+    }
+    throw e;
+  }
+}
+
+/**
+ * Fetches all ticket fields (including custom fields) from the Zendesk API.
+ */
+export async function listZendeskTicketFields({
+  accessToken,
+  brandSubdomain,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+}): Promise<ZendeskFetchedTicketField[]> {
+  const url = `https://${brandSubdomain}.zendesk.com/api/v2/ticket_fields`;
+  try {
+    const response = await fetchFromZendeskWithRetries({ url, accessToken });
+    return response?.ticket_fields ?? [];
   } catch (e) {
     if (isZendeskNotFoundError(e)) {
       return [];
