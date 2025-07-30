@@ -47,7 +47,7 @@ export function ZendeskConfigView({
     configKey: hideCustomerDetailsConfigKey,
   });
   const {
-    configValue: retentionPeriodConfigValue,
+    configValue: retentionPeriodDays,
     mutateConfig: mutateRetentionPeriodConfig,
   } = useConnectorConfig({
     owner,
@@ -58,8 +58,6 @@ export function ZendeskConfigView({
   const syncUnresolvedTicketsEnabled =
     syncUnresolvedTicketsConfigValue === "true";
   const hideCustomerDetailsEnabled = hideCustomerDetailsConfigValue === "true";
-
-  const retentionPeriodDays = retentionPeriodConfigValue;
 
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
@@ -205,6 +203,7 @@ export function ZendeskConfigView({
               type="number"
               onChange={(e) => setRetentionInput(e.target.value)}
               disabled={readOnly || !isAdmin || loading}
+              placeholder={retentionPeriodDays ?? undefined}
               className="w-20"
             />
             <span className="text-sm text-muted-foreground">days</span>
