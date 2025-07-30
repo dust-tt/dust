@@ -148,7 +148,7 @@ async function searchCallback(
   const timeFrame = parseTimeFrame(relativeTimeFrame);
 
   if (!agentLoopContext?.runContext) {
-    throw new MCPError(
+    throw new Error(
       "agentLoopRunContext is required where the tool is called."
     );
   }
