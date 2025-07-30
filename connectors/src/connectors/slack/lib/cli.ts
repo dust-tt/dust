@@ -11,6 +11,7 @@ import {
 } from "@connectors/connectors/slack/lib/utils";
 import {
   launchSlackGarbageCollectWorkflow,
+  launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow,
   launchSlackSyncOneThreadWorkflow,
   launchSlackSyncWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
@@ -641,23 +642,9 @@ export const slack = async ({
         throw new Error("Slack bot is not enabled");
       }
 
-      const migrateRes = await migrateChannelsFromLegacyBotToNewBot(
-        legacyConnector,
-        slackBotConnector
-      );
-      if (migrateRes.isErr()) {
-        throw new Error(
-          `Could not migrate channels from legacy bot to new bot: ${migrateRes.error}`
-        );
-      }
-
-      logger.info(
-        {
-          legacyConnectorId: legacyConnector.id,
-          migratedChannelsCount: migrateRes.value.migratedChannelsCount,
-          slackBotConnectorId: slackBotConnector.id,
-        },
-        "Migrated channels from legacy bot to new bot"
+      await launchSlackMigrateChannelsFromLegacyBotToNewBotWorkflow(
+        legacyConnector.id,
+        slackBotConnector.id
       );
 
       return { success: true };

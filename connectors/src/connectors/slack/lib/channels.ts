@@ -439,6 +439,16 @@ export async function migrateChannelsFromLegacyBotToNewBot(
       continue;
     }
 
+    logger.info(
+      {
+        channelId: channel.id,
+        slackBotConnectorId: slackBotConnector.id,
+        slackConnectorId: slackConnector.id,
+        isPrivate: channel.is_private,
+      },
+      "Migrating channel"
+    );
+
     // Leave the channel but keep it in the database as it's still use to be indexed.
     await slackClient.conversations.leave({ channel: channel.id });
 
