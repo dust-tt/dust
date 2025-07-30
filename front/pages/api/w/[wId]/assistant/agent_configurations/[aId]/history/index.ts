@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   getAgentConfiguration,
-  getAllVersionsForAgentConfiguration,
+  listsAgentConfigurationVersions,
 } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -75,13 +75,10 @@ async function handler(
 
       const { limit } = queryValidation.right;
 
-      let agentConfigurations = await getAllVersionsForAgentConfiguration(
-        auth,
-        {
-          agentId: aId,
-          variant: "light",
-        }
-      );
+      let agentConfigurations = await listsAgentConfigurationVersions(auth, {
+        agentId: aId,
+        variant: "light",
+      });
 
       // Return the latest versions first (sort by version DESC, which is already done in getAllVersionsForOneAgent)
       if (limit) {

@@ -115,6 +115,36 @@ const sortStrategies: Record<SortStrategyType, SortStrategy> = {
 
 // Helper functions for agent fetching
 
+function getModelForAgentConfiguration(
+  agent: AgentConfiguration
+): AgentModelConfigurationType {
+  const model: AgentModelConfigurationType = {
+    providerId: agent.providerId,
+    modelId: agent.modelId,
+    temperature: agent.temperature,
+  };
+
+  if (agent.responseFormat) {
+    model.responseFormat = agent.responseFormat;
+  }
+
+  // Always set reasoning effort, using model default if null/undefined
+  if (agent.reasoningEffort) {
+    model.reasoningEffort = agent.reasoningEffort;
+  } else {
+    // Get the model configuration to use default reasoning effort
+    const modelConfig = getSupportedModelConfig({
+      providerId: agent.providerId,
+      modelId: agent.modelId,
+    });
+    if (modelConfig) {
+      model.reasoningEffort = modelConfig.defaultReasoningEffort;
+    }
+  }
+
+  return model;
+}
+
 /**
  * Enrich agent configurations with additional data (actions, tags, favorites).
  */
@@ -215,50 +245,6 @@ async function enrichAgentConfigurations<V extends AgentFetchVariant>(
 }
 
 /**
- * Get all versions of a single agent.
- */
-export async function getAllVersionsForAgentConfiguration<
-  V extends AgentFetchVariant,
->(
-  auth: Authenticator,
-  { agentId, variant }: { agentId: string; variant: V }
-): Promise<
-  V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
-> {
-  const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  let allAgents: AgentConfigurationType[];
-  if (isGlobalAgentId(agentId)) {
-    allAgents = await getGlobalAgents(auth, [agentId], variant);
-  } else {
-    const workspaceAgents = await AgentConfiguration.findAll({
-      where: {
-        workspaceId: owner.id,
-        sId: agentId,
-      },
-      order: [["version", "DESC"]],
-    });
-    allAgents = await enrichAgentConfigurations(auth, workspaceAgents, {
-      variant,
-    });
-  }
-
-  // Filter by permissions
-  const allowedAgents = allAgents.filter((a) =>
-    auth.canRead(
-      Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
-    )
-  );
-
-  return allowedAgents as V extends "full"
-    ? AgentConfigurationType[]
-    : LightAgentConfigurationType[];
-}
-
-/**
  * Get one specific version of a single agent
  */
 async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
@@ -304,6 +290,52 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
       ? LightAgentConfigurationType
       : AgentConfigurationType) || null
   );
+}
+
+// Main entry points for fetching agents.
+
+/**
+ * Get all versions of a single agent.
+ */
+export async function listsAgentConfigurationVersions<
+  V extends AgentFetchVariant,
+>(
+  auth: Authenticator,
+  { agentId, variant }: { agentId: string; variant: V }
+): Promise<
+  V extends "full" ? AgentConfigurationType[] : LightAgentConfigurationType[]
+> {
+  const owner = auth.workspace();
+  if (!owner || !auth.isUser()) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  let allAgents: AgentConfigurationType[];
+  if (isGlobalAgentId(agentId)) {
+    allAgents = await getGlobalAgents(auth, [agentId], variant);
+  } else {
+    const workspaceAgents = await AgentConfiguration.findAll({
+      where: {
+        workspaceId: owner.id,
+        sId: agentId,
+      },
+      order: [["version", "DESC"]],
+    });
+    allAgents = await enrichAgentConfigurations(auth, workspaceAgents, {
+      variant,
+    });
+  }
+
+  // Filter by permissions
+  const allowedAgents = allAgents.filter((a) =>
+    auth.canRead(
+      Authenticator.createResourcePermissionsFromGroupIds(a.requestedGroupIds)
+    )
+  );
+
+  return allowedAgents as V extends "full"
+    ? AgentConfigurationType[]
+    : LightAgentConfigurationType[];
 }
 
 /**
@@ -453,8 +485,6 @@ function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
   };
 }
 
-// Global agent configurations.
-
 function determineGlobalAgentIdsToFetch(
   agentsGetView: AgentsGetViewType
 ): string[] | undefined {
@@ -515,8 +545,6 @@ async function fetchGlobalAgentConfigurationForView(
   // If not in global or agent view, filter out global agents that are not active.
   return matchingGlobalAgents.filter((a) => a.status === "active");
 }
-
-// Workspace agent configurations.
 
 async function fetchWorkspaceAgentConfigurationsWithoutActions(
   auth: Authenticator,
@@ -664,36 +692,6 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     default:
       assertNever(agentsGetView);
   }
-}
-
-function getModelForAgentConfiguration(
-  agent: AgentConfiguration
-): AgentModelConfigurationType {
-  const model: AgentModelConfigurationType = {
-    providerId: agent.providerId,
-    modelId: agent.modelId,
-    temperature: agent.temperature,
-  };
-
-  if (agent.responseFormat) {
-    model.responseFormat = agent.responseFormat;
-  }
-
-  // Always set reasoning effort, using model default if null/undefined
-  if (agent.reasoningEffort) {
-    model.reasoningEffort = agent.reasoningEffort;
-  } else {
-    // Get the model configuration to use default reasoning effort
-    const modelConfig = getSupportedModelConfig({
-      providerId: agent.providerId,
-      modelId: agent.modelId,
-    });
-    if (modelConfig) {
-      model.reasoningEffort = modelConfig.defaultReasoningEffort;
-    }
-  }
-
-  return model;
 }
 
 async function fetchWorkspaceAgentConfigurationsForView(

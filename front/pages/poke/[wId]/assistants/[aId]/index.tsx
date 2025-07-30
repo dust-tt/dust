@@ -15,7 +15,7 @@ import type { ReactElement } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { getAllVersionsForAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type {
@@ -38,7 +38,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const agentConfigurations = await getAllVersionsForAgentConfiguration(auth, {
+  const agentConfigurations = await listsAgentConfigurationVersions(auth, {
     agentId: aId,
     variant: "full",
   });
