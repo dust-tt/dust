@@ -1,5 +1,6 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
+import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
   isExtractDataAction,
@@ -7,7 +8,6 @@ import {
   isSearchAction,
 } from "@app/components/agent_builder/types";
 import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
-import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import type {
   DataSourceViewSelectionConfigurations,
   TimeFrame,

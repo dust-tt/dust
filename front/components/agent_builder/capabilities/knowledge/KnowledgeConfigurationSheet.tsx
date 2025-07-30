@@ -1,5 +1,9 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import { MultiPageSheet, MultiPageSheetContent, ScrollArea } from "@dust-tt/sparkle";
+import {
+  MultiPageSheet,
+  MultiPageSheetContent,
+  ScrollArea,
+} from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import type { Control } from "react-hook-form";
@@ -16,9 +20,7 @@ import {
   isValidPage,
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
-import {
-  transformTreeToSelectionConfigurations,
-} from "@app/components/agent_builder/capabilities/knowledge/transformations";
+import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import type { CapabilityConfig } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
   CAPABILITY_CONFIGS,
@@ -31,7 +33,10 @@ import type {
   KnowledgeServerName,
 } from "@app/components/agent_builder/types";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import { capabilityFormSchema, CONFIGURATION_SHEET_PAGE_IDS } from "@app/components/agent_builder/types";
+import {
+  capabilityFormSchema,
+  CONFIGURATION_SHEET_PAGE_IDS,
+} from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
 import type { DataSourceViewSelectionConfigurations } from "@app/types";
@@ -249,7 +254,7 @@ function KnowledgeConfigurationSheetContent({
         );
         onSave(formData, dataSourceConfigurations);
       })}
-      size="lg"
+      size="xl"
       showNavigation
       disableNext={disableNext}
       disableSave={!isDirty}
