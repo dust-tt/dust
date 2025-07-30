@@ -465,12 +465,12 @@ export async function searchAgentConfigurationsByName(
       },
     },
   });
-  return removeNulls(
-    await getAgentConfigurations(auth, {
-      agentIds: agentConfigurations.map(({ sId }) => sId),
-      variant: "light",
-    })
-  );
+  const agents = await getAgentConfigurations(auth, {
+    agentIds: agentConfigurations.map(({ sId }) => sId),
+    variant: "light",
+  });
+
+  return removeNulls(agents);
 }
 
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
