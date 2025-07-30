@@ -2,7 +2,7 @@ import _ from "lodash";
 
 import {
   archiveAgentConfiguration,
-  getAgentConfigurations,
+  getAgentConfigurationsForView,
 } from "@app/lib/api/assistant/configuration";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
@@ -148,7 +148,7 @@ export async function deleteAllConversations(auth: Authenticator) {
 }
 
 async function archiveAssistants(auth: Authenticator) {
-  const agentConfigurations = await getAgentConfigurations({
+  const agentConfigurations = await getAgentConfigurationsForView({
     auth,
     agentsGetView: "admin_internal",
     variant: "light",

@@ -4,7 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { runAction } from "@app/lib/actions/server";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
@@ -84,7 +84,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const agents = await getAgentConfigurations({
+      const agents = await getAgentConfigurationsForView({
         auth,
         agentsGetView: "list",
         variant: "extra_light",

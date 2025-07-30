@@ -10,7 +10,7 @@ import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
   createAgentActionConfiguration,
   createAgentConfiguration,
-  getAgentConfigurations,
+  getAgentConfigurationsForView,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
@@ -92,7 +92,7 @@ async function handler(
           },
         });
       }
-      let agentConfigurations = await getAgentConfigurations({
+      let agentConfigurations = await getAgentConfigurationsForView({
         auth,
         agentsGetView:
           viewParam === "workspace"

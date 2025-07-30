@@ -399,13 +399,10 @@ export async function postUserMessage(
   }
 
   const results = await Promise.all([
-    getAgentConfigurations({
-      auth,
-      agentsGetView: {
-        agentIds: mentions
-          .filter(isAgentMention)
-          .map((mention) => mention.configurationId),
-      },
+    getAgentConfigurations(auth, {
+      agentIds: mentions
+        .filter(isAgentMention)
+        .map((mention) => mention.configurationId),
       variant: "light",
     }),
     (() => {

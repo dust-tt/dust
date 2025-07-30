@@ -49,11 +49,10 @@ async function handler(
         });
       }
 
-      const agentConfiguration = await getAgentConfiguration(
-        auth,
-        req.query.aId as string,
-        "light"
-      );
+      const agentConfiguration = await getAgentConfiguration(auth, {
+        agentId: req.query.aId as string,
+        variant: "light",
+      });
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,

@@ -44,13 +44,8 @@ async function handler(
 
       const { agentConfigurationIds } = bodyValidation.right;
 
-      const agentConfigurations = await getAgentConfigurations({
-        auth,
-        agentsGetView: {
-          agentIds: agentConfigurationIds,
-          allVersions: false,
-        },
-
+      const agentConfigurations = await getAgentConfigurations(auth, {
+        agentIds: agentConfigurationIds,
         variant: "light",
       });
       const toDelete = agentConfigurations.filter((a) => a.status === "active");

@@ -54,11 +54,10 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const assistant = await getAgentConfiguration(
-    auth,
-    req.query.aId as string,
-    "light"
-  );
+  const assistant = await getAgentConfiguration(auth, {
+    agentId: req.query.aId as string,
+    variant: "light",
+  });
 
   if (!assistant || (!assistant.canRead && !auth.isAdmin())) {
     return apiError(req, res, {

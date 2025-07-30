@@ -57,7 +57,6 @@ export type AgentConfigurationScope =
  * 'views':
  * - 'current_user': Retrieves agents created or edited by the current user.
  * - 'list': Retrieves all active agents accessible to the user
- * - {agentIds: string}: Retrieves specific agents by their sIds.
  * - 'all': All non-private agents (so combines workspace, published and global
  *   agents); used e.g. for non-user calls such as API
  * - 'published': Retrieves all published agents.
@@ -67,10 +66,10 @@ export type AgentConfigurationScope =
  * - 'archived': Retrieves all agents that are archived. Only available to super
  *   users. Intended strictly for internal use with necessary superuser or admin
  *   authorization.
+ * - 'favorites': Retrieves all agents marked as favorites by the current user.
  */
 // TODO(agent-discovery) remove workspace, published, global
 export type AgentsGetViewType =
-  | { agentIds: string[]; allVersions?: boolean }
   | "current_user"
   | "list"
   | "all"

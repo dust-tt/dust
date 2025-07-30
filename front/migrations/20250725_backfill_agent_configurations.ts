@@ -28,12 +28,11 @@ async function updateAgentConfigurationGroupIds(
 ): Promise<{ updated: boolean; error?: string }> {
   try {
     // Get the full agent configuration with actions
-    const agentConfiguration = await getAgentConfigurations({
-      auth,
-      agentsGetView: { agentIds: [agent.sId] },
+    const agentConfigurationList = await getAgentConfigurations(auth, {
+      agentIds: [agent.sId],
       variant: "full",
-      dangerouslySkipPermissionFiltering: true,
     });
+    const agentConfiguration = agentConfigurationList;
 
     if (!agentConfiguration[0]) {
       return { updated: false, error: "Agent configuration not found" };

@@ -92,11 +92,10 @@ async function handler(
       }
 
       // Verify the agent exists and user has access
-      const agentConfiguration = await getAgentConfiguration(
-        auth,
+      const agentConfiguration = await getAgentConfiguration(auth, {
         agentId,
-        "light"
-      );
+        variant: "light",
+      });
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,
