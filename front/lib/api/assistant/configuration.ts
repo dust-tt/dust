@@ -121,24 +121,32 @@ const sortStrategies: Record<SortStrategyType, SortStrategy> = {
 async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
   agentConfigurations: AgentConfiguration[],
-  variant: V
+  {
+    variant,
+    agentIdsForUserAsEditor,
+  }: {
+    variant: V;
+    agentIdsForUserAsEditor?: ModelId[];
+  }
 ): Promise<AgentConfigurationType[]> {
   const configurationIds = agentConfigurations.map((a) => a.id);
   const configurationSIds = agentConfigurations.map((a) => a.sId);
   const user = auth.user();
 
-  const agentIdsForGroups = user
-    ? await GroupResource.findAgentIdsForGroups(auth, [
-        ...auth
-          .groups()
-          .filter((g) => g.kind === "agent_editors")
-          .map((g) => g.id),
-      ])
-    : [];
+  // Compute editor permissions if not provided
+  let editorIds = agentIdsForUserAsEditor;
+  if (!editorIds) {
+    const agentIdsForGroups = user
+      ? await GroupResource.findAgentIdsForGroups(auth, [
+          ...auth
+            .groups()
+            .filter((g) => g.kind === "agent_editors")
+            .map((g) => g.id),
+        ])
+      : [];
 
-  const agentIdsForUserAsEditor = agentIdsForGroups.map(
-    (g) => g.agentConfigurationId
-  );
+    editorIds = agentIdsForGroups.map((g) => g.agentConfigurationId);
+  }
 
   const [
     mcpServerActionsConfigurationsPerAgent,
@@ -165,7 +173,7 @@ async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
     const isAuthor = agent.authorId === auth.user()?.id;
-    const isMember = agentIdsForUserAsEditor.includes(agent.id);
+    const isMember = editorIds.includes(agent.id);
 
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
@@ -233,7 +241,9 @@ export async function getAllVersionsForAgentConfiguration<
       },
       order: [["version", "DESC"]],
     });
-    allAgents = await enrichAgentConfigurations(auth, workspaceAgents, variant);
+    allAgents = await enrichAgentConfigurations(auth, workspaceAgents, {
+      variant,
+    });
   }
 
   // Filter by permissions
@@ -279,11 +289,9 @@ async function getAgentConfigurationWithVersion<V extends AgentFetchVariant>(
     order: [["version", "DESC"]],
   });
 
-  const agents = await enrichAgentConfigurations(
-    auth,
-    workspaceAgents,
-    variant
-  );
+  const agents = await enrichAgentConfigurations(auth, workspaceAgents, {
+    variant,
+  });
 
   const allowedAgents = agents.filter((a) =>
     auth.canRead(
@@ -356,7 +364,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
       workspaceAgents = await enrichAgentConfigurations(
         auth,
         workspaceAgentConfigurations,
-        variant
+        { variant }
       );
     }
 
@@ -737,70 +745,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
       sort,
     });
 
-  const configurationIds = agentConfigurations.map((a) => a.id);
-  const configurationSIds = agentConfigurations.map((a) => a.sId);
-
-  const [
-    mcpServerActionsConfigurationsPerAgent,
-    favoriteStatePerAgent,
-    tagsPerAgent,
-  ] = await Promise.all([
-    fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
-    user && variant !== "extra_light"
-      ? getFavoriteStates(auth, { configurationIds: configurationSIds })
-      : Promise.resolve(new Map<string, boolean>()),
-    variant !== "extra_light"
-      ? TagResource.listForAgents(auth, configurationIds)
-      : Promise.resolve([]),
-  ]);
-
-  const agentConfigurationTypes: AgentConfigurationType[] = [];
-  for (const agent of agentConfigurations) {
-    const actions =
-      variant === "full"
-        ? mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? []
-        : [];
-
-    const model = getModelForAgentConfiguration(agent);
-    const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
-
-    const isAuthor = agent.authorId === auth.user()?.id;
-    const isMember = agentIdsForUserAsEditor.includes(agent.id);
-
-    const agentConfigurationType: AgentConfigurationType = {
-      id: agent.id,
-      sId: agent.sId,
-      versionCreatedAt: agent.createdAt.toISOString(),
-      version: agent.version,
-      scope: agent.scope,
-      userFavorite: !!favoriteStatePerAgent.get(agent.sId),
-      name: agent.name,
-      pictureUrl: agent.pictureUrl,
-      description: agent.description,
-      instructions: agent.instructions,
-      model,
-      status: agent.status,
-      actions,
-      versionAuthorId: agent.authorId,
-      maxStepsPerRun: agent.maxStepsPerRun,
-      visualizationEnabled: agent.visualizationEnabled ?? false,
-      templateId: agent.templateId
-        ? TemplateResource.modelIdToSId({ id: agent.templateId })
-        : null,
-      requestedGroupIds: agent.requestedGroupIds.map((groups) =>
-        groups.map((id) =>
-          GroupResource.modelIdToSId({ id, workspaceId: owner.id })
-        )
-      ),
-      tags: tags.map((t) => t.toJSON()).sort(tagsSorter),
-      canRead: isAuthor || isMember || agent.scope === "visible",
-      canEdit: isAuthor || isMember,
-    };
-
-    agentConfigurationTypes.push(agentConfigurationType);
-  }
-
-  return agentConfigurationTypes;
+  return enrichAgentConfigurations(auth, agentConfigurations, {
+    variant,
+    agentIdsForUserAsEditor,
+  });
 }
 
 export async function getAgentConfigurationsForView<
