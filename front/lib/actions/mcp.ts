@@ -628,7 +628,7 @@ export async function* runToolWithStreaming(
     }
 
     // If we're allowed implicitly, we update the state and run the action.
-    action = await action.update({
+    await action.update({
       executionState: status,
     });
   }
@@ -676,6 +676,10 @@ export async function* runToolWithStreaming(
     agentMessage,
     stepContext,
   };
+
+  await action.update({
+    executionState: "running",
+  });
 
   let toolCallResult: Result<
     CallToolResult["content"],
@@ -752,6 +756,7 @@ export async function* runToolWithStreaming(
     );
     await action.update({
       isError: true,
+      executionState: "failed",
     });
 
     // If we got a personal authentication error, we emit a `tool_error` which will get turned
@@ -952,6 +957,10 @@ export async function* runToolWithStreaming(
   );
 
   statsDClient.increment("mcp_actions_success.count", 1, tags);
+
+  await action.update({
+    executionState: "completed",
+  });
 
   yield {
     type: "tool_success",
