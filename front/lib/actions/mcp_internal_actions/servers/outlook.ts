@@ -17,30 +17,6 @@ interface OutlookRecipient {
   emailAddress: OutlookEmailAddress;
 }
 
-interface OutlookMessage {
-  id: string;
-  conversationId?: string;
-  subject?: string;
-  bodyPreview?: string;
-  importance?: string;
-  receivedDateTime?: string;
-  sentDateTime?: string;
-  hasAttachments?: boolean;
-  isDraft?: boolean;
-  isRead?: boolean;
-  from?: OutlookRecipient;
-  toRecipients?: OutlookRecipient[];
-  ccRecipients?: OutlookRecipient[];
-  bccRecipients?: OutlookRecipient[];
-  body?: {
-    contentType: "text" | "html";
-    content: string;
-  };
-  parentFolderId?: string;
-  conversationIndex?: string;
-  internetMessageId?: string;
-}
-
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "outlook",
   version: "1.0.0",
