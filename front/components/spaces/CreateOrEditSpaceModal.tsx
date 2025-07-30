@@ -45,7 +45,6 @@ import {
   useSpaceInfo,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   GroupType,
   LightWorkspaceType,
@@ -98,10 +97,6 @@ export function CreateOrEditSpaceModal({
   const [managementType, setManagementType] =
     useState<MembersManagementType>("manual");
   const [isDirty, setIsDirty] = useState(false);
-
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
 
   const isWorkOSFeatureEnabled = plan.limits.users.isSCIMAllowed;
 
