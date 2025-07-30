@@ -46,8 +46,9 @@ const serverInfo: InternalMCPServerDefinitionType = {
   version: "1.0.0",
   description: "Outlook tools for reading emails and managing email drafts.",
   authorization: {
-    provider: "outlook" as const,
+    provider: "microsoft_tools" as const,
     supported_use_cases: ["personal_actions"] as const,
+    scope: "Mail.ReadWrite Mail.ReadWrite.Shared User.Read" as const,
   },
   icon: "OutlookLogo",
   documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",

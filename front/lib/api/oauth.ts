@@ -15,6 +15,7 @@ import { IntercomOAuthProvider } from "@app/lib/api/oauth/providers/intercom";
 import { JiraOAuthProvider } from "@app/lib/api/oauth/providers/jira";
 import { MCPOAuthProvider } from "@app/lib/api/oauth/providers/mcp";
 import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
+import { MicrosoftToolsOAuthProvider } from "@app/lib/api/oauth/providers/microsoft_tools";
 import { MondayOAuthProvider } from "@app/lib/api/oauth/providers/monday";
 import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
 import { OutlookOAuthProvider } from "@app/lib/api/oauth/providers/outlook";
@@ -55,6 +56,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   jira: new JiraOAuthProvider(),
   mcp: new MCPOAuthProvider(),
   microsoft: new MicrosoftOAuthProvider(),
+  microsoft_tools: new MicrosoftToolsOAuthProvider(),
   monday: new MondayOAuthProvider(),
   notion: new NotionOAuthProvider(),
   outlook: new OutlookOAuthProvider(),

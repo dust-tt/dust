@@ -19,17 +19,17 @@ use std::env;
 use super::utils::ProviderHttpRequestError;
 
 lazy_static! {
-    static ref OAUTH_MICROSOFT_OUTLOOK_CLIENT_ID: String =
-        env::var("OAUTH_MICROSOFT_OUTLOOK_CLIENT_ID").unwrap();
-    static ref OAUTH_MICROSOFT_OUTLOOK_CLIENT_SECRET: String =
-        env::var("OAUTH_MICROSOFT_OUTLOOK_CLIENT_SECRET").unwrap();
+    static ref OAUTH_MICROSOFT_TOOLS_CLIENT_ID: String =
+        env::var("OAUTH_MICROSOFT_TOOLS_CLIENT_ID").unwrap();
+    static ref OAUTH_MICROSOFT_TOOLS_CLIENT_SECRET: String =
+        env::var("OAUTH_MICROSOFT_TOOLS_CLIENT_SECRET").unwrap();
 }
 
-pub struct OutlookConnectionProvider {}
+pub struct MicrosoftToolsConnectionProvider {}
 
-impl OutlookConnectionProvider {
+impl MicrosoftToolsConnectionProvider {
     pub fn new() -> Self {
-        OutlookConnectionProvider {}
+        MicrosoftToolsConnectionProvider {}
     }
 
     fn handle_service_principal_credentials(
@@ -41,9 +41,9 @@ impl OutlookConnectionProvider {
         let content = credential.unseal_encrypted_content()?;
         let provider = credential.provider();
 
-        if provider != CredentialProvider::Outlook {
+        if provider != CredentialProvider::MicrosoftTools {
             return Err(anyhow!(
-                "Invalid credential provider: {:?}, expected Outlook",
+                "Invalid credential provider: {:?}, expected MicrosoftTools",
                 provider
             ))?;
         }
@@ -51,12 +51,12 @@ impl OutlookConnectionProvider {
         let client_id = content
             .get("client_id")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing client_id in Outlook credential"))?;
+            .ok_or_else(|| anyhow!("Missing client_id in MicrosoftTools credential"))?;
 
         let client_secret = content
             .get("client_secret")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing client_secret in Outlook credential"))?;
+            .ok_or_else(|| anyhow!("Missing client_secret in MicrosoftTools credential"))?;
 
         Ok((
             format!(
@@ -65,7 +65,9 @@ impl OutlookConnectionProvider {
                     .metadata()
                     .get("tenant_id")
                     .and_then(|v| v.as_str())
-                    .ok_or_else(|| anyhow!("Missing tenant_id in Outlook connection metadata"))?
+                    .ok_or_else(|| anyhow!(
+                        "Missing tenant_id in MicrosoftTools connection metadata"
+                    ))?
             ),
             json!({
                 "grant_type": "client_credentials",
@@ -78,9 +80,9 @@ impl OutlookConnectionProvider {
 }
 
 #[async_trait]
-impl Provider for OutlookConnectionProvider {
+impl Provider for MicrosoftToolsConnectionProvider {
     fn id(&self) -> ConnectionProvider {
-        ConnectionProvider::Outlook
+        ConnectionProvider::MicrosoftTools
     }
 
     async fn finalize(
@@ -98,8 +100,8 @@ impl Provider for OutlookConnectionProvider {
                 "https://login.microsoftonline.com/common/oauth2/v2.0/token".to_string(),
                 json!({
                     "grant_type": "authorization_code",
-                    "client_id": *OAUTH_MICROSOFT_OUTLOOK_CLIENT_ID,
-                    "client_secret": *OAUTH_MICROSOFT_OUTLOOK_CLIENT_SECRET,
+                    "client_id": *OAUTH_MICROSOFT_TOOLS_CLIENT_ID,
+                    "client_secret": *OAUTH_MICROSOFT_TOOLS_CLIENT_SECRET,
                     "code": code,
                     "redirect_uri": redirect_uri,
                     "scope": "Mail.ReadWrite Mail.ReadWrite.Shared User.Read",
@@ -113,17 +115,17 @@ impl Provider for OutlookConnectionProvider {
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&body);
 
-        let raw_json = execute_request(ConnectionProvider::Outlook, req)
+        let raw_json = execute_request(ConnectionProvider::MicrosoftTools, req)
             .await
             .map_err(|e| self.handle_provider_request_error(e))?;
 
         let access_token = raw_json["access_token"]
             .as_str()
-            .ok_or_else(|| anyhow!("Missing `access_token` in response from Outlook"))?;
+            .ok_or_else(|| anyhow!("Missing `access_token` in response from MicrosoftTools"))?;
 
         let expires_in = raw_json["expires_in"]
             .as_u64()
-            .ok_or_else(|| anyhow!("Missing `expires_in` in response from Outlook"))?;
+            .ok_or_else(|| anyhow!("Missing `expires_in` in response from MicrosoftTools"))?;
 
         let refresh_token = raw_json["refresh_token"].as_str();
 
@@ -150,16 +152,16 @@ impl Provider for OutlookConnectionProvider {
                 self.handle_service_principal_credentials(&credential, connection)?
             }
             None => {
-                let refresh_token = connection
-                    .unseal_refresh_token()?
-                    .ok_or_else(|| anyhow!("Missing `refresh_token` in Outlook connection"))?;
+                let refresh_token = connection.unseal_refresh_token()?.ok_or_else(|| {
+                    anyhow!("Missing `refresh_token` in MicrosoftTools connection")
+                })?;
 
                 (
                     "https://login.microsoftonline.com/common/oauth2/v2.0/token".to_string(),
                     json!({
                         "grant_type": "refresh_token",
-                        "client_id": *OAUTH_MICROSOFT_OUTLOOK_CLIENT_ID,
-                        "client_secret": *OAUTH_MICROSOFT_OUTLOOK_CLIENT_SECRET,
+                        "client_id": *OAUTH_MICROSOFT_TOOLS_CLIENT_ID,
+                        "client_secret": *OAUTH_MICROSOFT_TOOLS_CLIENT_SECRET,
                         "refresh_token": refresh_token,
                         "scope": "Mail.ReadWrite Mail.ReadWrite.Shared User.Read",
                     }),
@@ -173,17 +175,17 @@ impl Provider for OutlookConnectionProvider {
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&body);
 
-        let raw_json = execute_request(ConnectionProvider::Outlook, req)
+        let raw_json = execute_request(ConnectionProvider::MicrosoftTools, req)
             .await
             .map_err(|e| self.handle_provider_request_error(e))?;
 
         let access_token = raw_json["access_token"]
             .as_str()
-            .ok_or_else(|| anyhow!("Missing `access_token` in response from Outlook"))?;
+            .ok_or_else(|| anyhow!("Missing `access_token` in response from MicrosoftTools"))?;
 
         let expires_in = raw_json["expires_in"]
             .as_u64()
-            .ok_or_else(|| anyhow!("Missing `expires_in` in response from Outlook"))?;
+            .ok_or_else(|| anyhow!("Missing `expires_in` in response from MicrosoftTools"))?;
 
         let refresh_token = raw_json["refresh_token"].as_str();
 

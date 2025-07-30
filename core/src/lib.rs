@@ -149,10 +149,10 @@ pub mod oauth {
         pub mod jira;
         pub mod mcp;
         pub mod microsoft;
+        pub mod microsoft_tools;
         pub mod mock;
         pub mod monday;
         pub mod notion;
-        pub mod outlook;
         pub mod salesforce;
         pub mod slack;
         pub mod utils;
