@@ -39,7 +39,7 @@ RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
 
 # Build worker
-RUN npm run build:worker
+RUN NODE_OPTIONS="--max-old-space-size=8192" npm run build:worker
 
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
