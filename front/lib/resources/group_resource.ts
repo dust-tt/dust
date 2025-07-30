@@ -1347,12 +1347,12 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async hasActiveRoleProvisioningGroups(
     auth: Authenticator
-  ): Promise<boolean> {
+  ): Promise<{ hasAdminGroup: boolean; hasBuilderGroup: boolean }> {
     const owner = auth.getNonNullableWorkspace();
 
     // Check if workspace has WorkOS organization ID (required for provisioning)
     if (!owner.workOSOrganizationId) {
-      return false;
+      return { hasAdminGroup: false, hasBuilderGroup: false };
     }
 
     const ADMIN_GROUP_NAME = "dust-admins";
@@ -1377,10 +1377,10 @@ export class GroupResource extends BaseResource<GroupModel> {
         (g) => g.name === BUILDER_GROUP_NAME
       );
 
-      return hasAdminGroup && hasBuilderGroup;
+      return { hasAdminGroup, hasBuilderGroup };
     } catch (error) {
       // If there's an error checking, err on the side of caution and don't restrict
-      return false;
+      return { hasAdminGroup: false, hasBuilderGroup: false };
     }
   }
 

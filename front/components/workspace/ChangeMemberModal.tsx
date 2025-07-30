@@ -52,9 +52,19 @@ export function ChangeMemberModal({
   );
   const [isSaving, setIsSaving] = useState(false);
 
-  const { hasActiveRoleProvisioningGroups } = useProvisioningStatus({
+  const { roleProvisioningStatus } = useProvisioningStatus({
     workspaceId: workspace.sId,
   });
+
+  const hasActiveRoleProvisioningGroupsForRole = (role: ActiveRoleType) => {
+    if (role === "admin") {
+      return roleProvisioningStatus.hasAdminGroup;
+    }
+    if (role === "builder") {
+      return roleProvisioningStatus.hasBuilderGroup;
+    }
+    return false;
+  };
 
   const handleSave = async () => {
     if (!selectedRole) {
@@ -111,11 +121,11 @@ export function ChangeMemberModal({
                     <RoleDropDown
                       selectedRole={selectedRole || role}
                       onChange={setSelectedRole}
-                      disabled={hasActiveRoleProvisioningGroups}
+                      disabled={hasActiveRoleProvisioningGroupsForRole(role)}
                     />
                   </div>
                   <Page.P>
-                    {hasActiveRoleProvisioningGroups ? (
+                    {hasActiveRoleProvisioningGroupsForRole(role) ? (
                       "The roles are managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
                     ) : (
                       <>
@@ -202,7 +212,7 @@ export function ChangeMemberModal({
                 disabled:
                   selectedRole === member.workspace.role ||
                   isSaving ||
-                  hasActiveRoleProvisioningGroups,
+                  hasActiveRoleProvisioningGroupsForRole(role),
                 loading: isSaving,
               }}
             />

@@ -40,14 +40,14 @@ export function EditInvitationModal({
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
-  const { hasActiveRoleProvisioningGroups } = useProvisioningStatus({
+  const { roleProvisioningStatus } = useProvisioningStatus({
     workspaceId: owner.sId,
   });
 
   // Check if this invitation's role would be managed by provisioning groups
   const isRoleManagedByProvisioning =
-    hasActiveRoleProvisioningGroups &&
-    (selectedRole === "admin" || selectedRole === "builder");
+    (roleProvisioningStatus.hasAdminGroup && selectedRole === "admin") ||
+    (roleProvisioningStatus.hasBuilderGroup && selectedRole === "builder");
 
   useEffect(() => {
     if (invitation) {

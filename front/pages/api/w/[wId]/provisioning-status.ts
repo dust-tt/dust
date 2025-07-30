@@ -7,7 +7,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetProvisioningStatusResponseBody = {
-  hasActiveRoleProvisioningGroups: boolean;
+  hasAdminGroup: boolean;
+  hasBuilderGroup: boolean;
 };
 
 async function handler(
@@ -17,12 +18,8 @@ async function handler(
 ): Promise<void> {
   switch (req.method) {
     case "GET":
-      const hasActiveRoleProvisioningGroups =
-        await GroupResource.hasActiveRoleProvisioningGroups(auth);
-
-      return res.status(200).json({
-        hasActiveRoleProvisioningGroups,
-      });
+      const r = await GroupResource.hasActiveRoleProvisioningGroups(auth);
+      return res.status(200).json(r);
 
     default:
       return apiError(req, res, {
