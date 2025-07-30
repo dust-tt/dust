@@ -439,6 +439,18 @@ export async function migrateChannelsFromLegacyBotToNewBot(
       continue;
     }
 
+    if (channel.is_private) {
+      logger.info(
+        {
+          channelId: channel.id,
+          slackBotConnectorId: slackBotConnector.id,
+          slackConnectorId: slackConnector.id,
+        },
+        "Skipping private channel"
+      );
+      continue;
+    }
+
     logger.info(
       {
         channelId: channel.id,
