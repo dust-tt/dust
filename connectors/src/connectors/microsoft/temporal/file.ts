@@ -33,6 +33,7 @@ import {
   renderDocumentTitleAndContent,
   sectionLength,
   upsertDataSourceDocument,
+  upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -46,7 +47,7 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { cacheWithRedis } from "@connectors/types";
+import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
 
@@ -600,6 +601,18 @@ export async function recursiveNodeDeletion({
   );
 
   if (root) {
+    // If the node is now a root, we need to update the parentInternalId to null
+    // and update the descendants parents in core
+    await node.update({
+      parentInternalId: null,
+    });
+
+    await updateDescendantsParentsInCore({
+      folder: node,
+      dataSourceConfig,
+      startSyncTs: new Date().getTime(),
+    });
+
     return [];
   }
 
@@ -640,4 +653,71 @@ export async function recursiveNodeDeletion({
   }
 
   return deletedFiles;
+}
+
+export async function updateDescendantsParentsInCore({
+  folder,
+  dataSourceConfig,
+  startSyncTs,
+}: {
+  folder: MicrosoftNodeResource;
+  dataSourceConfig: DataSourceConfig;
+  startSyncTs: number;
+}) {
+  const children = await folder.fetchChildren();
+  const files = children.filter((child) => child.nodeType === "file");
+  const folders = children.filter((child) => child.nodeType === "folder");
+
+  const parents = await getParents({
+    connectorId: folder.connectorId,
+    internalId: folder.internalId,
+    startSyncTs,
+  });
+  await upsertDataSourceFolder({
+    dataSourceConfig,
+    folderId: folder.internalId,
+    parents,
+    parentId: parents[1] || null,
+    title: folder.name ?? "Untitled Folder",
+    mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
+    sourceUrl: folder.webUrl ?? undefined,
+  });
+
+  await concurrentExecutor(
+    files,
+    async (file) => updateParentsField({ file, dataSourceConfig, startSyncTs }),
+    {
+      concurrency: 10,
+    }
+  );
+  for (const childFolder of folders) {
+    await updateDescendantsParentsInCore({
+      dataSourceConfig,
+      folder: childFolder,
+      startSyncTs,
+    });
+  }
+}
+
+async function updateParentsField({
+  file,
+  dataSourceConfig,
+  startSyncTs,
+}: {
+  file: MicrosoftNodeResource;
+  dataSourceConfig: DataSourceConfig;
+  startSyncTs: number;
+}) {
+  const parents = await getParents({
+    connectorId: file.connectorId,
+    internalId: file.internalId,
+    startSyncTs,
+  });
+
+  await updateDataSourceDocumentParents({
+    dataSourceConfig,
+    documentId: file.internalId,
+    parents,
+    parentId: parents[1] || null,
+  });
 }
