@@ -1,3 +1,5 @@
+import type { Logger } from "pino";
+
 import {
   RETENTION_PERIOD_CONFIG_KEY,
   ZendeskConnectorManager,
@@ -7,6 +9,7 @@ import {
   shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
+import type { ZendeskFetchedTicket } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskBrand,
@@ -14,6 +17,7 @@ import {
   fetchZendeskTicket,
   getZendeskBrandSubdomain,
   getZendeskTicketCount,
+  listZendeskOrganizations,
   listZendeskTicketComments,
   listZendeskUsers,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
@@ -60,6 +64,48 @@ function getOrganizationTagsArgs(args: ZendeskCommandType["args"]) {
   }
 
   return { tag, tagIn, tagNotIn };
+}
+
+async function checkTicketShouldBeSynced(
+  ticket: ZendeskFetchedTicket | null,
+  configuration: ZendeskConfigurationResource,
+  {
+    brandId,
+    accessToken,
+    brandSubdomain,
+  }: {
+    brandId?: number;
+    brandSubdomain: string;
+    accessToken: string;
+  },
+  logger: Logger
+) {
+  if (!ticket) {
+    return false;
+  }
+
+  let organizationTags: string[] = [];
+
+  if (configuration.enforcesOrganizationTagConstraint()) {
+    const [organization] = await listZendeskOrganizations({
+      accessToken,
+      brandSubdomain,
+      organizationIds: [ticket?.organization_id],
+    });
+    if (!organization) {
+      logger.error(
+        { ticketId: ticket.id, organizationId: ticket?.organization_id },
+        "Organization not found."
+      );
+    } else {
+      organizationTags = organization.tags;
+    }
+  }
+
+  return shouldSyncTicket(ticket, configuration, {
+    brandId,
+    organizationTags,
+  });
 }
 
 export const zendesk = async ({
@@ -203,13 +249,16 @@ export const zendesk = async ({
             })
           : null;
 
+        const shouldSyncTicket = await checkTicketShouldBeSynced(
+          ticket,
+          configuration,
+          { accessToken, brandSubdomain },
+          logger
+        );
+
         return {
           ticket: ticket as { [key: string]: unknown } | null,
-          shouldSyncTicket:
-            ticket !== null &&
-            shouldSyncTicket(ticket, configuration, {
-              brandId: brand?.brandId,
-            }),
+          shouldSyncTicket,
           isTicketOnDb: ticketOnDb !== null,
         };
       }
@@ -241,13 +290,16 @@ export const zendesk = async ({
         brandSubdomain,
       });
 
+      const shouldSyncTicket = await checkTicketShouldBeSynced(
+        ticket,
+        configuration,
+        { brandId, accessToken, brandSubdomain },
+        logger
+      );
+
       return {
         ticket: ticket as { [key: string]: unknown } | null,
-        shouldSyncTicket:
-          ticket !== null &&
-          shouldSyncTicket(ticket, configuration, {
-            brandId,
-          }),
+        shouldSyncTicket,
         isTicketOnDb: ticketOnDb !== null,
       };
     }
@@ -343,7 +395,14 @@ export const zendesk = async ({
         throw new Error(`Ticket ${ticketId} not found`);
       }
 
-      if (!shouldSyncTicket(ticket, configuration, { brandId })) {
+      const shouldSyncTicket = await checkTicketShouldBeSynced(
+        ticket,
+        configuration,
+        { brandId, accessToken, brandSubdomain },
+        logger
+      );
+
+      if (!shouldSyncTicket) {
         logger.info(
           { ticketId, brandId, status: ticket.status },
           "Ticket should not be synced based on status and configuration."

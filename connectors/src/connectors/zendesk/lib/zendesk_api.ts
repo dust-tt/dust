@@ -19,6 +19,8 @@ import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { removeNulls } from "@connectors/types/shared/utils/general";
 
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
@@ -673,4 +675,22 @@ export async function listZendeskCategories({
     }
     throw e;
   }
+}
+
+export async function getOrganizationTagMapForTickets(
+  tickets: ZendeskFetchedTicket[],
+  {
+    accessToken,
+    brandSubdomain,
+  }: { accessToken: string; brandSubdomain: string }
+) {
+  const organizationIds = removeNulls(
+    tickets.map((t) => t.organization_id ?? null)
+  );
+  const organizations = await listZendeskOrganizations({
+    accessToken,
+    brandSubdomain,
+    organizationIds,
+  });
+  return new Map(organizations.map((t) => [t.id, t.tags]));
 }

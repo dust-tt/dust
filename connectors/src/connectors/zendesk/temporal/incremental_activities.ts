@@ -10,6 +10,7 @@ import {
   fetchZendeskCategory,
   fetchZendeskSection,
   fetchZendeskUser,
+  getOrganizationTagMapForTickets,
   getZendeskBrandSubdomain,
   listRecentlyUpdatedArticles,
   listZendeskTicketComments,
@@ -296,6 +297,14 @@ export async function syncZendeskTicketUpdateBatchActivity({
         ],
       });
 
+  let organizationTagsMap = new Map<number, string[]>();
+  if (configuration.enforcesOrganizationTagConstraint()) {
+    organizationTagsMap = await getOrganizationTagMapForTickets(tickets, {
+      accessToken,
+      brandSubdomain,
+    });
+  }
+
   await concurrentExecutor(
     tickets,
     async (ticket) => {
@@ -307,7 +316,26 @@ export async function syncZendeskTicketUpdateBatchActivity({
           dataSourceConfig,
           loggerArgs,
         });
-      } else if (shouldSyncTicket(ticket, configuration, { brandId })) {
+      }
+
+      const organizationTags = organizationTagsMap.get(ticket.organization_id);
+      if (!organizationTags) {
+        logger.error(
+          {
+            ticketId: ticket.id,
+            organizationId: ticket.organization_id,
+            connectorId: configuration.connectorId,
+          },
+          "Organization tags not found."
+        );
+        throw new Error(
+          `Tags not found for organization ${ticket.organization_id}.`
+        );
+      }
+
+      if (
+        shouldSyncTicket(ticket, configuration, { brandId, organizationTags })
+      ) {
         const comments = commentsPerTicket[ticket.id];
         if (!comments) {
           throw new Error(

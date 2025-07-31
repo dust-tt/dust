@@ -10,15 +10,14 @@ import {
   shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
-import type { ZendeskFetchedTicket } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskBrand,
   fetchZendeskCategory,
+  getOrganizationTagMapForTickets,
   getZendeskBrandSubdomain,
   listZendeskArticlesInCategory,
   listZendeskCategoriesInBrand,
-  listZendeskOrganizations,
   listZendeskSectionsByCategory,
   listZendeskTicketComments,
   listZendeskTickets,
@@ -43,7 +42,6 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-import { removeNulls } from "@connectors/types/shared/utils/general";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
@@ -601,24 +599,6 @@ export async function syncZendeskArticleBatchActivity({
     }
   );
   return { hasMore, nextLink };
-}
-
-async function getOrganizationTagMapForTickets(
-  tickets: ZendeskFetchedTicket[],
-  {
-    accessToken,
-    brandSubdomain,
-  }: { accessToken: string; brandSubdomain: string }
-) {
-  const organizationIds = removeNulls(
-    tickets.map((t) => t.organization_id ?? null)
-  );
-  const organizations = await listZendeskOrganizations({
-    accessToken,
-    brandSubdomain,
-    organizationIds,
-  });
-  return new Map(organizations.map((t) => [t.id, t.tags]));
 }
 
 /**
