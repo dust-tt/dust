@@ -423,40 +423,31 @@ export async function migrateChannelsFromLegacyBotToNewBot(
 
   const slackClient = await getSlackClient(slackConnector.id);
 
+  const childLogger = logger.child({
+    slackBotConnectorId: slackBotConnector.id,
+    slackConnectorId: slackConnector.id,
+  });
+
   // Fetch all channels that the deprecated bot is a member of.
   const channels = await getChannels(slackClient, slackConnector.id, true);
-  logger.info(
+  const publicChannels = channels.filter((c) => !c.is_private);
+
+  childLogger.info(
     {
       channelsCount: channels.length,
-      slackBotConnectorId: slackBotConnector.id,
-      slackConnectorId: slackConnector.id,
+      publicChannelsCount: publicChannels.length,
     },
     "Found channels to migrate"
   );
 
-  for (const channel of channels) {
+  for (const channel of publicChannels) {
     if (!channel.id) {
       continue;
     }
 
-    if (channel.is_private) {
-      logger.info(
-        {
-          channelId: channel.id,
-          slackBotConnectorId: slackBotConnector.id,
-          slackConnectorId: slackConnector.id,
-        },
-        "Skipping private channel"
-      );
-      continue;
-    }
-
-    logger.info(
+    childLogger.info(
       {
         channelId: channel.id,
-        slackBotConnectorId: slackBotConnector.id,
-        slackConnectorId: slackConnector.id,
-        isPrivate: channel.is_private,
       },
       "Migrating channel"
     );
@@ -464,15 +455,36 @@ export async function migrateChannelsFromLegacyBotToNewBot(
     // Surround with try/catch as the new scope might not always be available.
     try {
       // Leave the channel but keep it in the database as it's still use to be indexed.
-      await slackClient.conversations.leave({ channel: channel.id });
+      const res = await slackClient.conversations.leave({
+        channel: channel.id,
+      });
+
+      if (res.ok) {
+        childLogger.info(
+          {
+            channelId: channel.id,
+          },
+          "Left channel"
+        );
+      }
+
+      if (res.error) {
+        childLogger.error(
+          { error: res.error, channelId: channel.id },
+          "Could not leave channel"
+        );
+      }
     } catch (error) {
-      logger.error({ error, channelId: channel.id }, "Could not leave channel");
+      childLogger.error(
+        { error, channelId: channel.id },
+        "Could not leave channel"
+      );
     }
 
     // Join the new bot to the channel.
     const joinRes = await joinChannel(slackBotConnector.id, channel.id);
     if (joinRes.isErr()) {
-      logger.error(
+      childLogger.error(
         { error: joinRes.error, channelId: channel.id },
         "Could not join channel"
       );
