@@ -22,7 +22,7 @@ const MAX_COLUMN_NAME_LENGTH: usize = 1024;
 const MAX_TABLE_ROWS: usize = 500_000;
 
 impl GoogleCloudStorageCSVContent {
-    pub async fn parse(&self) -> Result<Vec<Row>> {
+    pub async fn parse(&self) -> Result<(Vec<String>, Vec<Row>)> {
         let now = utils::now();
         let bucket = &self.bucket;
         let path = &self.bucket_csv_path;
@@ -42,7 +42,7 @@ impl GoogleCloudStorageCSVContent {
         let delimiter_duration = utils::now() - now;
 
         let now = utils::now();
-        let rows = Self::csv_to_rows(rdr, delimiter).await?;
+        let (headers, rows) = Self::csv_to_rows(rdr, delimiter).await?;
         let csv_to_rows_duration = utils::now() - now;
 
         info!(
@@ -52,7 +52,7 @@ impl GoogleCloudStorageCSVContent {
             csv_to_rows_duration = csv_to_rows_duration,
             "CSV parse"
         );
-        Ok(rows)
+        Ok((headers, rows))
     }
 
     fn slugify(text: &str) -> String {
@@ -177,7 +177,7 @@ impl GoogleCloudStorageCSVContent {
         ))
     }
 
-    async fn csv_to_rows<R>(rdr: R, delimiter: u8) -> Result<Vec<Row>>
+    async fn csv_to_rows<R>(rdr: R, delimiter: u8) -> Result<(Vec<String>, Vec<Row>)>
     where
         R: tokio::io::AsyncRead + Unpin + Send,
     {
@@ -186,7 +186,8 @@ impl GoogleCloudStorageCSVContent {
             .flexible(true)
             .create_reader(TokioAsyncReadCompatExt::compat(rdr));
 
-        let headers = Self::sanitize_headers(csv.headers().await?.iter().collect::<Vec<&str>>())?;
+        let mut headers =
+            Self::sanitize_headers(csv.headers().await?.iter().collect::<Vec<&str>>())?;
 
         if headers.len() > MAX_TABLE_COLUMNS {
             Err(anyhow!("Too many columns in CSV file"))?;
@@ -195,13 +196,30 @@ impl GoogleCloudStorageCSVContent {
             Err(anyhow!("No columns in CSV file"))?;
         }
 
+        // If we have a __dust_id column, we need to remove it from the headers but save the column index for later.
+        let dust_id_pos = headers.iter().position(|h| h == "__dust_id");
+        if let Some(pos) = dust_id_pos {
+            headers.remove(pos);
+        }
+
         let mut rows = Vec::new();
 
         let mut records = csv.records();
         let mut row_idx = 0;
         while let Some(record) = records.next().await {
             let record = record?;
-            let row = Row::from_csv_record(&headers, record.iter().collect::<Vec<_>>(), row_idx)?;
+            let mut record = record.iter().collect::<Vec<_>>();
+
+            // If we have a __dust_id column, we need to remove it from the record and use it as the row id.
+            // It has been removed from the headers already.
+            let (row_id, record) = if let Some(pos) = dust_id_pos {
+                let row_id = record.remove(pos).trim().to_string();
+                (row_id, record)
+            } else {
+                (row_idx.to_string(), record)
+            };
+
+            let row = Row::from_csv_record(&headers, record, row_id)?;
             row_idx += 1;
             if row_idx > MAX_TABLE_ROWS {
                 Err(anyhow!("Too many rows in CSV file"))?;
@@ -209,7 +227,7 @@ impl GoogleCloudStorageCSVContent {
             rows.push(row);
         }
 
-        Ok(rows)
+        Ok((headers, rows))
     }
 }
 
@@ -307,26 +325,31 @@ BAR,acme";
                    4,hello world,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
+        let (headers, rows) = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
 
         assert_eq!(rows.len(), 2);
 
+        // Test headers
+        assert_eq!(headers, vec!["hellworld", "super_fast", "c_foo", "date"]);
+
         // Test first row
         assert_eq!(rows[0].row_id, "0");
-        assert_eq!(rows[0].value["hellworld"], 1.0);
-        assert_eq!(rows[0].value["super_fast"], 2.23);
-        assert_eq!(rows[0].value["c_foo"], 3.0);
-        let date = rows[0].value["date"].as_object().unwrap();
+        let value0 = rows[0].to_value(&headers);
+        assert_eq!(value0["hellworld"], 1.0);
+        assert_eq!(value0["super_fast"], 2.23);
+        assert_eq!(value0["c_foo"], 3.0);
+        let date = value0["date"].as_object().unwrap();
         assert_eq!(date["type"], "datetime");
         assert_eq!(date["epoch"], 1739545612380i64);
         assert_eq!(date["string_value"], "2025-02-14T15:06:52.380Z");
 
         // Test second row
         assert_eq!(rows[1].row_id, "1");
-        assert_eq!(rows[1].value["hellworld"], 4.0);
-        assert_eq!(rows[1].value["super_fast"], "hello world");
-        assert_eq!(rows[1].value["c_foo"], 6.0);
-        let date = rows[1].value["date"].as_object().unwrap();
+        let value1 = rows[1].to_value(&headers);
+        assert_eq!(value1["hellworld"], 4.0);
+        assert_eq!(value1["super_fast"], "hello world");
+        assert_eq!(value1["c_foo"], 6.0);
+        let date = value1["date"].as_object().unwrap();
         assert_eq!(date["type"], "datetime");
         assert_eq!(date["epoch"], 1739545834000i64);
         assert_eq!(date["string_value"], "Fri, 14 Feb 2025 15:10:34 GMT");
@@ -336,11 +359,12 @@ BAR,acme";
                    MYID2,hello world,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
+        let (headers, rows) = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
 
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].row_id, "MYID1");
         assert_eq!(rows[1].row_id, "MYID2");
+        assert_eq!(headers, vec!["super_fast", "c_foo", "date"]);
 
         Ok(())
     }
@@ -352,7 +376,7 @@ BAR,acme";
                    4,hello world,foo1,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
+        let (headers, rows) = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
 
         assert_eq!(rows.len(), 2);
 
@@ -360,16 +384,8 @@ BAR,acme";
         assert_eq!(rows[0].row_id, "foo0");
         assert_eq!(rows[1].row_id, "foo1");
 
-        // Test that __dust_id is not inserted.
-        let row_0_concatenated_keys = rows[0]
-            .value
-            .keys()
-            .into_iter()
-            .map(|k| k.to_string())
-            .collect::<Vec<String>>()
-            .join(",");
-
-        assert_eq!(row_0_concatenated_keys, "hellworld,super_fast,c_foo,date");
+        // Test that __dust_id is not in headers
+        assert_eq!(headers, vec!["hellworld", "super_fast", "c_foo", "date"]);
 
         Ok(())
     }
@@ -388,7 +404,7 @@ BAR,acme";
         let csv = "header1,header2";
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
+        let (headers, rows) = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
         assert_eq!(rows.len(), 0);
 
         // Test CSV with too many columns (if MAX_TABLE_COLUMNS is defined)
@@ -420,7 +436,8 @@ BAR,acme";
                    bar,0,23123.0,false,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = Arc::new(GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?);
+        let (headers, rows) = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
+        let rows = Arc::new(rows);
         let schema = TableSchema::from_rows_async(rows).await?;
 
         assert_eq!(schema.columns()[0].value_type, TableSchemaFieldType::Text);

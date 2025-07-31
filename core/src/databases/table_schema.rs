@@ -177,6 +177,14 @@ impl TableSchema {
         tokio::task::spawn_blocking(move || TableSchema::from_rows(&rows)).await?
     }
 
+    pub async fn from_rows_with_headers_async(
+        headers: Vec<String>,
+        rows: Arc<Vec<Row>>,
+    ) -> Result<TableSchema> {
+        tokio::task::spawn_blocking(move || TableSchema::from_rows_with_headers(&headers, &rows))
+            .await?
+    }
+
     pub fn from_rows<T: HasValue>(rows: &Vec<T>) -> Result<Self> {
         // We store the ordering and the column in an hashmap to avoid a quadratic complexity in
         // column count.
@@ -184,7 +192,8 @@ impl TableSchema {
         let mut schema_map: HashMap<String, TableSchemaColumn> = HashMap::new();
 
         for (row_index, row) in rows.iter().enumerate() {
-            for (k, v) in row.value() {
+            let value_map = row.to_value_map();
+            for (k, v) in value_map {
                 if v.is_null() {
                     continue;
                 }
@@ -218,7 +227,7 @@ impl TableSchema {
                     Value::Null => unreachable!(),
                 };
 
-                match schema_map.get_mut(k) {
+                match schema_map.get_mut(k.as_str()) {
                     Some(column) => {
                         if column.value_type != value_type {
                             use TableSchemaFieldType::*;
@@ -230,6 +239,84 @@ impl TableSchema {
                                 // Otherwise we default to Text.
                                 _ => {
                                     column.value_type = Text;
+                                }
+                            }
+                        }
+                        Self::accumulate_value(column, v);
+                    }
+                    None => {
+                        let mut column = TableSchemaColumn {
+                            name: k.to_string(),
+                            value_type,
+                            possible_values: Some(vec![]),
+                            non_filterable: None,
+                            description: None,
+                        };
+                        Self::accumulate_value(&mut column, v);
+                        schema_map.insert(k.to_string(), column);
+                        schema_order.push(k.to_string());
+                    }
+                }
+            }
+        }
+
+        // The unwrap below is guaranteed to work as we insert in both schema_map and schema_order
+        // at the same time.
+        let schema = schema_order
+            .iter()
+            .map(|k| schema_map.get(k).unwrap().clone())
+            .collect();
+
+        Ok(Self(schema))
+    }
+
+    pub fn from_rows_with_headers(headers: &[String], rows: &Vec<Row>) -> Result<Self> {
+        // We store the ordering and the column in an hashmap to avoid a quadratic complexity in
+        // column count.
+        let mut schema_order: Vec<String> = Vec::new();
+        let mut schema_map: HashMap<String, TableSchemaColumn> = HashMap::new();
+
+        for (_row_index, row) in rows.iter().enumerate() {
+            for (i, k) in headers.iter().enumerate() {
+                let v = row.columns.get(i).unwrap_or(&serde_json::Value::Null);
+                if v.is_null() {
+                    continue;
+                }
+
+                let value_type = match v {
+                    Value::Bool(_) => TableSchemaFieldType::Bool,
+                    Value::Number(x) => {
+                        if x.is_i64() {
+                            TableSchemaFieldType::Int
+                        } else {
+                            TableSchemaFieldType::Float
+                        }
+                    }
+                    Value::String(_) => TableSchemaFieldType::Text,
+                    Value::Object(obj) => match Self::try_parse_date_object(obj) {
+                        Some(_) => TableSchemaFieldType::DateTime,
+                        None => {
+                            return Err(anyhow!(
+                                "TableSchema: unsupported column type: object (except for date objects)"
+                            ))
+                        }
+                    },
+                    Value::Array(_) => {
+                        return Err(anyhow!("TableSchema: unsupported column type: array"))
+                    }
+                    Value::Null => unreachable!(),
+                };
+
+                match schema_map.get_mut(k) {
+                    Some(column) => {
+                        if column.value_type != value_type {
+                            use TableSchemaFieldType::*;
+                            match (&column.value_type, &value_type) {
+                                (Int, Float) => {
+                                    column.value_type = Float;
+                                }
+                                _ => {
+                                    column.value_type = TableSchemaFieldType::Text;
                                 }
                             }
                         }
@@ -309,10 +396,12 @@ impl TableSchema {
         &self,
         field_names: &Vec<&String>,
         row: &Row,
+        headers: &[String],
     ) -> Result<Vec<SqlParam>> {
+        let value_map = row.to_value(headers);
         field_names
             .iter()
-            .map(|col| match row.value().get(*col) {
+            .map(|col| match value_map.get(*col) {
                 Some(Value::Bool(b)) => Ok(SqlParam::Bool(*b)),
                 Some(Value::Number(x)) => {
                     if x.is_i64() {
@@ -333,7 +422,7 @@ impl TableSchema {
                 None | Some(Value::Null) => Ok(SqlParam::Null),
                 _ => Err(anyhow!(
                     "Cannot convert value {:?} to SqlParam",
-                    row.value()
+                    value_map.get(*col)
                 )),
             })
             .collect::<Result<Vec<_>>>()
@@ -493,8 +582,8 @@ mod tests {
             ),
         ]);
         let rows = &vec![
-            Row::new("1".to_string(), row_1),
-            Row::new("2".to_string(), row_2),
+            Row::new_with_value("1".to_string(), row_1),
+            Row::new_with_value("2".to_string(), row_2),
         ];
 
         let schema = TableSchema::from_rows(rows)?;
@@ -548,8 +637,8 @@ mod tests {
         let row_1: Map<String, Value> = json!({"field1": 1, "field2": 1.2, "field3": "text", "field4": true, "field6": ["array", "elements"], "field7": {"key": "value"}}).as_object().unwrap().clone();
         let row_2: Map<String, Value> = json!({"field1": 2, "field2": 2.4, "field3": "more text", "field4": false, "field5": "not null anymore", "field6": ["more", "elements"], "field7": {"anotherKey": "anotherValue"}}).as_object().unwrap().clone();
         let rows = &vec![
-            Row::new("1".to_string(), row_1),
-            Row::new("2".to_string(), row_2),
+            Row::new_with_value("1".to_string(), row_1),
+            Row::new_with_value("2".to_string(), row_2),
         ];
 
         match TableSchema::from_rows(rows) {
@@ -572,9 +661,9 @@ mod tests {
             .unwrap()
             .clone();
         let rows = &vec![
-            Row::new("1".to_string(), row_1),
-            Row::new("2".to_string(), row_2),
-            Row::new("3".to_string(), row_3),
+            Row::new_with_value("1".to_string(), row_1),
+            Row::new_with_value("2".to_string(), row_2),
+            Row::new_with_value("3".to_string(), row_3),
         ];
 
         let schema = TableSchema::from_rows(rows);
@@ -631,7 +720,7 @@ mod tests {
         let schema = create_test_schema();
         let conn = setup_in_memory_db(&schema)?;
 
-        let row = Row::new(
+        let row = Row::new_with_value(
             "row_1".to_string(),
             serde_json::Map::from_iter(
                 json!({"field1": 1, "field2": 2.4, "field3": "text", "field4": true})
@@ -682,9 +771,10 @@ mod tests {
         );
 
         let (sql, field_names) = schema.get_insert_sql("test_table");
-        let params = params_from_iter(
-            schema.get_insert_params(&field_names, &Row::new("1".to_string(), row_content))?,
-        );
+        let params = params_from_iter(schema.get_insert_params(
+            &field_names,
+            &Row::new_with_value("1".to_string(), row_content),
+        )?);
         let mut stmt = conn.prepare(&sql)?;
         stmt.execute(params)?;
 
@@ -914,8 +1004,8 @@ mod tests {
                 .unwrap()
                 .clone(); // Corresponds to 2000-01-02 00:00:00
         let rows = &vec![
-            Row::new("1".to_string(), row_1.clone()),
-            Row::new("2".to_string(), row_2.clone()),
+            Row::new_with_value("1".to_string(), row_1.clone()),
+            Row::new_with_value("2".to_string(), row_2.clone()),
         ];
 
         let schema = TableSchema::from_rows(rows)?;
@@ -937,14 +1027,14 @@ mod tests {
 
         let (sql, field_names) = schema.get_insert_sql("test_table");
         let params = params_from_iter(
-            schema.get_insert_params(&field_names, &Row::new("1".to_string(), row_1))?,
+            schema.get_insert_params(&field_names, &Row::new_with_value("1".to_string(), row_1))?,
         );
         let mut stmt = conn.prepare(&sql)?;
         stmt.execute(params)?;
 
         let (sql, field_names) = schema.get_insert_sql("test_table");
         let params = params_from_iter(
-            schema.get_insert_params(&field_names, &Row::new("2".to_string(), row_2))?,
+            schema.get_insert_params(&field_names, &Row::new_with_value("2".to_string(), row_2))?,
         );
         let mut stmt = conn.prepare(&sql)?;
         stmt.execute(params)?;

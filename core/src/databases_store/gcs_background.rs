@@ -54,7 +54,7 @@ impl GoogleCloudStorageBackgroundProcessingStore {
             bucket: Self::get_bucket()?,
             bucket_csv_path: csv_path,
         };
-        let mut rows = csv.parse().await?;
+        let (_headers, mut rows) = csv.parse().await?;
 
         // If it's a 'deleted rows' file, mark all rows as deleted
         if is_delete {

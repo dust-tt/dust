@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use crate::info;
 use anyhow::{anyhow, Result};
@@ -82,7 +82,8 @@ impl GoogleCloudStorageDatabasesStore {
             bucket: Self::get_bucket()?,
             bucket_csv_path: Self::get_csv_storage_file_path(table),
         };
-        csv.parse().await
+        let (_headers, rows) = csv.parse().await?;
+        Ok(rows)
     }
 
     pub async fn write_rows_to_csv(
@@ -238,9 +239,12 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
             .collect::<Vec<_>>();
 
         if previous_rows_count != new_rows.len() {
-            let rows = Arc::new(new_rows);
-            let schema = TableSchema::from_rows_async(rows.clone()).await?;
-            Self::write_rows_to_csv(table, &schema, &rows).await?;
+            // When deleting a row, the schema doesn't change, so we can use the existing schema
+            if let Some(schema) = table.schema_cached() {
+                Self::write_rows_to_csv(table, schema, &new_rows).await?;
+            } else {
+                return Err(anyhow!("Cannot delete row from table without schema"));
+            }
         }
 
         Ok(())
