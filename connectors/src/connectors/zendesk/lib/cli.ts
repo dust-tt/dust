@@ -483,9 +483,10 @@ export const zendesk = async ({
 
       const column = tagIn ? "organizationTagsIn" : "organizationTagsNotIn";
       const currentTags = configuration[column] || [];
+      const localLogger = logger.child({ tag, column, currentTags });
 
       if (currentTags.includes(tag)) {
-        logger.info(`Tag "${tag}" already exists in ${column}`);
+        localLogger.info("Tag already exists.");
         return {
           success: true,
           message: `Tag "${tag}" already exists in ${column}`,
@@ -493,14 +494,9 @@ export const zendesk = async ({
       }
 
       const newTags = [...currentTags, tag];
-      await configuration.update({
-        [column]: newTags,
-      });
+      await configuration.update({ [column]: newTags });
 
-      logger.info(
-        { currentTags, newTags, tag, column },
-        `Successfully added tag.`
-      );
+      localLogger.info({ newTags }, "Successfully added tag.");
       return { success: true, message: `Added tag "${tag}" to ${column}` };
     }
     case "remove-organization-tag": {
@@ -508,9 +504,10 @@ export const zendesk = async ({
 
       const column = tagIn ? "organizationTagsIn" : "organizationTagsNotIn";
       const currentTags = configuration[column] || [];
+      const localLogger = logger.child({ tag, column, currentTags });
 
       if (!currentTags.includes(tag)) {
-        logger.info(`Tag "${tag}" does not exist in ${column}`);
+        localLogger.info("Tag does not exist.");
         return {
           success: true,
           message: `Tag "${tag}" does not exist in ${column}`,
@@ -518,14 +515,9 @@ export const zendesk = async ({
       }
 
       const newTags = currentTags.filter((t) => t !== tag);
-      await configuration.update({
-        [column]: newTags,
-      });
+      await configuration.update({ [column]: newTags });
 
-      logger.info(
-        { currentTags, newTags, tag, column },
-        `Successfully removed tag.`
-      );
+      localLogger.info({ newTags }, "Successfully removed tag.");
       return { success: true, message: `Removed tag "${tag}" from ${column}` };
     }
   }
