@@ -1,7 +1,7 @@
 // import _ from "lodash";
 // import { Sequelize } from "sequelize";
 //
-// import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+// import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 // import { getDataSourceViewIdsFromActions } from "@app/lib/api/assistant/permissions";
 // import { Authenticator } from "@app/lib/auth";
 // import { AgentConfiguration } from "@app/lib/models/assistant/agent";

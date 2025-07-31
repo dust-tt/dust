@@ -9,7 +9,7 @@ import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guard
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/types";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";

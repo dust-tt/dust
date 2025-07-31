@@ -2,7 +2,7 @@ import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
 
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import {
   createConversation,
   postNewContentFragment,
