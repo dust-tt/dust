@@ -1,15 +1,45 @@
 import type { DataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import type {
+  DataSourceViewContentNode,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
 } from "@app/types";
 
 /**
+ * Creates a placeholder DataSourceViewContentNode with minimal information.
+ * The actual content node data will be resolved on the backend when this
+ * configuration is used.
+ */
+function getPlaceholderResource(
+  nodeId: string,
+  parentId: string | null,
+  dataSourceView: DataSourceViewType
+): DataSourceViewContentNode {
+  return {
+    internalId: nodeId,
+    parentInternalId: parentId,
+    parentInternalIds: parentId ? [parentId] : null,
+    parentTitle: null,
+    title: nodeId,
+    type: "document",
+    mimeType: "application/octet-stream",
+    lastUpdatedAt: null,
+    expandable: false,
+    permission: "read",
+    providerVisibility: null,
+    sourceUrl: null,
+    preventSelection: false,
+    dataSourceView,
+  };
+}
+
+/**
  * Transforms DataSourceBuilderTreeType to DataSourceViewSelectionConfigurations
  *
  * This creates a simplified transformation that works with the path structure
- * used in the tree. Since we don't have access to all nodes at save time,
- * we create placeholder configurations that will be properly resolved on the backend.
+ * used in the tree. For paths that represent full data source selections,
+ * we set isSelectAll=true. For specific node selections, we create minimal
+ * resource entries that will be expanded on the backend.
  */
 export function transformTreeToSelectionConfigurations(
   tree: DataSourceBuilderTreeType,
@@ -73,17 +103,9 @@ export function transformTreeToSelectionConfigurations(
         );
 
         if (!existingResource) {
-          config.selectedResources.push({
-            internalId: nodeId,
-            parentInternalId: parentId,
-            title: nodeId, // Use nodeId as title fallback
-            type: "file", // Default type - this might need to be more sophisticated
-            dustDocumentId: null,
-            lastUpdatedAt: null,
-            expandable: false,
-            permission: "read",
-            sourceUrl: null,
-          });
+          config.selectedResources.push(
+            getPlaceholderResource(nodeId, parentId, dataSourceView)
+          );
         }
       }
     }

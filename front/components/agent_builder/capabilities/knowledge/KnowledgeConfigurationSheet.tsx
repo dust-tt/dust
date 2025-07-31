@@ -1,5 +1,10 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import { MultiPageSheet, MultiPageSheetContent, MultiPageSheetTrigger, ScrollArea } from "@dust-tt/sparkle";
+import {
+  MultiPageSheet,
+  MultiPageSheetContent,
+  MultiPageSheetTrigger,
+  ScrollArea,
+} from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
@@ -17,17 +22,13 @@ import {
   isValidPage,
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
-import {
-  transformTreeToSelectionConfigurations,
-} from "@app/components/agent_builder/capabilities/knowledge/transformations";
+import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import type { CapabilityConfig } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
   CAPABILITY_CONFIGS,
   generateActionFromFormData,
 } from "@app/components/agent_builder/capabilities/knowledge/utils";
-import {
-  MCPServerViewsKnowledgeDropdown,
-} from "@app/components/agent_builder/capabilities/MCPServerViewsKnowledgeDropdown";
+import { MCPServerViewsKnowledgeDropdown } from "@app/components/agent_builder/capabilities/MCPServerViewsKnowledgeDropdown";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
@@ -62,27 +63,33 @@ export function KnowledgeConfigurationSheet({
   action,
   open,
 }: KnowledgeConfigurationSheetProps) {
-  // We store as state to control the timing to update the content for exit animation.
-  const [config, setConfig] = useState<CapabilityConfig | null>(
-    capability ? CAPABILITY_CONFIGS[capability] : null
-  );
+  // Determine the config based on capability or action type
+  const config = useMemo(() => {
+    if (capability) {
+      return CAPABILITY_CONFIGS[capability];
+    }
+    if (action) {
+      const serverName =
+        ACTION_TYPE_TO_MCP_SERVER_MAP[
+          action.type as SupportedAgentBuilderActionType
+        ];
+      return serverName && isKnowledgeServerName(serverName)
+        ? CAPABILITY_CONFIGS[serverName]
+        : null;
+    }
+    return null;
+  }, [capability, action]);
 
-  // Internal state to control sheet opening for new actions
-  const [isInternallyOpen, setIsInternallyOpen] = useState(false);
-
-  // Determine if sheet should be open
-  const isSheetOpen = open !== undefined ? open : isInternallyOpen;
+  // Use controlled state when open prop is provided, otherwise uncontrolled
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = open !== undefined;
+  const isOpen = isControlled ? open : internalOpen;
 
   const handleClose = () => {
-    // Close internal state for new actions
-    setIsInternallyOpen(false);
+    if (!isControlled) {
+      setInternalOpen(false);
+    }
     onClose();
-
-    // TODO: This is a hack and we should find a proper solution.
-    // Wait until closing animation ends, otherwise exit animation won't work.
-    setTimeout(() => {
-      setConfig(null);
-    }, 200);
   };
 
   const handleSave = (
@@ -122,18 +129,18 @@ export function KnowledgeConfigurationSheet({
       },
     });
   }, [action]);
+  const handleOpenChange = (newOpen: boolean) => {
+    if (newOpen) {
+      if (!isControlled) {
+        setInternalOpen(true);
+      }
+    } else {
+      handleClose();
+    }
+  };
+
   return (
-    <MultiPageSheet
-      open={isSheetOpen}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          handleClose();
-        } else {
-          setIsInternallyOpen(true);
-          setConfig(capability ? CAPABILITY_CONFIGS[capability] : null);
-        }
-      }}
-    >
+    <MultiPageSheet open={isOpen} onOpenChange={handleOpenChange}>
       <MultiPageSheetTrigger asChild>
         <Button label="Add knowledge" />
       </MultiPageSheetTrigger>
