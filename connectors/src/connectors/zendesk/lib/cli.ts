@@ -39,7 +39,28 @@ import type {
   ZendeskFetchBrandResponseType,
   ZendeskFetchTicketResponseType,
   ZendeskGetRetentionPeriodResponseType,
+  ZendeskOrganizationTagResponseType,
 } from "@connectors/types";
+
+function getOrganizationTagsArgs(args: ZendeskCommandType["args"]) {
+  const tag = args.tag;
+  if (!tag) {
+    throw new Error("Missing --tag argument");
+  }
+
+  const tagIn = args.in === "true";
+  const tagNotIn = args.notIn === "true";
+
+  if (tagIn && tagNotIn) {
+    throw new Error("Cannot specify both --in and --not-in options");
+  }
+
+  if (!tagIn && !tagNotIn) {
+    throw new Error("Must specify either --in or --not-in option");
+  }
+
+  return { tag, tagIn, tagNotIn };
+}
 
 export const zendesk = async ({
   command,
@@ -50,6 +71,7 @@ export const zendesk = async ({
   | ZendeskFetchTicketResponseType
   | ZendeskFetchBrandResponseType
   | ZendeskGetRetentionPeriodResponseType
+  | ZendeskOrganizationTagResponseType
   | AdminResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "zendesk", command, args });
@@ -393,6 +415,56 @@ export const zendesk = async ({
         configValue: retentionPeriodDays.toString(),
       });
       return { success: true };
+    }
+    case "add-organization-tag": {
+      const { tag, tagIn } = getOrganizationTagsArgs(args);
+
+      const column = tagIn ? "organizationTagsIn" : "organizationTagsNotIn";
+      const currentTags = configuration[column] || [];
+
+      if (currentTags.includes(tag)) {
+        logger.info(`Tag "${tag}" already exists in ${column}`);
+        return {
+          success: true,
+          message: `Tag "${tag}" already exists in ${column}`,
+        };
+      }
+
+      const newTags = [...currentTags, tag];
+      await configuration.update({
+        [column]: newTags,
+      });
+
+      logger.info(
+        { currentTags, newTags, tag, column },
+        `Successfully added tag.`
+      );
+      return { success: true, message: `Added tag "${tag}" to ${column}` };
+    }
+    case "remove-organization-tag": {
+      const { tag, tagIn } = getOrganizationTagsArgs(args);
+
+      const column = tagIn ? "organizationTagsIn" : "organizationTagsNotIn";
+      const currentTags = configuration[column] || [];
+
+      if (!currentTags.includes(tag)) {
+        logger.info(`Tag "${tag}" does not exist in ${column}`);
+        return {
+          success: true,
+          message: `Tag "${tag}" does not exist in ${column}`,
+        };
+      }
+
+      const newTags = currentTags.filter((t) => t !== tag);
+      await configuration.update({
+        [column]: newTags,
+      });
+
+      logger.info(
+        { currentTags, newTags, tag, column },
+        `Successfully removed tag.`
+      );
+      return { success: true, message: `Removed tag "${tag}" from ${column}` };
     }
   }
 };
