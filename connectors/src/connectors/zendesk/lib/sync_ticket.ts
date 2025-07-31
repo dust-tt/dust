@@ -30,18 +30,56 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
 export function shouldSyncTicket(
   ticket: ZendeskFetchedTicket,
   configuration: ZendeskConfigurationResource,
-  { brandId }: { brandId?: number }
+  {
+    brandId,
+    organizationTagsMap,
+  }: { brandId?: number; organizationTagsMap: Map<number, string[]> }
 ): boolean {
-  return (
-    [
-      "closed",
-      "solved",
-      ...(configuration.syncUnresolvedTickets
-        ? ["new", "open", "pending", "hold"]
-        : []),
-    ].includes(ticket.status) &&
-    (!brandId || brandId === ticket.brand_id)
-  );
+  if (ticket.status === "deleted") {
+    return false;
+  }
+  if (
+    !configuration.syncUnresolvedTickets &&
+    !["closed", "solved"].includes(ticket.status)
+  ) {
+    return false;
+  }
+  if (brandId && brandId !== ticket.brand_id) {
+    return false;
+  }
+
+  const organizationTags = organizationTagsMap.get(ticket.organization_id);
+  if (!organizationTags) {
+    logger.error(
+      {
+        ticketId: ticket.id,
+        organizationId: ticket.organization_id,
+        connectorId: configuration.connectorId,
+      },
+      "Organization tags not found."
+    );
+    throw new Error(
+      `Tags not found for organization ${ticket.organization_id}.`
+    );
+  }
+
+  if (
+    configuration.organizationTagsIn?.some(
+      (mandatoryTag) => !organizationTags.includes(mandatoryTag)
+    )
+  ) {
+    return false;
+  }
+  if (
+    configuration.organizationTagsNotIn?.some((prohibitedTag) =>
+      organizationTags.includes(prohibitedTag)
+    )
+  ) {
+    return false;
+  }
+
+  // All checks passed.
+  return true;
 }
 
 export function extractMetadataFromDocumentUrl(ticketUrl: string): {

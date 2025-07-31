@@ -17,6 +17,7 @@ import {
   getZendeskBrandSubdomain,
   listZendeskArticlesInCategory,
   listZendeskCategoriesInBrand,
+  listZendeskOrganizations,
   listZendeskSectionsByCategory,
   listZendeskTicketComments,
   listZendeskTickets,
@@ -41,6 +42,7 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { removeNulls } from "@connectors/types/shared/utils/general";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
@@ -659,8 +661,21 @@ export async function syncZendeskTicketBatchActivity({
     return { hasMore: false, nextLink: "" };
   }
 
+  let organizationTagsMap = new Map<number, string[]>();
+  if (configuration.organizationTagsIn || configuration.organizationTagsNotIn) {
+    const organizationIds = removeNulls(
+      tickets.map((t) => t.organization_id ?? null)
+    );
+    const organizations = await listZendeskOrganizations({
+      accessToken,
+      brandSubdomain,
+      organizationIds,
+    });
+    organizationTagsMap = new Map(organizations.map((t) => [t.id, t.tags]));
+  }
+
   const ticketsToSync = tickets.filter((t) =>
-    shouldSyncTicket(t, configuration, { brandId })
+    shouldSyncTicket(t, configuration, { brandId, organizationTagsMap })
   );
 
   const comments2d = await concurrentExecutor(

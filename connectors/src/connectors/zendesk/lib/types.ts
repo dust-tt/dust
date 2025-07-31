@@ -178,3 +178,20 @@ export interface ZendeskFetchedUser {
   url: string;
   verified: boolean;
 }
+
+export interface ZendeskFetchedOrganization {
+  id: number;
+  url: string;
+  external_id: string;
+  name: string;
+  domain_names: string[];
+  created_at: string;
+  details: string;
+  shared_comments: boolean;
+  shared_tickets: boolean;
+  tags: string[];
+  group_id: number | null;
+  notes: string | null;
+  organization_fields: Record<string, string | number | boolean>;
+  shared_brand_assets: boolean;
+}

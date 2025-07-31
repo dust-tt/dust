@@ -8,6 +8,7 @@ import type {
   ZendeskFetchedArticle,
   ZendeskFetchedBrand,
   ZendeskFetchedCategory,
+  ZendeskFetchedOrganization,
   ZendeskFetchedSection,
   ZendeskFetchedTicket,
   ZendeskFetchedTicketComment,
@@ -508,6 +509,32 @@ export async function getZendeskTicketCount({
   const url = `https://${brandSubdomain}.zendesk.com/api/v2/search/count?query=${encodeURIComponent(query)}`;
   const response = await fetchFromZendeskWithRetries({ url, accessToken });
   return parseInt(response.count, 10);
+}
+
+/**
+ * Fetches multiple organizations at once from the Zendesk API.
+ * May run multiple queries, more precisely we need organizationCount // 100 + 1 API calls.
+ */
+export async function listZendeskOrganizations({
+  accessToken,
+  brandSubdomain,
+  organizationIds,
+}: {
+  accessToken: string;
+  brandSubdomain: string;
+  organizationIds: number[];
+}): Promise<ZendeskFetchedOrganization[]> {
+  const users: ZendeskFetchedOrganization[] = [];
+  // we can fetch at most 100 organizations at once: https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-many-organizations
+  for (const chunk of _.chunk(organizationIds, 100)) {
+    const parameter = `ids=${encodeURIComponent(chunk.join(","))}`;
+    const response = await fetchFromZendeskWithRetries({
+      url: `https://${brandSubdomain}.zendesk.com/api/v2/organizations/show_many?${parameter}`,
+      accessToken,
+    });
+    users.push(...response.organizations);
+  }
+  return users;
 }
 
 /**
