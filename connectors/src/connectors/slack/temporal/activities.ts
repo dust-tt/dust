@@ -49,7 +49,10 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import { ProviderWorkflowError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  ProviderWorkflowError,
+} from "@connectors/lib/error";
 import { SlackChannel, SlackMessages } from "@connectors/lib/models/slack";
 import {
   reportInitialSyncProgress,
@@ -1255,5 +1258,21 @@ export async function migrateChannelsFromLegacyBotToNewBotActivity(
     return;
   }
 
-  await migrateChannelsFromLegacyBotToNewBot(slackConnector, slackBotConnector);
+  try {
+    await migrateChannelsFromLegacyBotToNewBot(
+      slackConnector,
+      slackBotConnector
+    );
+  } catch (e) {
+    if (e instanceof ExternalOAuthTokenError) {
+      logger.info(
+        { error: e, slackConnectorId, slackBotConnectorId },
+        "Skipping migration of channels from legacy bot to new bot: external oauth token error"
+      );
+
+      return;
+    }
+
+    throw e;
+  }
 }
