@@ -2,7 +2,7 @@ import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { UniqueConstraintError } from "sequelize";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postNewContentFragment,

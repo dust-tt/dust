@@ -1,6 +1,6 @@
 import type { Logger } from "pino";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";

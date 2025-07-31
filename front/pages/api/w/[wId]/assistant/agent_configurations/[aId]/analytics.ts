@@ -7,7 +7,7 @@ import {
   agentMentionsCount,
   getAgentUsers,
 } from "@app/lib/api/assistant/agent_usage";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";

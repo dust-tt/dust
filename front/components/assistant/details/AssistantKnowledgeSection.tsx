@@ -23,8 +23,10 @@ import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentM
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration/types";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";

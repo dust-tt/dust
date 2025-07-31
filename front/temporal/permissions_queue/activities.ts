@@ -1,6 +1,6 @@
 import assert from "assert";
 
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
   getAgentConfigurationGroupIdsFromActions,
   listAgentConfigurationsForGroups,

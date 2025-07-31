@@ -11,7 +11,7 @@ import type {
 import { Op } from "sequelize";
 
 import { hideFileFromActionOutput, MCPActionType } from "@app/lib/actions/mcp";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,

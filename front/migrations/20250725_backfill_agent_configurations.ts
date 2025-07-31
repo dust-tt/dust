@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import { Op } from "sequelize";
 
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
