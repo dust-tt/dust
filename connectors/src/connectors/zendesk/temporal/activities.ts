@@ -1,3 +1,4 @@
+import assert from "assert";
 import _ from "lodash";
 
 import {
@@ -42,7 +43,6 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-import assert from "assert";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.

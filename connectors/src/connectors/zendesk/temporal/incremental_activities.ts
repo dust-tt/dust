@@ -1,3 +1,5 @@
+import assert from "assert";
+
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
   deleteTicket,
@@ -30,7 +32,6 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-import assert from "assert";
 
 /**
  * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.

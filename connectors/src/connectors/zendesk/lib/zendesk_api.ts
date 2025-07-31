@@ -19,7 +19,6 @@ import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { removeNulls } from "@connectors/types/shared/utils/general";
 
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
