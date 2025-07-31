@@ -32,8 +32,8 @@ export function shouldSyncTicket(
   configuration: ZendeskConfigurationResource,
   {
     brandId,
-    organizationTagsMap,
-  }: { brandId?: number; organizationTagsMap: Map<number, string[]> }
+    organizationTags,
+  }: { brandId?: number; organizationTags: string[] }
 ): boolean {
   if (ticket.status === "deleted") {
     return false;
@@ -46,21 +46,6 @@ export function shouldSyncTicket(
   }
   if (brandId && brandId !== ticket.brand_id) {
     return false;
-  }
-
-  const organizationTags = organizationTagsMap.get(ticket.organization_id);
-  if (!organizationTags) {
-    logger.error(
-      {
-        ticketId: ticket.id,
-        organizationId: ticket.organization_id,
-        connectorId: configuration.connectorId,
-      },
-      "Organization tags not found."
-    );
-    throw new Error(
-      `Tags not found for organization ${ticket.organization_id}.`
-    );
   }
 
   if (

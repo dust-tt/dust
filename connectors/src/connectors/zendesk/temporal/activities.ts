@@ -688,9 +688,25 @@ export async function syncZendeskTicketBatchActivity({
     });
   }
 
-  const ticketsToSync = tickets.filter((t) =>
-    shouldSyncTicket(t, configuration, { brandId, organizationTagsMap })
-  );
+  const ticketsToSync = tickets.filter((t) => {
+    const organizationTags = organizationTagsMap.get(t.organization_id);
+    if (!organizationTags) {
+      logger.error(
+        {
+          ticketId: t.id,
+          organizationId: t.organization_id,
+          connectorId: configuration.connectorId,
+        },
+        "Organization tags not found."
+      );
+      throw new Error(`Tags not found for organization ${t.organization_id}.`);
+    }
+
+    return shouldSyncTicket(t, configuration, {
+      brandId,
+      organizationTags,
+    });
+  });
 
   const comments2d = await concurrentExecutor(
     ticketsToSync,
