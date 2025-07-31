@@ -10,7 +10,7 @@ import {
   isSearchAction,
 } from "@app/components/agent_builder/types";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type {
   AgentConfigurationType,
