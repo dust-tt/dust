@@ -18,10 +18,11 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare contentType: AllSupportedFileContentType;
   declare fileName: string;
   declare fileSize: number;
+  declare sharedAt: Date | null;
+  declare snippet: string | null;
   declare status: FileStatus;
   declare useCase: FileUseCase;
   declare useCaseMetadata: FileUseCaseMetadata | null;
-  declare snippet: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
 
@@ -66,6 +67,11 @@ FileModel.init(
     },
     snippet: {
       type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
+    },
+    sharedAt: {
+      type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
     },

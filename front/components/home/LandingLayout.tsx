@@ -7,6 +7,7 @@ import {
   Hover3D,
   LoginIcon,
 } from "@dust-tt/sparkle";
+import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
@@ -104,16 +105,7 @@ export default function LandingLayout({
       <ScrollingHeader>
         <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
           <div className="hidden h-[24px] w-[96px] xl:block">
-            <Link href="/home">
-              <Hover3D className="relative h-[24px] w-[96px]">
-                <Div3D depth={0} className="h-[24px] w-[96px]">
-                  <DustLogoLayer1 className="h-[24px] w-[96px]" />
-                </Div3D>
-                <Div3D depth={25} className="absolute top-0">
-                  <DustLogoLayer2 className="h-[24px] w-[96px]" />
-                </Div3D>
-              </Hover3D>
-            </Link>
+            <PublicWebsiteLogo />
           </div>
           <MobileNavigation />
           <div className="block xl:hidden">
@@ -259,6 +251,7 @@ const CookieBanner = ({
     </div>
   );
 };
+
 const Header = () => {
   return (
     <Head>
@@ -347,5 +340,40 @@ const Header = () => {
       />
       <meta id="og-image" property="og:image" content="/static/og_image.png" />
     </Head>
+  );
+};
+
+interface PublicWebsiteLogoProps {
+  size?: "default" | "small";
+}
+
+const logoVariants = cva("", {
+  variants: {
+    size: {
+      default: "h-[24px] w-[96px]",
+      small: "h-[20px] w-[80px]",
+    },
+  },
+  defaultVariants: {
+    size: "default",
+  },
+});
+
+export const PublicWebsiteLogo = ({
+  size = "default",
+}: PublicWebsiteLogoProps) => {
+  const className = logoVariants({ size });
+
+  return (
+    <Link href="/home">
+      <Hover3D className={`relative ${className}`}>
+        <Div3D depth={0} className={className}>
+          <DustLogoLayer1 className={className} />
+        </Div3D>
+        <Div3D depth={25} className="absolute top-0">
+          <DustLogoLayer2 className={className} />
+        </Div3D>
+      </Hover3D>
+    </Link>
   );
 };

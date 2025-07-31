@@ -1,5 +1,5 @@
 use crate::providers::{
-    chat_messages::{AssistantChatMessage, AssistantContentItem},
+    chat_messages::{AssistantChatMessage, AssistantContentItem, ReasoningContent},
     helpers::Base64EncodedImageContent,
     llm::{ChatFunctionCall, ChatMessageRole},
 };
@@ -75,6 +75,8 @@ pub struct Usage {
 pub enum AnthropicResponseContent {
     Text { text: String },
     ToolUse(ToolUse),
+    Thinking(ThinkingContent),
+    RedactedThinking(RedactedThinkingContent),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -82,6 +84,17 @@ pub struct ToolUse {
     pub id: String,
     pub name: String,
     pub input: Value,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct ThinkingContent {
+    pub thinking: String,
+    pub signature: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct RedactedThinkingContent {
+    pub data: String,
 }
 
 /*
@@ -103,6 +116,15 @@ pub struct AnthropicContent {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<AnthropicImageContent>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub signature: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -112,6 +134,8 @@ pub enum AnthropicContentType {
     Image,
     ToolUse,
     ToolResult,
+    Thinking,
+    RedactedThinking,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -241,6 +265,30 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
                     };
                     function_calls.push(fc.clone());
                     contents.push(AssistantContentItem::FunctionCall { value: fc });
+                }
+                AnthropicResponseContent::Thinking(thinking) => {
+                    let metadata = serde_json::json!({
+                        "id": format!("thinking_{}", uuid::Uuid::new_v4().to_string()),
+                        "encrypted_content": thinking.signature,
+                    });
+                    contents.push(AssistantContentItem::Reasoning {
+                        value: ReasoningContent {
+                            reasoning: Some(thinking.thinking),
+                            metadata: metadata.to_string(),
+                        },
+                    });
+                }
+                AnthropicResponseContent::RedactedThinking(redacted) => {
+                    let metadata = serde_json::json!({
+                        "id": format!("redacted_thinking_{}", uuid::Uuid::new_v4().to_string()),
+                        "encrypted_content": redacted.data,
+                    });
+                    contents.push(AssistantContentItem::Reasoning {
+                        value: ReasoningContent {
+                            reasoning: None,
+                            metadata: metadata.to_string(),
+                        },
+                    });
                 }
             }
         }

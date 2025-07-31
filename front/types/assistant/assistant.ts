@@ -193,6 +193,7 @@ export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
 export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
 export const GEMINI_2_FLASH_LITE_MODEL_ID = "gemini-2.0-flash-lite" as const;
 export const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-preview-03-25";
+export const GEMINI_2_5_PRO_MODEL_ID = "gemini-2.5-pro" as const;
 
 // These Gemini preview models are deprecated (either replaced by a GA model or not making it to GA)
 export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
@@ -261,6 +262,7 @@ export const MODEL_IDS = [
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID,
   GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
   GEMINI_2_PRO_PREVIEW_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
   GEMINI_2_FLASH_PREVIEW_MODEL_ID,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
@@ -301,8 +303,9 @@ export type ModelConfigurationType = {
   shortDescription: string;
   isLegacy: boolean;
   isLatest: boolean;
-  // This meta-prompt is injected into the agent's system instructions if the agent is in a tool-use context.
-  toolUseMetaPrompt?: string;
+
+  // This meta-prompt is injected into the agent's system instructions if the agent is in a native reasoning context (reasoning effort >= medium).
+  nativeReasoningMetaPrompt?: string;
 
   // Adjust the token count estimation by a ratio. Only needed for anthropic models, where the token count is higher than our estimate
   tokenCountAdjustment?: number;
@@ -324,11 +327,6 @@ export type ModelConfigurationType = {
   customAssistantFeatureFlag?: WhitelistableFeature;
 };
 
-// Should be used for all Open AI models older than gpt-4o-2024-08-06 to prevent issues
-// with invalid JSON.
-const LEGACY_OPEN_AI_TOOL_USE_META_PROMPT =
-  "When using tools, generate valid and properly escaped JSON arguments.";
-
 export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
   modelId: GPT_3_5_TURBO_MODEL_ID,
@@ -342,7 +340,6 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's fast model.",
   isLegacy: false,
   isLatest: false,
-  toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   generationTokensCount: 2048,
   supportsVision: false,
   minimumReasoningEffort: "none",
@@ -363,7 +360,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's second best model.",
   isLegacy: false,
   isLatest: false,
-  toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
+
   generationTokensCount: 2048,
   supportsVision: true,
   minimumReasoningEffort: "none",
@@ -459,7 +456,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's fast model.",
   isLegacy: false,
   isLatest: false,
-  toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
+
   generationTokensCount: 16_384,
   supportsVision: true,
   minimumReasoningEffort: "none",
@@ -657,6 +654,10 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 
+const CLAUDE_4_NATIVE_REASONING_META_PROMPT =
+  `Never output any text between tool calls, or between tool calls and tool results. ` +
+  `Only start outputting text after the last tool call and tool result, once you are ready to provide your final answer.\n`;
+
 export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_4_OPUS_20250514_MODEL_ID,
@@ -673,8 +674,9 @@ export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 32_000,
   supportsVision: true,
   minimumReasoningEffort: "light",
-  maximumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
+  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   featureFlag: "claude_4_opus_feature",
 };
@@ -695,8 +697,9 @@ export const CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 64_000,
   supportsVision: true,
   minimumReasoningEffort: "light",
-  maximumReasoningEffort: "light",
+  maximumReasoningEffort: "high",
   defaultReasoningEffort: "light",
+  nativeReasoningMetaPrompt: CLAUDE_4_NATIVE_REASONING_META_PROMPT,
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
 };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -930,7 +933,7 @@ export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "none",
 };
 
-// Current Preview model
+// DEPRECATED - Gemini 2.5 pro preview
 export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
@@ -941,6 +944,25 @@ export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: true,
   description: "Google's powerful large context model (1m context).",
   shortDescription: "Google's powerful model (preview).",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  minimumReasoningEffort: "none",
+  maximumReasoningEffort: "light",
+  defaultReasoningEffort: "light",
+};
+
+export const GEMINI_2_5_PRO_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_5_PRO_MODEL_ID,
+  displayName: "Gemini 2.5 Pro",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "Google's powerful large context model (1m context).",
+  shortDescription: "Google's powerful model.",
   isLegacy: false,
   isLatest: true,
   generationTokensCount: 64_000,
@@ -1353,6 +1375,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GEMINI_2_FLASH_MODEL_CONFIG,
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG,
   GEMINI_2_PRO_PREVIEW_MODEL_CONFIG,
+  GEMINI_2_5_PRO_MODEL_CONFIG,
   GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG,
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG,

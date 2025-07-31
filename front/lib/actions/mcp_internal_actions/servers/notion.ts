@@ -22,10 +22,7 @@ import {
   makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import {
-  actionRefsOffset,
-  NOTION_SEARCH_ACTION_NUM_RESULTS,
-} from "@app/lib/actions/utils";
+import { NOTION_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -369,16 +366,11 @@ const createServer = (
           ],
         };
       } else {
-        const refsOffset = actionRefsOffset({
-          agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-          stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-          stepActions: agentLoopContext.runContext.stepActions,
-          refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-        });
+        const { citationsOffset } = agentLoopContext.runContext.stepContext;
 
         const refs = getRefs().slice(
-          refsOffset,
-          refsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
+          citationsOffset,
+          citationsOffset + NOTION_SEARCH_ACTION_NUM_RESULTS
         );
 
         const resultResources = results.map((result) => {

@@ -13,9 +13,10 @@ import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { listsAgentConfigurationVersions } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type {
@@ -38,9 +39,8 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const agentConfigurations = await getAgentConfigurations({
-    auth,
-    agentsGetView: { agentIds: [aId], allVersions: true },
+  const agentConfigurations = await listsAgentConfigurationVersions(auth, {
+    agentId: aId,
     variant: "full",
   });
 
@@ -65,39 +65,48 @@ const AssistantDetailsPage = ({
   const { isDark } = useTheme();
   return (
     <div>
-      <div className="flex">
-        <h3 className="flex-grow text-xl font-bold">
+      <div className="flex flex-row justify-between gap-4">
+        <h3 className="text-xl font-bold">
           Agent of workspace:{" "}
           <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
             {workspace.name}
           </a>
         </h3>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              icon={UserGroupIcon}
-              onClick={(e: any) => {
-                e.currentTarget.focus();
-              }}
-              label={`Editors`}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            onCloseAutoFocus={(event) => {
-              event.preventDefault();
-            }}
-          >
-            {lastVersionEditors.length === 0 && (
-              <DropdownMenuItem label="No editors found!" />
-            )}
-            {lastVersionEditors.map((editor) => (
-              <DropdownMenuItem
-                key={editor.id}
-                label={`${editor.fullName} (${editor.email})`}
+        <div className="flex flex-row gap-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                icon={UserGroupIcon}
+                onClick={(e: any) => {
+                  e.currentTarget.focus();
+                }}
+                label={`Editors`}
               />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+              }}
+            >
+              {lastVersionEditors.length === 0 && (
+                <DropdownMenuItem label="No editors found!" />
+              )}
+              {lastVersionEditors.map((editor) => (
+                <DropdownMenuItem
+                  key={editor.id}
+                  label={`${editor.fullName} (${editor.email})`}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <PluginList
+            pluginResourceTarget={{
+              resourceId: agentConfigurations[0].sId,
+              resourceType: "agents",
+              workspace: workspace,
+            }}
+          />
+        </div>
       </div>
 
       <Page.Vertical align="stretch">

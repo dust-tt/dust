@@ -32,6 +32,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "missing_action_catcher",
   "monday",
   "notion",
+  "outlook",
   "primitive_types_debugger",
   "query_tables",
   "query_tables_v2",
@@ -43,6 +44,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "think",
   "web_search_&_browse",
   "google_calendar",
+  "outlook_calendar",
   "slack",
   "agent_memory",
 ] as const;
@@ -73,6 +75,7 @@ export const INTERNAL_MCP_SERVERS: Record<
       plan: PlanType;
       featureFlags: WhitelistableFeature[];
     }) => boolean;
+    isPreview?: boolean;
     tools_stakes?: Record<string, MCPToolStakeLevelType>;
     timeoutMs?: number;
   }
@@ -114,6 +117,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("dev_mcp_actions");
     },
+    isPreview: true,
   },
   hubspot: {
     id: 7,
@@ -147,7 +151,6 @@ export const INTERNAL_MCP_SERVERS: Record<
       create_deal: "high",
       create_lead: "high",
       create_task: "high",
-      create_ticket: "high",
       create_note: "high",
       create_communication: "high",
       create_meeting: "high",
@@ -265,6 +268,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("google_sheets_tool");
     },
+    isPreview: true,
     tools_stakes: {
       list_spreadsheets: "never_ask",
       get_spreadsheet: "never_ask",
@@ -284,6 +288,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("monday_tool");
     },
+    isPreview: true,
     tools_stakes: {
       // Read operations
       get_boards: "never_ask",
@@ -318,9 +323,6 @@ export const INTERNAL_MCP_SERVERS: Record<
   agent_memory: {
     id: 21,
     availability: "auto",
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("agent_memory_tools");
-    },
   },
   jira: {
     id: 22,
@@ -328,6 +330,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("jira_tool");
     },
+    isPreview: true,
     tools_stakes: {
       // Read operations - never ask (no side effects)
       get_issue: "never_ask",
@@ -354,6 +357,39 @@ export const INTERNAL_MCP_SERVERS: Record<
     availability: "auto",
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("interactive_content_server");
+    },
+    isPreview: true,
+  },
+  outlook: {
+    id: 24,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("outlook_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      get_messages: "never_ask",
+      get_drafts: "never_ask",
+      create_draft: "low",
+      delete_draft: "low",
+      create_reply_draft: "low",
+    },
+  },
+  outlook_calendar: {
+    id: 25,
+    availability: "manual",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("outlook_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_calendars: "never_ask",
+      list_events: "never_ask",
+      get_event: "never_ask",
+      create_event: "low",
+      update_event: "low",
+      delete_event: "low",
+      check_availability: "never_ask",
     },
   },
   search: {
@@ -383,6 +419,7 @@ export const INTERNAL_MCP_SERVERS: Record<
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("exploded_tables_query");
     },
+    isPreview: true,
   },
   data_sources_file_system: {
     id: 1010,

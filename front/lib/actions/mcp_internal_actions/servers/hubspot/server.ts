@@ -14,7 +14,6 @@ import {
   createMeeting,
   createNote,
   createTask,
-  createTicket,
   getAssociatedMeetings,
   getCompany,
   getContact,
@@ -65,7 +64,7 @@ const serverInfo: InternalMCPServerDefinitionType = {
   name: "hubspot",
   version: "1.0.0",
   description:
-    "Comprehensive HubSpot CRM integration supporting all object types (contacts, companies, deals, tickets) and ALL engagement types (tasks, notes, meetings, calls, emails). " +
+    "Comprehensive HubSpot CRM integration supporting all object types (contacts, companies, deals) and ALL engagement types (tasks, notes, meetings, calls, emails). " +
     "Features advanced user activity tracking, owner search and listing, association management, and enhanced search capabilities with owner filtering. " +
     "Perfect for CRM data management and user activity analysis.",
   authorization: {
@@ -466,41 +465,6 @@ const createServer = (): McpServer => {
   );
 
   server.tool(
-    "create_ticket",
-    "Creates a new ticket in Hubspot, with optional associations.",
-    {
-      properties: z.record(z.string()).describe("Properties for the ticket."),
-      associations: z
-        .array(
-          z.object({
-            toObjectId: z.string(),
-            toObjectType: z
-              .string()
-              .describe("e.g., contacts, companies, deals"),
-          })
-        )
-        .optional()
-        .describe("Optional array of associations to create."),
-    },
-    async (input, { authInfo }) => {
-      return withAuth({
-        action: async (accessToken) => {
-          const result = await createTicket({
-            accessToken,
-            properties: input.properties,
-            associations: input.associations,
-          });
-          return makeMCPToolJSONSuccess({
-            message: "Ticket created successfully.",
-            result,
-          });
-        },
-        authInfo,
-      });
-    }
-  );
-
-  server.tool(
     "create_note",
     "Creates a new note in Hubspot, with optional associations.",
     {
@@ -520,7 +484,6 @@ const createServer = (): McpServer => {
           contactIds: z.array(z.string()).optional(),
           companyIds: z.array(z.string()).optional(),
           dealIds: z.array(z.string()).optional(),
-          ticketIds: z.array(z.string()).optional(),
           ownerIds: z.array(z.string()).optional(),
         })
         .optional()
@@ -558,7 +521,6 @@ const createServer = (): McpServer => {
           contactIds: z.array(z.string()).optional(),
           companyIds: z.array(z.string()).optional(),
           dealIds: z.array(z.string()).optional(),
-          ticketIds: z.array(z.string()).optional(),
         })
         .optional()
         .describe("Direct IDs of objects to associate the communication with."),
@@ -595,7 +557,6 @@ const createServer = (): McpServer => {
           contactIds: z.array(z.string()).optional(),
           companyIds: z.array(z.string()).optional(),
           dealIds: z.array(z.string()).optional(),
-          ticketIds: z.array(z.string()).optional(),
         })
         .optional()
         .describe("Direct IDs of objects to associate the meeting with."),
@@ -778,7 +739,6 @@ const createServer = (): McpServer => {
     "contacts",
     "companies",
     "deals",
-    "tickets",
     "tasks",
     "notes",
     "meetings",
@@ -875,7 +835,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "search_crm_objects",
-    "Comprehensive search tool for ALL HubSpot object types including contacts, companies, deals, tickets, " +
+    "Comprehensive search tool for ALL HubSpot object types including contacts, companies, deals, " +
       "and ALL engagement types (tasks, notes, meetings, calls, emails). Supports advanced filtering by properties, " +
       "date ranges, owners, and free-text queries. Enhanced to support owner filtering across all engagement types. " +
       "Use this for specific searches, or use get_user_activity for comprehensive user activity across all types.",
@@ -1113,11 +1073,11 @@ const createServer = (): McpServer => {
     "Creates an association between two existing HubSpot objects (e.g., associate a contact with a company).",
     {
       fromObjectType: z
-        .enum(["contacts", "companies", "deals", "tickets"])
+        .enum(["contacts", "companies", "deals"])
         .describe("The type of the source object"),
       fromObjectId: z.string().describe("The ID of the source object"),
       toObjectType: z
-        .enum(["contacts", "companies", "deals", "tickets"])
+        .enum(["contacts", "companies", "deals"])
         .describe("The type of the target object"),
       toObjectId: z.string().describe("The ID of the target object"),
     },
@@ -1149,11 +1109,11 @@ const createServer = (): McpServer => {
     "Lists all associations for a given HubSpot object (e.g., list all contacts associated with a company).",
     {
       objectType: z
-        .enum(["contacts", "companies", "deals", "tickets"])
+        .enum(["contacts", "companies", "deals"])
         .describe("The type of the object"),
       objectId: z.string().describe("The ID of the object"),
       toObjectType: z
-        .enum(["contacts", "companies", "deals", "tickets"])
+        .enum(["contacts", "companies", "deals"])
         .optional()
         .describe("Optional: specific object type to filter associations"),
     },
@@ -1181,11 +1141,11 @@ const createServer = (): McpServer => {
     "Removes an association between two HubSpot objects.",
     {
       fromObjectType: z
-        .enum(["contacts", "companies", "deals", "tickets"])
+        .enum(["contacts", "companies", "deals"])
         .describe("The type of the source object"),
       fromObjectId: z.string().describe("The ID of the source object"),
       toObjectType: z
-        .enum(["contacts", "companies", "deals", "tickets"])
+        .enum(["contacts", "companies", "deals"])
         .describe("The type of the target object"),
       toObjectId: z.string().describe("The ID of the target object"),
     },

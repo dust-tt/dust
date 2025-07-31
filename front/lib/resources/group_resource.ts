@@ -41,7 +41,16 @@ import type {
   RolePermission,
   UserType,
 } from "@app/types";
-import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import {
+  AGENT_GROUP_PREFIX,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
+
+export const ADMIN_GROUP_NAME = "dust-admins";
+export const BUILDER_GROUP_NAME = "dust-builders";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -87,7 +96,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const defaultGroup = await GroupResource.makeNew(
       {
         workspaceId: workspace.id,
-        name: `Group for Agent ${agent.name} (${agent.sId})`,
+        name: `${AGENT_GROUP_PREFIX} ${agent.name} (${agent.sId})`,
         kind: "agent_editors",
       },
       { transaction }
@@ -1333,6 +1342,32 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isProvisioned(): boolean {
     return this.kind === "provisioned";
+  }
+
+  /**
+   * Checks if dust-builders and dust-admins groups exist and are actively provisioned
+   * in the workspace. This indicates that role management should be restricted in the UI.
+   */
+  static async listRoleProvisioningGroupsForWorkspace(
+    auth: Authenticator
+  ): Promise<GroupResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    // Check if workspace has WorkOS organization ID (required for provisioning)
+    if (!owner.workOSOrganizationId) {
+      return [];
+    }
+
+    const provisionedGroups = await this.baseFetch(auth, {
+      where: {
+        kind: "provisioned",
+        name: {
+          [Op.in]: [ADMIN_GROUP_NAME, BUILDER_GROUP_NAME],
+        },
+      },
+    });
+
+    return provisionedGroups;
   }
 
   /**

@@ -4,6 +4,7 @@ import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
@@ -22,10 +23,8 @@ import {
   getCoreSearchArgs,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
@@ -36,7 +35,8 @@ import {
 } from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { CoreAPIDocument, TimeFrame } from "@app/types";
+import type { CoreAPIDocument, Result, TimeFrame } from "@app/types";
+import { Err, Ok } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
@@ -92,7 +92,7 @@ function createServer(
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
 
-  const includeFunction = async ({
+  async function includeFunction({
     timeFrame,
     dataSources,
     tagsIn,
@@ -102,18 +102,21 @@ function createServer(
     dataSources: DataSourcesToolConfigurationType;
     tagsIn?: string[];
     tagsNot?: string[];
-  }): Promise<{
-    isError: boolean;
-    content:
-      | TextContent[]
-      | {
-          type: "resource";
-          resource:
-            | IncludeResultResourceType
-            | IncludeQueryResourceType
-            | WarningResourceType;
-        }[];
-  }> => {
+  }): Promise<
+    Result<
+      (
+        | TextContent
+        | {
+            type: "resource";
+            resource:
+              | IncludeResultResourceType
+              | IncludeQueryResourceType
+              | WarningResourceType;
+          }
+      )[],
+      MCPError
+    >
+  > {
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const credentials = dustManagedCredentials();
 
@@ -123,17 +126,8 @@ function createServer(
       );
     }
 
-    // Compute the topK and refsOffset for the search.
-    const topK = getRetrievalTopK({
-      agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-      stepActions: agentLoopContext.runContext.stepActions,
-    });
-    const refsOffset = actionRefsOffset({
-      agentConfiguration: agentLoopContext.runContext.agentConfiguration,
-      stepActionIndex: agentLoopContext.runContext.stepActionIndex,
-      stepActions: agentLoopContext.runContext.stepActions,
-      refsOffset: agentLoopContext.runContext.citationsRefsOffset,
-    });
+    const { citationsOffset, retrievalTopK } =
+      agentLoopContext.runContext.stepContext;
 
     // Get the core search args for each data source, fail if any of them are invalid.
     const coreSearchArgsResults = await concurrentExecutor(
@@ -145,15 +139,16 @@ function createServer(
 
     // If any of the data sources are invalid, return an error message.
     if (coreSearchArgsResults.some((res) => res.isErr())) {
-      return {
-        isError: false,
-        content: removeNulls(
-          coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
-        ).map((error) => ({
-          type: "text",
-          text: error.message,
-        })),
-      };
+      return new Err(
+        new MCPError(
+          removeNulls(
+            coreSearchArgsResults.map((res) => (res.isErr() ? res.error : null))
+          )
+            .map((error) => error.message)
+            .join("\n"),
+          { tracked: false }
+        )
+      );
     }
 
     const coreSearchArgs = removeNulls(
@@ -165,15 +160,12 @@ function createServer(
       tagsNot,
     });
     if (conflictingTagsError) {
-      return {
-        isError: false,
-        content: [{ type: "text", text: conflictingTagsError }],
-      };
+      return new Err(new MCPError(conflictingTagsError, { tracked: false }));
     }
 
     const searchResults = await coreAPI.searchDataSources(
       "",
-      topK,
+      retrievalTopK,
       credentials,
       false,
       coreSearchArgs.map((args) => {
@@ -208,16 +200,21 @@ function createServer(
     );
 
     if (searchResults.isErr()) {
-      return makeMCPToolTextError(searchResults.error.message);
+      return new Err(new MCPError(searchResults.error.message));
     }
 
-    if (refsOffset + topK > getRefs().length) {
-      return makeMCPToolTextError(
-        "The inclusion exhausted the total number of references available for citations"
+    if (citationsOffset + retrievalTopK > getRefs().length) {
+      return new Err(
+        new MCPError(
+          "The inclusion exhausted the total number of references available for citations"
+        )
       );
     }
 
-    const refs = getRefs().slice(refsOffset, refsOffset + topK);
+    const refs = getRefs().slice(
+      citationsOffset,
+      citationsOffset + retrievalTopK
+    );
 
     const results: IncludeResultResourceType[] =
       searchResults.value.documents.map((doc) => {
@@ -247,39 +244,40 @@ function createServer(
 
     const warningResource = makeWarningResource(
       searchResults.value.documents,
-      topK,
+      retrievalTopK,
       timeFrame ?? null
     );
 
-    return {
-      isError: false,
-      content: [
-        ...results.map((result) => ({
-          type: "resource" as const,
-          resource: result,
-        })),
-        {
-          type: "resource" as const,
-          resource: makeQueryResource(timeFrame ?? null),
-        },
-        ...(warningResource
-          ? [
-              {
-                type: "resource" as const,
-                resource: warningResource,
-              },
-            ]
-          : []),
-      ],
-    };
-  };
+    return new Ok([
+      ...results.map((result) => ({
+        type: "resource" as const,
+        resource: result,
+      })),
+      {
+        type: "resource" as const,
+        resource: makeQueryResource(timeFrame ?? null),
+      },
+      ...(warningResource
+        ? [
+            {
+              type: "resource" as const,
+              resource: warningResource,
+            },
+          ]
+        : []),
+    ]);
+  }
 
   if (!areTagsDynamic) {
     server.tool(
       INCLUDE_TOOL_NAME,
       "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
       commonInputsSchema,
-      withToolLogging(auth, "include", includeFunction)
+      withToolLogging(
+        auth,
+        { toolName: "include", agentLoopContext },
+        includeFunction
+      )
     );
   } else {
     server.tool(
@@ -289,7 +287,11 @@ function createServer(
         ...commonInputsSchema,
         ...tagsInputSchema,
       },
-      withToolLogging(auth, "include", includeFunction)
+      withToolLogging(
+        auth,
+        { toolName: "include", agentLoopContext },
+        includeFunction
+      )
     );
 
     server.tool(

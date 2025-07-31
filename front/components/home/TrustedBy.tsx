@@ -99,14 +99,20 @@ const LOGO_SETS = {
       { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
-      { name: "wttj", src: "/static/landing/logos/gray/wttj.svg" },
+      {
+        name: "wttj",
+        src: "/static/landing/logos/gray/welcometothejungle.svg",
+      },
     ],
     eu: [
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
       { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
-      { name: "wttj", src: "/static/landing/logos/gray/wttj.svg" },
+      {
+        name: "wttj",
+        src: "/static/landing/logos/gray/welcometothejungle.svg",
+      },
     ],
   },
   finance: {

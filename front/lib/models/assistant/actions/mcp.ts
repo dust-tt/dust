@@ -195,10 +195,10 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "allowed_implicitly"
     | "denied";
 
+  declare citationsAllocated: number;
+
   declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
   declare agentMessage?: NonAttribute<AgentMessage>;
-  // TODO(2025-07-23 aubin): remove this once the analytics have been moved to the resource.
-  declare stepContent?: NonAttribute<AgentStepContentModel>;
 }
 
 AgentMCPAction.init(
@@ -241,6 +241,11 @@ AgentMCPAction.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    citationsAllocated: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
   },
   {

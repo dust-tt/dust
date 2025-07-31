@@ -64,6 +64,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-2.0-flash"
   | "gemini-2.0-flash-lite"
   | "gemini-2.5-pro-preview-03-25"
+  | "gemini-2.5-pro"
   | "gemini-2.0-flash-exp" // DEPRECATED
   | "gemini-2.0-flash-lite-preview-02-05" // DEPRECATED
   | "gemini-2.0-pro-exp-02-05" // DEPRECATED
@@ -587,8 +588,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_search"
   | "agent_builder_instructions_autocomplete"
   | "agent_builder_v2"
-  | "agent_memory_tools"
   | "anthropic_vertex_fallback"
+  | "async_loop"
   | "claude_4_opus_feature"
   | "co_edition"
   | "deepseek_feature"
@@ -606,6 +607,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_trackers"
   | "labs_transcripts"
   | "monday_tool"
+  | "outlook_tool"
   | "notion_private_integration"
   | "okta_enterprise_connection"
   | "openai_o1_custom_assistants_feature"

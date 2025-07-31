@@ -5,7 +5,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   archiveAgentConfiguration,
   getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/agent";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -33,11 +33,10 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const agent = await getAgentConfiguration(
-    auth,
-    req.query.aId as string,
-    "full"
-  );
+  const agent = await getAgentConfiguration(auth, {
+    agentId: req.query.aId as string,
+    variant: "full",
+  });
   if (!agent || (!agent.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,

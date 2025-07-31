@@ -1,3 +1,6 @@
+import { useMemo } from "react";
+import type { Fetcher } from "swr";
+
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   emptyArray,
@@ -7,6 +10,7 @@ import {
 } from "@app/lib/swr/swr";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { GetWorkspaceDomainsResponseBody } from "@app/pages/api/w/[wId]/domains";
+import type { GetProvisioningStatusResponseBody } from "@app/pages/api/w/[wId]/provisioning-status";
 import type { LightWorkspaceType } from "@app/types";
 
 /**
@@ -206,5 +210,40 @@ export function useDisableWorkOSDirectorySyncConnection({
 
   return {
     doDisableWorkOSDirectorySyncConnection,
+  };
+}
+
+export function useProvisioningStatus({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const provisioningStatusFetcher: Fetcher<GetProvisioningStatusResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/provisioning-status`,
+    provisioningStatusFetcher,
+    {
+      disabled,
+    }
+  );
+
+  const roleProvisioningStatus = useMemo(() => {
+    if (!data) {
+      return {
+        hasAdminGroup: false,
+        hasBuilderGroup: false,
+      };
+    }
+    return data;
+  }, [data]);
+
+  return {
+    roleProvisioningStatus,
+    isProvisioningStatusLoading: !error && !data && !disabled,
+    isProvisioningStatusError: error,
   };
 }

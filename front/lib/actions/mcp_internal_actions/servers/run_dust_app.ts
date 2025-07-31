@@ -122,6 +122,18 @@ async function prepareAppContext(
   appConfig: BlockRunConfig;
 }> {
   if (!actionConfig.dustAppConfiguration?.appId) {
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        userId: auth.user()?.sId || "no_user",
+        role: auth.role(),
+        groupIds: auth.groups().map((g) => g.sId),
+        actionConfig,
+        dustAppConfiguration: actionConfig.dustAppConfiguration,
+        appId: actionConfig.dustAppConfiguration?.appId,
+      },
+      "[run_dust_app] Missing Dust app ID"
+    );
     throw new Error("Missing Dust app ID");
   }
 

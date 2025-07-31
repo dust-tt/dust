@@ -97,51 +97,40 @@ export async function editClientExecutableFile(
 > {
   const { fileId, oldString, newString, expectedReplacements = 1 } = params;
 
-  try {
-    // Fetch the existing file.
-    const fileContentResult = await getClientExecutableFileContent(
-      auth,
-      fileId
-    );
-    if (fileContentResult.isErr()) {
-      return fileContentResult;
-    }
-    const { fileResource, content: currentContent } = fileContentResult.value;
+  // Fetch the existing file.
+  const fileContentResult = await getClientExecutableFileContent(auth, fileId);
+  if (fileContentResult.isErr()) {
+    return fileContentResult;
+  }
+  const { fileResource, content: currentContent } = fileContentResult.value;
 
-    // Count occurrences of oldString.
-    const regex = new RegExp(
-      oldString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-      "g"
-    );
-    const matches = currentContent.match(regex);
-    const occurrences = matches ? matches.length : 0;
+  // Count occurrences of oldString.
+  const regex = new RegExp(
+    oldString.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+    "g"
+  );
+  const matches = currentContent.match(regex);
+  const occurrences = matches ? matches.length : 0;
 
-    if (occurrences === 0) {
-      return new Err(new Error(`String not found in file: "${oldString}"`));
-    }
+  if (occurrences === 0) {
+    return new Err(new Error(`String not found in file: "${oldString}"`));
+  }
 
-    if (occurrences !== expectedReplacements) {
-      return new Err(
-        new Error(
-          `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`
-        )
-      );
-    }
-
-    // Perform the replacement.
-    const updatedContent = currentContent.replace(regex, newString);
-
-    // Upload the updated content.
-    await fileResource.uploadContent(auth, updatedContent);
-
-    return new Ok({ fileResource, replacementCount: occurrences });
-  } catch (error) {
+  if (occurrences !== expectedReplacements) {
     return new Err(
       new Error(
-        `Failed to update client executable file '${fileId}': ${normalizeError(error)}`
+        `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`
       )
     );
   }
+
+  // Perform the replacement.
+  const updatedContent = currentContent.replace(regex, newString);
+
+  // Upload the updated content.
+  await fileResource.uploadContent(auth, updatedContent);
+
+  return new Ok({ fileResource, replacementCount: occurrences });
 }
 
 export async function getClientExecutableFileContent(

@@ -14,6 +14,7 @@ describe("getPrefixedToolName", () => {
     id: 1,
     description: "Test server description",
     mcpServerViewId: "test-view-id",
+    mcpServerName: "test_server",
     dataSources: null,
     tables: null,
     childAgentId: null,

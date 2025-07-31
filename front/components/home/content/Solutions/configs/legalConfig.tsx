@@ -166,12 +166,19 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
+    title: "Wakam cuts legal contract analysis time by 50% with Dust",
+    content:
+      "How Wakam developed specialized AI agents to automate contract analysis, data extraction, and regulatory monitoring.",
+    href: "https://blog.dust.tt/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Wakam_Dust.png",
+  },
+  {
     title:
       "50% Time Savings in Legal: How Didomi's CPO Transformed Privacy Compliance",
     content:
       "Dust AI agents cut their legal team's workload in half, enabling them to scale operations across multiple countries without additional headcount.",
     href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Didomi-__-Dust.jpg",
   },
   {
     title:
@@ -179,13 +186,6 @@ export const Stories: CustomerStory[] = [
     content:
       "Germi, Qonto's AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
     href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Qonto-__-Dust.jpg",
   },
-  // {
-  //   title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
-  //   content:
-  //     "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-  //   href: "https://blog.dust.tt/customer-story-lifen/",
-  //   src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
-  // },
 ];

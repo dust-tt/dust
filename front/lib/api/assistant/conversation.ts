@@ -8,7 +8,7 @@ import {
   getAgentConfigurations,
   getFullAgentConfiguration,
   getLightAgentConfiguration,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { canReadMessage } from "@app/lib/api/assistant/messages";
@@ -399,13 +399,10 @@ export async function postUserMessage(
   }
 
   const results = await Promise.all([
-    getAgentConfigurations({
-      auth,
-      agentsGetView: {
-        agentIds: mentions
-          .filter(isAgentMention)
-          .map((mention) => mention.configurationId),
-      },
+    getAgentConfigurations(auth, {
+      agentIds: mentions
+        .filter(isAgentMention)
+        .map((mention) => mention.configurationId),
       variant: "light",
     }),
     (() => {
@@ -694,7 +691,7 @@ export async function postUserMessage(
       void runAgentLoop(
         auth.toJSON(),
         { sync: true, inMemoryData },
-        { forceAsynchronousLoop }
+        { forceAsynchronousLoop, startStep: 0 }
       );
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
@@ -1135,7 +1132,7 @@ export async function editUserMessage(
       void runAgentLoop(
         auth.toJSON(),
         { sync: true, inMemoryData },
-        { forceAsynchronousLoop: false }
+        { forceAsynchronousLoop: false, startStep: 0 }
       );
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
@@ -1323,7 +1320,6 @@ export async function retryAgentMessage(
   const agentMessageArray = conversation.content.find((messages) => {
     return messages.some((m) => m.sId === message.sId && isAgentMessageType(m));
   }) as AgentMessageType[];
-  agentMessageArray.push(agentMessage);
 
   // Finally, stitch the conversation.
   const newContent = [
@@ -1357,7 +1353,7 @@ export async function retryAgentMessage(
   void runAgentLoop(
     auth.toJSON(),
     { sync: true, inMemoryData },
-    { forceAsynchronousLoop: false }
+    { forceAsynchronousLoop: false, startStep: 0 }
   );
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain

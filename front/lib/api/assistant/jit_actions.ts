@@ -9,8 +9,10 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration/types";
 import type {
   ContentNodeAttachmentType,
   ConversationAttachmentType,
@@ -74,6 +76,7 @@ export async function getJITServers(
     jsonSchema: null,
     additionalConfiguration: {},
     mcpServerViewId: conversationFilesView.sId,
+    mcpServerName: conversationFilesView.toJSON().server.name,
     dustAppConfiguration: null,
     internalMCPServerId: conversationFilesView.mcpServerId,
   };
@@ -175,6 +178,7 @@ export async function getJITServers(
       jsonSchema: null,
       additionalConfiguration: {},
       mcpServerViewId: queryTablesView.sId,
+      mcpServerName: queryTablesView.toJSON().server.name,
       dustAppConfiguration: null,
       internalMCPServerId: queryTablesView.mcpServerId,
     };
@@ -235,6 +239,7 @@ export async function getJITServers(
       jsonSchema: null,
       additionalConfiguration: {},
       mcpServerViewId: retrievalView.sId,
+      mcpServerName: retrievalView.toJSON().server.name,
       dustAppConfiguration: null,
       internalMCPServerId: retrievalView.mcpServerId,
     };
@@ -285,6 +290,7 @@ export async function getJITServers(
       mcpServerViewId: retrievalView.sId,
       dustAppConfiguration: null,
       internalMCPServerId: retrievalView.mcpServerId,
+      mcpServerName: retrievalView.toJSON().server.name,
     };
     jitServers.push(folderSearchServer);
   }

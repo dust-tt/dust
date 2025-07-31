@@ -2,16 +2,18 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { trim } from "lodash";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/servers/utils";
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { CoreAPI, removeNulls } from "@app/types";
+import { CoreAPI, Err, removeNulls } from "@app/types";
+import { Ok } from "@app/types";
 
 const DEFAULT_SEARCH_LABELS_LIMIT = 10;
 
@@ -33,10 +35,13 @@ export const makeFindTagsDescription = (toolName: string) =>
   "Restricting or excluding content succeeds only with existing labels. " +
   "Searching without verifying labels first typically returns no results.";
 
-export function makeFindTagsTool(auth: Authenticator) {
+export function makeFindTagsTool(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+) {
   return withToolLogging(
     auth,
-    "find_tags",
+    { toolName: "find_tags", agentLoopContext },
     async ({
       query,
       dataSources,
@@ -52,7 +57,18 @@ export function makeFindTagsTool(auth: Authenticator) {
       );
 
       if (coreSearchArgsResults.some((res) => res.isErr())) {
-        return makeMCPToolTextError("Invalid data sources");
+        return new Err(
+          new MCPError(
+            "Invalid data sources: " +
+              removeNulls(
+                coreSearchArgsResults.map((res) =>
+                  res.isErr() ? res.error : null
+                )
+              )
+                .map((error) => error.message)
+                .join("\n")
+          )
+        );
       }
 
       const coreSearchArgs = removeNulls(
@@ -60,8 +76,10 @@ export function makeFindTagsTool(auth: Authenticator) {
       );
 
       if (coreSearchArgs.length === 0) {
-        return makeMCPToolTextError(
-          "Search action must have at least one data source configured."
+        return new Err(
+          new MCPError(
+            "Search action must have at least one data source configured."
+          )
         );
       }
 
@@ -74,26 +92,23 @@ export function makeFindTagsTool(auth: Authenticator) {
       });
 
       if (result.isErr()) {
-        return makeMCPToolTextError("Error searching for labels");
+        return new Err(new MCPError("Error searching for labels"));
       }
 
-      return {
-        isError: false,
-        content: [
-          {
-            type: "text",
-            text:
-              "Labels found:\n\n" +
-              removeNulls(
-                result.value.tags.map((tag) =>
-                  tag.tag && trim(tag.tag)
-                    ? `${tag.tag} (${tag.match_count} matches)`
-                    : null
-                )
-              ).join("\n"),
-          },
-        ],
-      };
+      return new Ok([
+        {
+          type: "text",
+          text:
+            "Labels found:\n\n" +
+            removeNulls(
+              result.value.tags.map((tag) =>
+                tag.tag && trim(tag.tag)
+                  ? `${tag.tag} (${tag.match_count} matches)`
+                  : null
+              )
+            ).join("\n"),
+        },
+      ]);
     }
   );
 }

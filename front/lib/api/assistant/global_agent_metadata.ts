@@ -7,7 +7,7 @@ import {
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG,
+  GEMINI_2_5_PRO_MODEL_CONFIG,
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
@@ -169,7 +169,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.GEMINI_PRO,
         name: "gemini-pro",
-        description: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.description,
+        description: GEMINI_2_5_PRO_MODEL_CONFIG.description,
         pictureUrl:
           "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
       };

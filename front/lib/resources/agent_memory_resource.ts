@@ -11,7 +11,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { makeSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
@@ -20,7 +20,7 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -73,7 +73,42 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     return memories.map((m) => new this(AgentMemoryModel, m.get()));
   }
 
-  private static async findByAgentConfigurationAndUser(
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    return this.baseFetch(auth, {
+      where: {
+        id: ids,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
+  static async fetchByIds(auth: Authenticator, ids: string[]) {
+    return AgentMemoryResource.fetchByModelIds(
+      auth,
+      removeNulls(ids.map(getResourceIdFromSId))
+    );
+  }
+
+  static async fetchByIdForUser(
+    auth: Authenticator,
+    { user, memoryId }: { user: UserType | null; memoryId: string }
+  ): Promise<AgentMemoryResource | null> {
+    const id = getResourceIdFromSId(memoryId);
+    if (!id) {
+      return null;
+    }
+
+    const [memory] = await this.baseFetch(auth, {
+      where: {
+        id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user?.id ?? null,
+      },
+    });
+    return memory ?? null;
+  }
+
+  static async findByAgentConfigurationAndUser(
     auth: Authenticator,
     {
       agentConfiguration,
@@ -95,6 +130,10 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       },
       transaction
     );
+  }
+
+  async updateContent(auth: Authenticator, content: string) {
+    return this.update({ content });
   }
 
   /**
@@ -253,6 +292,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     try {
       await this.model.destroy({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           id: this.id,
         },
         transaction,

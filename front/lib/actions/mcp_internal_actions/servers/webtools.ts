@@ -12,8 +12,6 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { actionRefsOffset } from "@app/lib/actions/utils";
-import { getWebsearchNumResults } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -45,8 +43,8 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
       query: z
         .string()
         .describe(
-          "The query used to perform the google search. If requested by the " +
-            "user, use the google syntax `site:` to restrict the the search " +
+          "The query used to perform the Google search. If requested by the " +
+            "user, use the Google syntax `site:` to restrict the search " +
             "to a particular website or domain. " +
             "Unicode characters are not supported."
         ),
@@ -55,7 +53,7 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         .optional()
         .describe(
           "A 1-indexed page number used to paginate through the search results." +
-            " Should only be provided if page is stricly greater than 1 in order" +
+            " Should only be provided if the page is strictly greater than 1 in order" +
             " to go deeper into the search results for a specific query."
         ),
     },
@@ -68,15 +66,14 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
 
       const agentLoopRunContext = agentLoopContext.runContext;
 
-      const numResults = getWebsearchNumResults({
-        stepActions: agentLoopRunContext.stepActions,
-      });
+      const { websearchResultCount, citationsOffset } =
+        agentLoopRunContext.stepContext;
 
       const websearchRes = await webSearch({
         provider: "serpapi",
         query,
         page,
-        num: numResults,
+        num: websearchResultCount,
       });
 
       if (websearchRes.isErr()) {
@@ -85,13 +82,10 @@ const createServer = (agentLoopContext?: AgentLoopContextType): McpServer => {
         );
       }
 
-      const refsOffset = actionRefsOffset({
-        agentConfiguration: agentLoopRunContext.agentConfiguration,
-        stepActionIndex: agentLoopRunContext.stepActionIndex,
-        stepActions: agentLoopRunContext.stepActions,
-        refsOffset: agentLoopRunContext.citationsRefsOffset,
-      });
-      const refs = getRefs().slice(refsOffset, refsOffset + numResults);
+      const refs = getRefs().slice(
+        citationsOffset,
+        citationsOffset + websearchResultCount
+      );
 
       const results: WebsearchResultResourceType[] = [];
       for (const result of websearchRes.value) {

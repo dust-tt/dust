@@ -4,7 +4,7 @@ import type { InferGetServerSidePropsType } from "next";
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -43,7 +43,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     }
 
     const [configuration] = await Promise.all([
-      getAgentConfiguration(auth, context.params?.aId as string, "light"),
+      getAgentConfiguration(auth, {
+        agentId: context.params?.aId as string,
+        variant: "light",
+      }),
       MCPServerViewResource.ensureAllAutoToolsAreCreated(auth),
     ]);
 

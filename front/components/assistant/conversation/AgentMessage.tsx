@@ -57,7 +57,10 @@ import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
 } from "@app/lib/assistant/state/messageReducer";
-import { messageReducer } from "@app/lib/assistant/state/messageReducer";
+import {
+  CLEAR_CONTENT_EVENT,
+  messageReducer,
+} from "@app/lib/assistant/state/messageReducer";
 import { useConversationMessage } from "@app/lib/swr/conversations";
 import type {
   LightAgentMessageType,
@@ -148,6 +151,12 @@ export function AgentMessage({
     message.configuration.sId as GLOBAL_AGENTS_SID
   );
 
+  // Track if this is a fresh mount (no lastEventId) with existing content
+  const isFreshMountWithContent = React.useRef(
+    message.status === "created" &&
+      (!!message.content || !!message.chainOfThought)
+  );
+
   const buildEventSourceURL = React.useCallback(
     (lastEvent: string | null) => {
       const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
@@ -157,6 +166,8 @@ export function AgentMessage({
           eventId: string;
         } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
+        // We have a lastEventId, so this is not a fresh mount
+        isFreshMountWithContent.current = false;
       }
       const url = esURL + "?lastEventId=" + lastEventId;
 
@@ -203,6 +214,19 @@ export function AgentMessage({
       // event, so we just return.
       if (eventType === "end-of-stream") {
         return;
+      }
+
+      // If this is a fresh mount with existing content and we're getting generation_tokens,
+      // we need to clear the content first to avoid duplication
+      if (
+        isFreshMountWithContent.current &&
+        eventType === "generation_tokens" &&
+        (eventPayload.data.classification === "tokens" ||
+          eventPayload.data.classification === "chain_of_thought")
+      ) {
+        // Clear the existing content from the state
+        dispatch(CLEAR_CONTENT_EVENT);
+        isFreshMountWithContent.current = false;
       }
 
       const shouldRefresh = [

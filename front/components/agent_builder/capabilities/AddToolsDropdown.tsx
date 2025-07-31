@@ -20,6 +20,7 @@ import type {
   AgentBuilderFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { ActionSpecification } from "@app/components/agent_builder/types";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -33,6 +34,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import { DATA_VISUALIZATION_SPECIFICATION } from "@app/lib/actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useModels } from "@app/lib/swr/models";
+import type { SpaceType } from "@app/types";
 import { O4_MINI_MODEL_ID } from "@app/types";
 
 const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
@@ -67,6 +69,8 @@ export function AddToolsDropdown({
     ...nonDefaultMCPServerViews,
   ]);
   const [filteredDataViz, setFilteredDataViz] = useState(dataVisualization);
+
+  const { spaces } = useSpacesContext();
 
   // Data Visualization is not an action but we show like an action in UI.
   const onClickDataVisualization = () => {
@@ -205,6 +209,7 @@ export function AddToolsDropdown({
                   key={view.id}
                   view={view}
                   onClick={onClickMCPServer}
+                  allowedSpaces={spaces}
                 />
               ))}
               {filteredDataViz && (
@@ -223,6 +228,7 @@ export function AddToolsDropdown({
                 key={view.id}
                 view={view}
                 onClick={onClickMCPServer}
+                allowedSpaces={spaces}
               />
             ))}
             {dataVisualization && (
@@ -238,6 +244,7 @@ export function AddToolsDropdown({
                     key={view.id}
                     view={view}
                     onClick={onClickMCPServer}
+                    allowedSpaces={spaces}
                   />
                 ))}
               </>
@@ -275,9 +282,11 @@ function DataVisualizationDropdownItem({
 function MCPDropdownMenuItem({
   view,
   onClick,
+  allowedSpaces,
 }: {
   view: MCPServerViewTypeWithLabel;
   onClick: (view: MCPServerViewType) => void;
+  allowedSpaces: SpaceType[];
 }) {
   return (
     <DropdownMenuItem
@@ -286,6 +295,10 @@ function MCPDropdownMenuItem({
       label={getMcpServerViewDisplayName(view)}
       description={view.server.description}
       onClick={() => onClick(view)}
+      disabled={
+        view.serverType === "remote" &&
+        !allowedSpaces.some((s) => s.sId === view.spaceId)
+      }
     />
   );
 }

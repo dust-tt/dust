@@ -41,6 +41,8 @@ export function renderPlanFromModel({
       },
       users: {
         maxUsers: plan.maxUsersInWorkspace,
+        isSSOAllowed: plan.isSSOAllowed,
+        isSCIMAllowed: plan.isSCIMAllowed,
       },
       vaults: {
         maxVaults: plan.maxVaultsInWorkspace,

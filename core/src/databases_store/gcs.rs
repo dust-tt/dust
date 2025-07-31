@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::info;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use cloud_storage::Object;
+use cloud_storage::{ErrorList, GoogleErrorResponse, Object};
 use csv::Writer;
 
 use crate::{
@@ -144,12 +144,6 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
 
         // We need to merge the existing rows with the new rows based on the row_id.
         if !truncate {
-            if !table.migrated_to_csv() {
-                return Err(anyhow!(
-                    "Table is not migrated to CSV so we cannot merge with existing data. It should be migrated before upserting."
-                ));
-            }
-
             // We download all the rows from the CSV and merge them with the new rows.
             // This is not super efficient if we get rows one by one but it's simple and works.
             // Non-truncate upserts are < 4% of our total upserts.
@@ -213,31 +207,40 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
     }
 
     async fn delete_table_data(&self, table: &Table) -> Result<()> {
-        if table.migrated_to_csv() {
-            Object::delete(
-                &Self::get_bucket()?,
-                &Self::get_csv_storage_file_path(table),
-            )
-            .await?;
+        match Object::delete(
+            &Self::get_bucket()?,
+            &Self::get_csv_storage_file_path(table),
+        )
+        .await
+        {
+            Ok(_) => {}
+            Err(e) => match e {
+                cloud_storage::Error::Google(GoogleErrorResponse {
+                    error: ErrorList { code: 404, .. },
+                    ..
+                }) => {
+                    // Silently ignore 404 errors which means the object does not exist
+                    // anymore.
+                }
+                e => Err(e)?,
+            },
         }
         Ok(())
     }
 
     async fn delete_table_row(&self, table: &Table, row_id: &str) -> Result<()> {
-        if table.migrated_to_csv() {
-            let rows = Self::get_rows_from_csv(table).await?;
-            let previous_rows_count = rows.len();
-            let new_rows = rows
-                .iter()
-                .filter(|r| r.row_id != row_id)
-                .cloned()
-                .collect::<Vec<_>>();
+        let rows = Self::get_rows_from_csv(table).await?;
+        let previous_rows_count = rows.len();
+        let new_rows = rows
+            .iter()
+            .filter(|r| r.row_id != row_id)
+            .cloned()
+            .collect::<Vec<_>>();
 
-            if previous_rows_count != new_rows.len() {
-                let rows = Arc::new(new_rows);
-                let schema = TableSchema::from_rows_async(rows.clone()).await?;
-                Self::write_rows_to_csv(table, &schema, &rows).await?;
-            }
+        if previous_rows_count != new_rows.len() {
+            let rows = Arc::new(new_rows);
+            let schema = TableSchema::from_rows_async(rows.clone()).await?;
+            Self::write_rows_to_csv(table, &schema, &rows).await?;
         }
 
         Ok(())

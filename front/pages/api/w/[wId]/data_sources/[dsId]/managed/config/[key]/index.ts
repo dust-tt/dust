@@ -86,6 +86,7 @@ async function handler(
       "intercomConversationsNotesSyncEnabled",
       "zendeskSyncUnresolvedTicketsEnabled",
       "zendeskHideCustomerDetails",
+      "zendeskRetentionPeriodDays",
       "gongRetentionPeriodDays",
       "gongTrackersEnabled",
       "privateIntegrationCredentialId",

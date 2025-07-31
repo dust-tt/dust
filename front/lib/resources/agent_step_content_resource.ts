@@ -3,20 +3,26 @@ import _ from "lodash";
 import type {
   Attributes,
   CreationAttributes,
+  IncludeOptions,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
 
 import { hideFileFromActionOutput, MCPActionType } from "@app/lib/actions/mcp";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
-import { AgentMessage } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessage,
+  ConversationModel,
+  Message,
+} from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -24,6 +30,7 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type { GetMCPActionsResult } from "@app/pages/api/w/[wId]/labs/mcp_actions/[agentId]";
 import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -40,7 +47,9 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
   constructor(
     model: ModelStatic<AgentStepContentModel>,
-    blob: Attributes<AgentStepContentModel>
+    blob: Attributes<AgentStepContentModel> & {
+      agentMCPActions?: AgentMCPAction[];
+    }
   ) {
     super(AgentStepContentModel, blob);
   }
@@ -70,11 +79,8 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       ...new Set(agentMessages.map((a) => a.agentConfigurationId)),
     ];
     // Fetch agent configuration to check permissions
-    const agentConfigurations = await getAgentConfigurations({
-      auth,
-      agentsGetView: {
-        agentIds: uniqueAgentIds,
-      },
+    const agentConfigurations = await getAgentConfigurations(auth, {
+      agentIds: uniqueAgentIds,
       variant: "light",
     });
 
@@ -126,41 +132,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
   }
 
   /**
-   * Helper to build the include clause for MCP actions
-   */
-  private static buildMCPActionsInclude({
-    includeMCPActions,
-  }: {
-    includeMCPActions: boolean;
-  }) {
-    if (!includeMCPActions) {
-      return [];
-    }
-
-    return [
-      {
-        model: AgentMCPAction,
-        as: "agentMCPActions",
-        required: false,
-        include: [
-          {
-            model: AgentMCPActionOutputItem,
-            as: "outputItems",
-            required: false,
-            include: [
-              {
-                model: FileModel,
-                as: "file",
-                required: false,
-              },
-            ],
-          },
-        ],
-      },
-    ];
-  }
-
-  /**
    * Helper to filter latest versions from fetched content
    */
   private static filterLatestVersions(
@@ -175,18 +146,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
     // For each group, keep only the first item (already sorted by version DESC)
     return Object.values(grouped).map((group) => group[0]);
-  }
-
-  /**
-   * Helper to create resources from models
-   */
-  private static createResources(
-    contents: AgentStepContentModel[]
-  ): AgentStepContentResource[] {
-    return contents.map(
-      (content) =>
-        new AgentStepContentResource(AgentStepContentModel, content.get())
-    );
   }
 
   static async fetchByAgentMessages(
@@ -208,10 +167,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     // Check authorization - will throw if unauthorized
     await this.checkAgentMessageAccess(auth, agentMessageIds);
 
-    const include = this.buildMCPActionsInclude({
-      includeMCPActions,
-    });
-
     let contents = await AgentStepContentModel.findAll({
       where: {
         workspaceId: owner.id,
@@ -219,7 +174,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
           [Op.in]: agentMessageIds,
         },
       },
-      include,
       order: [
         ["step", "ASC"],
         ["index", "ASC"],
@@ -227,6 +181,76 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       ],
       transaction,
     });
+
+    if (includeMCPActions) {
+      const contentIds: ModelId[] = contents.map((c) => c.id);
+
+      const mcpActionsByContentId = _.groupBy(
+        await AgentMCPAction.findAll({
+          where: {
+            workspaceId: owner.id,
+            stepContentId: {
+              [Op.in]: contentIds,
+            },
+          },
+        }),
+        "stepContentId"
+      );
+
+      const actionIds = Object.values(mcpActionsByContentId).flatMap((a) =>
+        a.map((a) => a.id)
+      );
+
+      const outputItemsByActionId = _.groupBy(
+        await AgentMCPActionOutputItem.findAll({
+          where: {
+            workspaceId: owner.id,
+            agentMCPActionId: {
+              [Op.in]: actionIds,
+            },
+          },
+        }),
+        "agentMCPActionId"
+      );
+
+      const fileIds = removeNulls(
+        Object.values(outputItemsByActionId).flatMap((o) =>
+          o.map((o) => o.fileId)
+        )
+      );
+
+      const fileById = _.keyBy(
+        await FileModel.findAll({
+          where: {
+            workspaceId: owner.id,
+            id: {
+              [Op.in]: fileIds,
+            },
+          },
+        }),
+        "id"
+      );
+
+      for (const outputItems of Object.values(outputItemsByActionId)) {
+        for (const item of outputItems) {
+          if (item.fileId) {
+            item.file = fileById[item.fileId.toString()];
+          }
+        }
+      }
+
+      for (const actions of Object.values(mcpActionsByContentId)) {
+        for (const action of actions) {
+          action.outputItems =
+            outputItemsByActionId[action.id.toString()] ?? [];
+        }
+      }
+
+      for (const content of contents) {
+        content.agentMCPActions =
+          mcpActionsByContentId[content.id.toString()] ?? [];
+      }
+    }
 
     if (latestVersionsOnly) {
       contents = this.filterLatestVersions(contents, [
@@ -250,69 +274,13 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       }
     }
 
-    return this.createResources(contents);
-  }
-
-  static async fetchByAgentMessageAndStep(
-    auth: Authenticator,
-    {
-      agentMessageId,
-      step,
-      transaction,
-      includeMCPActions = false,
-      latestVersionsOnly = false,
-    }: {
-      agentMessageId: ModelId;
-      step: number;
-      transaction?: Transaction;
-      includeMCPActions?: boolean;
-      latestVersionsOnly?: boolean;
-    }
-  ): Promise<AgentStepContentResource[]> {
-    const owner = auth.getNonNullableWorkspace();
-
-    // Check authorization - will throw if unauthorized
-    await this.checkAgentMessageAccess(auth, [agentMessageId]);
-
-    const include = this.buildMCPActionsInclude({
-      includeMCPActions,
-    });
-
-    const agentStepContents = await AgentStepContentModel.findAll({
-      where: {
-        workspaceId: owner.id,
-        agentMessageId,
-        step,
-      },
-      include,
-      order: [
-        ["index", "ASC"],
-        ["version", "DESC"],
-      ],
-      transaction,
-    });
-
-    let contents = agentStepContents;
-
-    if (latestVersionsOnly) {
-      contents = this.filterLatestVersions(contents, ["index"]);
-
-      // Also filter MCP actions to latest versions if included
-      if (includeMCPActions) {
-        contents.forEach((c) => {
-          if (!("agentMCPActions" in c)) {
-            return;
-          }
-          const maxVersionAction = _.maxBy(
-            c.agentMCPActions as AgentMCPAction[],
-            "version"
-          );
-          c.agentMCPActions = maxVersionAction ? [maxVersionAction] : [];
-        });
-      }
-    }
-
-    return this.createResources(contents);
+    return contents.map(
+      (content) =>
+        new AgentStepContentResource(AgentStepContentModel, {
+          ...content.get(),
+          agentMCPActions: content.agentMCPActions,
+        })
+    );
   }
 
   async delete(
@@ -395,6 +363,7 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
               executionState: action.executionState,
               isError: action.isError,
               type: "tool_action",
+              citationsAllocated: action.citationsAllocated,
               generatedFiles: removeNulls(
                 action.outputItems.map((o) => {
                   if (!o.file) {
@@ -462,6 +431,125 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         },
         transaction
       );
+    });
+  }
+
+  static async getMCPActionsForAgent(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      limit,
+      cursor,
+    }: {
+      agentConfigurationId: string;
+      limit: number;
+      cursor?: string;
+    }
+  ): Promise<Result<GetMCPActionsResult, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const whereClause: WhereOptions<AgentStepContentModel> = {
+      workspaceId: owner.id,
+      type: "function_call",
+    };
+
+    if (cursor) {
+      const cursorDate = new Date(cursor);
+      if (isNaN(cursorDate.getTime())) {
+        return new Err(new Error("Invalid cursor format"));
+      }
+      whereClause.createdAt = {
+        [Op.lt]: cursorDate,
+      };
+    }
+
+    const includeClause: IncludeOptions[] = [
+      {
+        model: AgentMessage,
+        as: "agentMessage",
+        required: true,
+        where: {
+          agentConfigurationId: agentConfigurationId,
+        },
+        include: [
+          {
+            model: Message,
+            as: "message",
+            required: true,
+            include: [
+              {
+                model: ConversationModel,
+                as: "conversation",
+                required: true,
+                where: {
+                  visibility: { [Op.ne]: "deleted" },
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        model: AgentMCPAction,
+        as: "agentMCPActions",
+        required: true,
+      },
+    ];
+
+    const [totalCount, stepContents] = await Promise.all([
+      this.model.count({
+        include: includeClause,
+        where: whereClause,
+      }),
+      this.model.findAll({
+        include: includeClause,
+        where: whereClause,
+        order: [["createdAt", "DESC"]],
+        limit: limit + 1,
+      }),
+    ]);
+
+    const hasMore = stepContents.length > limit;
+    const actualStepContents = hasMore
+      ? stepContents.slice(0, limit)
+      : stepContents;
+    const nextCursor = hasMore
+      ? actualStepContents[
+          actualStepContents.length - 1
+        ].createdAt.toISOString()
+      : null;
+
+    const actions = actualStepContents.flatMap((stepContent) =>
+      (stepContent.agentMCPActions || []).map((action) => {
+        assert(
+          stepContent.agentMessage?.message?.conversation,
+          "Missing required relations"
+        );
+        assert(
+          stepContent.value.type === "function_call",
+          "Step content must be a function call"
+        );
+
+        return {
+          sId: MCPActionType.modelIdToSId({
+            id: action.id,
+            workspaceId: action.workspaceId,
+          }),
+          createdAt: action.createdAt.toISOString(),
+          functionCallName: stepContent.value.value.name,
+          params: JSON.parse(stepContent.value.value.arguments),
+          executionState: action.executionState,
+          isError: action.isError,
+          conversationId: stepContent.agentMessage.message.conversation.sId,
+          messageId: stepContent.agentMessage.message.sId,
+        };
+      })
+    );
+
+    return new Ok({
+      actions,
+      nextCursor,
+      totalCount,
     });
   }
 }

@@ -3,7 +3,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -14,6 +14,7 @@ import {
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import type { InteractiveFileContentType } from "@app/types";
+import { Err, Ok } from "@app/types";
 import { INTERACTIVE_FILE_FORMATS } from "@app/types";
 
 const serverInfo: InternalMCPServerDefinitionType = {
@@ -82,15 +83,17 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      CREATE_INTERACTIVE_FILE_TOOL_NAME,
+      { toolName: CREATE_INTERACTIVE_FILE_TOOL_NAME, agentLoopContext },
       async (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
       ) => {
         const { conversation } = agentLoopContext?.runContext ?? {};
         if (!conversation) {
-          return makeMCPToolTextError(
-            "Conversation ID is required to create a client executable file."
+          return new Err(
+            new MCPError(
+              "Conversation ID is required to create a client executable file."
+            )
           );
         }
 
@@ -102,7 +105,7 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return makeMCPToolTextError(result.error.message);
+          return new Err(new MCPError(result.error.message));
         }
 
         const { value: fileResource } = result;
@@ -135,23 +138,20 @@ const createServer = (
           await sendNotification(notification);
         }
 
-        return {
-          isError: false,
-          content: [
-            {
-              type: "resource",
-              resource: {
-                contentType: fileResource.contentType,
-                fileId: fileResource.sId,
-                mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-                snippet: fileResource.snippet,
-                text: responseText,
-                title: fileResource.fileName,
-                uri: fileResource.getPublicUrl(auth),
-              },
+        return new Ok([
+          {
+            type: "resource",
+            resource: {
+              contentType: fileResource.contentType,
+              fileId: fileResource.sId,
+              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
+              snippet: fileResource.snippet,
+              text: responseText,
+              title: fileResource.fileName,
+              uri: fileResource.getPublicUrl(auth),
             },
-          ],
-        };
+          },
+        ]);
       }
     )
   );
@@ -201,7 +201,7 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      EDIT_INTERACTIVE_FILE_TOOL_NAME,
+      { toolName: EDIT_INTERACTIVE_FILE_TOOL_NAME, agentLoopContext },
       async (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
@@ -214,7 +214,9 @@ const createServer = (
         });
 
         if (result.isErr()) {
-          return makeMCPToolTextError(result.error.message);
+          return new Err(
+            new MCPError(result.error.message, { tracked: false })
+          );
         }
 
         const { fileResource, replacementCount } = result.value;
@@ -248,15 +250,12 @@ const createServer = (
           await sendNotification(notification);
         }
 
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text: responseText,
-            },
-          ],
-        };
+        return new Ok([
+          {
+            type: "text",
+            text: responseText,
+          },
+        ]);
       }
     )
   );
@@ -276,27 +275,24 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      RETRIEVE_INTERACTIVE_FILE_TOOL_NAME,
+      { toolName: RETRIEVE_INTERACTIVE_FILE_TOOL_NAME, agentLoopContext },
       async ({ file_id }) => {
         const result = await getClientExecutableFileContent(auth, file_id);
 
         if (result.isErr()) {
-          return makeMCPToolTextError(result.error.message);
+          return new Err(new MCPError(result.error.message));
         }
 
         const { fileResource, content } = result.value;
 
-        return {
-          isError: false,
-          content: [
-            {
-              type: "text",
-              text:
-                `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
-                `successfully. Content:\n\n${content}`,
-            },
-          ],
-        };
+        return new Ok([
+          {
+            type: "text",
+            text:
+              `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
+              `successfully. Content:\n\n${content}`,
+          },
+        ]);
       }
     )
   );

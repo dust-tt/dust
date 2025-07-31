@@ -270,6 +270,7 @@ function WorkspaceMembersList({
         onClose={resetSelectedMember}
         member={selectedMember}
         mutateMembers={membersData.mutateRegardlessOfQueryParams}
+        workspace={owner}
       />
     </>
   );

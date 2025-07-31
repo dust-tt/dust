@@ -116,10 +116,6 @@ export function isUserMessageType(
 /**
  * Agent messages
  */
-export type ConfigurableAgentActionType = MCPActionType;
-
-export type AgentActionType = ConfigurableAgentActionType;
-
 export type AgentMessageStatus =
   | "created"
   | "succeeded"
@@ -158,7 +154,7 @@ export type AgentMessageType = BaseAgentMessageType & {
   visibility: MessageVisibility;
   configuration: LightAgentConfigurationType;
   skipToolsValidation: boolean;
-  actions: AgentActionType[];
+  actions: MCPActionType[];
   rawContents: Array<{
     step: number;
     content: string;

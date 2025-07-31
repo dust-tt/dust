@@ -9,7 +9,7 @@ export type KeyType = {
   secret: string;
   status: string;
   name: string | null;
-  groupId?: ModelId;
+  groupId: ModelId;
   role: RoleType;
   scope: "default" | "restricted_group_only";
 };

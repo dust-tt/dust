@@ -9,7 +9,7 @@ import {
 import type { ActionSpecification } from "@app/components/assistant_builder/types";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { StepContext } from "@app/lib/actions/types";
 import {
   isMCPInternalDataSourceFileSystem,
   isMCPInternalInclude,
@@ -98,7 +98,7 @@ export function getRetrievalTopK({
   stepActions,
 }: {
   agentConfiguration: AgentConfigurationType;
-  stepActions: ActionConfigurationType[];
+  stepActions: MCPToolConfigurationType[];
 }): number {
   const model = getSupportedModelConfig(agentConfiguration.model);
 
@@ -114,19 +114,9 @@ export function getRetrievalTopK({
   }
 
   const topKs = searchActions
-    .map(() => {
-      return model.recommendedTopK;
-    })
-    .concat(
-      includeActions.map(() => {
-        return model.recommendedExhaustiveTopK;
-      })
-    )
-    .concat(
-      dsFsActions.map(() => {
-        return model.recommendedTopK;
-      })
-    );
+    .map(() => model.recommendedTopK)
+    .concat(includeActions.map(() => model.recommendedExhaustiveTopK))
+    .concat(dsFsActions.map(() => model.recommendedTopK));
 
   return Math.ceil(Math.max(...topKs) / actionsCount);
 }
@@ -143,7 +133,7 @@ export function getRetrievalTopK({
 export function getWebsearchNumResults({
   stepActions,
 }: {
-  stepActions: ActionConfigurationType[];
+  stepActions: MCPToolConfigurationType[];
 }): number {
   const websearchActions = stepActions.filter(isMCPInternalWebsearch);
   const totalActions = websearchActions.length;
@@ -170,7 +160,7 @@ export function getCitationsCount({
   stepActionIndex,
 }: {
   agentConfiguration: AgentConfigurationType;
-  stepActions: ActionConfigurationType[];
+  stepActions: MCPToolConfigurationType[];
   stepActionIndex: number;
 }): number {
   const action = stepActions[stepActionIndex];
@@ -195,37 +185,45 @@ export function getCitationsCount({
   });
 }
 
-/**
- * This is shared across action runners and used to compute the local step refsOffset (the current
- * refsOffset for the agent actions up to the current step (`refsOffset`) to which we add the
- * actions that comes before the current action in the current step).
- *
- * @param agentConfiguration The agent configuration.
- * @param stepActionIndex The index of the current action in the current step.
- * @param stepActions The actions in the current step.
- * @param refsOffset The current refsOffset up to the current step.
- * @returns The updated refsOffset for the action at stepActionIndex.
- */
-export function actionRefsOffset({
+export function computeStepContexts({
   agentConfiguration,
-  stepActionIndex,
   stepActions,
-  refsOffset,
+  citationsRefsOffset,
 }: {
   agentConfiguration: AgentConfigurationType;
-  stepActionIndex: number;
-  stepActions: ActionConfigurationType[];
-  refsOffset: number;
-}): number {
-  for (let i = 0; i < stepActionIndex; i++) {
-    refsOffset += getCitationsCount({
+  stepActions: MCPToolConfigurationType[];
+  citationsRefsOffset: number;
+}): StepContext[] {
+  const retrievalTopK = getRetrievalTopK({
+    agentConfiguration,
+    stepActions,
+  });
+
+  const websearchResults = getWebsearchNumResults({
+    stepActions,
+  });
+
+  const stepContexts: StepContext[] = [];
+  let currentOffset = citationsRefsOffset;
+
+  for (let i = 0; i < stepActions.length; i++) {
+    const citationsCount = getCitationsCount({
       agentConfiguration,
       stepActions,
       stepActionIndex: i,
     });
+
+    stepContexts.push({
+      retrievalTopK,
+      citationsOffset: currentOffset,
+      citationsCount,
+      websearchResultCount: websearchResults,
+    });
+
+    currentOffset += citationsCount;
   }
 
-  return refsOffset;
+  return stepContexts;
 }
 
 export function getMCPApprovalKey({

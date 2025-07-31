@@ -178,20 +178,20 @@ export const Stories: CustomerStory[] = [
     content:
       "Malt streamlines customer support using Dust's AI platform for rapid, consistent multilingual responses.",
     href: "https://blog.dust.tt/malt-customer-support/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/12/Malt_Customer_Story_Dust_Support.jpg",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/malt_dust.png",
   },
   {
     title: "Pennylane's journey to deploy Dust for Customer Care teams",
     content:
       "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
     href: "https://blog.dust.tt/pennylane-customer-support-journey/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Pennylane-__-Dust.jpg",
   },
   {
     title: "Lifen uses Dust AI agents to boost team productivity",
     content:
       "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
     href: "https://blog.dust.tt/customer-story-lifen/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Lifen-__-Dust.png",
   },
 ];

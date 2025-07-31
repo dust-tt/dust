@@ -177,17 +177,24 @@ export const Stories: CustomerStory[] = [
     src: "https://blog.dust.tt/content/images/size/w2000/2025/06/clay_dust_agents.jpg",
   },
   {
-    title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
+    title: "Alan's teams save 3h weekly scraping sales transcripts",
     content:
-      "Dust agents significantly lowered their acquisition costs, allowing them to hire more salespeople.",
-    href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
+      "Alan’s sales & marketing team transforms sales conversations into intelligence with AI agents",
+    href: "https://blog.dust.tt/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Alan-__-Dust-1-1.png",
   },
   {
     title: "Kyriba's RFP Agent for improving pre-sales efficiency",
     content:
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Kyriba-__-Dust.png",
+  },
+  {
+    title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
+    content:
+      "Dust agents significantly lowered their acquisition costs, allowing them to hire more salespeople.",
+    href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
   },
 ];

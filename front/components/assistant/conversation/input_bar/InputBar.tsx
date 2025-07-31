@@ -25,7 +25,11 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
-import { compareAgentsForSort, isEqualNode } from "@app/types";
+import {
+  compareAgentsForSort,
+  GLOBAL_SPACE_NAME,
+  isEqualNode,
+} from "@app/types";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -78,7 +82,7 @@ export function AssistantInputBar({
         spaces?.map((space) => [
           space.sId,
           {
-            name: space.kind === "global" ? "Company Data" : space.name,
+            name: space.kind === "global" ? GLOBAL_SPACE_NAME : space.name,
             icon: getSpaceIcon(space),
           },
         ]) || []

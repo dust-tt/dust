@@ -6,7 +6,6 @@ import { wakeLock } from "@app/lib/wake_lock";
 import { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
-import type { AgentLoopActivities } from "@app/temporal/agent_loop/lib/activity_interface";
 import { executeAgentLoop } from "@app/temporal/agent_loop/lib/agent_loop_executor";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
@@ -18,7 +17,8 @@ import type {
 // but it now handles updating it based on the execution results.
 async function runAgentSynchronousWithStreaming(
   authType: AuthenticatorType,
-  runAgentSynchronousArgs: RunAgentSynchronousArgs
+  runAgentSynchronousArgs: RunAgentSynchronousArgs,
+  startStep: number
 ): Promise<void> {
   const runAgentArgs: RunAgentArgs = {
     sync: true,
@@ -27,14 +27,16 @@ async function runAgentSynchronousWithStreaming(
 
   const titlePromise = ensureConversationTitle(authType, runAgentArgs);
 
-  // Create direct activities for non-Temporal execution.
-  const directActivities: AgentLoopActivities = {
-    runModelActivity: (args) => runModelActivity(args),
-    runToolActivity: (authType, args) => runToolActivity(authType, args),
-  };
-
   await wakeLock(async () => {
-    await executeAgentLoop(authType, runAgentArgs, directActivities);
+    await executeAgentLoop(
+      authType,
+      runAgentArgs,
+      {
+        runModelActivity,
+        runToolActivity,
+      },
+      startStep
+    );
   });
 
   await titlePromise;
@@ -55,10 +57,17 @@ async function runAgentSynchronousWithStreaming(
 export async function runAgentLoop(
   authType: AuthenticatorType,
   runAgentArgs: RunAgentArgs,
-  { forceAsynchronousLoop = false }: { forceAsynchronousLoop?: boolean } = {}
+  {
+    forceAsynchronousLoop = false,
+    startStep,
+  }: { forceAsynchronousLoop?: boolean; startStep: number }
 ): Promise<void> {
   if (runAgentArgs.sync && !forceAsynchronousLoop) {
-    await runAgentSynchronousWithStreaming(authType, runAgentArgs.inMemoryData);
+    await runAgentSynchronousWithStreaming(
+      authType,
+      runAgentArgs.inMemoryData,
+      startStep
+    );
   } else if (runAgentArgs.sync) {
     const { agentMessage, conversation, userMessage } =
       runAgentArgs.inMemoryData;
@@ -73,11 +82,13 @@ export async function runAgentLoop(
         userMessageId: userMessage.sId,
         userMessageVersion: userMessage.version,
       },
+      startStep,
     });
   } else {
     await launchAgentLoopWorkflow({
       authType,
       runAsynchronousAgentArgs: runAgentArgs.idArgs,
+      startStep,
     });
   }
 }

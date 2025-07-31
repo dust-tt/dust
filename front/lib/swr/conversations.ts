@@ -225,12 +225,16 @@ export function useVisualizationRetry({
   conversationId,
   agentConfigurationId,
 }: {
-  workspaceId: string;
-  conversationId: string;
+  workspaceId: string | null;
+  conversationId: string | null;
   agentConfigurationId: string | null;
 }) {
   const handleVisualizationRetry = useCallback(
     async (errorMessage: string) => {
+      if (!conversationId || !agentConfigurationId) {
+        return false;
+      }
+
       try {
         const response = await fetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages`,

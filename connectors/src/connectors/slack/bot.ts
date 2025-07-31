@@ -813,7 +813,6 @@ async function answerMessage(
     ...makeMessageUpdateBlocksAndText(null, connector.workspaceId, {
       assistantName: mention.assistantName,
       agentConfigurations: mostPopularAgentConfigurations,
-      isComplete: false,
       isThinking: true,
     }),
     channel: slackChannel,

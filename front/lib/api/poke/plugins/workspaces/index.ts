@@ -13,6 +13,7 @@ export * from "./invite_user";
 export * from "./manage_authorized_domains";
 export * from "./rename_workspace";
 export * from "./reset_message_rate_limit";
+export * from "./restore_conversation";
 export * from "./revoke_users";
 export * from "./set_public_api_limits";
 export * from "./toggle_feature_flag";

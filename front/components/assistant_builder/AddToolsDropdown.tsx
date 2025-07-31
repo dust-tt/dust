@@ -12,8 +12,10 @@ import {
 } from "@dust-tt/sparkle";
 import assert from "assert";
 import { uniqueId } from "lodash";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import type { SpaceIdToActions } from "@app/components/assistant_builder/ActionsScreen";
+import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import type {
   ActionSpecificationWithType,
   AssistantBuilderDataVisualizationType,
@@ -31,7 +33,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { ModelConfigurationType } from "@app/types";
+import type { ModelConfigurationType, SpaceType } from "@app/types";
 import { O4_MINI_MODEL_ID } from "@app/types";
 
 type MCPServerViewTypeWithLabel = MCPServerViewType & { label: string };
@@ -47,6 +49,7 @@ interface AddToolsDropdownProps {
   nonDefaultMCPServerViews: MCPServerViewTypeWithLabel[];
   reasoningModels: ModelConfigurationType[];
   isLoading: boolean;
+  spacesUsedInActions: SpaceIdToActions;
 }
 
 const DEFAULT_REASONING_MODEL_ID = O4_MINI_MODEL_ID;
@@ -60,6 +63,7 @@ export function AddToolsDropdown({
   nonDefaultMCPServerViews,
   reasoningModels,
   isLoading,
+  spacesUsedInActions,
 }: AddToolsDropdownProps) {
   const [searchText, setSearchText] = useState("");
   const [filteredNonMCPActions, setFilteredNonMCPActions] =
@@ -68,6 +72,24 @@ export function AddToolsDropdown({
     ...defaultMCPServerViews,
     ...nonDefaultMCPServerViews,
   ]);
+
+  const { spaces } = useSpacesContext();
+  // Only allow one space across all actions.
+  const allowedSpaces = useMemo(() => {
+    const isSpaceUsedInOtherActions = (space: SpaceType) => {
+      return spacesUsedInActions[space.sId];
+    };
+
+    const usedSpacesInOtherActions = spaces.filter(isSpaceUsedInOtherActions);
+    if (usedSpacesInOtherActions.length === 0) {
+      return spaces;
+    }
+
+    return spaces.filter((space) =>
+      usedSpacesInOtherActions.some((s) => s.sId === space.sId)
+    );
+  }, [spaces, spacesUsedInActions]);
+
   const sendNotification = useSendNotification();
 
   const noFilteredTools =
@@ -231,6 +253,7 @@ export function AddToolsDropdown({
                   key={view.id}
                   view={view}
                   onClick={onClickMCPServer}
+                  allowedSpaces={allowedSpaces}
                 />
               ))}
             </>
@@ -251,6 +274,7 @@ export function AddToolsDropdown({
                 key={`${view.id}-${view.label}`} // There can be multiple views with the same id.
                 view={view}
                 onClick={onClickMCPServer}
+                allowedSpaces={allowedSpaces}
               />
             ))}
             {nonDefaultMCPServerViews.length > 0 && (
@@ -261,6 +285,7 @@ export function AddToolsDropdown({
                     key={`${view.id}-${view.label}`}
                     view={view}
                     onClick={onClickMCPServer}
+                    allowedSpaces={allowedSpaces}
                   />
                 ))}
               </>
@@ -293,9 +318,11 @@ function DefaultToolDropdownMenuItem({
 function MCPDropdownMenuItem({
   view,
   onClick,
+  allowedSpaces,
 }: {
   view: MCPServerViewTypeWithLabel;
   onClick: (view: MCPServerViewType) => void;
+  allowedSpaces: SpaceType[];
 }) {
   return (
     <DropdownMenuItem
@@ -304,6 +331,10 @@ function MCPDropdownMenuItem({
       label={getMcpServerViewDisplayName(view)}
       description={view.server.description}
       onClick={() => onClick(view)}
+      disabled={
+        view.serverType === "remote" &&
+        !allowedSpaces.some((s) => s.sId === view.spaceId)
+      }
     />
   );
 }

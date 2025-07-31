@@ -165,24 +165,24 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
-    title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
+    title: "Wakam enables self-service analytics across 220 users",
     content:
-      "Dust agents significantly lowered their acquisition costs, allowing them to hire more salespeople.",
-    href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
+      "Wakam breaks down data silos with specialized AI agents, reducing partner intelligence processing by 90% and democratizing data access company-wide.",
+    href: "https://blog.dust.tt/wakam-empowers-teams-with-self-service-data-intelligence-while-reducing-processing-time/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Wakam.jpg",
   },
   {
-    title: "Kyriba's RFP Agent for improving pre-sales efficiency",
+    title: "Alan eliminates data queues and expands data insights with Dust",
     content:
-      "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
-    href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
+      "Alan's @Metabase agent reduces query development time from hours to minutes, achieving a growing 60% weekly usage in their Operations team.",
+    href: "https://blog.dust.tt/the-end-of-data-queues-how-alan-scaled-analytics-with-dust-2/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Alan-__-Dust-1.jpg",
   },
-  {
-    title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
-    content:
-      "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-    href: "https://blog.dust.tt/customer-story-lifen/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
-  },
+  // {
+  //   title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
+  //   content:
+  //     "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
+  //   href: "https://blog.dust.tt/customer-story-lifen/",
+  //   src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
+  // },
 ];

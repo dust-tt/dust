@@ -1,10 +1,11 @@
 import { Op } from "sequelize";
 
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { UnsavedAgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -40,7 +41,7 @@ export async function listAgentConfigurationsForGroups(
 }
 
 export function getDataSourceViewIdsFromActions(
-  actions: UnsavedAgentActionConfigurationType[]
+  actions: UnsavedMCPServerConfigurationType[]
 ): string[] {
   const relevantActions = actions.filter(
     (action): action is ServerSideMCPServerConfigurationType =>
@@ -77,7 +78,7 @@ export function groupsFromRequestedPermissions(
 export async function getAgentConfigurationGroupIdsFromActions(
   auth: Authenticator,
   params: {
-    actions: UnsavedAgentActionConfigurationType[];
+    actions: UnsavedMCPServerConfigurationType[];
     ignoreSpaces?: SpaceResource[];
   }
 ): Promise<ModelId[][]> {
@@ -126,6 +127,31 @@ export async function getAgentConfigurationGroupIdsFromActions(
     }
     const groups = groupsFromRequestedPermissions(view.requestedPermissions());
     groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
+  }
+
+  // Collect Dust App permissions by space.
+  const dustAppIds = removeNulls(
+    actions
+      .filter(isServerSideMCPServerConfiguration)
+      .map((action) => action.dustAppConfiguration?.appId)
+  );
+
+  if (dustAppIds.length > 0) {
+    const dustApps = await AppResource.fetchByIds(auth, dustAppIds);
+
+    for (const app of dustApps) {
+      const { sId: spaceId } = app.space;
+      if (ignoreSpaceIds?.has(spaceId)) {
+        continue;
+      }
+      if (!spacePermissions.has(spaceId)) {
+        spacePermissions.set(spaceId, new Set());
+      }
+      const groups = groupsFromRequestedPermissions(
+        app.space.requestedPermissions()
+      );
+      groups.forEach((g) => spacePermissions.get(spaceId)!.add(g));
+    }
   }
 
   // Convert Map to array of arrays, filtering out empty sets.

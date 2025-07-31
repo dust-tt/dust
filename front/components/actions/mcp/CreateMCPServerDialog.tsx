@@ -5,9 +5,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Icon,
+  InformationCircleIcon,
   Input,
   Label,
   SliderToggle,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
 
@@ -320,24 +323,36 @@ export function CreateMCPServerDialog({
               )}
               {defaultServerConfig?.authMethod !== "oauth" && (
                 <div className="space-y-2">
-                  <Label htmlFor="requiresBearerToken">
-                    {defaultServerConfig?.authMethod === "bearer"
-                      ? `${defaultServerConfig.name} API Key`
-                      : "Authentication"}
-                  </Label>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="requiresBearerToken">
+                        {defaultServerConfig?.authMethod === "bearer"
+                          ? `${defaultServerConfig.name} API Key`
+                          : "Enable Bearer Token Authentication"}
+                      </Label>
+                      <Tooltip
+                        trigger={
+                          <Icon
+                            visual={InformationCircleIcon}
+                            size="xs"
+                            className="text-gray-400"
+                          />
+                        }
+                        label="Dust will automatically discover if OAuth authentication is required. If OAuth is not needed, the server will be accessed without authentication. You can also enable bearer token authentication if your server requires an API key."
+                      />
+                    </div>
                     {!defaultServerConfig && (
-                      <div>
-                        <SliderToggle
-                          disabled={false}
-                          selected={requiresBearerToken}
-                          onClick={() =>
-                            setRequiresBearerToken(!requiresBearerToken)
-                          }
-                        />
-                      </div>
+                      <SliderToggle
+                        disabled={false}
+                        selected={requiresBearerToken}
+                        onClick={() =>
+                          setRequiresBearerToken(!requiresBearerToken)
+                        }
+                      />
                     )}
-
+                  </div>
+                  {(requiresBearerToken ||
+                    defaultServerConfig?.authMethod === "bearer") && (
                     <div className="flex-grow">
                       <Input
                         id="sharedSecret"
@@ -357,7 +372,7 @@ export function CreateMCPServerDialog({
                         }
                       />
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </>

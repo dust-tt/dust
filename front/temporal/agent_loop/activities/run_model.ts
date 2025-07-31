@@ -1,27 +1,25 @@
 import { removeNulls } from "@dust-tt/client";
 
+import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   TOOL_NAME_SEPARATOR,
   tryListMCPTools,
 } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { buildToolSpecification } from "@app/lib/actions/mcp";
 import {
   isDustAppChatBlockType,
   runActionStreamed,
 } from "@app/lib/actions/server";
-import type {
-  ActionConfigurationType,
-  AgentActionSpecification,
-} from "@app/lib/actions/types/agent";
-import { isActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { StepContext } from "@app/lib/actions/types";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeAgentErrorMessage } from "@app/lib/api/assistant/agent_errors";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
@@ -39,6 +37,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, ModelId } from "@app/types";
 import type {
   FunctionCallContentType,
@@ -75,19 +74,34 @@ export async function runModelActivity({
   actions: AgentActionsEvent["actions"];
   runId: string;
   functionCallStepContentIds: Record<string, ModelId>;
+  stepContexts: StepContext[];
 } | null> {
   const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+
   if (runAgentDataRes.isErr()) {
     throw runAgentDataRes.error;
   }
 
   const {
     agentConfiguration,
-    conversation,
+    conversation: originalConversation,
     userMessage,
-    agentMessage,
+    agentMessage: originalAgentMessage,
     agentMessageRow,
   } = runAgentDataRes.value;
+
+  const { slicedConversation: conversation, slicedAgentMessage: agentMessage } =
+    sliceConversationForAgentMessage(originalConversation, {
+      agentMessageId: originalAgentMessage.sId,
+      agentMessageVersion: originalAgentMessage.version,
+      step,
+    });
+
+  // Compute the citations offset by summing citations allocated to all past actions for this message.
+  const citationsRefsOffset = originalAgentMessage.actions.reduce(
+    (total, action) => total + (action.citationsAllocated || 0),
+    0
+  );
 
   const now = Date.now();
 
@@ -104,16 +118,6 @@ export async function runModelActivity({
     // legacy agents stop after one step
     return null;
   }
-
-  const isLastGenerationIteration = step === agentConfiguration.maxStepsPerRun;
-
-  const agentActions =
-    // If we already executed the maximum number of actions, we don't run anymore.
-    // This will force the agent to run the generation.
-    isLastGenerationIteration
-      ? []
-      : // Otherwise, we let the agent decide which action to run (if any).
-        agentConfiguration.actions;
 
   const auth = await Authenticator.fromJSON(authType);
 
@@ -182,21 +186,13 @@ export async function runModelActivity({
     });
     return null;
   }
-  const availableActions: ActionConfigurationType[] = [];
-
-  for (const agentAction of agentActions) {
-    if (isActionConfigurationType(agentAction)) {
-      availableActions.push(agentAction);
-    }
-  }
 
   const attachments = listAttachments(conversation);
   const jitServers = await getJITServers(auth, {
     conversation,
     attachments,
   });
-
-  // Get client-side MCP server configurations from user message context.
+  // Get client-side MCP server configurations from the user message context.
   const clientSideMCPActionConfigurations =
     await createClientSideMCPServerConfigurations(
       auth,
@@ -226,9 +222,11 @@ export async function runModelActivity({
     );
   }
 
-  if (!isLastGenerationIteration) {
-    availableActions.push(...mcpActions.flatMap((s) => s.tools));
-  }
+  const isLastStep = step === agentConfiguration.maxStepsPerRun;
+
+  // If we are on the last step, we don't show any action.
+  // This will force the agent to run the generation.
+  const availableActions = isLastStep ? [] : mcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
   if (
@@ -244,7 +242,7 @@ export async function runModelActivity({
   const agentsList = agentConfiguration.instructions?.includes(
     "{ASSISTANTS_LIST}"
   )
-    ? await getAgentConfigurations({
+    ? await getAgentConfigurationsForView({
         auth,
         agentsGetView: auth.user() ? "list" : "all",
         variant: "light",
@@ -346,6 +344,7 @@ export async function runModelActivity({
 
   const reasoningEffort =
     agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
+
   if (reasoningEffort !== "none" && reasoningEffort !== "light") {
     runConfig.MODEL.reasoning_effort = reasoningEffort;
   }
@@ -731,11 +730,13 @@ export async function runModelActivity({
     "[ASSISTANT_TRACE] Action inputs generation"
   );
 
-  if (isLastGenerationIteration) {
+  // If we have actions and we are on the last step, we error since returning actions would require
+  // doing one more step.
+  if (isLastStep) {
     await publishAgentError({
-      code: "tool_use_limit_reached",
+      code: "max_step_reached",
       message:
-        "The agent attempted to use too many tools. This model error can be safely retried.",
+        "The agent reached the maximum number of steps. This error can be safely retried.",
       metadata: null,
     });
     return null;
@@ -753,7 +754,6 @@ export async function runModelActivity({
     let action = availableActions.find((ac) =>
       actionNamesFromLLM.includes(ac.name)
     );
-    let args = a.arguments;
 
     if (!action) {
       if (!a.name) {
@@ -817,12 +817,10 @@ export async function runModelActivity({
         toolServerId: mcpServerView.sId,
         mcpServerName: "missing_action_catcher" as InternalMCPServerNameType,
       };
-      args = {};
     }
 
     actions.push({
       action,
-      inputs: args ?? {},
       functionCallId: a.functionCallId ?? null,
     });
   }
@@ -847,9 +845,17 @@ export async function runModelActivity({
     content,
   }));
   agentMessage.contents.push(...newContents);
+
+  const stepContexts = computeStepContexts({
+    agentConfiguration,
+    stepActions: actions.map((a) => a.action),
+    citationsRefsOffset,
+  });
+
   return {
     actions,
     runId: await dustRunId,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
+    stepContexts,
   };
 }

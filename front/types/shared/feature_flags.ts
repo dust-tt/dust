@@ -108,8 +108,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   monday_tool: {
     description: "Monday MCP tool",
   },
-  agent_memory_tools: {
-    description: "Agent memory tools",
+  outlook_tool: {
+    description: "Outlook MCP tool",
+  },
+  async_loop: {
+    description: "Asynchronous loop for conversation processing",
   },
 } as const;
 

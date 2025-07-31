@@ -8,8 +8,8 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
-import { useController, useFormContext } from "react-hook-form";
+import type { Control } from "react-hook-form";
+import { useController } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import type { TimeFrame } from "@app/types";
@@ -43,25 +43,15 @@ const ACTION_CONFIG: Record<
 
 interface TimeFrameSectionProps {
   actionType: ActionType;
+  control: Control<CapabilityFormData>;
 }
 
-export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
-  const { setValue, getValues } = useFormContext();
-  const [isChecked, setIsChecked] = useState(() => !!getValues("timeFrame"));
-
-  const { field: durationField } = useController<
-    CapabilityFormData,
-    "timeFrame.duration"
-  >({
-    name: "timeFrame.duration",
-  });
-
-  const { field: unitField } = useController<
-    CapabilityFormData,
-    "timeFrame.unit"
-  >({
-    name: "timeFrame.unit",
-  });
+export function TimeFrameSection({
+  actionType,
+  control,
+}: TimeFrameSectionProps) {
+  const { field: timeFrame } = useController({ control, name: "timeFrame" });
+  const isChecked = timeFrame.value;
 
   const { actionText, contextText } = ACTION_CONFIG[actionType];
 
@@ -78,16 +68,15 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
 
       <div className="flex flex-row items-center gap-4 pb-4">
         <Checkbox
-          checked={isChecked}
+          checked={timeFrame.value != null}
           onCheckedChange={(checked) => {
-            setIsChecked(Boolean(checked));
-            setValue("timeFrame", checked ? DEFAULT_TIME_FRAME : null);
+            timeFrame.onChange(checked ? DEFAULT_TIME_FRAME : null);
           }}
         />
         <div
           className={classNames(
             "text-sm font-semibold",
-            !getValues("timeFrame")
+            !isChecked
               ? "text-muted-foreground dark:text-muted-foreground-night"
               : "text-foreground dark:text-foreground-night"
           )}
@@ -97,10 +86,13 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
         <Input
           type="number"
           min="1"
-          value={durationField?.value?.toString() ?? ""}
+          value={timeFrame.value?.duration.toString() ?? ""}
           onChange={(e) => {
             const duration = Math.max(1, parseInt(e.target.value, 10) || 1);
-            durationField.onChange(duration);
+            timeFrame.onChange({
+              ...timeFrame.value,
+              duration,
+            });
           }}
           disabled={!isChecked}
         />
@@ -108,7 +100,7 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
           <DropdownMenuTrigger asChild>
             <Button
               isSelect
-              label={TIME_FRAME_UNIT_TO_LABEL[unitField.value ?? "day"]}
+              label={TIME_FRAME_UNIT_TO_LABEL[timeFrame.value?.unit ?? "day"]}
               variant="outline"
               size="sm"
               disabled={!isChecked}
@@ -121,7 +113,10 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
                 label={value}
                 onClick={() => {
                   if (isTimeFrameUnit(key)) {
-                    unitField.onChange(key);
+                    timeFrame.onChange({
+                      ...timeFrame.value,
+                      unit: key,
+                    });
                   }
                 }}
               />

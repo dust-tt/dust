@@ -34,13 +34,13 @@ import type {
   ActionGeneratedFileType,
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
-import type {
-  ActionConfigurationType,
-  AgentActionSpecification,
-} from "@app/lib/actions/types/agent";
+import type { StepContext } from "@app/lib/actions/types";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
-import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration";
-import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration";
+import type {
+  DataSourceConfiguration,
+  TableDataSourceConfiguration,
+} from "@app/lib/api/assistant/configuration/types";
 import {
   getAttachmentFromToolOutput,
   renderAttachmentXml,
@@ -98,6 +98,8 @@ export type BaseMCPServerConfigurationType = {
   type: "mcp_server_configuration";
 
   name: string;
+  mcpServerName: string | null;
+
   description: string | null;
   icon?: CustomServerIconType | InternalAllowedIconType;
 };
@@ -334,6 +336,7 @@ export class MCPActionType {
   readonly functionCallName: string | null;
   readonly step: number = -1;
   readonly isError: boolean = false;
+  readonly citationsAllocated: number = 0;
   // TODO(2025-07-24 aubin): remove the type here.
   readonly type = "tool_action" as const;
 
@@ -351,6 +354,7 @@ export class MCPActionType {
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
     this.step = blob.step;
+    this.citationsAllocated = blob.citationsAllocated;
   }
 
   getGeneratedFiles(): ActionGeneratedFileType[] {
@@ -491,9 +495,7 @@ export async function* runToolWithStreaming(
     functionCallId,
     step,
     stepContentId,
-    stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
+    stepContext,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
@@ -502,9 +504,7 @@ export async function* runToolWithStreaming(
     functionCallId: string;
     step: number;
     stepContentId: ModelId;
-    stepActionIndex: number;
-    stepActions: ActionConfigurationType[];
-    citationsRefsOffset: number;
+    stepContext: StepContext;
   }
 ): AsyncGenerator<
   | MCPParamsEvent
@@ -531,6 +531,7 @@ export async function* runToolWithStreaming(
     mcpServerConfigurationId: `${actionConfiguration.id}`,
     params: rawInputs,
     step,
+    citationsAllocated: stepContext.citationsCount,
   };
 
   for (const value of Object.values(rawInputs)) {
@@ -561,6 +562,7 @@ export async function* runToolWithStreaming(
     executionState: "pending",
     version: 0,
     stepContentId,
+    citationsAllocated: stepContext.citationsCount,
   });
 
   const mcpAction = new MCPActionType({
@@ -736,9 +738,7 @@ export async function* runToolWithStreaming(
     agentConfiguration,
     conversation,
     agentMessage,
-    stepActionIndex,
-    stepActions,
-    citationsRefsOffset,
+    stepContext,
   };
 
   let toolCallResult: Result<

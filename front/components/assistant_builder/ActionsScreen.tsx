@@ -128,7 +128,7 @@ function actionDisplayName(
   }`;
 }
 
-type SpaceIdToActions = Record<string, AssistantBuilderMCPOrVizState[]>;
+export type SpaceIdToActions = Record<string, AssistantBuilderMCPOrVizState[]>;
 
 interface ActionScreenProps {
   owner: WorkspaceType;
@@ -345,7 +345,9 @@ export default function ActionsScreen({
                 mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
                 isLoading={isMCPServerViewsLoading}
               />
+
               <AddToolsDropdown
+                spacesUsedInActions={spaceIdToActions}
                 setBuilderState={setBuilderState}
                 setEdited={setEdited}
                 setAction={setAction}

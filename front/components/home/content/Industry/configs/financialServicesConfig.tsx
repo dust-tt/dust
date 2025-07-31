@@ -274,21 +274,21 @@ export const financialServicesConfig: IndustryPageConfig = {
         content:
           "Germi, Qonto’s AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
         href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Qonto-__-Dust.jpg",
       },
       {
         title: "Kyriba’s adoption of Dust across all functions",
         content:
           "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
         href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Kyriba-__-Dust.png",
       },
       {
         title: "Pennylane’s journey to deploy Dust for Customer Care teams",
         content:
           "Dust evolved from a simple support tool into an integral part of Pennylane's operations.",
         href: "https://blog.dust.tt/pennylane-customer-support-journey/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png",
+        src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Pennylane-__-Dust.jpg",
       },
     ],
   },

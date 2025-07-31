@@ -31,7 +31,7 @@ import type {
   SpaceKind,
   SpaceType,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, GLOBAL_SPACE_NAME, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -116,7 +116,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       existingSpaces.find((s) => s.isGlobal()) ||
       (await SpaceResource.makeNew(
         {
-          name: "Company Data",
+          name: GLOBAL_SPACE_NAME,
           kind: "global",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
