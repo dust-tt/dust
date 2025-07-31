@@ -3,13 +3,12 @@ import { uniqueId } from "lodash";
 import { z } from "zod";
 
 import type { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
 import { DEFAULT_MCP_ACTION_NAME } from "@app/lib/actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SupportedModel, WhitelistableFeature } from "@app/types";
 import { ioTsEnum } from "@app/types";
-
-import { dataSourceBuilderTreeType } from "../data_source_view/context/types";
 
 type AgentBuilderFormData = z.infer<typeof agentBuilderFormSchema>;
 
