@@ -42,12 +42,12 @@ pub struct QueryResult {
 }
 
 pub trait HasValue {
-    fn value(&self) -> &serde_json::Map<String, serde_json::Value>;
+    fn value(&self) -> (Vec<&String>, Vec<&serde_json::Value>);
 }
 
 impl HasValue for QueryResult {
-    fn value(&self) -> &serde_json::Map<String, serde_json::Value> {
-        &self.value
+    fn value(&self) -> (Vec<&String>, Vec<&serde_json::Value>) {
+        (self.value.keys().collect(), self.value.values().collect())
     }
 }
 
