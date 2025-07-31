@@ -5,7 +5,7 @@ import { hardDeleteApp } from "@app/lib/api/apps";
 import {
   getAgentConfigurations,
   updateAgentRequestedGroupIds,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";

@@ -2,7 +2,7 @@ import type { RequestMethod } from "node-mocks-http";
 import type { Transaction } from "sequelize";
 import { describe, expect, it, vi } from "vitest";
 
-import { updateAgentPermissions } from "@app/lib/api/assistant/configuration";
+import { updateAgentPermissions } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";

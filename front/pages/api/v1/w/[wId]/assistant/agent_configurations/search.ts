@@ -1,7 +1,7 @@
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration";
+import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";

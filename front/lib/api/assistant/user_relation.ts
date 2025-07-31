@@ -1,4 +1,4 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
 import type { Result } from "@app/types";

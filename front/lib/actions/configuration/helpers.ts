@@ -2,7 +2,7 @@ import type {
   DataSourceConfiguration,
   DataSourceFilter,
   TableDataSourceConfiguration,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/types";
 import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import type { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";

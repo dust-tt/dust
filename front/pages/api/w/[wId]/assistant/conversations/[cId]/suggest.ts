@@ -3,7 +3,7 @@ import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getLastUserMessage } from "@app/lib/api/assistant/conversation";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";

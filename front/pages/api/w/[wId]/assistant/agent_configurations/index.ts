@@ -7,12 +7,12 @@ import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
+import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
-  createAgentActionConfiguration,
   createAgentConfiguration,
-  getAgentConfigurationsForView,
   unsafeHardDeleteAgentConfiguration,
-} from "@app/lib/api/assistant/configuration";
+} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
