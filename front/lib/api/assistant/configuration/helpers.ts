@@ -45,6 +45,52 @@ function getModelForAgentConfiguration(
   return model;
 }
 
+export async function isSelfHostedImageWithValidContentType(
+  pictureUrl: string
+) {
+  // Accept static Dust avatars.
+  if (pictureUrl.startsWith("https://dust.tt/static/")) {
+    return true;
+  }
+
+  const filename = pictureUrl.split("/").at(-1);
+  if (!filename) {
+    return false;
+  }
+
+  // Attempt to decode the URL, since Google Cloud Storage URL encodes the filename.
+  const contentType = await getPublicUploadBucket().getFileContentType(
+    decodeURIComponent(filename)
+  );
+  if (!contentType) {
+    return false;
+  }
+
+  return contentType.includes("image");
+}
+
+export async function getAgentSIdFromName(
+  auth: Authenticator,
+  name: string
+): Promise<string | null> {
+  const owner = auth.getNonNullableWorkspace();
+
+  const agent = await AgentConfiguration.findOne({
+    attributes: ["sId"],
+    where: {
+      workspaceId: owner.id,
+      name,
+      status: "active",
+    },
+  });
+
+  if (!agent) {
+    return null;
+  }
+
+  return agent.sId;
+}
+
 /**
  * Enrich agent configurations with additional data (actions, tags, favorites).
  */
@@ -142,50 +188,4 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   }
 
   return agentConfigurationTypes;
-}
-
-export async function isSelfHostedImageWithValidContentType(
-  pictureUrl: string
-) {
-  // Accept static Dust avatars.
-  if (pictureUrl.startsWith("https://dust.tt/static/")) {
-    return true;
-  }
-
-  const filename = pictureUrl.split("/").at(-1);
-  if (!filename) {
-    return false;
-  }
-
-  // Attempt to decode the URL, since Google Cloud Storage URL encodes the filename.
-  const contentType = await getPublicUploadBucket().getFileContentType(
-    decodeURIComponent(filename)
-  );
-  if (!contentType) {
-    return false;
-  }
-
-  return contentType.includes("image");
-}
-
-export async function getAgentSIdFromName(
-  auth: Authenticator,
-  name: string
-): Promise<string | null> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const agent = await AgentConfiguration.findOne({
-    attributes: ["sId"],
-    where: {
-      workspaceId: owner.id,
-      name,
-      status: "active",
-    },
-  });
-
-  if (!agent) {
-    return null;
-  }
-
-  return agent.sId;
 }

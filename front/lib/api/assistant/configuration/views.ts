@@ -71,6 +71,7 @@ function determineGlobalAgentIdsToFetch(
       assertNever(agentsGetView);
   }
 }
+
 async function fetchGlobalAgentConfigurationForView(
   auth: Authenticator,
   {

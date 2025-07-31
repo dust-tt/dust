@@ -220,6 +220,9 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
   });
 }
 
+/**
+ * Retrieves one specific version of an agent (can be the latest one).
+ */
 export async function getAgentConfiguration<V extends AgentFetchVariant>(
   auth: Authenticator,
   {
@@ -276,7 +279,7 @@ export async function getFullAgentConfiguration(
 }
 
 /**
- * Search agent configurations by name
+ * Search agent configurations by name.
  */
 export async function searchAgentConfigurationsByName(
   auth: Authenticator,
