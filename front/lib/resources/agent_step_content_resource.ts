@@ -10,7 +10,8 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { hideFileFromActionOutput, MCPActionType } from "@app/lib/actions/mcp";
+import { MCPActionType } from "@app/lib/actions/mcp";
+import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import {
