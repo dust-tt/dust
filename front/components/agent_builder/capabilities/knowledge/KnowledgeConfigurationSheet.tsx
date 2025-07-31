@@ -9,7 +9,7 @@ import { Button } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
 import type { Control } from "react-hook-form";
-import { createFormControl, useFormState, useWatch } from "react-hook-form";
+import { createFormControl, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -35,7 +35,6 @@ import type {
   CapabilityFormData,
   ConfigurationSheetPageId,
   KnowledgeServerName,
-  SupportedAgentBuilderActionType,
 } from "@app/components/agent_builder/types";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
 import {
@@ -98,9 +97,8 @@ export function KnowledgeConfigurationSheet({
 
     if (newAction) {
       onSave(newAction);
+      handleClose();
     }
-
-    handleClose();
   };
 
   const { control, handleSubmit } = useMemo(() => {
@@ -141,7 +139,6 @@ export function KnowledgeConfigurationSheet({
       </MultiPageSheetTrigger>
       <KnowledgeConfigurationSheetContent
         config={config}
-        onClose={handleClose}
         action={action}
         onSave={handleSave}
         control={control}
@@ -160,7 +157,6 @@ interface KnowledgeConfigurationSheetContentProps {
     dataSourceConfigurations: DataSourceViewSelectionConfigurations,
     configToUse: CapabilityConfig
   ) => void;
-  onClose: () => void;
   control: Control<CapabilityFormData>;
   handleSubmit: (
     fn: (data: CapabilityFormData) => void
@@ -168,7 +164,6 @@ interface KnowledgeConfigurationSheetContentProps {
   isOpen: boolean;
 }
 
-// This component stays mounted to preserve transitions, so we reset state when closing.
 function KnowledgeConfigurationSheetContent({
   action,
   config,
@@ -187,22 +182,23 @@ function KnowledgeConfigurationSheetContent({
     name: "instructions",
   });
 
-  // If editing an existing action, initialize with the config and skip to configuration page
-  const initialPageId = action
-    ? CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION
-    : CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
+  const initialPageId =
+    action && isSupportedAgentBuilderAction(action)
+      ? CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION
+      : CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION;
 
   const [currentPageId, setCurrentPageId] =
     useState<ConfigurationSheetPageId>(initialPageId);
 
-  // Update currentPageId when action changes (for edit mode)
   useEffect(() => {
-    if (action && isSupportedAgentBuilderAction(action)) {
-      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
-      const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
-      setSelectedMCPServerName(serverName);
-      if (serverName && isKnowledgeServerName(serverName)) {
-        setDynamicConfig(CAPABILITY_CONFIGS[serverName]);
+    if (action) {
+      if (isSupportedAgentBuilderAction(action)) {
+        setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
+        const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
+        setSelectedMCPServerName(serverName);
+        if (serverName && isKnowledgeServerName(serverName)) {
+          setDynamicConfig(CAPABILITY_CONFIGS[serverName]);
+        }
       }
     }
   }, [action]);
@@ -328,39 +324,8 @@ function KnowledgeConfigurationSheetContent({
     },
   ];
 
-  const { isDirty } = useFormState({ control });
-
-  const sources = useWatch({
-    control,
-    name: "sources",
-  });
-
-  const description = useWatch({
-    control,
-    name: "description",
-  });
-
-  const disableNext = useMemo(() => {
-    if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION) {
-      return sources.in.length === 0;
-    }
-    if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION) {
-      return !selectedMCPServerName;
-    }
-    return false;
-  }, [currentPageId, sources.in.length, selectedMCPServerName]);
-
-  const disableSave = useMemo(() => {
-    const hasDataSources = sources.in.length > 0;
-    const hasMCPSelection = !!selectedMCPServerName;
-    const hasDescription = description && description.trim().length > 0;
-
-    if (action) {
-      return !(hasDataSources && hasMCPSelection && hasDescription && isDirty);
-    } else {
-      return !(hasDataSources && hasMCPSelection && hasDescription);
-    }
-  }, [action, isDirty, sources.in.length, selectedMCPServerName, description]);
+  // Always allow users to try navigating and saving
+  // Let form validation and save logic handle any issues
 
   return (
     <MultiPageSheetContent
@@ -380,8 +345,6 @@ function KnowledgeConfigurationSheetContent({
       })}
       size="xl"
       showNavigation
-      disableNext={disableNext}
-      disableSave={disableSave}
     />
   );
 }
