@@ -128,7 +128,12 @@ export function ToolsList({
                 const toolPermission = getToolPermission(tool.name);
                 const toolEnabled = getToolEnabled(tool.name);
                 return (
-                  <div key={index} className="flex flex-col gap-1 pb-2">
+                  <div
+                    key={index}
+                    className={`flex flex-col gap-1 pb-2 ${
+                      !toolEnabled ? "opacity-50" : ""
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
                       {/* Checkbox for enabled/disabled */}
                       <input
@@ -143,6 +148,7 @@ export function ToolsList({
                           )
                         }
                         className="form-checkbox h-4 w-4"
+                        style={{ pointerEvents: "auto" }}
                       />
                       <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
                         {asDisplayName(tool.name)}
@@ -163,7 +169,7 @@ export function ToolsList({
                             <DropdownMenu>
                               <DropdownMenuTrigger
                                 asChild
-                                disabled={!canUpdate}
+                                disabled={!canUpdate || !toolEnabled}
                               >
                                 <Button
                                   variant="outline"
@@ -183,6 +189,7 @@ export function ToolsList({
                                         );
                                       }}
                                       label={toolPermissionLabel[permission]}
+                                      disabled={!toolEnabled}
                                     />
                                   )
                                 )}
