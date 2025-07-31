@@ -37,17 +37,17 @@ export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
 export const ConfluenceCommandSchema = t.type({
   majorCommand: t.literal("confluence"),
   command: t.union([
-    t.literal("me"),
-    t.literal("upsert-page"),
-    t.literal("skip-page"),
-    t.literal("upsert-pages"),
-    t.literal("update-parents"),
-    t.literal("ignore-near-rate-limit"),
-    t.literal("unignore-near-rate-limit"),
-    t.literal("check-space-access"),
-    t.literal("resolve-space-from-url"),
-    t.literal("sync-space"),
     t.literal("check-page-exists"),
+    t.literal("check-space-access"),
+    t.literal("ignore-near-rate-limit"),
+    t.literal("me"),
+    t.literal("resolve-space-from-url"),
+    t.literal("skip-page"),
+    t.literal("sync-space"),
+    t.literal("unignore-near-rate-limit"),
+    t.literal("update-parents"),
+    t.literal("upsert-page"),
+    t.literal("upsert-pages"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
@@ -134,7 +134,6 @@ export const ConfluenceCheckPageExistsResponseSchema = t.union([
 export type ConfluenceCheckPageExistsResponseType = t.TypeOf<
   typeof ConfluenceCheckPageExistsResponseSchema
 >;
-
 /**
  * </Confluence>
  */
@@ -550,8 +549,8 @@ export const SlackCommandSchema = t.type({
     t.literal("remove-channel-from-sync"),
     t.literal("skip-channel"),
     t.literal("skip-thread"),
-    t.literal("sync-channel-metadata"),
     t.literal("sync-channel"),
+    t.literal("sync-channel-metadata"),
     t.literal("sync-thread"),
     t.literal("uninstall-for-unknown-team-ids"),
     t.literal("unskip-channel"),

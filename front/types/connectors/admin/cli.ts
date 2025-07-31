@@ -42,10 +42,10 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("ignore-near-rate-limit"),
     t.literal("me"),
     t.literal("resolve-space-from-url"),
+    t.literal("skip-page"),
     t.literal("sync-space"),
     t.literal("unignore-near-rate-limit"),
     t.literal("update-parents"),
-    t.literal("skip-page"),
     t.literal("upsert-page"),
     t.literal("upsert-pages"),
   ]),
@@ -57,6 +57,7 @@ export const ConfluenceCommandSchema = t.type({
     keyInFile: t.union([t.string, t.undefined]),
     url: t.union([t.string, t.undefined]),
     forceUpsert: t.union([t.literal("true"), t.undefined]),
+    skipReason: t.union([t.string, t.undefined]),
   }),
 });
 export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
@@ -114,7 +115,6 @@ const ConfluenceAncestorSchema = t.type({
   type: t.string,
   title: t.union([t.undefined, t.string]),
 });
-export type ConfluenceAncestorType = t.TypeOf<typeof ConfluenceAncestorSchema>;
 
 export const ConfluenceCheckPageExistsResponseSchema = t.union([
   t.type({
@@ -124,9 +124,9 @@ export const ConfluenceCheckPageExistsResponseSchema = t.union([
     exists: t.literal(true),
     ancestors: t.array(ConfluenceAncestorSchema),
     existsInDust: t.boolean,
-    status: t.string,
     hasChildren: t.boolean,
     hasReadRestrictions: t.boolean,
+    status: t.string,
     title: t.string,
   }),
 ]);
@@ -543,16 +543,19 @@ export type SalesforceSyncQueryResponseType = t.TypeOf<
 export const SlackCommandSchema = t.type({
   majorCommand: t.literal("slack"),
   command: t.union([
-    t.literal("enable-bot"),
-    t.literal("sync-channel"),
-    t.literal("sync-thread"),
-    t.literal("skip-thread"),
-    t.literal("uninstall-for-unknown-team-ids"),
-    t.literal("whitelist-domains"),
-    t.literal("whitelist-bot"),
-    t.literal("sync-channel-metadata"),
     t.literal("add-channel-to-sync"),
+    t.literal("cutover-legacy-bot"),
+    t.literal("enable-bot"),
     t.literal("remove-channel-from-sync"),
+    t.literal("skip-channel"),
+    t.literal("skip-thread"),
+    t.literal("sync-channel"),
+    t.literal("sync-channel-metadata"),
+    t.literal("sync-thread"),
+    t.literal("uninstall-for-unknown-team-ids"),
+    t.literal("unskip-channel"),
+    t.literal("whitelist-bot"),
+    t.literal("whitelist-domains"),
   ]),
   args: t.record(
     t.string,
@@ -682,6 +685,8 @@ export const ZendeskCommandSchema = t.type({
     t.literal("sync-ticket"),
     t.literal("get-retention-period"),
     t.literal("set-retention-period"),
+    t.literal("add-organization-tag"),
+    t.literal("remove-organization-tag"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),
@@ -693,6 +698,9 @@ export const ZendeskCommandSchema = t.type({
     ticketId: t.union([t.number, t.undefined]),
     ticketUrl: t.union([t.string, t.undefined]),
     retentionPeriodDays: t.union([t.number, t.undefined]),
+    tag: t.union([t.string, t.undefined]),
+    include: t.union([t.literal("true"), t.undefined]),
+    exclude: t.union([t.literal("true"), t.undefined]),
   }),
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
@@ -736,6 +744,14 @@ export const ZendeskGetRetentionPeriodResponseSchema = t.type({
 export type ZendeskGetRetentionPeriodResponseType = t.TypeOf<
   typeof ZendeskGetRetentionPeriodResponseSchema
 >;
+
+export const ZendeskOrganizationTagResponseSchema = t.type({
+  success: t.literal(true),
+  message: t.union([t.string, t.undefined]),
+});
+export type ZendeskOrganizationTagResponseType = t.TypeOf<
+  typeof ZendeskOrganizationTagResponseSchema
+>;
 /**
  * </Zendesk>
  */
@@ -773,11 +789,12 @@ export const AdminResponseSchema = t.union([
   AdminSuccessResponseSchema,
   BatchAllResponseSchema,
   CheckFileGenericResponseSchema,
+  ConfluenceCheckPageExistsResponseSchema,
   ConfluenceCheckSpaceAccessResponseSchema,
   ConfluenceMeResponseSchema,
   ConfluenceResolveSpaceFromUrlResponseSchema,
+  ConfluenceSkipPageResponseSchema,
   ConfluenceUpsertPageResponseSchema,
-  ConfluenceCheckPageExistsResponseSchema,
   GongForceResyncResponseSchema,
   IntercomCheckConversationResponseSchema,
   IntercomCheckMissingConversationsResponseSchema,
