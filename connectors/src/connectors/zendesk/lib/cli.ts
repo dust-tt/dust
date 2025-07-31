@@ -52,18 +52,18 @@ function getOrganizationTagsArgs(args: ZendeskCommandType["args"]) {
     throw new Error("Missing --tag argument");
   }
 
-  const tagIn = args.in === "true";
-  const tagNotIn = args.notIn === "true";
+  const include = args.include === "true";
+  const exclude = args.exclude === "true";
 
-  if (tagIn && tagNotIn) {
+  if (include && exclude) {
     throw new Error("Cannot specify both --in and --not-in options");
   }
 
-  if (!tagIn && !tagNotIn) {
+  if (!include && !exclude) {
     throw new Error("Must specify either --in or --not-in option");
   }
 
-  return { tag, tagIn, tagNotIn };
+  return { tag, include, exclude };
 }
 
 async function checkTicketShouldBeSynced(
@@ -479,26 +479,26 @@ export const zendesk = async ({
       return { success: true };
     }
     case "add-organization-tag": {
-      const { tag, tagIn, tagNotIn } = getOrganizationTagsArgs(args);
+      const { tag, include, exclude } = getOrganizationTagsArgs(args);
 
       const { wasAdded, message } = await configuration.addOrganizationTag({
         tag,
-        includeOrExclude: tagIn ? "include" : "exclude",
+        includeOrExclude: include ? "include" : "exclude",
       });
-      logger.info({ wasAdded, tag, tagIn, tagNotIn }, message);
+      logger.info({ wasAdded, tag, include, exclude }, message);
 
       return { success: true, message };
     }
     case "remove-organization-tag": {
-      const { tag, tagIn, tagNotIn } = getOrganizationTagsArgs(args);
+      const { tag, include, exclude } = getOrganizationTagsArgs(args);
 
       const { wasRemoved, message } = await configuration.removeOrganizationTag(
         {
           tag,
-          includeOrExclude: tagIn ? "include" : "exclude",
+          includeOrExclude: include ? "include" : "exclude",
         }
       );
-      logger.info({ wasRemoved, tag, tagIn, tagNotIn }, message);
+      logger.info({ wasRemoved, tag, include, exclude }, message);
 
       return { success: true, message };
     }

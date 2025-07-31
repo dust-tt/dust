@@ -700,8 +700,8 @@ export const ZendeskCommandSchema = t.type({
     ticketUrl: t.union([t.string, t.undefined]),
     retentionPeriodDays: t.union([t.number, t.undefined]),
     tag: t.union([t.string, t.undefined]),
-    in: t.union([t.literal("true"), t.undefined]),
-    notIn: t.union([t.literal("true"), t.undefined]),
+    include: t.union([t.literal("true"), t.undefined]),
+    exclude: t.union([t.literal("true"), t.undefined]),
   }),
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
