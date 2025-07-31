@@ -1062,20 +1062,14 @@ export async function microsoftDeletionActivity({
   const results = await concurrentExecutor(
     nodeIdsToDelete,
     async (nodeId) => {
-      // First check if the parent is still there.
+      // First check if we have a parentInternalId.
       // This means an ancestors is selected, and this node should not be removed
       const node = await MicrosoftNodeResource.fetchByInternalId(
         connectorId,
         nodeId
       );
       if (node && node.parentInternalId) {
-        const parent = await MicrosoftNodeResource.fetchByInternalId(
-          connectorId,
-          node.parentInternalId
-        );
-        if (parent) {
-          return [];
-        }
+        return [];
       }
 
       // Node has no parent and has been removed from selection - delete recursively
