@@ -34,6 +34,11 @@ export type ExtractDataAgentBuilderAction = Extract<
   { type: "EXTRACT_DATA" }
 >;
 
+export type QueryTablesAgentBuilderAction = Extract<
+  AgentBuilderAction,
+  { type: "QUERY_TABLES" }
+>;
+
 export type SearchActionConfiguration =
   SearchAgentBuilderAction["configuration"];
 
@@ -46,11 +51,15 @@ export type IncludeDataActionConfiguration =
 export type ExtractDataActionConfiguration =
   ExtractDataAgentBuilderAction["configuration"];
 
+export type QueryTablesActionConfiguration =
+  QueryTablesAgentBuilderAction["configuration"];
+
 export type AgentBuilderActionConfiguration =
   | SearchActionConfiguration
   | DataVisualizationActionConfiguration
   | IncludeDataActionConfiguration
-  | ExtractDataActionConfiguration;
+  | ExtractDataActionConfiguration
+  | QueryTablesActionConfiguration;
 
 // Type guards
 export function isSearchAction(
@@ -75,6 +84,23 @@ export function isExtractDataAction(
   action: AgentBuilderAction
 ): action is ExtractDataAgentBuilderAction {
   return action.type === "EXTRACT_DATA";
+}
+
+export type SupportedAgentBuilderAction =
+  | SearchAgentBuilderAction
+  | IncludeDataAgentBuilderAction
+  | ExtractDataAgentBuilderAction
+  | QueryTablesAgentBuilderAction;
+
+export function isSupportedAgentBuilderAction(
+  action: AgentBuilderAction
+): action is SupportedAgentBuilderAction {
+  return (
+    action.type === "SEARCH" ||
+    action.type === "INCLUDE_DATA" ||
+    action.type === "EXTRACT_DATA" ||
+    action.type === "QUERY_TABLES"
+  );
 }
 
 // MCP server names that map to agent builder actions

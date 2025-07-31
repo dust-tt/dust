@@ -20,7 +20,10 @@ import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capab
 import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import { isDefaultActionName } from "@app/components/agent_builder/types";
+import {
+  isDefaultActionName,
+  isSupportedAgentBuilderAction,
+} from "@app/components/agent_builder/types";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
@@ -199,6 +202,8 @@ export function AgentBuilderCapabilitiesBlock() {
     index: number;
   } | null>(null);
 
+  const [isKnowledgeSheetOpen, setIsKnowledgeSheetOpen] = useState(false);
+
   // TODO: Open single sheet for selected MCP action.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedAction, setSelectedAction] =
@@ -236,22 +241,25 @@ export function AgentBuilderCapabilitiesBlock() {
 
   const handleCloseSheet = () => {
     setEditingAction(null);
+    setIsKnowledgeSheetOpen(false);
   };
 
   // Check if we're editing a knowledge-based action
   const isEditingKnowledgeAction =
-    !!editingAction &&
-    ["SEARCH", "INCLUDE_DATA", "EXTRACT_DATA", "QUERY_TABLES"].includes(
-      editingAction.action.type
-    );
+    !!editingAction && isSupportedAgentBuilderAction(editingAction.action);
+
+  // Sheet should be open for editing existing actions or creating new ones
+  const shouldShowKnowledgeSheet =
+    isEditingKnowledgeAction || isKnowledgeSheetOpen;
 
   const dropdownButtons = (
     <>
       <KnowledgeConfigurationSheet
         onClose={handleCloseSheet}
+        onOpen={() => setIsKnowledgeSheetOpen(true)}
         onSave={handleEditSave}
         action={editingAction?.action}
-        {...(isEditingKnowledgeAction ? { open: true } : {})}
+        open={shouldShowKnowledgeSheet}
       />
       <AddToolsDropdown
         tools={fields}

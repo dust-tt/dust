@@ -43,6 +43,7 @@ import {
   capabilityFormSchema,
   CONFIGURATION_SHEET_PAGE_IDS,
   isKnowledgeServerName,
+  isSupportedAgentBuilderAction,
 } from "@app/components/agent_builder/types";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { DataSourceBuilderSelector } from "@app/components/data_source_view/DataSourceBuilderSelector";
@@ -52,14 +53,16 @@ interface KnowledgeConfigurationSheetProps {
   capability?: KnowledgeServerName | null;
   onSave: (action: AgentBuilderAction) => void;
   onClose: () => void;
+  onOpen?: () => void;
   action?: AgentBuilderAction;
-  open?: boolean;
+  open: boolean;
 }
 
 export function KnowledgeConfigurationSheet({
   capability,
   onSave,
   onClose,
+  onOpen,
   action,
   open,
 }: KnowledgeConfigurationSheetProps) {
@@ -68,11 +71,8 @@ export function KnowledgeConfigurationSheet({
     if (capability) {
       return CAPABILITY_CONFIGS[capability];
     }
-    if (action) {
-      const serverName =
-        ACTION_TYPE_TO_MCP_SERVER_MAP[
-          action.type as SupportedAgentBuilderActionType
-        ];
+    if (action && isSupportedAgentBuilderAction(action)) {
+      const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
       return serverName && isKnowledgeServerName(serverName)
         ? CAPABILITY_CONFIGS[serverName]
         : null;
@@ -80,15 +80,7 @@ export function KnowledgeConfigurationSheet({
     return null;
   }, [capability, action]);
 
-  // Use controlled state when open prop is provided, otherwise uncontrolled
-  const [internalOpen, setInternalOpen] = useState(false);
-  const isControlled = open !== undefined;
-  const isOpen = isControlled ? open : internalOpen;
-
   const handleClose = () => {
-    if (!isControlled) {
-      setInternalOpen(false);
-    }
     onClose();
   };
 
@@ -129,29 +121,32 @@ export function KnowledgeConfigurationSheet({
       },
     });
   }, [action]);
+
   const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen) {
-      if (!isControlled) {
-        setInternalOpen(true);
-      }
-    } else {
+    if (!newOpen) {
       handleClose();
     }
   };
 
+  const handleTriggerClick = () => {
+    if (!open && onOpen) {
+      onOpen();
+    }
+  };
+
   return (
-    <MultiPageSheet open={isOpen} onOpenChange={handleOpenChange}>
+    <MultiPageSheet open={open} onOpenChange={handleOpenChange}>
       <MultiPageSheetTrigger asChild>
-        <Button label="Add knowledge" />
+        <Button label="Add knowledge" onClick={handleTriggerClick} />
       </MultiPageSheetTrigger>
       <KnowledgeConfigurationSheetContent
-        key={action?.id || "new"}
         config={config}
         onClose={handleClose}
         action={action}
         onSave={handleSave}
         control={control}
         handleSubmit={handleSubmit}
+        isOpen={open}
       />
     </MultiPageSheet>
   );
@@ -170,15 +165,17 @@ interface KnowledgeConfigurationSheetContentProps {
   handleSubmit: (
     fn: (data: CapabilityFormData) => void
   ) => (e?: React.BaseSyntheticEvent) => Promise<void>;
+  isOpen: boolean;
 }
 
-// This component gets unmounted when config is null so no need to reset the state.
+// This component stays mounted to preserve transitions, so we reset state when closing.
 function KnowledgeConfigurationSheetContent({
   action,
   config,
   onSave,
   control,
   handleSubmit,
+  isOpen,
 }: KnowledgeConfigurationSheetContentProps) {
   const { owner } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
@@ -200,25 +197,31 @@ function KnowledgeConfigurationSheetContent({
 
   // Update currentPageId when action changes (for edit mode)
   useEffect(() => {
-    if (action) {
+    if (action && isSupportedAgentBuilderAction(action)) {
       setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION);
-      const serverName =
-        ACTION_TYPE_TO_MCP_SERVER_MAP[
-          action.type as SupportedAgentBuilderActionType
-        ];
+      const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
       setSelectedMCPServerName(serverName);
       if (serverName && isKnowledgeServerName(serverName)) {
         setDynamicConfig(CAPABILITY_CONFIGS[serverName]);
       }
     }
   }, [action]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      if (!action) {
+        setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
+        setSelectedMCPServerName("search");
+        setDynamicConfig(CAPABILITY_CONFIGS["search"]);
+      }
+    }
+  }, [isOpen, action]);
+
   const [selectedMCPServerName, setSelectedMCPServerName] = useState<
     string | null
   >(
-    action
-      ? ACTION_TYPE_TO_MCP_SERVER_MAP[
-          action.type as SupportedAgentBuilderActionType
-        ]
+    action && isSupportedAgentBuilderAction(action)
+      ? ACTION_TYPE_TO_MCP_SERVER_MAP[action.type]
       : "search"
   );
   const [dynamicConfig, setDynamicConfig] = useState<CapabilityConfig | null>(
