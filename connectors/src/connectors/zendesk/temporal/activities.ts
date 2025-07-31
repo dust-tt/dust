@@ -681,7 +681,7 @@ export async function syncZendeskTicketBatchActivity({
   }
 
   let organizationTagsMap = new Map<number, string[]>();
-  if (configuration.organizationTagsIn || configuration.organizationTagsNotIn) {
+  if (configuration.enforcesOrganizationTagConstraint()) {
     organizationTagsMap = await getOrganizationTagMapForTickets(tickets, {
       accessToken,
       brandSubdomain,

@@ -104,6 +104,12 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
       connectorId: this.connectorId,
     };
   }
+
+  enforcesOrganizationTagConstraint(): boolean {
+    return (
+      this.organizationTagsIn !== null || this.organizationTagsNotIn !== null
+    );
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
