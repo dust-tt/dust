@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 import type { FieldArrayWithId } from "react-hook-form";
-import { useFieldArray } from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type {
   AgentBuilderDataVizAction,
@@ -191,6 +191,7 @@ function filterSelectableViews(
 }
 
 export function AgentBuilderCapabilitiesBlock() {
+  const { getValues } = useFormContext<AgentBuilderFormData>();
   const { fields, remove, append, update } = useFieldArray<
     AgentBuilderFormData,
     "actions"
@@ -271,6 +272,8 @@ export function AgentBuilderCapabilitiesBlock() {
       logger.warn({ serverName }, "Unknown knowledge server");
     }
   };
+
+  const getAgentInstructions = () => getValues("instructions");
 
   const dropdownButtons = (
     <>
@@ -361,6 +364,7 @@ export function AgentBuilderCapabilitiesBlock() {
           setSelectedAction(null);
           setEditingAction(null);
         }}
+        getAgentInstructions={getAgentInstructions}
       />
     </div>
   );

@@ -5,7 +5,6 @@ interface ConfigurationSectionContainerProps {
   description?: string | React.ReactNode;
   children: React.ReactNode;
   className?: string;
-  error?: string;
 }
 
 export function ConfigurationSectionContainer({
@@ -13,7 +12,6 @@ export function ConfigurationSectionContainer({
   description,
   children,
   className,
-  error,
 }: ConfigurationSectionContainerProps) {
   return (
     <div className={cn("flex flex-col gap-4", className)}>
@@ -29,7 +27,6 @@ export function ConfigurationSectionContainer({
       </div>
 
       <div>{children}</div>
-      {error && <div className="text-sm text-red-500">{error}</div>}
     </div>
   );
 }

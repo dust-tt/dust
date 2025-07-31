@@ -4,13 +4,14 @@ import type { MCPServerConfigurationType } from "@app/components/agent_builder/A
 import {
   additionalConfigurationSchema,
   childAgentIdSchema,
+  dataSourceViewSelectionConfigurationSchema,
   dustAppConfigurationSchema,
   jsonSchemaFieldSchema,
   jsonSchemaStringSchema,
   mcpServerViewIdSchema,
   mcpTimeFrameSchema,
   reasoningModelSchema,
-  tablesConfigurationsSchema} from "@app/components/agent_builder/AgentBuilderFormContext";
+} from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -18,8 +19,8 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 const getConfigurationSchema = (requirements: MCPServerRequirements | null) => {
   const baseFields = {
     mcpServerViewId: mcpServerViewIdSchema,
-    dataSourceConfigurations: z.any().nullable().default(null), // TODO: fixme
-    tablesConfigurations: tablesConfigurationsSchema,
+    dataSourceConfigurations: dataSourceViewSelectionConfigurationSchema,
+    tablesConfigurations: dataSourceViewSelectionConfigurationSchema,
     childAgentId: childAgentIdSchema,
     reasoningModel: reasoningModelSchema,
     timeFrame: mcpTimeFrameSchema,

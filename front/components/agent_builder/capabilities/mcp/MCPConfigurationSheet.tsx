@@ -1,5 +1,4 @@
 import {
-  Label,
   ScrollArea,
   Sheet,
   SheetContainer,
@@ -8,36 +7,34 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { FormEvent } from "react";
-import { useCallback, useMemo } from "react";
-import type { UseFormReturn } from "react-hook-form";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getMCPConfigurationFormSchema } from "@app/components/agent_builder/capabilities/mcp/formValidation";
 import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/MCPActionHeader";
-import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/mcp/sections/AdditionalConfigurationSection";
+import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/shared/AdditionalConfigurationSection";
+import { ChildAgentSection } from "@app/components/agent_builder/capabilities/shared/ChildAgentSection";
+import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
+import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
+import { ReasoningModelSection } from "@app/components/agent_builder/capabilities/shared/ReasoningModelSection";
+import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
-import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
-import { generateSchema } from "@app/components/assistant_builder/actions/MCPAction";
 import { DataSourceViewsProvider } from "@app/components/assistant_builder/contexts/DataSourceViewsContext";
 import { useSpacesContext } from "@app/components/assistant_builder/contexts/SpacesContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { TimeFrame, WorkspaceType } from "@app/types";
-
-import { ChildAgentSection } from "./sections/ChildAgentSection";
-import { DustAppSection } from "./sections/DustAppSection";
-import { ReasoningModelSection } from "./sections/ReasoningModelSection";
+import type { WorkspaceType } from "@app/types";
 
 interface MCPConfigurationSheetProps {
   selectedAction: AgentBuilderAction | null;
   onSave: (action: AgentBuilderAction) => void;
   isOpen: boolean;
   onClose: () => void;
+  getAgentInstructions: () => string;
 }
 
 // This sheet if for any MCP tools without datasource selection required.
@@ -46,6 +43,7 @@ export function MCPConfigurationSheet({
   onSave,
   isOpen,
   onClose,
+  getAgentInstructions,
 }: MCPConfigurationSheetProps) {
   const { owner } = useAgentBuilderContext();
 
@@ -71,6 +69,7 @@ export function MCPConfigurationSheet({
           action={selectedAction}
           onClose={handleClose}
           onSave={onSave}
+          getAgentInstructions={getAgentInstructions}
         />
       </DataSourceViewsProvider>
     </Sheet>
@@ -81,16 +80,19 @@ interface MCPConfigurationSheetContentProps {
   action: AgentBuilderAction;
   onSave: (action: AgentBuilderAction) => void;
   onClose: () => void;
+  getAgentInstructions: () => string;
 }
 
 function MCPConfigurationSheetContent({
   action,
   onSave,
   onClose,
+  getAgentInstructions,
 }: MCPConfigurationSheetContentProps) {
   const { owner } = useAgentBuilderContext();
   const { mcpServerViews, isMCPServerViewsLoading } =
     useMCPServerViewsContext();
+  const agentInstructions = getAgentInstructions();
 
   const mcpServerView =
     action.type === "MCP" && !isMCPServerViewsLoading
@@ -162,7 +164,7 @@ function MCPConfigurationSheetContent({
                   mcpServerView={mcpServerView}
                   requirements={requirements}
                   owner={owner}
-                  form={form}
+                  agentInstructions={agentInstructions}
                 />
               </ScrollArea>
             </div>
@@ -188,26 +190,16 @@ interface MCPConfigurationFormProps {
   mcpServerView: MCPServerViewType;
   requirements: ReturnType<typeof getMCPServerRequirements>;
   owner: WorkspaceType;
-  form: UseFormReturn<MCPFormData>;
+  agentInstructions: string;
 }
 
 function MCPConfigurationForm({
   mcpServerView,
   requirements,
   owner,
-  form,
+  agentInstructions,
 }: MCPConfigurationFormProps) {
   const { spaces } = useSpacesContext();
-
-  const configuration = form.watch("configuration");
-
-  const handleConfigUpdate = useCallback(
-    (getNewConfig: (old: typeof configuration) => typeof configuration) => {
-      const newConfig = getNewConfig(configuration);
-      form.setValue("configuration", newConfig, { shouldDirty: true });
-    },
-    [configuration, form]
-  );
 
   const allowedSpaces = spaces.filter(
     (space) => space.sId === mcpServerView.spaceId || space.kind === "system"
@@ -239,38 +231,14 @@ function MCPConfigurationForm({
       )}
 
       {requirements.mayRequireTimeFrameConfiguration && (
-        <TimeFrameConfigurationSection
-          onConfigUpdate={(timeFrame: TimeFrame | null) => {
-            handleConfigUpdate((old) => ({ ...old, timeFrame }));
-          }}
-          timeFrame={configuration.timeFrame}
-          error={form.formState.errors.configuration?.timeFrame?.message}
-        />
+        <TimeFrameSection actionType="extract" />
       )}
 
       {requirements.mayRequireJsonSchemaConfiguration && (
-        <JsonSchemaConfigurationSection
-          instructions={form.watch("description")}
-          description={form.watch("description")}
-          sectionConfigurationDescription="Optionally, provide a schema for the data to be extracted. If you do not specify a schema, the tool will determine the schema based on the conversation context."
-          setEdited={() => form.setValue("_isDirty", true)}
-          onConfigUpdate={({ jsonSchema, _jsonSchemaString }) => {
-            handleConfigUpdate((old) => ({
-              ...old,
-              _jsonSchemaString,
-              jsonSchema:
-                jsonSchema === undefined ? old.jsonSchema : jsonSchema,
-            }));
-          }}
-          initialSchema={
-            configuration._jsonSchemaString ??
-            (configuration.jsonSchema
-              ? JSON.stringify(configuration.jsonSchema, null, 2)
-              : null)
-          }
-          generateSchema={(instructions: string) =>
-            generateSchema({ owner, instructions })
-          }
+        <JsonSchemaSection
+          owner={owner}
+          fieldName="configuration.jsonSchema"
+          agentInstructions={agentInstructions}
         />
       )}
 

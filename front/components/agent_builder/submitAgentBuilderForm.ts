@@ -51,8 +51,7 @@ function convertDataSourceConfigurations(
 function processTableSelection(
   tablesConfigurations:
     | DataSourceViewSelectionConfigurations
-    | null
-    | undefined,
+    | null,
   owner: WorkspaceType
 ): TableDataSourceConfiguration[] | null {
   if (!tablesConfigurations || Object.keys(tablesConfigurations).length === 0) {
@@ -225,7 +224,7 @@ export async function submitAgentBuilderForm({
         if (action.type === "MCP") {
           return [
             {
-              type: "mcp_server_configuration" as const,
+              type: "mcp_server_configuration",
               mcpServerViewId: action.configuration.mcpServerViewId,
               name: action.name,
               description: action.description,

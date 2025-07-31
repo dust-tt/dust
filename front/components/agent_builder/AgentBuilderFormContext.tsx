@@ -52,10 +52,6 @@ export const jsonSchemaFieldSchema = z.custom<JSONSchema>().nullable();
 
 export const jsonSchemaStringSchema = z.string().nullable();
 
-export const dataSourceConfigurationsSchema = z.any().nullable();
-
-export const tablesConfigurationsSchema = z.any().nullable();
-
 const tagsFilterSchema = z
   .object({
     in: z.array(z.string()),
@@ -64,7 +60,7 @@ const tagsFilterSchema = z
   })
   .nullable();
 
-const dataSourceViewSelectionConfigurationSchema = z.object({
+export const dataSourceViewSelectionConfigurationSchema = z.object({
   dataSourceView: z.custom<DataSourceViewType>(),
   selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
   isSelectAll: z.boolean(),

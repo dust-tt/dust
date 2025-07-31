@@ -1,6 +1,5 @@
 import { Button, Input, MoreIcon, Popover } from "@dust-tt/sparkle";
-import { useState } from "react";
-import { useController, useFormContext } from "react-hook-form";
+import { useFormContext, useWatch } from "react-hook-form";
 
 import type {
   AgentBuilderAction,
@@ -22,27 +21,20 @@ export function MCPActionHeader({
   allowNameEdit = false,
 }: MCPActionHeaderProps) {
   const form = useFormContext<MCPFormData>();
-  const {
-    field: nameField,
-    fieldState: { error: nameError },
-  } = useController<MCPFormData, "name">({
-    name: "name",
-  });
+  const error = form.formState.errors.name;
+  const newName = useWatch({ name: "name" });
 
-  // Keep the original name so that if a user closes the popover without
-  // fixing the validation error, we can revert it to the original name.
-  const [originalName, setOriginalName] = useState(nameField.value);
-
-  const handleNameChange = (newName: string) => {
-    form.setValue("name", newName, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
+  // Reset the form with default value if there is an error when popup is closed
+  const onClose = () => {
+    if (error) {
+      form.setValue("name", form.formState.defaultValues?.name ?? "");
+      form.clearErrors("name");
+    }
   };
 
   const newAction = {
     ...action,
-    name: nameField.value,
+    name: newName,
   };
 
   return (
@@ -60,17 +52,9 @@ export function MCPActionHeader({
       </div>
       {allowNameEdit && (
         <Popover
-          trigger={
-            <Button
-              icon={MoreIcon}
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setOriginalName(nameField.value);
-              }}
-            />
-          }
+          trigger={<Button icon={MoreIcon} size="sm" variant="ghost" />}
           popoverTriggerAsChild
+          onAnimationEnd={onClose}
           content={
             <div className="flex flex-col gap-4">
               <div className="flex flex-col items-end gap-2">
@@ -79,18 +63,13 @@ export function MCPActionHeader({
                 </div>
               </div>
               <Input
-                name="actionName"
+                {...form.register("name", {
+                  onChange: () => {
+                    void form.trigger("name");
+                  },
+                })}
                 placeholder="My tool name…"
-                value={nameField.value}
-                onChange={(e) => {
-                  handleNameChange(e.target.value);
-                }}
-                onBlur={() => {
-                  if (nameError) {
-                    handleNameChange(originalName);
-                  }
-                }}
-                message={nameError?.message}
+                message={error?.message}
                 messageStatus="error"
                 className="text-sm"
               />

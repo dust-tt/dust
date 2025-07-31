@@ -10,7 +10,7 @@ import React from "react";
 import { useController } from "react-hook-form";
 
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/mcp/sections/ConfigurationSectionContainer";
+import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types";
