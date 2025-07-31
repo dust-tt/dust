@@ -30,18 +30,48 @@ function apiUrlToDocumentUrl(apiUrl: string): string {
 export function shouldSyncTicket(
   ticket: ZendeskFetchedTicket,
   configuration: ZendeskConfigurationResource,
-  { brandId }: { brandId?: number }
+  {
+    brandId,
+    organizationTags,
+  }: { brandId?: number; organizationTags: string[] }
 ): boolean {
-  return (
-    [
-      "closed",
-      "solved",
-      ...(configuration.syncUnresolvedTickets
-        ? ["new", "open", "pending", "hold"]
-        : []),
-    ].includes(ticket.status) &&
-    (!brandId || brandId === ticket.brand_id)
-  );
+  if (ticket.status === "deleted") {
+    return false;
+  }
+  if (
+    !configuration.syncUnresolvedTickets &&
+    !["closed", "solved"].includes(ticket.status)
+  ) {
+    return false;
+  }
+  if (brandId && brandId !== ticket.brand_id) {
+    return false;
+  }
+
+  // If we enforce an inclusion rule on tags, we must have at least one of the
+  // mandatory tags.
+  if (
+    configuration.organizationTagsToInclude &&
+    !configuration.organizationTagsToInclude.some((mandatoryTag) =>
+      organizationTags.includes(mandatoryTag)
+    )
+  ) {
+    return false;
+  }
+
+  // If we enforce an exclusion rule on tags, we must not have any of the
+  // excluded tags.
+  if (
+    configuration.organizationTagsToExclude &&
+    configuration.organizationTagsToExclude.some((prohibitedTag) =>
+      organizationTags.includes(prohibitedTag)
+    )
+  ) {
+    return false;
+  }
+
+  // All checks passed.
+  return true;
 }
 
 export function extractMetadataFromDocumentUrl(ticketUrl: string): {

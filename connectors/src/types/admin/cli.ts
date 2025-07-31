@@ -686,6 +686,8 @@ export const ZendeskCommandSchema = t.type({
     t.literal("sync-ticket"),
     t.literal("get-retention-period"),
     t.literal("set-retention-period"),
+    t.literal("add-organization-tag"),
+    t.literal("remove-organization-tag"),
   ]),
   args: t.type({
     wId: t.union([t.string, t.undefined]),
@@ -697,6 +699,9 @@ export const ZendeskCommandSchema = t.type({
     ticketId: t.union([t.number, t.undefined]),
     ticketUrl: t.union([t.string, t.undefined]),
     retentionPeriodDays: t.union([t.number, t.undefined]),
+    tag: t.union([t.string, t.undefined]),
+    include: t.union([t.literal("true"), t.undefined]),
+    exclude: t.union([t.literal("true"), t.undefined]),
   }),
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
@@ -739,6 +744,14 @@ export const ZendeskGetRetentionPeriodResponseSchema = t.type({
 });
 export type ZendeskGetRetentionPeriodResponseType = t.TypeOf<
   typeof ZendeskGetRetentionPeriodResponseSchema
+>;
+
+export const ZendeskOrganizationTagResponseSchema = t.type({
+  success: t.literal(true),
+  message: t.union([t.string, t.undefined]),
+});
+export type ZendeskOrganizationTagResponseType = t.TypeOf<
+  typeof ZendeskOrganizationTagResponseSchema
 >;
 /**
  * </Zendesk>
