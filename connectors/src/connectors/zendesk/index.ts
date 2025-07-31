@@ -97,6 +97,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         retentionPeriodDays: DEFAULT_RETENTION_DAYS,
         syncUnresolvedTickets: false,
         hideCustomerDetails: false,
+        organizationTagsIn: null,
+        organizationTagsNotIn: null,
       }
     );
     const loggerArgs = {
