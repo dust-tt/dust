@@ -4,7 +4,7 @@ import type { MCPServerConfigurationType } from "@app/components/agent_builder/A
 import {
   additionalConfigurationSchema,
   childAgentIdSchema,
-  dataSourceViewSelectionConfigurationSchema,
+  dataSourceConfigurationSchema,
   dustAppConfigurationSchema,
   jsonSchemaFieldSchema,
   jsonSchemaStringSchema,
@@ -19,8 +19,8 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 const getConfigurationSchema = (requirements: MCPServerRequirements | null) => {
   const baseFields = {
     mcpServerViewId: mcpServerViewIdSchema,
-    dataSourceConfigurations: dataSourceViewSelectionConfigurationSchema,
-    tablesConfigurations: dataSourceViewSelectionConfigurationSchema,
+    dataSourceConfigurations: dataSourceConfigurationSchema,
+    tablesConfigurations: dataSourceConfigurationSchema,
     childAgentId: childAgentIdSchema,
     reasoningModel: reasoningModelSchema,
     timeFrame: mcpTimeFrameSchema,

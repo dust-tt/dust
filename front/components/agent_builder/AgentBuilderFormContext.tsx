@@ -60,19 +60,21 @@ const tagsFilterSchema = z
   })
   .nullable();
 
-export const dataSourceViewSelectionConfigurationSchema = z.object({
+const dataSourceViewSelectionConfigurationSchema = z.object({
   dataSourceView: z.custom<DataSourceViewType>(),
   selectedResources: z.array(z.custom<DataSourceViewContentNode>()),
   isSelectAll: z.boolean(),
   tagsFilter: tagsFilterSchema,
 });
 
+export const dataSourceConfigurationSchema = z.record(
+  z.string(),
+  dataSourceViewSelectionConfigurationSchema
+);
+
 const searchActionConfigurationSchema = z.object({
   type: z.literal("SEARCH"),
-  dataSourceConfigurations: z.record(
-    z.string(),
-    dataSourceViewSelectionConfigurationSchema
-  ),
+  dataSourceConfigurations: dataSourceConfigurationSchema,
 });
 
 export const timeFrameSchema = z
@@ -86,29 +88,20 @@ export const mcpTimeFrameSchema = timeFrameSchema;
 
 const includeDataActionConfigurationSchema = z.object({
   type: z.literal("INCLUDE_DATA"),
-  dataSourceConfigurations: z.record(
-    z.string(),
-    dataSourceViewSelectionConfigurationSchema
-  ),
+  dataSourceConfigurations: dataSourceConfigurationSchema,
   timeFrame: timeFrameSchema,
 });
 
 const extractDataActionConfigurationSchema = z.object({
   type: z.literal("EXTRACT_DATA"),
-  dataSourceConfigurations: z.record(
-    z.string(),
-    dataSourceViewSelectionConfigurationSchema
-  ),
+  dataSourceConfigurations: dataSourceConfigurationSchema,
   timeFrame: timeFrameSchema,
   jsonSchema: z.custom<JSONSchema>().nullable(),
 });
 
 const queryTablesActionConfigurationSchema = z.object({
   type: z.literal("QUERY_TABLES"),
-  dataSourceConfigurations: z.record(
-    z.string(),
-    dataSourceViewSelectionConfigurationSchema
-  ),
+  dataSourceConfigurations: dataSourceConfigurationSchema,
   timeFrame: timeFrameSchema,
 });
 
@@ -148,9 +141,8 @@ export const reasoningModelSchema = z
 
 const mcpServerConfigurationSchema = z.object({
   mcpServerViewId: mcpServerViewIdSchema,
-  dataSourceConfigurations:
-    dataSourceViewSelectionConfigurationSchema.nullable(),
-  tablesConfigurations: dataSourceViewSelectionConfigurationSchema.nullable(),
+  dataSourceConfigurations: dataSourceConfigurationSchema.nullable(),
+  tablesConfigurations: dataSourceConfigurationSchema.nullable(),
   childAgentId: childAgentIdSchema,
   reasoningModel: reasoningModelSchema,
   timeFrame: mcpTimeFrameSchema,
