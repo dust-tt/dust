@@ -325,6 +325,8 @@ export async function syncZendeskTicketUpdateBatchActivity({
           currentSyncDateMs,
           loggerArgs,
           forceResync: false,
+          accessToken,
+          brandSubdomain,
         });
       }
     },

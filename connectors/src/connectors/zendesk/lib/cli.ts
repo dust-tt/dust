@@ -369,6 +369,8 @@ export const zendesk = async ({
         forceResync: args.forceResync === "true",
         comments,
         users,
+        accessToken,
+        brandSubdomain,
       });
 
       logger.info(

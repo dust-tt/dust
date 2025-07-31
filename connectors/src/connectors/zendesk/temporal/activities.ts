@@ -713,6 +713,8 @@ export async function syncZendeskTicketBatchActivity({
         forceResync,
         comments,
         users,
+        accessToken,
+        brandSubdomain,
       });
     },
     {
