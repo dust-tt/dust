@@ -1,6 +1,9 @@
 import type { Result } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
+import { isLeft } from "fp-ts/lib/Either";
 import fs from "fs";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 import PQueue from "p-queue";
 import readline from "readline";
 
@@ -37,6 +40,17 @@ import type {
   WebcrawlerCommandType,
 } from "@connectors/types";
 import { isConnectorError } from "@connectors/types";
+
+// Schema for permissions file validation
+const PermissionsFileSchema = t.record(
+  t.string,
+  t.union([
+    t.literal("read"),
+    t.literal("write"),
+    t.literal("read_write"),
+    t.literal("none"),
+  ])
+);
 
 const { INTERACTIVE_CLI } = process.env;
 
@@ -221,25 +235,15 @@ export const connectors = async ({
           const fileContent = fs.readFileSync(permissionsFile, "utf8");
           const parsedPermissions = JSON.parse(fileContent);
 
-          // Validate the JSON structure
-          if (
-            typeof parsedPermissions !== "object" ||
-            parsedPermissions === null
-          ) {
-            throw new Error("Invalid JSON: expected an object");
+          // Validate using io-ts schema
+          const validation = PermissionsFileSchema.decode(parsedPermissions);
+
+          if (isLeft(validation)) {
+            const pathError = reporter.formatValidationErrors(validation.left);
+            throw new Error(`Invalid permissions file format: ${pathError}`);
           }
 
-          // Validate each permission entry
-          for (const [key, value] of Object.entries(parsedPermissions)) {
-            if (
-              !["read", "write", "read_write", "none"].includes(value as string)
-            ) {
-              throw new Error(
-                `Invalid permission value for key '${key}': ${value}. Must be one of: read, write, read_write, none`
-              );
-            }
-            permissions[key] = value as ConnectorPermission;
-          }
+          permissions = validation.right;
         } catch (error) {
           if (error instanceof SyntaxError) {
             throw new Error(
