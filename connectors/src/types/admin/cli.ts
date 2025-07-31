@@ -115,6 +115,7 @@ const ConfluenceAncestorSchema = t.type({
   type: t.string,
   title: t.union([t.undefined, t.string]),
 });
+export type ConfluenceAncestorType = t.TypeOf<typeof ConfluenceAncestorSchema>;
 
 export const ConfluenceCheckPageExistsResponseSchema = t.union([
   t.type({
@@ -130,7 +131,6 @@ export const ConfluenceCheckPageExistsResponseSchema = t.union([
     title: t.string,
   }),
 ]);
-
 export type ConfluenceCheckPageExistsResponseType = t.TypeOf<
   typeof ConfluenceCheckPageExistsResponseSchema
 >;
@@ -791,9 +791,9 @@ export const AdminResponseSchema = t.union([
   CheckFileGenericResponseSchema,
   ConfluenceCheckPageExistsResponseSchema,
   ConfluenceCheckSpaceAccessResponseSchema,
-  ConfluenceSkipPageResponseSchema,
   ConfluenceMeResponseSchema,
   ConfluenceResolveSpaceFromUrlResponseSchema,
+  ConfluenceSkipPageResponseSchema,
   ConfluenceUpsertPageResponseSchema,
   GongForceResyncResponseSchema,
   IntercomCheckConversationResponseSchema,
