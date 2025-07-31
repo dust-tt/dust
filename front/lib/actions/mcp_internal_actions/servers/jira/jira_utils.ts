@@ -22,7 +22,20 @@ export const escapeJQLValue = (value: string): string => {
 export function createJQLFromSearchFilters(filters: SearchFilter[]): string {
   const jqlConditions = filters.map((filter) => {
     const fieldMapping = FIELD_MAPPINGS[filter.field as SearchFilterField];
-    const jqlField = fieldMapping.jqlField;
+    
+    let jqlField: string;
+    
+    if (fieldMapping && "isCustomField" in fieldMapping && fieldMapping.isCustomField) {
+      // For custom fields, use the customFieldName parameter
+      if (filter.customFieldName) {
+        jqlField = `"${filter.customFieldName}"`;
+      } else {
+        throw new Error("customFieldName is required when using customField");
+      }
+    } else {
+      jqlField = fieldMapping.jqlField;
+    }
+    
     // Use fuzzy search if requested and supported for the field
     const useFuzzy = filter.fuzzy && "supportsFuzzy" in fieldMapping;
     const operator = useFuzzy ? "~" : "=";

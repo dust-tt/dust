@@ -14,6 +14,11 @@ export const FIELD_MAPPINGS = {
   reporter: { jqlField: "reporter" },
   status: { jqlField: "status" },
   summary: { jqlField: "summary", supportsFuzzy: true },
+  customField: {
+    jqlField: "customField",
+    isCustomField: true,
+    supportsFuzzy: true,
+  },
 } as const;
 
 export const SEARCH_FILTER_FIELDS = Object.keys(
@@ -26,6 +31,7 @@ export interface SearchFilter {
   field: string;
   value: string;
   fuzzy?: boolean;
+  customFieldName?: string;
 }
 
 // Jira entity schemas - shared field definitions

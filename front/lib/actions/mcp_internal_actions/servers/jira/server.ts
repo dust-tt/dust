@@ -219,7 +219,7 @@ const createServer = (): McpServer => {
 
   server.tool(
     "get_issues",
-    "Search issues using one or more filters (e.g., status, priority, labels, assignee). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field.",
+    "Search issues using one or more filters (e.g., status, priority, labels, assignee, customField). Use exact matching by default, or fuzzy matching for approximate/partial matches on summary field. For custom fields, use field 'customField' with customFieldName parameter (e.g., customFieldName: 'Story Points', value: '5').",
     {
       filters: z
         .array(
@@ -229,7 +229,7 @@ const createServer = (): McpServer => {
               .describe(
                 `The field to filter by. Must be one of: ${SEARCH_FILTER_FIELDS.join(
                   ", "
-                )}`
+                )}.`
               ),
             value: z.string().describe("The value to search for"),
             fuzzy: z
@@ -237,6 +237,12 @@ const createServer = (): McpServer => {
               .optional()
               .describe(
                 "Use fuzzy search (~) for partial/similar matches instead of exact match (=). Only supported for 'summary' field. Use fuzzy when: searching for partial text, handling typos, finding related terms. Use exact when: looking for specific titles, precise matching needed."
+              ),
+            customFieldName: z
+              .string()
+              .optional()
+              .describe(
+                "Required when field is 'customField'. The name of the custom field to search (e.g., 'Story Points', 'Epic Link')."
               ),
           })
         )
