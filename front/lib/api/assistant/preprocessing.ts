@@ -140,7 +140,7 @@ export async function renderConversationForModel(
         stepByStepIndex[content.step].contents.push(content.content);
       }
 
-      const steps = Object.entries(stepByStepIndex)
+      let steps = Object.entries(stepByStepIndex)
         .sort(([a], [b]) => Number(a) - Number(b))
         .map(([, step]) => step);
 
@@ -219,6 +219,42 @@ export async function renderConversationForModel(
           }
         }
       }
+
+      // This is a hack to avoid errors when rendering conversations that are in a corrupted state
+      // (some content is saved but tool was never executed)
+      // For each step, we look at the contents to find the function calls.
+      // If some function calls have no associated action, we make a dummy "errored" one.
+      steps = steps.map((step) => {
+        const actions = step.actions;
+        const functionCalls = step.contents.filter(
+          (c) => c.type === "function_call"
+        );
+        for (const functionCall of functionCalls) {
+          const action = step.actions.find(
+            (a) => a.call.id === functionCall.value.id
+          );
+          if (!action) {
+            logger.warn(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                agentMessageId: m.sId,
+              },
+              "Unexpected state, agent message step with no action for function call"
+            );
+            actions.push({
+              call: functionCall.value,
+              result: {
+                role: "function",
+                name: functionCall.value.name,
+                function_call_id: functionCall.value.id,
+                content: "Error: tool execution failed",
+              },
+            });
+          }
+        }
+        return { ...step, actions };
+      });
 
       if (!m.rawContents.length && m.content?.trim()) {
         // We need to maintain support for legacy agent messages that don't have rawContents.
