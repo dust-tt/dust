@@ -671,7 +671,10 @@ export async function syncZendeskTicketBatchActivity({
 
   const ticketsToSync = tickets.filter((t) => {
     let organizationTags = null;
-    if (t.organization_id) {
+    if (
+      t.organization_id &&
+      configuration.enforcesOrganizationTagConstraint()
+    ) {
       organizationTags = organizationTagsMap.get(t.organization_id);
       assert(organizationTags, "Organization tags not found.");
     }

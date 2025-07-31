@@ -321,7 +321,10 @@ export async function syncZendeskTicketUpdateBatchActivity({
       }
 
       let organizationTags = null;
-      if (ticket.organization_id) {
+      if (
+        ticket.organization_id &&
+        configuration.enforcesOrganizationTagConstraint()
+      ) {
         organizationTags = organizationTagsMap.get(ticket.organization_id);
         assert(organizationTags, "Organization tags not found.");
       }
