@@ -1,5 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
+import fs from "fs";
 import PQueue from "p-queue";
 import readline from "readline";
 
@@ -206,21 +207,72 @@ export const connectors = async ({
     }
 
     case "set-permission": {
-      const { permissionKey, permissionValue } = args;
-      if (!permissionKey) {
-        throw new Error("Missing --permissionKey argument");
-      }
-      if (!permissionValue) {
-        throw new Error("Missing --permissionValue argument");
-      }
-      if (!["read", "write", "read_write", "none"].includes(permissionValue)) {
-        throw new Error("Invalid permissionValue argument");
+      const { permissionKey, permissionValue, permissionsFile } = args;
+
+      let permissions: Record<string, ConnectorPermission> = {};
+
+      if (permissionsFile) {
+        // Read permissions from JSON file
+        if (!fs.existsSync(permissionsFile)) {
+          throw new Error(`Permissions file not found: ${permissionsFile}`);
+        }
+
+        try {
+          const fileContent = fs.readFileSync(permissionsFile, "utf8");
+          const parsedPermissions = JSON.parse(fileContent);
+
+          // Validate the JSON structure
+          if (
+            typeof parsedPermissions !== "object" ||
+            parsedPermissions === null
+          ) {
+            throw new Error("Invalid JSON: expected an object");
+          }
+
+          // Validate each permission entry
+          for (const [key, value] of Object.entries(parsedPermissions)) {
+            if (
+              !["read", "write", "read_write", "none"].includes(value as string)
+            ) {
+              throw new Error(
+                `Invalid permission value for key '${key}': ${value}. Must be one of: read, write, read_write, none`
+              );
+            }
+            permissions[key] = value as ConnectorPermission;
+          }
+        } catch (error) {
+          if (error instanceof SyntaxError) {
+            throw new Error(
+              `Invalid JSON in permissions file: ${error.message}`
+            );
+          }
+          throw error;
+        }
+      } else {
+        // Use existing permissionKey/permissionValue arguments
+        if (!permissionKey) {
+          throw new Error(
+            "Missing --permissionKey argument (or use --permissionsFile)"
+          );
+        }
+        if (!permissionValue) {
+          throw new Error(
+            "Missing --permissionValue argument (or use --permissionsFile)"
+          );
+        }
+        if (
+          !["read", "write", "read_write", "none"].includes(permissionValue)
+        ) {
+          throw new Error("Invalid permissionValue argument");
+        }
+
+        permissions = {
+          [permissionKey as string]: permissionValue as ConnectorPermission,
+        };
       }
 
       const setPermissionsRes = await manager.setPermissions({
-        permissions: {
-          [permissionKey as string]: permissionValue as ConnectorPermission,
-        },
+        permissions,
       });
 
       if (setPermissionsRes.isErr()) {
