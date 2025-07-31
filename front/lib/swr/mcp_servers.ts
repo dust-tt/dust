@@ -733,8 +733,8 @@ export function useUpdateMCPServerToolsSettings({
 
     sendNotification({
       type: "success",
-      title: "Permission updated",
-      description: `The permission for ${toolName} has been updated.`,
+      title: "Settings updated",
+      description: `The settings for ${toolName} have been updated.`,
     });
 
     void mutateToolsSettings();
