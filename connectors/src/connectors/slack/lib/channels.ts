@@ -21,7 +21,11 @@ import type { ConnectorPermission } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 
-import { getSlackClient, reportSlackUsage } from "./slack_client";
+import {
+  getSlackClient,
+  reportSlackUsage,
+  withSlackErrorHandling,
+} from "./slack_client";
 
 export type SlackChannelType = {
   id: number;
@@ -429,7 +433,9 @@ export async function migrateChannelsFromLegacyBotToNewBot(
   });
 
   // Fetch all channels that the deprecated bot is a member of.
-  const channels = await getChannels(slackClient, slackConnector.id, true);
+  const channels = await withSlackErrorHandling(() =>
+    getChannels(slackClient, slackConnector.id, true)
+  );
   const publicChannels = channels.filter((c) => !c.is_private);
 
   childLogger.info(
@@ -455,9 +461,13 @@ export async function migrateChannelsFromLegacyBotToNewBot(
     // Surround with try/catch as the new scope might not always be available.
     try {
       // Leave the channel but keep it in the database as it's still use to be indexed.
-      const res = await slackClient.conversations.leave({
-        channel: channel.id,
-      });
+      const channelId = channel.id;
+
+      const res = await withSlackErrorHandling(() =>
+        slackClient.conversations.leave({
+          channel: channelId,
+        })
+      );
 
       if (res.ok) {
         childLogger.info(
