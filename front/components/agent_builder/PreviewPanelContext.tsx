@@ -12,10 +12,9 @@ interface PreviewPanelContextType {
   setIsPreviewPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const PreviewPanelContext = createContext<PreviewPanelContextType>({
-  isPreviewPanelOpen: false,
-  setIsPreviewPanelOpen: () => {},
-});
+const PreviewPanelContext = createContext<PreviewPanelContextType | undefined>(
+  undefined
+);
 
 export const usePreviewPanelContext = () => {
   const context = useContext(PreviewPanelContext);
