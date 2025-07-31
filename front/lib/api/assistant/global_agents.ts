@@ -43,7 +43,7 @@ import {
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
   FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
-  GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG,
+  GEMINI_2_5_PRO_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
   GLOBAL_AGENTS_SID,
@@ -1199,11 +1199,10 @@ function _getGeminiProGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.providerId,
-      modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.modelId,
+      providerId: GEMINI_2_5_PRO_MODEL_CONFIG.providerId,
+      modelId: GEMINI_2_5_PRO_MODEL_CONFIG.modelId,
       temperature: 0.7,
-      reasoningEffort:
-        GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG.defaultReasoningEffort,
+      reasoningEffort: GEMINI_2_5_PRO_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
