@@ -54,9 +54,38 @@ export function transformTreeToSelectionConfigurations(
       };
     }
 
-    // If it's not a full data source selection, mark as partial
-    if (!isFullDataSource && !configurations[dataSourceView.sId].isSelectAll) {
+    // If it's not a full data source selection, extract the selected nodes
+    if (!isFullDataSource) {
       configurations[dataSourceView.sId].isSelectAll = false;
+
+      // Extract node information from the path
+      const nodeIds = parts.slice(dsvIdIndex + 1);
+      if (nodeIds.length > 0) {
+        // Create a resource entry for this selection
+        const nodeId = nodeIds[nodeIds.length - 1]; // Last part is the selected node
+        const parentId =
+          nodeIds.length > 1 ? nodeIds[nodeIds.length - 2] : null;
+
+        // Add to selectedResources if not already present
+        const config = configurations[dataSourceView.sId];
+        const existingResource = config.selectedResources.find(
+          (res) => res.internalId === nodeId
+        );
+
+        if (!existingResource) {
+          config.selectedResources.push({
+            internalId: nodeId,
+            parentInternalId: parentId,
+            title: nodeId, // Use nodeId as title fallback
+            type: "file", // Default type - this might need to be more sophisticated
+            dustDocumentId: null,
+            lastUpdatedAt: null,
+            expandable: false,
+            permission: "read",
+            sourceUrl: null,
+          });
+        }
+      }
     }
   }
 

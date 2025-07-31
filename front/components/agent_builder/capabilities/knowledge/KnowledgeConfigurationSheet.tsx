@@ -1,10 +1,5 @@
 import type { MultiPageSheetPage } from "@dust-tt/sparkle";
-import {
-  MultiPageSheet,
-  MultiPageSheetContent,
-  MultiPageSheetTrigger,
-  ScrollArea,
-} from "@dust-tt/sparkle";
+import { MultiPageSheet, MultiPageSheetContent, MultiPageSheetTrigger, ScrollArea } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
@@ -13,7 +8,6 @@ import { createFormControl, useFormState, useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AddKnowledgeDropdown } from "@app/components/agent_builder/capabilities/AddKnowledgeDropdown";
 import { DescriptionSection } from "@app/components/agent_builder/capabilities/knowledge/shared/DescriptionSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/knowledge/shared/JsonSchemaSection";
 import {
@@ -23,12 +17,17 @@ import {
   isValidPage,
 } from "@app/components/agent_builder/capabilities/knowledge/shared/sheetUtils";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/knowledge/shared/TimeFrameSection";
-import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
+import {
+  transformTreeToSelectionConfigurations,
+} from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import type { CapabilityConfig } from "@app/components/agent_builder/capabilities/knowledge/utils";
 import {
   CAPABILITY_CONFIGS,
   generateActionFromFormData,
 } from "@app/components/agent_builder/capabilities/knowledge/utils";
+import {
+  MCPServerViewsKnowledgeDropdown,
+} from "@app/components/agent_builder/capabilities/MCPServerViewsKnowledgeDropdown";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type {
@@ -68,7 +67,15 @@ export function KnowledgeConfigurationSheet({
     capability ? CAPABILITY_CONFIGS[capability] : null
   );
 
+  // Internal state to control sheet opening for new actions
+  const [isInternallyOpen, setIsInternallyOpen] = useState(false);
+
+  // Determine if sheet should be open
+  const isSheetOpen = open !== undefined ? open : isInternallyOpen;
+
   const handleClose = () => {
+    // Close internal state for new actions
+    setIsInternallyOpen(false);
     onClose();
 
     // TODO: This is a hack and we should find a proper solution.
@@ -97,31 +104,32 @@ export function KnowledgeConfigurationSheet({
     handleClose();
   };
 
-  const { control, handleSubmit } = useMemo(
-    () =>
-      createFormControl<CapabilityFormData>({
-        resolver: zodResolver(capabilityFormSchema),
-        defaultValues: {
-          sources: action
-            ? getDataSourceTree(action)
-            : {
-                in: [],
-                notIn: [],
-              },
-          description: action?.description ?? "",
-          timeFrame: getTimeFrame(action),
-          jsonSchema: getJsonSchema(action),
-        },
-      }),
-    [action]
-  );
+  const { control, handleSubmit } = useMemo(() => {
+    const dataSourceTree = action
+      ? getDataSourceTree(action)
+      : {
+          in: [],
+          notIn: [],
+        };
+
+    return createFormControl<CapabilityFormData>({
+      resolver: zodResolver(capabilityFormSchema),
+      defaultValues: {
+        sources: dataSourceTree,
+        description: action?.description ?? "",
+        timeFrame: getTimeFrame(action),
+        jsonSchema: getJsonSchema(action),
+      },
+    });
+  }, [action]);
   return (
     <MultiPageSheet
-      open={open}
+      open={isSheetOpen}
       onOpenChange={(isOpen) => {
         if (!isOpen) {
           handleClose();
         } else {
+          setIsInternallyOpen(true);
           setConfig(capability ? CAPABILITY_CONFIGS[capability] : null);
         }
       }}
@@ -261,7 +269,7 @@ function KnowledgeConfigurationSheetContent({
               Smart data access through search, extraction, and queries.
             </span>
             <div className="flex flex-col items-start">
-              <AddKnowledgeDropdown
+              <MCPServerViewsKnowledgeDropdown
                 mcpServerViewsWithKnowledge={mcpServerViewsWithKnowledge}
                 onItemClick={handleMCPServerSelection}
                 isMCPServerViewsLoading={isMCPServerViewsLoading}

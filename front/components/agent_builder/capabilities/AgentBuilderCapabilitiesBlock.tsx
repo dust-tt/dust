@@ -241,7 +241,7 @@ export function AgentBuilderCapabilitiesBlock() {
   // Check if we're editing a knowledge-based action
   const isEditingKnowledgeAction =
     !!editingAction &&
-    ["SEARCH", "INCLUDE_DATA", "EXTRACT_DATA"].includes(
+    ["SEARCH", "INCLUDE_DATA", "EXTRACT_DATA", "QUERY_TABLES"].includes(
       editingAction.action.type
     );
 

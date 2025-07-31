@@ -12,19 +12,19 @@ import React from "react";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 
-interface AddKnowledgeDropdownProps {
+interface MCPServerViewsKnowledgeDropdownProps {
   mcpServerViewsWithKnowledge: (MCPServerViewType & { label: string })[];
   onItemClick: (serverName: string) => void;
   isMCPServerViewsLoading: boolean;
   selectedServerName?: string | null;
 }
 
-export function AddKnowledgeDropdown({
+export function MCPServerViewsKnowledgeDropdown({
   mcpServerViewsWithKnowledge = [],
   onItemClick,
   isMCPServerViewsLoading,
   selectedServerName,
-}: AddKnowledgeDropdownProps) {
+}: MCPServerViewsKnowledgeDropdownProps) {
   const handleDropdownItemClick = (view: MCPServerViewType) => {
     onItemClick(view.server.name);
   };
