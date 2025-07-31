@@ -2,7 +2,6 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
@@ -11,6 +10,7 @@ import {
   getInternalMCPServerNameAndWorkspaceId,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isInternalMCPServerEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/helpers";
 import {
   connectToMCPServer,
   extractMetadataFromServerVersion,
@@ -91,7 +91,10 @@ export class InternalMCPServerInMemoryResource {
       return null;
     }
 
-    const isEnabled = await isEnabledForWorkspace(auth, r.value.name);
+    const isEnabled = await isInternalMCPServerEnabledForWorkspace(
+      auth,
+      r.value.name
+    );
     if (!isEnabled) {
       return null;
     }
@@ -302,4 +305,7 @@ export class InternalMCPServerInMemoryResource {
       ...this.metadata,
     };
   }
+}
+function isEnabledForWorkspace(auth: Authenticator, name: string) {
+  throw new Error("Function not implemented.");
 }

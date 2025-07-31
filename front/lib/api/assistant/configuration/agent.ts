@@ -9,6 +9,12 @@ import {
 } from "sequelize";
 
 import {
+  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+  DEFAULT_WEBSEARCH_ACTION_NAME,
+} from "@app/lib/actions/constants";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
+import {
   enrichAgentConfigurations,
   isSelfHostedImageWithValidContentType,
 } from "@app/lib/api/assistant/configuration/helpers";
@@ -21,7 +27,9 @@ import {
   AgentUserRelation,
 } from "@app/lib/models/assistant/agent";
 import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -576,6 +584,128 @@ export async function createAgentConfiguration(
     }
     throw error;
   }
+}
+
+export async function createGenericAgentConfigurationWithDefaultTools(
+  auth: Authenticator,
+  {
+    name,
+    description,
+    instructions,
+    pictureUrl,
+    model,
+  }: {
+    name: string;
+    description: string;
+    instructions: string;
+    pictureUrl: string;
+    model: AgentModelConfigurationType;
+  }
+): Promise<Result<LightAgentConfigurationType, Error>> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return new Err(new Error("Unexpected `auth` without `workspace`."));
+  }
+
+  const user = auth.user();
+  if (!user) {
+    return new Err(new Error("Unexpected `auth` without `user`."));
+  }
+
+  const result = await createAgentConfiguration(auth, {
+    name,
+    description,
+    instructions,
+    visualizationEnabled: false,
+    pictureUrl,
+    status: "active",
+    scope: "hidden", // Unpublished
+    model,
+    templateId: null,
+    requestedGroupIds: [],
+    tags: [],
+    editors: [user.toJSON()], // Only the current user as editor
+  });
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const agentConfiguration = result.value;
+
+  const [webSearchMCPServerView, searchMCPServerView] = await Promise.all([
+    MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+      auth,
+      "web_search_&_browse"
+    ),
+    MCPServerViewResource.getMCPServerViewForAutoInternalTool(auth, "search"),
+  ]);
+
+  if (!webSearchMCPServerView) {
+    return new Err(new Error("Could not find web search MCP server view"));
+  }
+  if (!searchMCPServerView) {
+    return new Err(new Error("Could not find search MCP server view"));
+  }
+
+  const webSearchResult = await createAgentActionConfiguration(
+    auth,
+    {
+      type: "mcp_server_configuration",
+      name: DEFAULT_WEBSEARCH_ACTION_NAME,
+      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      mcpServerViewId: webSearchMCPServerView.sId,
+      dataSources: null,
+      reasoningModel: null,
+      tables: null,
+      childAgentId: null,
+      additionalConfiguration: {},
+      dustAppConfiguration: null,
+      timeFrame: null,
+      jsonSchema: null,
+    } as ServerSideMCPServerConfigurationType,
+    agentConfiguration
+  );
+
+  if (webSearchResult.isErr()) {
+    return new Err(
+      new Error("Could not create web search action configuration")
+    );
+  }
+
+  const dataSourceViews =
+    await DataSourceViewResource.listAssistantDefaultSelected(auth);
+
+  if (dataSourceViews.length > 0) {
+    const searchResult = await createAgentActionConfiguration(
+      auth,
+      {
+        type: "mcp_server_configuration",
+        name: "search_all_data_sources",
+        description: "Search across workspace data sources",
+        mcpServerViewId: searchMCPServerView.sId,
+        dataSources: dataSourceViews.map((dsView) => ({
+          dataSourceViewId: dsView.sId,
+          workspaceId: owner.sId,
+          filter: { parents: null, tags: null },
+        })),
+        reasoningModel: null,
+        tables: null,
+        childAgentId: null,
+        additionalConfiguration: {},
+        dustAppConfiguration: null,
+        timeFrame: null,
+        jsonSchema: null,
+      } as ServerSideMCPServerConfigurationType,
+      agentConfiguration
+    );
+
+    if (searchResult.isErr()) {
+      return new Err(new Error("Could not create search action configuration"));
+    }
+  }
+
+  return new Ok(agentConfiguration);
 }
 
 export async function archiveAgentConfiguration(

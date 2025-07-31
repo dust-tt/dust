@@ -16,6 +16,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
+  "agent_management",
   "agent_router",
   "conversation_files",
   "data_sources_file_system",
@@ -419,6 +420,16 @@ export const INTERNAL_MCP_SERVERS: Record<
     // This server is hidden for everyone, it is only available through the search tool
     // when the advanced_search mode is enabled.
     isRestricted: () => true,
+  },
+  agent_management: {
+    id: 1011,
+    availability: "auto",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_management_tool");
+    },
+    tools_stakes: {
+      create_agent: "high",
+    },
   },
 };
 
