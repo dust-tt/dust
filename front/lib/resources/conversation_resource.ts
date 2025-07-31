@@ -501,6 +501,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return this.update({ visibility: "deleted" });
   }
 
+  async updateVisibilityToUnlisted() {
+    return this.update({ visibility: "unlisted" });
+  }
+
   async updateRequestedGroupIds(
     requestedGroupIds: number[][],
     transaction?: Transaction
