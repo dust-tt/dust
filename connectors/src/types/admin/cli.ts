@@ -747,7 +747,7 @@ export type ZendeskGetRetentionPeriodResponseType = t.TypeOf<
 >;
 
 export const ZendeskOrganizationTagResponseSchema = t.type({
-  success: t.boolean,
+  success: t.literal(true),
   message: t.union([t.string, t.undefined]),
 });
 export type ZendeskOrganizationTagResponseType = t.TypeOf<
