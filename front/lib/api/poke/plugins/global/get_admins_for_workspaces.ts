@@ -45,10 +45,6 @@ export const getAdminsForWorkspacesPlugin = createPlugin({
       (sId) => !workspaces.find((w) => w.sId === sId)
     );
 
-    if (missing.length) {
-      return new Err(new Error(`Workspaces not found: ${missing.join(", ")}`));
-    }
-
     const admins = new Set<string>();
 
     for (const workspace of workspaces) {
@@ -74,6 +70,7 @@ export const getAdminsForWorkspacesPlugin = createPlugin({
         count: admins.size,
         returnType: args.returnType,
         workspacesCount: workspaces.length,
+        missingWorkspaces: missing,
       },
     });
   },
