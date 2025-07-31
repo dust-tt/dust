@@ -479,46 +479,28 @@ export const zendesk = async ({
       return { success: true };
     }
     case "add-organization-tag": {
-      const { tag, tagIn } = getOrganizationTagsArgs(args);
+      const { tag, tagIn, tagNotIn } = getOrganizationTagsArgs(args);
 
-      const column = tagIn ? "organizationTagsToInclude" : "organizationTagsToExclude";
-      const currentTags = configuration[column] || [];
-      const localLogger = logger.child({ tag, column, currentTags });
+      const { wasAdded, message } = await configuration.addOrganizationTag({
+        tag,
+        includeOrExclude: tagIn ? "include" : "exclude",
+      });
+      logger.info({ wasAdded, tag, tagIn, tagNotIn }, message);
 
-      if (currentTags.includes(tag)) {
-        localLogger.info("Tag already exists.");
-        return {
-          success: true,
-          message: `Tag "${tag}" already exists in ${column}`,
-        };
-      }
-
-      const newTags = [...currentTags, tag];
-      await configuration.update({ [column]: newTags });
-
-      localLogger.info({ newTags }, "Successfully added tag.");
-      return { success: true, message: `Added tag "${tag}" to ${column}` };
+      return { success: true, message };
     }
     case "remove-organization-tag": {
-      const { tag, tagIn } = getOrganizationTagsArgs(args);
+      const { tag, tagIn, tagNotIn } = getOrganizationTagsArgs(args);
 
-      const column = tagIn ? "organizationTagsToInclude" : "organizationTagsToExclude";
-      const currentTags = configuration[column] || [];
-      const localLogger = logger.child({ tag, column, currentTags });
+      const { wasRemoved, message } = await configuration.removeOrganizationTag(
+        {
+          tag,
+          includeOrExclude: tagIn ? "include" : "exclude",
+        }
+      );
+      logger.info({ wasRemoved, tag, tagIn, tagNotIn }, message);
 
-      if (!currentTags.includes(tag)) {
-        localLogger.info("Tag does not exist.");
-        return {
-          success: true,
-          message: `Tag "${tag}" does not exist in ${column}`,
-        };
-      }
-
-      const newTags = currentTags.filter((t) => t !== tag);
-      await configuration.update({ [column]: newTags });
-
-      localLogger.info({ newTags }, "Successfully removed tag.");
-      return { success: true, message: `Removed tag "${tag}" from ${column}` };
+      return { success: true, message };
     }
   }
 };

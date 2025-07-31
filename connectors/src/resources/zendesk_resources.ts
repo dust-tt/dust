@@ -107,8 +107,61 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
 
   enforcesOrganizationTagConstraint(): boolean {
     return (
-      this.organizationTagsToInclude !== null || this.organizationTagsToExclude !== null
+      this.organizationTagsToInclude !== null ||
+      this.organizationTagsToExclude !== null
     );
+  }
+
+  async addOrganizationTag({
+    tag,
+    includeOrExclude,
+  }: {
+    tag: string;
+    includeOrExclude: "include" | "exclude";
+  }): Promise<{ wasAdded: boolean; message: string }> {
+    const column =
+      includeOrExclude === "include"
+        ? "organizationTagsToInclude"
+        : "organizationTagsToExclude";
+
+    const currentTags = this.organizationTagsToInclude || [];
+    if (currentTags.includes(tag)) {
+      return {
+        wasAdded: false,
+        message: `Tag "${tag}" already exists in ${column}`,
+      };
+    }
+
+    const newTags = [...currentTags, tag];
+    await this.update({ [column]: newTags });
+
+    return { wasAdded: true, message: `Added tag "${tag}" to ${column}` };
+  }
+
+  async removeOrganizationTag({
+    tag,
+    includeOrExclude,
+  }: {
+    tag: string;
+    includeOrExclude: "include" | "exclude";
+  }): Promise<{ wasRemoved: boolean; message: string }> {
+    const column =
+      includeOrExclude === "include"
+        ? "organizationTagsToInclude"
+        : "organizationTagsToExclude";
+
+    const currentTags = this.organizationTagsToInclude || [];
+    if (!currentTags.includes(tag)) {
+      return {
+        wasRemoved: false,
+        message: `Tag "${tag}" does not exist in ${column}`,
+      };
+    }
+
+    const newTags = currentTags.filter((t) => t !== tag);
+    await this.update({ [column]: newTags });
+
+    return { wasRemoved: true, message: `Removed tag "${tag}" from ${column}` };
   }
 }
 
