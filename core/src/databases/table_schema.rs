@@ -494,8 +494,8 @@ mod tests {
             ),
         ]);
         let rows = &vec![
-            Row::new_with_value("1".to_string(), row_1),
-            Row::new_with_value("2".to_string(), row_2),
+            Row::new_from_value("1".to_string(), row_1),
+            Row::new_from_value("2".to_string(), row_2),
         ];
 
         let schema = TableSchema::from_rows(rows)?;
@@ -549,8 +549,8 @@ mod tests {
         let row_1: Map<String, Value> = json!({"field1": 1, "field2": 1.2, "field3": "text", "field4": true, "field6": ["array", "elements"], "field7": {"key": "value"}}).as_object().unwrap().clone();
         let row_2: Map<String, Value> = json!({"field1": 2, "field2": 2.4, "field3": "more text", "field4": false, "field5": "not null anymore", "field6": ["more", "elements"], "field7": {"anotherKey": "anotherValue"}}).as_object().unwrap().clone();
         let rows = &vec![
-            Row::new_with_value("1".to_string(), row_1),
-            Row::new_with_value("2".to_string(), row_2),
+            Row::new_from_value("1".to_string(), row_1),
+            Row::new_from_value("2".to_string(), row_2),
         ];
 
         match TableSchema::from_rows(rows) {
@@ -573,9 +573,9 @@ mod tests {
             .unwrap()
             .clone();
         let rows = &vec![
-            Row::new_with_value("1".to_string(), row_1),
-            Row::new_with_value("2".to_string(), row_2),
-            Row::new_with_value("3".to_string(), row_3),
+            Row::new_from_value("1".to_string(), row_1),
+            Row::new_from_value("2".to_string(), row_2),
+            Row::new_from_value("3".to_string(), row_3),
         ];
 
         let schema = TableSchema::from_rows(rows);
@@ -632,7 +632,7 @@ mod tests {
         let schema = create_test_schema();
         let conn = setup_in_memory_db(&schema)?;
 
-        let row = Row::new_with_value(
+        let row = Row::new_from_value(
             "row_1".to_string(),
             serde_json::Map::from_iter(
                 json!({"field1": 1, "field2": 2.4, "field3": "text", "field4": true})
@@ -685,7 +685,7 @@ mod tests {
         let (sql, field_names) = schema.get_insert_sql("test_table");
         let params = params_from_iter(schema.get_insert_params(
             &field_names,
-            &Row::new_with_value("1".to_string(), row_content),
+            &Row::new_from_value("1".to_string(), row_content),
         )?);
         let mut stmt = conn.prepare(&sql)?;
         stmt.execute(params)?;
@@ -916,8 +916,8 @@ mod tests {
                 .unwrap()
                 .clone(); // Corresponds to 2000-01-02 00:00:00
         let rows = &vec![
-            Row::new_with_value("1".to_string(), row_1.clone()),
-            Row::new_with_value("2".to_string(), row_2.clone()),
+            Row::new_from_value("1".to_string(), row_1.clone()),
+            Row::new_from_value("2".to_string(), row_2.clone()),
         ];
 
         let schema = TableSchema::from_rows(rows)?;
@@ -939,14 +939,14 @@ mod tests {
 
         let (sql, field_names) = schema.get_insert_sql("test_table");
         let params = params_from_iter(
-            schema.get_insert_params(&field_names, &Row::new_with_value("1".to_string(), row_1))?,
+            schema.get_insert_params(&field_names, &Row::new_from_value("1".to_string(), row_1))?,
         );
         let mut stmt = conn.prepare(&sql)?;
         stmt.execute(params)?;
 
         let (sql, field_names) = schema.get_insert_sql("test_table");
         let params = params_from_iter(
-            schema.get_insert_params(&field_names, &Row::new_with_value("2".to_string(), row_2))?,
+            schema.get_insert_params(&field_names, &Row::new_from_value("2".to_string(), row_2))?,
         );
         let mut stmt = conn.prepare(&sql)?;
         stmt.execute(params)?;

@@ -42,6 +42,12 @@ pub struct QueryResult {
 }
 
 pub trait HasValue {
+    /// Returns the headers (column names) and values for this item.
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// - `Vec<&String>`: Vector of references to column header names
+    /// - `Vec<&serde_json::Value>`: Vector of references to the corresponding column values
     fn value(&self) -> (Vec<&String>, Vec<&serde_json::Value>);
 }
 

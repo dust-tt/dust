@@ -841,7 +841,7 @@ impl Row {
     }
 
     // Legacy constructor for backward compatibility - converts value map to headers/columns
-    pub fn new_with_value(
+    pub fn new_from_value(
         row_id: String,
         value: serde_json::Map<String, serde_json::Value>,
     ) -> Self {
@@ -1055,9 +1055,9 @@ impl<'de> Deserialize<'de> for Row {
         let value = serde_json::Map::deserialize(deserializer)?;
 
         match value["value"].as_object() {
-            Some(value) => Ok(Row::new_with_value(
+            Some(subvalue) => Ok(Row::new_from_value(
                 value["row_id"].to_string(),
-                value.clone(),
+                subvalue.clone(),
             )),
             None => Err(D::Error::custom("Missing value in Row")),
         }
@@ -1096,8 +1096,8 @@ mod tests {
         ]);
 
         let rows = Arc::new(vec![
-            Row::new_with_value("1".to_string(), row_1),
-            Row::new_with_value("2".to_string(), row_2),
+            Row::new_from_value("1".to_string(), row_1),
+            Row::new_from_value("2".to_string(), row_2),
         ]);
 
         let schema = TableSchema::from_rows_async(rows).await?;
@@ -1282,7 +1282,7 @@ mod tests {
             ("null_col".to_string(), Value::Null),
         ]);
 
-        let simple_row = Row::new_with_value("test_row_id".to_string(), simple_row_data);
+        let simple_row = Row::new_from_value("test_row_id".to_string(), simple_row_data);
 
         // Extract headers
         let headers = simple_row.headers.clone();
@@ -1304,7 +1304,7 @@ mod tests {
             ("non_empty_string".to_string(), "not empty".into()),
         ]);
 
-        let edge_case_row = Row::new_with_value("edge_case_id".to_string(), edge_case_data);
+        let edge_case_row = Row::new_from_value("edge_case_id".to_string(), edge_case_data);
         let edge_headers: Arc<Vec<String>> =
             Arc::new(edge_case_row.value().keys().cloned().collect());
 
@@ -1336,7 +1336,7 @@ mod tests {
             .into(),
         )]);
 
-        let date_row = Row::new_with_value("date_test_id".to_string(), date_data);
+        let date_row = Row::new_from_value("date_test_id".to_string(), date_data);
         let date_headers: Arc<Vec<String>> = Arc::new(date_row.value().keys().cloned().collect());
 
         let date_csv_record = date_row.to_csv_record(&date_headers)?;
@@ -1358,7 +1358,7 @@ mod tests {
         // Note: string_value may change format during parsing, so we don't assert equality on it
 
         // Test case 4: Test that the __dust_id field is present in the CSV record at the position of the field in the headers
-        let dust_id_row = Row::new_with_value(
+        let dust_id_row = Row::new_from_value(
             "dust_id_test_id".to_string(),
             serde_json::Map::from_iter([("property".to_string(), "value".into())]),
         );
