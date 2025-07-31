@@ -1053,10 +1053,15 @@ impl CsvTable {
 
     pub fn csv_row_to_row(&self, csv_row: &CsvRow) -> Row {
         let mut value_map = serde_json::Map::new();
-        for (idx, header) in self.headers.iter().enumerate() {
-            if let Some(value) = csv_row.values.get(idx) {
+        let mut value_idx = 0;
+        for header in &self.headers {
+            if header == "__dust_id" {
+                continue;
+            }
+            if let Some(value) = csv_row.values.get(value_idx) {
                 value_map.insert(header.clone(), value.clone());
             }
+            value_idx += 1;
         }
         Row {
             row_id: csv_row.row_id.clone(),

@@ -11,7 +11,7 @@ use tokio_util::compat::TokioAsyncReadCompatExt;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::{
-    databases::table::{CsvRow, CsvTable},
+    databases::table::{CsvRow, CsvTable, Row},
     utils,
 };
 
@@ -347,8 +347,6 @@ impl GoogleCloudStorageCSVContent {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use crate::databases::table_schema::{TableSchema, TableSchemaFieldType};
 
     use super::*;
@@ -433,46 +431,70 @@ BAR,acme";
     }
 
     #[tokio::test]
-    async fn test_csv_to_rows() -> anyhow::Result<()> {
+    async fn test_csv_to_table() -> anyhow::Result<()> {
         let csv = "hellWorld,super-fast,c/foo,DATE\n\
                    1,2.23,3,2025-02-14T15:06:52.380Z\n\
                    4,hello world,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
+        let table = GoogleCloudStorageCSVContent::csv_to_table(rdr, delimiter).await?;
 
-        assert_eq!(rows.len(), 2);
+        assert_eq!(table.rows.len(), 2);
+        assert_eq!(
+            table.headers,
+            vec!["hellworld", "super_fast", "c_foo", "date"]
+        );
 
         // Test first row
-        assert_eq!(rows[0].row_id, "0");
-        assert_eq!(rows[0].value["hellworld"], 1.0);
-        assert_eq!(rows[0].value["super_fast"], 2.23);
-        assert_eq!(rows[0].value["c_foo"], 3.0);
-        let date = rows[0].value["date"].as_object().unwrap();
+        assert_eq!(table.rows[0].row_id, "0");
+        assert_eq!(table.rows[0].values.len(), 4);
+        assert_eq!(table.rows[0].values[0], serde_json::Value::Number(1.into()));
+        assert_eq!(
+            table.rows[0].values[1],
+            serde_json::Value::Number(serde_json::Number::from_f64(2.23).unwrap())
+        );
+        assert_eq!(table.rows[0].values[2], serde_json::Value::Number(3.into()));
+
+        let date = table.rows[0].values[3].as_object().unwrap();
         assert_eq!(date["type"], "datetime");
         assert_eq!(date["epoch"], 1739545612380i64);
         assert_eq!(date["string_value"], "2025-02-14T15:06:52.380Z");
 
         // Test second row
-        assert_eq!(rows[1].row_id, "1");
-        assert_eq!(rows[1].value["hellworld"], 4.0);
-        assert_eq!(rows[1].value["super_fast"], "hello world");
-        assert_eq!(rows[1].value["c_foo"], 6.0);
-        let date = rows[1].value["date"].as_object().unwrap();
+        assert_eq!(table.rows[1].row_id, "1");
+        assert_eq!(table.rows[1].values[0], serde_json::Value::Number(4.into()));
+        assert_eq!(
+            table.rows[1].values[1],
+            serde_json::Value::String("hello world".to_string())
+        );
+        assert_eq!(table.rows[1].values[2], serde_json::Value::Number(6.into()));
+
+        let date = table.rows[1].values[3].as_object().unwrap();
         assert_eq!(date["type"], "datetime");
         assert_eq!(date["epoch"], 1739545834000i64);
         assert_eq!(date["string_value"], "Fri, 14 Feb 2025 15:10:34 GMT");
 
+        // Test with __dust_id
         let csv = "__dust_id,super-fast,c/foo,DATE\n\
                    MYID1,2.23,3,2025-02-14T15:06:52.380Z\n\
                    MYID2,hello world,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
+        let table = GoogleCloudStorageCSVContent::csv_to_table(rdr, delimiter).await?;
 
-        assert_eq!(rows.len(), 2);
-        assert_eq!(rows[0].row_id, "MYID1");
-        assert_eq!(rows[1].row_id, "MYID2");
+        assert_eq!(table.rows.len(), 2);
+        assert_eq!(
+            table.headers,
+            vec!["__dust_id", "super_fast", "c_foo", "date"]
+        );
+        assert_eq!(table.rows[0].row_id, "MYID1");
+        assert_eq!(table.rows[1].row_id, "MYID2");
+        // Values should not include __dust_id
+        assert_eq!(table.rows[0].values.len(), 3);
+        assert_eq!(
+            table.rows[0].values[0],
+            serde_json::Value::Number(serde_json::Number::from_f64(2.23).unwrap())
+        );
 
         Ok(())
     }
@@ -484,24 +506,43 @@ BAR,acme";
                    4,hello world,foo1,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
+        let table = GoogleCloudStorageCSVContent::csv_to_table(rdr, delimiter).await?;
 
-        assert_eq!(rows.len(), 2);
+        assert_eq!(table.rows.len(), 2);
+        assert_eq!(
+            table.headers,
+            vec!["hellworld", "super_fast", "__dust_id", "c_foo", "date"]
+        );
 
         // Test that __dust_id is used to define the row ids.
-        assert_eq!(rows[0].row_id, "foo0");
-        assert_eq!(rows[1].row_id, "foo1");
+        assert_eq!(table.rows[0].row_id, "foo0");
+        assert_eq!(table.rows[1].row_id, "foo1");
 
-        // Test that __dust_id is not inserted.
-        let row_0_concatenated_keys = rows[0]
-            .value
-            .keys()
-            .into_iter()
-            .map(|k| k.to_string())
-            .collect::<Vec<String>>()
-            .join(",");
+        // Test that __dust_id is not included in values
+        assert_eq!(table.rows[0].values.len(), 4); // Only 4 values, not 5
+        assert_eq!(table.rows[0].values[0], serde_json::Value::Number(1.into()));
+        assert_eq!(
+            table.rows[0].values[1],
+            serde_json::Value::Number(serde_json::Number::from_f64(2.23).unwrap())
+        );
+        assert_eq!(table.rows[0].values[2], serde_json::Value::Number(3.into()));
 
-        assert_eq!(row_0_concatenated_keys, "hellworld,super_fast,c_foo,date");
+        // Test values alignment (skipping __dust_id)
+        let expected_headers_without_dust_id = vec!["hellworld", "super_fast", "c_foo", "date"];
+        for (i, header) in expected_headers_without_dust_id.iter().enumerate() {
+            match *header {
+                "hellworld" => {
+                    assert_eq!(table.rows[0].values[i], serde_json::Value::Number(1.into()))
+                }
+                "super_fast" => assert_eq!(
+                    table.rows[0].values[i],
+                    serde_json::Value::Number(serde_json::Number::from_f64(2.23).unwrap())
+                ),
+                "c_foo" => assert_eq!(table.rows[0].values[i], serde_json::Value::Number(3.into())),
+                "date" => assert!(table.rows[0].values[i].is_object()),
+                _ => panic!("Unexpected header: {}", header),
+            }
+        }
 
         Ok(())
     }
@@ -512,7 +553,7 @@ BAR,acme";
         let csv = "";
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        assert!(GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter)
+        assert!(GoogleCloudStorageCSVContent::csv_to_table(rdr, delimiter)
             .await
             .is_err());
 
@@ -520,8 +561,8 @@ BAR,acme";
         let csv = "header1,header2";
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
-        assert_eq!(rows.len(), 0);
+        let table = GoogleCloudStorageCSVContent::csv_to_table(rdr, delimiter).await?;
+        assert_eq!(table.rows.len(), 0);
 
         // Test CSV with too many columns (if MAX_TABLE_COLUMNS is defined)
         let mut csv = String::new();
@@ -533,7 +574,7 @@ BAR,acme";
         }
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        assert!(GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter)
+        assert!(GoogleCloudStorageCSVContent::csv_to_table(rdr, delimiter)
             .await
             .is_err());
 
@@ -552,8 +593,8 @@ BAR,acme";
                    bar,0,23123.0,false,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
             GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
-        let rows = Arc::new(GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?);
-        let schema = TableSchema::from_rows_async(rows).await?;
+        let table = GoogleCloudStorageCSVContent::csv_to_table(rdr, delimiter).await?;
+        let schema = TableSchema::from_csv_table(&table)?;
 
         assert_eq!(schema.columns()[0].value_type, TableSchemaFieldType::Text);
         assert_eq!(schema.columns()[1].value_type, TableSchemaFieldType::Int);
@@ -607,7 +648,7 @@ BAR,acme";
         assert_eq!(table.headers[0], "col_0");
         assert_eq!(table.headers[49], "col_49");
 
-        // Verify that rows don't contain header strings, just values
+        // Verify that rows contain only values (no header duplication)
         assert_eq!(table.rows[0].values.len(), num_columns);
         assert_eq!(table.rows[0].values[0], serde_json::Value::Number(0.into()));
         assert_eq!(
@@ -615,10 +656,23 @@ BAR,acme";
             serde_json::Value::Number((99 * num_columns + 49).into())
         );
 
-        // Test conversion to Row format (should only happen at boundaries)
-        let rows = table.to_rows();
-        assert_eq!(rows.len(), num_rows);
-        assert_eq!(rows[0].value["col_0"], serde_json::Value::Number(0.into()));
+        // Verify row IDs
+        assert_eq!(table.rows[0].row_id, "0");
+        assert_eq!(table.rows[99].row_id, "99");
+
+        // Memory efficiency test: Headers should be a Vec<String>, not duplicated per row
+        // The key insight is that headers exist only once in table.headers,
+        // and rows only contain values without any header strings
+        for row in &table.rows {
+            assert_eq!(row.values.len(), num_columns);
+            // Ensure no header strings are stored in row values
+            for value in &row.values {
+                match value {
+                    serde_json::Value::Number(_) => {} // Expected
+                    _ => panic!("Expected only numbers in values, got: {:?}", value),
+                }
+            }
+        }
 
         Ok(())
     }
