@@ -44,18 +44,9 @@ makeScript(
       type: "string" as const,
       demandOption: true,
     },
-    batchSize: {
-      alias: "b",
-      describe: "Number of events to process in parallel (default: 1)",
-      type: "number" as const,
-      default: 1,
-    },
   },
-  async ({ file, batchSize, execute }, logger) => {
-    logger.info(
-      { file, execute, batchSize },
-      "Starting WorkOS events processing"
-    );
+  async ({ file, execute }, logger) => {
+    logger.info({ file, execute }, "Starting WorkOS events processing");
 
     try {
       // Read and parse the JSONL file
@@ -73,78 +64,33 @@ makeScript(
         return;
       }
 
-      // Process events in batches
-      const results = {
-        successful: [] as Array<{ eventId: string; workflowId: string }>,
-        failed: [] as Array<{ eventId: string; error: string }>,
-      };
-
-      for (let i = 0; i < events.length; i += batchSize) {
-        const batch = events.slice(i, i + batchSize);
-        logger.info(
-          {
-            batchStart: i + 1,
-            batchEnd: Math.min(i + batchSize, events.length),
-          },
-          "Processing batch"
-        );
-
-        const batchPromises = batch.map(async (event) => {
-          try {
-            const result = await launchWorkOSEventsWorkflow({
-              eventPayload: event,
-            });
-
-            if (result.isErr()) {
-              logger.error(
-                { eventId: event.id, error: result.error },
-                "Failed to launch workflow"
-              );
-              results.failed.push({
-                eventId: event.id,
-                error: result.error.message,
-              });
-            } else {
-              logger.info(
-                { eventId: event.id, workflowId: result.value },
-                "Successfully launched workflow"
-              );
-              results.successful.push({
-                eventId: event.id,
-                workflowId: result.value,
-              });
-            }
-          } catch (error) {
-            logger.error(
-              { eventId: event.id, error },
-              "Unexpected error launching workflow"
-            );
-            results.failed.push({
-              eventId: event.id,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
+      // Process events
+      for (const event of events) {
+        const result = await launchWorkOSEventsWorkflow({
+          eventPayload: event,
         });
 
-        await Promise.all(batchPromises);
+        if (result.isErr()) {
+          logger.error(
+            { eventId: event.id, error: result.error },
+            "Failed to launch workflow"
+          );
+          return;
+        } else {
+          logger.info(
+            { eventId: event.id, workflowId: result.value },
+            "Successfully launched workflow"
+          );
+        }
       }
 
       // Log final results
       logger.info(
         {
           totalEvents: events.length,
-          successful: results.successful.length,
-          failed: results.failed.length,
         },
         "Processing completed"
       );
-
-      if (results.failed.length > 0) {
-        logger.error(
-          { failedEvents: results.failed },
-          "Some events failed to process"
-        );
-      }
     } catch (error) {
       logger.error({ error }, "Failed to process WorkOS events file");
       throw error;
