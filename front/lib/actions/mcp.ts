@@ -58,7 +58,7 @@ import type {
   Result,
   TimeFrame,
 } from "@app/types";
-import { Ok, removeNulls } from "@app/types";
+import { normalizeError, Ok, removeNulls } from "@app/types";
 
 export type BaseMCPServerConfigurationType = {
   id: ModelId;
@@ -385,6 +385,9 @@ export async function buildToolSpecification(
 
 /**
  * Runs a tool with streaming for the given MCP action configuration.
+ *
+ * All errors within this function must be handled through `handleMCPActionError`
+ * to ensure consistent error reporting and proper conversation flow control.
  */
 export async function* runToolWithStreaming(
   auth: Authenticator,
@@ -438,13 +441,18 @@ export async function* runToolWithStreaming(
 
   const validateToolInputsResult = validateToolInputs(rawInputs);
   if (validateToolInputsResult.isErr()) {
-    yield await handleMCPActionError({
-      agentConfiguration,
-      agentMessage,
-      executionState: "denied",
-      errorMessage: validateToolInputsResult.error.message,
-      yieldAsError: true,
-    });
+    // Can't use handleMCPActionError yet - no action object.
+    yield {
+      type: "tool_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "tool_error",
+        message: validateToolInputsResult.error.message,
+        metadata: null,
+      },
+    };
     return;
   }
 
@@ -486,10 +494,14 @@ export async function* runToolWithStreaming(
     });
   } catch (error) {
     yield await handleMCPActionError({
+      action,
+      actionBaseParams,
       agentConfiguration,
       agentMessage,
       executionState: "denied",
-      errorMessage: `Error checking action validation status: ${JSON.stringify(error)}`,
+      errorMessage: `Error checking action validation status: ${normalizeError(
+        error
+      )}`,
       yieldAsError: true,
     });
     return;
@@ -600,6 +612,8 @@ export async function* runToolWithStreaming(
         `authentication, please authenticate to use it.`;
 
       yield await handleMCPActionError({
+        action,
+        actionBaseParams,
         agentConfiguration,
         agentMessage,
         executionState: status,
@@ -708,6 +722,8 @@ export async function createMCPAction({
 }
 
 type BaseErrorParams = {
+  action: AgentMCPAction;
+  actionBaseParams: ActionBaseParams;
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
   errorMessage: string;
@@ -749,8 +765,21 @@ export async function handleMCPActionError(
     text: errorMessage,
   };
 
+  const { action, actionBaseParams } = params;
+
+  await AgentMCPActionOutputItem.create({
+    workspaceId: action.workspaceId,
+    agentMCPActionId: action.id,
+    content: outputContent,
+  });
+
   // Yields tool_error to stop conversation.
   if (params.yieldAsError) {
+    // Update action to mark it as having an error.
+    await action.update({
+      isError: true,
+    });
+
     return {
       type: "tool_error",
       created: Date.now(),
@@ -763,14 +792,6 @@ export async function handleMCPActionError(
       },
     };
   }
-
-  const { action, actionBaseParams } = params;
-
-  await AgentMCPActionOutputItem.create({
-    workspaceId: action.workspaceId,
-    agentMCPActionId: action.id,
-    content: outputContent,
-  });
 
   // Yields tool_success to continue conversation.
   return {

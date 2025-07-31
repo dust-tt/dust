@@ -152,7 +152,7 @@ export async function* handleToolApproval({
       }
     } catch (error) {
       localLogger.error({ error }, "Error checking action validation status");
-      throw error; // Let the caller handle this error
+      throw error; // Let the caller handle this error.
     }
   }
 
