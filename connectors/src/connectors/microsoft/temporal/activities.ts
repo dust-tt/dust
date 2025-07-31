@@ -1063,7 +1063,7 @@ export async function microsoftDeletionActivity({
     nodeIdsToDelete,
     async (nodeId) => {
       // First check if we have a parentInternalId.
-      // This means an ancestors is selected, and this node should not be removed
+      // This means an ancestor is selected, and this node should not be removed
       const node = await MicrosoftNodeResource.fetchByInternalId(
         connectorId,
         nodeId
