@@ -25,6 +25,10 @@ import {
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
+  updateDataSourceDocumentParents,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
+import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
   MAX_DOCUMENT_TXT_LEN,
@@ -47,7 +51,11 @@ import {
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
+import {
+  cacheWithRedis,
+  concurrentExecutor,
+  INTERNAL_MIME_TYPES,
+} from "@connectors/types";
 
 const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
 
