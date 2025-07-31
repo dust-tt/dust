@@ -33,7 +33,7 @@ export function shouldSyncTicket(
   {
     brandId,
     organizationTags,
-  }: { brandId?: number; organizationTags: string[] | null }
+  }: { brandId?: number; organizationTags: string[] }
 ): boolean {
   if (ticket.status === "deleted") {
     return false;
@@ -48,19 +48,21 @@ export function shouldSyncTicket(
     return false;
   }
 
+  // If we enforce an inclusion rule on tags, we must have at least one of the
+  // mandatory tags.
   if (
     configuration.organizationTagsToInclude &&
-    (organizationTags === null ||
-      configuration.organizationTagsToInclude.some(
-        (mandatoryTag) => !organizationTags.includes(mandatoryTag)
-      ))
+    !configuration.organizationTagsToInclude.some((mandatoryTag) =>
+      organizationTags.includes(mandatoryTag)
+    )
   ) {
     return false;
   }
 
+  // If we enforce an exclusion rule on tags, we must not have any of the
+  // excluded tags.
   if (
     configuration.organizationTagsToExclude &&
-    organizationTags !== null &&
     configuration.organizationTagsToExclude.some((prohibitedTag) =>
       organizationTags.includes(prohibitedTag)
     )

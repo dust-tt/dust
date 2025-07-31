@@ -320,13 +320,14 @@ export async function syncZendeskTicketUpdateBatchActivity({
         });
       }
 
-      let organizationTags = null;
+      let organizationTags: string[] = [];
       if (
         ticket.organization_id &&
         configuration.enforcesOrganizationTagConstraint()
       ) {
-        organizationTags = organizationTagsMap.get(ticket.organization_id);
-        assert(organizationTags, "Organization tags not found.");
+        const mapValue = organizationTagsMap.get(ticket.organization_id);
+        assert(mapValue, "Organization tags not found.");
+        organizationTags = mapValue;
       }
 
       if (

@@ -84,7 +84,7 @@ async function checkTicketShouldBeSynced(
     return false;
   }
 
-  let organizationTags: string[] | null = null;
+  let organizationTags: string[] = [];
 
   if (
     configuration.enforcesOrganizationTagConstraint() &&

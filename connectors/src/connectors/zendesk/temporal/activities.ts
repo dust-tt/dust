@@ -670,13 +670,14 @@ export async function syncZendeskTicketBatchActivity({
   }
 
   const ticketsToSync = tickets.filter((t) => {
-    let organizationTags = null;
+    let organizationTags: string[] = [];
     if (
       t.organization_id &&
       configuration.enforcesOrganizationTagConstraint()
     ) {
-      organizationTags = organizationTagsMap.get(t.organization_id);
-      assert(organizationTags, "Organization tags not found.");
+      const mapValue = organizationTagsMap.get(t.organization_id);
+      assert(mapValue, "Organization tags not found.");
+      organizationTags = mapValue;
     }
 
     return shouldSyncTicket(t, configuration, {
