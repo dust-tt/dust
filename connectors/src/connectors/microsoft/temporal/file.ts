@@ -25,10 +25,6 @@ import {
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
-  updateDataSourceDocumentParents,
-  upsertDataSourceFolder,
-} from "@connectors/lib/data_sources";
-import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
   MAX_DOCUMENT_TXT_LEN,
@@ -36,6 +32,7 @@ import {
   MAX_LARGE_DOCUMENT_TXT_LEN,
   renderDocumentTitleAndContent,
   sectionLength,
+  updateDataSourceDocumentParents,
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
