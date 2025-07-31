@@ -225,14 +225,16 @@ export async function renderConversationForModel(
       // For each step, we look at the contents to find the function calls.
       // If some function calls have no associated action, we make a dummy "errored" one.
       steps = steps.map((step) => {
+        const functionResultByCallId: Record<string, FunctionMessageTypeModel> =
+          {};
         const actions = step.actions;
+        for (const action of actions) {
+          functionResultByCallId[action.call.id] = action.result;
+        }
         for (const content of step.contents) {
           if (content.type === "function_call") {
             const functionCall = content.value;
-            const action = step.actions.find(
-              (a) => a.call.id === functionCall.id
-            );
-            if (!action) {
+            if (!functionResultByCallId[functionCall.id]) {
               logger.warn(
                 {
                   workspaceId: conversation.owner.sId,
