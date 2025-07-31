@@ -1,9 +1,8 @@
-import { Tooltip } from "@dust-tt/sparkle";
+import { Spinner, Tooltip } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { useNodePath } from "@app/hooks/useNodePath";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { getLocationForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 
 interface NodePathTooltipProps {
@@ -18,10 +17,10 @@ export function NodePathTooltip({
   children,
 }: NodePathTooltipProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const { fullPath } = useNodePath({
+  const { fullPath, isLoading } = useNodePath({
     node,
     owner,
-    enabled: isHovered && (node.parentInternalIds?.length ?? 0) > 0,
+    disabled: !isHovered || (node.parentInternalIds?.length ?? 0) === 0,
   });
 
   if (!node.parentInternalIds || node.parentInternalIds.length === 0) {
@@ -35,11 +34,10 @@ export function NodePathTooltip({
     ? CONNECTOR_CONFIGURATIONS[connectorProvider].name
     : "Folders";
 
-  const path = fullPath
-    ? providerName +
-      " › " +
-      fullPath.map((parentNode) => parentNode.title).join(" › ")
-    : getLocationForDataSourceViewContentNode(node);
+  const path = [
+    providerName,
+    ...fullPath.map((parentNode) => parentNode.title),
+  ].join(" › ");
 
   return (
     <div
@@ -50,9 +48,16 @@ export function NodePathTooltip({
         tooltipTriggerAsChild
         triggerAsChild
         label={
-          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {path}
-          </span>
+          isLoading ? (
+            <div className="flex gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {providerName} ›
+              <Spinner size="xs" />
+            </div>
+          ) : (
+            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {path}
+            </div>
+          )
         }
         trigger={children}
         side="bottom"

@@ -6,27 +6,27 @@ import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 export function useNodePath({
   node,
   owner,
-  enabled = false,
+  disabled = false,
 }: {
   node: DataSourceViewContentNode;
   owner: LightWorkspaceType;
-  enabled?: boolean;
+  disabled?: boolean;
 }) {
   const { nodes: parentNodes, isNodesLoading } = useDataSourceViewContentNodes({
     owner,
     dataSourceView: node.dataSourceView,
     internalIds: node.parentInternalIds ?? [],
     viewType: "all",
-    disabled: !enabled || !node.parentInternalIds?.length,
+    disabled: disabled || !node.parentInternalIds?.length,
   });
 
   const fullPath = useMemo(() => {
-    if (!enabled || !node.parentInternalIds?.length) {
-      return null;
+    if (disabled || !node.parentInternalIds?.length) {
+      return [];
     }
 
     if (isNodesLoading || parentNodes.length === 0) {
-      return null;
+      return [];
     }
 
     // Sort parent nodes by their position in parentInternalIds to maintain order
@@ -36,7 +36,7 @@ export function useNodePath({
       .reverse();
 
     return sortedParentNodes;
-  }, [enabled, node.parentInternalIds, isNodesLoading, parentNodes]);
+  }, [disabled, node.parentInternalIds, isNodesLoading, parentNodes]);
 
   return {
     fullPath,
