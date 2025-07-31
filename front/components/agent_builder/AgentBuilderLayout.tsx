@@ -99,12 +99,11 @@ export function AgentBuilderLayout({
                   collapsible={true}
                   onCollapse={handlePanelCollapse}
                   onExpand={handlePanelExpand}
-                  className={cn(
+                  className={
                     !isResizing
-                      ? "overflow-hidden transition-all duration-300 ease-in-out"
-                      : "overflow-hidden",
-                    "hidden md:block"
-                  )}
+                      ? "overflow-hidden transition-all duration-300 ease-in-out hidden md:block"
+                      : "overflow-hidden hidden md:block"
+                  }
                 >
                   <div className="h-full w-full overflow-y-auto">
                     {rightPanel}
