@@ -1,5 +1,6 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { McpError } from "@modelcontextprotocol/sdk/types.js";
+import type { Logger } from "pino";
 
 import type {
   MCPActionType,
@@ -70,7 +71,7 @@ export async function* handleToolApproval({
   agentMessage: AgentMessageType;
   mcpAction: MCPActionType;
   owner: LightWorkspaceType;
-  localLogger: any;
+  localLogger: Logger;
 }): AsyncGenerator<
   MCPApproveExecutionEvent,
   | "allowed_implicitly"
@@ -275,7 +276,7 @@ export async function processToolResults({
   toolCallResult: CallToolResult["content"];
   conversation: ConversationType;
   action: AgentMCPAction;
-  localLogger: any;
+  localLogger: Logger;
 }): Promise<{
   outputItems: AgentMCPActionOutputItem[];
   generatedFiles: ActionGeneratedFileType[];
