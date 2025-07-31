@@ -135,7 +135,6 @@ export function ToolsList({
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      {/* Checkbox for enabled/disabled */}
                       <input
                         type="checkbox"
                         checked={toolEnabled}
