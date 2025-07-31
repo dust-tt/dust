@@ -3,7 +3,6 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-  TestTubeIcon,
 } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
 import Head from "next/head";
@@ -78,7 +77,7 @@ export function AgentBuilderLayout({
                 className="h-full w-full"
               >
                 <ResizablePanel defaultSize={70} minSize={30}>
-                  <div className="h-full w-full overflow-y-auto px-6">
+                  <div className="h-full w-full overflow-y-auto px-0 md:px-6">
                     {leftPanel}
                   </div>
                 </ResizablePanel>
@@ -118,13 +117,14 @@ export function AgentBuilderLayout({
                 </ResizablePanel>
               </ResizablePanelGroup>
 
-              {/* Mobile floating Testing button */}
+              {/* Mobile Preview button */}
               {!isPreviewPanelOpen && (
                 <Button
-                  icon={TestTubeIcon}
+                  label="Preview"
+                  variant="ghost"
                   onClick={handlePanelExpand}
-                  className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full border border-border bg-white text-foreground shadow-sm hover:bg-muted hover:shadow-md md:hidden"
-                  aria-label="Open testing panel"
+                  className="fixed bottom-3 left-4 z-40 md:hidden"
+                  aria-label="Open preview panel"
                 />
               )}
             </div>
