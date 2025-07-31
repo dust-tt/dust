@@ -16,6 +16,7 @@ import type {
 } from "@connectors/connectors/zendesk/lib/types";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
@@ -87,6 +88,12 @@ async function handleZendeskRateLimit(
         retryAfter = Math.max(delay, 1);
       }
     }
+
+    statsDClient.increment("zendesk_api.rate_limit.hit.count", 1, [
+      `subdomain:${subdomain}`,
+      `endpoint:${endpoint}`,
+    ]);
+
     if (retryAfter > ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS) {
       logger.info(
         { subdomain, endpoint, response, retryAfter },
@@ -117,6 +124,8 @@ async function fetchFromZendeskWithRetries({
   url: string;
   accessToken: string;
 }) {
+  const { subdomain, endpoint } = extractMetadataFromZendeskUrl(url);
+
   const runFetch = async () =>
     fetch(url, {
       method: "GET",
@@ -142,10 +151,15 @@ async function fetchFromZendeskWithRetries({
       );
     }
   }
+
+  const tags = [`subdomain:${subdomain}`, `endpoint:${endpoint}`];
+  statsDClient.increment("zendesk_api.requests.count", 1, tags);
+
   let response;
   try {
     response = await rawResponse.json();
   } catch (e) {
+    statsDClient.increment("zendesk_api.requests.error.count", 1, tags);
     throw new ZendeskApiError(
       "Error parsing Zendesk API response",
       rawResponse.status,
@@ -153,6 +167,7 @@ async function fetchFromZendeskWithRetries({
     );
   }
   if (!rawResponse.ok) {
+    statsDClient.increment("zendesk_api.requests.error.count", 1, tags);
     throw new ZendeskApiError("Zendesk API error.", rawResponse.status, {
       response,
       rawResponse,
