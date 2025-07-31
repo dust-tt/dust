@@ -10,6 +10,7 @@ import {
   shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
+import type { ZendeskFetchedTicket } from "@connectors/connectors/zendesk/lib/types";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskBrand,
@@ -602,6 +603,24 @@ export async function syncZendeskArticleBatchActivity({
   return { hasMore, nextLink };
 }
 
+async function getOrganizationTagMapForTickets(
+  tickets: ZendeskFetchedTicket[],
+  {
+    accessToken,
+    brandSubdomain,
+  }: { accessToken: string; brandSubdomain: string }
+) {
+  const organizationIds = removeNulls(
+    tickets.map((t) => t.organization_id ?? null)
+  );
+  const organizations = await listZendeskOrganizations({
+    accessToken,
+    brandSubdomain,
+    organizationIds,
+  });
+  return new Map(organizations.map((t) => [t.id, t.tags]));
+}
+
 /**
  * This activity is responsible for syncing the next batch of tickets to process.
  */
@@ -663,15 +682,10 @@ export async function syncZendeskTicketBatchActivity({
 
   let organizationTagsMap = new Map<number, string[]>();
   if (configuration.organizationTagsIn || configuration.organizationTagsNotIn) {
-    const organizationIds = removeNulls(
-      tickets.map((t) => t.organization_id ?? null)
-    );
-    const organizations = await listZendeskOrganizations({
+    organizationTagsMap = await getOrganizationTagMapForTickets(tickets, {
       accessToken,
       brandSubdomain,
-      organizationIds,
     });
-    organizationTagsMap = new Map(organizations.map((t) => [t.id, t.tags]));
   }
 
   const ticketsToSync = tickets.filter((t) =>
