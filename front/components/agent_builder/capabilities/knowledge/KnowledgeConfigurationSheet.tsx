@@ -204,12 +204,10 @@ function KnowledgeConfigurationSheetContent({
   }, [action]);
 
   useEffect(() => {
-    if (!isOpen) {
-      if (!action) {
-        setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
-        setSelectedMCPServerName("search");
-        setDynamicConfig(CAPABILITY_CONFIGS["search"]);
-      }
+    if (!isOpen && !action) {
+      setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
+      setSelectedMCPServerName("search");
+      setDynamicConfig(CAPABILITY_CONFIGS["search"]);
     }
   }, [isOpen, action]);
 
@@ -323,9 +321,6 @@ function KnowledgeConfigurationSheetContent({
       ),
     },
   ];
-
-  // Always allow users to try navigating and saving
-  // Let form validation and save logic handle any issues
 
   return (
     <MultiPageSheetContent

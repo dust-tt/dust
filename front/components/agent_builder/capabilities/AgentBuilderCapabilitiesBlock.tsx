@@ -244,11 +244,9 @@ export function AgentBuilderCapabilitiesBlock() {
     setIsKnowledgeSheetOpen(false);
   };
 
-  // Check if we're editing a knowledge-based action
   const isEditingKnowledgeAction =
     !!editingAction && isSupportedAgentBuilderAction(editingAction.action);
 
-  // Sheet should be open for editing existing actions or creating new ones
   const shouldShowKnowledgeSheet =
     isEditingKnowledgeAction || isKnowledgeSheetOpen;
 
