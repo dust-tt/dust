@@ -492,7 +492,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     space: SpaceType,
     params: DoCreateOrUpdateAllowedParams
   ) => {
-    const { name: newName, managementMode } = params;
+    const { name: newName, managementMode, isRestricted } = params;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -514,22 +514,37 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     // Prepare space members update request if provided.
     const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
-    const { memberIds, groupIds, isRestricted } = params;
+    if (managementMode && isRestricted) {
+      const { memberIds, groupIds, isRestricted } = params;
 
-    updatePromises.push(
-      fetch(spaceMembersUrl, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          memberIds,
-          groupIds,
-          managementMode: managementMode || "manual",
-          isRestricted,
-        }),
-      })
-    );
+      updatePromises.push(
+        fetch(spaceMembersUrl, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            memberIds,
+            groupIds,
+            managementMode,
+            isRestricted,
+          }),
+        })
+      );
+    } else {
+      updatePromises.push(
+        fetch(spaceMembersUrl, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            managementMode: "manual",
+            isRestricted,
+          }),
+        })
+      );
+    }
 
     if (updatePromises.length === 0) {
       return null;
