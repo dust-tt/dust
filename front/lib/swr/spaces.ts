@@ -514,24 +514,22 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     // Prepare space members update request if provided.
     const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
-    if (managementMode) {
-      const { memberIds, groupIds, isRestricted } = params;
+    const { memberIds, groupIds, isRestricted } = params;
 
-      updatePromises.push(
-        fetch(spaceMembersUrl, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            memberIds,
-            groupIds,
-            managementMode,
-            isRestricted,
-          }),
-        })
-      );
-    }
+    updatePromises.push(
+      fetch(spaceMembersUrl, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          memberIds,
+          groupIds,
+          managementMode: managementMode || "manual",
+          isRestricted,
+        }),
+      })
+    );
 
     if (updatePromises.length === 0) {
       return null;
