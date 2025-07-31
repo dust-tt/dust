@@ -10,7 +10,10 @@ use regex::Regex;
 use tokio_util::compat::TokioAsyncReadCompatExt;
 use unicode_normalization::UnicodeNormalization;
 
-use crate::{databases::table::Row, utils};
+use crate::{
+    databases::table::{CsvRow, CsvTable},
+    utils,
+};
 
 pub struct GoogleCloudStorageCSVContent {
     pub bucket: String,
@@ -23,12 +26,17 @@ const MAX_TABLE_ROWS: usize = 500_000;
 
 impl GoogleCloudStorageCSVContent {
     pub async fn parse(&self) -> Result<Vec<Row>> {
+        let table = self.parse_to_table().await?;
+        Ok(table.to_rows())
+    }
+
+    pub async fn parse_to_table(&self) -> Result<CsvTable> {
         let now = utils::now();
         let bucket = &self.bucket;
         let path = &self.bucket_csv_path;
 
         // This is not the most efficient as we download the entire file here but we will
-        // materialize it in memory as Vec<Row> anyway so that's not a massive difference.
+        // materialize it in memory as CsvTable anyway so that's not a massive difference.
         let content = Object::download(bucket, path).await?;
         let rdr = std::io::Cursor::new(content);
 
@@ -42,17 +50,17 @@ impl GoogleCloudStorageCSVContent {
         let delimiter_duration = utils::now() - now;
 
         let now = utils::now();
-        let rows = Self::csv_to_rows(rdr, delimiter).await?;
-        let csv_to_rows_duration = utils::now() - now;
+        let table = Self::csv_to_table(rdr, delimiter).await?;
+        let csv_to_table_duration = utils::now() - now;
 
         info!(
-            row_count = rows.len(),
+            row_count = table.len(),
             download_duration = download_duration,
             delimiter_duration = delimiter_duration,
-            csv_to_rows_duration = csv_to_rows_duration,
-            "CSV parse"
+            csv_to_table_duration = csv_to_table_duration,
+            "CSV parse to table"
         );
-        Ok(rows)
+        Ok(table)
     }
 
     fn slugify(text: &str) -> String {
@@ -177,7 +185,7 @@ impl GoogleCloudStorageCSVContent {
         ))
     }
 
-    async fn csv_to_rows<R>(rdr: R, delimiter: u8) -> Result<Vec<Row>>
+    async fn csv_to_table<R>(rdr: R, delimiter: u8) -> Result<CsvTable>
     where
         R: tokio::io::AsyncRead + Unpin + Send,
     {
@@ -195,21 +203,145 @@ impl GoogleCloudStorageCSVContent {
             Err(anyhow!("No columns in CSV file"))?;
         }
 
-        let mut rows = Vec::new();
+        let mut table = CsvTable::new(headers.clone());
 
         let mut records = csv.records();
         let mut row_idx = 0;
         while let Some(record) = records.next().await {
             let record = record?;
-            let row = Row::from_csv_record(&headers, record.iter().collect::<Vec<_>>(), row_idx)?;
+            let csv_row =
+                Self::csv_record_to_csv_row(&headers, record.iter().collect::<Vec<_>>(), row_idx)?;
             row_idx += 1;
             if row_idx > MAX_TABLE_ROWS {
                 Err(anyhow!("Too many rows in CSV file"))?;
             }
-            rows.push(row);
+            table.rows.push(csv_row);
         }
 
-        Ok(rows)
+        Ok(table)
+    }
+
+    fn csv_record_to_csv_row(
+        headers: &Vec<String>,
+        record: Vec<&str>,
+        row_idx: usize,
+    ) -> Result<CsvRow> {
+        let mut values = Vec::with_capacity(headers.len());
+
+        fn try_parse_float(s: &str) -> Result<serde_json::Number> {
+            if let Ok(float) = s.parse::<f64>() {
+                match serde_json::Number::from_f64(float) {
+                    Some(num) => Ok(num),
+                    None => Err(anyhow!("Invalid JSON float value")),
+                }
+            } else {
+                Err(anyhow!("Invalid float value"))
+            }
+        }
+
+        for (i, header) in headers.iter().enumerate() {
+            if header == "__dust_id" {
+                continue;
+            }
+
+            let field = record.get(i).unwrap_or(&"");
+            let trimmed = field.trim();
+
+            let parsed_value = if trimmed.is_empty() {
+                serde_json::Value::Null
+            } else if let Ok(int) = trimmed.parse::<i64>() {
+                serde_json::Value::Number(int.into())
+            } else if let Ok(float) = try_parse_float(trimmed) {
+                // Numbers
+                serde_json::Value::Number(float)
+            } else if let Ok(bool_val) = match trimmed.to_lowercase().as_str() {
+                // Booleans
+                "t" | "true" => Ok(true),
+                "f" | "false" => Ok(false),
+                _ => Err(anyhow!("Invalid boolean value")),
+            } {
+                serde_json::Value::Bool(bool_val)
+            } else {
+                // Various datetime formats
+                let mut dt: Option<chrono::DateTime<chrono::Utc>> = [
+                    // RFC3339
+                    chrono::DateTime::parse_from_rfc3339(trimmed).map(|dt| dt.into()),
+                    // RFC2822
+                    chrono::DateTime::parse_from_rfc2822(trimmed).map(|dt| dt.into()),
+                    // SQL
+                    chrono::DateTime::parse_from_str(trimmed, "%Y-%m-%d %H:%M:%S")
+                        .map(|dt| dt.into()),
+                    // HTTP date
+                    chrono::DateTime::parse_from_str(trimmed, "%a, %d %b %Y %H:%M:%S GMT")
+                        .map(|dt| dt.into()),
+                    // Google Spreadsheet format
+                    chrono::NaiveDate::parse_from_str(trimmed, "%d-%b-%Y").map(|d| {
+                        let dt = d.and_hms_opt(0, 0, 0).unwrap();
+                        dt.and_local_timezone(chrono::Utc).unwrap()
+                    }),
+                    // Date with full month, zero-padded number, full year
+                    chrono::NaiveDate::parse_from_str(trimmed, "%B %d %Y").map(|d| {
+                        let dt = d.and_hms_opt(0, 0, 0).unwrap();
+                        dt.and_local_timezone(chrono::Utc).unwrap()
+                    }),
+                ]
+                .iter()
+                .find_map(|result| result.ok());
+
+                // We fallback on dateparser for all other formats
+                if dt.is_none() {
+                    dt = match std::panic::catch_unwind(|| {
+                        dateparser::parse_with(
+                            trimmed,
+                            &chrono::Utc,
+                            chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
+                        )
+                    }) {
+                        Ok(result) => result.ok(),
+                        Err(e) => {
+                            crate::warn!("Panic while parsing date '{}': {:?}", trimmed, e);
+                            None
+                        }
+                    };
+                }
+
+                if let Some(datetime) = dt {
+                    let mut dt_obj = serde_json::Map::new();
+                    dt_obj.insert(
+                        "type".to_string(),
+                        serde_json::Value::String("datetime".to_string()),
+                    );
+                    dt_obj.insert(
+                        "epoch".to_string(),
+                        serde_json::Value::Number(serde_json::Number::from(
+                            datetime.timestamp_millis(),
+                        )),
+                    );
+                    dt_obj.insert(
+                        "string_value".to_string(),
+                        serde_json::Value::String(trimmed.to_string()),
+                    );
+                    serde_json::Value::Object(dt_obj)
+                } else {
+                    serde_json::Value::String(trimmed.to_string())
+                }
+            };
+
+            values.push(parsed_value);
+        }
+
+        let row_id = if let Some(pos) = headers.iter().position(|h| h == "__dust_id") {
+            record.get(pos).map(|id| id.trim().to_string())
+        } else {
+            None
+        }
+        .unwrap_or_else(|| row_idx.to_string());
+
+        Ok(CsvRow {
+            row_id,
+            values,
+            is_delete: false,
+        })
     }
 }
 
@@ -431,6 +563,62 @@ BAR,acme";
             schema.columns()[4].value_type,
             TableSchemaFieldType::DateTime
         );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_csv_to_table_no_header_duplication() -> anyhow::Result<()> {
+        // Create a CSV with many columns
+        let mut csv_content = String::new();
+
+        // Create headers
+        let num_columns = 50;
+        for i in 0..num_columns {
+            if i > 0 {
+                csv_content.push(',');
+            }
+            csv_content.push_str(&format!("col_{}", i));
+        }
+        csv_content.push('\n');
+
+        // Create rows
+        let num_rows = 100;
+        for row in 0..num_rows {
+            for col in 0..num_columns {
+                if col > 0 {
+                    csv_content.push(',');
+                }
+                csv_content.push_str(&format!("{}", row * num_columns + col));
+            }
+            csv_content.push('\n');
+        }
+
+        let (delimiter, rdr) =
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(csv_content.clone()))
+                .await?;
+        let table = GoogleCloudStorageCSVContent::csv_to_table(rdr, delimiter).await?;
+
+        // Verify structure
+        assert_eq!(table.headers.len(), num_columns);
+        assert_eq!(table.rows.len(), num_rows);
+
+        // Verify that headers are stored only once in the table
+        assert_eq!(table.headers[0], "col_0");
+        assert_eq!(table.headers[49], "col_49");
+
+        // Verify that rows don't contain header strings, just values
+        assert_eq!(table.rows[0].values.len(), num_columns);
+        assert_eq!(table.rows[0].values[0], serde_json::Value::Number(0.into()));
+        assert_eq!(
+            table.rows[99].values[49],
+            serde_json::Value::Number((99 * num_columns + 49).into())
+        );
+
+        // Test conversion to Row format (should only happen at boundaries)
+        let rows = table.to_rows();
+        assert_eq!(rows.len(), num_rows);
+        assert_eq!(rows[0].value["col_0"], serde_json::Value::Number(0.into()));
 
         Ok(())
     }

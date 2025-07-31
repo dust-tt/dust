@@ -9,7 +9,10 @@ use std::{
     sync::Arc,
 };
 
-use crate::databases::{database::HasValue, table::Row};
+use crate::databases::{
+    database::HasValue,
+    table::{CsvTable, Row},
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -175,6 +178,90 @@ impl TableSchema {
         rows: Arc<Vec<T>>,
     ) -> Result<TableSchema> {
         tokio::task::spawn_blocking(move || TableSchema::from_rows(&rows)).await?
+    }
+
+    pub fn from_csv_table(table: &CsvTable) -> Result<Self> {
+        let mut schema_order: Vec<String> = Vec::new();
+        let mut schema_map: HashMap<String, TableSchemaColumn> = HashMap::new();
+
+        // Process each row
+        for (row_index, csv_row) in table.rows.iter().enumerate() {
+            for (idx, value) in csv_row.values.iter().enumerate() {
+                if let Some(header) = table.headers.get(idx) {
+                    if value.is_null() {
+                        continue;
+                    }
+
+                    let value_type = match value {
+                        Value::Bool(_) => TableSchemaFieldType::Bool,
+                        Value::Number(x) => {
+                            if x.is_i64() || x.is_u64() {
+                                TableSchemaFieldType::Int
+                            } else {
+                                TableSchemaFieldType::Float
+                            }
+                        }
+                        Value::String(_) => TableSchemaFieldType::Text,
+                        Value::Object(obj) => match Self::try_parse_date_object(obj) {
+                            Some(_) => TableSchemaFieldType::DateTime,
+                            None => Err(anyhow!(
+                                "Field {} is not a primitive or datetime object type on row {} \
+                                (non datetime object and arrays are not supported): {:?}",
+                                header,
+                                row_index,
+                                value
+                            ))?,
+                        },
+                        Value::Array(_) => Err(anyhow!(
+                            "Field {} is not a primitive type on row {} \
+                             (nondatetime object and arrays are not supported)",
+                            header,
+                            row_index,
+                        ))?,
+                        Value::Null => unreachable!(),
+                    };
+
+                    match schema_map.get_mut(header) {
+                        Some(column) => {
+                            if column.value_type != value_type {
+                                use TableSchemaFieldType::*;
+                                match (&column.value_type, &value_type) {
+                                    // Ints and Floats can be merged into Floats.
+                                    (Int, Float) | (Float, Int) => {
+                                        column.value_type = Float;
+                                    }
+                                    // Otherwise we default to Text.
+                                    _ => {
+                                        column.value_type = Text;
+                                    }
+                                }
+                            }
+                            Self::accumulate_value(column, value);
+                        }
+                        None => {
+                            let mut column = TableSchemaColumn {
+                                name: header.clone(),
+                                value_type,
+                                possible_values: Some(vec![]),
+                                non_filterable: None,
+                                description: None,
+                            };
+                            Self::accumulate_value(&mut column, value);
+                            schema_map.insert(header.clone(), column);
+                            schema_order.push(header.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Build the final schema
+        let schema = schema_order
+            .iter()
+            .map(|k| schema_map.get(k).unwrap().clone())
+            .collect();
+
+        Ok(Self(schema))
     }
 
     pub fn from_rows<T: HasValue>(rows: &Vec<T>) -> Result<Self> {

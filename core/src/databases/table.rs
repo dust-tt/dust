@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -29,6 +30,7 @@ use crate::{
     stores::store::Store,
     utils,
 };
+use csv;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -649,16 +651,18 @@ impl LocalTable {
     ) -> Result<()> {
         let now = utils::now();
 
-        let rows = GoogleCloudStorageCSVContent {
+        let table = GoogleCloudStorageCSVContent {
             bucket: bucket.to_string(),
             bucket_csv_path: bucket_csv_path.to_string(),
         }
-        .parse()
+        .parse_to_table()
         .await?;
 
         let csv_parse_duration = utils::now() - now;
 
         let now = utils::now();
+        // For now, convert to rows at the boundary
+        let rows = table.to_rows();
         self.upsert_rows(store.clone(), databases_store.clone(), rows, truncate)
             .await?;
         let upsert_duration = utils::now() - now;
@@ -759,18 +763,16 @@ impl LocalTable {
 
     pub async fn validate_csv_content(bucket: &str, bucket_csv_path: &str) -> Result<TableSchema> {
         let now = utils::now();
-        let rows = Arc::new(
-            GoogleCloudStorageCSVContent {
-                bucket: bucket.to_string(),
-                bucket_csv_path: bucket_csv_path.to_string(),
-            }
-            .parse()
-            .await?,
-        );
+        let table = GoogleCloudStorageCSVContent {
+            bucket: bucket.to_string(),
+            bucket_csv_path: bucket_csv_path.to_string(),
+        }
+        .parse_to_table()
+        .await?;
         let csv_parse_duration = utils::now() - now;
 
         let now = utils::now();
-        let schema = TableSchema::from_rows_async(rows).await?;
+        let schema = TableSchema::from_csv_table(&table)?;
         let schema_duration = utils::now() - now;
 
         info!(
@@ -990,6 +992,21 @@ impl Row {
         Ok(record)
     }
 
+    pub fn to_csv_row(&self, headers: &Vec<String>) -> CsvRow {
+        let mut values = Vec::with_capacity(headers.len());
+        for header in headers {
+            if header == "__dust_id" {
+                continue;
+            }
+            values.push(self.value().get(header).cloned().unwrap_or(Value::Null));
+        }
+        CsvRow {
+            row_id: self.row_id.clone(),
+            values,
+            is_delete: self.is_delete,
+        }
+    }
+
     pub fn row_id(&self) -> &str {
         &self.row_id
     }
@@ -1001,6 +1018,174 @@ impl Row {
 impl HasValue for Row {
     fn value(&self) -> &serde_json::Map<String, serde_json::Value> {
         &self.value
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CsvTable {
+    pub headers: Vec<String>,
+    pub rows: Vec<CsvRow>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CsvRow {
+    pub row_id: String,
+    pub values: Vec<serde_json::Value>,
+    #[serde(skip_serializing, default)]
+    pub is_delete: bool,
+}
+
+impl CsvTable {
+    pub fn new(headers: Vec<String>) -> Self {
+        CsvTable {
+            headers,
+            rows: Vec::new(),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.rows.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.rows.is_empty()
+    }
+
+    pub fn csv_row_to_row(&self, csv_row: &CsvRow) -> Row {
+        let mut value_map = serde_json::Map::new();
+        for (idx, header) in self.headers.iter().enumerate() {
+            if let Some(value) = csv_row.values.get(idx) {
+                value_map.insert(header.clone(), value.clone());
+            }
+        }
+        Row {
+            row_id: csv_row.row_id.clone(),
+            value: value_map,
+            is_delete: csv_row.is_delete,
+        }
+    }
+
+    pub fn to_rows(&self) -> Vec<Row> {
+        self.rows
+            .iter()
+            .map(|csv_row| self.csv_row_to_row(csv_row))
+            .collect()
+    }
+
+    pub fn to_rows_range(&self, offset: usize, limit: usize) -> Vec<Row> {
+        let end = std::cmp::min(offset + limit, self.rows.len());
+        self.rows[offset..end]
+            .iter()
+            .map(|csv_row| self.csv_row_to_row(csv_row))
+            .collect()
+    }
+
+    pub fn merge(&mut self, other: CsvTable) -> Result<()> {
+        if self.headers != other.headers {
+            return Err(anyhow!("Cannot merge tables with different headers"));
+        }
+
+        let mut row_map: HashMap<String, usize> = self
+            .rows
+            .iter()
+            .enumerate()
+            .map(|(i, r)| (r.row_id.clone(), i))
+            .collect();
+
+        for new_row in other.rows {
+            if let Some(idx) = row_map.get(&new_row.row_id) {
+                self.rows[*idx] = new_row;
+            } else {
+                row_map.insert(new_row.row_id.clone(), self.rows.len());
+                self.rows.push(new_row);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn filter<F>(&self, predicate: F) -> CsvTable
+    where
+        F: Fn(&CsvRow, &[String]) -> bool,
+    {
+        CsvTable {
+            headers: self.headers.clone(),
+            rows: self
+                .rows
+                .iter()
+                .filter(|row| predicate(row, &self.headers))
+                .cloned()
+                .collect(),
+        }
+    }
+
+    pub fn from_rows(rows: Vec<Row>) -> Result<CsvTable> {
+        if rows.is_empty() {
+            return Ok(CsvTable::new(Vec::new()));
+        }
+
+        // Extract headers from first row
+        let first_row = &rows[0];
+        let mut headers: Vec<String> = first_row.value.keys().cloned().collect();
+        headers.sort(); // Ensure consistent ordering
+
+        let mut csv_rows = Vec::with_capacity(rows.len());
+        for row in rows {
+            let mut values = Vec::with_capacity(headers.len());
+            for header in &headers {
+                values.push(row.value.get(header).cloned().unwrap_or(Value::Null));
+            }
+            csv_rows.push(CsvRow {
+                row_id: row.row_id.clone(),
+                values,
+                is_delete: row.is_delete,
+            });
+        }
+
+        Ok(CsvTable {
+            headers,
+            rows: csv_rows,
+        })
+    }
+
+    pub async fn write_to_csv<W: std::io::Write>(&self, writer: W) -> Result<()> {
+        let mut wtr = csv::WriterBuilder::new().from_writer(writer);
+
+        // Write headers
+        let mut header_record = Vec::new();
+        for header in &self.headers {
+            header_record.push(header.clone());
+        }
+        if !self.headers.contains(&"__dust_id".to_string()) {
+            header_record.push("__dust_id".to_string());
+        }
+        wtr.write_record(&header_record)?;
+
+        // Write rows
+        for csv_row in &self.rows {
+            let mut record = Vec::new();
+            for value in csv_row.values.iter() {
+                let cell_value = match value {
+                    Value::Bool(b) => b.to_string(),
+                    Value::Number(n) => n.to_string(),
+                    Value::String(s) => s.clone(),
+                    Value::Object(obj) => match TableSchema::try_parse_date_object(obj) {
+                        Some(date) => date,
+                        None => serde_json::to_string(obj)?,
+                    },
+                    Value::Null => String::new(),
+                    Value::Array(_) => return Err(anyhow!("Arrays not supported in CSV")),
+                };
+                record.push(cell_value);
+            }
+            // Add __dust_id if not in headers
+            if !self.headers.contains(&"__dust_id".to_string()) {
+                record.push(csv_row.row_id.clone());
+            }
+            wtr.write_record(&record)?;
+        }
+
+        wtr.flush()?;
+        Ok(())
     }
 }
 
@@ -1316,6 +1501,85 @@ mod tests {
         assert_eq!(
             dust_id_csv_record[dust_id_csv_record.len() - 1],
             dust_id_row.row_id()
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_csv_table_memory_efficiency() -> anyhow::Result<()> {
+        // Create test data with 50 columns
+        let mut headers = Vec::new();
+        for i in 0..50 {
+            headers.push(format!("column_{}", i));
+        }
+
+        // Create a CsvTable with 1000 rows
+        let mut csv_table = CsvTable::new(headers.clone());
+        for row_idx in 0..1000 {
+            let mut values = Vec::new();
+            for col_idx in 0..50 {
+                values.push(serde_json::Value::Number((row_idx * 50 + col_idx).into()));
+            }
+            csv_table.rows.push(CsvRow {
+                row_id: row_idx.to_string(),
+                values,
+                is_delete: false,
+            });
+        }
+
+        // Convert to rows
+        let rows = csv_table.to_rows();
+
+        // Verify the conversion is correct
+        assert_eq!(rows.len(), 1000);
+        assert_eq!(rows[0].value.len(), 50);
+        assert_eq!(
+            rows[0].value["column_0"],
+            serde_json::Value::Number(0.into())
+        );
+        assert_eq!(
+            rows[999].value["column_49"],
+            serde_json::Value::Number((999 * 50 + 49).into())
+        );
+
+        // Test round-trip conversion
+        let csv_table_from_rows = CsvTable::from_rows(rows)?;
+        // Headers are sorted when converting from rows
+        assert_eq!(csv_table_from_rows.headers.len(), csv_table.headers.len());
+        assert_eq!(csv_table_from_rows.rows.len(), csv_table.rows.len());
+
+        // Test filtering - filter rows where row_id (as number) is even
+        let filtered =
+            csv_table.filter(|row, _headers| row.row_id.parse::<i32>().unwrap_or(1) % 2 == 0);
+        assert_eq!(filtered.rows.len(), 500);
+
+        // Test merge
+        let mut table1 = CsvTable::new(headers.clone());
+        table1.rows.push(CsvRow {
+            row_id: "1".to_string(),
+            values: vec![serde_json::Value::Number(1.into()); 50],
+            is_delete: false,
+        });
+
+        let mut table2 = CsvTable::new(headers.clone());
+        table2.rows.push(CsvRow {
+            row_id: "2".to_string(),
+            values: vec![serde_json::Value::Number(2.into()); 50],
+            is_delete: false,
+        });
+        table2.rows.push(CsvRow {
+            row_id: "1".to_string(),
+            values: vec![serde_json::Value::Number(3.into()); 50],
+            is_delete: false,
+        });
+
+        table1.merge(table2)?;
+        assert_eq!(table1.rows.len(), 2);
+        // Row with id "1" should be updated
+        assert_eq!(
+            table1.rows[0].values[0],
+            serde_json::Value::Number(3.into())
         );
 
         Ok(())
