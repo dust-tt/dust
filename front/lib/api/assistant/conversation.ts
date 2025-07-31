@@ -691,7 +691,7 @@ export async function postUserMessage(
       void runAgentLoop(
         auth.toJSON(),
         { sync: true, inMemoryData },
-        { forceAsynchronousLoop, startStep: 0 }
+        { forceAsynchronousLoop, startStep: 0, resumeFromBlockedTools: false }
       );
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
@@ -1132,7 +1132,11 @@ export async function editUserMessage(
       void runAgentLoop(
         auth.toJSON(),
         { sync: true, inMemoryData },
-        { forceAsynchronousLoop: false, startStep: 0 }
+        {
+          forceAsynchronousLoop: false,
+          startStep: 0,
+          resumeFromBlockedTools: false,
+        }
       );
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
@@ -1353,7 +1357,7 @@ export async function retryAgentMessage(
   void runAgentLoop(
     auth.toJSON(),
     { sync: true, inMemoryData },
-    { forceAsynchronousLoop: false, startStep: 0 }
+    { forceAsynchronousLoop: false, startStep: 0, resumeFromBlockedTools: true }
   );
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain

@@ -71,7 +71,7 @@ async function handler(
 
   try {
     const result = await validateAction({
-      workspaceId: owner.sId,
+      auth,
       conversationId: cId,
       messageId: mId,
       actionId,

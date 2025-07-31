@@ -136,7 +136,7 @@ async function handler(
 
   try {
     const result = await validateAction({
-      workspaceId: auth.getNonNullableWorkspace().sId,
+      auth,
       conversationId: cId,
       messageId: mId,
       actionId: actionIdString,

@@ -8,6 +8,7 @@ import {
 
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
+import type * as pickupUnblockedToolsActivities from "@app/temporal/agent_loop/activities/fetch_approved_actions";
 import type * as runModelActivities from "@app/temporal/agent_loop/activities/run_model";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
 import type { AgentLoopActivities } from "@app/temporal/agent_loop/lib/activity_interface";
@@ -25,6 +26,11 @@ const activities: AgentLoopActivities = {
   runToolActivity: proxyActivities<typeof runToolActivities>({
     startToCloseTimeout: "10 minutes",
   }).runToolActivity,
+  getBlockedToolsActivity: proxyActivities<
+    typeof pickupUnblockedToolsActivities
+  >({
+    startToCloseTimeout: "2 minutes",
+  }).getBlockedToolsActivity,
 };
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -52,10 +58,12 @@ export async function agentLoopWorkflow({
   authType,
   runAsynchronousAgentArgs,
   startStep,
+  resumeFromBlockedTools,
 }: {
   authType: AuthenticatorType;
   runAsynchronousAgentArgs: RunAgentAsynchronousArgs;
   startStep: number;
+  resumeFromBlockedTools: boolean;
 }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
@@ -94,7 +102,10 @@ export async function agentLoopWorkflow({
     }
   }
 
-  await executeAgentLoop(authType, runAgentArgs, activities, startStep);
+  await executeAgentLoop(authType, runAgentArgs, activities, {
+    startStep,
+    resumeFromBlockedTools,
+  });
 
   if (childWorkflowHandle) {
     await childWorkflowHandle.result();

@@ -3,6 +3,7 @@ import assert from "assert";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { wakeLock } from "@app/lib/wake_lock";
+import { getBlockedToolsActivity } from "@app/temporal/agent_loop/activities/fetch_approved_actions";
 import { runModelActivity } from "@app/temporal/agent_loop/activities/run_model";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -18,7 +19,10 @@ import type {
 async function runAgentSynchronousWithStreaming(
   authType: AuthenticatorType,
   runAgentSynchronousArgs: RunAgentSynchronousArgs,
-  startStep: number
+  {
+    startStep,
+    resumeFromBlockedTools,
+  }: { startStep: number; resumeFromBlockedTools: boolean }
 ): Promise<void> {
   const runAgentArgs: RunAgentArgs = {
     sync: true,
@@ -34,8 +38,12 @@ async function runAgentSynchronousWithStreaming(
       {
         runModelActivity,
         runToolActivity,
+        getBlockedToolsActivity: getBlockedToolsActivity,
       },
-      startStep
+      {
+        startStep,
+        resumeFromBlockedTools,
+      }
     );
   });
 
@@ -60,13 +68,21 @@ export async function runAgentLoop(
   {
     forceAsynchronousLoop = false,
     startStep,
-  }: { forceAsynchronousLoop?: boolean; startStep: number }
+    resumeFromBlockedTools,
+  }: {
+    forceAsynchronousLoop?: boolean;
+    startStep: number;
+    resumeFromBlockedTools: boolean;
+  }
 ): Promise<void> {
   if (runAgentArgs.sync && !forceAsynchronousLoop) {
     await runAgentSynchronousWithStreaming(
       authType,
       runAgentArgs.inMemoryData,
-      startStep
+      {
+        startStep,
+        resumeFromBlockedTools,
+      }
     );
   } else if (runAgentArgs.sync) {
     const { agentMessage, conversation, userMessage } =
@@ -83,12 +99,14 @@ export async function runAgentLoop(
         userMessageVersion: userMessage.version,
       },
       startStep,
+      resumeFromBlockedTools,
     });
   } else {
     await launchAgentLoopWorkflow({
       authType,
       runAsynchronousAgentArgs: runAgentArgs.idArgs,
       startStep,
+      resumeFromBlockedTools,
     });
   }
 }

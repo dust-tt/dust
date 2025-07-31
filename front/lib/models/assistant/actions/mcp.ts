@@ -190,10 +190,12 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare isError: boolean;
   declare executionState:
     | "pending"
-    | "timeout"
     | "allowed_explicitly"
     | "allowed_implicitly"
-    | "denied";
+    | "denied"
+    | "running"
+    | "completed"
+    | "failed";
 
   declare citationsAllocated: number;
 
@@ -233,6 +235,9 @@ AgentMCPAction.init(
             "allowed_explicitly",
             "allowed_implicitly",
             "denied",
+            "running",
+            "completed",
+            "failed",
           ],
         ],
       },
