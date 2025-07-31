@@ -652,17 +652,15 @@ export async function* runToolWithStreaming(
       }
     } catch (error) {
       localLogger.error({ error }, "Error checking action validation status");
-      yield {
-        type: "tool_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "tool_error",
-          message: `Error checking action validation status: ${JSON.stringify(error)}`,
-          metadata: null,
-        },
-      };
+      yield await handleMCPActionError({
+        action,
+        agentConfiguration,
+        agentMessage,
+        actionBaseParams,
+        executionState: "denied",
+        errorMessage: `Error checking action validation status: ${JSON.stringify(error)}`,
+        yieldAsError: true,
+      });
       return;
     }
   }
@@ -693,14 +691,16 @@ export async function* runToolWithStreaming(
       },
       "Tool validation timed out"
     );
-    yield updateResourceAndBuildErrorEvent(
+    yield await handleMCPActionError({
       action,
       agentConfiguration,
       agentMessage,
       actionBaseParams,
-      "denied",
-      "The action validation timed out. Using this action is hence forbidden for this message."
-    );
+      executionState: "denied",
+      errorMessage:
+        "The action validation timed out. Using this action is hence forbidden for this message.",
+      yieldAsError: false,
+    });
     return;
   }
 
@@ -713,14 +713,16 @@ export async function* runToolWithStreaming(
       },
       "Action execution rejected by user"
     );
-    yield updateResourceAndBuildErrorEvent(
+    yield await handleMCPActionError({
       action,
       agentConfiguration,
       agentMessage,
       actionBaseParams,
-      "denied",
-      "The user rejected this specific action execution. Using this action is hence forbidden for this message."
-    );
+      executionState: "denied",
+      errorMessage:
+        "The user rejected this specific action execution. Using this action is hence forbidden for this message.",
+      yieldAsError: false,
+    });
     return;
   }
 
@@ -812,9 +814,6 @@ export async function* runToolWithStreaming(
       },
       "Error calling MCP tool on run."
     );
-    await action.update({
-      isError: true,
-    });
 
     // If we got a personal authentication error, we emit a `tool_error` which will get turned
     // into an `agent_error` with metadata set such that we can display an invitation to connect
@@ -822,25 +821,28 @@ export async function* runToolWithStreaming(
     if (
       MCPServerPersonalAuthenticationRequiredError.is(toolCallResult?.error)
     ) {
-      yield {
-        type: "tool_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "mcp_server_personal_authentication_required",
-          message:
-            `The tool ${actionConfiguration.originalName} requires personal ` +
-            `authentication, please authenticate to use it.`,
-          metadata: {
-            mcp_server_id: toolCallResult.error.mcpServerId,
-            provider: toolCallResult.error.provider,
-            ...(toolCallResult.error.scope && {
-              scope: toolCallResult.error.scope,
-            }),
-          },
+      const authErrorMessage =
+        `The tool ${actionConfiguration.originalName} requires personal ` +
+        `authentication, please authenticate to use it.`;
+
+      yield await handleMCPActionError({
+        action,
+        agentConfiguration,
+        agentMessage,
+        actionBaseParams,
+        executionState: status,
+        errorMessage: authErrorMessage,
+        yieldAsError: true,
+        errorCode: "mcp_server_personal_authentication_required",
+        errorMetadata: {
+          mcp_server_id: toolCallResult.error.mcpServerId,
+          provider: toolCallResult.error.provider,
+          ...(toolCallResult.error.scope && {
+            scope: toolCallResult.error.scope,
+          }),
         },
-      };
+      });
+
       return;
     }
 
@@ -857,14 +859,15 @@ export async function* runToolWithStreaming(
     errorMessage +=
       "An error occurred while executing the tool. You can inform the user of this issue.";
 
-    yield updateResourceAndBuildErrorEvent(
+    yield await handleMCPActionError({
       action,
       agentConfiguration,
       agentMessage,
       actionBaseParams,
-      status,
-      errorMessage
-    );
+      executionState: status,
+      errorMessage,
+      yieldAsError: false,
+    });
     return;
   }
 
@@ -1037,21 +1040,37 @@ export async function* runToolWithStreaming(
   };
 }
 
-// Build a tool success event with an error message.
-// We show as success as we want the model to continue the conversation.
-async function updateResourceAndBuildErrorEvent(
-  action: AgentMCPAction,
-  agentConfiguration: AgentConfigurationType,
-  agentMessage: AgentMessageType,
-  actionBaseParams: ActionBaseParams,
+// Handles MCP action errors.
+// Use yieldAsError: true for errors that should stop conversation (auth issues, validation
+// failures).
+// Use yieldAsError: false for errors that should continue conversation (timeouts, denials,
+// tool execution errors).
+async function handleMCPActionError({
+  action,
+  actionBaseParams,
+  agentConfiguration,
+  agentMessage,
+  errorCode,
+  errorMessage,
+  errorMetadata,
+  executionState,
+  yieldAsError,
+}: {
+  action: AgentMCPAction;
+  actionBaseParams: ActionBaseParams;
+  agentConfiguration: AgentConfigurationType;
+  agentMessage: AgentMessageType;
+  errorCode?: string;
+  errorMessage: string;
+  errorMetadata?: Record<string, string | number | boolean> | null;
   executionState:
     | "pending"
     | "timeout"
     | "allowed_explicitly"
     | "allowed_implicitly"
-    | "denied",
-  errorMessage: string
-) {
+    | "denied";
+  yieldAsError: boolean;
+}): Promise<MCPErrorEvent | MCPSuccessEvent> {
   const outputContent: CallToolResult["content"][number] = {
     type: "text",
     text: errorMessage,
@@ -1062,8 +1081,27 @@ async function updateResourceAndBuildErrorEvent(
     content: outputContent,
   });
 
+  if (yieldAsError) {
+    // Update action to mark it as having an error.
+    await action.update({
+      isError: true,
+    });
+
+    return {
+      type: "tool_error",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: errorCode ?? "tool_error",
+        message: errorMessage,
+        metadata: errorMetadata ?? null,
+      },
+    };
+  }
+
   return {
-    type: "tool_success" as const,
+    type: "tool_success",
     created: Date.now(),
     configurationId: agentConfiguration.sId,
     messageId: agentMessage.sId,
