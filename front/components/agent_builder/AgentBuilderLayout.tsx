@@ -1,5 +1,4 @@
 import {
-  Button,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -104,10 +103,7 @@ export function AgentBuilderLayout({
                     !isResizing
                       ? "overflow-hidden transition-all duration-300 ease-in-out"
                       : "overflow-hidden",
-                    !isPreviewPanelOpen && "hidden md:block",
-                    isPreviewPanelOpen && "md:relative",
-                    isPreviewPanelOpen &&
-                      "absolute inset-0 z-50 bg-background md:relative md:inset-auto md:z-auto"
+                    "hidden md:block"
                   )}
                 >
                   <div className="h-full w-full overflow-y-auto">
@@ -115,16 +111,6 @@ export function AgentBuilderLayout({
                   </div>
                 </ResizablePanel>
               </ResizablePanelGroup>
-
-              {!isPreviewPanelOpen && (
-                <Button
-                  label="Preview"
-                  variant="ghost"
-                  onClick={handlePanelExpand}
-                  className="fixed bottom-3 left-4 z-40 md:hidden"
-                  aria-label="Open preview panel"
-                />
-              )}
             </div>
           )}
         </main>

@@ -8,7 +8,6 @@ import {
   TabsList,
   TabsTrigger,
   TestTubeIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useState } from "react";
 
@@ -78,45 +77,6 @@ function PanelHeader({
   );
 }
 
-function MobileHeader({
-  selectedTab,
-  onTabChange,
-  onTogglePanel,
-}: {
-  selectedTab: AgentBuilderRightPanelTabType;
-  onTabChange: (tab: AgentBuilderRightPanelTabType) => void;
-  onTogglePanel: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between bg-background py-2 pl-2 pr-4 md:hidden">
-      <div className="flex-1">
-        <Tabs value={selectedTab} className="w-full">
-          <TabsList>
-            <TabsTrigger
-              value="preview"
-              label="Preview"
-              icon={TestTubeIcon}
-              onClick={() => onTabChange("preview")}
-            />
-            <TabsTrigger
-              value="performance"
-              label="Performance"
-              icon={BarChartIcon}
-              onClick={() => onTabChange("performance")}
-            />
-          </TabsList>
-        </Tabs>
-      </div>
-      <Button
-        size="sm"
-        icon={XMarkIcon}
-        variant="ghost"
-        tooltip="Close"
-        onClick={onTogglePanel}
-      />
-    </div>
-  );
-}
 
 interface CollapsedTabsProps {
   onTabSelect: (tab: AgentBuilderRightPanelTabType) => void;
@@ -199,22 +159,12 @@ export function AgentBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      {isPreviewPanelOpen && (
-        <MobileHeader
-          selectedTab={selectedTab}
-          onTabChange={handleTabChange}
-          onTogglePanel={handleTogglePanel}
-        />
-      )}
-
-      <div className="hidden md:block">
-        <PanelHeader
-          isPreviewPanelOpen={isPreviewPanelOpen}
-          selectedTab={selectedTab}
-          onTogglePanel={handleTogglePanel}
-          onTabChange={handleTabChange}
-        />
-      </div>
+      <PanelHeader
+        isPreviewPanelOpen={isPreviewPanelOpen}
+        selectedTab={selectedTab}
+        onTogglePanel={handleTogglePanel}
+        onTabChange={handleTabChange}
+      />
       {isPreviewPanelOpen ? (
         <ExpandedContent
           selectedTab={selectedTab}
