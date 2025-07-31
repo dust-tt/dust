@@ -591,4 +591,109 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       totalCount,
     });
   }
+
+  static async fetchApprovedActionsForMessage(
+    auth: Authenticator,
+    agentMessageId: ModelId
+  ): Promise<
+    Array<{
+      stepContent: AgentStepContentResource;
+      actions: AgentMCPAction[];
+    }>
+  > {
+    const stepContents = await AgentStepContentModel.findAll({
+      where: {
+        agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: [
+        {
+          model: AgentMCPAction,
+          as: "agentMCPActions",
+          where: {
+            executionState: ["allowed_explicitly"],
+          },
+          required: true, // Only include step contents that have approved actions
+        },
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          include: [
+            {
+              model: Message,
+              as: "message",
+              include: [
+                {
+                  model: ConversationModel,
+                  as: "conversation",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      order: [["createdAt", "ASC"]],
+    });
+
+    return stepContents.map((stepContent) => ({
+      stepContent: new AgentStepContentResource(
+        AgentStepContentModel,
+        stepContent.get({ plain: true })
+      ),
+      actions: stepContent.agentMCPActions || [],
+    }));
+  }
+
+  static async validateAction(
+    auth: Authenticator,
+    {
+      messageId,
+      actionId,
+      approved,
+    }: {
+      messageId: string;
+      actionId: string;
+      approved: "approved" | "rejected" | "always_approved";
+    }
+  ): Promise<{ success: boolean; action?: AgentMCPAction }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Find the action to update its status
+    const action = await AgentMCPAction.findOne({
+      where: {
+        workspaceId,
+      },
+      include: [
+        {
+          model: AgentMessage,
+          as: "agentMessage",
+          include: [
+            {
+              model: Message,
+              as: "message",
+              where: {
+                sId: messageId,
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!action) {
+      return { success: false };
+    }
+
+    // Update action status based on approval
+    let newStatus: "allowed_explicitly" | "denied";
+    if (approved === "approved" || approved === "always_approved") {
+      newStatus = "allowed_explicitly";
+    } else {
+      newStatus = "denied";
+    }
+    
+    await action.update({ executionState: newStatus });
+
+    return { success: true, action };
+  }
 }
