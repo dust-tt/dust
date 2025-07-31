@@ -39,7 +39,7 @@ const CodeEditor = dynamic(
   { ssr: false }
 );
 
-export const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
+const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   GPT_4O_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
