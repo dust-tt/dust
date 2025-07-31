@@ -51,8 +51,8 @@ export class ZendeskConfigurationModel extends ConnectorBaseModel<ZendeskConfigu
   declare syncUnresolvedTickets: boolean;
   declare hideCustomerDetails: boolean;
 
-  declare organizationTagsIn: string[] | null;
-  declare organizationTagsNotIn: string[] | null;
+  declare organizationTagsToInclude: string[] | null;
+  declare organizationTagsToExclude: string[] | null;
 }
 
 ZendeskConfigurationModel.init(
@@ -86,11 +86,11 @@ ZendeskConfigurationModel.init(
       allowNull: false,
       defaultValue: false,
     },
-    organizationTagsIn: {
+    organizationTagsToInclude: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
-    organizationTagsNotIn: {
+    organizationTagsToExclude: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },

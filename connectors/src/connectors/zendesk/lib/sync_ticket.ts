@@ -49,9 +49,9 @@ export function shouldSyncTicket(
   }
 
   if (
-    configuration.organizationTagsIn &&
+    configuration.organizationTagsToInclude &&
     (organizationTags === null ||
-      configuration.organizationTagsIn.some(
+      configuration.organizationTagsToInclude.some(
         (mandatoryTag) => !organizationTags.includes(mandatoryTag)
       ))
   ) {
@@ -59,9 +59,9 @@ export function shouldSyncTicket(
   }
 
   if (
-    configuration.organizationTagsNotIn &&
+    configuration.organizationTagsToExclude &&
     organizationTags !== null &&
-    configuration.organizationTagsNotIn.some((prohibitedTag) =>
+    configuration.organizationTagsToExclude.some((prohibitedTag) =>
       organizationTags.includes(prohibitedTag)
     )
   ) {

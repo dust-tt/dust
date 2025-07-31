@@ -481,7 +481,7 @@ export const zendesk = async ({
     case "add-organization-tag": {
       const { tag, tagIn } = getOrganizationTagsArgs(args);
 
-      const column = tagIn ? "organizationTagsIn" : "organizationTagsNotIn";
+      const column = tagIn ? "organizationTagsToInclude" : "organizationTagsToExclude";
       const currentTags = configuration[column] || [];
       const localLogger = logger.child({ tag, column, currentTags });
 
@@ -502,7 +502,7 @@ export const zendesk = async ({
     case "remove-organization-tag": {
       const { tag, tagIn } = getOrganizationTagsArgs(args);
 
-      const column = tagIn ? "organizationTagsIn" : "organizationTagsNotIn";
+      const column = tagIn ? "organizationTagsToInclude" : "organizationTagsToExclude";
       const currentTags = configuration[column] || [];
       const localLogger = logger.child({ tag, column, currentTags });
 

@@ -107,7 +107,7 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
 
   enforcesOrganizationTagConstraint(): boolean {
     return (
-      this.organizationTagsIn !== null || this.organizationTagsNotIn !== null
+      this.organizationTagsToInclude !== null || this.organizationTagsToExclude !== null
     );
   }
 }
