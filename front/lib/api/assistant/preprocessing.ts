@@ -226,31 +226,31 @@ export async function renderConversationForModel(
       // If some function calls have no associated action, we make a dummy "errored" one.
       steps = steps.map((step) => {
         const actions = step.actions;
-        const functionCalls = step.contents.filter(
-          (c) => c.type === "function_call"
-        );
-        for (const functionCall of functionCalls) {
-          const action = step.actions.find(
-            (a) => a.call.id === functionCall.value.id
-          );
-          if (!action) {
-            logger.warn(
-              {
-                workspaceId: conversation.owner.sId,
-                conversationId: conversation.sId,
-                agentMessageId: m.sId,
-              },
-              "Unexpected state, agent message step with no action for function call"
+        for (const content of step.contents) {
+          if (content.type === "function_call") {
+            const functionCall = content.value;
+            const action = step.actions.find(
+              (a) => a.call.id === functionCall.id
             );
-            actions.push({
-              call: functionCall.value,
-              result: {
-                role: "function",
-                name: functionCall.value.name,
-                function_call_id: functionCall.value.id,
-                content: "Error: tool execution failed",
-              },
-            });
+            if (!action) {
+              logger.warn(
+                {
+                  workspaceId: conversation.owner.sId,
+                  conversationId: conversation.sId,
+                  agentMessageId: m.sId,
+                },
+                "Unexpected state, agent message step with no action for function call"
+              );
+              actions.push({
+                call: functionCall,
+                result: {
+                  role: "function",
+                  name: functionCall.name,
+                  function_call_id: functionCall.id,
+                  content: "Error: tool execution failed",
+                },
+              });
+            }
           }
         }
         return { ...step, actions };
