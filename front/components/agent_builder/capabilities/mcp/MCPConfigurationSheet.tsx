@@ -5,11 +5,10 @@ import {
   SheetContainer,
   SheetContent,
   SheetFooter,
-  TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { FormEvent } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
@@ -20,8 +19,6 @@ import { MCPActionHeader } from "@app/components/agent_builder/capabilities/mcp/
 import { AdditionalConfigurationSection } from "@app/components/agent_builder/capabilities/mcp/sections/AdditionalConfigurationSection";
 import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/actions/configuration/AssistantBuilderDataSourceModal";
-import DataSourceSelectionSection from "@app/components/assistant_builder/actions/configuration/DataSourceSelectionSection";
 import { JsonSchemaConfigurationSection } from "@app/components/assistant_builder/actions/configuration/JsonSchemaConfigurationSection";
 import { TimeFrameConfigurationSection } from "@app/components/assistant_builder/actions/configuration/TimeFrameConfigurationSection";
 import { generateSchema } from "@app/components/assistant_builder/actions/MCPAction";
@@ -43,6 +40,7 @@ interface MCPConfigurationSheetProps {
   onClose: () => void;
 }
 
+// This sheet if for any MCP tools without datasource selection required.
 export function MCPConfigurationSheet({
   selectedAction,
   onSave,
@@ -200,8 +198,6 @@ function MCPConfigurationForm({
   form,
 }: MCPConfigurationFormProps) {
   const { spaces } = useSpacesContext();
-  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
-  const [showTablesModal, setShowTablesModal] = useState(false);
 
   const configuration = form.watch("configuration");
 
@@ -217,10 +213,6 @@ function MCPConfigurationForm({
     (space) => space.sId === mcpServerView.spaceId || space.kind === "system"
   );
 
-  const withDataSource =
-    requirements.requiresDataSourceConfiguration ||
-    requirements.requiresTableConfiguration;
-
   const selectedServerAvailability = mcpServerView?.server.availability ?? null;
   const spaceName = spaces.find(
     (space) => space.sId === mcpServerView?.spaceId
@@ -232,81 +224,6 @@ function MCPConfigurationForm({
         <div className="text-sm text-foreground dark:text-foreground-night">
           Available to you via <b>{spaceName}</b> space.
         </div>
-      )}
-
-      {withDataSource && (
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="description">Description *</Label>
-          <TextArea
-            id="description"
-            {...form.register("description")}
-            placeholder="Describe what this action does..."
-            rows={3}
-          />
-          {form.formState.errors.description && (
-            <p className="text-sm text-red-500">
-              {form.formState.errors.description.message}
-            </p>
-          )}
-        </div>
-      )}
-
-      {requirements.requiresDataSourceConfiguration && (
-        <AssistantBuilderDataSourceModal
-          isOpen={showDataSourcesModal}
-          setOpen={setShowDataSourcesModal}
-          owner={owner}
-          onSave={(dataSourceConfigurations: any) => {
-            handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
-          }}
-          initialDataSourceConfigurations={
-            configuration.dataSourceConfigurations ?? {}
-          }
-          allowedSpaces={allowedSpaces}
-          viewType="document"
-        />
-      )}
-
-      {requirements.requiresTableConfiguration && (
-        <AssistantBuilderDataSourceModal
-          isOpen={showTablesModal}
-          setOpen={setShowTablesModal}
-          owner={owner}
-          onSave={(tablesConfigurations: any) => {
-            handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
-          }}
-          initialDataSourceConfigurations={
-            configuration.tablesConfigurations ?? {}
-          }
-          allowedSpaces={allowedSpaces}
-          viewType="table"
-        />
-      )}
-
-      {requirements.requiresDataSourceConfiguration && (
-        <DataSourceSelectionSection
-          owner={owner}
-          dataSourceConfigurations={
-            configuration.dataSourceConfigurations ?? {}
-          }
-          openDataSourceModal={() => setShowDataSourcesModal(true)}
-          onSave={(dataSourceConfigurations) => {
-            handleConfigUpdate((old) => ({ ...old, dataSourceConfigurations }));
-          }}
-          viewType="document"
-        />
-      )}
-
-      {requirements.requiresTableConfiguration && (
-        <DataSourceSelectionSection
-          owner={owner}
-          dataSourceConfigurations={configuration.tablesConfigurations ?? {}}
-          openDataSourceModal={() => setShowTablesModal(true)}
-          onSave={(tablesConfigurations) => {
-            handleConfigUpdate((old) => ({ ...old, tablesConfigurations }));
-          }}
-          viewType="table"
-        />
       )}
 
       {requirements.requiresChildAgentConfiguration && (
