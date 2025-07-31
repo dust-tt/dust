@@ -5,7 +5,10 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { LightAgentConfigurationType, SupportedResourceType } from "@app/types";
+import type {
+  LightAgentConfigurationType,
+  SupportedResourceType,
+} from "@app/types";
 import type { LightWorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
