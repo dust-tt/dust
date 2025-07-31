@@ -47,7 +47,9 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
 
   constructor(
     model: ModelStatic<AgentStepContentModel>,
-    blob: Attributes<AgentStepContentModel>
+    blob: Attributes<AgentStepContentModel> & {
+      agentMCPActions?: AgentMCPAction[];
+    }
   ) {
     super(AgentStepContentModel, blob);
   }
@@ -146,18 +148,6 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return Object.values(grouped).map((group) => group[0]);
   }
 
-  /**
-   * Helper to create resources from models
-   */
-  private static createResources(
-    contents: AgentStepContentModel[]
-  ): AgentStepContentResource[] {
-    return contents.map(
-      (content) =>
-        new AgentStepContentResource(AgentStepContentModel, content.get())
-    );
-  }
-
   static async fetchByAgentMessages(
     auth: Authenticator,
     {
@@ -207,7 +197,10 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         "stepContentId"
       );
 
-      const actionIds = Object.keys(mcpActionsByContentId).map(Number);
+      const actionIds = Object.values(mcpActionsByContentId).flatMap((a) =>
+        a.map((a) => a.id)
+      );
+
       const outputItemsByActionId = _.groupBy(
         await AgentMCPActionOutputItem.findAll({
           where: {
@@ -241,19 +234,21 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       for (const outputItems of Object.values(outputItemsByActionId)) {
         for (const item of outputItems) {
           if (item.fileId) {
-            item.file = fileById[item.fileId];
+            item.file = fileById[item.fileId.toString()];
           }
         }
       }
 
       for (const actions of Object.values(mcpActionsByContentId)) {
         for (const action of actions) {
-          action.outputItems = outputItemsByActionId[action.id];
+          action.outputItems =
+            outputItemsByActionId[action.id.toString()] ?? [];
         }
       }
 
       for (const content of contents) {
-        content.agentMCPActions = mcpActionsByContentId[content.id];
+        content.agentMCPActions =
+          mcpActionsByContentId[content.id.toString()] ?? [];
       }
     }
 
@@ -279,7 +274,13 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
       }
     }
 
-    return this.createResources(contents);
+    return contents.map(
+      (content) =>
+        new AgentStepContentResource(AgentStepContentModel, {
+          ...content.get(),
+          agentMCPActions: content.agentMCPActions,
+        })
+    );
   }
 
   async delete(
