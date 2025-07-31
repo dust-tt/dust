@@ -142,7 +142,46 @@ export async function renderConversationForModel(
 
       const steps = Object.entries(stepByStepIndex)
         .sort(([a], [b]) => Number(a) - Number(b))
-        .map(([, step]) => step);
+        .map(([, step]) => step)
+        // This is a hack to avoid errors when rendering conversations that are in a corrupted state
+        // (some content is saved but tool was never executed)
+        // For each step, we look at the contents to find the function calls.
+        // If some function calls have no associated function result, we make a dummy "errored" one.
+        .map((step) => {
+          const actions = step.actions;
+          const functionResultByCallId: Record<
+            string,
+            FunctionMessageTypeModel
+          > = {};
+          for (const action of actions) {
+            functionResultByCallId[action.call.id] = action.result;
+          }
+          for (const content of step.contents) {
+            if (content.type === "function_call") {
+              const functionCall = content.value;
+              if (!functionResultByCallId[functionCall.id]) {
+                logger.warn(
+                  {
+                    workspaceId: conversation.owner.sId,
+                    conversationId: conversation.sId,
+                    agentMessageId: m.sId,
+                  },
+                  "Unexpected state, agent message step with no action for function call"
+                );
+                actions.push({
+                  call: functionCall,
+                  result: {
+                    role: "function",
+                    name: functionCall.name,
+                    function_call_id: functionCall.id,
+                    content: "Error: tool execution failed",
+                  },
+                });
+              }
+            }
+          }
+          return { ...step, actions };
+        });
 
       if (excludeActions) {
         // In Exclude Actions mode, we only render the last step that has text content.
