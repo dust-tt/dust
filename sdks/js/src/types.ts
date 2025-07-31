@@ -1585,6 +1585,26 @@ export type GetAgentConfigurationsResponseType = z.infer<
   typeof GetAgentConfigurationsResponseSchema
 >;
 
+export const CreateAgentConfigurationWithDefaultsRequestSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  instructions: z.string(),
+  emoji: z.string().optional(),
+  pictureUrl: z.string().optional(),
+});
+
+export type CreateAgentConfigurationWithDefaultsRequestType = z.infer<
+  typeof CreateAgentConfigurationWithDefaultsRequestSchema
+>;
+
+export const CreateAgentConfigurationWithDefaultsResponseSchema = z.object({
+  agentConfiguration: LightAgentConfigurationSchema,
+});
+
+export type CreateAgentConfigurationWithDefaultsResponseType = z.infer<
+  typeof CreateAgentConfigurationWithDefaultsResponseSchema
+>;
+
 export const PostContentFragmentResponseSchema = z.object({
   contentFragment: ContentFragmentSchema,
 });

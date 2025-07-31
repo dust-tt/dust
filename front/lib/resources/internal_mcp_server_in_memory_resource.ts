@@ -244,7 +244,10 @@ export class InternalMCPServerInMemoryResource {
     const names: InternalMCPServerNameType[] = [];
 
     for (const name of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
-      const isEnabled = await isEnabledForWorkspace(auth, name);
+      const isEnabled = await isInternalMCPServerEnabledForWorkspace(
+        auth,
+        name
+      );
 
       if (isEnabled) {
         names.push(name);
@@ -305,7 +308,4 @@ export class InternalMCPServerInMemoryResource {
       ...this.metadata,
     };
   }
-}
-function isEnabledForWorkspace(auth: Authenticator, name: string) {
-  throw new Error("Function not implemented.");
 }

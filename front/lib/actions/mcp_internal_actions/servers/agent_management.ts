@@ -1,19 +1,17 @@
+import { DustAPI } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import {
-  buildSelectedEmojiType,
-  makeUrlForEmojiAndBackground,
-} from "@app/components/assistant_builder/avatar_picker/utils";
 import {
   makeMCPToolTextError,
   makeMCPToolTextSuccess,
 } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import apiConfig from "@app/lib/api/config";
 import type { InternalMCPServerDefinitionType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentModelConfigurationType } from "@app/types";
-import { getLargeWhitelistedModel } from "@app/types";
+import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 
 const serverInfo: InternalMCPServerDefinitionType = {
   name: "agent_management",
@@ -23,14 +21,6 @@ const serverInfo: InternalMCPServerDefinitionType = {
   icon: "ActionRobotIcon",
   documentationUrl: null,
 };
-
-function removeLeadingAt(handle: string) {
-  return handle.startsWith("@") ? handle.slice(1) : handle;
-}
-
-function assistantHandleIsValid(handle: string) {
-  return /^[a-zA-Z0-9_-]{1,30}$/.test(removeLeadingAt(handle));
-}
 
 const createServer = (
   auth: Authenticator,
@@ -73,72 +63,30 @@ const createServer = (
         return makeMCPToolTextError("User not found");
       }
 
-      // Validate agent name
-      const cleanedName = removeLeadingAt(name);
-      if (!cleanedName || cleanedName === "") {
-        return makeMCPToolTextError("The agent name cannot be empty");
-      }
+      // Clean the agent name before sending to API
+      const cleanedName = name.startsWith("@") ? name.slice(1) : name;
 
-      if (!assistantHandleIsValid(name)) {
-        if (cleanedName.length > 30) {
-          return makeMCPToolTextError(
-            "The agent name must be 30 characters or less"
-          );
-        } else {
-          return makeMCPToolTextError(
-            "The agent name can only contain letters, numbers, underscores (_) and hyphens (-). Spaces and special characters are not allowed."
-          );
-        }
-      }
-
-      // Get the large whitelisted model for this workspace
-      const model = getLargeWhitelistedModel(owner);
-      if (!model) {
-        return makeMCPToolTextError(
-          "No suitable model available for this workspace. Please ensure your workspace has access to at least one AI model provider."
-        );
-      }
-
-      // Build the agent model configuration
-      const agentModel: AgentModelConfigurationType = {
-        providerId: model.providerId,
-        modelId: model.modelId,
-        temperature: 0.7, // Default temperature for agents
-        reasoningEffort: model.defaultReasoningEffort,
-      };
-
-      // Build emoji avatar URL
-      const selectedEmoji = emoji || "🤖";
-      const emojiData = buildSelectedEmojiType(selectedEmoji);
-
-      let pictureUrl =
-        "https://dust.tt/static/systemavatar/dust_avatar_full.png";
-      if (emojiData) {
-        pictureUrl = makeUrlForEmojiAndBackground(
-          {
-            id: emojiData.id,
-            unified: emojiData.unified,
-            native: emojiData.native,
-          },
-          "bg-blue-200"
-        );
-      }
-
-      // eslint-disable-next-line import/no-cycle
-      const { createGenericAgentConfigurationWithDefaultTools } = await import(
-        "@app/lib/api/assistant/configuration/agent"
-      );
-
-      const result = await createGenericAgentConfigurationWithDefaultTools(
-        auth,
+      // Use the public API with system credentials
+      // Pass the user email to exchange system key for user auth
+      const prodCredentials = await prodAPICredentialsForOwner(owner);
+      const api = new DustAPI(
+        apiConfig.getDustAPIConfig(),
         {
-          name: cleanedName,
-          description,
-          instructions,
-          pictureUrl,
-          model: agentModel,
-        }
+          ...prodCredentials,
+          extraHeaders: {
+            "x-api-user-email": user.email,
+          },
+        },
+        logger
       );
+
+      const result = await api.createAgentConfigurationWithDefaults({
+        name: cleanedName,
+        description,
+        instructions,
+        emoji,
+      });
+
       if (result.isErr()) {
         return makeMCPToolTextError(
           `Failed to create agent: ${result.error.message}`

@@ -49,6 +49,7 @@ import {
   APIErrorSchema,
   AppsCheckResponseSchema,
   CancelMessageGenerationResponseSchema,
+  CreateAgentConfigurationWithDefaultsResponseSchema,
   CreateConversationResponseSchema,
   DataSourceViewResponseSchema,
   DeleteFolderResponseSchema,
@@ -634,6 +635,35 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.contentFragment);
+  }
+
+  async createAgentConfigurationWithDefaults({
+    name,
+    description,
+    instructions,
+    emoji,
+    pictureUrl,
+  }: {
+    name: string;
+    description: string;
+    instructions: string;
+    emoji?: string;
+    pictureUrl?: string;
+  }) {
+    const res = await this.request({
+      method: "POST",
+      path: "assistant/agent_configurations/create",
+      body: { name, description, instructions, emoji, pictureUrl },
+    });
+
+    const r = await this._resultFromResponse(
+      CreateAgentConfigurationWithDefaultsResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.agentConfiguration);
   }
 
   // When creating a conversation with a user message, the API returns only after the user message
