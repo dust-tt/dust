@@ -282,7 +282,7 @@ export async function handleSpreadSheet({
   parentInternalId: string;
   localLogger: Logger;
   startSyncTs: number;
-  heartbeat: () => void;
+  heartbeat: () => Promise<void>;
 }): Promise<Result<null, Error>> {
   const connector = await ConnectorResource.fetchById(connectorId);
 
