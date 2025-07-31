@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
@@ -70,51 +69,54 @@ async function handler(
             },
           });
         case "remote": {
-          const { permission } = req.body;
-          if (!permission) {
+          const { permission, enabled } = req.body;
+          if (!permission && !enabled) {
             return apiError(req, res, {
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
-                message: "Permission is required.",
+                message: "Permission or enabled state is required.",
               },
             });
           }
 
-          if (!CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS.includes(permission)) {
-            const remoteMCPServer = await RemoteMCPServerResource.findByPk(
-              auth,
-              id
-            );
-            if (!remoteMCPServer) {
-              return apiError(req, res, {
-                status_code: 404,
-                api_error: {
-                  type: "data_source_not_found",
-                  message: "Remote MCP server not found.",
-                },
-              });
-            }
-            const defaultServerConfig = getDefaultRemoteMCPServerByURL(
-              remoteMCPServer.url
-            );
-            if (defaultServerConfig?.toolStakes?.[toolName] !== permission) {
-              return apiError(req, res, {
-                status_code: 400,
-                api_error: {
-                  type: "invalid_request_error",
-                  message: `The '${permission}' permission is only allowed for tools pre-configured with this setting in default servers.`,
-                },
-              });
+          if (permission !== undefined) {
+            if (!CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS.includes(permission)) {
+              const remoteMCPServer = await RemoteMCPServerResource.findByPk(
+                auth,
+                id
+              );
+              if (!remoteMCPServer) {
+                return apiError(req, res, {
+                  status_code: 404,
+                  api_error: {
+                    type: "data_source_not_found",
+                    message: "Remote MCP server not found.",
+                  },
+                });
+              }
+              const defaultServerConfig = getDefaultRemoteMCPServerByURL(
+                remoteMCPServer.url
+              );
+              if (defaultServerConfig?.toolStakes?.[toolName] !== permission) {
+                return apiError(req, res, {
+                  status_code: 400,
+                  api_error: {
+                    type: "invalid_request_error",
+                    message: `The '${permission}' permission is only allowed for tools pre-configured with this setting in default servers.`,
+                  },
+                });
+              }
             }
           }
 
-          await RemoteMCPServerToolMetadataResource.updateOrCreatePermission(
+          await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(
             auth,
             {
               serverId: id,
               toolName,
-              permission: permission as MCPToolStakeLevelType,
+              permission: permission ?? undefined,
+              enabled,
             }
           );
           return res.status(200).json({ success: true });

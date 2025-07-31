@@ -123,16 +123,18 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
 
   // Update
 
-  static async updateOrCreatePermission(
+  static async updateOrCreateSettings(
     auth: Authenticator,
     {
       serverId,
       toolName,
       permission,
+      enabled,
     }: {
       serverId: number;
       toolName: string;
       permission: MCPToolStakeLevelType;
+      enabled: boolean;
     }
   ) {
     const canAdministrate =
@@ -149,6 +151,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
       remoteMCPServerId: serverId,
       toolName,
       permission,
+      enabled,
       workspaceId: auth.getNonNullableWorkspace().id,
     });
 
@@ -192,11 +195,13 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     remoteMCPServerId: number;
     toolName: string;
     permission: MCPToolStakeLevelType;
+    enabled: boolean;
   } {
     return {
       remoteMCPServerId: this.remoteMCPServerId,
       toolName: this.toolName,
       permission: this.permission,
+      enabled: this.enabled,
     };
   }
 }

@@ -20,8 +20,8 @@ import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
-  useMCPServerToolsPermissions,
-  useUpdateMCPServerToolsPermissions,
+  useMCPServerToolsSettings,
+  useUpdateMCPServerToolsSettings,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isAdmin } from "@app/types";
@@ -51,12 +51,12 @@ export function ToolsList({
     () => mcpServerView.server.tools,
     [mcpServerView.server.tools]
   );
-  const { toolsPermissions } = useMCPServerToolsPermissions({
+  const { toolsSettings } = useMCPServerToolsSettings({
     owner,
     serverId: mcpServerView.server.sId,
   });
 
-  const { updateToolPermission } = useUpdateMCPServerToolsPermissions({
+  const { updateToolSettings } = useUpdateMCPServerToolsSettings({
     owner,
     serverId: mcpServerView.server.sId,
   });
@@ -76,12 +76,25 @@ export function ToolsList({
 
   const handleClick = (
     name: string,
-    permission: CustomRemoteMCPToolStakeLevelType | "never_ask"
+    permission: CustomRemoteMCPToolStakeLevelType | "never_ask",
+    enabled: boolean
   ) => {
-    void updateToolPermission({
+    void updateToolSettings({
       toolName: name,
       permission,
+      enabled,
     });
+  };
+
+  const getToolPermission = (toolName: string) => {
+    return toolsSettings[toolName]
+      ? toolsSettings[toolName].permission
+      : FALLBACK_MCP_TOOL_STAKE_LEVEL;
+  };
+
+  const getToolEnabled = (toolName: string) => {
+    // Default tools to be enabled by default
+    return toolsSettings[toolName] ? toolsSettings[toolName].enabled : true;
   };
 
   const toolPermissionLabel: Record<string, string> = {
@@ -112,14 +125,29 @@ export function ToolsList({
           <div className="flex flex-col gap-2">
             {tools.map(
               (tool: { name: string; description: string }, index: number) => {
-                const toolPermission = toolsPermissions[tool.name]
-                  ? toolsPermissions[tool.name]
-                  : FALLBACK_MCP_TOOL_STAKE_LEVEL;
+                const toolPermission = getToolPermission(tool.name);
+                const toolEnabled = getToolEnabled(tool.name);
                 return (
                   <div key={index} className="flex flex-col gap-1 pb-2">
-                    <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
-                      {asDisplayName(tool.name)}
-                    </h4>
+                    <div className="flex items-center gap-2">
+                      {/* Checkbox for enabled/disabled */}
+                      <input
+                        type="checkbox"
+                        checked={toolEnabled}
+                        disabled={!canUpdate}
+                        onChange={(e) =>
+                          handleClick(
+                            tool.name,
+                            getToolPermission(tool.name),
+                            e.target.checked
+                          )
+                        }
+                        className="form-checkbox h-4 w-4"
+                      />
+                      <h4 className="heading-base flex-grow text-foreground dark:text-foreground-night">
+                        {asDisplayName(tool.name)}
+                      </h4>
+                    </div>
                     {tool.description && (
                       <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                         {tool.description}
@@ -148,7 +176,11 @@ export function ToolsList({
                                     <DropdownMenuItem
                                       key={permission}
                                       onClick={() => {
-                                        handleClick(tool.name, permission);
+                                        handleClick(
+                                          tool.name,
+                                          permission,
+                                          getToolEnabled(tool.name)
+                                        );
                                       }}
                                       label={toolPermissionLabel[permission]}
                                     />
