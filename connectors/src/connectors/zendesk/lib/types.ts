@@ -96,7 +96,7 @@ export interface ZendeskFetchedTicket {
   group_id: number;
   has_incidents: boolean;
   id: number;
-  organization_id: number;
+  organization_id: number | null;
   priority: string;
   problem_id: number;
   raw_subject: string;

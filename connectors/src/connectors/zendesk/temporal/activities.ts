@@ -42,6 +42,7 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import assert from "assert";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
@@ -669,17 +670,10 @@ export async function syncZendeskTicketBatchActivity({
   }
 
   const ticketsToSync = tickets.filter((t) => {
-    const organizationTags = organizationTagsMap.get(t.organization_id);
-    if (!organizationTags) {
-      logger.error(
-        {
-          ticketId: t.id,
-          organizationId: t.organization_id,
-          connectorId: configuration.connectorId,
-        },
-        "Organization tags not found."
-      );
-      throw new Error(`Tags not found for organization ${t.organization_id}.`);
+    let organizationTags = null;
+    if (t.organization_id) {
+      organizationTags = organizationTagsMap.get(t.organization_id);
+      assert(organizationTags, "Organization tags not found.");
     }
 
     return shouldSyncTicket(t, configuration, {

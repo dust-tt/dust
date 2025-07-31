@@ -30,6 +30,7 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import assert from "assert";
 
 /**
  * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.
@@ -318,19 +319,10 @@ export async function syncZendeskTicketUpdateBatchActivity({
         });
       }
 
-      const organizationTags = organizationTagsMap.get(ticket.organization_id);
-      if (!organizationTags) {
-        logger.error(
-          {
-            ticketId: ticket.id,
-            organizationId: ticket.organization_id,
-            connectorId: configuration.connectorId,
-          },
-          "Organization tags not found."
-        );
-        throw new Error(
-          `Tags not found for organization ${ticket.organization_id}.`
-        );
+      let organizationTags = null;
+      if (ticket.organization_id) {
+        organizationTags = organizationTagsMap.get(ticket.organization_id);
+        assert(organizationTags, "Organization tags not found.");
       }
 
       if (

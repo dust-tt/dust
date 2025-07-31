@@ -84,17 +84,20 @@ async function checkTicketShouldBeSynced(
     return false;
   }
 
-  let organizationTags: string[] = [];
+  let organizationTags: string[] | null = null;
 
-  if (configuration.enforcesOrganizationTagConstraint()) {
+  if (
+    configuration.enforcesOrganizationTagConstraint() &&
+    ticket.organization_id
+  ) {
     const [organization] = await listZendeskOrganizations({
       accessToken,
       brandSubdomain,
-      organizationIds: [ticket?.organization_id],
+      organizationIds: [ticket.organization_id],
     });
     if (!organization) {
       logger.error(
-        { ticketId: ticket.id, organizationId: ticket?.organization_id },
+        { ticketId: ticket.id, organizationId: ticket.organization_id },
         "Organization not found."
       );
     } else {
