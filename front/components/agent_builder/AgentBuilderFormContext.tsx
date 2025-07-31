@@ -148,8 +148,9 @@ export const reasoningModelSchema = z
 
 const mcpServerConfigurationSchema = z.object({
   mcpServerViewId: mcpServerViewIdSchema,
-  dataSourceConfigurations: dataSourceConfigurationsSchema,
-  tablesConfigurations: tablesConfigurationsSchema,
+  dataSourceConfigurations:
+    dataSourceViewSelectionConfigurationSchema.nullable(),
+  tablesConfigurations: dataSourceViewSelectionConfigurationSchema.nullable(),
   childAgentId: childAgentIdSchema,
   reasoningModel: reasoningModelSchema,
   timeFrame: mcpTimeFrameSchema,
