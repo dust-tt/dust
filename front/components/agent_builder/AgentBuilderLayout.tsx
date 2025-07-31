@@ -104,7 +104,6 @@ export function AgentBuilderLayout({
                     !isResizing
                       ? "overflow-hidden transition-all duration-300 ease-in-out"
                       : "overflow-hidden",
-                    // Mobile: overlay full screen when open, hidden when closed
                     !isPreviewPanelOpen && "hidden md:block",
                     isPreviewPanelOpen && "md:relative",
                     isPreviewPanelOpen &&
@@ -117,7 +116,6 @@ export function AgentBuilderLayout({
                 </ResizablePanel>
               </ResizablePanelGroup>
 
-              {/* Mobile Preview button */}
               {!isPreviewPanelOpen && (
                 <Button
                   label="Preview"
