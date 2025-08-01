@@ -17,7 +17,7 @@ export const ConversationContainer = React.forwardRef<
       )}
       {...props}
     >
-      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
+      <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
         {children}
       </div>
     </div>
@@ -39,20 +39,17 @@ interface ConversationMessageProps
   renderName?: (name: string | null) => React.ReactNode;
 }
 
-const messageVariants = cva(
-  "s-flex s-w-full s-flex-col s-gap-4 s-rounded-3xl s-p-3 @sm/conversation:s-p-4",
-  {
-    variants: {
-      type: {
-        user: "s-bg-muted-background dark:s-bg-muted-background-night",
-        agent: "s-w-full",
-      },
+const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
+  variants: {
+    type: {
+      user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-5 s-py-4 s-gap-2",
+      agent: "s-w-full s-gap-3",
     },
-    defaultVariants: {
-      type: "agent",
-    },
-  }
-);
+  },
+  defaultVariants: {
+    type: "agent",
+  },
+});
 
 const buttonsVariants = cva(
   "s-invisible s-flex s-justify-start s-gap-2 s-pt-2 group-hover/message:s-visible",
@@ -60,7 +57,7 @@ const buttonsVariants = cva(
     variants: {
       type: {
         user: "s-justify-end",
-        agent: "s-justify-start px-4",
+        agent: "s-justify-start",
       },
     },
     defaultVariants: {
@@ -140,7 +137,7 @@ export const ConversationMessageContent = React.forwardRef<
     >
       <div
         className={cn(
-          "s-px-2 s-text-sm @sm:s-text-base @md:s-px-4",
+          "s-text-sm @sm:s-text-base @md:s-px-4",
           "s-text-foreground dark:s-text-foreground-night"
         )}
       >
@@ -205,15 +202,13 @@ export const ConversationMessageHeader = React.forwardRef<
           disabled={isDisabled}
           size="sm"
         />
-        <div className="flex items-center gap-2">
-          <div
-            className={cn(
-              "s-text-sm s-font-semibold @sm:s-pb-1 @sm:s-text-base",
-              "s-text-foreground dark:s-text-foreground-night"
-            )}
-          >
-            {renderName(name)}
-          </div>
+        <div
+          className={cn(
+            "s-text-sm s-font-semibold @sm:s-text-base",
+            "s-text-foreground dark:s-text-foreground-night"
+          )}
+        >
+          {renderName(name)}
         </div>
       </div>
     );
