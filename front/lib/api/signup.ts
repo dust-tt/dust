@@ -10,6 +10,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -67,7 +68,7 @@ export async function handleMembershipInvite(
   Result<
     {
       flow: "joined";
-      workspace: WorkspaceModel;
+      workspace: LightWorkspaceType;
     },
     AuthFlowError | SSOEnforcedError
   >
@@ -107,15 +108,17 @@ export async function handleMembershipInvite(
     );
   }
 
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+
   const m = await MembershipResource.getLatestMembershipOfUserInWorkspace({
     user,
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspace: lightWorkspace,
   });
 
   if (m?.isRevoked()) {
     const updateRes = await MembershipResource.updateMembershipRole({
       user,
-      workspace: renderLightWorkspaceType({ workspace }),
+      workspace: lightWorkspace,
       newRole: membershipInvite.initialRole,
       allowTerminated: true,
     });
@@ -131,7 +134,7 @@ export async function handleMembershipInvite(
 
     void ServerSideTracking.trackUpdateMembershipRole({
       user: user.toJSON(),
-      workspace: renderLightWorkspaceType({ workspace }),
+      workspace: lightWorkspace,
       previousRole: updateRes.value.previousRole,
       role: updateRes.value.newRole,
     });
@@ -139,7 +142,7 @@ export async function handleMembershipInvite(
 
   if (!m) {
     await createAndLogMembership({
-      workspace,
+      workspace: lightWorkspace,
       user,
       role: membershipInvite.initialRole,
       origin: "invited",
@@ -148,7 +151,7 @@ export async function handleMembershipInvite(
 
   await membershipInvite.markAsConsumed(user);
 
-  return new Ok({ flow: "joined", workspace });
+  return new Ok({ flow: "joined", workspace: lightWorkspace });
 }
 
 export async function handleEnterpriseSignUpFlow(
@@ -156,18 +159,14 @@ export async function handleEnterpriseSignUpFlow(
   enterpriseConnectionWorkspaceId: string
 ): Promise<{
   flow: "unauthorized" | "joined" | null;
-  workspace: WorkspaceModel | null;
+  workspace: LightWorkspaceType | null;
 }> {
   // Combine queries to optimize database calls.
   const [{ total }, workspace] = await Promise.all([
     MembershipResource.getActiveMemberships({
       users: [user],
     }),
-    WorkspaceModel.findOne({
-      where: {
-        sId: enterpriseConnectionWorkspaceId,
-      },
-    }),
+    WorkspaceResource.fetchById(enterpriseConnectionWorkspaceId),
   ]);
 
   // Redirect to login error flow if workspace is not found.
@@ -175,15 +174,17 @@ export async function handleEnterpriseSignUpFlow(
     return { flow: "unauthorized", workspace: null };
   }
 
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+
   // Early return if user is already a member of a workspace.
   if (total !== 0) {
-    return { flow: null, workspace };
+    return { flow: null, workspace: lightWorkspace };
   }
 
   const membership =
     await MembershipResource.getLatestMembershipOfUserInWorkspace({
       user,
-      workspace: renderLightWorkspaceType({ workspace }),
+      workspace: lightWorkspace,
     });
 
   // Look if there is a pending membership invitation for the user at the workspace.
@@ -197,7 +198,7 @@ export async function handleEnterpriseSignUpFlow(
   // enterprise connections, Dust access is overridden by the identity management service.
   if (!membership || membership.isRevoked()) {
     await createAndLogMembership({
-      workspace,
+      workspace: lightWorkspace,
       user,
       role: pendingMembershipInvitation?.initialRole ?? "user",
       origin: pendingMembershipInvitation ? "invited" : "auto-joined",
@@ -208,7 +209,7 @@ export async function handleEnterpriseSignUpFlow(
     await pendingMembershipInvitation.markAsConsumed(user);
   }
 
-  return { flow: "joined", workspace };
+  return { flow: "joined", workspace: lightWorkspace };
 }
 
 // Regular flow, only if the user is a newly created user. Verify if there's an existing workspace
@@ -222,7 +223,7 @@ export async function handleRegularSignupFlow(
   Result<
     {
       flow: "no-auto-join" | "revoked" | "joined" | null;
-      workspace: WorkspaceModel | null;
+      workspace: LightWorkspaceType | null;
     },
     AuthFlowError | SSOEnforcedError
   >
@@ -242,11 +243,7 @@ export async function handleRegularSignupFlow(
   }
 
   const targetWorkspace = targetWorkspaceId
-    ? await WorkspaceModel.findOne({
-        where: {
-          sId: targetWorkspaceId,
-        },
-      })
+    ? await WorkspaceResource.fetchById(targetWorkspaceId)
     : null;
 
   // If user is already a member of the target workspace, return early.
@@ -254,7 +251,10 @@ export async function handleRegularSignupFlow(
     targetWorkspace &&
     activeMemberships.find((m) => m.workspaceId === targetWorkspace.id)
   ) {
-    return new Ok({ flow: null, workspace: targetWorkspace });
+    return new Ok({
+      flow: null,
+      workspace: renderLightWorkspaceType({ workspace: targetWorkspace }),
+    });
   }
 
   const workspaceWithVerifiedDomain = await findWorkspaceWithVerifiedDomain(
@@ -294,9 +294,13 @@ export async function handleRegularSignupFlow(
       return new Ok({ flow: "no-auto-join", workspace: null });
     }
 
+    const lightWorkspace = renderLightWorkspaceType({
+      workspace: existingWorkspace,
+    });
+
     const m = await MembershipResource.getLatestMembershipOfUserInWorkspace({
       user,
-      workspace: renderLightWorkspaceType({ workspace: existingWorkspace }),
+      workspace: lightWorkspace,
     });
 
     if (m?.isRevoked()) {
@@ -305,24 +309,25 @@ export async function handleRegularSignupFlow(
 
     if (!m) {
       await createAndLogMembership({
-        workspace: existingWorkspace,
+        workspace: lightWorkspace,
         user,
         role: "user",
         origin: "auto-joined",
       });
     }
 
-    return new Ok({ flow: "joined", workspace: existingWorkspace });
+    return new Ok({ flow: "joined", workspace: lightWorkspace });
   } else if (!targetWorkspace) {
     const workspace = await createWorkspace(session);
+    const lightWorkspace = renderLightWorkspaceType({ workspace });
     await createAndLogMembership({
-      workspace,
+      workspace: lightWorkspace,
       user,
       role: "admin",
       origin: "auto-joined",
     });
 
-    return new Ok({ flow: "joined", workspace });
+    return new Ok({ flow: "joined", workspace: lightWorkspace });
   } else {
     // Redirect the user to their existing workspace if they are not allowed to join the target
     // workspace.

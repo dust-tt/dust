@@ -11,12 +11,11 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { getSignUpUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -44,7 +43,7 @@ async function handler(
   // Use the workspaceId from the query if it exists, otherwise use the workspaceId from the workos session.
   const targetWorkspaceId = typeof wId === "string" ? wId : workspaceId;
 
-  let targetWorkspace: WorkspaceModel | null = null;
+  let targetWorkspace: LightWorkspaceType | null = null;
   let targetFlow: "joined" | null = null;
 
   // `membershipInvite` is set to a `MembeshipInvitation` if the query includes an `inviteToken`,
