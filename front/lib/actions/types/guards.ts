@@ -86,6 +86,7 @@ export function isMCPConfigurationForInternalNotion(
     isInternalMCPServerOfName(arg.internalMCPServerId, "notion")
   );
 }
+
 export function isMCPConfigurationForDustAppRun(
   arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
@@ -95,6 +96,14 @@ export function isMCPConfigurationForDustAppRun(
   );
 }
 
+export function isMCPConfigurationForAgentMemory(
+  arg: MCPServerConfigurationType
+): arg is ServerSideMCPServerConfigurationType {
+  return (
+    isServerSideMCPServerConfiguration(arg) &&
+    isInternalMCPServerOfName(arg.internalMCPServerId, "agent_memory")
+  );
+}
 // MCP Tools
 
 export function isMCPToolConfiguration(
