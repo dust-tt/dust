@@ -575,7 +575,7 @@ export async function listZendeskOrganizations({
     );
   }
 
-  // Fetch missing organizations in batches of 100
+  // We can fetch at most 100 organizations at once: https://developer.zendesk.com/api-reference/ticketing/organizations/organizations/#show-many-organizations
   if (nonCachedOrganizationIds.length > 0) {
     for (const chunk of _.chunk(nonCachedOrganizationIds, 100)) {
       const parameter = `ids=${encodeURIComponent(chunk.join(","))}`;
