@@ -12,7 +12,11 @@ import {
   Tooltip,
   useHashParam,
 } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef, SortingState } from "@tanstack/react-table";
+import type {
+  CellContext,
+  ColumnDef,
+  SortingState,
+} from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
 import {
