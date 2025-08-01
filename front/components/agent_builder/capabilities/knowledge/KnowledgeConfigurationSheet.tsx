@@ -198,7 +198,7 @@ function KnowledgeConfigurationSheetContent({
       if (serverName && isKnowledgeServerName(serverName)) {
         setConfig(CAPABILITY_CONFIGS[serverName]);
       }
-    } else if (!isOpen && !action) {
+    } else if (!isOpen) {
       setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
       setSelectedMCPServerName("search");
       setConfig(CAPABILITY_CONFIGS["search"]);
