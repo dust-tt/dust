@@ -51,8 +51,37 @@ const createServer = (
         .describe(
           "An emoji character to use as the agent's avatar (e.g., '🤖'). If not provided, defaults to '🤖'"
         ),
+      sub_agent_name: z
+        .string()
+        .optional()
+        .describe(
+          "The name of the sub-agent to create. If provided, sub_agent_description and sub_agent_instructions must also be provided."
+        ),
+      sub_agent_description: z
+        .string()
+        .optional()
+        .describe("A brief description of what the sub-agent does"),
+      sub_agent_instructions: z
+        .string()
+        .optional()
+        .describe("The prompt/instructions that define the sub-agent's behavior"),
+      sub_agent_emoji: z
+        .string()
+        .optional()
+        .describe(
+          "An emoji character to use as the sub-agent's avatar (e.g., '🤔'). If not provided, defaults to '🤖'"
+        ),
     },
-    async ({ name, description, instructions, emoji }) => {
+    async ({
+      name,
+      description,
+      instructions,
+      emoji,
+      sub_agent_name,
+      sub_agent_description,
+      sub_agent_instructions,
+      sub_agent_emoji,
+    }) => {
       const owner = auth.workspace();
       if (!owner) {
         return makeMCPToolTextError("Workspace not found");
@@ -61,6 +90,20 @@ const createServer = (
       const user = auth.user();
       if (!user) {
         return makeMCPToolTextError("User not found");
+      }
+
+      // Validate sub-agent parameters
+      if (sub_agent_instructions) {
+        if (!sub_agent_name || sub_agent_name.trim() === "") {
+          return makeMCPToolTextError(
+            "sub_agent_name is required when sub_agent_instructions is provided"
+          );
+        }
+        if (!sub_agent_description || sub_agent_description.trim() === "") {
+          return makeMCPToolTextError(
+            "sub_agent_description is required when sub_agent_instructions is provided"
+          );
+        }
       }
 
       // Clean the agent name before sending to API
@@ -85,6 +128,10 @@ const createServer = (
         description,
         instructions,
         emoji,
+        subAgentName: sub_agent_name,
+        subAgentDescription: sub_agent_description,
+        subAgentInstructions: sub_agent_instructions,
+        subAgentEmoji: sub_agent_emoji,
       });
 
       if (result.isErr()) {

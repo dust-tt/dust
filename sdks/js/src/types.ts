@@ -1591,6 +1591,10 @@ export const CreateAgentConfigurationWithDefaultsRequestSchema = z.object({
   instructions: z.string(),
   emoji: z.string().optional(),
   pictureUrl: z.string().optional(),
+  subAgentName: z.string().optional(),
+  subAgentDescription: z.string().optional(),
+  subAgentInstructions: z.string().optional(),
+  subAgentEmoji: z.string().optional(),
 });
 
 export type CreateAgentConfigurationWithDefaultsRequestType = z.infer<

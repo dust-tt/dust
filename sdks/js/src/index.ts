@@ -643,17 +643,35 @@ export class DustAPI {
     instructions,
     emoji,
     pictureUrl,
+    subAgentName,
+    subAgentDescription,
+    subAgentInstructions,
+    subAgentEmoji,
   }: {
     name: string;
     description: string;
     instructions: string;
     emoji?: string;
     pictureUrl?: string;
+    subAgentName?: string;
+    subAgentDescription?: string;
+    subAgentInstructions?: string;
+    subAgentEmoji?: string;
   }) {
     const res = await this.request({
       method: "POST",
       path: "assistant/agent_configurations/create",
-      body: { name, description, instructions, emoji, pictureUrl },
+      body: {
+        name,
+        description,
+        instructions,
+        emoji,
+        pictureUrl,
+        subAgentName,
+        subAgentDescription,
+        subAgentInstructions,
+        subAgentEmoji,
+      },
     });
 
     const r = await this._resultFromResponse(
