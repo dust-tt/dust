@@ -63,6 +63,20 @@ class MyDocument extends Document {
                  sessionSampleRate: 100,
                  sessionReplaySampleRate: 5,
                  defaultPrivacyLevel: 'mask',
+                 beforeSend: (event) => {
+                  if (event.type === 'action' && event.action && event.action.target && event.action.target.name && event.action.target.name.includes('@')) {
+                    const el = event._dd && event._dd.target; // Get the actual DOM element from Datadog's internal properties
+                    if (el) {
+                      var selector = el.tagName.toLowerCase();
+                      if (el.id) selector += '#' + el.id;
+                      if (el.className) selector += '.' + el.className.trim().replace(/\\s+/g, '.');
+                      event.action.target.name = selector;
+                    } else {
+                      event.action.target.name = '[redacted]';
+                    }
+                  }
+                  return true;
+                }
                });
              })
            `}
