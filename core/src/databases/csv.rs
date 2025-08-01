@@ -11,7 +11,7 @@ use tokio_util::compat::TokioAsyncReadCompatExt;
 use unicode_normalization::UnicodeNormalization;
 
 use crate::{
-    databases::table::{CsvRow, CsvTable, Row},
+    databases::table::{CsvRow, CsvTable},
     utils,
 };
 
@@ -25,11 +25,6 @@ const MAX_COLUMN_NAME_LENGTH: usize = 1024;
 const MAX_TABLE_ROWS: usize = 500_000;
 
 impl GoogleCloudStorageCSVContent {
-    pub async fn parse(&self) -> Result<Vec<Row>> {
-        let table = self.parse_to_table().await?;
-        Ok(table.to_rows())
-    }
-
     pub async fn parse_to_table(&self) -> Result<CsvTable> {
         let now = utils::now();
         let bucket = &self.bucket;

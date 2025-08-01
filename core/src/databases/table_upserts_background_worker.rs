@@ -81,22 +81,22 @@ impl TableUpsertsBackgroundWorker {
         let files =
             GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(&table)
                 .await?;
-        let rows =
-            GoogleCloudStorageBackgroundProcessingStore::get_deduped_rows_from_all_files(&files)
+        let csv_table =
+            GoogleCloudStorageBackgroundProcessingStore::get_deduped_csv_table_from_all_files(&files)
                 .await?;
         info!(
             project_id = table_data.project_id,
             data_source_id = table_data.data_source_id,
             table_id = table_data.table_id,
             file_count = files.len(),
-            row_count = rows.len(),
+            row_count = csv_table.len(),
             "TableUpsertsBackgroundWorker: Processing upserts"
         );
 
-        if !rows.is_empty() {
+        if !csv_table.is_empty() {
             let local_table = LocalTable::from_table(table.clone())?;
             local_table
-                .upsert_rows_gcs(&self.store, &self.gcs_db_store, rows, false)
+                .upsert_csv_table_gcs(&self.store, &self.gcs_db_store, csv_table, false)
                 .await?;
         }
 

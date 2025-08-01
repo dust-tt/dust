@@ -9,7 +9,7 @@ use csv::Writer;
 use crate::{
     databases::{
         csv::GoogleCloudStorageCSVContent,
-        table::{Row, Table},
+        table::{CsvTable, Row, Table},
         table_schema::TableSchema,
     },
     utils::{self},
@@ -77,12 +77,12 @@ impl GoogleCloudStorageDatabasesStore {
         )
     }
 
-    pub async fn get_rows_from_csv(table: &Table) -> Result<Vec<Row>> {
+    pub async fn get_csv_table_from_csv(table: &Table) -> Result<CsvTable> {
         let csv = GoogleCloudStorageCSVContent {
             bucket: Self::get_bucket()?,
             bucket_csv_path: Self::get_csv_storage_file_path(table),
         };
-        csv.parse().await
+        csv.parse_to_table().await
     }
 
     pub async fn write_rows_to_csv(
@@ -105,7 +105,8 @@ impl GoogleCloudStorageDatabasesStore {
 #[async_trait]
 impl DatabasesStore for GoogleCloudStorageDatabasesStore {
     async fn load_table_row(&self, table: &Table, row_id: &str) -> Result<Option<Row>> {
-        let rows = Self::get_rows_from_csv(table).await?;
+        let csv_table = Self::get_csv_table_from_csv(table).await?;
+        let rows = csv_table.to_rows();
         let row = rows.iter().find(|r| r.row_id == row_id);
         Ok(row.cloned())
     }
@@ -115,15 +116,15 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
         table: &Table,
         limit_offset: Option<(usize, usize)>,
     ) -> Result<(Vec<Row>, usize)> {
-        let rows = Self::get_rows_from_csv(table).await?;
+        let csv_table = Self::get_csv_table_from_csv(table).await?;
+        let total = csv_table.len();
         match limit_offset {
             Some((limit, offset)) => {
-                let total = rows.len();
-                let rows = rows.into_iter().skip(offset).take(limit).collect();
+                let rows = csv_table.to_rows_range(offset, limit);
                 Ok((rows, total))
             }
             None => {
-                let total = rows.len();
+                let rows = csv_table.to_rows();
                 Ok((rows, total))
             }
         }
@@ -148,7 +149,8 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
             // This is not super efficient if we get rows one by one but it's simple and works.
             // Non-truncate upserts are < 4% of our total upserts.
 
-            let previous_rows = Self::get_rows_from_csv(table).await?;
+            let csv_table = Self::get_csv_table_from_csv(table).await?;
+            let previous_rows = csv_table.to_rows();
 
             // Use spawn_blocking to offload the merge operation to a blocking thread.
             merged_rows = tokio::task::spawn_blocking({
@@ -229,7 +231,8 @@ impl DatabasesStore for GoogleCloudStorageDatabasesStore {
     }
 
     async fn delete_table_row(&self, table: &Table, row_id: &str) -> Result<()> {
-        let rows = Self::get_rows_from_csv(table).await?;
+        let csv_table = Self::get_csv_table_from_csv(table).await?;
+        let rows = csv_table.to_rows();
         let previous_rows_count = rows.len();
         let new_rows = rows
             .iter()

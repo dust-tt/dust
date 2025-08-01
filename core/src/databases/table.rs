@@ -377,7 +377,20 @@ impl LocalTable {
         rows: Vec<Row>,
         truncate: bool,
     ) -> Result<()> {
-        let rows = Arc::new(rows);
+        // Convert to CsvTable early
+        let csv_table = CsvTable::from_rows(rows)?;
+        self.upsert_csv_table(store, databases_store, csv_table, truncate).await
+    }
+
+    pub async fn upsert_csv_table(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        csv_table: CsvTable,
+        truncate: bool,
+    ) -> Result<()> {
+        // For validation, we need to convert to rows temporarily
+        let rows = Arc::new(csv_table.to_rows());
 
         let now = utils::now();
         // Validate that all rows keys are lowercase. We run it in a spawn_blocking since it is CPU
@@ -405,15 +418,15 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            row_count = rows.len(),
+            row_count = csv_table.len(),
             truncate,
             "DSSTRUCTSTAT [upsert_rows] validation"
         );
 
-        self.upsert_rows_to_gcs_or_queue_work(
+        self.upsert_csv_table_to_gcs_or_queue_work(
             &store,
             &databases_store,
-            rows.as_ref().clone(),
+            csv_table,
             truncate,
         )
         .await?;
@@ -422,11 +435,11 @@ impl LocalTable {
     }
 
     // Either directly upsert rows to GCS, or queue work for the background worker to process.
-    pub async fn upsert_rows_to_gcs_or_queue_work(
+    async fn upsert_csv_table_to_gcs_or_queue_work(
         &self,
         store: &Box<dyn Store + Sync + Send>,
         databases_store: &Box<dyn DatabasesStore + Sync + Send>,
-        rows: Vec<Row>,
+        csv_table: CsvTable,
         truncate: bool,
     ) -> Result<()> {
         if truncate {
@@ -455,7 +468,7 @@ impl LocalTable {
                     GoogleCloudStorageBackgroundProcessingStore::delete_all_files_for_table(
                         &self.table,
                     );
-                let upsert_future = self.upsert_rows_gcs(store, databases_store, rows, truncate);
+                let upsert_future = self.upsert_csv_table_gcs(store, databases_store, csv_table, truncate);
 
                 let results = try_join_all(vec![
                     Box::pin(delete_future) as Pin<Box<dyn Future<Output = Result<()>> + Send>>,
@@ -471,30 +484,31 @@ impl LocalTable {
             result
         } else {
             // For non-truncate, use the background worker
-            self.schedule_background_upsert_or_delete(rows).await
+            self.schedule_background_upsert_or_delete_csv_table(csv_table).await
         }
     }
 
-    pub async fn upsert_rows_gcs(
+    pub async fn upsert_csv_table_gcs(
         &self,
         store: &Box<dyn Store + Sync + Send>,
         databases_store: &Box<dyn DatabasesStore + Sync + Send>,
-        rows: Vec<Row>,
+        csv_table: CsvTable,
         truncate: bool,
     ) -> Result<()> {
-        let rows = Arc::new(rows);
+        // Convert to rows only when needed for database operations
+        let rows = Arc::new(csv_table.to_rows());
 
         let mut now = utils::now();
         let new_table_schema = match truncate {
             // If the new rows replace existing ones, we need to clear the schema cache.
-            true => TableSchema::from_rows_async(rows.clone()).await?,
+            true => TableSchema::from_csv_table(&csv_table)?,
             false => match self.table.schema_cached() {
                 // If there is no existing schema cache, simply use the new schema.
-                None => TableSchema::from_rows_async(rows.clone()).await?,
+                None => TableSchema::from_csv_table(&csv_table)?,
                 Some(existing_table_schema) => {
                     // If there is an existing schema cache, merge it with the new schema.
                     existing_table_schema
-                        .merge(&TableSchema::from_rows_async(rows.clone()).await?)?
+                        .merge(&TableSchema::from_csv_table(&csv_table)?)?
                 }
             },
         };
@@ -601,18 +615,18 @@ impl LocalTable {
         Ok(())
     }
 
-    async fn schedule_background_upsert_or_delete(&self, rows: Vec<Row>) -> Result<()> {
+    async fn schedule_background_upsert_or_delete_csv_table(&self, csv_table: CsvTable) -> Result<()> {
         let mut redis_conn = REDIS_CLIENT.get_async_connection().await?;
 
         let now = utils::now();
 
-        // Write the rows to GCS for the worker to process
-        let rows_arc = Arc::new(rows);
-        let schema = TableSchema::from_rows_async(rows_arc.clone()).await?;
+        // Write the CSV table to GCS for the worker to process
+        let schema = TableSchema::from_csv_table(&csv_table)?;
+        let rows = Arc::new(csv_table.to_rows());
         GoogleCloudStorageBackgroundProcessingStore::write_rows_to_csv(
             &self.table,
             &schema,
-            &rows_arc,
+            &rows,
         )
         .await?;
 
@@ -634,7 +648,7 @@ impl LocalTable {
         info!(
             duration = utils::now() - now,
             table_id = self.table.table_id(),
-            row_count = rows_arc.len(),
+            row_count = csv_table.len(),
             "DSSTRUCTSTAT [schedule_background_upsert_or_delete]"
         );
 
@@ -695,7 +709,8 @@ impl LocalTable {
 
         // Deletions are conveyed by special rows
         let rows = vec![Row::new_delete_marker_row(row_id.to_string())];
-        self.schedule_background_upsert_or_delete(rows).await
+        let csv_table = CsvTable::from_rows(rows)?;
+        self.schedule_background_upsert_or_delete_csv_table(csv_table).await
     }
 
     pub async fn list_rows(
