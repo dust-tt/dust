@@ -12,7 +12,6 @@ const CONTENT_SECURITY_POLICIES = [
   `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net *.googletagmanager.com *.doubleclick.net;`,
   `font-src 'self' data: dust.tt *.dust.tt *.gstatic.com;`,
   `media-src 'self' data:;`,
-  `prefetch-src 'self';`,
   `object-src 'none';`,
   `form-action 'self';`,
   `base-uri 'self';`,
