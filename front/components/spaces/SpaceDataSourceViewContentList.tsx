@@ -12,7 +12,7 @@ import {
   Tooltip,
   useHashParam,
 } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import type { CellContext, ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
 import {
@@ -179,6 +179,7 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
     header: "Last updated",
     id: "lastUpdatedAt",
     accessorKey: "lastUpdatedAt",
+    enableSorting: true,
     meta: {
       className: "w-20",
     },
@@ -270,6 +271,7 @@ export const SpaceDataSourceViewContentList = ({
 }: SpaceDataSourceViewContentListProps) => {
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const sendNotification = useSendNotification();
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
@@ -304,12 +306,23 @@ export const SpaceDataSourceViewContentList = ({
     [resetPagination, setViewType, viewType]
   );
 
+  // Reset pagination when sorting changes
+  useEffect(() => {
+    resetPagination();
+  }, [JSON.stringify(sorting), resetPagination]);
+
   const { setIsSearchDisabled } = useContext(SpaceSearchContext);
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
     [showSpaceUsage]
   );
+
+  // Convert DataTable sorting format to our API format
+  const apiSorting = sorting.map((sort) => ({
+    id: sort.id,
+    order: sort.desc ? ("desc" as const) : ("asc" as const),
+  }));
 
   const {
     isNodesLoading,
@@ -326,6 +339,7 @@ export const SpaceDataSourceViewContentList = ({
     viewType: isValidContentNodesViewType(viewType)
       ? viewType
       : DEFAULT_VIEW_TYPE,
+    sorting: apiSorting,
   });
 
   const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
@@ -672,6 +686,9 @@ export const SpaceDataSourceViewContentList = ({
             setPagination={(newTablePagination) =>
               handlePaginationChange(newTablePagination, nextPageCursor)
             }
+            sorting={sorting}
+            setSorting={setSorting}
+            isServerSideSorting={true}
             columnsBreakpoints={columnsBreakpoints}
             disablePaginationNumbers
           />

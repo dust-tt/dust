@@ -27,6 +27,7 @@ interface GetContentNodesForDataSourceViewParams {
   parentId?: string;
   pagination?: CursorPaginationParams;
   viewType: ContentNodesViewType;
+  sorting?: { id: string; order: "asc" | "desc" }[];
 }
 
 interface GetContentNodesForDataSourceViewResult {
@@ -135,6 +136,7 @@ export async function getContentNodesForDataSourceView(
     parentId,
     viewType,
     pagination,
+    sorting,
   }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
   const limit = pagination?.limit ?? DEFAULT_PAGINATION_LIMIT;
@@ -169,6 +171,12 @@ export async function getContentNodesForDataSourceView(
 
   let nextPageCursor: string | null = pagination ? pagination.cursor : null;
 
+  // Convert sorting parameter to CoreAPI format
+  const coreAPISorting = sorting?.map((sort) => ({
+    field: sort.id === "lastUpdatedAt" ? "timestamp" : sort.id,
+    direction: sort.order,
+  }));
+
   let resultNodes: CoreAPIContentNode[] = [];
   let hitCount;
   let hiddenNodesCount = 0;
@@ -186,6 +194,7 @@ export async function getContentNodesForDataSourceView(
         // we still need to make sure we get a correct nextPageCursor at the end of this loop.
         limit: limit - resultNodes.length,
         cursor: nextPageCursor ?? undefined,
+        sort: coreAPISorting,
       },
     });
 

@@ -200,6 +200,7 @@ export function useDataSourceViewContentNodes({
   parentId,
   pagination,
   viewType,
+  sorting,
   disabled = false,
   swrOptions,
 }: {
@@ -209,6 +210,7 @@ export function useDataSourceViewContentNodes({
   parentId?: string;
   pagination?: CursorPaginationParams;
   viewType?: ContentNodesViewType;
+  sorting?: { id: string; order: "asc" | "desc" }[];
   disabled?: boolean;
   swrOptions?: SWRConfiguration;
 }): {
@@ -238,6 +240,7 @@ export function useDataSourceViewContentNodes({
     internalIds,
     parentId,
     viewType,
+    sorting,
   };
 
   const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
@@ -252,7 +255,7 @@ export function useDataSourceViewContentNodes({
 
         return fetcherWithBody([
           url,
-          { internalIds, parentId, viewType },
+          { internalIds, parentId, viewType, sorting },
           "POST",
         ]);
       },
