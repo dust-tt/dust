@@ -1,11 +1,8 @@
-import {
-  hardDeleteDataSource,
-  softDeleteDataSourceAndLaunchScrubWorkflow,
-} from "@app/lib/api/data_sources";
+import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { Err, Ok } from "@app/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { Err, Ok } from "@app/types";
 
 export const deleteDataSourcePlugin = createPlugin({
   manifest: {
@@ -29,59 +26,52 @@ export const deleteDataSourcePlugin = createPlugin({
       return new Err(new Error("Data source not found."));
     }
 
+    const dataSourceViews = await DataSourceViewResource.listForDataSources(
+      auth,
+      [dataSource]
+    );
+
+    const viewsUsageByAgentsRes = await concurrentExecutor(
+      dataSourceViews,
+      (view) => view.getUsagesByAgents(auth),
+      { concurrency: 5 }
+    );
+
+    const viewsUsedByAgentsName = viewsUsageByAgentsRes.reduce(
+      (acc, usageRes) => {
+        if (usageRes.isOk() && usageRes.value.count > 0) {
+          usageRes.value.agents
+            .map((a) => a.name)
+            .forEach((name) => acc.add(name));
+        }
+        return acc;
+      },
+      new Set<string>()
+    );
+
     const { forceDelete } = args;
-    if (!forceDelete) {
-      const dataSourceViews = await DataSourceViewResource.listForDataSources(
-        auth,
-        [dataSource]
+    if (!forceDelete && viewsUsedByAgentsName.size > 0) {
+      return new Err(
+        new Error(
+          `Cannot delete: This data source is being used by ${viewsUsedByAgentsName.size} agent(s) [${Array.from(viewsUsedByAgentsName).join(", ")}]. Enable "Force delete" to bypass this safety check.`
+        )
       );
-      const viewsUsageByAgentsRes = await concurrentExecutor(
-        dataSourceViews,
-        (view) => view.getUsagesByAgents(auth),
-        { concurrency: 5 }
-      );
-      const viewsUsedByAgentsName = viewsUsageByAgentsRes.reduce(
-        (acc, usageRes) => {
-          if (usageRes.isOk() && usageRes.value.count > 0) {
-            usageRes.value.agents
-              .map((a) => a.name)
-              .forEach((name) => acc.add(name));
-          }
-
-          return acc;
-        },
-        new Set<string>()
-      );
-
-      if (viewsUsedByAgentsName.size > 0) {
-        return new Err(
-          new Error(
-            `Cannot delete: This data source is being used by ${viewsUsedByAgentsName.size} agent(s) [${Array.from(viewsUsedByAgentsName).join(", ")}]. Enable "Force delete" to bypass this safety check.`
-          )
-        );
-      }
-
-      const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
-        auth,
-        dataSource
-      );
-      if (delRes.isErr()) {
-        return new Err(
-          new Error(`Failed to delete data source: ${delRes.error.message}`)
-        );
-      }
-
-      return new Ok({
-        display: "text",
-        value: `✅ Data source ${dataSource.sId} has been successfully deleted (soft delete).`,
-      });
-    } else {
-      await hardDeleteDataSource(auth, dataSource);
-
-      return new Ok({
-        display: "text",
-        value: `🔴 PERMANENT DELETION COMPLETED. Data source ${dataSource.sId} has been permanently hard deleted. All files have been removed and this action cannot be undone.`,
-      });
     }
+
+    const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
+      auth,
+      dataSource
+    );
+
+    if (delRes.isErr()) {
+      return new Err(
+        new Error(`Failed to delete data source: ${delRes.error.message}`)
+      );
+    }
+
+    return new Ok({
+      display: "text",
+      value: `✅ Data source ${dataSource.sId} has been successfully deleted (soft delete). along with the associated tools in ${viewsUsedByAgentsName.size} agent(s)`,
+    });
   },
 });
