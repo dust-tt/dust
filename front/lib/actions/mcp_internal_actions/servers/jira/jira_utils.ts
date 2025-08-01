@@ -63,21 +63,25 @@ export function createJQLFromSearchFilters(
   });
 
   let jql = jqlConditions.length > 0 ? jqlConditions.join(" AND ") : "*";
-  
+
   // Add ORDER BY clause if sorting is specified
   if (sortBy) {
     const fieldMapping = FIELD_MAPPINGS[sortBy.field as SearchFilterField];
     let sortField: string;
-    
-    if (fieldMapping && "isCustomField" in fieldMapping && fieldMapping.isCustomField) {
+
+    if (
+      fieldMapping &&
+      "isCustomField" in fieldMapping &&
+      fieldMapping.isCustomField
+    ) {
       // For custom fields, we'd need the custom field name, but for now just use the field name
       sortField = sortBy.field;
     } else {
       sortField = fieldMapping.jqlField;
     }
-    
+
     jql += ` ORDER BY ${sortField} ${sortBy.direction}`;
   }
-  
+
   return jql;
 }
