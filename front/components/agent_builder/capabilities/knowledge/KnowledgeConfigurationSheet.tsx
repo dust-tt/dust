@@ -65,8 +65,7 @@ export function KnowledgeConfigurationSheet({
   action,
   open,
 }: KnowledgeConfigurationSheetProps) {
-  // Determine the config based on capability or action type
-  const config = useMemo(() => {
+  const [config, setConfig] = useState<CapabilityConfig | null>(() => {
     if (capability) {
       return CAPABILITY_CONFIGS[capability];
     }
@@ -76,8 +75,8 @@ export function KnowledgeConfigurationSheet({
         ? CAPABILITY_CONFIGS[serverName]
         : null;
     }
-    return null;
-  }, [capability, action]);
+    return CAPABILITY_CONFIGS["search"];
+  });
 
   const handleClose = () => {
     onClose();
@@ -139,6 +138,7 @@ export function KnowledgeConfigurationSheet({
       </MultiPageSheetTrigger>
       <KnowledgeConfigurationSheetContent
         config={config}
+        setConfig={setConfig}
         action={action}
         onSave={handleSave}
         control={control}
@@ -151,6 +151,7 @@ export function KnowledgeConfigurationSheet({
 
 interface KnowledgeConfigurationSheetContentProps {
   config: CapabilityConfig | null;
+  setConfig: (config: CapabilityConfig | null) => void;
   action?: AgentBuilderAction;
   onSave: (
     formData: CapabilityFormData,
@@ -167,6 +168,7 @@ interface KnowledgeConfigurationSheetContentProps {
 function KnowledgeConfigurationSheetContent({
   action,
   config,
+  setConfig,
   onSave,
   control,
   handleSubmit,
@@ -197,19 +199,19 @@ function KnowledgeConfigurationSheetContent({
         const serverName = ACTION_TYPE_TO_MCP_SERVER_MAP[action.type];
         setSelectedMCPServerName(serverName);
         if (serverName && isKnowledgeServerName(serverName)) {
-          setDynamicConfig(CAPABILITY_CONFIGS[serverName]);
+          setConfig(CAPABILITY_CONFIGS[serverName]);
         }
       }
     }
-  }, [action]);
+  }, [action, setConfig]);
 
   useEffect(() => {
     if (!isOpen && !action) {
       setCurrentPageId(CONFIGURATION_SHEET_PAGE_IDS.DATA_SOURCE_SELECTION);
       setSelectedMCPServerName("search");
-      setDynamicConfig(CAPABILITY_CONFIGS["search"]);
+      setConfig(CAPABILITY_CONFIGS["search"]);
     }
-  }, [isOpen, action]);
+  }, [isOpen, action, setConfig]);
 
   const [selectedMCPServerName, setSelectedMCPServerName] = useState<
     string | null
@@ -217,9 +219,6 @@ function KnowledgeConfigurationSheetContent({
     action && isSupportedAgentBuilderAction(action)
       ? ACTION_TYPE_TO_MCP_SERVER_MAP[action.type]
       : "search"
-  );
-  const [dynamicConfig, setDynamicConfig] = useState<CapabilityConfig | null>(
-    config || CAPABILITY_CONFIGS["search"]
   );
 
   const handlePageChange = (pageId: string) => {
@@ -231,7 +230,7 @@ function KnowledgeConfigurationSheetContent({
   const handleMCPServerSelection = (serverName: string) => {
     setSelectedMCPServerName(serverName);
     if (isKnowledgeServerName(serverName)) {
-      setDynamicConfig(CAPABILITY_CONFIGS[serverName]);
+      setConfig(CAPABILITY_CONFIGS[serverName]);
     }
   };
 
@@ -257,11 +256,11 @@ function KnowledgeConfigurationSheetContent({
     },
     {
       id: CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION,
-      title: dynamicConfig?.configPageTitle || "Configure Knowledge",
+      title: config?.configPageTitle || "Configure Knowledge",
       description:
-        dynamicConfig?.configPageDescription ||
+        config?.configPageDescription ||
         "Select knowledge type and configure settings",
-      icon: dynamicConfig?.icon,
+      icon: config?.icon,
       content: (
         <div className="space-y-6">
           {/* MCP Server View Selection Section */}
@@ -283,22 +282,20 @@ function KnowledgeConfigurationSheetContent({
           </div>
 
           {/* Configuration Section - Only show when MCP server is selected */}
-          {selectedMCPServerName && dynamicConfig && (
+          {selectedMCPServerName && config && (
             <>
               <hr className="border-gray-200" />
               <div className="space-y-6">
                 <h3 className="text-lg font-semibold">Configuration</h3>
-                {dynamicConfig.hasTimeFrame && (
+                {config.hasTimeFrame && (
                   <TimeFrameSection
                     control={control}
                     actionType={
-                      dynamicConfig.name === "extract_data"
-                        ? "extract"
-                        : "include"
+                      config.name === "extract_data" ? "extract" : "include"
                     }
                   />
                 )}
-                {dynamicConfig.hasJsonSchema && (
+                {config.hasJsonSchema && (
                   <JsonSchemaSection
                     control={control}
                     initialSchemaString={
@@ -312,7 +309,7 @@ function KnowledgeConfigurationSheetContent({
                 )}
                 <DescriptionSection
                   control={control}
-                  {...dynamicConfig.descriptionConfig}
+                  {...config.descriptionConfig}
                 />
               </div>
             </>
@@ -328,7 +325,7 @@ function KnowledgeConfigurationSheetContent({
       currentPageId={currentPageId}
       onPageChange={handlePageChange}
       onSave={handleSubmit((formData) => {
-        if (!dynamicConfig) {
+        if (!config) {
           return;
         }
         // Transform the tree structure to selection configurations
@@ -336,7 +333,7 @@ function KnowledgeConfigurationSheetContent({
           formData.sources,
           supportedDataSourceViews
         );
-        onSave(formData, dataSourceConfigurations, dynamicConfig);
+        onSave(formData, dataSourceConfigurations, config);
       })}
       size="xl"
       showNavigation

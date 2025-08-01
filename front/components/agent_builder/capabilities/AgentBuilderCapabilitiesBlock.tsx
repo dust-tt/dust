@@ -237,18 +237,15 @@ export function AgentBuilderCapabilitiesBlock() {
 
   const handleActionEdit = (action: AgentBuilderAction, index: number) => {
     setEditingAction({ action, index });
+    if (isSupportedAgentBuilderAction(action)) {
+      setIsKnowledgeSheetOpen(true);
+    }
   };
 
   const handleCloseSheet = () => {
     setEditingAction(null);
     setIsKnowledgeSheetOpen(false);
   };
-
-  const isEditingKnowledgeAction =
-    !!editingAction && isSupportedAgentBuilderAction(editingAction.action);
-
-  const shouldShowKnowledgeSheet =
-    isEditingKnowledgeAction || isKnowledgeSheetOpen;
 
   const dropdownButtons = (
     <>
@@ -257,7 +254,7 @@ export function AgentBuilderCapabilitiesBlock() {
         onOpen={() => setIsKnowledgeSheetOpen(true)}
         onSave={handleEditSave}
         action={editingAction?.action}
-        open={shouldShowKnowledgeSheet}
+        open={isKnowledgeSheetOpen}
       />
       <AddToolsDropdown
         tools={fields}
