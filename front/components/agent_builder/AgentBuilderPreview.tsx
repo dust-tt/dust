@@ -1,4 +1,4 @@
-import { ArrowPathIcon, Button, Spinner, TrashIcon } from "@dust-tt/sparkle";
+import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
 import React from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -68,7 +68,7 @@ export function AgentBuilderPreview() {
     setStickyMentions,
   } = useDraftAgent();
 
-  const { conversation, setConversation, handleSubmit, resetConversation } =
+  const { conversation, handleSubmit, resetConversation } =
     useDraftConversation({
       draftAgent,
       getDraftAgent,
@@ -105,9 +105,10 @@ export function AgentBuilderPreview() {
     return (
       <div className="flex h-full flex-col">
         {conversation && (
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <h3 className="text-sm font-medium text-foreground">
-              {conversation.title || `Trying @${draftAgent?.name || "your agent"}`}
+          <div className="flex items-center justify-between px-4 py-3">
+            <h3 className="text-sm font-medium text-foreground dark:text-foreground-night">
+              {conversation.title ||
+                `Trying @${draftAgent?.name || "your agent"}`}
             </h3>
             <Button
               variant="outline"

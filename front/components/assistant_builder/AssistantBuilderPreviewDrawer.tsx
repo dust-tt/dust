@@ -90,7 +90,9 @@ export default function AssistantBuilderRightPanel({
     });
 
   const { user } = useUser();
-  const { conversation, setConversation, stickyMentions,
+  const {
+    conversation,
+    stickyMentions,
     setStickyMentions,
     handleSubmit,
     resetConversation,
@@ -218,9 +220,10 @@ export default function AssistantBuilderRightPanel({
                   <GenerationContextProvider>
                     <div className="flex h-full flex-col">
                       {conversation && (
-                        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                          <h3 className="text-sm font-medium text-foreground">
-                            {conversation.title || `Trying @${draftAssistant?.name || "your assistant"}`}
+                        <div className="flex items-center justify-between px-4 py-3">
+                          <h3 className="text-sm font-medium text-foreground dark:text-foreground-night">
+                            {conversation.title ||
+                              `Trying @${draftAssistant?.name || "your assistant"}`}
                           </h3>
                           <Button
                             variant="outline"
