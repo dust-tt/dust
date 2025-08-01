@@ -8,7 +8,6 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@dust-tt/sparkle";
-import type { Control } from "react-hook-form";
 import { useController } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
@@ -43,14 +42,12 @@ const ACTION_CONFIG: Record<
 
 interface TimeFrameSectionProps {
   actionType: ActionType;
-  control: Control<CapabilityFormData>;
 }
 
-export function TimeFrameSection({
-  actionType,
-  control,
-}: TimeFrameSectionProps) {
-  const { field: timeFrame } = useController({ control, name: "timeFrame" });
+export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
+  const { field: timeFrame } = useController<CapabilityFormData>({
+    name: "timeFrame",
+  });
   const isChecked = timeFrame.value;
 
   const { actionText, contextText } = ACTION_CONFIG[actionType];
@@ -100,7 +97,11 @@ export function TimeFrameSection({
           <DropdownMenuTrigger asChild>
             <Button
               isSelect
-              label={TIME_FRAME_UNIT_TO_LABEL[timeFrame.value?.unit ?? "day"]}
+              label={
+                TIME_FRAME_UNIT_TO_LABEL[
+                  (timeFrame.value?.unit as TimeFrame["unit"]) ?? "day"
+                ]
+              }
               variant="outline"
               size="sm"
               disabled={!isChecked}

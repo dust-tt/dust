@@ -1,6 +1,5 @@
 import { Button, SparklesIcon, TextArea } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
-import type { Control } from "react-hook-form";
 import { useController, useFormContext } from "react-hook-form";
 
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
@@ -15,7 +14,6 @@ interface JsonSchemaSectionProps {
   helpText?: string;
   agentInstructions?: string;
   owner: WorkspaceType;
-  control: Control<CapabilityFormData>;
 }
 
 export function JsonSchemaSection({
@@ -25,12 +23,10 @@ export function JsonSchemaSection({
   helpText,
   agentInstructions,
   owner,
-  control,
 }: JsonSchemaSectionProps) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Left it here, unused due to NOTE below
   const { getValues } = useFormContext();
-  const { field } = useController({
-    control,
+  const { field } = useController<CapabilityFormData>({
     name: "jsonSchema",
   });
 
